@@ -2923,6 +2923,66 @@ void trunc_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void kthvalue_grad(const Tensor& x,
+                   const Tensor& indices,
+                   const Tensor& out_grad,
+                   int k,
+                   int axis,
+                   bool keepdim,
+                   Tensor* x_grad) {
+  if (x_grad) {
+    auto x_cast = ConverToMT<T>(x);
+    auto out_grad_cast = ConverToMT<T>(out_grad);
+    // put_along_axis doesn't support zero dim
+    if (x.dims().size() == 0) {
+      by_pass<T>(out_grad, x_grad);
+      return;
+    }
+
+    // function `put_along_axis` requires a non-negative axis
+    if (axis < 0) {
+      axis += x.dims().size();
+    }
+
+    Tensor zero_tensor;
+    Tensor x_grad_tmp;
+    if (has_dynamic_shape(x_cast.shape())) {
+      zero_tensor =
+          backend::full_with_tensor<T>(shape<T>(x_cast), 0, x_cast.dtype());
+
+      if (keepdim) {
+        x_grad_tmp = backend::put_along_axis<T>(
+            zero_tensor, indices, out_grad_cast, axis);
+      } else {
+        auto axis_ = std::vector<int64_t>(1, axis);
+        auto out_grad_shape =
+            get_unsqueeze_dims<T>(shape<T>(out_grad_cast), axis_);
+        auto out_grad_ = backend::reshape<T>(out_grad_cast, out_grad_shape);
+        auto indices_shape = get_unsqueeze_dims<T>(shape<T>(indices), axis_);
+        auto indices_ = backend::reshape<T>(indices, indices_shape);
+        x_grad_tmp =
+            backend::put_along_axis<T>(zero_tensor, indices_, out_grad_, axis);
+      }
+    } else {
+      zero_tensor =
+          full<T>(common::vectorize(x_cast.dims()), 0, x_cast.dtype());
+      if (keepdim) {
+        x_grad_tmp =
+            put_along_axis<T>(zero_tensor, indices, out_grad_cast, axis);
+      } else {
+        auto axis_ = std::vector<int64_t>(1, axis);
+        auto out_grad_shape = get_unsqueeze_dims(out_grad_cast, axis_);
+        auto out_grad_ = reshape<T>(out_grad_cast, out_grad_shape);
+        auto indices_shape = get_unsqueeze_dims(indices, axis_);
+        auto indices_ = reshape<T>(indices, indices_shape);
+        x_grad_tmp = put_along_axis<T>(zero_tensor, indices_, out_grad_, axis);
+      }
+    }
+    set_output<T>(ConverToOrig<T>(x_grad_tmp, x.dtype()), x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

@@ -23,6 +23,18 @@ from test_prim_sub_graph_backward_dynamic_shape import (
 import paddle
 
 
+def kthvalue_net1(x):
+    return paddle.kthvalue(x, k=2)[0]
+
+
+def kthvalue_net2(x):
+    return paddle.kthvalue(x, k=1, axis=1)[0]
+
+
+def kthvalue_net3(x):
+    return paddle.kthvalue(x, k=1, axis=1, keepdim=True)[0]
+
+
 def leaky_relu_net(x):
     return paddle.nn.functional.leaky_relu(x)
 
@@ -105,6 +117,58 @@ def minimum_net(x, y):
 
 def multiply_net(x, y):
     return x * y
+
+
+class TestPrimKthvalueWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kthvalue_grad"
+        self.dtype = "float32"
+        self.x_shape = [30]
+        self.init_x_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = kthvalue_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimKthvalueWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kthvalue_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = kthvalue_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimKthvalueWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kthvalue_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = kthvalue_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimKthvalueWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kthvalue_grad"
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = kthvalue_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimLeakyReluWithGrad(TestPrimBaseWithGrad):
