@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base, nn
 from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 def get_value_by_name(name, ops):
@@ -31,7 +30,7 @@ def get_value_by_name(name, ops):
 
 
 class TestModelAverage(unittest.TestCase):
-    @test_with_pir_api
+
     def test_model_average_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -111,7 +110,7 @@ class TestModelAverage(unittest.TestCase):
 
         average_b = (sum_1 + sum_2 + sum_3) / (
             num_accumulates + old_num_accumulates
-        )
+        ).astype('float32')
         if in_pir_mode():
             ops = test_program.global_block().ops
             fetch_list = [
@@ -197,9 +196,13 @@ class TestModelAverage(unittest.TestCase):
             )
 
             return (
-                (sum_1 + sum_2 + sum_3)
-                / (num_accumulates + old_num_accumulates)
-            ).numpy()
+                (
+                    (sum_1 + sum_2 + sum_3)
+                    / (num_accumulates + old_num_accumulates).astype('float32')
+                )
+                .astype(sum_1.dtype)
+                .numpy()
+            )
 
         def evaluate(layer, loader, loss_fn, check_param):
             for batch_id, (image, label) in enumerate(loader()):

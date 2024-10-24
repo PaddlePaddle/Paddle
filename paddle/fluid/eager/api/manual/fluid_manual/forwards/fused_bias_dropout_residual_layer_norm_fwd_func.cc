@@ -14,11 +14,11 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
            paddle::Tensor,
@@ -32,9 +32,9 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     const paddle::Tensor& LnScale,
     const paddle::Tensor& LnBias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "fused_bias_dropout_residual_layer_norm dygraph",
-      paddle::platform::TracerEventType::Operator,
+      phi::TracerEventType::Operator,
       1);
   VLOG(3) << "Running Eager Forward Op: fused_bias_dropout_residual_layer_norm";
   // Dygraph Forward Pass
@@ -49,7 +49,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
     if (LnBias.initialized()) amp_tensors_vector.push_back({LnBias});
 
-    auto amp_dst_dtype = egr::GetAmpDestDtype(
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
         "fused_bias_dropout_residual_layer_norm", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast(
@@ -162,9 +162,9 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_bias_dropout_residual_layer_norm node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
     egr::AutogradMeta* p_autograd_BiasDropoutResidualOut =
         egr::EagerUtils::autograd_meta(&BiasDropoutResidualOut);

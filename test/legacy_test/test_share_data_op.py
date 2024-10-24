@@ -12,18 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 from op import Operator
 from op_test import OpTest
 
+import paddle
 from paddle.base import core
+
+
+def api_wrapper(x):
+    return paddle._C_ops.share_data(x)
 
 
 class TestShareDataOp(OpTest):
     def setUp(self):
         self.op_type = "share_data"
+        self.python_api = api_wrapper
         input = np.random.rand(2, 3, 5).astype("float32")
         self.inputs = {'X': input}
         self.outputs = {'Out': input}
@@ -34,7 +41,13 @@ class TestShareDataOp(OpTest):
 
 class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places

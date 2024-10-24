@@ -22,27 +22,27 @@
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 extern void ReadBinaryFile(const std::string &filename, std::string *contents);
 
-namespace analysis {
+}  // namespace paddle::inference
+namespace paddle::inference::analysis {
 
 void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope_valid()) {
     argument->SetScope(new framework::Scope);
   }
-  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(),
-                    true,
-                    platform::errors::PreconditionNotMet(
-                        "The use_gpu field should be valid"));
+  PADDLE_ENFORCE_EQ(
+      argument->use_gpu_valid(),
+      true,
+      common::errors::PreconditionNotMet("The use_gpu field should be valid"));
 
   // The load program should run on the same device with the inference program,
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
-  platform::Place place;
-  place = platform::CPUPlace();
+  phi::Place place;
+  place = phi::CPUPlace();
 
   if (argument->model_dir_valid()) {
     auto program =
@@ -59,7 +59,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         argument->skip_load_params());
     argument->SetMainProgram(program.release());
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "either model_dir or (program path and parameter path) should be "
         "set."));
   }
@@ -68,7 +68,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   argument->SetMainGraph(graph.release());
   auto *scope_ptr = argument->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(scope_ptr,
-                          platform::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "The scope ptr should not be nullptr."));
   argument->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
@@ -106,9 +106,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &path,
-    framework::Scope *scope,
-    const platform::Place &place) {
+    const std::string &path, framework::Scope *scope, const phi::Place &place) {
   framework::Executor exe(place);
   return Load(&exe, scope, path);
 }
@@ -117,11 +115,11 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path,
     const std::string &params_path,
     framework::Scope *scope,
-    const platform::Place &place,
+    const phi::Place &place,
     bool model_from_memory,
     bool skip_load_params) {
   framework::Executor exe(place);
-  if (!model_from_memory) {
+  if (!model_from_memory) {  // NOLINT
     return Load(&exe, scope, program_path, params_path, !skip_load_params);
   } else {
     return LoadFromMemory(&exe, scope, program_path, params_path);
@@ -130,6 +128,4 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
 
 std::string IrGraphBuildPass::repr() const { return "ir_graph_build_pass"; }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

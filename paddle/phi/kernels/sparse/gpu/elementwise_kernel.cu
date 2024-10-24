@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#include <glog/logging.h>
 #include <thrust/equal.h>
 #include <thrust/execution_policy.h>
 
@@ -37,28 +37,31 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_indices.numel(),
       y_indices.numel(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The numel of x.indices() and y.indices() should be equal"));
   const IntT* x_indices_ptr = x_indices.data<IntT>();
   const IntT* y_indices_ptr = y_indices.data<IntT>();
+  if (VLOG_IS_ON(3)) {
 #ifdef PADDLE_WITH_HIP
-  bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
+    bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+    bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                               x_indices_ptr,
-                               x_indices_ptr + x_indices.numel(),
-                               y_indices_ptr);
-  PADDLE_ENFORCE_EQ(
-      is_same,
-      true,
-      phi::errors::PreconditionNotMet(
-          "Currently, ElementWiseAddCooKernel only supports the case "
-          "where x and y have the same indices"));
+                                 x_indices_ptr,
+                                 x_indices_ptr + x_indices.numel(),
+                                 y_indices_ptr);
+    PADDLE_ENFORCE_EQ(
+        is_same,
+        true,
+        common::errors::PreconditionNotMet(
+            "Currently, ElementWiseAddCooKernel only supports the case "
+            "where x and y have the same indices"));
+  }
   EmptyLikeCooKernel<T, GPUContext>(dev_ctx, x, out);
   phi::AddKernel<T, GPUContext>(
       dev_ctx, x.values(), y.values(), out->mutable_values());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -84,7 +87,9 @@ PD_REGISTER_KERNEL(add_coo_coo,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -97,6 +102,8 @@ PD_REGISTER_KERNEL(add_coo_dense,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

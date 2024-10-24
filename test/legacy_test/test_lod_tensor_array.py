@@ -76,7 +76,9 @@ class TestCreateArray(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        init_data = [paddle.ones(shape, dtype='int32') for shape in self.shapes]
+        init_data = [
+            paddle.ones(shape, dtype='float32') for shape in self.shapes
+        ]
         array = paddle.tensor.create_array('float32', init_data)
         for res, gt in zip(array, init_data):
             self.assertTrue(res.shape, gt.shape)

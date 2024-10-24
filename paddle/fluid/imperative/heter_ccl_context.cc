@@ -20,12 +20,12 @@
 #endif
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/collective_helper.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
+#include "paddle/utils/string/split.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -39,11 +39,11 @@ namespace imperative {
 HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
                                            const int &device_id)
 #ifdef PADDLE_WITH_NCCL
-    : ParallelContext(strategy, platform::CUDAPlace(device_id))
+    : ParallelContext(strategy, phi::GPUPlace(device_id))
 #elif PADDLE_WITH_XPU_BKCL
-    : ParallelContext(strategy, platform::XPUPlace(device_id))
+    : ParallelContext(strategy, phi::XPUPlace(device_id))
 #else
-    : ParallelContext(strategy, platform::CPUPlace())
+    : ParallelContext(strategy, phi::CPUPlace())
 #endif
 {
   // construct node_strategy_ from global strategy by selecting the
@@ -81,7 +81,7 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
 
   PADDLE_ENFORCE_NE(node_nranks,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of local nranks should not be zero."));
   node_strategy_.nranks_ = node_nranks;
   node_strategy_.current_endpoint_ = strategy_.current_endpoint_;
@@ -92,8 +92,8 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     inter_strategy_.current_endpoint_ = strategy_.current_endpoint_;
     inter_strategy_.trainer_endpoints_ = inter_endpoints;
 #ifdef PADDLE_WITH_GLOO
-    inter_parallel_ctx_ = std::make_shared<GLOOParallelContext>(
-        inter_strategy_, platform::CPUPlace());
+    inter_parallel_ctx_ =
+        std::make_shared<GLOOParallelContext>(inter_strategy_, phi::CPUPlace());
 #endif
   }
 
@@ -101,12 +101,12 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
           << inter_rank;
 
 #ifdef PADDLE_WITH_NCCL
-  node_place_ = platform::CUDAPlace(device_id);
+  node_place_ = phi::GPUPlace(device_id);
   node_parallel_ctx_ =
       std::make_shared<NCCLParallelContext>(node_strategy_, node_place_);
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
-  node_place_ = platform::XPUPlace(device_id);
+  node_place_ = phi::XPUPlace(device_id);
   node_parallel_ctx_ =
       std::make_shared<BKCLParallelContext>(node_strategy_, node_place_);
 #endif
@@ -116,7 +116,7 @@ void HeterParallelContext::Init() {
   PADDLE_ENFORCE_NE(
       node_parallel_ctx_,
       nullptr,
-      platform::errors::Unavailable(
+      common::errors::Unavailable(
           "The heter parallel context has not been initialized."));
 
   if (inter_parallel_ctx_ != nullptr) {
@@ -129,7 +129,7 @@ void HeterParallelContext::Init() {
 }
 
 void HeterParallelContext::InitWithRingID(int ring_id) {
-  PADDLE_THROW(platform::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Unimplemented InitWithRingID from heter ctx."));
 }
 
@@ -149,7 +149,7 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
     auto src_tensor = dst->Get<phi::DenseTensor>();
     framework::Variable src_cpu;
     auto src_cpu_tensor = src_cpu.GetMutable<phi::DenseTensor>();
-    framework::TensorCopySync(src_tensor, platform::CPUPlace(), src_cpu_tensor);
+    framework::TensorCopySync(src_tensor, phi::CPUPlace(), src_cpu_tensor);
 
     // allreduce src/cpu to dst/cpu
     framework::Variable dst_cpu;
@@ -172,11 +172,10 @@ void HeterParallelContext::AllReduceByStream(const framework::Variable &src,
 }
 
 void HeterParallelContext::Broadcast(framework::Variable *src, int ring_id) {
-  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented function."));
+  PADDLE_THROW(common::errors::Unimplemented("Unimplemented function."));
 }
 
-paddle::platform::DeviceContext *HeterParallelContext::GetDeviceContext(
-    int ring_id) {
+phi::DeviceContext *HeterParallelContext::GetDeviceContext(int ring_id) {
   // directly call the implementation of target parallel ctx.
   return node_parallel_ctx_->GetDeviceContext(ring_id);
 }

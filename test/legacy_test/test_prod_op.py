@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestProdOp(unittest.TestCase):
@@ -71,7 +73,6 @@ class TestProdOp(unittest.TestCase):
             dy_result.numpy(), expected_result, rtol=1e-05
         )
 
-    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
@@ -151,7 +152,7 @@ class TestProdOp(unittest.TestCase):
 
 
 class TestProdOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

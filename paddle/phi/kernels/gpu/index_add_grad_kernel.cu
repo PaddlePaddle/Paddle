@@ -52,7 +52,7 @@ void IndexAddGradKernel(const Context& ctx,
       index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Index) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
                         index_type,
@@ -82,7 +82,8 @@ void IndexAddGradKernel(const Context& ctx,
                                              numel,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             input_dim[dim]);
   } else {
     const int* index_data = index.data<int>();
     index_select_cuda_kernel<T, int>
@@ -92,7 +93,8 @@ void IndexAddGradKernel(const Context& ctx,
                                              numel,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             input_dim[dim]);
   }
 }
 

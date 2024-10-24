@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/graph_khop_sampler_kernel.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <numeric>
 #include <random>
@@ -111,9 +111,9 @@ void SampleNeighbors(const T* src,
     PADDLE_ENFORCE_GT(
         total_neighbors,
         0,
-        phi::errors::InvalidArgument("The input nodes `X` should have at "
-                                     "least one neighbors, but none of the "
-                                     "input nodes have neighbors."));
+        common::errors::InvalidArgument("The input nodes `X` should have at "
+                                        "least one neighbors, but none of the "
+                                        "input nodes have neighbors."));
   }
   output_counts->resize(bs);
   outputs->resize(total_neighbors);
@@ -213,18 +213,18 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_NE(
         row_dims[i],
         0,
-        phi::errors::InvalidArgument("The size of Row(X) should not be 0."));
+        common::errors::InvalidArgument("The size of Row(X) should not be 0."));
   }
   for (int i = 0; i < col_dims_lens; i++) {
     PADDLE_ENFORCE_NE(col_dims[i],
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of Col_Ptr(X) should not be 0."));
   }
   for (int i = 0; i < x_dims_lens; i++) {
     PADDLE_ENFORCE_NE(x_dims[i],
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of Input_Node(X) should not be 0."));
   }
 
@@ -364,13 +364,14 @@ void GraphKhopSamplerKernel(const Context& dev_ctx,
     std::copy(eids_merge.begin(), eids_merge.end(), out_eids_data);
   }
 
-  int64_t num_sample_edges = std::accumulate(
-      dst_sample_counts_merge.begin(), dst_sample_counts_merge.end(), 0);
+  int64_t num_sample_edges = std::accumulate(dst_sample_counts_merge.begin(),
+                                             dst_sample_counts_merge.end(),
+                                             static_cast<int64_t>(0));
   PADDLE_ENFORCE_EQ(
       src_merge.size(),
       num_sample_edges,
-      phi::errors::PreconditionNotMet(
-          "Number of sample edges dismatch, the sample kernel has error."));
+      common::errors::PreconditionNotMet(
+          "Number of sample edges mismatch, the sample kernel has error."));
 
   // 6. Reindex edges.
   std::unordered_map<T, T> node_map;

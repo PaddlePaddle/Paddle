@@ -57,13 +57,13 @@ void FusedFeedForwardGradKernel(
     bool add_residual,
     int ring_id,
     DenseTensor* x_grad,
-    DenseTensor* ln1_scale_grad,
-    DenseTensor* ln1_bias_grad,
-    DenseTensor* ln2_scale_grad,
-    DenseTensor* ln2_bias_grad,
     DenseTensor* linear1_weight_grad,
     DenseTensor* linear1_bias_grad,
     DenseTensor* linear2_weight_grad,
-    DenseTensor* linear2_bias_grad);
+    DenseTensor* linear2_bias_grad,
+    DenseTensor* ln1_scale_grad,
+    DenseTensor* ln1_bias_grad,
+    DenseTensor* ln2_scale_grad,
+    DenseTensor* ln2_bias_grad);
 
 }  // namespace phi

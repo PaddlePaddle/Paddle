@@ -71,7 +71,7 @@ class CleanupFuncRegistrar:
 
         def _func_register(function):
             if not callable(function):
-                raise TypeError("%s is not callable object." % (function))
+                raise TypeError(f"{function} is not callable object.")
             # check function object whether hash-able
             if function not in cls._registered_func_set:
                 atexit.register(_func_executor)

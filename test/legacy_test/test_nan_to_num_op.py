@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
-from typing import Optional
 
 import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 # from op_test import OpTest
 
@@ -27,8 +27,8 @@ from paddle.pir_utils import test_with_pir_api
 def np_nan_to_num(
     x: np.ndarray,
     nan: float = 0.0,
-    posinf: Optional[float] = None,
-    neginf: Optional[float] = None,
+    posinf: float | None = None,
+    neginf: float | None = None,
 ) -> np.ndarray:
     return np.nan_to_num(x, True, nan=nan, posinf=posinf, neginf=neginf)
 
@@ -62,7 +62,6 @@ class TestNanToNum(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static(self):
         x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
             np.float32

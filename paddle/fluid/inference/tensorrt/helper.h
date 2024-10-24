@@ -22,10 +22,10 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
@@ -50,7 +50,7 @@ namespace tensorrt {
 #define TRT_NOEXCEPT
 #endif
 
-namespace dy = paddle::platform::dynload;
+namespace dy = phi::dynload;
 
 // TensorRT data type to size
 const int kDataTypeSize[] = {
@@ -104,7 +104,7 @@ template <typename T>
 struct Destroyer {
   void operator()(T* x) {
     if (x) {
-      x->destroy();
+      delete x;
     }
   }
 };
@@ -228,7 +228,7 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
       break;
 #endif
     default:
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "phi::DataType not supported data type %s.", type);
       break;
   }
@@ -253,7 +253,7 @@ static TRT_DT FluidDataType2TRT(FluidDT type) {
 
 #endif
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "unsupported datatype in TRT op converter, type: %s. "
           "Boolean type is supported as TRT input/output "
           "using TensorRT v8.4+.",
@@ -269,94 +269,18 @@ static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
                                    bool with_dynamic_shape = false) {
   PADDLE_ENFORCE_GE(shape.size(),
                     0UL,
-                    paddle::platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TensorRT's tensor input requires at least 0 "
                         "dimensions, but input %s has %d dims.",
                         input,
                         shape.size()));
 
-  auto ShapeStr = [](const std::vector<T>& shape) {
-    std::ostringstream os;
-    os << "[";
-    for (size_t i = 0; i < shape.size(); ++i) {
-      if (i == shape.size() - 1) {
-        os << shape[i];
-      } else {
-        os << shape[i] << ",";
-      }
-    }
-    os << "]";
-    return os.str();
-  };
-  if (!with_dynamic_shape) {
-    if (shape.size() == 4UL) {
-      if (shape[2] == -1 || shape[3] == -1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
-    } else if (shape.size() == 5UL) {
-      if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
-    } else if (shape.size() == 3UL) {
-      if (shape[1] == -1 || shape[2] == -1) {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      return nvinfer1::Dims2(shape[1], shape[2]);
-    } else if (shape.size() == 2UL) {
-      if (shape[1] == -1) {
-        PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-            "The input [%s] shape of trt subgraph is %s, please enable "
-            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
-            input,
-            ShapeStr(shape)));
-      }
-      nvinfer1::Dims dims;
-      dims.nbDims = 1;
-      dims.d[0] = shape[1];
-      return dims;
-    }
-    // static shape doesn't support 1D op so far.
-    PADDLE_ENFORCE_NE(shape.size(),
-                      1UL,
-                      paddle::platform::errors::InvalidArgument(
-                          "The input [%s] shape of trt subgraph is %s."
-                          "it's not supported by trt so far",
-                          input,
-                          ShapeStr(shape)));
-
-    nvinfer1::Dims dims;
-    dims.nbDims = shape.size() - 1;
-    for (size_t i = 1; i < shape.size(); i++) {
-      dims.d[i - 1] = shape[i];
-    }
-    return dims;
-  } else {
-    if (shape.size() == 4UL) {
-      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
-    } else if (shape.size() == 3UL) {
-      return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
-    }
-    nvinfer1::Dims dims;
-    dims.nbDims = shape.size();
-    for (size_t i = 0; i < shape.size(); i++) {
-      dims.d[i] = shape[i];
-    }
-    return dims;
+  nvinfer1::Dims dims;
+  dims.nbDims = shape.size();
+  for (size_t i = 0; i < shape.size(); i++) {
+    dims.d[i] = shape[i];
   }
+  return dims;
 }
 
 }  // namespace tensorrt

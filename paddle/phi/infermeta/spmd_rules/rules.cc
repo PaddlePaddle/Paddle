@@ -154,6 +154,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
+    conv2d,
+    PD_INFER_SPMD(phi::distributed::Conv2dInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::Conv2dInferSpmdReverseBase));
+PD_REGISTER_SPMD_RULE(
     cos,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
@@ -350,6 +354,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    fused_dropout_add,
+    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdBase),
+    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdReverseBase));
+
 // elementwise binary rule
 PD_REGISTER_SPMD_RULE(
     add,
@@ -435,15 +444,29 @@ PD_REGISTER_SPMD_RULE(
     logical_xor,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
 PD_REGISTER_SPMD_RULE(
     not_equal,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
-
+PD_REGISTER_SPMD_RULE(
+    greater_than,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
+    less_than,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(swiglu,
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SwiGLUInferSpmdReverse));
 // TODO(pkuzyc): add multiary elementwise rule
 
 // reduction rule
+PD_REGISTER_SPMD_RULE(
+    reduce_base,
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ReductionInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     all,
     PD_INFER_SPMD(phi::distributed::ReductionInferSpmd),
@@ -501,6 +524,16 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmd),
     PD_INFER_SPMD(phi::distributed::LayerNormInferSpmdReverse));
 
+// fused_rms_norm
+// NOTE(ZHIQIU): Temporally register fused_rms_norm rule,
+// this is not for rms_norm kernel, but for the custom kernel
+// 'fused_rms_norm' in PaddleNLP.
+// It will be no longer needed when the PIR-AutoParallel project
+// is finished.
+PD_REGISTER_SPMD_RULE(fused_rms_norm,
+                      PD_INFER_SPMD(phi::distributed::RmsNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::RmsNormInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     flash_attention,
     PD_INFER_SPMD(phi::distributed::FlashAttInferSpmdStatic),
@@ -528,6 +561,9 @@ PD_REGISTER_SPMD_RULE(
     embedding,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(c_embedding,
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CEmbeddingGradInferSpmd));
 PD_REGISTER_SPMD_RULE(
     lookup_table_v2,
     PD_INFER_SPMD(phi::distributed::EmbeddingInferSpmd),
@@ -547,9 +583,18 @@ PD_REGISTER_SPMD_RULE(slice,
                       PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    strided_slice,
+    PD_INFER_SPMD(phi::distributed::StridedSliceInferSpmd),
+    PD_INFER_SPMD(phi::distributed::StridedSliceGradInferSpmd));
+
 PD_REGISTER_SPMD_RULE(concat,
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(stack,
+                      PD_INFER_SPMD(phi::distributed::StackInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::StackInferSpmdReverse));
 
 // transpose rule
 PD_REGISTER_SPMD_RULE(
@@ -598,6 +643,10 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdStatic),
     PD_INFER_SPMD(phi::distributed::CrossEntropyWithSoftmaxInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    c_softmax_with_cross_entropy,
+    PD_INFER_SPMD(phi::distributed::CSoftmaxWithCrossEntropyInferSpmd));
+
 // fused_linear_param_grad_add got no reverse infer spmd rule
 PD_REGISTER_SPMD_RULE(
     fused_linear_param_grad_add,
@@ -605,5 +654,77 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(
         phi::distributed::FusedLinearParamGradAddInferSpmdFakeReverse));
 
+PD_REGISTER_SPMD_RULE(
+    expand_as,
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    expand_as_v2,
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ExpandAsInferSpmdReverse));
+
+// scatter
+PD_REGISTER_SPMD_RULE(scatter,
+                      PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
+
+// scatter_nd_add
+PD_REGISTER_SPMD_RULE(
+    scatter_nd_add,
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmdReverse));
+
+// gather
+PD_REGISTER_SPMD_RULE(
+    gather,
+    PD_INFER_SPMD(phi::distributed::GatherInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::GatherInferSpmdReverseBase));
+
+PD_REGISTER_SPMD_RULE(
+    gather_nd,
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmd),
+    PD_INFER_SPMD(phi::distributed::GatherNdInferSpmdReverse));
+
+// one_hot
+PD_REGISTER_SPMD_RULE(one_hot,
+                      PD_INFER_SPMD(phi::distributed::OneHotInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::OneHotInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(cumsum,
+                      PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
+
+// argmax
+PD_REGISTER_SPMD_RULE(
+    argmax,
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
+
+// unbind
+PD_REGISTER_SPMD_RULE(unbind,
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::UnbindInferSpmdReverse));
+
+// logsumexp
+PD_REGISTER_SPMD_RULE(
+    logsumexp,
+    PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmd),
+    PD_INFER_SPMD(phi::distributed::LogSumExpInferSpmdReverse));
+
+// p_norm
+PD_REGISTER_SPMD_RULE(p_norm,
+                      PD_INFER_SPMD(phi::distributed::PNormInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::PNormInferSpmdReverse));
+
+// pad
+PD_REGISTER_SPMD_RULE(pad,
+                      PD_INFER_SPMD(phi::distributed::PadInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::PadGradInferSpmd));
+
+// nonzero
+PD_REGISTER_SPMD_RULE(nonzero,
+                      PD_INFER_SPMD(phi::distributed::NonZeroInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::NonZeroInferSpmdReverse));
 }  // namespace distributed
 }  // namespace phi

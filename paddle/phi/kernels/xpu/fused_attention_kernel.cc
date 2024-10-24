@@ -199,7 +199,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   int l3_total_size = xpu_ctx->_l3_mgr.get_size();
 
-  XPUTypeT *qkv_before_transpos_ptr =
+  XPUTypeT *qkv_before_transpose_ptr =
       NULL;                  // x2[batch_size, seq_len, 3, num_heads,head_dims]
   XPUTypeT *qk_ptr = NULL;   // qk [batch_size, num_heads, seq_len, seq_len]
   XPUTypeT *qkv_ptr = NULL;  // qkv[batch_size, num_heads, seq_len, head_dims]
@@ -215,7 +215,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   std::sort(temp_vec.begin(), temp_vec.end(), std::greater<int>());
   XPUTypeT *max_gm_ptr = RAII_GUARD.alloc<XPUTypeT>(temp_vec[0]);
   PADDLE_ENFORCE_XDNN_NOT_NULL(max_gm_ptr);
-  qkv_before_transpos_ptr = max_gm_ptr;
+  qkv_before_transpose_ptr = max_gm_ptr;
   qk_ptr = max_gm_ptr;
   qkv_ptr = max_gm_ptr;
   linear_out_ptr = max_gm_ptr;
@@ -223,7 +223,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   for (size_t i = 0; i < temp_vec.size(); ++i) {
     if (l3_total_size >= temp_vec[i] * sizeof_t) {
       XPUTypeT *l3_ptr = RAII_GUARD.alloc_l3<XPUTypeT>(temp_vec[i]);
-      qkv_before_transpos_ptr =
+      qkv_before_transpose_ptr =
           (temp_size_1 <= temp_vec[i]) ? l3_ptr : max_gm_ptr;
       qk_ptr = (temp_size_2 <= temp_vec[i]) ? l3_ptr : max_gm_ptr;
       qkv_ptr = (temp_size_3 <= temp_vec[i]) ? l3_ptr : max_gm_ptr;
@@ -264,22 +264,22 @@ void FusedAttentionKernel(const Context &dev_ctx,
   phi::MatMulXPUFunction<XPUTypeT>(xpu_ctx,
                                    x_cacl_ptr,
                                    qkv_weight_ptr,
-                                   qkv_before_transpos_ptr,
+                                   qkv_before_transpose_ptr,
                                    qkv_fc_info,
                                    1.0f);
 
   // bias
   r = xpu::broadcast_add(xpu_ctx,
-                         qkv_before_transpos_ptr,
+                         qkv_before_transpose_ptr,
                          qkv_bias_ptr,
-                         qkv_before_transpos_ptr,
+                         qkv_before_transpose_ptr,
                          {batch_size * seq_len, 3 * num_heads * head_dims},
                          {3 * num_heads * head_dims});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 
   // transpose
   r = xpu::transpose(xpu_ctx,
-                     qkv_before_transpos_ptr,
+                     qkv_before_transpose_ptr,
                      qkv_transpose_out_ptr,
                      {batch_size, seq_len, 3, num_heads, head_dims},
                      {2, 0, 3, 1, 4});

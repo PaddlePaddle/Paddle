@@ -42,6 +42,8 @@ void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);
 
+void CommInitAllInferMeta(const std::vector<int>& devices, int ring_id);
+
 void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out);
@@ -50,7 +52,8 @@ void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
 
 TEST_API void CreateInferMeta(const IntArray& shape,
                               DataType dtype,
-                              MetaTensor* out);
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
@@ -75,10 +78,20 @@ void GaussianInferMeta(const IntArray& shape,
                        DataType dtype,
                        MetaTensor* out);
 
+void LoadInferMeta(MetaTensor* out, MetaConfig config = MetaConfig());
+
 void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 
 void RandintInferMeta(
     int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
+
+void PartialRecvInferMeta(int ring_id,
+                          int peer,
+                          DataType dtype,
+                          const std::vector<int>& out_shape,
+                          int num,
+                          int id,
+                          MetaTensor* out);
 
 void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out);
 
@@ -100,6 +113,8 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,
                                       int seed,
+                                      float a,
+                                      float b,
                                       DataType dtype,
                                       MetaTensor* out);
 

@@ -201,6 +201,9 @@ class TrainerDesc:
     def _set_use_ps_gpu(self, use_ps_gpu=False):
         self.proto_desc.use_ps_gpu = use_ps_gpu
 
+    def _set_use_gpu_graph(self, use_gpu_graph=False):
+        self.proto_desc.use_gpu_graph = use_gpu_graph
+
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
 
@@ -292,7 +295,7 @@ class TrainerDesc:
             if not isinstance(values, list):
                 values = [values]
             if len(values) != 1:
-                raise ValueError("dependency len %s != 1" % len(values))
+                raise ValueError(f"dependency len {len(values)} != 1")
             for value in values:
                 m.values.append(value)
         config.dense_pull_after_copy = config_dict.get(

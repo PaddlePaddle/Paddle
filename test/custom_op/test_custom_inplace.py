@@ -76,19 +76,31 @@ def inplace_static_add(func, device, dtype, np_x, np_y):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [
+                    x,
+                    out,
+                    ops[-1].result(0),
+                    ops[-1].result(1),
+                    ops[-2].result(0),
+                ]
+            else:
+                fetch_list = [
+                    x.name,
+                    out.name,
+                    x.name + "@GRAD",
+                    y.name + "@GRAD",
+                    out.name + "@GRAD",
+                ]
+
             x_v, out_v, x_grad_v, y_grad_v, out_grad_v = exe.run(
                 static.default_main_program(),
                 feed={
                     "x": np_x.astype(dtype),
                     "y": np_y.astype(dtype),
                 },
-                fetch_list=[
-                    x.name,
-                    out.name,
-                    x.name + "@GRAD",
-                    y.name + "@GRAD",
-                    out.name + "@GRAD",
-                ],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return x_v, out_v, x_grad_v, y_grad_v, out_grad_v
@@ -142,6 +154,39 @@ def inplace_static_add_vector(custom_func, device, dtype, np_inputs, np_y):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                if custom_func:
+                    fetch_list = [
+                        out[0],
+                        out[1],
+                        ops[-1].result(0),  # x1_grad
+                        ops[-1].result(1),  # x2_grad
+                        ops[-2].result(1),  # y_grad
+                        ops[-5].result(0),  # out0_grad
+                        ops[-5].result(1),
+                    ]  # out1_grad
+                else:
+                    fetch_list = [
+                        out[0],
+                        out[1],
+                        ops[-4].result(0),  # x1_grad
+                        ops[-3].result(0),  # x2_grad
+                        ops[-1].result(0),  # y_grad
+                        ops[-5].result(0),  # out0_grad
+                        ops[-5].result(1),
+                    ]  # out1_grad
+            else:
+                fetch_list = [
+                    out[0].name,
+                    out[1].name,
+                    x1.name + "@GRAD",
+                    x2.name + "@GRAD",
+                    y.name + "@GRAD",
+                    out[0].name + "@GRAD",
+                    out[1].name + "@GRAD",
+                ]
+
             (
                 out0_v,
                 out1_v,
@@ -157,15 +202,7 @@ def inplace_static_add_vector(custom_func, device, dtype, np_inputs, np_y):
                     "x2": np_inputs[1].astype(dtype),
                     "y": np_y.astype(dtype),
                 },
-                fetch_list=[
-                    out[0].name,
-                    out[1].name,
-                    x1.name + "@GRAD",
-                    x2.name + "@GRAD",
-                    y.name + "@GRAD",
-                    out[0].name + "@GRAD",
-                    out[1].name + "@GRAD",
-                ],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return (
@@ -216,6 +253,24 @@ def inplace_static_relu_net(func, device, dtype, np_x, np_y, np_z):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [
+                    x,
+                    y,
+                    out,
+                    ops[-1].result(0),  # x_grad
+                    ops[-1].result(1),
+                ]  # y_grad
+            else:
+                fetch_list = [
+                    x.name,
+                    y.name,
+                    out.name,
+                    x.name + "@GRAD",
+                    y.name + "@GRAD",
+                ]
+
             x_v, y_v, out_v, x_grad_v, y_grad_v = exe.run(
                 static.default_main_program(),
                 feed={
@@ -223,13 +278,7 @@ def inplace_static_relu_net(func, device, dtype, np_x, np_y, np_z):
                     "y": np_y.astype(dtype),
                     "z": np_z.astype(dtype),
                 },
-                fetch_list=[
-                    x.name,
-                    y.name,
-                    out.name,
-                    x.name + "@GRAD",
-                    y.name + "@GRAD",
-                ],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return x_v, y_v, out_v, x_grad_v, y_grad_v
@@ -284,6 +333,49 @@ def static_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
             mean_out = paddle.mean(paddle.add(out_xy, out_ab))
             static.append_backward(mean_out)
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                if custom_func:
+                    fetch_list = [
+                        x,
+                        out_xy,
+                        ops[-1].result(0),  # x_grad
+                        ops[-1].result(1),  # y_grad
+                        ops[-2].result(0),  # out_xy_grad
+                        a,
+                        out_ab,
+                        ops[-1].result(2),  # a_grad
+                        ops[-1].result(3),  # b_grad
+                        ops[-2].result(1),
+                    ]  # out_ab_grad
+                else:
+                    fetch_list = [
+                        x,
+                        out_xy,
+                        ops[-2].result(0),  # x_grad
+                        ops[-2].result(1),  # y_grad
+                        ops[-3].result(0),  # out_xy_grad
+                        a,
+                        out_ab,
+                        ops[-1].result(0),  # a_grad
+                        ops[-1].result(1),  # b_grad
+                        ops[-3].result(1),
+                    ]  # out_ab_grad
+
+            else:
+                fetch_list = [
+                    x.name,
+                    out_xy.name,
+                    x.name + "@GRAD",
+                    y.name + "@GRAD",
+                    out_xy.name + "@GRAD",
+                    a.name,
+                    out_ab.name,
+                    a.name + "@GRAD",
+                    b.name + "@GRAD",
+                    out_ab.name + "@GRAD",
+                ]
+
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
@@ -306,18 +398,7 @@ def static_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
                     "a": np_a.astype(dtype),
                     "b": np_b.astype(dtype),
                 },
-                fetch_list=[
-                    x.name,
-                    out_xy.name,
-                    x.name + "@GRAD",
-                    y.name + "@GRAD",
-                    out_xy.name + "@GRAD",
-                    a.name,
-                    out_ab.name,
-                    a.name + "@GRAD",
-                    b.name + "@GRAD",
-                    out_ab.name + "@GRAD",
-                ],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return (

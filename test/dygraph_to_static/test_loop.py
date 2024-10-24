@@ -19,12 +19,10 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base.framework import use_pir_api
 from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -242,7 +240,6 @@ class TestNameVisitor(Dy2StTestBase):
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
-    @test_legacy_and_pt_and_pir
     def test_loop_vars(self):
         for i in range(len(self.loop_funcs)):
             func = self.loop_funcs[i]
@@ -258,7 +255,6 @@ class TestNameVisitor(Dy2StTestBase):
                     self.assertEqual(loop_var_names, self.loop_var_names[i])
                     self.assertEqual(create_var_names, self.create_var_names[i])
 
-    @test_legacy_and_pt_and_pir
     def test_nested_loop_vars(self):
         func = self.nested_for_loop_func
         test_func = inspect.getsource(func)
@@ -282,16 +278,12 @@ class TestNameVisitor(Dy2StTestBase):
                 self.assertEqual(
                     loop_var_names,
                     self.loop_var_names[i],
-                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".format(
-                        loop_var_names, self.loop_var_names[i]
-                    ),
+                    msg=f"loop_var_names : {loop_var_names}, \nexpected loop_var_names : {self.loop_var_names[i]}",
                 )
                 self.assertEqual(
                     create_var_names,
                     self.create_var_names[i],
-                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".format(
-                        i, create_var_names, self.create_var_names[i]
-                    ),
+                    msg=f"i = {i}\ncreate_var_names : {create_var_names}, \nexpected create_var_names : {self.create_var_names[i]}",
                 )
                 i += 1
 
@@ -327,7 +319,6 @@ class TestTransformWhileLoop(Dy2StTestBase):
         else:
             return ret
 
-    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
@@ -401,7 +392,6 @@ class TestTransformForLoop(Dy2StTestBase):
             ret = self.dyfunc(self.len)
         return ret.numpy()
 
-    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), rtol=1e-05
@@ -458,7 +448,6 @@ class Net(paddle.nn.Layer):
 
 
 class TestForLoopMeetDict(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_start(self):
         net = Net()
         model = paddle.jit.to_static(
@@ -470,9 +459,7 @@ class TestForLoopMeetDict(Dy2StTestBase):
             ],
         )
         temp_dir = tempfile.TemporaryDirectory()
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(model, temp_dir.name)
+        paddle.jit.save(model, temp_dir.name)
         temp_dir.cleanup()
 
 

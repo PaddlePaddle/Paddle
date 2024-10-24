@@ -31,7 +31,7 @@ class LogSigmoidOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         input_num,
         1,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input X's size must equal to 1 in TRT LogSigmoid op."
             " But received X's size %d.",
             input_num));
@@ -41,7 +41,7 @@ class LogSigmoidOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num,
         1UL,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT LogSigmoid op. "
             "But received Out's size %u.",
             output_num));
@@ -54,7 +54,7 @@ class LogSigmoidOpConverter : public OpConverter {
                                  *(sigmoid->getOutput(0)),
                                  nvinfer1::UnaryOperation::kLOG);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "logsigmoid", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "logsigmoid", {output_name}, test_mode);
   }
 };
 

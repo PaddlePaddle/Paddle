@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from paddle.base import core
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
 __all__ = []
 
 
@@ -44,69 +51,77 @@ class saved_tensors_hooks:
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
-        >>> # Example1
-        >>> import paddle
+            >>> # Example1
+            >>> import paddle
 
-        >>> def pack_hook(x):
-        ...     print("Packing", x)
-        ...     return x.numpy()
+            >>> def pack_hook(x):
+            ...     print("Packing", x)
+            ...     return x.numpy()
 
-        >>> def unpack_hook(x):
-        ...     print("UnPacking", x)
-        ...     return paddle.to_tensor(x)
+            >>> def unpack_hook(x):
+            ...     print("UnPacking", x)
+            ...     return paddle.to_tensor(x)
 
-        >>> a = paddle.ones([3,3])
-        >>> b = paddle.ones([3,3]) * 2
-        >>> a.stop_gradient = False
-        >>> b.stop_gradient = False
-        >>> with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
-        ...     y = paddle.multiply(a, b)
-        >>> y.sum().backward()
+            >>> a = paddle.ones([3,3])
+            >>> b = paddle.ones([3,3]) * 2
+            >>> a.stop_gradient = False
+            >>> b.stop_gradient = False
+            >>> with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
+            ...     y = paddle.multiply(a, b)
+            >>> y.sum().backward()
 
-        >>> # Example2
-        >>> import paddle
-        >>> from paddle.autograd import PyLayer
+        .. code-block:: python
+            :name: code-example2
 
-        >>> class cus_multiply(PyLayer):
-        ...     @staticmethod
-        ...     def forward(ctx, a, b):
-        ...         y = paddle.multiply(a, b)
-        ...         ctx.save_for_backward(a, b)
-        ...         return y
-        ...
-        ...     @staticmethod
-        ...     def backward(ctx, dy):
-        ...         a,b = ctx.saved_tensor()
-        ...         grad_a = dy * a
-        ...         grad_b = dy * b
-        ...         return grad_a, grad_b
+            >>> # Example2
+            >>> import paddle
+            >>> from paddle.autograd import PyLayer
 
-        >>> def pack_hook(x):
-        ...     print("Packing", x)
-        ...     return x.numpy()
+            >>> class cus_multiply(PyLayer):
+            ...     @staticmethod
+            ...     def forward(ctx, a, b):
+            ...         y = paddle.multiply(a, b)
+            ...         ctx.save_for_backward(a, b)
+            ...         return y
+            ...
+            ...     @staticmethod
+            ...     def backward(ctx, dy):
+            ...         a,b = ctx.saved_tensor()
+            ...         grad_a = dy * a
+            ...         grad_b = dy * b
+            ...         return grad_a, grad_b
 
-        >>> def unpack_hook(x):
-        ...     print("UnPacking", x)
-        ...     return paddle.to_tensor(x)
+            >>> def pack_hook(x):
+            ...     print("Packing", x)
+            ...     return x.numpy()
 
-        >>> a = paddle.ones([3,3])
-        >>> b = paddle.ones([3,3]) * 2
-        >>> a.stop_gradient = False
-        >>> b.stop_gradient = False
-        >>> with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
-        ...     y = cus_multiply.apply(a, b)
-        >>> y.sum().backward()
+            >>> def unpack_hook(x):
+            ...     print("UnPacking", x)
+            ...     return paddle.to_tensor(x)
+
+            >>> a = paddle.ones([3,3])
+            >>> b = paddle.ones([3,3]) * 2
+            >>> a.stop_gradient = False
+            >>> b.stop_gradient = False
+            >>> with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
+            ...     y = cus_multiply.apply(a, b)
+            >>> y.sum().backward()
     """
 
-    def __init__(self, pack_hook, unpack_hook):
+    def __init__(
+        self,
+        pack_hook: Callable[[Tensor], Any | None],
+        unpack_hook: Callable[[Any], Tensor | None],
+    ) -> None:
         self.pack_hook = pack_hook
         self.unpack_hook = unpack_hook
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         core.eager.register_saved_tensors_hooks(
             self.pack_hook, self.unpack_hook
         )
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         core.eager.reset_saved_tensors_hooks()

@@ -37,9 +37,9 @@ void InstanceNormGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_dims.size() <= 5 && D == 1,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input's dimensions should be less equal than 5",
-          "and the dimension of D should be eaual to 1",
+          "and the dimension of D should be equal to 1",
           "But received: the size of input's dimensions is [%d]",
           x_dims.size()));
 
@@ -58,7 +58,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         scale_ptr->dims().size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The `shape` in InstanceNormOp is invalid: "
             "the size of scale's dimensions must be equal to 1. But "
             "received: the size of scale's dimensions"
@@ -66,7 +66,7 @@ void InstanceNormGradKernel(const Context& dev_ctx,
             scale_ptr->dims().size()));
     PADDLE_ENFORCE_EQ(scale_ptr->dims()[0],
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The `shape` in InstanceNormOp is invalid: "
                           "the first dimension of scale must be equal to "
                           "Channels([%d]). But received: "

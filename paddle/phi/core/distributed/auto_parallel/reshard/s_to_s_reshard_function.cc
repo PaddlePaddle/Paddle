@@ -32,6 +32,9 @@ bool SToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() !=
+                            out_dist_attr.dims_mapping());
+
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
 
@@ -60,7 +63,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   int out_split_axis =
       GetSplitAxisWithDimsMapping(out_dist_attr.dims_mapping()).begin()->first;
 
-  DenseTensor in_all_to_all = in.value();
+  DenseTensor in_all_to_all;
   // 1. preprocess, reshape and transpose the input tensor
   if (out_split_axis != 0) {
     // 1.1 calc the shape and reshape
@@ -90,10 +93,11 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     pre_shape_vec[in_split_axis] *= nranks;
     RESHARD_FUNCTOR(
         dev_ctx, Reshape, dtype, out_transpose, pre_shape_vec, &in_all_to_all);
+  } else {
+    in_all_to_all.ShareDataNoCheckWith(in.value());
   }
 
   // 2. use all to all to switch data to other ranks
-  DenseTensor out_all_to_all;
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllToAll,
                             dtype,
@@ -141,6 +145,9 @@ bool SToSReshardFunctionCrossMesh::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const auto& in_dist_attr = in.dist_attr();
 
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() !=
+                            out_dist_attr.dims_mapping());
+
   RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
 
@@ -173,7 +180,7 @@ void SToSReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
     SToSReshardFunction s_to_s_func;
     PADDLE_ENFORCE(
         s_to_s_func.IsSuitable(tmp_result, out_dist_attr),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the s to s reshard function is not valid from %s to %s.",
             tmp_result.dist_attr(),
             out_dist_attr));

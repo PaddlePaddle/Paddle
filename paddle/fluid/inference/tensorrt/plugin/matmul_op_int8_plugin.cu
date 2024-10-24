@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/matmul_op_int8_plugin.h"
 
 namespace plf = paddle::platform;
-namespace dyl = paddle::platform::dynload;
+namespace dyl = phi::dynload;
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -229,14 +229,14 @@ bool MatmulPlugin::supportsFormatCombination(
     int32_t nbOutputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     2,
-                    platform::errors::InvalidArgument("Must have 2 inputs, "
-                                                      "but got %d input(s). ",
-                                                      nbInputs));
+                    common::errors::InvalidArgument("Must have 2 inputs, "
+                                                    "but got %d input(s). ",
+                                                    nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     getNbOutputs(),
-                    platform::errors::InvalidArgument("Must have 1 output, "
-                                                      "but got %d output(s). ",
-                                                      nbOutputs));
+                    common::errors::InvalidArgument("Must have 1 output, "
+                                                    "but got %d output(s). ",
+                                                    nbOutputs));
   if (pos == 0) {
     return (inOut[pos].type == nvinfer1::DataType::kHALF ||
             inOut[pos].type == nvinfer1::DataType::kFLOAT ||
@@ -771,7 +771,7 @@ int MatmulPlugin::enqueue(int batchSize,
                        workspace,
                        stream);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "VarMessageToVarType:Unsupported type"));
   }
   return cudaGetLastError() != cudaSuccess;
@@ -810,14 +810,14 @@ bool MatmulPluginDynamic::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     2,
-                    platform::errors::InvalidArgument("Must have 2 inputs, "
-                                                      "but got %d input(s). ",
-                                                      nbInputs));
+                    common::errors::InvalidArgument("Must have 2 inputs, "
+                                                    "but got %d input(s). ",
+                                                    nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     getNbOutputs(),
-                    platform::errors::InvalidArgument("Must have 1 output, "
-                                                      "but got %d output(s). ",
-                                                      nbOutputs));
+                    common::errors::InvalidArgument("Must have 1 output, "
+                                                    "but got %d output(s). ",
+                                                    nbOutputs));
   if (pos == 0) {
     return (inOut[pos].type == nvinfer1::DataType::kHALF ||
             inOut[pos].type == nvinfer1::DataType::kFLOAT ||

@@ -23,7 +23,7 @@ def {
   attrs {
     name: "contextStride"
     type: INT
-   }  
+   }
 }
 extra {
   attrs {
@@ -49,5 +49,5 @@ extra {
   attrs {
     name: "op_device"
     type: STRING
-  }   
+  }
 }

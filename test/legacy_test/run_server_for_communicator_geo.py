@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import os
+import sys
 
-from test_communicator_geo import TestCommunicatorGeoEnd2End
+sys.path.append("../deprecated/legacy_test")
+from test_communicator_geo_deprecated import TestCommunicatorGeoEnd2End
 
 import paddle
 

@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/pscore/distributed_push_sparse_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(distributed_push_sparse,
                           GPU,

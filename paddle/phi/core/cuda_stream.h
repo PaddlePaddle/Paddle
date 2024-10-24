@@ -63,7 +63,7 @@ class CUDAStream {
     PADDLE_ENFORCE_EQ(
         priority <= least_priority && priority >= greatest_priority,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Cannot create a stream with priority = %d because stream priority "
             "must be inside the meaningful range [%d, %d].",
             priority,
@@ -155,7 +155,7 @@ class CUDAStream {
  private:
   Place place_;
   Stream stream_;
-  bool owned_{false};  // whether the stream is created and onwed by self
+  bool owned_{false};  // whether the stream is created and owned by self
 };
 
 }  // namespace phi

@@ -193,10 +193,10 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # for mkldnn
+        # for onednn
         if program_config.ops[0].attrs['use_mkldnn']:
             config = self.create_inference_config(use_mkldnn=True)
-            yield config, ['conv2d_transpose'], (1e-5, 1e-5)
+            yield config, ['conv2d_transpose_bias'], (1e-5, 1e-5)
         # for cpu
         else:
             config = self.create_inference_config()

@@ -15,13 +15,10 @@ insert_final_newline = true
 [*.{c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps}]
 indent_size = 2
 
-[*.{py,java,r}]
+[*.{py,pyi,java,r,toml}]
 indent_size = 4
 
 [Dockerfile.*]
-indent_size = 4
-
-[.flake8]
 indent_size = 4
 
 [*.go]

@@ -358,7 +358,7 @@ void ConvCudnnGradKernelImplV8(
   PADDLE_ENFORCE_EQ(
       groups,
       1,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Group concolution using CUDNNv8 API is unsupported for now"));
 
   cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
@@ -444,8 +444,8 @@ void ConvCudnnGradKernel(const Context& ctx,
   auto exhaustive_deterministic = exhaustive_search && deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
                     false,
-                    phi::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                    common::errors::InvalidArgument(
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
@@ -607,7 +607,7 @@ void ConvCudnnGradKernel(const Context& ctx,
                                           &transformed_input);
       } break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "ConvOp only support tensors with 4 or 5 dimensions."));
     }
   } else {
@@ -852,8 +852,8 @@ void ConvCudnnGradGradKernel(
   auto exhaustive_deterministic = exhaustive_search && deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_deterministic,
                     false,
-                    phi::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                    common::errors::InvalidArgument(
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   std::vector<int> paddings = paddings_t;
@@ -976,7 +976,7 @@ void ConvCudnnGradGradKernel(
         }
       } break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "ConvOp only support tensors with 4 or 5 dimensions."));
     }
 
@@ -1466,13 +1466,6 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(depthwise_conv2d_grad,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::DepthwiseConvCudnnGradKernel,
                    float,
                    phi::dtype::float16) {}
 PD_REGISTER_KERNEL(conv2d_double_grad,

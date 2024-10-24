@@ -128,7 +128,7 @@ struct OneDNNContext::Impl {
               << block_next_cache_clearing_;
       PADDLE_ENFORCE_GE(block_next_cache_clearing_,
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Cache clearing mark should be non-negative "
                             ". But received %d.",
                             block_next_cache_clearing_));
@@ -173,7 +173,7 @@ struct OneDNNContext::Impl {
     auto map_it =
         pMap->find(OneDNNContext::tls().cur_mkldnn_session_id);  // NOLINT
     if (map_it == pMap->end()) {
-      PADDLE_THROW(phi::errors::NotFound(
+      PADDLE_THROW(common::errors::NotFound(
           "OneDNNContext don't find cur_mkldnn_session_id: %d.",
           OneDNNContext::tls().cur_mkldnn_session_id));
     }
@@ -189,7 +189,7 @@ struct OneDNNContext::Impl {
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 
-    // Find ShapeBlob for current mkldnn session id.
+    // Find ShapeBlob for current onednn session id.
     auto map_it = pMap->find(sid);
 
     if (map_it == pMap->end()) {
@@ -259,7 +259,7 @@ struct OneDNNContext::Impl {
 
     std::lock_guard<decltype(*p_mutex_)> lock(*p_mutex_);
 
-    // Find ShapeBlob for current mkldnn session id firstly
+    // Find ShapeBlob for current onednn session id firstly
     auto map_it = pMap->find(sid);
     // (jczaja): After first iteration of model's execution we
     // should have all elements cached (mostly) so failures are unlikely (less
@@ -297,10 +297,10 @@ struct OneDNNContext::Impl {
   }
   const Attribute& GetDnnAttr(const std::string& attr_name) const {
     auto iter = dnn_attrs_.find(attr_name);
-    PADDLE_ENFORCE_NE(
-        iter,
-        dnn_attrs_.end(),
-        phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
+    PADDLE_ENFORCE_NE(iter,
+                      dnn_attrs_.end(),
+                      common::errors::NotFound(
+                          "Attribute `%s` is not found in OneDNNContext."));
     return iter->second;
   }
 
@@ -319,7 +319,7 @@ struct OneDNNContext::Impl {
     PADDLE_ENFORCE_NE(
         iter,
         dnn_inputs_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Input DenseTensor `%s` is not found in OneDNNContext."));
     return iter->second;
   }
@@ -341,7 +341,7 @@ struct OneDNNContext::Impl {
     auto it = inputs_name_.find(input);
     PADDLE_ENFORCE_NE(it,
                       inputs_name_.end(),
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "OneDnnContext does not have the input %s.", input));
     return it->second;
   }
@@ -352,8 +352,8 @@ struct OneDNNContext::Impl {
     PADDLE_ENFORCE_NE(
         it,
         outputs_name_.end(),
-        phi::errors::NotFound("OneDnnContext does not have the output %s.",
-                              output));
+        common::errors::NotFound("OneDnnContext does not have the output %s.",
+                                 output));
     return it->second;
   }
 
@@ -366,7 +366,7 @@ struct OneDNNContext::Impl {
   unsigned int block_next_cache_clearing_ = 0;
 
   // Holds some attributes only used by the onednn kernel calculation
-  // Since original mkldnn op kernel directly adds the operations that require
+  // Since original onednn op kernel directly adds the operations that require
   // fusion to the native kernel operations, and uses the attribute `fuse_xxx`
   // to control, for onednn, there will be some attributes that seem to be
   // independent of the device are also saved here.

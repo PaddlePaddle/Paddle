@@ -283,7 +283,7 @@ class YoloBoxXPUFusePass : public FusePassBase {
 
 void YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -335,7 +335,7 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = concat->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     std::string fused_op_out_name;
     fused_op_out_name = concat_out->Name();
@@ -357,19 +357,19 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
       auto left_ew_sub_y_dims = left_ew_sub_y_t.dims();
       PADDLE_ENFORCE_EQ(left_ew_sub_y_dims.size(),
                         1,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "the size(%d) of left elementwise sub tensor "
                             "must equal 1",
                             left_ew_sub_y_dims.size()));
       auto tensor_type = left_ew_sub_y_t.dtype();
       if (tensor_type == phi::DataType::FLOAT16) {
-        auto* sub_t_fp16_ptr = left_ew_sub_y_t.data<platform::float16>();
+        auto* sub_t_fp16_ptr = left_ew_sub_y_t.data<phi::dtype::float16>();
         offset_ = static_cast<float>(sub_t_fp16_ptr[0]);
       } else if (tensor_type == phi::DataType::FLOAT32) {
         auto* sub_t_fp32_ptr = left_ew_sub_y_t.data<float>();
         offset_ = sub_t_fp32_ptr[0];
       } else {
-        PADDLE_THROW(platform::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "yolo_box_fuse_xpu_pass not supported weight dtype. "
             "we now only support fp32/fp16."));
       }

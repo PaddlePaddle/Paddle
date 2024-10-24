@@ -15,8 +15,7 @@
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 
 #include <cstring>
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 GraphNode::~GraphNode() {
   if (sampler != nullptr) {
@@ -74,7 +73,12 @@ void GraphNode::build_sampler(std::string sample_type) {
   } else if (sample_type == "weighted") {
     sampler = new WeightedSampler();
   }
-  sampler->build(edges);
+  if (sampler != nullptr) {
+    sampler->build(edges);
+  } else {
+    throw std::runtime_error("Failed to create a sampler of type: " +
+                             sample_type);
+  }
 }
 void FeatureNode::to_buffer(char* buffer, bool need_feature) {
   memcpy(buffer, &id, id_size);
@@ -117,5 +121,4 @@ void FeatureNode::recover_from_buffer(char* buffer) {
     feature.push_back(str);  // NOLINT
   }
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

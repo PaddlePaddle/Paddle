@@ -69,9 +69,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         label = paddle.tensor.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
-        emb = paddle.static.nn.embedding(
-            input=data, size=(10000, 150), dtype='float32'
-        )
+        emb = paddle.nn.Embedding(num_embeddings=10000, embedding_dim=150)(data)
         out = paddle.nn.functional.normalize(x=emb, axis=-1)
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)

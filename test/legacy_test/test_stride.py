@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import DygraphPirGuard
 
 
 def ref_view_as_real(x):
@@ -556,6 +557,113 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    def call_view3(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [10, 100, -1])
+        np_out = x_np.reshape(10, 100, 20)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    def call_view4(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        out = paddle.view(x, paddle.uint8)
+        np_out = x_np.view(np.uint8)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    # dim4 -> dim2
+    def call_view5(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [1000, -1])
+        np_out = x_np.reshape(1000, 20)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    # dim4 -> dim1
+    def call_view6(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [-1])
+        np_out = x_np.reshape(20000)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
+    # dim4 -> dim5
+    def call_view7(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        np.testing.assert_allclose(x.numpy(), x_np)
+
+        # shape inference
+        out = paddle.view(x, [10, 10, 10, 10, -1])
+        np_out = x_np.reshape(10, 10, 10, 10, 2)
+
+        np.testing.assert_allclose(out.numpy(), np_out)
+
+        self.assertTrue(out.is_contiguous())
+
+        self.assertTrue(x._is_shared_buffer_with(out))
+
+        out_c = out.contiguous()
+
+        np.testing.assert_allclose(out_c.numpy(), np_out)
+
+        self.assertTrue(out_c._is_shared_buffer_with(out))
+
     def call_view_as(self):
         x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -618,6 +726,11 @@ class TestStride(unittest.TestCase):
         self.call_as_strided()
         self.call_view()
         self.call_view2()
+        self.call_view3()
+        self.call_view4()
+        self.call_view5()
+        self.call_view6()
+        self.call_view7()
         self.call_view_as()
         self.call_unfold()
 
@@ -639,26 +752,94 @@ class TestStrideGPU(TestStride):
 
 
 class TestToStaticCheck(unittest.TestCase):
+
     def test_error(self):
         @paddle.jit.to_static(full_graph=True)
-        def func():
+        def func1():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
             y = paddle.transpose(x, perm=[1, 0, 2])
-            x.add_(x)
+            z = paddle.ones([3, 2, 4])
+            y.add_(z)
 
-        self.assertRaises(ValueError, func)
+        self.assertRaises(ValueError, func1)
+
+        @paddle.jit.to_static(full_graph=True)
+        def func2():
+            x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+            x = paddle.to_tensor(x_np)
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            z = paddle.ones([2, 3, 4])
+            x.add_(z)
+
+        self.assertRaises(ValueError, func2)
+
+    def test_error_with_program(self):
+        with DygraphPirGuard():
+
+            @paddle.jit.to_static(full_graph=True)
+            def func1():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(y, z)
+
+            self.assertRaises(ValueError, func1)
+
+            @paddle.jit.to_static(full_graph=True)
+            def func2():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(x, z)
+
+            self.assertRaises(ValueError, func2)
+
+    def test_no_error_with_program(self):
+        with DygraphPirGuard():
+
+            @paddle.jit.to_static(full_graph=True)
+            def func1():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                yy = paddle.assign(y)
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(yy, z)
+
+            func1()
+
+            @paddle.jit.to_static(full_graph=True)
+            def func2():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                xx = paddle.assign(x)
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(xx, z)
+
+            func2()
 
     def test_no_error(self):
         @paddle.jit.to_static(full_graph=True)
-        def func():
+        def func1():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
-            xx = paddle.assign(x)
-            y = paddle.transpose(xx, perm=[1, 0, 2])
-            x.add_(x)
+            z = paddle.ones([3, 2, 4])
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            yy = paddle.assign(y)
+            yy.add_(z)
 
-        func()
+        func1()
+
+        @paddle.jit.to_static(full_graph=True)
+        def func2():
+            x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+            x = paddle.to_tensor(x_np)
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            xx = paddle.assign(x)
+            z = paddle.ones([2, 3, 4])
+            xx.add_(z)
+
+        func2()
 
 
 if __name__ == '__main__':

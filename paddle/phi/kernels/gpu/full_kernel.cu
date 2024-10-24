@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/impl/full_whit_tensor_kernel_impl.h"
+#include "paddle/phi/kernels/impl/full_with_tensor_kernel_impl.h"
 
 namespace phi {
 
@@ -42,7 +42,7 @@ void FullKernel(const Context& dev_ctx,
                 DataType dtype,
                 DenseTensor* out) {
   out->Resize(common::make_ddim(shape.GetData()));
-  int numel = out->numel();
+  int64_t numel = out->numel();
   dev_ctx.template Alloc<T>(out);
 
   if (numel > 0) {
@@ -99,7 +99,7 @@ void FullLikeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         is_out_range,
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The filled value is out of range for target type, "
             "current kernel type is %s, the range should between %f "
             "and %f, but now value is %f.",
@@ -134,6 +134,8 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
@@ -174,5 +176,4 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

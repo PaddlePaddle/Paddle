@@ -12,12 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define random api
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, overload
+
 import paddle
 from paddle import base
 from paddle.base import core
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Literal, Protocol
+
+    from paddle._typing import PlaceLike
+
+    class _GeneratorState(Protocol):
+        def current_seed(self) -> int: ...
+
+
 __all__ = []
+
+
+@overload
+def get_rng_state(
+    device: PlaceLike | None = ..., use_index: Literal[True] = ...
+) -> list[int]: ...
+
+
+@overload
+def get_rng_state(
+    device: PlaceLike | None = ..., use_index: Literal[False] = ...
+) -> list[_GeneratorState]: ...
+
+
+@overload
+def get_rng_state(
+    device: PlaceLike | None = ..., use_index: bool = ...
+) -> list[int] | list[_GeneratorState]: ...
 
 
 def get_rng_state(device=None, use_index=False):
@@ -44,7 +75,7 @@ def get_rng_state(device=None, use_index=False):
 
     state_list = []
     if device is None:
-        place = base.framework._current_expected_place()
+        place = base.framework._current_expected_place_()
     else:
         place = paddle.device._convert_to_place(device)
 
@@ -79,7 +110,35 @@ def get_rng_state(device=None, use_index=False):
     return state_list
 
 
-def set_rng_state(state_list, device=None, use_index=False):
+@overload
+def set_rng_state(
+    state_list: Sequence[int],
+    device: PlaceLike | None = ...,
+    use_index: Literal[True] = ...,
+) -> None: ...
+
+
+@overload
+def set_rng_state(
+    state_list: Sequence[_GeneratorState],
+    device: PlaceLike | None = ...,
+    use_index: Literal[False] = ...,
+) -> None: ...
+
+
+@overload
+def set_rng_state(
+    state_list: Sequence[int] | Sequence[_GeneratorState],
+    device: PlaceLike | None = ...,
+    use_index: bool = ...,
+) -> None: ...
+
+
+def set_rng_state(
+    state_list,
+    device=None,
+    use_index=False,
+):
     """
 
     Sets generator state for all device generators.
@@ -110,7 +169,7 @@ def set_rng_state(state_list, device=None, use_index=False):
             generator.set_state(state)
 
     if device is None:
-        place = base.framework._current_expected_place()
+        place = base.framework._current_expected_place_()
     else:
         place = device._convert_to_place(device)
 
@@ -156,7 +215,10 @@ def set_rng_state(state_list, device=None, use_index=False):
         )
 
 
-def register_rng_state_as_index(state_list=None, device=None):
+def register_rng_state_as_index(
+    state_list: Sequence[_GeneratorState] | None = None,
+    device: PlaceLike | None = None,
+) -> list[int]:
     """
 
     The register_rng_state_as_index function creates and registers a new generator state within the generator.

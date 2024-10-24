@@ -21,9 +21,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler/output_logger.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/profiler/output_logger.h"
 
 namespace paddle {
 namespace platform {
@@ -111,7 +111,7 @@ class DeviceTraceEventNode {
     PADDLE_ENFORCE_EQ(
         device_event_.type,
         TracerEventType::Kernel,
-        platform::errors::Unavailable(
+        common::errors::Unavailable(
             "Can not kernel_info, "
             "TracerEventType in node must be TracerEventType::Kernel."));
     return device_event_.kernel_info;
@@ -120,7 +120,7 @@ class DeviceTraceEventNode {
     PADDLE_ENFORCE_EQ(
         device_event_.type,
         TracerEventType::Memcpy,
-        platform::errors::Unavailable(
+        common::errors::Unavailable(
             "Can not get memcpy_info, "
             "TracerEventType in node must be TracerEventType::Memcpy."));
     return device_event_.memcpy_info;
@@ -129,7 +129,7 @@ class DeviceTraceEventNode {
     PADDLE_ENFORCE_EQ(
         device_event_.type,
         TracerEventType::Memset,
-        platform::errors::Unavailable(
+        common::errors::Unavailable(
             "Can not get memset_info, "
             "TracerEventType in node must be TracerEventType::Memset."));
     return device_event_.memset_info;

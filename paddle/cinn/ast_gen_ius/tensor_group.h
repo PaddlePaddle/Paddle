@@ -130,9 +130,5 @@ class TensorGroup {
   std::unordered_map<std::string, std::string> share_memory_tensor_;
 };
 
-// TODO(zhhsplendid): remove stage_map need to change all fcompute CINNValuePack
-// we will change it in the next PR
-TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map);
-
 }  // namespace ast_gen_ius
 }  // namespace cinn

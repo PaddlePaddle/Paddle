@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -277,7 +277,7 @@ function check_CHANGE_OP_MAP {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (ZzSean(Recommend), JamesLim-sy, Xreki, luotao1) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (zhangting2020(Recommend), Xreki) approval to pass this PR."
     exit ${exit_code}
   fi
 }
@@ -317,11 +317,10 @@ function gpu_op_benchmark {
 
 
 # The PR will pass quickly when get approval from specific person.
-# Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
 set +x
 approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
 if [ -n "${approval_line}" ]; then
-  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
+  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 Xreki zhangting2020)
   LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
   if [ "${APPROVALS}" == "TRUE" ]; then
     LOG "[INFO] ==================================="
@@ -334,6 +333,6 @@ fi
 case $1 in
   run_op_benchmark)
     prepare_env
-    gpu_op_benchmark 
+    gpu_op_benchmark
   ;;
 esac

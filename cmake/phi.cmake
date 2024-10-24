@@ -64,11 +64,6 @@ function(generate_unify_header DIR_NAME)
       endif()
     endif()
   endforeach()
-  if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
-    if(${kernel_name} MATCHES ".*_grad")
-      continue()
-    endif()
-  endif()
   # append header into extension.h
   string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header_file "${header_file}")
   file(APPEND ${phi_extension_header_file} "#include \"${header_file}\"\n")
@@ -86,6 +81,11 @@ function(kernel_declare TARGET_LIST)
         "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
+    if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+      if("${first_registry}" MATCHES ".*_grad,.*")
+        continue()
+      endif()
+    endif()
     set(kernel_declare_id "")
     while(NOT first_registry STREQUAL "")
       string(REPLACE "${first_registry}" "" kernel_impl "${kernel_impl}")
@@ -119,7 +119,7 @@ function(kernel_declare TARGET_LIST)
             is_all_backend
             "${first_registry}")
         if(NOT is_all_backend STREQUAL "")
-          # parse the registerd kernel message
+          # parse the registered kernel message
           string(
             REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
                     "" kernel_msg "${first_registry}")
@@ -131,7 +131,7 @@ function(kernel_declare TARGET_LIST)
               is_all_backend
               "${first_registry}")
 
-          # parse the registerd kernel message
+          # parse the registered kernel message
           string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" ""
                          kernel_msg "${first_registry}")
         endif()

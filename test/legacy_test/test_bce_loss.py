@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -20,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def test_static_layer(
@@ -48,9 +48,11 @@ def test_static_layer(
         exe = paddle.static.Executor(place)
         (static_result,) = exe.run(
             prog,
-            feed={"input": input_np, "label": label_np}
-            if weight_np is None
-            else {"input": input_np, "label": label_np, "weight": weight_np},
+            feed=(
+                {"input": input_np, "label": label_np}
+                if weight_np is None
+                else {"input": input_np, "label": label_np, "weight": weight_np}
+            ),
             fetch_list=[res],
         )
     return static_result
@@ -82,9 +84,11 @@ def test_static_functional(
         exe = paddle.static.Executor(place)
         (static_result,) = exe.run(
             prog,
-            feed={"input": input_np, "label": label_np}
-            if weight_np is None
-            else {"input": input_np, "label": label_np, "weight": weight_np},
+            feed=(
+                {"input": input_np, "label": label_np}
+                if weight_np is None
+                else {"input": input_np, "label": label_np, "weight": weight_np}
+            ),
             fetch_list=[res],
         )
     return static_result
@@ -153,11 +157,17 @@ def calc_bceloss(input_np, label_np, reduction='mean', weight_np=None):
 
 
 class TestBCELoss(unittest.TestCase):
-    @test_with_pir_api
+
     def test_BCELoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
@@ -187,7 +197,6 @@ class TestBCELoss(unittest.TestCase):
                 )
                 np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
-    @test_with_pir_api
     def test_BCELoss_weight(self):
         input_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
@@ -256,7 +265,9 @@ class TestBceLossOp(OpTest):
         self.init_test_dtype()
         self.init_test_case()
         self.op_type = "bce_loss"
+        self.prim_op_type = "comp"
         self.python_api = bce_wrapper
+        self.public_python_api = bce_wrapper
         input_np = np.random.uniform(0.1, 0.8, self.shape).astype(self.dtype)
         label_np = np.random.randint(0, 2, self.shape).astype(self.dtype)
         output_np = bce_loss(input_np, label_np)
@@ -265,7 +276,7 @@ class TestBceLossOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -289,7 +300,7 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFP16(TestBceLossOp):
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -299,7 +310,7 @@ class TestBceLossOpFP16(TestBceLossOp):
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
-    @test_with_pir_api
+
     def test_fp16(self):
         if not core.is_compiled_with_cuda():
             return

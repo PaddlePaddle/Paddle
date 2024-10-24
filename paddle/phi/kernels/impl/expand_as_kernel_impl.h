@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
 
 namespace phi {
 
@@ -157,6 +157,12 @@ void ExpandAsKernel(const Context& ctx,
       break;
     case 6:
       ExpandAs<Context, T, 6>(ctx, x, real_target_shape, out);
+      break;
+    case 7:
+      ExpandAs<Context, T, 7>(ctx, x, real_target_shape, out);
+      break;
+    case 8:
+      ExpandAs<Context, T, 8>(ctx, x, real_target_shape, out);
       break;
   }
 }

@@ -34,7 +34,7 @@ class OpResult;
 
 namespace detail {
 class OpResultImpl;
-class OpOperendImpl;
+class OpOperandImpl;
 }  // namespace detail
 
 class CloneOptions {
@@ -77,7 +77,8 @@ class IR_API alignas(8) Operation final
                            const std::vector<pir::Type> &output_types,
                            pir::OpInfo op_info,
                            size_t num_regions = 0,
-                           const std::vector<Block *> &successors = {});
+                           const std::vector<Block *> &successors = {},
+                           bool verify = true);
   static Operation *Create(OperationArgument &&op_argument);
 
   ///
@@ -113,9 +114,16 @@ class IR_API alignas(8) Operation final
   void set_attribute(const std::string &key, Attribute value) {
     attributes_[key] = value;
   }
+  void erase_attribute(const std::string &key) { attributes_.erase(key); }
   bool HasAttribute(const std::string &key) const {
     return attributes_.find(key) != attributes_.end();
   }
+
+  void set_value_property(const std::string &key,
+                          const Property &value,
+                          size_t index);
+
+  void *value_property(const std::string &key, size_t index) const;
 
   ///
   /// \brief op ouput related public interfaces
@@ -133,7 +141,7 @@ class IR_API alignas(8) Operation final
   ///
   uint32_t num_operands() const { return num_operands_; }
   OpOperand operand(uint32_t index) const { return op_operand_impl(index); }
-  std::vector<OpOperand> operands();
+  std::vector<OpOperand> operands() const;
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
   Type operand_type(uint32_t index) const { return operand(index).type(); }
@@ -176,7 +184,7 @@ class IR_API alignas(8) Operation final
   operator Block::ConstIterator() const { return position_; }
   void MoveTo(Block *block, Block::Iterator position);
 
-  void Print(std::ostream &os);
+  void Print(std::ostream &os) const;
   pir::OpInfo info() const { return info_; }
   std::string name() const;
 
@@ -199,7 +207,7 @@ class IR_API alignas(8) Operation final
   bool use_empty();
 
   template <typename T>
-  T dyn_cast() {
+  T dyn_cast() const {
     return CastUtil<T>::call(this);
   }
 
@@ -229,7 +237,7 @@ class IR_API alignas(8) Operation final
 
   void Verify();
 
-  uint64_t id() { return id_; }
+  uint64_t id() const { return id_; }
 
  private:
   DISABLE_COPY_AND_ASSIGN(Operation);
@@ -248,7 +256,7 @@ class IR_API alignas(8) Operation final
 
   template <typename To, typename Enabler = void>
   struct CastUtil {
-    static To call(Operation *op) {
+    static To call(const Operation *op) {
       throw("Can't dyn_cast to To, To should be a Op or Trait or Interface");
     }
   };
@@ -261,10 +269,13 @@ class IR_API alignas(8) Operation final
   struct CastUtil<
       To,
       typename std::enable_if<std::is_base_of<OpBase, To>::value>::type> {
-    static To call(Operation *op) { return To::dyn_cast(op); }
+    static To call(const Operation *op) { return To::dyn_cast(op); }
   };
 
   AttributeMap attributes_;
+
+  // store data that user create by Python
+  std::vector<PropertyMap> value_properties_;
 
   OpInfo info_;
 
@@ -277,12 +288,14 @@ class IR_API alignas(8) Operation final
   const uint32_t num_operands_ = 0;
   const uint32_t num_regions_ = 0;
   const uint32_t num_successors_ = 0;
-  const uint64_t id_;
+  const uint64_t id_ = -1;
 
   detail::BlockOperandImpl *block_operands_{nullptr};
   Region *regions_{nullptr};
   Block *parent_{nullptr};
   Block::Iterator position_;
 };
+
+IR_API std::ostream &operator<<(std::ostream &os, const Operation &op);
 
 }  // namespace pir

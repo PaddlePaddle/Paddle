@@ -13,10 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import opcode
 import sys
 from enum import Enum
-
-import opcode
 
 REL_JUMP = {opcode.opname[x] for x in opcode.hasjrel}
 REL_BWD_JUMP = {opname for opname in REL_JUMP if "BACKWARD" in opname}
@@ -28,6 +27,9 @@ ALL_JUMP = REL_JUMP | ABS_JUMP
 UNCONDITIONAL_JUMP = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
 if sys.version_info >= (3, 11):
     UNCONDITIONAL_JUMP.add("JUMP_BACKWARD")
+RETURN = {"RETURN_VALUE"}
+if sys.version_info >= (3, 12):
+    RETURN.add("RETURN_CONST")
 
 
 class JumpDirection(Enum):
@@ -42,7 +44,7 @@ class PopJumpCond(Enum):
     NOT_NONE = "NOT_NONE"
 
 
-def get_pyopcode_cache_size() -> dict[str, int]:
+def _get_pyopcode_cache_size() -> dict[str, int]:
     if sys.version_info >= (3, 11) and sys.version_info < (3, 12):
         # Cache for some opcodes, it's for Python 3.11+
         # https://github.com/python/cpython/blob/3.11/Include/internal/pycore_opcode.h#L41-L53
@@ -84,4 +86,4 @@ def get_pyopcode_cache_size() -> dict[str, int]:
         return {}
 
 
-PYOPCODE_CACHE_SIZE = get_pyopcode_cache_size()
+PYOPCODE_CACHE_SIZE = _get_pyopcode_cache_size()

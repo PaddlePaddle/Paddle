@@ -61,7 +61,6 @@ class TestCollectiveConcatAPI(TestDistBase):
                 "dist_concat",
                 "nccl",
                 dtype=dtype,
-                need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
             )
 
 

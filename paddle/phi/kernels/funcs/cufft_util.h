@@ -57,7 +57,7 @@ inline bool has_complex_input(FFTTransformType type) {
     case FFTTransformType::R2C:
       return false;
   }
-  PADDLE_THROW(phi::errors::InvalidArgument("Unknown FFTTransformType"));
+  PADDLE_THROW(common::errors::InvalidArgument("Unknown FFTTransformType"));
 }
 
 // Returns true if the transform type has complex output
@@ -70,7 +70,7 @@ inline bool has_complex_output(FFTTransformType type) {
     case FFTTransformType::C2R:
       return false;
   }
-  PADDLE_THROW(phi::errors::InvalidArgument("Unknown FFTTransformType"));
+  PADDLE_THROW(common::errors::InvalidArgument("Unknown FFTTransformType"));
 }
 
 class FFTConfig {
@@ -102,7 +102,7 @@ class FFTConfig {
       otype = complex_output ? CUDA_C_64F : CUDA_R_64F;
       exec_type = CUDA_C_64F;
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only transforms of type float32 and float64 are supported."));
     }
 

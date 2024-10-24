@@ -35,7 +35,7 @@ void UnfoldGradKernel(const Context& ctx,
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Unfold grad op only supports datalayout == NCHW"));
 
   auto x_dims = x_grad->dims();

@@ -104,7 +104,7 @@ class TestBase(IPUOpTest):
             input_length=input_length,
             label_length=label_length,
             reduction='mean',
-            **self.attrs
+            **self.attrs,
         )
         loss = paddle.mean(out)
         adam = paddle.optimizer.Adam(learning_rate=1e-2)

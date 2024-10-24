@@ -19,10 +19,10 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/backward/sparse_bw_api.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
@@ -38,6 +38,17 @@ Conv2dGradNodeFinal::operator()(
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
   VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  phi::RecordEvent node_execution_inner(
+      "Local_Conv2dGradNodeFinal", phi::TracerEventType::OperatorInner, 1);
+
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
 
@@ -69,6 +80,13 @@ Conv2dGradNodeFinal::operator()(
       (out_metas[1].empty() || out_metas[1][0].IsStopGradient())
           ? nullptr
           : &returns[1][0];
+
+  // Set DistAttr of Out Tensor for semi-auto parallel
+  if (IsRunAutoParallel()) {
+    egr::EagerUtils::SetGradOutputDistAttr(
+        out_metas, {0, 1}, api_output_0, api_output_1);
+  }
+
   // Runtime check if we need next grad
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 
@@ -117,10 +135,8 @@ Conv2dGradNodeFinal::operator()(
 
   // Create Grad Node
   if (trace_backward) {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "conv2d_grad node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+    phi::RecordEvent node_creation_record_event(
+        "conv2d_grad node_creation", phi::TracerEventType::OperatorInner, 1);
 
     // Node Construction
     auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(  // NOLINT
@@ -208,6 +224,18 @@ Conv2dDoubleGradNodeFinal::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  phi::RecordEvent node_execution_inner("Local_Conv2dDoubleGradNodeFinal",
+                                        phi::TracerEventType::OperatorInner,
+                                        1);
+
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();
   egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[0][0],

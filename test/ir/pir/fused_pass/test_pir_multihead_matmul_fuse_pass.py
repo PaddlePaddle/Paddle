@@ -126,7 +126,9 @@ class TestVitAttentionPattern(PassTest):
                                     shape=[bs, seq_len, num_heads * head_dim],
                                 )
                                 out = paddle.assign(reshape_out_2)
-                                self.pass_list = ['multihead_matmul_fuse_pass']
+                                self.pass_attr_list = [
+                                    {'multihead_matmul_fuse_pass': {}}
+                                ]
                                 self.feeds = {
                                     "x": np.random.random(
                                         (bs, seq_len, hidden_dim)

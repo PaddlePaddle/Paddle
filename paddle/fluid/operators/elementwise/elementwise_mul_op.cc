@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/common/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -85,7 +85,7 @@ class ElementwiseMulCompositeGradOpMaker
     PADDLE_ENFORCE_EQ(
         axis,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "We only support axis = -1 in composite mul_grad but we got: ",
             axis));
     prim::multiply_grad<prim::DescTensor>(
@@ -135,12 +135,12 @@ class ElementwiseMulCompositeDoubleGradOpMaker
 
     // get attr
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        axis,
-        -1,
-        phi::errors::InvalidArgument("We only support axis = -1 in composite "
-                                     "add_doubel_grad but we got: ",
-                                     axis));
+    PADDLE_ENFORCE_EQ(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "We only support axis = -1 in composite "
+                          "add_doubel_grad but we got: ",
+                          axis));
 
     // get output
     paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");

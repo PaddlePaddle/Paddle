@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -73,7 +74,9 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.config()
             self.op_type = "matmul_v2"
+            import os
 
+            os.environ["XPU_PADDLE_L3_SIZE"] = str(13 * 1024 * 1024)
             x = np.random.random(self.x_shape)
             y = np.random.random(self.y_shape)
 
@@ -311,6 +314,101 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.x_shape = (20, 10)
             self.y_shape = (2, 20, 4)
             self.trans_x = True
+            self.trans_y = False
+
+    class TestMatMulOp21(TestMatMulV2Op):
+        """
+        case 21 : (x.ndim >= 3) && (y.ndim <= 2),
+                  trans_x is true
+        """
+
+        def config(self):
+            self.x_shape = (10, 100, 4)
+            self.y_shape = (100, 10)
+            self.trans_x = True
+            self.trans_y = False
+
+    class TestMatMulOp22(TestMatMulV2Op):
+        """
+        case 22 : (x.ndim <= 2) && (y.ndim >= 3)
+        """
+
+        def config(self):
+            self.x_shape = (10, 100)
+            self.y_shape = (5, 100, 4)
+            self.trans_x = False
+            self.trans_y = False
+
+    class TestMatMulOp23(TestMatMulV2Op):
+        """
+        case 23 : (x.ndim <= 2) && (y.ndim >= 3),
+                  trans_y is True
+        """
+
+        def config(self):
+            self.x_shape = (10, 100)
+            self.y_shape = (5, 4, 100)
+            self.trans_x = False
+            self.trans_y = True
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLargeShape1(TestMatMulV2Op):
+        """
+        Large Shape for EB
+        """
+
+        def config(self):
+            self.x_shape = (8192, 5120)
+            self.y_shape = (5120, 1920)
+            self.trans_x = False
+            self.trans_y = False
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLargeShape2(TestMatMulV2Op):
+        def config(self):
+            self.x_shape = (1024, 5120)
+            self.y_shape = (5120, 32)
+            self.trans_x = False
+            self.trans_y = False
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLargeShape3(TestMatMulV2Op):
+        def config(self):
+            self.x_shape = (8192, 32)
+            self.y_shape = (32, 1920)
+            self.trans_x = False
+            self.trans_y = False
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLargeShape4(TestMatMulV2Op):
+        def config(self):
+            self.x_shape = (8192, 640)
+            self.y_shape = (640, 5120)
+            self.trans_x = False
+            self.trans_y = False
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLargeShape5(TestMatMulV2Op):
+        def config(self):
+            self.x_shape = (640, 32)
+            self.y_shape = (1024, 32)
+            self.trans_x = False
+            self.trans_y = True
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLlama13B1(TestMatMulV2Op):
+        def config(self):
+            self.x_shape = (512, 5120)
+            self.y_shape = (5120, 5120)
+            self.trans_x = False
+            self.trans_y = False
+
+    @check_run_big_shape_test()
+    class TestMatMulOpLlama13B2(TestMatMulV2Op):
+        def config(self):
+            self.x_shape = (512, 5120)
+            self.y_shape = (5120, 13824)
+            self.trans_x = False
             self.trans_y = False
 
 

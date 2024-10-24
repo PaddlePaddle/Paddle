@@ -25,7 +25,9 @@ import sys
 import tempfile
 import textwrap
 import types
+import weakref
 from importlib.machinery import SourceFileLoader
+from typing import Any
 
 import numpy as np
 
@@ -36,7 +38,7 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import CUDAPinnedPlace
 from paddle.jit.utils import OrderedSet
-from paddle.utils import flatten
+from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
 
@@ -48,8 +50,8 @@ PADDLE_MODULE_PREFIX = 'paddle.'
 
 ALREADY_D2S = '__already_d2s'
 
-# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
-ORIGI_INFO = "Original information of source code for ast node."
+# NOTE(liym27): Please use `getattr(ast_node, ORIGIN_INFO)` instead of . operation to get the original information of ast node.
+ORIGIN_INFO = "Original information of source code for ast node."
 
 DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
 
@@ -144,6 +146,25 @@ class Dygraph2StaticException(Exception):
         super().__init__(message)
 
 
+class WeakMethod:
+    def __init__(self, fn, instance):
+        self.fn = fn
+        self.instance = weakref.ref(instance)
+
+    @property
+    def __func__(self):
+        return self.fn
+
+    @property
+    def __self__(self):
+        return self.instance()
+
+    def __call__(self, *args, **kwargs):
+        if self.__self__ is None:
+            raise RuntimeError("The object has been destroyed")
+        return self.fn(self.__self__, *args, **kwargs)
+
+
 def saw(x):
     if isinstance(x, UndefinedVar):
         return x.check()
@@ -204,7 +225,7 @@ def make_hashable(x, error_msg=None):
             return tuple(map(make_hashable, x.values()))
 
         error_msg = error_msg or "Requires a hashable object."
-        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+        raise ValueError(f"{error_msg} But received type: {type_name(x)}")
 
     return x
 
@@ -212,15 +233,15 @@ def make_hashable(x, error_msg=None):
 # NOTE(Aurelius84): Consider the following paddle inner API as common case to
 # apply @to_static code transformation as usual. Because they contains
 # user-defined layer, like paddle.distributed.auto_parallel.helper.ProxyLayer.
-AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential"}
+AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential.forward"}
 
 
 def as_not_paddle_func(path):
     """
     Append API or class as ignored case for is_paddle_func, and they
-    will be retured False while calling is_paddle_func(func).
+    will be returned False while calling is_paddle_func(func).
     """
-    global INNER_FUNC_WHITE_LIST
+    global AS_NOT_INNER_FUNC_LIST
     AS_NOT_INNER_FUNC_LIST.add(path)
 
 
@@ -236,15 +257,19 @@ def is_paddle_func(func, ignore_white_list=True):
         return (module.__name__ + '.' + func_name) in AS_NOT_INNER_FUNC_LIST
 
     try:
+        if isinstance(func, paddle.nn.Layer):
+            func = func.forward
+        if isinstance(
+            func, paddle.jit.dy2static.program_translator.StaticFunction
+        ):
+            func = func.dygraph_function
         if isinstance(func, functools.partial):
             func = func.func
-
-        func_name = getattr(func, '__name__', None)
         if inspect.ismethod(func):
-            func_name = func.__self__.__class__.__name__
             func = func.__func__
-        elif hasattr(func, '__class__'):  # for nn.Sequential
-            func_name = func.__class__.__name__
+        func_name = getattr(func, '__name__', None)
+        if inspect.ismethod(func) or inspect.isfunction(func):
+            func_name = func.__qualname__
 
         m = inspect.getmodule(func)
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
@@ -272,6 +297,107 @@ def get_temp_dir():
     return temp_dir
 
 
+def wrap_as_closure(tree: gast.AST, closure_vars: list[str]) -> gast.AST:
+    """
+    Wrap a function to a closure function.
+
+    Before:
+
+        >>> def fn(x):
+        ...     ...
+
+    After:
+
+        >>> def create_fn():
+        ...     closure_var_1 = None
+        ...     def fn(x):
+        ...         ...
+        ...     return fn
+        ... fn = create_fn()
+    """
+
+    def create_assign_node(name, value) -> gast.Assign:
+        return gast.Assign(
+            targets=[
+                gast.Name(
+                    id=name,
+                    ctx=gast.Store(),
+                    annotation=[],
+                    type_comment=[],
+                )
+            ],
+            value=value,
+            type_comment=None,
+        )
+
+    def create_wrppper_fn_def_node(name, body) -> gast.FunctionDef:
+        return gast.FunctionDef(
+            name=name,
+            args=gast.arguments(
+                args=[],
+                posonlyargs=[],
+                vararg=None,
+                kwonlyargs=[],
+                kw_defaults=[],
+                kwarg=None,
+                defaults=[],
+            ),
+            body=body,
+            decorator_list=[],
+            returns=None,
+            type_comment=None,
+            type_params=[],
+        )
+
+    if not isinstance(tree, gast.Module):
+        return tree
+    if len(tree.body) != 1:
+        return tree
+    if not isinstance(tree.body[0], gast.FunctionDef):
+        return tree
+    fn_node = tree.body[0]
+    fn_name = fn_node.name
+    wrapper_fn_name = f"create_{fn_name}"
+    wrapper_fn_def_node = create_wrppper_fn_def_node(
+        wrapper_fn_name,
+        [
+            *[
+                create_assign_node(var, gast.Constant(value=None, kind=None))
+                for var in closure_vars
+            ],
+            fn_node,
+            gast.Return(
+                value=gast.Name(
+                    id=fn_name, ctx=gast.Load(), annotation=[], type_comment=[]
+                )
+            ),
+        ],
+    )
+
+    assign_node = create_assign_node(
+        fn_name,
+        gast.Call(
+            func=gast.Name(
+                id=wrapper_fn_name,
+                ctx=gast.Load(),
+                annotation=[],
+                type_comment=[],
+            ),
+            args=[],
+            keywords=[],
+        ),
+    )
+    return gast.Module(body=[wrapper_fn_def_node, assign_node], type_ignores=[])
+
+
+def wrap_cell(var: Any) -> types.CellType:
+    def closure_fn():
+        return var
+
+    assert closure_fn.__closure__ is not None
+    return closure_fn.__closure__[0]
+
+
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
@@ -284,16 +410,48 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
             shutil.rmtree(dir_path)
 
     def func_prefix(func):
-        pre_fix = func.__name__
+        prefix = func.__name__
         if hasattr(func, '__self__'):
             try:
-                pre_fix = func.__self__.__class__.__name__ + '_' + func.__name__
+                prefix = f"{func.__self__.__class__.__name__}_{func.__name__}"
             except:
                 pass
-        return pre_fix
+        return prefix
+
+    def get_new_closure(original_fn, generated_fn):
+        if generated_fn.__closure__ is None:
+            return None
+
+        original_closure_vars = inspect.getclosurevars(original_fn).nonlocals
+        generated_closure_vars = inspect.getclosurevars(generated_fn).nonlocals
+        # NOTE(SigureMo): [Why not `assert original_fn.__closure__ is not None`?]
+        # If the original function is a recursive function, the original function will
+        # not capture itself as a free var, it will access itself from global. But the
+        # transformed code always inside a create_xxx function, so the generated function
+        # will capture itself as a free var.
+        return tuple(
+            wrap_cell(original_closure_vars.get(freevar_name, freevar))
+            for freevar_name, freevar in generated_closure_vars.items()
+        )
+
+    def get_new_globals(original_fn, generated_fn):
+        globals_attr_name = "__globals__"
+        original_fn_globals = getattr(original_fn, globals_attr_name, {})
+        generated_fn_globals = getattr(generated_fn, globals_attr_name, {})
+
+        original_fn_globals_exclude_builtin = {
+            k: v
+            for k, v in original_fn_globals.items()
+            if not (k.startswith('__') and k.endswith('__'))
+        }
+        return {**generated_fn_globals, **original_fn_globals_exclude_builtin}
+
+    dyfunc_closures = inspect.getclosurevars(dyfunc).nonlocals
+    ast_root = wrap_as_closure(ast_root, list(dyfunc_closures.keys()))
 
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
+
     temp_dir = get_temp_dir()
     f = tempfile.NamedTemporaryFile(
         mode='w',
@@ -309,7 +467,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 
     global DEL_TEMP_DIR
     if delete_on_exit and DEL_TEMP_DIR:
-        # Clear temporary files in TEMP_DIR while exitting Python process
+        # Clear temporary files in TEMP_DIR while exiting Python process
         atexit.register(remove_if_exit, dir_path=temp_dir)
         DEL_TEMP_DIR = False
 
@@ -327,15 +485,20 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         callable_func = getattr(module, func_name)
     else:
         raise ValueError(
-            'Function: %s doesn\'t exist in the Module transformed from AST.'
-            % func_name
+            f'Function: {func_name} doesn\'t exist in the Module transformed from AST.'
         )
     # After transform dygraph function into callable_func saved in tmp file,
-    # it lost the global variables from imported statements or defined in source file.
-    # Recovers the necessary variables by `__globals__`.
-    recover_globals_attribute(dyfunc, callable_func)
+    # it lost the global and closure variables from imported statements or defined
+    # in source file. Recovers the necessary variables by `__globals__` and `__closure__`
+    new_fn = types.FunctionType(
+        code=callable_func.__code__,
+        globals=get_new_globals(dyfunc, callable_func),
+        name=func_name,
+        argdefs=callable_func.__defaults__,
+        closure=get_new_closure(dyfunc, callable_func),
+    )
 
-    return callable_func, f.name
+    return new_fn, f.name
 
 
 def _inject_import_statements():
@@ -352,37 +515,17 @@ def _inject_import_statements():
     return '\n'.join(import_statements) + '\n'
 
 
-def recover_globals_attribute(src_obj, dst_obj):
-    attr_name = '__globals__'
-
-    src_globals = getattr(src_obj, attr_name, {})
-    dst_globals = getattr(dst_obj, attr_name, {})
-
-    for k, v in src_globals.items():
-        # ignore builtin attribute.
-        if not (k.startswith('__') and k.endswith('__')):
-            dst_globals[k] = v
-
-    # Inject source function closure into destination function globals
-    # Because the destination function is a standalone function, the original
-    # closure of the source function is compiled as LOAD_GLOBAL in the
-    # destination function.
-    src_closure = inspect.getclosurevars(src_obj)
-    for k, v in src_closure.nonlocals.items():
-        dst_globals[k] = v
-
-
 def func_to_source_code(function, dedent=True):
     """
     Transforms function into raw string of source code.
     """
     if isinstance(function, functools.partial):
         function = function.func
+    if isinstance(function, WeakMethod):
+        function = function.__func__
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
-            "The type of 'function' should be a function or method, but received {}.".format(
-                type(function).__name__
-            )
+            f"The type of 'function' should be a function or method, but received {type(function).__name__}."
         )
 
     source_code_list, _ = inspect.getsourcelines(function)
@@ -547,6 +690,12 @@ def cinn_is_enabled(build_strategy, backend):
     return False
 
 
+def cse_is_enabled():
+    return paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+        "FLAGS_enable_cse_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     core.check_and_set_prim_all_enabled()
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
@@ -555,6 +704,12 @@ def prim_is_enabled():
 def is_api_in_module_helper(obj, module_prefix):
     m = inspect.getmodule(obj)
     return m is not None and m.__name__.startswith(module_prefix)
+
+
+def auto_layout_is_enabled():
+    return paddle.get_flags(["FLAGS_enable_auto_layout_pass"])[
+        "FLAGS_enable_auto_layout_pass"
+    ]
 
 
 def is_builtin(func, name=None):
@@ -576,22 +731,22 @@ def is_builtin(func, name=None):
 @signature_safe_contextmanager
 def backend_guard(backend):
     core.check_and_set_prim_all_enabled()
-    orign_fwd = core._is_fwd_prim_enabled()
-    orign_bwd = core._is_bwd_prim_enabled()
+    origin_fwd = core._is_fwd_prim_enabled()
+    origin_bwd = core._is_bwd_prim_enabled()
 
     if backend == 'CINN':
         core._set_prim_all_enabled(True)
     try:
         yield
     finally:
-        core._set_prim_forward_enabled(orign_fwd)
-        core._set_prim_backward_enabled(orign_bwd)
+        core._set_prim_forward_enabled(origin_fwd)
+        core._set_prim_backward_enabled(origin_bwd)
 
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     grad_var_names = {}
-    fn = (
-        lambda grad_var: grad_var.name
+    fn = lambda grad_var: (
+        grad_var.name
         if isinstance(grad_var, framework.Variable)
         else framework.EMPTY_VAR_NAME
     )

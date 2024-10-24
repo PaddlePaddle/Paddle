@@ -25,9 +25,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/cinn/frontend/syntax.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/utils/dot_lang.h"
+
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
@@ -44,8 +44,6 @@ class PassPrinter {
   bool PassBegin(const std::string& pass_name,
                  const frontend::Program& program);
   bool PassEnd(const std::string& pass_name, const frontend::Program& program);
-  bool PassBegin(const std::string& pass_name, Graph* g);
-  bool PassEnd(const std::string& pass_name, Graph* g);
   bool End();
 
  private:
@@ -59,7 +57,8 @@ inline void WriteToFile(const std::string& filepath,
                         const std::string& content) {
   VLOG(4) << "Write to " << filepath;
   std::ofstream of(filepath);
-  CHECK(of.is_open()) << "Failed to open " << filepath;
+  PADDLE_ENFORCE(of.is_open(),
+                 ::common::errors::Unavailable("Failed to open %s", filepath));
   of << content;
   of.close();
 }

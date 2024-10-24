@@ -27,6 +27,7 @@
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/profiler.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -34,10 +35,15 @@ namespace cuda {
 
 CUDAModule::CUDAModule(const std::string& data, Kind kind)
     : data_(data), kind_(kind) {
-  CHECK(!data.empty());
+  PADDLE_ENFORCE_NE(data.empty(),
+                    true,
+                    ::common::errors::PreconditionNotMet("data is is empty!"));
 
   cudaGetDeviceCount(&num_devices_);
-  CHECK_GT(num_devices_, 0) << "No available devices";
+  PADDLE_ENFORCE_GT(
+      num_devices_,
+      0,
+      ::common::errors::ResourceExhausted("No available devices!"));
 
   // TODO(Superjomn) Determine whether to initialize all the devices.
   int current_device_id;
@@ -46,6 +52,8 @@ CUDAModule::CUDAModule(const std::string& data, Kind kind)
   cuDeviceGet(&device_, current_device_id);
   cuCtxGetCurrent(&context_);
   cuDevicePrimaryCtxRetain(&context_, device_);
+  VLOG(5) << "Construct CUDAModule " << this
+          << " in device: " << current_device_id;
 }
 
 void CUDAModule::LaunchKernel(int device_id,
@@ -61,7 +69,10 @@ void CUDAModule::LaunchKernel(int device_id,
           << ", blockDim.y:" << blockDim.y << ", blockDim.z:" << blockDim.z
           << ", share_memory_size:" << share_memory_size;
   auto function = GetFunction(device_id, func_name);
-  CHECK(function);
+  PADDLE_ENFORCE_NOT_NULL(
+      function,
+      ::common::errors::NotFound(
+          "%s function not found on device %d.", func_name, device_id));
   cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                       cinn::utils::EventType::kInstruction);
   CUDA_DRIVER_CALL(cuLaunchKernel(function,
@@ -77,9 +88,15 @@ void CUDAModule::LaunchKernel(int device_id,
                                   nullptr));
 }
 
+CUfunction CUDAModule::GetFunction(const std::string& func_name) {
+  int device_id;
+  cudaGetDevice(&device_id);
+  return this->GetFunction(device_id, func_name);
+}
+
 CUfunction CUDAModule::GetFunction(int device_id,
                                    const std::string& func_name) {
-  VLOG(5) << "GetFuncion : " << func_name << " with device_id : " << device_id;
+  VLOG(5) << "GetFunction : " << func_name << " with device_id : " << device_id;
   cinn::utils::RecordEvent record_run("cuLaunchKernel",
                                       cinn::utils::EventType::kOrdinary);
   if (!module_per_card_[device_id]) {

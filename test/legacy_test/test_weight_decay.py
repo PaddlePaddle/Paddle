@@ -94,12 +94,11 @@ class TestWeightDecay(unittest.TestCase):
                 main_prog, feed=feeder.feed(data), fetch_list=[loss.name]
             )
 
-            print("loss              %s" % (np.average(out)))
             loss_set.append(np.average(out))
 
         return loss_set
 
-    def run_parallel_exe(
+    def run_standalone_exe(
         self,
         place,
         feed_list,
@@ -111,10 +110,6 @@ class TestWeightDecay(unittest.TestCase):
         exe = base.Executor(place)
         feeder = base.DataFeeder(feed_list=feed_list, place=place)
         exe.run(base.default_startup_program())
-
-        exec_strategy = base.ExecutionStrategy()
-        if use_fast_executor:
-            exec_strategy.use_experimental_executor = True
 
         build_strategy = base.BuildStrategy()
         build_strategy.reduce_strategy = (
@@ -140,8 +135,8 @@ class TestWeightDecay(unittest.TestCase):
     def check_weight_decay(
         self, place, model, use_parallel_exe=False, use_reduce=False
     ):
-        main_prog = base.framework.Program()
-        startup_prog = base.framework.Program()
+        main_prog = base.Program()
+        startup_prog = base.Program()
         paddle.seed(1)
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
             data = paddle.static.data(
@@ -167,7 +162,7 @@ class TestWeightDecay(unittest.TestCase):
                 paddle.assign(updated_p, output=params[0])
 
             if use_parallel_exe:
-                loss = self.run_parallel_exe(
+                loss = self.run_standalone_exe(
                     place, [data, label], loss=avg_cost, use_reduce=use_reduce
                 )
             else:
@@ -176,26 +171,29 @@ class TestWeightDecay(unittest.TestCase):
         return loss
 
     def test_weight_decay(self):
-        model = partial(bow_net, is_sparse=False)
-        for place in get_places():
-            loss = self.check_weight_decay(place, model, use_parallel_exe=False)
-
-            # TODO(zcd): should test use_reduce=True
-            loss2 = self.check_weight_decay(
-                place, model, use_parallel_exe=True, use_reduce=False
-            )
-
-            for i in range(len(loss)):
-                self.assertTrue(
-                    np.isclose(a=loss[i], b=loss2[i], rtol=5e-5),
-                    "Expect "
-                    + str(loss[i])
-                    + "\n"
-                    + "But Got"
-                    + str(loss2[i])
-                    + " in class "
-                    + self.__class__.__name__,
+        with paddle.pir_utils.OldIrGuard():
+            model = partial(bow_net, is_sparse=False)
+            for place in get_places():
+                loss = self.check_weight_decay(
+                    place, model, use_parallel_exe=False
                 )
+
+                # TODO(zcd): should test use_reduce=True
+                loss2 = self.check_weight_decay(
+                    place, model, use_parallel_exe=True, use_reduce=False
+                )
+
+                for i in range(len(loss)):
+                    self.assertTrue(
+                        np.isclose(a=loss[i], b=loss2[i], rtol=5e-5),
+                        "Expect "
+                        + str(loss[i])
+                        + "\n"
+                        + "But Got"
+                        + str(loss2[i])
+                        + " in class "
+                        + self.__class__.__name__,
+                    )
 
 
 if __name__ == '__main__':

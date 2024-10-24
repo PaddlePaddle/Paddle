@@ -19,6 +19,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 
 
@@ -39,7 +41,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, (0, 2))
         self.assertEqual(out.size, 0)
 
-    def test_reshape(self):
+    def test_reshape_dygraph(self):
         # case 1
         x1 = paddle.rand([0, 2])
         x1.stop_gradient = False
@@ -76,6 +78,39 @@ class TestSundryAPI(unittest.TestCase):
         x5 = paddle.rand([0])
         with self.assertRaises(ValueError):
             out4 = paddle.reshape(x5, [2, 0, -1])
+
+    def test_reshape_static(self):
+        paddle.enable_static()
+        place = paddle.CPUPlace()
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+
+        input_cases = [
+            # (x, new_shape, desired_shape)
+            (np.random.rand(0, 2), [-1], [0]),
+            (np.random.rand(0, 2), [2, -1], [2, 0]),
+            (np.random.rand(0, 2), [2, 3, 0], [2, 3, 0]),
+            (np.random.rand(0, 2), [0], [0]),
+        ]
+        for case in input_cases:
+            data_np, new_shape, desired_shape = case
+            startup_program = paddle.static.Program()
+            main_program = paddle.static.Program()
+            executor = paddle.static.Executor(place)
+            with paddle.static.program_guard(main_program, startup_program):
+                x = paddle.static.data(
+                    name="x", shape=data_np.shape, dtype='float64'
+                )
+                out = paddle.reshape(x, new_shape)
+                fetch_list = [out]
+                feeds = {'x': data_np}
+
+                executor.run(startup_program)
+                res = executor.run(
+                    main_program, feed=feeds, fetch_list=fetch_list
+                )
+            np.testing.assert_equal(res[0], np.random.rand(*desired_shape))
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

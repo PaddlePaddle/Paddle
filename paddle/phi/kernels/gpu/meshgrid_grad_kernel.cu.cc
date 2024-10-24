@@ -27,4 +27,6 @@ PD_REGISTER_KERNEL(meshgrid_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

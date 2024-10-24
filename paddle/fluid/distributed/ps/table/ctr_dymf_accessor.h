@@ -45,9 +45,9 @@ class CtrDymfAccessor : public ValueAccessor {
       // float embedx_g2sum;
       std::vector<float> embedx_w;
        */
-    /* V2: support pass_id
-      uint16_t pass_id;
-      uint16_t unseen_days;
+    /* V2: support pass_id (pslib gpups)
+      uint16_t pass_id; (diff)
+      uint16_t unseen_days; (diff)
       float show;
       float click;
       float embed_w;
@@ -88,6 +88,7 @@ class CtrDymfAccessor : public ValueAccessor {
     // 根据mf_dim计算的总byte数
     int Size(int mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
 
+#ifdef PADDLE_WITH_PSLIB
     uint16_t& PassId(float* val) {
       uint16_t* int16_val =
           reinterpret_cast<uint16_t*>(val + UnseenDaysIndex());
@@ -99,6 +100,9 @@ class CtrDymfAccessor : public ValueAccessor {
           reinterpret_cast<uint16_t*>(val + UnseenDaysIndex());
       return int16_val[1];
     }
+#else
+    float& UnseenDays(float* val) { return val[UnseenDaysIndex()]; }
+#endif
     float& DeltaScore(float* val) { return val[DeltaScoreIndex()]; }
     float& Show(float* val) { return val[ShowIndex()]; }
     float& Click(float* val) { return val[ClickIndex()]; }
@@ -252,6 +256,9 @@ class CtrDymfAccessor : public ValueAccessor {
     return &_save_filtered_slots;
   }
 
+  void SetDayId(int day_id) override;
+
+#ifdef PADDLE_WITH_PSLIB
   // 根据pass_id和show_threshold阈值来判断cache到ssd
   bool SaveMemCache(float* value,
                     int param,
@@ -259,8 +266,11 @@ class CtrDymfAccessor : public ValueAccessor {
                     uint16_t pass_id);
   // 更新pass_id
   void UpdatePassId(float* value, uint16_t pass_id);
+#endif
+  void UpdateTimeDecay(float* value, bool is_update_seen_day);
 
  private:
+  void SetTimeDecayRates();
   // float ShowClickScore(float show, float click);
 
   // SparseValueSGDRule* _embed_sgd_rule;
@@ -269,6 +279,8 @@ class CtrDymfAccessor : public ValueAccessor {
   float _show_click_decay_rate;
   int32_t _ssd_unseenday_threshold;
   bool _show_scale = false;
+  int _day_id = 0;
+  std::vector<double> _time_decay_rates;
 
  public:  // TODO(zhaocaibei123): it should be private, but we make it public
           // for unit test

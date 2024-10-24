@@ -611,7 +611,7 @@ class MultiThread(GradAllReduce):
                     param = block.vars[op_role_var[i]]
                     new_grad_var = block.create_var(
                         name=op_role_var[i] + "_allgather",
-                        shape=[self.allgather_ranks] + list(param.shape),
+                        shape=[self.allgather_ranks, *list(param.shape)],
                         persistable=False,
                         dtype=core.VarDesc.VarType.FP32,
                         stop_gradient=True,

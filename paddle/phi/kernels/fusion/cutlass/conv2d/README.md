@@ -23,3 +23,9 @@ compile.sh 脚本中会下载cutlass，执行CMakeLists.txt脚本，编译生成
 step2.
 
 step1执行后，就可以看到在 build 目录生成了 `libCutlassConv2d.so` ，并将build目录添加到LD_LIBRARY_PATH中即可使用此库。
+
+
+step3.
+
+默认情况下，在处理conv2d类算子时，Paddle Inference 会调用cuDNN实现；
+基于 cutlass 开发的conv2d类算子能够融合更多的后处理算子，用户可以通过python API `exp_enable_use_cutlass()` 和 C++ API `Exp_EnableUseCutlass()`来获得一定的速度和显存收益。

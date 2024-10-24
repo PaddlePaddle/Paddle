@@ -62,9 +62,7 @@ def get_low_precision_vartype(dtype):
         return var_type
     else:
         raise TypeError(
-            "The type of dtype is expected to be string or core.VarDesc.VarType, but received {}.".format(
-                type(dtype)
-            )
+            f"The type of dtype is expected to be string or core.VarDesc.VarType, but received {type(dtype)}."
         )
 
 
@@ -82,9 +80,7 @@ def get_low_precision_dtypestr(dtype):
             )
     else:
         raise TypeError(
-            "The type of dtype is expected to be string or core.VarDesc.VarType, but received {}.".format(
-                type(dtype)
-            )
+            f"The type of dtype is expected to be string or core.VarDesc.VarType, but received {type(dtype)}."
         )
 
 

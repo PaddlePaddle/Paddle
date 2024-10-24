@@ -590,10 +590,11 @@ class CrossEntropyCriterion:
                 epsilon=self.label_smooth_eps,
             )
 
-        cost = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=predict,
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict,
             label=label_out,
             soft_label=True if self.label_smooth_eps else False,
+            reduction="none",
         )
         weighted_cost = cost * weights
         sum_cost = paddle.sum(weighted_cost)
@@ -707,7 +708,7 @@ class Transformer(Layer):
     ):
         def expand_to_beam_size(tensor, beam_size):
             tensor = paddle.reshape(
-                tensor, [tensor.shape[0], 1] + list(tensor.shape[1:])
+                tensor, [tensor.shape[0], 1, *list(tensor.shape[1:])]
             )
             tile_dims = [-1] * len(tensor.shape)
             tile_dims[1] = beam_size

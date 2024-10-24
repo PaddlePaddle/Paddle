@@ -12,13 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
+from __future__ import annotations
 
-from paddle import _C_ops
+import warnings
+from typing import TYPE_CHECKING
+
+from typing_extensions import NotRequired
+
+from paddle import _C_ops, pir
 
 from ..base import framework
 from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from typing_extensions import NotRequired
+
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.optimizer.lr import LRScheduler
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .optimizer import _ParameterConfig
+
+    class _RMSPropParameterConfig(_ParameterConfig):
+        epsilon: NotRequired[float]
+        momentum: NotRequired[float]
+        rho: NotRequired[float]
+        centered: NotRequired[bool]
+
 
 __all__ = []
 
@@ -83,25 +107,26 @@ class RMSProp(Optimizer):
           the gradient; if False, by the uncentered second moment. Setting this to
           True may help with training, but is slightly more expensive in terms of
           computation and memory. Defaults to False.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
           This parameter is required in dygraph mode. And you can specify different options for
           different parameter groups such as the learning rate, weight decay, etc,
           then the parameters are list of dict. Note that the learning_rate in parameter groups
           represents the scale of base learning_rate.
           The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
-          It can be a float value as coeff of L2 regularization or \
+        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization.
+          It can be a int or float value as coeff of L2 regularization or \
           :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
           If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
           the regularization setting here in optimizer will be ignored for this parameter.
           Otherwise, the regularization setting here in optimizer will take effect.
           Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
           some derived class of ``GradientClipBase`` . There are three clipping strategies
           ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
           :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): This parameter is used by developers to print debugging information.
-          For details, please refer to :ref:`api_guide_Name`. Default is None.
+        name (str|None, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
 
     Examples:
             .. code-block:: python
@@ -113,9 +138,11 @@ class RMSProp(Optimizer):
                 >>> out = linear(inp)
                 >>> loss = paddle.mean(out)
 
-                >>> rmsprop = paddle.optimizer.RMSProp(learning_rate=0.1,
-                ...                     parameters=linear.parameters(),
-                ...                             weight_decay=0.01)
+                >>> rmsprop = paddle.optimizer.RMSProp(
+                ...     learning_rate=0.1,
+                ...     parameters=linear.parameters(),
+                ...     weight_decay=0.01
+                ... )
                 >>> out.backward()
                 >>> rmsprop.step()
                 >>> rmsprop.clear_grad()
@@ -129,7 +156,7 @@ class RMSProp(Optimizer):
                 >>> loss = paddle.mean(out)
                 >>> rmsprop = paddle.optimizer.RMSProp(
                 ...     learning_rate=0.1,
-                ...     parameters=[{
+                ...     parameters=[{  # type: ignore
                 ...         'params': linear_1.parameters()
                 ...     }, {
                 ...         'params': linear_2.parameters(),
@@ -149,16 +176,18 @@ class RMSProp(Optimizer):
 
     def __init__(
         self,
-        learning_rate,
-        rho=0.95,
-        epsilon=1.0e-6,
-        momentum=0.0,
-        centered=False,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-    ):
+        learning_rate: float | LRScheduler,
+        rho: float = 0.95,
+        epsilon: float = 1.0e-6,
+        momentum: float = 0.0,
+        centered: bool = False,
+        parameters: (
+            Sequence[Tensor] | Sequence[_RMSPropParameterConfig] | None
+        ) = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if rho is None:
@@ -197,8 +226,8 @@ class RMSProp(Optimizer):
         }
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
@@ -228,8 +257,8 @@ class RMSProp(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
 
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)

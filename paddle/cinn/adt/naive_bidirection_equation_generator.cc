@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/equation_solver.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 namespace {
@@ -51,7 +51,10 @@ OpArgIndexes<std::optional<Index>> MakeOutMsgOpArgIndexes(
     const List<std::optional<Index>>& opt_out_msg_out_indexes) {
   List<Index> out_msg_in_indexes{};
   for (const auto& out_msg_in_index : *opt_out_msg_in_indexes) {
-    CHECK(out_msg_in_index.has_value());
+    PADDLE_ENFORCE_EQ(out_msg_in_index.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The out_msg_in_index should have value."));
     out_msg_in_indexes->emplace_back(out_msg_in_index.value());
   }
   return OpArgIndexes<std::optional<Index>>{out_msg_in_indexes,
@@ -68,7 +71,14 @@ template <typename DoEachT>
 void VisitEachInMsgOutMsgPair(const List<Index>& in_msg_indexes,
                               const List<Index>& out_msg_indexes,
                               const DoEachT& DoEach) {
-  CHECK_EQ(in_msg_indexes->size(), out_msg_indexes->size());
+  PADDLE_ENFORCE_EQ(
+      in_msg_indexes->size(),
+      out_msg_indexes->size(),
+      ::common::errors::InvalidArgument(
+          "The size of in_msg_indexes and out_msg_indexes should be equal, but "
+          "got in_msg_indexes size = %d, out_msg_indexes size = %d.",
+          in_msg_indexes->size(),
+          out_msg_indexes->size()));
   for (std::size_t i = 0; i < in_msg_indexes->size(); ++i) {
     DoEach(in_msg_indexes->at(i), out_msg_indexes->at(i));
   }
@@ -104,9 +114,13 @@ void NaiveBidirectionEquationGenerator::InitInMsgIndex2OutMsgIndex() {
             in_msg_indexes,
             out_msg_indexes,
             [&](const Index& in_index, const Index& out_index) {
-              CHECK(
+              PADDLE_ENFORCE_EQ(
                   this->in_msg_index2out_msg_index_.emplace(in_index, out_index)
-                      .second);
+                      .second,
+                  true,
+                  ::common::errors::InvalidArgument(
+                      "The out_msg_index2in_msg_index_ map has already "
+                      "contained the out_index."));
             });
       };
 
@@ -153,9 +167,14 @@ NaiveBidirectionEquationGenerator::MakeGetterOpStmt4OpPlaceHolder() const {
       std::make_shared<FakeOpPlaceHolder2OpStmt>();
 
   for (std::size_t i = 0; i < fake_op_placeholders_->size(); ++i) {
-    CHECK(fake_op_placeholder2op_stmt
-              ->emplace(fake_op_placeholders_->at(i), op_stmts_->at(i))
-              .second);
+    PADDLE_ENFORCE_EQ(
+        fake_op_placeholder2op_stmt
+            ->emplace(fake_op_placeholders_->at(i), op_stmts_->at(i))
+            .second,
+        true,
+        ::common::errors::InvalidArgument(
+            "The fake_op_placeholder2op_stmt map has already contained the "
+            "fake_op_placeholder."));
   }
 
   return [fake_op_placeholder2op_stmt](

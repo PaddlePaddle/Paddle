@@ -24,10 +24,8 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
                             const phi::DataType& dst_dtype) {
   auto place = tensor.place();
   auto data_type = tensor.dtype();
-  if (paddle::platform::is_gpu_place(place) ||
-      paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_custom_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_cuda_pinned_place(place) ||
+      phi::is_xpu_place(place) || phi::is_custom_place(place)) {
     // CudaPinnedPlace is added for varbase created by dataloader
     if ((data_type == phi::DataType::FLOAT32 ||
          data_type == phi::DataType::FLOAT16 ||
@@ -53,8 +51,7 @@ inline std::vector<paddle::Tensor> AmpAutoCasts(
       paddle::framework::AttributeMap cast_attrs = {
           {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
           {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-      inputs_casted.emplace_back(
-          std::move(cast_dygraph_function(input, cast_attrs)));
+      inputs_casted.emplace_back(cast_dygraph_function(input, cast_attrs));
     } else {
       inputs_casted.emplace_back(input);
     }
@@ -66,15 +63,9 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
                                   const paddle::Tensor& input,
                                   const phi::DataType& dst_dtype,
                                   std::string op_name) {
-  VLOG(6) << "AMP AmpAutoCasts:"
-          << " input(" << input_name << ") dst_dtype("
-          << phi::DataTypeToString(dst_dtype) << ").";
+  VLOG(6) << "AMP AmpAutoCasts: op_name(" << op_name << ") input(" << input_name
+          << ") dst_dtype(" << phi::DataTypeToString(dst_dtype) << ").";
 
-  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-       op_name == "sync_batch_norm") &&
-      input_name != "X") {
-    return input;
-  }
   if (op_name == "fused_softmax_mask" && input_name == "Mask" &&
       input.dtype() == phi::DataType::FLOAT32) {
     return input;
@@ -90,9 +81,26 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
         return input;
       }
     }
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
+    }
+  } else if (dst_dtype == phi::DataType::BFLOAT16) {
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
+    }
   }
 
   if (NeedCast(input, dst_dtype)) {
+    if (dst_dtype == phi::DataType::FLOAT32) {
+      VLOG(5) << "got different data type, run type promotion automatically.";
+      LOG_FIRST_N(WARNING, 1)
+          << "got different data type, run type promotion automatically, this "
+             "may cause data type been changed.";
+    }
     paddle::framework::AttributeMap cast_attrs = {
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
         {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};

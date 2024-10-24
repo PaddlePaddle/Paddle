@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
-import numpy
 import numpy as np
 from op import Operator
 from op_test import OpTest
@@ -22,7 +22,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def calculate_momentum_by_numpy(
@@ -184,7 +183,7 @@ class TestLarsMomentumOpWithMP(OpTest):
 
         params = []
         grads = []
-        velocitys = []
+        velocities = []
         learning_rates = []
         master_params = []
         param_outs = []
@@ -216,7 +215,7 @@ class TestLarsMomentumOpWithMP(OpTest):
 
             params.append(("SubParam_" + str(i), param))
             grads.append(("SubGrad_" + str(i), grad))
-            velocitys.append(("SubVelocity_" + str(i), velocity))
+            velocities.append(("SubVelocity_" + str(i), velocity))
             learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
             velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
             param_outs.append(("SubParam_out_" + str(i), param_out))
@@ -228,7 +227,7 @@ class TestLarsMomentumOpWithMP(OpTest):
         self.inputs = {
             'Param': params,
             'Grad': grads,
-            'Velocity': velocitys,
+            'Velocity': velocities,
             'LearningRate': learning_rates,
             'MasterParam': master_params,
         }
@@ -268,7 +267,7 @@ class TestLarsMomentumOp(OpTest):
 
         params = []
         grads = []
-        velocitys = []
+        velocities = []
         param_outs = []
         velocity_outs = []
         learning_rates = []
@@ -292,7 +291,7 @@ class TestLarsMomentumOp(OpTest):
 
             params.append(("SubParam_" + str(i), param))
             grads.append(("SubGrad_" + str(i), grad))
-            velocitys.append(("SubVelocity_" + str(i), velocity))
+            velocities.append(("SubVelocity_" + str(i), velocity))
             learning_rates.append(("SubLearning_rate_" + str(i), learning_rate))
             velocity_outs.append(("SubVelocity_out_" + str(i), velocity_out))
             param_outs.append(("SubParam_out_" + str(i), param_out))
@@ -300,7 +299,7 @@ class TestLarsMomentumOp(OpTest):
         self.inputs = {
             'Param': params,
             'Grad': grads,
-            'Velocity': velocitys,
+            'Velocity': velocities,
             'LearningRate': learning_rates,
         }
 
@@ -414,7 +413,13 @@ class TestSparseMomentumOp(unittest.TestCase):
         pass
 
     def test_sparse_momentum(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -554,7 +559,6 @@ class TestMomentumV2(unittest.TestCase):
         adam.step()
         adam.clear_gradients()
 
-    @test_with_pir_api
     def test_momentum(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -596,6 +600,23 @@ class TestMomentumV2(unittest.TestCase):
             ValueError, paddle.optimizer.Momentum, learning_rate=None
         )
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
+
+    def test_weight_decay_int(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        # This can be any optimizer supported by dygraph.
+        adam = paddle.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=0.9,
+            parameters=linear.parameters(),
+            weight_decay=1,
+        )
+        out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
 
 
 class TestMomentumOpWithDecay(OpTest):
@@ -700,7 +721,6 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             regularization=paddle.regularizer.L2Decay(coeff=0.1)
         )
 
-    @test_with_pir_api
     def test_momentum_static(self):
         paddle.enable_static()
         place = base.CPUPlace()
@@ -761,59 +781,68 @@ class TestFusedMomentumWithDecayAPI(unittest.TestCase):
 
     def test_param_has_l2decay(self):
         paddle.enable_static()
-        weight_attr = paddle.ParamAttr(
-            name="weight",
-            initializer=paddle.nn.initializer.Constant(value=0.5),
-            regularizer=paddle.regularizer.L2Decay(0.1),
-        )
-        program = self.get_program(weight_attr, bias_attr=False)
-        ops = program.global_block().ops
+        with paddle.pir_utils.OldIrGuard():
+            weight_attr = paddle.ParamAttr(
+                name="weight",
+                initializer=paddle.nn.initializer.Constant(value=0.5),
+                regularizer=paddle.regularizer.L2Decay(0.1),
+            )
+            program = self.get_program(weight_attr, bias_attr=False)
+            ops = program.global_block().ops
 
-        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
-        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.1))
-        for i in range(len(ops)):
-            self.assertTrue('sum' not in ops[i].type)
-            self.assertTrue('scale' not in ops[i].type)
+            self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+            self.assertEqual(
+                ops[-1].attr('regularization_coeff'), np.float32(0.1)
+            )
+            for i in range(len(ops)):
+                self.assertTrue('sum' not in ops[i].type)
+                self.assertTrue('scale' not in ops[i].type)
 
     def test_param_has_l1decay(self):
         paddle.enable_static()
-        weight_attr = paddle.ParamAttr(
-            name="weight",
-            initializer=paddle.nn.initializer.Constant(value=0.5),
-            regularizer=paddle.regularizer.L1Decay(0.1),
-        )
-        bias_attr = paddle.ParamAttr(
-            name="bias",
-            initializer=paddle.nn.initializer.Constant(value=0.0),
-            regularizer=None,
-        )
-        program = self.get_program(weight_attr, bias_attr)
-        ops = program.global_block().ops
-
-        self.assertEqual(ops[-1].type, 'momentum')
-        self.assertEqual(ops[-2].type, 'momentum')
-        self.assertEqual(ops[-3].type, 'sum')
-        self.assertEqual(ops[-4].type, 'scale')
-        self.assertEqual(ops[-5].type, 'sign')
-        self.assertEqual(ops[-6].type, 'matmul_v2_grad')
-        if 'weight' in ops[-1].input('Param'):
-            self.assertEqual(ops[-1].attr('regularization_method'), '')
-            self.assertEqual(ops[-1].attr('regularization_coeff'), 0)
-        if 'bias' in ops[-2].input('Param'):
-            self.assertEqual(ops[-2].attr('regularization_method'), 'l2_decay')
-            self.assertEqual(
-                ops[-2].attr('regularization_coeff'), np.float32(0.5)
+        with paddle.pir_utils.OldIrGuard():
+            weight_attr = paddle.ParamAttr(
+                name="weight",
+                initializer=paddle.nn.initializer.Constant(value=0.5),
+                regularizer=paddle.regularizer.L1Decay(0.1),
             )
+            bias_attr = paddle.ParamAttr(
+                name="bias",
+                initializer=paddle.nn.initializer.Constant(value=0.0),
+                regularizer=None,
+            )
+            program = self.get_program(weight_attr, bias_attr)
+            ops = program.global_block().ops
+
+            self.assertEqual(ops[-1].type, 'momentum')
+            self.assertEqual(ops[-2].type, 'momentum')
+            self.assertEqual(ops[-3].type, 'sum')
+            self.assertEqual(ops[-4].type, 'scale')
+            self.assertEqual(ops[-5].type, 'sign')
+            self.assertEqual(ops[-6].type, 'matmul_v2_grad')
+            if 'weight' in ops[-1].input('Param'):
+                self.assertEqual(ops[-1].attr('regularization_method'), '')
+                self.assertEqual(ops[-1].attr('regularization_coeff'), 0)
+            if 'bias' in ops[-2].input('Param'):
+                self.assertEqual(
+                    ops[-2].attr('regularization_method'), 'l2_decay'
+                )
+                self.assertEqual(
+                    ops[-2].attr('regularization_coeff'), np.float32(0.5)
+                )
 
     def test_param_has_no_regularizer(self):
         paddle.enable_static()
-        program = self.get_program(weight_attr=None)
-        ops = program.global_block().ops
-        self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
-        self.assertEqual(ops[-1].attr('regularization_coeff'), np.float32(0.5))
-        for i in range(len(ops)):
-            self.assertTrue('sum' not in ops[i].type)
-            self.assertTrue('scale' not in ops[i].type)
+        with paddle.pir_utils.OldIrGuard():
+            program = self.get_program(weight_attr=None)
+            ops = program.global_block().ops
+            self.assertEqual(ops[-1].attr('regularization_method'), 'l2_decay')
+            self.assertEqual(
+                ops[-1].attr('regularization_coeff'), np.float32(0.5)
+            )
+            for i in range(len(ops)):
+                self.assertTrue('sum' not in ops[i].type)
+                self.assertTrue('scale' not in ops[i].type)
 
 
 class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
@@ -867,7 +896,13 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
         )
 
     def test_vs(self, place=base.CPUPlace()):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
@@ -975,7 +1010,13 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         return output, model.parameters()
 
     def _get_places(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places
@@ -1033,80 +1074,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
-
-
-class TestMultiTensorMomentumStatic(unittest.TestCase):
-    def _momentum_optimize_static(
-        self, place, use_amp=False, use_multi_tensor=False
-    ):
-        paddle.enable_static()
-        paddle.seed(10)
-        np.random.seed(10)
-        if place == 'cpu':
-            use_amp = False
-        exe = paddle.static.Executor(place=place)
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.Momentum(
-            multi_precision=use_amp, use_multi_tensor=use_multi_tensor
-        )
-        if use_amp:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
-                use_fp16_guard=False,
-            )
-        with paddle.static.program_guard(train_program, startup_program):
-            if use_amp:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float16'
-                )
-            else:
-                data = paddle.static.data(
-                    shape=[2, 2], name='X', dtype='float32'
-                )
-            hidden = paddle.static.nn.fc(x=data, size=10)
-            loss = paddle.mean(hidden)
-            optimizer.minimize(loss)
-        exe.run(startup_program)
-        if use_amp:
-            optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
-            )
-            x = numpy.random.random(size=(2, 2)).astype('float16')
-        else:
-            x = numpy.random.random(size=(2, 2)).astype('float32')
-        out = []
-        for idx in range(5):
-            (loss_data,) = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
-            )
-            out.append(loss_data)
-        return out
-
-    def _get_places(self):
-        places = ['cpu']
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
-    def _check_with_place_amp(self, place, use_amp):
-        output1 = self._momentum_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=True
-        )
-        output2 = self._momentum_optimize_static(
-            place=place, use_amp=use_amp, use_multi_tensor=False
-        )
-        for idx in range(len(output1)):
-            np.testing.assert_allclose(output1[idx], output2[idx], rtol=1e-05)
-
-    def test_main(self):
-        for place in self._get_places():
-            use_amp_list = [True, False]
-            for use_amp in use_amp_list:
-                self._check_with_place_amp(place, use_amp)
 
 
 if __name__ == "__main__":

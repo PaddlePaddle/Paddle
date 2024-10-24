@@ -22,10 +22,12 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/value_impl.h"
 
-#define CHECK_NULL_IMPL(class_name, func_name)                  \
-  IR_ENFORCE(impl_,                                             \
-             "impl_ pointer is null when call func:" #func_name \
-             " , in class: " #class_name ".")
+#define CHECK_NULL_IMPL(class_name, func_name)               \
+  PADDLE_ENFORCE_NOT_NULL(                                   \
+      impl_,                                                 \
+      common::errors::InvalidArgument(                       \
+          "impl_ pointer is null when call func:" #func_name \
+          " , in class: " #class_name "."))
 
 #define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
 
@@ -110,4 +112,22 @@ void Value::set_attribute(const std::string &key, Attribute value) {
   return dyn_cast<BlockArgument>().set_attribute(key, value);
 }
 
+void Value::set_property(const std::string &key, const Property &value) {
+  auto op_result = dyn_cast<OpResult>();
+  PADDLE_ENFORCE_NE(op_result,
+                    nullptr,
+                    common::errors::PreconditionNotMet(
+                        "The Value is not an OpResult, we can set property "
+                        "only for OpResult currently"));
+  return op_result.set_property(key, value);
+}
+
+void *Value::property(const std::string &key) const {
+  auto op_result = dyn_cast<OpResult>();
+  if (op_result) {
+    return op_result.property(key);
+  } else {
+    return nullptr;
+  }
+}
 }  // namespace pir

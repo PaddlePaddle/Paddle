@@ -920,7 +920,7 @@ void TestKernelSgd() {
                                   const int64_t upper) -> std::vector<int64_t> {
     PADDLE_ENFORCE_LE(static_cast<size_t>(upper - lower),
                       n - 1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The range of Sgd (upper - lower) should be lower "
                           "than n-1 (Sgd size -1). But the upper - lower is %d "
                           "and n-1 is %d.",
@@ -929,7 +929,7 @@ void TestKernelSgd() {
     PADDLE_ENFORCE_GT(
         n,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Sgd size should be larger than 0. But the n is %d.", n));
     std::vector<int64_t> all, out;
     for (int i = 0; i < n; ++i) {
@@ -1177,9 +1177,9 @@ TEST(JITKernel_helper, GetAllCandidateFuncs) {
 
 TEST(JITKernel_helper, pack_weights) {
   const int N = 8 * 60, K = 2;
-  std::array<std::array<float, N>, K> src;
-  std::array<std::array<float, N>, K> yref;
-  std::array<float, N * K> y;
+  std::array<std::array<float, N>, K> src = {};
+  std::array<std::array<float, N>, K> yref = {};
+  std::array<float, N* K> y = {};
   float* x = &(src[0][0]);
   float* ref = &(yref[0][0]);
   for (int i = 0; i < N * K; ++i) {

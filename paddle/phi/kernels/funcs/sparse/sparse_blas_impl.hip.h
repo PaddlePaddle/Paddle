@@ -69,8 +69,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   PADDLE_ENFORCE_GE(
       x_ndims,
       2,
-      phi::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
-                                   "greater than or equal to 2."));
+      common::errors::InvalidArgument("the dim size of SparseCsrTensor must be "
+                                      "greater than or equal to 2."));
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
   int batch_size = 1;
@@ -79,7 +79,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   }
   PADDLE_ENFORCE_EQ(x.non_zero_crows().numel(),
                     batch_size * (M + 1),
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "the length of SparseCsrTensor crows is not right."));
 
   const IntT* crows_data = x.non_zero_crows().data<IntT>();
@@ -105,7 +105,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
   });
   if (batch_size > 1) {
     // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Batch Sparse matmul use 'rocsparse_coo_set_strided_batch', which is "
         "supported from ROCM 5.2.0"));
   }
@@ -120,8 +120,8 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   PADDLE_ENFORCE_GE(
       x_ndims,
       2,
-      phi::errors::InvalidArgument("the dim size of SparseCooTensor must be "
-                                   "greater than or equal to 2."));
+      common::errors::InvalidArgument("the dim size of SparseCooTensor must be "
+                                      "greater than or equal to 2."));
 
   int64_t M = xdim_vec[x_ndims - 2];
   int64_t N = xdim_vec[x_ndims - 1];
@@ -154,7 +154,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 
   if (batch_size > 1) {
     // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Batch Sparse matmul use 'rocsparse_coo_set_strided_batch', which is "
         "supported from ROCM 5.2.0"));
   }
@@ -208,8 +208,8 @@ class RocSparseDnMatDescriptor {
     PADDLE_ENFORCE_GE(
         x_ndims,
         2,
-        phi::errors::InvalidArgument("the dim size of DenseTensor must be "
-                                     "greater than or equal to 2."));
+        common::errors::InvalidArgument("the dim size of DenseTensor must be "
+                                        "greater than or equal to 2."));
 
     int64_t M = xdim_vec[x_ndims - 2];
     int64_t N = xdim_vec[x_ndims - 1];
@@ -233,11 +233,11 @@ class RocSparseDnMatDescriptor {
     PADDLE_ENFORCE_EQ(
         x.numel(),
         batch_size * M * N,
-        phi::errors::InvalidArgument("The number of elements in DenseTensor "
-                                     "must equals to batch_size * M * N."));
+        common::errors::InvalidArgument("The number of elements in DenseTensor "
+                                        "must equals to batch_size * M * N."));
     if (batch_size > 1) {
       // TODO(umiswing): Add batch sparse matmul support for ROCM after 5.2.0
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Batch Sparse matmul use 'rocsparse_dnmat_set_strided_batch', which "
           "is supported from ROCM 5.2.0"));
     }

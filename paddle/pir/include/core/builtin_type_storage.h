@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstring>
+
 #include "paddle/common/ddim.h"
 #include "paddle/common/dim.h"
 #include "paddle/common/hash_funcs.h"
@@ -125,7 +127,7 @@ struct VectorTypeStorage : public TypeStorage {
   ~VectorTypeStorage() { free(data_); }
 
   ///
-  /// \brief Each derived TypeStorage must define a Construc method, which
+  /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
   static VectorTypeStorage* Construct(const ParamKey& key) {

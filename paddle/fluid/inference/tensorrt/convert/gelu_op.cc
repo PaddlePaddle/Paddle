@@ -48,7 +48,7 @@ class GeluOpConverter : public OpConverter {
       auto create_weights = [&](float data, std::string type) -> float* {
         std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
         tmp_tensor->Resize({1});
-        auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* tmp_data = tmp_tensor->mutable_data<float>(phi::CPUPlace());
         tmp_data[0] = data;
         engine_->SetWeights(out_name + "_gelu_op_" + type,
                             std::move(tmp_tensor));
@@ -140,7 +140,7 @@ class GeluOpConverter : public OpConverter {
                                     nvinfer1::ElementWiseOperation::kPROD);
       layer = y;
 #else
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running GeLU Op with approximate True, need to confirm that "
           "your TRT version is no less than 7.0"));
 #endif
@@ -155,7 +155,7 @@ class GeluOpConverter : public OpConverter {
       auto create_weights = [&](float data, std::string type) -> float* {
         std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
         tmp_tensor->Resize({1});
-        auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+        auto* tmp_data = tmp_tensor->mutable_data<float>(phi::CPUPlace());
         tmp_data[0] = data;
         engine_->SetWeights(out_name + "_gelu_op_" + type,
                             std::move(tmp_tensor));
@@ -215,28 +215,21 @@ class GeluOpConverter : public OpConverter {
       layer = y;
 #else  // if IS_TRT_VERSION_GE(7000)
       int input_num = op_desc.Input("X").size();
-      if (engine_->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::GeluPluginDynamic* plugin =
-            new plugin::GeluPluginDynamic(with_fp16);
-        layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
+      bool with_fp16 =
+          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+      plugin::GeluPluginDynamic* plugin =
+          new plugin::GeluPluginDynamic(with_fp16);
+      layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
-        PADDLE_THROW(platform::errors::Fatal(
-            "You are running the TRT Dynamic Shape mode, need to confirm that "
-            "your TRT version is no less than 6.0"));
+      PADDLE_THROW(common::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
 #endif
-      } else {
-        bool with_fp16 =
-            engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-        plugin::GeluPlugin* plugin = new plugin::GeluPlugin(with_fp16);
-        layer = engine_->AddPlugin(&input, input_num, plugin);
-      }
 #endif  // if IS_TRT_VERSION_GE(7000)
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "gelu", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "gelu", {output_name}, test_mode);
   }
 };
 

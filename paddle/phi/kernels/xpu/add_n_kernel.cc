@@ -62,10 +62,10 @@ void AddNKernel(const Context& dev_ctx,
       auto& in_t = *(static_cast<const SelectedRows*>(x[i]));
       functor(dev_ctx, in_t, out);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Expected type of Input(X) of %d-th must be Tensor, "
           "SelectedRows. But got "
-          "unsupport type: %s.",
+          "unsupported type: %s.",
           x[i]->type_info().name()));
     }
   }
@@ -134,7 +134,7 @@ void AddNArrayKernel(const Context& dev_ctx,
           PADDLE_ENFORCE_EQ(
               out->at(j).lod(),
               in_array->at(j).lod(),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The lod message between inputs[%d] and"
                   " outputs[%d] must be same, but now is not same.",
                   j,
@@ -160,11 +160,17 @@ void AddNArrayKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    add_n, XPU, ALL_LAYOUT, phi::AddNKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(add_n,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::AddNKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(add_n_array,
                    XPU,
                    ALL_LAYOUT,
                    phi::AddNArrayKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

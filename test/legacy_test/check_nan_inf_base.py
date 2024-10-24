@@ -90,7 +90,7 @@ def check(use_cuda):
                 outs = exe.run(
                     main,
                     feed={'x': train_data, 'y': y_label},
-                    fetch_list=[y_predict.name, avg_cost.name, acc_top1.name],
+                    fetch_list=[y_predict, avg_cost, acc_top1],
                 )
                 step += 1
                 print(f'iter={step:.0f},cost={outs[1]},acc1={outs[2]}')
@@ -99,7 +99,7 @@ def check(use_cuda):
 if __name__ == '__main__':
     try:
         check(use_cuda=False)
-        raise AssertionError()
+        raise AssertionError
     except Exception as e:
         print(e)
         print(type(e))
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     if core.is_compiled_with_cuda():
         try:
             check(use_cuda=True)
-            raise AssertionError()
+            raise AssertionError
         except Exception as e:
             print(e)
             print(type(e))

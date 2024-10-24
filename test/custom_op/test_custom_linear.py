@@ -71,6 +71,30 @@ def linear_static(func, device, dtype, np_x, np_weight, np_bias):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                if func.__name__ == "custom_linear":
+                    fetch_list = [
+                        out,
+                        ops[-1].result(0),  # x_grad
+                        ops[-1].result(1),  # weight_grad
+                        ops[-1].result(2),
+                    ]  # bias_grad
+                else:
+                    fetch_list = [
+                        out,
+                        ops[-1].result(0),  # x_grad
+                        ops[-1].result(1),  # weight_grad
+                        ops[-2].result(1),
+                    ]  # bias_grad
+            else:
+                fetch_list = [
+                    out.name,
+                    x.name + "@GRAD",
+                    weight.name + "@GRAD",
+                    bias.name + "@GRAD",
+                ]
+
             out_v, x_grad_v, weight_grad_v, bias_grad_v = exe.run(
                 static.default_main_program(),
                 feed={
@@ -78,12 +102,7 @@ def linear_static(func, device, dtype, np_x, np_weight, np_bias):
                     "weight": np_weight.astype(dtype),
                     "bias": np_bias.astype(dtype),
                 },
-                fetch_list=[
-                    out.name,
-                    x.name + "@GRAD",
-                    weight.name + "@GRAD",
-                    bias.name + "@GRAD",
-                ],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return out_v, x_grad_v, weight_grad_v, bias_grad_v

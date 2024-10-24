@@ -14,13 +14,22 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES
+                 "${py_test_modules_MODULES}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE "")
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
+
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS}
+          ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           ${PYTHON_EXECUTABLE} -m coverage run --branch -p
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -30,7 +39,7 @@ function(py_test_modules TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
@@ -91,7 +100,7 @@ function(bash_test_modules TARGET_NAME)
   endif()
 endfunction()
 
-function(set_pit_tests_properties)
+function(set_pir_tests_properties)
   file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/pir_op_test_white_list"
        PIR_OP_TESTS)
   foreach(IR_OP_TEST ${PIR_OP_TESTS})
@@ -130,37 +139,55 @@ endfunction()
 
 if(WITH_TESTING)
   if(WITH_CINN)
-    add_subdirectory(cpp/cinn)
     add_subdirectory(cinn)
   endif()
-  if(CINN_ONLY)
-    return()
-  endif()
   # The following unittests only run in PR-CI-CINN
-  if(WITH_CINN AND NOT CINN_ONLY)
+  if(WITH_CINN)
     add_subdirectory(ir/pir/cinn)
   endif()
 
-  add_subdirectory(amp)
-  add_subdirectory(asp)
-  add_subdirectory(autograd)
+  if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
+    message(STATUS "Skip tests unrelated to CUDA/TRT")
+  else()
+    add_subdirectory(amp)
+    add_subdirectory(autograd)
+    add_subdirectory(custom_kernel)
+    add_subdirectory(custom_op)
+    add_subdirectory(custom_runtime)
+    add_subdirectory(dataset)
+    add_subdirectory(cpp_extension)
+    add_subdirectory(dygraph_to_static)
+    add_subdirectory(prim)
+    add_subdirectory(sot)
+    add_subdirectory(standalone_executor)
+    add_subdirectory(tokenizer)
+    add_subdirectory(rpc)
+    if(WITH_ONEDNN)
+      add_subdirectory(mkldnn)
+    endif()
+  endif()
+
   add_subdirectory(book)
   # add_subdirectory(composite_ops)
   add_subdirectory(contrib)
   add_subdirectory(cpp)
-  add_subdirectory(custom_kernel)
-  add_subdirectory(custom_op)
-  add_subdirectory(custom_runtime)
-  add_subdirectory(dataset)
-  add_subdirectory(cpp_extension)
+  add_subdirectory(distribution)
+  add_subdirectory(ir)
+  add_subdirectory(indexing)
+  add_subdirectory(legacy_test)
+  add_subdirectory(quantization)
+  add_subdirectory(rnn)
+  add_subdirectory(sequence)
+  add_subdirectory(tensorrt)
+  # add_subdirectory(white_list)
+
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
     add_subdirectory(auto_parallel)
     add_subdirectory(distributed_passes)
     add_subdirectory(ps)
   endif()
-  add_subdirectory(distribution)
-  add_subdirectory(dygraph_to_static)
+
   if(NOT WIN32 OR NOT WITH_GPU)
     add_subdirectory(fft)
   endif()
@@ -168,24 +195,14 @@ if(WITH_TESTING)
   if(WITH_IPU)
     add_subdirectory(ipu)
   endif()
-  add_subdirectory(ir)
-  add_subdirectory(indexing)
-  add_subdirectory(legacy_test)
-  if(WITH_MKLDNN)
-    add_subdirectory(mkldnn)
-  endif()
-  add_subdirectory(prim)
-  add_subdirectory(quantization)
-  add_subdirectory(rnn)
-  add_subdirectory(rpc)
-  add_subdirectory(sequence)
-  add_subdirectory(sot)
-  add_subdirectory(standalone_executor)
-  add_subdirectory(tokenizer)
-  # add_subdirectory(white_list)
+
   if(WITH_XPU)
     add_subdirectory(xpu)
   endif()
+
+  # add tests for scripts from `Paddle/tools`
+  add_subdirectory(tools)
+
 endif()
 
 if(WITH_CPP_DIST)
@@ -221,7 +238,7 @@ if(${len} GREATER_EQUAL 1)
       target_link_libraries(${test_name} paddle_gtest_main_new)
       target_link_libraries(${test_name} $<TARGET_LINKER_FILE:${paddle_lib}>)
       if(WITH_SHARED_PHI)
-        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
+        target_link_libraries(${test_name} phi)
       endif()
       if(WITH_SHARED_IR)
         target_link_libraries(${test_name} $<TARGET_LINKER_FILE:pir>)
@@ -240,11 +257,15 @@ if(${len} GREATER_EQUAL 1)
           ${test_name}
           "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir> -Wl,-rpath,$<TARGET_FILE_DIR:common>"
         )
+        if(ACCELERATE_FRAMEWORK)
+          target_link_libraries(${test_name} ${ACCELERATE_FRAMEWORK})
+          message(STATUS "linking to accelerate blas library in ${test_name}")
+        endif()
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
         target_link_libraries(${test_name} ${PYTHON_LIBRARIES})
       endif()
-      if(WITH_CINN AND NOT CINN_ONLY)
+      if(WITH_CINN)
         target_link_libraries(${test_name} $<TARGET_LINKER_FILE:cinnapi>)
       endif()
       if(WITH_XPU)
@@ -279,14 +300,6 @@ if(TARGET layer_test)
   add_dependencies(layer_test jit_download_program)
 endif()
 
-if(TEST buddy_allocator_test)
-  if(NOT WIN32)
-    add_dependencies(buddy_allocator_test download_data)
-  endif()
-  set_tests_properties(buddy_allocator_test PROPERTIES LABELS
-                                                       "RUN_TYPE=EXCLUSIVE")
-endif()
-
 add_custom_target(build_tests)
 
 # add target to build all cpp tests
@@ -294,4 +307,6 @@ if(${len} GREATER_EQUAL 1)
   add_dependencies(build_tests ${test_names})
 endif()
 
-set_pit_tests_properties()
+set_pir_tests_properties()
+
+add_subdirectory(deprecated)

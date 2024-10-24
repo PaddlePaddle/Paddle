@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/distributed/types.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace distributed {
@@ -39,7 +39,7 @@ class XPUEventManager {
 
   ~XPUEventManager() {
     if (is_created_) {
-      platform::XPUDeviceGuard guard(device_index_);
+      phi::backends::xpu::XPUDeviceGuard guard(device_index_);
       xpu_event_destroy(event_);
     }
   }
@@ -71,13 +71,13 @@ class XPUEventManager {
     }
     PADDLE_ENFORCE_EQ(device_index,
                       device_index_,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "XPUContext's device %d does not match"
                           "Event's device %d",
                           device_index,
                           device_index_));
 
-    platform::XPUDeviceGuard guard(device_index_);
+    phi::backends::xpu::XPUDeviceGuard guard(device_index_);
     // TODO(zhangxiaoci) temporary solution: xpu::event seems buggy
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait(ctx.stream()));
   }
@@ -92,7 +92,7 @@ class XPUEventManager {
  private:
   void CreateEvent(int device_index) {
     device_index_ = device_index;
-    platform::XPUDeviceGuard guard(device_index);
+    phi::backends::xpu::XPUDeviceGuard guard(device_index);
 
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_event_create(&event_));
 

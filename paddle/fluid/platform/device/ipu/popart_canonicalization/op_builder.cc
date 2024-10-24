@@ -221,7 +221,7 @@ Node *CreateSoftmaxOpset11(Graph *graph,
   PADDLE_ENFORCE_EQ(
       inputs.size(),
       1,
-      platform::errors::InvalidArgument("Softmax op only support one input"));
+      common::errors::InvalidArgument("Softmax op only support one input"));
   auto x_shape = inputs[0]->Var()->GetShape();
   int x_rank = x_shape.size();
   if (axis < 0) {

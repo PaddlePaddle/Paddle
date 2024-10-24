@@ -30,5 +30,19 @@ Tensor full(const IntArray& shape,
   return backend::full<T>(shape, value, dtype, place);
 }
 
+template <typename T>
+Tensor full_scalar(const Scalar& value,
+                   DataType dtype = DataType::FLOAT32,
+                   Place place = Place()) {
+  // empty_shape means x.shape=[]
+  std::vector<int64_t> empty_shape;
+  return backend::full<T>(empty_shape, value, dtype, place);
+}
+
+template <typename T>
+Tensor assign_out_(const Tensor& x, const Tensor& output) {
+  return backend::assign_out_<T>(x, output);
+}
+
 }  // namespace primitive
 }  // namespace paddle

@@ -76,7 +76,7 @@ def test_zip_8(iter_1, iter_2):
     return sum
 
 
-class TestExecutor(TestCaseBase):
+class TestZip(TestCaseBase):
     def test_simple_cases(self):
         x = 8
         y = 5

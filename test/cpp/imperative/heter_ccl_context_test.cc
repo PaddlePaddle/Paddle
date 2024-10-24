@@ -38,7 +38,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 #ifdef PADDLE_WITH_NCCL
 void AllReduceByStream(int local_rank, int device_id) {
   int data_size = 32;
-  const auto& place = platform::CUDAPlace(device_id);
+  const auto& place = phi::GPUPlace(device_id);
   phi::GPUContext ctx(place);
 
   // heter_parallel_ctx

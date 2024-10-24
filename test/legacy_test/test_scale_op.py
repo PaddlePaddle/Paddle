@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -23,15 +24,16 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.init_dtype_type()
+        self.public_python_api = paddle.scale
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
         self.attrs = {'scale': -2.3}
         self.outputs = {
@@ -45,7 +47,14 @@ class TestScaleOp(OpTest):
         self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
+class TestScaleOpFP64(TestScaleOp):
+    def init_dtype_type(self):
+        self.dtype = np.float64
+        # NOTE(dev): Scalar.to<float> has diff with double.
+        self.rev_comp_atol = 1e-7
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -117,14 +126,26 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         assert in_rows == out_rows
 
     def test_scale_selected_rows(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place, 'in', 'out')
 
     def test_scale_selected_rows_inplace(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
@@ -132,7 +153,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
 
@@ -154,7 +175,7 @@ class TestScaleFp16Op(TestScaleOp):
         self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_pir=True)
+        self.check_grad(["X"], "Out", check_pir=True, check_prim_pir=True)
 
 
 @unittest.skipIf(
@@ -165,6 +186,8 @@ class TestScaleBF16Op(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
+        self.public_python_api = paddle.scale
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.attrs = {'scale': -2.3}
         x = np.random.random((10, 10)).astype(np.float32)
@@ -176,7 +199,13 @@ class TestScaleBF16Op(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.8,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -201,7 +230,6 @@ class TestScaleApiStatic(unittest.TestCase):
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
-    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
@@ -242,7 +270,6 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -263,7 +290,13 @@ class TestScaleDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -274,7 +307,6 @@ class TestScaleTripleGradCheck(unittest.TestCase):
     def scale_wrapper(self, x):
         return paddle.scale(x[0], scale=2.0)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -295,7 +327,13 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -304,16 +342,17 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
 class TestScaleOpZeroNumelVariable(unittest.TestCase):
     def test_check_zero_numel_cpu(self):
-        paddle.set_device('cpu')
-        data = paddle.ones([0, 1])
-        out = paddle.scale(data, 2)
-        self.assertEqual(out, data)
-
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        with paddle.pir_utils.OldIrGuard():
+            paddle.set_device('cpu')
             data = paddle.ones([0, 1])
             out = paddle.scale(data, 2)
             self.assertEqual(out, data)
+
+            if paddle.is_compiled_with_cuda():
+                paddle.set_device('gpu')
+                data = paddle.ones([0, 1])
+                out = paddle.scale(data, 2)
+                self.assertEqual(out, data)
 
 
 if __name__ == "__main__":

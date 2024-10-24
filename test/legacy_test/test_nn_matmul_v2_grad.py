@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -21,7 +22,6 @@ from decorator_helper import prog_scope
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -36,7 +36,6 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
@@ -55,7 +54,13 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -70,7 +75,13 @@ class TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
         self.transpose_y = True
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -87,7 +98,6 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         self.transpose_x = True
         self.transpose_y = False
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
@@ -106,7 +116,13 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -123,7 +139,6 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         self.transpose_x = False
         self.transpose_y = False
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         eps = 0.005
@@ -142,7 +157,13 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -177,7 +198,13 @@ class TestMatmulTripleGradCheckDotCase(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -212,7 +239,13 @@ class TestMatmulTripleGradCheckNormalCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -247,7 +280,13 @@ class TestMatmulTripleGradCheckNormalCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -282,7 +321,13 @@ class TestMatmulTripleGradCheckNormalCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -317,7 +362,13 @@ class TestMatmulTripleGradCheckNormalCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -352,7 +403,13 @@ class TestMatmulTripleGradCheckBroadcastCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -387,7 +444,13 @@ class TestMatmulTripleGradCheckBroadcastCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -422,7 +485,13 @@ class TestMatmulTripleGradCheckBroadcastCase3(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -457,7 +526,13 @@ class TestMatmulTripleGradCheckBroadcastCase4(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -492,7 +567,13 @@ class TestMatmulTripleGradCheckBroadcastCase5(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -527,7 +608,13 @@ class TestMatmulTripleGradCheckSpecialCase1(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -562,7 +649,13 @@ class TestMatmulTripleGradCheckSpecialCase2(unittest.TestCase):
         )
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

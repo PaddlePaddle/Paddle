@@ -18,7 +18,7 @@
 #include <string>
 
 #include "paddle/cinn/ir/ir.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace optim {
 

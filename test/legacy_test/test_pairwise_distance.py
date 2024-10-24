@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
@@ -100,7 +100,13 @@ class TestPairwiseDistance(unittest.TestCase):
         all_shape = [[5], [100, 100]]
         dtypes = ['float32', 'float64']
         p_list = [-1, 0, 1, 2, np.inf, -np.inf]
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         keeps = [False, True]
@@ -152,7 +158,6 @@ class TestPairwiseDistance(unittest.TestCase):
                                 rtol=1e-05,
                             )
 
-                            @test_with_pir_api
                             def dynamic_and_pir_mode_test():
                                 static_ret = test_static(
                                     place,
@@ -228,7 +233,6 @@ class TestPairwiseDistance(unittest.TestCase):
             dygraph_functional_ret, excepted_value, rtol=1e-05
         )
 
-        @test_with_pir_api
         def dynamic_and_pir_mode_test():
             static_ret = test_static(
                 place=place,
@@ -293,7 +297,6 @@ class TestPairwiseDistance(unittest.TestCase):
             dygraph_functional_ret, excepted_value, rtol=1e-05
         )
 
-        @test_with_pir_api
         def dynamic_and_pir_mode_test():
             static_ret = test_static(
                 place=place,
@@ -324,7 +327,6 @@ class TestPairwiseDistance(unittest.TestCase):
 
         dynamic_and_pir_mode_test()
 
-    @test_with_pir_api
     def test_pairwise_distance_fp16(self):
         shape = [100, 100]
         if not paddle.device.is_compiled_with_cuda():

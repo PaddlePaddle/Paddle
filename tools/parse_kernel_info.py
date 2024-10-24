@@ -119,9 +119,7 @@ def parse_paddle_kernels(lib="phi", kernel_type="function", print_detail=False):
 
     if print_detail:
         print(
-            "==================== lib={}, kernel_type={} ====================".format(
-                lib, kernel_type
-            )
+            f"==================== lib={lib}, kernel_type={kernel_type} ===================="
         )
         print(
             "{} : {}".format(
@@ -131,12 +129,9 @@ def parse_paddle_kernels(lib="phi", kernel_type="function", print_detail=False):
         )
         for key, value in sorted(kernel_info_dict.items()):
             print(
-                "{} : {}".format(
-                    value.op_type.ljust(max_op_type_lengths + 4),
-                    value.supported_dtypes,
-                )
+                f"{value.op_type.ljust(max_op_type_lengths + 4)} : {value.supported_dtypes}"
             )
-        print("")
+        print()
     return stats
 
 
@@ -160,7 +155,7 @@ def main(lib):
         print(f"phi function  kernels : {phi_function_kernels_stats}")
         print(f"phi structure kernels : {phi_structure_kernels_stats}")
         print(f"phi all       kernels : {phi_all_kernels_stats}")
-        print("")
+        print()
     else:
         fluid_ops_stats = parse_paddle_kernels(lib, "fluid", print_detail=False)
         phi_ops_stats = parse_paddle_kernels(lib, "phi", print_detail=False)
@@ -173,7 +168,7 @@ def main(lib):
         print(f"fluid operators : {fluid_ops_stats}")
         print(f"phi   operators : {phi_ops_stats}")
         print(f"all   operators : {all_ops_stats}")
-        print("")
+        print()
 
 
 main(lib="fluid")

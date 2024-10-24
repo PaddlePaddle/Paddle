@@ -17,6 +17,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..auto_parallel.process_mesh import ProcessMesh
@@ -38,6 +39,7 @@ from ..auto_parallel.static.utils import (
     insert_dependencies_for_vars,
     is_gradient_clip_op,
     is_optimize_op,
+    is_reshard_op,
 )
 from .auto_parallel_sharding import ShardingPass
 from .pass_base import PassBase, register_pass
@@ -86,7 +88,7 @@ def _get_dpmp_topology(origin_topology, sharding_group):
     else:
         assert product_topology % product_dp_sharding == 0
         mp_degree = product_topology // product_dp_sharding
-        dpmp_topology = dp_sharding_topology + [mp_degree]
+        dpmp_topology = [*dp_sharding_topology, mp_degree]
 
     return dpmp_topology, sharding_axis
 
@@ -251,10 +253,14 @@ class ClipHelper:
                 return False
 
         for op in self.block.ops:
-            if op.type in [
-                "c_reduce_sum",
-                "c_allreduce_sum",
-            ] and not is_data_parallel_reduce_op(op):
+            if (
+                op.type == "c_allreduce_sum"
+                or (
+                    op.type == "reduce"
+                    and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+                )
+                and not is_data_parallel_reduce_op(op)
+            ):
                 return False
             if op.type in ["send_v2", "recv_v2"]:
                 return False
@@ -431,7 +437,7 @@ class ClipGradByGlobalNormPass(PassBase):
                     op.desc.set_input("X", reserved_vars)
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if not is_optimize_op(op):
+            if not (is_optimize_op(op) or is_reshard_op(op)):
                 break
             if not is_gradient_clip_op(op):
                 continue
@@ -439,7 +445,7 @@ class ClipGradByGlobalNormPass(PassBase):
                 block._remove_op(idx, sync=False)
 
         for idx, op in reversed(list(enumerate(block.ops))):
-            if not is_optimize_op(op):
+            if not (is_optimize_op(op) or is_reshard_op(op)):
                 break
             if not is_gradient_clip_op(op):
                 continue

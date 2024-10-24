@@ -399,7 +399,7 @@ struct GradLayer {
           dev_ctx, sequence_length, &mask_matrix, is_reverse, &mask_min_length);
       mask_tensor_list = Unbind(mask_matrix);
     }
-    // copy the last_h, last_c for swaping pointer
+    // copy the last_h, last_c for swapping pointer
     DenseTensor a, b;
     DenseTensor* dynamic_grad_last_h = &a;
     DenseTensor* dynamic_grad_last_c = &b;
@@ -1311,7 +1311,7 @@ void RnnGradKernel(const Context& dev_ctx,
         pre_state_grad,
         weight_grad_list);
     // run gru
-  } else if (is_rnn_relu(mode)) {
+  } else if (is_rnn_relu(mode)) {  // NOLINT
     gate_num = 1;
     RnnGradFunc<SimpleRNNGradCell<T, funcs::ReluGradFunctor>,
                 SingleGradLayer,

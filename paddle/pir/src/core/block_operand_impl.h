@@ -44,8 +44,8 @@ class BlockOperandImpl {
  private:
   BlockOperandImpl(Block* source, Operation* owner);
 
-  // Insert self to the UD chain holded by source_;
-  // It is not safe. So set provate.
+  // Insert self to the UD chain held by source_;
+  // It is not safe. So set private.
   void InsertToUdChain();
 
   BlockOperand next_use_ = nullptr;

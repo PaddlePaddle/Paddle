@@ -287,7 +287,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
             exe = base.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = base.CompiledProgram(main_prog)
+            prog = main_prog
 
             step_list = []
             loss_list = []
@@ -324,4 +324,5 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

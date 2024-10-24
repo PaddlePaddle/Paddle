@@ -20,8 +20,10 @@
 #include <vector>
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/pir/include/core/attribute_base.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
 namespace dialect {
@@ -52,6 +54,7 @@ struct GroupInfo {
       alignment_schedule_info;
   std::vector<int64_t> reduce_axis;
   std::vector<int64_t> loop_ranges;
+  std::vector<symbol::DimExpr> loop_ranges_expr;
 
  private:
   void Initialize() {
@@ -71,6 +74,11 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   static std::size_t HashValue(const ParamKey& key) {
     size_t hash_value = std::hash<std::string>{}(key.group_id);
 
+    for (auto op : key.ops) {
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<void*>()(op));
+    }
+
     for (auto d : key.loop_ranges) {
       hash_value =
           pir::detail::hash_combine(hash_value, std::hash<int64_t>()(d));
@@ -86,6 +94,26 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   bool operator==(const ParamKey& key) const {
     return data_.group_id == key.group_id;
   }
+
+  const ParamKey& GetAsKey() const { return data_; }
+
+ private:
+  ParamKey data_;
+};
+
+struct FusionTrackerPtrAttributeStorage : public pir::AttributeStorage {
+  using ParamKey = cinn::fusion::FusionTrackerPtr;
+  explicit FusionTrackerPtrAttributeStorage(const ParamKey& key) : data_(key) {}
+
+  static FusionTrackerPtrAttributeStorage* Construct(const ParamKey& key) {
+    return new FusionTrackerPtrAttributeStorage(key);
+  }
+
+  static std::size_t HashValue(const ParamKey& key) {
+    return std::hash<ParamKey>()(key);
+  }
+
+  bool operator==(const ParamKey& key) const { return data_ == key; }
 
   const ParamKey& GetAsKey() const { return data_; }
 

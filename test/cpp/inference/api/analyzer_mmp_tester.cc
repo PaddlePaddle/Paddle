@@ -79,8 +79,7 @@ void compare(bool use_mkldnn = false) {
   output->copy_to_cpu(xx_output.data());
 
   // Initialize xx model's predictor to trigger oneDNN cache clearing
-  predictor_xx =
-      std::move(InitializePredictor(FLAGS_infer_model2, data, use_mkldnn));
+  predictor_xx = InitializePredictor(FLAGS_infer_model2, data, use_mkldnn);
 
   // Run sequence of models
   predictor_1->ZeroCopyRun();
@@ -99,12 +98,12 @@ void compare(bool use_mkldnn = false) {
       xx2_output.begin(),
       [](const float& l, const float& r) { return fabs(l - r) < 1e-4; });
 
-  PADDLE_ENFORCE_EQ(result,
-                    true,
-                    ::paddle::platform::errors::Fatal(
-                        "Results of model run independently "
-                        "differs from results of the same model "
-                        "run as a sequence of models"));
+  PADDLE_ENFORCE_EQ(
+      result,
+      true,
+      ::common::errors::Fatal("Results of model run independently "
+                              "differs from results of the same model "
+                              "run as a sequence of models"));
 }
 
 TEST(Analyzer_mmp, compare) { compare(); }

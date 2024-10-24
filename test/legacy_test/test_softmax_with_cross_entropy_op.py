@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest, paddle_static_guard
+
+sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
 
 import paddle
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 
 def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
@@ -933,7 +935,7 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
 
 
 class TestSoftmaxWithCrossEntropyOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 

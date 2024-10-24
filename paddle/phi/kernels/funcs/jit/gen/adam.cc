@@ -19,9 +19,7 @@
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void AdamJitCode::loadArgs() {
   static constexpr int32_t one_as_float = 0x3f800000;
@@ -143,9 +141,7 @@ class AdamCreator : public JitCodeCreator<adam_attr_t> {
   }
 };
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

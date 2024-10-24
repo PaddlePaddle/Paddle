@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reader/ctr_reader.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +26,7 @@ class CreateCTRReaderOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     if (out->Get() != nullptr) return;
@@ -35,7 +35,7 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "No LoDTensorBlockingQueueHolder variable with name %s found",
             queue_name));
     auto* queue_holder =

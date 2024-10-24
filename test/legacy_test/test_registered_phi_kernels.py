@@ -64,12 +64,12 @@ class TestRegisteredPhiKernels(unittest.TestCase):
         root_path = pathlib.Path(__file__).parents[3]
 
         ops_yaml_path = [
-            'paddle/phi/api/yaml/ops.yaml',
-            'paddle/phi/api/yaml/legacy_ops.yaml',
+            'paddle/phi/ops/yaml/ops.yaml',
+            'paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml',
         ]
         bw_ops_yaml_path = [
-            'paddle/phi/api/yaml/backward.yaml',
-            'paddle/phi/api/yaml/legacy_backward.yaml',
+            'paddle/phi/ops/yaml/backward.yaml',
+            'paddle/phi/ops/yaml/inconsistent/dygraph_backward.yaml',
         ]
 
         for each_ops_yaml in ops_yaml_path:

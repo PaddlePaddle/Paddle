@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import copy
+import os
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -120,7 +120,13 @@ class TestIndexPutAPIBase(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if self.dtype_np is np.float16:
             self.place = []
         if paddle.is_compiled_with_cuda():
@@ -144,7 +150,6 @@ class TestIndexPutAPIBase(unittest.TestCase):
             )
             np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
-    @test_with_pir_api
     def test_static_forward(self):
         paddle.enable_static()
         for place in self.place:
@@ -623,11 +628,16 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
-    @test_with_pir_api
     def test_dygraph_forward(self):
         paddle.disable_static()
         for place in self.place:
@@ -667,7 +677,13 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         self.setPlace()
 
     def setPlace(self):
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
@@ -936,7 +952,6 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
-    @test_with_pir_api
     def test_backward_in_static(self):
         paddle.enable_static()
         exe = paddle.static.Executor()

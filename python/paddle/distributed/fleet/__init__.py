@@ -98,6 +98,7 @@ save_dense_params = fleet.save_dense_params
 load_model = fleet.load_model
 load_inference_model = fleet.load_inference_model
 load_one_table = fleet.load_one_table
+set_date = fleet.set_date
 minimize = fleet.minimize
 distributed_model = distributed_model
 shrink = fleet.shrink
@@ -106,6 +107,7 @@ distributed_scaler = distributed_scaler
 set_log_level = log_util.set_log_level
 get_log_level_code = log_util.get_log_level_code
 get_log_level_name = log_util.get_log_level_name
+check_memory_usage = log_util.check_memory_usage
 save_cache_table = fleet.save_cache_table
 collective_perf = fleet.collective_perf
 from .. import auto_parallel as auto  # noqa: F401

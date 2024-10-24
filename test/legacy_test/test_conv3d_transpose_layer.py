@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,13 +60,16 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.channel_last = self.data_format == "NDHWC"
         if self.channel_last:
             input_shape = (
-                (self.batch_size,) + self.spatial_shape + (self.num_channels,)
+                self.batch_size,
+                *self.spatial_shape,
+                self.num_channels,
             )
         else:
             input_shape = (
                 self.batch_size,
                 self.num_channels,
-            ) + self.spatial_shape
+                *self.spatial_shape,
+            )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -76,7 +79,8 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.num_channels,
             self.num_filters // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
@@ -105,19 +109,18 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                     bias_attr = False
                 else:
                     bias_attr = paddle.nn.initializer.Assign(self.bias)
-                y_var = paddle.static.nn.conv3d_transpose(
-                    x_var,
-                    self.num_filters,
-                    filter_size=self.filter_size,
-                    output_size=self.output_size,
-                    padding=self.padding,
+                y_var = paddle.nn.Conv3DTranspose(
+                    in_channels=self.num_channels,
+                    out_channels=self.num_filters,
+                    kernel_size=self.filter_size,
                     stride=self.stride,
+                    padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=weight_attr,
+                    weight_attr=weight_attr,
                     bias_attr=bias_attr,
                     data_format=self.data_format,
-                )
+                )(x_var, self.output_size)
         feed_dict = {"input": self.input}
         exe = base.Executor(place)
         exe.run(start)
@@ -140,9 +143,12 @@ class Conv3DTransposeTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.num_filters,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 y_var = F.conv3d_transpose(
                     x_var,
                     w_var,
@@ -181,10 +187,21 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
+    def _test_pir_equivalence(self, place):
+        place = base.CPUPlace()
+        with paddle.pir_utils.IrGuard():
+            result1 = self.base_layer(place)
+            result2 = self.functional(place)
+        with dg.guard(place):
+            result3 = self.paddle_nn_layer()
+        np.testing.assert_array_almost_equal(result1, result2)
+        np.testing.assert_array_almost_equal(result2, result3)
+
     def _test_equivalence(self, place):
         place = base.CPUPlace()
-        result1 = self.base_layer(place)
-        result2 = self.functional(place)
+        with paddle.pir_utils.OldIrGuard():
+            result1 = self.base_layer(place)
+            result2 = self.functional(place)
         with dg.guard(place):
             result3 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
@@ -193,10 +210,12 @@ class Conv3DTransposeTestCase(unittest.TestCase):
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
+        self._test_pir_equivalence(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
             self._test_equivalence(place)
+            self._test_pir_equivalence(place)
 
 
 class Conv3DTransposeErrorTestCase(Conv3DTransposeTestCase):

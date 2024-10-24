@@ -29,11 +29,11 @@
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/collective_helper.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "xpu/bkcl.h"
 #include "xpu/runtime.h"
 
@@ -60,7 +60,7 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   } else if (type == framework::proto::VarType::BOOL) {
     return BKCL_UINT8;
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "BKCL currently only support FP32, INT64, INT32, FP64, FP16, BF16, "
         "UINT8 and BOOL, "
         "other data types are not supported."));
@@ -98,12 +98,11 @@ class BKCLGroupGuard {
 };
 
 struct BKCLContext {
-  std::unique_ptr<platform::XPUDeviceContext> ctx_;
+  std::unique_ptr<phi::XPUContext> ctx_;
   BKCLContext_t comm_;
 
   explicit BKCLContext(int dev_id)
-      : ctx_(new platform::XPUDeviceContext(XPUPlace(dev_id))),
-        comm_{nullptr} {}
+      : ctx_(new phi::XPUContext(phi::XPUPlace(dev_id))), comm_{nullptr} {}
 
   XPUStream stream() const { return ctx_->stream(); }
   BKCLContext_t comm() const { return comm_; }
@@ -130,12 +129,12 @@ static void *init_bkcl_context_func(void *args) {
 struct BKCLContextMap {
   std::unordered_map<int, BKCLContext> contexts_;
   std::vector<int> order_;
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   size_t num_trainers_;
   size_t trainer_id_;
   BKCLUniqueId *bkcl_id_;
 
-  explicit BKCLContextMap(const std::vector<platform::Place> &places,
+  explicit BKCLContextMap(const std::vector<phi::Place> &places,
                           BKCLUniqueId *bkcl_id = nullptr,
                           size_t num_trainers = 1,
                           size_t trainer_id = 0) {
@@ -148,10 +147,10 @@ struct BKCLContextMap {
   // Synchronization is required and can only be initialized with
   // multithreading.
   int init() {
-    PADDLE_ENFORCE_EQ(!places_.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The BKCL place should not be empty."));
+    PADDLE_ENFORCE_EQ(
+        !places_.empty(),
+        true,
+        common::errors::InvalidArgument("The BKCL place should not be empty."));
     order_.reserve(places_.size());
     for (auto &p : places_) {
       int dev_id = p.device;
@@ -161,8 +160,8 @@ struct BKCLContextMap {
     PADDLE_ENFORCE_EQ(
         order_.size(),
         contexts_.size(),
-        platform::errors::Unavailable("BKCL Context Map does not support "
-                                      "contain two or more same device"));
+        common::errors::Unavailable("BKCL Context Map does not support "
+                                    "contain two or more same device"));
 
     std::unique_ptr<BKCLContext_t[]> comms(new BKCLContext_t[order_.size()]);
     std::unique_ptr<InitBKCLPara[]> paras(new InitBKCLPara[order_.size()]);
@@ -174,13 +173,13 @@ struct BKCLContextMap {
       ret = bkcl_get_unique_id(&id);
       PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
                         ret,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "bkcl get unique id failed [%d]", ret));
       bkcl_id_ = &id;
     }
     PADDLE_ENFORCE_NOT_NULL(
         bkcl_id_,
-        platform::errors::InvalidArgument("The BKCL id should not be null."));
+        common::errors::InvalidArgument("The BKCL id should not be null."));
     {
       int nranks = num_trainers_ * order_.size();
       for (size_t i = 0; i < order_.size(); ++i) {
@@ -202,7 +201,7 @@ struct BKCLContextMap {
                                          init_bkcl_context_func,
                                          reinterpret_cast<void *>(&paras[i])),
                           0,
-                          platform::errors::External("pthread_create failed"));
+                          common::errors::External("pthread_create failed"));
       }
       for (size_t i = 0; i < order_.size(); i++) {
         pthread_join(pids[i], nullptr);
@@ -218,11 +217,11 @@ struct BKCLContextMap {
   BKCLContextMap(const BKCLContextMap &other) = delete;
   BKCLContextMap &operator=(const BKCLContextMap &other) = delete;
 
-  XPUDeviceContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
+  phi::XPUContext *DevCtx(int dev_id) const { return at(dev_id).ctx_.get(); }
 
-  XPUDeviceContext *DevCtx(platform::Place p) const { return DevCtx(p.device); }
+  phi::XPUContext *DevCtx(phi::Place p) const { return DevCtx(p.device); }
 
-  const BKCLContext &at(platform::Place p) const { return this->at(p.device); }
+  const BKCLContext &at(phi::Place p) const { return this->at(p.device); }
 
   const BKCLContext &at(int dev_id) const { return contexts_.at(dev_id); }
 
@@ -265,7 +264,7 @@ class BKCLCommunicator {
                                    bool use_hierarchical_allreduce) const {
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce,
                       false,
-                      platform::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "Hierarchical all reduce is not support for XPU"));
     return GetFlatCtx(run_order);
   }
@@ -276,8 +275,8 @@ class BKCLCommunicator {
    *parallelly. So create a new bkcl comm for sync_batch_norm_op. And these
    *codes should be polished with a unified bkcl management.
    */
-  BKCLContextMap *GetSyncBatchNormCtx(
-      framework::Scope *scope, const std::vector<platform::Place> &places) {
+  BKCLContextMap *GetSyncBatchNormCtx(framework::Scope *scope,
+                                      const std::vector<phi::Place> &places) {
     auto *bkcl_id_var = scope->FindVar(BKCL_ID_VARNAME);
     if (bkcl_id_var != nullptr) {
       return DefaultFlatCtx();
@@ -290,7 +289,7 @@ class BKCLCommunicator {
     return sync_batch_norm_ctx_.get();
   }
 
-  void InitFlatCtxs(const std::vector<platform::Place> &places,
+  void InitFlatCtxs(const std::vector<phi::Place> &places,
                     const std::vector<BKCLUniqueId *> &bkcl_ids,
                     size_t trainers_num,
                     size_t trainer_id) {
@@ -302,7 +301,7 @@ class BKCLCommunicator {
     } else {
       PADDLE_ENFORCE_EQ(bkcl_ids.size(),
                         1,
-                        platform::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "Multi-all-reduce-ring is not support for XPU"));
       for (size_t i = 0; i < bkcl_ids.size(); i++) {
         auto ptr = new platform::BKCLContextMap(

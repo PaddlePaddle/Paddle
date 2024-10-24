@@ -24,9 +24,9 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
-#include <hiprand.h>
+#include <hiprand/hiprand.h>
 #include <miopen/miopen.h>
-#include <rocblas.h>
+#include <rocblas/rocblas.h>
 #include <thrust/system/hip/error.h>
 #include <thrust/system_error.h>  // NOLINT
 #endif
@@ -56,6 +56,7 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/dynload/hipblasLt.h"
 #include "paddle/phi/backends/dynload/hipfft.h"
 #include "paddle/phi/backends/dynload/hiprand.h"
 #include "paddle/phi/backends/dynload/miopen.h"
@@ -79,41 +80,6 @@ limitations under the License. */
 namespace phi {
 namespace enforce {
 
-namespace details {
-template <typename T>
-inline constexpr bool IsArithmetic() {
-  return std::is_arithmetic<T>::value;
-}
-
-template <typename T1, typename T2, bool kIsArithmetic /* = true */>
-struct TypeConverterImpl {
-  using Type1 = typename std::common_type<T1, T2>::type;
-  using Type2 = Type1;
-};
-
-template <typename T1, typename T2>
-struct TypeConverterImpl<T1, T2, false> {
-  using Type1 = T1;
-  using Type2 = T2;
-};
-
-template <typename T1, typename T2>
-struct TypeConverter {
-  static constexpr bool kIsArithmetic =
-      IsArithmetic<T1>() && IsArithmetic<T2>();
-  using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
-  using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
-};
-
-template <typename T1, typename T2>
-using CommonType1 = typename std::add_lvalue_reference<
-    typename std::add_const<typename TypeConverter<T1, T2>::Type1>::type>::type;
-
-template <typename T1, typename T2>
-using CommonType2 = typename std::add_lvalue_reference<
-    typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
-}  // namespace details
-
 template <typename StrType>
 std::string GetCompleteTraceBackString(StrType&& what,
                                        const char* file,
@@ -130,14 +96,6 @@ std::string GetCompleteTraceBackString(StrType&& what,
 inline bool is_error(bool stat) { return !stat; }
 
 void ThrowWarnInternal(const std::string& message);
-
-#define PADDLE_THROW(...)                                         \
-  do {                                                            \
-    HANDLE_THE_ERROR                                              \
-    throw ::common::enforce::EnforceNotMet(                       \
-        ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                          \
-  } while (0)
 
 #if defined(__CUDA_ARCH__)
 // For cuda, the assertions can affect performance and it is therefore
@@ -167,12 +125,12 @@ void ThrowWarnInternal(const std::string& message);
     }                                                              \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                               \
-  do {                                                          \
-    auto __cond__ = (COND);                                     \
-    if (UNLIKELY(::phi::is_error(__cond__))) {                  \
-      __THROW_ERROR_INTERNAL__(phi::ErrorSummary(__VA_ARGS__)); \
-    }                                                           \
+#define PADDLE_ENFORCE(COND, ...)                                    \
+  do {                                                               \
+    auto __cond__ = (COND);                                          \
+    if (UNLIKELY(::phi::is_error(__cond__))) {                       \
+      __THROW_ERROR_INTERNAL__(::common::ErrorSummary(__VA_ARGS__)); \
+    }                                                                \
   } while (0)
 #endif
 
@@ -193,7 +151,7 @@ void ThrowWarnInternal(const std::string& message);
 #define PADDLE_WARN_NOT_NULL(__VAL, ...)                         \
   do {                                                           \
     if (UNLIKELY(nullptr == (__VAL))) {                          \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);         \
+      auto __summary__ = ::common::ErrorSummary(__VA_ARGS__);    \
       auto __message__ = ::paddle::string::Sprintf(              \
           "%s\n  [Hint: " #__VAL " should not be null.]",        \
           __summary__.error_message());                          \
@@ -230,7 +188,7 @@ void ThrowWarnInternal(const std::string& message);
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
     auto* __ptr = (__PTR);                                              \
     if (UNLIKELY(nullptr == __ptr)) {                                   \
-      auto __summary__ = phi::errors::NotFound(                         \
+      auto __summary__ = common::errors::NotFound(                      \
           "Unable to get %s data of %s %s in operator %s. "             \
           "Possible reasons are:\n"                                     \
           "  1. The %s is not the %s of operator %s;\n"                 \
@@ -251,7 +209,7 @@ void ThrowWarnInternal(const std::string& message);
           "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
           __summary__.error_message());                                 \
       __THROW_ERROR_INTERNAL__(                                         \
-          phi::ErrorSummary(__summary__.code(), __message__));          \
+          ::common::ErrorSummary(__summary__.code(), __message__));     \
     }                                                                   \
     return *__ptr;                                                      \
   })())
@@ -293,7 +251,7 @@ namespace details {
     } catch (paddle::bad_variant_access const&) {                            \
       HANDLE_THE_ERROR                                                       \
       throw ::common::enforce::EnforceNotMet(                                \
-          phi::errors::InvalidArgument(                                      \
+          common::errors::InvalidArgument(                                   \
               "paddle::get failed, cannot get value "                        \
               "(%s) by type %s, its type is %s.",                            \
               expression,                                                    \
@@ -359,7 +317,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
 }  // namespace details
 
 template <typename T>
-std::string GetExternalErrorMsg(T status);
+TEST_API std::string GetExternalErrorMsg(T status);
 
 /*************** CUDA ERROR ***************/
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
@@ -480,7 +438,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
         ::phi::enforce::details::ExternalApiType<            \
             __CUDA_STATUS_TYPE__>::kSuccess;                 \
     if (UNLIKELY(__cond__ != __success_type__)) {            \
-      auto __summary__ = phi::errors::External(              \
+      auto __summary__ = common::errors::External(           \
           ::phi::enforce::build_nvidia_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);                 \
     }                                                        \
@@ -499,14 +457,14 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
     }                                                        \
   } while (0)
 
-#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                              \
-  do {                                                                      \
-    auto res = cudaGetLastError();                                          \
-    if (UNLIKELY(res != cudaSuccess)) {                                     \
-      auto msg = ::phi::enforce::build_nvidia_error_msg(res);               \
-      PADDLE_THROW(                                                         \
-          phi::errors::Fatal("CUDA error after kernel (%s): %s", OP, msg)); \
-    }                                                                       \
+#define PADDLE_ENFORCE_CUDA_LAUNCH_SUCCESS(OP)                                 \
+  do {                                                                         \
+    auto res = cudaGetLastError();                                             \
+    if (UNLIKELY(res != cudaSuccess)) {                                        \
+      auto msg = ::phi::enforce::build_nvidia_error_msg(res);                  \
+      PADDLE_THROW(                                                            \
+          common::errors::Fatal("CUDA error after kernel (%s): %s", OP, msg)); \
+    }                                                                          \
   } while (0)
 
 inline void retry_sleep(unsigned milliseconds) {
@@ -539,7 +497,7 @@ inline void retry_sleep(unsigned milliseconds) {
       ++retry_count;                                                    \
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = phi::errors::External(                         \
+      auto __summary__ = common::errors::External(                      \
           ::phi::enforce::build_nvidia_error_msg(__cond__));            \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \
@@ -647,6 +605,45 @@ inline std::string build_rocm_error_msg(rocblas_status stat) {
   return msg + rocblasGetErrorString(stat) + " ";
 }
 
+/***** HIPBLASLT ERROR *****/
+inline bool is_error(hipblasStatus_t stat) {
+  return stat != HIPBLAS_STATUS_SUCCESS;
+}
+
+inline const char* hipblasltGetErrorString(hipblasStatus_t stat) {
+  switch (stat) {
+    case HIPBLAS_STATUS_NOT_INITIALIZED:
+      return "HIPBLAS_STATUS_NOT_INITIALIZED";
+    case HIPBLAS_STATUS_ALLOC_FAILED:
+      return "HIPBLAS_STATUS_ALLOC_FAILED";
+    case HIPBLAS_STATUS_INVALID_VALUE:
+      return "HIPBLAS_STATUS_INVALID_VALUE";
+    case HIPBLAS_STATUS_MAPPING_ERROR:
+      return "HIPBLAS_STATUS_MAPPING_ERROR";
+    case HIPBLAS_STATUS_EXECUTION_FAILED:
+      return "HIPBLAS_STATUS_EXECUTION_FAILED";
+    case HIPBLAS_STATUS_INTERNAL_ERROR:
+      return "HIPBLAS_STATUS_INTERNAL_ERROR";
+    case HIPBLAS_STATUS_NOT_SUPPORTED:
+      return "HIPBLAS_STATUS_NOT_SUPPORTED";
+    case HIPBLAS_STATUS_ARCH_MISMATCH:
+      return "HIPBLAS_STATUS_ARCH_MISMATCH";
+    case HIPBLAS_STATUS_HANDLE_IS_NULLPTR:
+      return "HIPBLAS_STATUS_HANDLE_IS_NULLPTR";
+    case HIPBLAS_STATUS_INVALID_ENUM:
+      return "HIPBLAS_STATUS_INVALID_ENUM";
+    case HIPBLAS_STATUS_UNKNOWN:
+      return "HIPBLAS_STATUS_UNKNOWN";
+    default:
+      return "Unknown hipblaslt status";
+  }
+}
+
+inline std::string build_rocm_error_msg(hipblasStatus_t stat) {
+  std::string msg(" HipblasLt error, ");
+  return msg + hipblasltGetErrorString(stat) + " ";
+}
+
 /****** RCCL ERROR ******/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 inline bool is_error(ncclResult_t nccl_result) {
@@ -683,6 +680,7 @@ DEFINE_EXTERNAL_API_TYPE(hipError_t, hipSuccess);
 DEFINE_EXTERNAL_API_TYPE(hiprandStatus_t, HIPRAND_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(miopenStatus_t, miopenStatusSuccess);
 DEFINE_EXTERNAL_API_TYPE(rocblas_status, rocblas_status_success);
+DEFINE_EXTERNAL_API_TYPE(hipblasStatus_t, HIPBLAS_STATUS_SUCCESS);
 DEFINE_EXTERNAL_API_TYPE(hipfftResult_t, HIPFFT_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
@@ -699,7 +697,7 @@ DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess);
         ::phi::enforce::details::ExternalApiType<          \
             __CUDA_STATUS_TYPE__>::kSuccess;               \
     if (UNLIKELY(__cond__ != __success_type__)) {          \
-      auto __summary__ = phi::errors::External(            \
+      auto __summary__ = common::errors::External(         \
           ::phi::enforce::build_rocm_error_msg(__cond__)); \
       __THROW_ERROR_INTERNAL__(__summary__);               \
     }                                                      \
@@ -740,7 +738,7 @@ inline void retry_sleep(unsigned millisecond) {
       ++retry_count;                                                    \
     }                                                                   \
     if (UNLIKELY(__cond__ != __success_type__)) {                       \
-      auto __summary__ = phi::errors::External(                         \
+      auto __summary__ = common::errors::External(                      \
           ::phi::enforce::build_rocm_error_msg(__cond__));              \
       __THROW_ERROR_INTERNAL__(__summary__);                            \
     }                                                                   \

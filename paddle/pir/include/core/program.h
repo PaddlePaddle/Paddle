@@ -57,6 +57,7 @@ class IR_API Program {
 
   std::shared_ptr<Program> Clone(IrMapping& ir_mapping) const;  // NOLINT
 
+  void CopyToBlock(IrMapping& ir_mapping, Block* insert_block) const;  // NOLINT
   Block* block() { return &module_.block(); }
   const Block* block() const { return &module_op().block(); }
 
@@ -70,9 +71,13 @@ class IR_API Program {
     parameters_ = parameters;
   }
 
+  uint64_t id() const { return id_; }
+
  private:
   // computation graph
   ModuleOp module_;
+  // unique in current process, "almost" unique between processes.
+  uint64_t id_;
   // weight
   ParameterMap parameters_;
 };

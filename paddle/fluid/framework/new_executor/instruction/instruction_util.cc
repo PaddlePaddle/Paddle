@@ -21,9 +21,10 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -36,14 +37,13 @@
 #include "paddle/pir/include/core/block_argument.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info) {
@@ -61,23 +61,22 @@ std::vector<int> GetValueIds(pir::Value value,
   return ids;
 }
 
-platform::DeviceContext* ParseDeviceContext(
-    pir::Operation* op,
-    platform::DeviceContext* origin_dev_ctx,
-    const platform::Place& place,
-    const std::string& execution_stream,
-    const int stream_priority) {
+phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
+                                       phi::DeviceContext* origin_dev_ctx,
+                                       const phi::Place& place,
+                                       const std::string& execution_stream,
+                                       const int stream_priority) {
   auto& op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   interpreter::ContextManager& ctx_manager =
       interpreter::ContextManager::Instance();
 
-  platform::DeviceContext* dev_ctx = nullptr;
+  phi::DeviceContext* dev_ctx = nullptr;
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (platform::is_gpu_place(place) || platform::is_custom_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_custom_place(place)) {
     VLOG(6) << "Parse DeviceContext for " << op_name
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
@@ -124,7 +123,7 @@ platform::DeviceContext* ParseDeviceContext(
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<platform::DeviceContext*>(
+        dev_ctx = static_cast<phi::DeviceContext*>(
             static_cast<phi::distributed::NCCLCommContext*>(
                 comm_context_manager.Get(std::to_string(ring_id)))
                 ->GetDevContext());
@@ -135,6 +134,52 @@ platform::DeviceContext* ParseDeviceContext(
       }
       return dev_ctx;
     }
+
+    // handle comm op
+    if (op_attributes.count("ring_id") != 0 &&
+        FLAGS_dynamic_static_unified_comm) {
+      int ring_id =
+          op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      if (comm_context_manager.Has(std::to_string(ring_id))) {
+        auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+        dev_ctx = static_cast<platform::DeviceContext*>(
+            static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                ->GetDevContext());
+        dev_ctx->SetCommContext(comm_context);
+        if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::Broadcast_Op::name()) == 0 ||
+            op_name.compare(paddle::dialect::BroadcastOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
+          if (phi::is_gpu_place(place) && execution_stream == kDefaultStream) {
+            if (origin_dev_ctx != nullptr) {
+              // set stream
+              auto default_stream =
+                  static_cast<phi::GPUContext*>(origin_dev_ctx)->cuda_stream();
+              static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                  default_stream, false);
+              // set allocator
+              auto& instance =
+                  paddle::memory::allocation::AllocatorFacade::Instance();
+              dev_ctx->SetAllocator(
+                  instance
+                      .GetAllocator(
+                          place,
+                          static_cast<phi::GPUContext*>(dev_ctx)->stream())
+                      .get());
+            } else {
+              VLOG(3) << "op " << op_name << " ring_id " << ring_id
+                      << " origin_dev_ctx is nullptr";
+            }
+          }
+          return dev_ctx;
+        }
+      } else {
+        VLOG(3) << "ring_id " << ring_id
+                << " not found in comm_context_manager for op " << op_name;
+      }
+    }
 #endif
   }
 
@@ -144,19 +189,19 @@ platform::DeviceContext* ParseDeviceContext(
   return origin_dev_ctx;
 }
 
-OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
-  if (platform::is_cpu_place(place)) {
+OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
+  if (phi::is_cpu_place(place)) {
     return OpFuncType::kCpuSync;
   }
 
-  PADDLE_ENFORCE_EQ(interpreter::IsSupportedHeterPlace(place),
-                    true,
-                    phi::errors::Fatal("Unsupported current place %s", place));
+  PADDLE_ENFORCE_EQ(
+      interpreter::IsSupportedHeterPlace(place),
+      true,
+      common::errors::Fatal("Unsupported current place %s", place));
 
   auto& op_attributes = op->attributes();
 
-  if ((op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
-       0) &&
+  if ((op->dialect()->name() == paddle::dialect::KernelDialect::name()) &&
       (op_attributes.count("kernel_key") > 0)) {
     auto kernel_key = op_attributes.at("kernel_key")
                           .dyn_cast<dialect::KernelAttribute>()
@@ -176,16 +221,15 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
     auto op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
     if (op_name == "pd_op.coalesce_tensor" &&
-        (!platform::is_xpu_place(place) ||
+        (!phi::is_xpu_place(place) ||
          op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
         op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
         op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
       return OpFuncType::kGpuSync;
     }
 
-    if (platform::is_gpu_place(place) &&
-        (op_name == "pd_op.memcpy_d2h" ||
-         op_name == "pd_op.memcpy_d2h_multi_io")) {
+    if (phi::is_gpu_place(place) && (op_name == "pd_op.memcpy_d2h" ||
+                                     op_name == "pd_op.memcpy_d2h_multi_io")) {
       return OpFuncType::kGpuSync;
     }
 
@@ -194,19 +238,20 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
     }
   }
 
-  return OpFuncType::kGpuAsync;
-}
-
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
-  std::vector<pir::Value> vec_res;
-
-  if (block && !block->empty() && block->back().isa<pir::YieldOp>()) {
-    auto& op = block->back();
-    for (size_t i = 0; i < op.num_operands(); ++i) {
-      vec_res.emplace_back(op.operand_source(i));
+  if (auto combine_op = op->dyn_cast<pir::CombineOp>()) {
+    for (size_t i = 0; i < combine_op.num_operands(); ++i) {
+      if (auto combine_operand_type =
+              combine_op.operand_source(i)
+                  .type()
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()) {
+        if (phi::is_cpu_place(combine_operand_type.place())) {
+          return OpFuncType::kCpuSync;
+        }
+      }
     }
   }
-  return vec_res;
+
+  return OpFuncType::kGpuAsync;
 }
 
 void GetInputIds(pir::Operation* op,
@@ -218,7 +263,7 @@ void GetInputIds(pir::Operation* op,
       PADDLE_ENFORCE_EQ(
           value_exec_info.HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
@@ -281,7 +326,9 @@ std::unordered_set<pir::Value> GetInternalInputs(pir::Block* block) {
     }
     if (op.isa<pir::TuplePopOp>()) {
       auto tuple_pop_op = op.dyn_cast<pir::TuplePopOp>();
-      inner_inputs.insert(tuple_pop_op.container());
+      if (tuple_pop_op.has_container()) {
+        inner_inputs.insert(tuple_pop_op.container());
+      }
     }
     for (size_t i = 0; i < op.num_operands(); ++i) {
       inner_inputs.insert(op.operand_source(i));
@@ -306,7 +353,7 @@ std::vector<pir::Value> GetExternalInputs(
     if (value && (!inner_outputs.count(value))) {
       PADDLE_ENFORCE_EQ(value_exec_info.HasValue(value),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "input %s should be in name map", value.impl()));
       input_ids->emplace(value, GetValueIds(value, value_exec_info));
       outside_op_inputs.push_back(value);
@@ -400,17 +447,17 @@ void InsertInplacedExternalInputsToOuts(
 }
 
 bool GetCondData(const phi::DenseTensor& cond) {
-  if (paddle::platform::is_cpu_place(cond.place())) {
+  if (phi::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
-  // when platform::is_gpu_place(cond.place()) or
-  // platform::is_xpu_place(cond.place()) is true
+  // when phi::is_gpu_place(cond.place()) or
+  // phi::is_xpu_place(cond.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+  paddle::framework::TensorCopySync(cond, phi::CPUPlace(), cpu_cond.get());
 #else
-  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "This version of PaddlePaddle does NOT support GPU/XPU but got "
       "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
       "WITH_XPU option."));
@@ -418,27 +465,106 @@ bool GetCondData(const phi::DenseTensor& cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-void CopyBranchOutput(const std::vector<std::string>& var_names,
-                      const std::vector<Variable*>& output_vars,
-                      Scope* inner_scope) {
-  for (size_t i = 0; i < var_names.size(); ++i) {
-    auto* inner_var = inner_scope->GetVar(var_names[i]);
+// NOTE(chenxi67): Here, we only perform inplace processing for variables whose
+// type is NOT TensorArray. It has already been processed in the previous
+// step(HandleForInplaceVarOp).
+void HandleForInplaceOp(pir::Operation* op,
+                        const ValueExecutionInfo* value_exe_info,
+                        InstructionBase* instr) {
+  if (op->num_results() < 1) return;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  std::string op_name = op->name();
+  if (op->attributes().count("op_name")) {
+    op_name =
+        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+  }
 
-    if (inner_var->IsType<phi::DenseTensor>()) {
-      output_vars[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          inner_var->Get<phi::DenseTensor>());
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  paddle::dialect::OpYamlInfoParser yaml_parser(
+      op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+          ->get_op_info_(op_name),
+      paddle::dialect::IsLegacyOp(op_name));
 
-    } else if (inner_var->IsType<phi::TensorArray>()) {
-      const auto& inner_array = inner_var->Get<phi::TensorArray>();
-      auto* output_array = output_vars[i]->GetMutable<phi::TensorArray>();
-      // output_array->clear();
-      *output_array = inner_array;
-    } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    pir::Value value = op->result(i);
+    if (!IsInvalid(value)) {
+      VLOG(8) << "Number " << i << " result of " << op_name
+              << " is not invalid, so skip build a variable.";
+      continue;
+    }
+    if (IsNeedVarInplace(op, value, op_name)) {
+      continue;
+    }
+    std::string value_name = yaml_parser.OutputNames()[i];
+    if (yaml_parser.HasInplace(value_name)) {
+      const std::string& inplace_name = yaml_parser.InplaceName(value_name);
+      pir::Value inplace_value =
+          op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
+      std::string input_var_name = value_exe_info->GetVarName(inplace_value);
+      std::string output_var_name = value_exe_info->GetVarName(value);
+      PADDLE_ENFORCE_NE(input_var_name,
+                        "",
+                        common::errors::InvalidArgument(
+                            "The input var name of inplace op is empty."));
+      PADDLE_ENFORCE_NE(output_var_name,
+                        "",
+                        common::errors::InvalidArgument(
+                            "The output var name of inplace op is empty."));
+      VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
+              << " (var: " << input_var_name << ")";
+      instr->AddInplace(value_exe_info->GetVarByValue(inplace_value),
+                        value_exe_info->GetVarByValue(value));
+    } else if (yaml_parser.HasView(value_name)) {
+      const std::string& view_name = yaml_parser.ViewName(value_name);
+      pir::Value view_value =
+          op->operand_source(yaml_parser.InputName2Id().at(view_name));
+      // const std::string& var_name = value_2_var_name->at(view_value);
+      std::string input_var_name = value_exe_info->GetVarName(view_value);
+      std::string output_var_name = value_exe_info->GetVarName(value);
+
+      PADDLE_ENFORCE_NE(input_var_name,
+                        "",
+                        common::errors::InvalidArgument(
+                            "The input var name of view op is empty."));
+      PADDLE_ENFORCE_NE(output_var_name,
+                        "",
+                        common::errors::InvalidArgument(
+                            "The output var name of view op is empty."));
+      VLOG(4) << "view: " << value_name << " -> " << view_name
+              << " (var: " << input_var_name << ")";
+      instr->AddInplace(value_exe_info->GetVarByValue(view_value),
+                        value_exe_info->GetVarByValue(value));
     }
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+void ShareVarBuffer(const Variable* src_var, Variable* dst_var) {
+  if (src_var->IsType<phi::DenseTensor>()) {
+    auto& src_tensor = src_var->Get<phi::DenseTensor>();
+    auto* tmp_dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    tmp_dst_tensor->ShareBufferWith(src_tensor);
+    return;
+  } else if (src_var->IsType<phi::SelectedRows>()) {
+    auto* tmp_dst_slr = dst_var->GetMutable<phi::SelectedRows>();
+    auto* dst_t = tmp_dst_slr->mutable_value();
+    auto& src_slr = src_var->Get<phi::SelectedRows>();
+    auto& src_t = src_slr.value();
+    dst_t->ShareBufferWith(src_t);
+    return;
+  } else if (src_var->IsType<VariableRefArray>()) {
+    auto src_var_array = src_var->Get<VariableRefArray>();
+    auto* dst_var_array = dst_var->GetMutable<VariableRefArray>();
+    for (size_t i = 0; i < src_var_array.size(); ++i) {
+      Variable* copy_var = const_cast<Variable*>(dst_var_array->at(i));
+      ShareVarBuffer(src_var_array.at(i), copy_var);
+    }
+    return;
+  } else {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Output only support DenseTensorType "
+        "or SelectedRowsType or VariableRefArray"));
+  }
+  return;
+}
+
+}  // namespace paddle::framework

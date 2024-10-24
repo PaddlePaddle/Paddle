@@ -14,6 +14,10 @@
 
 import math
 
+import numpy as np
+
+import paddle
+
 from .base_cost import CommOpCost, register_op_cost
 
 
@@ -81,7 +85,7 @@ class AllreduceSumOpCost(CommOpCost):
 
 @register_op_cost
 class AllgatherOpCost(CommOpCost):
-    OP_TYPE = "c_allgather"
+    OP_TYPE = "all_gather"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
         super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
@@ -105,10 +109,42 @@ class AllgatherOpCost(CommOpCost):
         )
         return time
 
+    @property
+    def comm_count(self):
+        from ..reshard import get_var_with_recursion
+
+        if self._comm_count is None:
+            dtype = None
+            shape = None
+            if self.op is not None:
+                vars = self.op.block.vars
+                try:
+                    var_name = self.op.input("x")[0]
+                except:
+                    var_name = self.op.output("out")[0]
+                var = get_var_with_recursion(
+                    var_name, self.op.block, self.op.block.program
+                )
+                dtype = var.dtype
+                shape = var.shape
+            elif self.op_desc is not None:
+                dtype = self.op_desc["inputs"]["X"][0][0]
+                shape = self.op_desc["inputs"]["X"][0][1]
+
+            factor = None
+            if dtype == paddle.float32 or dtype == paddle.int32:
+                factor = 4
+            else:
+                raise ValueError(f"Unsupported comm dtype {dtype}")
+            comm_count = int(np.prod(shape)) * factor
+            self._comm_count = comm_count
+
+        return self._comm_count
+
 
 @register_op_cost
 class BroadcastOpCost(CommOpCost):
-    OP_TYPE = "c_broadcast"
+    OP_TYPE = "broadcast"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
         super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)

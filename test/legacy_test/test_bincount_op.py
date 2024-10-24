@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
+sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import OpTest
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle import base
-from paddle.base.framework import in_dygraph_mode
-from paddle.pir_utils import test_with_pir_api
+from paddle.base.framework import in_dygraph_mode, in_pir_mode
 
 paddle.enable_static()
 
@@ -31,7 +32,6 @@ paddle.enable_static()
 class TestBincountOpAPI(unittest.TestCase):
     """Test bincount api."""
 
-    @test_with_pir_api
     def test_static_graph(self):
         startup_program = paddle.static.Program()
         train_program = paddle.static.Program()
@@ -154,7 +154,7 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestCase1(TestBincountOp):
@@ -277,9 +277,17 @@ class TestTensorMinlength(unittest.TestCase):
 
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            config = paddle_infer.Config(
-                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-            )
+            if in_pir_mode():
+                config = paddle_infer.Config(
+                    self.save_path + '.json', self.save_path + '.pdiparams'
+                )
+                config.enable_new_executor()
+                config.enable_new_ir()
+            else:
+                config = paddle_infer.Config(
+                    self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+                )
+
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             else:

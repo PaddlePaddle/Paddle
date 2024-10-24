@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class ExpandOpConverter : public OpConverter {
  public:
@@ -58,8 +56,9 @@ class ExpandOpConverter : public OpConverter {
       }
     } else if (op_type_ == "expand_as_v2") {
       if (inputs.find("Y") != inputs.end()) {
-        shape_tensor = engine_->GetITensor(op_desc.Input("Y")[0]);
-        shape_rank = shape_tensor->getDimensions().nbDims;
+        auto Y_t = engine_->GetITensor(op_desc.Input("Y")[0]);
+        shape_tensor = Shape(Y_t);
+        shape_rank = Y_t->getDimensions().nbDims;
       } else {
         std::vector<int32_t> shape = PADDLE_GET_CONST(
             std::vector<int32_t>, op_desc.GetAttr("target_shape"));
@@ -113,7 +112,7 @@ class ExpandOpConverter : public OpConverter {
     layer->setInput(2, *sizes_tensor);
     layer->setInput(3, *strides_tensor);
 
-    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
   }
 
  protected:
@@ -130,9 +129,7 @@ class ExpandAsV2OpConverter : public ExpandOpConverter {
   ExpandAsV2OpConverter() { op_type_ = "expand_as_v2"; }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(expand_v2, ExpandV2OpConverter);
 REGISTER_TRT_OP_CONVERTER(expand_as_v2, ExpandAsV2OpConverter);

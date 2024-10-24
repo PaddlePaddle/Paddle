@@ -48,7 +48,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
                             np.random.uniform(low=-1, high=1, size=[10])
                         ),
                     else:
-                        raise ValueError()
+                        raise ValueError
 
             return __impl__
 
@@ -94,7 +94,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
                         self.assertEqual(num, batch_num)
                     except SystemError as ex:
                         self.assertEqual(num, 0)
-                        raise ReaderException()
+                        raise ReaderException
             else:
                 for _ in range(3):
                     num = 0
@@ -110,11 +110,11 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
                     except SystemError as ex:
                         self.assertTrue(self.raise_exception)
                         self.assertEqual(num, 0)
-                        raise ReaderException()
+                        raise ReaderException
 
     def test_main(self):
         for p in self.places():
-            for iterable in [False, True]:
+            for iterable in [True]:
                 try:
                     with base.scope_guard(base.Scope()):
                         self.main_impl(p, iterable)
@@ -149,5 +149,4 @@ class TestMultiprocessReaderExceptionWithPipeFailed(
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

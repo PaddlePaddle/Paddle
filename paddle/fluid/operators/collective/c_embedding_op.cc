@@ -33,7 +33,7 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(table_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dimensions of the 'c_embedding' must be 2. "
                           "But received c_embedding's dimensions = %d, "
                           "c_embedding's shape = [%s].",
@@ -57,7 +57,7 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         (height > 0 && width > 0 && start_idx >= 0),
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "height:%ld width:%ld start_idx:%ld must not have negative values",
             height,
             width,
@@ -135,7 +135,7 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
     // check valid
     PADDLE_ENFORCE_EQ(table_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Only accept the dims of table_t == 2"));
 
     const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
@@ -145,7 +145,7 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         (height > 0 && width > 0 && start_idx >= 0),
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "height:%ld width:%ld start_idx:%ld must not have negative values",
             height,
             width,
@@ -176,7 +176,7 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(c_embedding,
                   ops::CEmbeddingOp,
                   ops::CEmbeddingOpMaker,

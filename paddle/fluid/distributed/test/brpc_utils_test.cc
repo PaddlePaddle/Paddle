@@ -19,23 +19,21 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 void CreateVarsOnScope(framework::Scope* scope,
-                       platform::Place* place,
-                       const platform::DeviceContext& ctx) {
+                       phi::Place* place,
+                       const phi::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
   auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
   tensor1->Resize(common::make_ddim({512, 8, 4, 2}));
-  framework::LoD lod1;
+  phi::LoD lod1;
   lod1.push_back(phi::Vector<size_t>({1, 3, 8}));
   tensor1->set_lod(lod1);
   tensor1->mutable_data<float>(*place);
@@ -45,7 +43,7 @@ void CreateVarsOnScope(framework::Scope* scope,
   framework::Variable* var2 = scope->Var("x2");
   auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
   tensor2->Resize(common::make_ddim({1000, 64}));
-  framework::LoD lod2;
+  phi::LoD lod2;
   lod2.push_back(phi::Vector<size_t>({1, 1}));
   tensor2->set_lod(lod2);
   tensor2->mutable_data<int>(*place);
@@ -63,9 +61,9 @@ void CreateVarsOnScope(framework::Scope* scope,
   for (int i = 0; i < 564; ++i) rows->push_back(i);
 }
 
-void RunMultiVarMsg(platform::Place place) {
+void RunMultiVarMsg(phi::Place place) {
   framework::Scope scope;
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& ctx = *pool.Get(place);
   CreateVarsOnScope(&scope, &place, ctx);
 
@@ -127,13 +125,13 @@ void RunMultiVarMsg(platform::Place place) {
 }
 
 TEST(MultiVarMsgCPU, Run) {
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   RunMultiVarMsg(place);
 }
 
 // #ifdef PADDLE_WITH_CUDA
 // TEST(MultiVarMsgGPU, Run) {
-//   platform::CUDAPlace place;
+//   phi::GPUPlace place;
 //   RunMultiVarMsg(place);
 // }
 // #endif

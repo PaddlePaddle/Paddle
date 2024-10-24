@@ -73,9 +73,11 @@ def start_local_trainers(
     for t in pod.trainers:
         proc_env = {
             "PADDLE_DISTRI_BACKEND": "bkcl",
-            "FLAGS_selected_xpus": "%s" % ",".join([str(g) for g in t.gpus]),
+            "FLAGS_selected_xpus": "{}".format(
+                ",".join([str(g) for g in t.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{t.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }

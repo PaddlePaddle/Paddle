@@ -85,9 +85,7 @@ class BenchmarkSuite(OpTest):
         for place in places:
             elapses.append(self.timeit_output_with_place(place, iters))
         for place, elapse in zip(places, elapses):
-            print(
-                f"One pass of ({self.op_type}_op) at {str(place)} cost {elapse}"
-            )
+            print(f"One pass of ({self.op_type}_op) at {place} cost {elapse}")
 
     def timeit_grad_with_place(self, place, iters=100):
         inputs_to_check = self._get_input_names()
@@ -108,5 +106,5 @@ class BenchmarkSuite(OpTest):
             elapses.append(self.timeit_grad_with_place(place, iters))
         for place, elapse in zip(places, elapses):
             print(
-                f"One pass of ({self.op_type}_grad_op) at {str(place)} cost {elapse}"
+                f"One pass of ({self.op_type}_grad_op) at {place} cost {elapse}"
             )

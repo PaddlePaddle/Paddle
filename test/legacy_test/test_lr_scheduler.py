@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import os
 import unittest
 
 import numpy as np
@@ -70,7 +71,13 @@ class TestReduceOnPlateauDecay:
         with self.assertRaises(TypeError):
             paddle.optimizer.lr.ReduceOnPlateau(learning_rate=0.5).step("test")
 
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
 
@@ -117,16 +124,14 @@ class TestReduceOnPlateauDecay:
             adam = paddle.optimizer.Adam(learning_rate=scheduler)
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
-            test_prog = main_prog.clone()
+            test_prog = main_prog
 
         exe = paddle.static.Executor(place)
         exe.run(start_prog)
 
         for epoch in range(20):
             for batch_id in range(1):
-                out, actual_lr = exe.run(
-                    main_prog, fetch_list=[loss.name, lr_var.name]
-                )
+                out, actual_lr = exe.run(main_prog, fetch_list=[loss, lr_var])
                 expected_lr = reduce_lr_on_plateau(
                     kwargs['factor'],
                     kwargs['threshold'],
@@ -144,9 +149,7 @@ class TestReduceOnPlateauDecay:
 
         for epoch in range(10):
             for batch_id in range(1):
-                out, actual_lr = exe.run(
-                    test_prog, fetch_list=[loss.name, lr_var.name]
-                )
+                out, actual_lr = exe.run(test_prog, fetch_list=[loss, lr_var])
                 expected_lr = reduce_lr_on_plateau(
                     kwargs['factor'],
                     kwargs['threshold'],
@@ -292,7 +295,13 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 T_mult=1.0,
             )
 
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
 
@@ -333,7 +342,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
             loss = paddle.mean(x)
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
-            test_prog = main_prog.clone()
+            test_prog = main_prog
 
         exe = paddle.static.Executor(place)
         exe.run(start_prog)
@@ -343,7 +352,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 out = exe.run(
                     main_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
             expected_lr = np.array(
                 cosine_annealing_warm_restarts_lr(epoch, v_l)
@@ -356,7 +365,7 @@ class TestCosineAnnealingWarmRestarts(unittest.TestCase):
                 out = exe.run(
                     test_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
             expected_lr = np.array(
                 cosine_annealing_warm_restarts_lr(epoch_num=None, v_l=v_l)
@@ -700,7 +709,7 @@ class TestLRScheduler(unittest.TestCase):
 
             adam.minimize(loss)
             lr_var = adam._global_learning_rate()
-            test_prog = main_prog.clone()
+            test_prog = main_prog
 
         num = 0
         exe = paddle.static.Executor(place)
@@ -711,9 +720,14 @@ class TestLRScheduler(unittest.TestCase):
                 out = exe.run(
                     main_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
-            self.assertEqual(out, np.array(python_func(num, **kwarg)))
+            self.assertEqual(
+                out,
+                np.array(python_func(num, **kwarg))
+                .astype('float32')
+                .astype('float32'),
+            )
             scheduler.step()
             num += 1
 
@@ -722,9 +736,11 @@ class TestLRScheduler(unittest.TestCase):
                 out = exe.run(
                     test_prog,
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                    fetch_list=lr_var.name,
+                    fetch_list=[lr_var],
                 )
-            self.assertEqual(out, np.array(python_func(num, **kwarg)))
+            self.assertEqual(
+                out, np.array(python_func(num, **kwarg)).astype('float32')
+            )
             scheduler.step()
             num += 1
 
@@ -736,9 +752,9 @@ class TestLRScheduler(unittest.TestCase):
                     out = exe.run(
                         compiled_train_prog,
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                        fetch_list=lr_var.name,
+                        fetch_list=[lr_var],
                     )
-                self.assertEqual(out, np.array(python_result))
+                self.assertEqual(out, np.array(python_result).astype('float32'))
                 scheduler.step()
                 num += 1
 
@@ -749,9 +765,9 @@ class TestLRScheduler(unittest.TestCase):
                     out = exe.run(
                         compiled_test_prog,
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
-                        fetch_list=lr_var.name,
+                        fetch_list=[lr_var],
                     )
-                self.assertEqual(out, np.array(python_result))
+                self.assertEqual(out, np.array(python_result).astype('float32'))
                 scheduler.step()
                 num += 1
 
@@ -772,7 +788,7 @@ class TestLRScheduler(unittest.TestCase):
                 loss = paddle.mean(x)
                 adam.minimize(loss)
 
-            test_prog, _ = paddle.base.libpaddle.pir.clone_program(main_prog)
+            test_prog = main_prog.clone()
 
             num = 0
             exe = paddle.static.Executor(place)
@@ -785,7 +801,9 @@ class TestLRScheduler(unittest.TestCase):
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=get_lr_var(main_prog),
                     )
-                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                self.assertEqual(
+                    out, np.array(python_func(num, **kwarg)).astype('float32')
+                )
                 scheduler.step()
                 num += 1
 
@@ -796,7 +814,9 @@ class TestLRScheduler(unittest.TestCase):
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=get_lr_var(test_prog),
                     )
-                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                self.assertEqual(
+                    out, np.array(python_func(num, **kwarg)).astype('float32')
+                )
                 scheduler.step()
                 num += 1
 
@@ -812,7 +832,9 @@ class TestLRScheduler(unittest.TestCase):
                             },
                             fetch_list=get_lr_var(compiled_train_prog),
                         )
-                    self.assertEqual(out, np.array(python_result))
+                    self.assertEqual(
+                        out, np.array(python_result).astype('float32')
+                    )
                     scheduler.step()
                     num += 1
 
@@ -827,7 +849,9 @@ class TestLRScheduler(unittest.TestCase):
                             },
                             fetch_list=get_lr_var(compiled_test_prog),
                         )
-                    self.assertEqual(out, np.array(python_result))
+                    self.assertEqual(
+                        out, np.array(python_result).astype('float32')
+                    )
                     scheduler.step()
                     num += 1
 
@@ -1281,7 +1305,13 @@ class TestLRScheduler(unittest.TestCase):
         ]
 
         for python_func, paddle_api, kwarg in func_api_kwargs:
-            places = [paddle.CPUPlace()]
+            places = []
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(paddle.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(paddle.CUDAPlace(0))
 
@@ -1336,7 +1366,10 @@ class TestLRScheduler(unittest.TestCase):
                         fetch_list=[lr_var],
                     )
                 self.assertEqual(
-                    out, np.array(linear_warmup_lr(epoch, **params))
+                    out,
+                    np.array(linear_warmup_lr(epoch, **params)).astype(
+                        'float32'
+                    ),
                 )
                 scheduler.step()
 

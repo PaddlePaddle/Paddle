@@ -18,7 +18,7 @@ namespace phi {
 
 namespace memory_utils {
 
-Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
+Allocator::AllocationPtr Alloc(const phi::Place& place,
                                size_t size,
                                const phi::Stream& stream) {
   return MemoryUtils::Instance().Alloc(place, size, stream);
@@ -115,6 +115,29 @@ const phi::Allocator* GetPinnedAllocator() {
 std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
     int device_id) {
   return MemoryUtils::Instance().GetCudaEvent(device_id);
+}
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+const phi::Allocator* GetAllocator(int device_id, XPUStream stream) {
+  return MemoryUtils::Instance().GetAllocator(device_id, stream);
+}
+
+const phi::Allocator* GetHostAllocator() {
+  return MemoryUtils::Instance().GetHostAllocator();
+}
+
+const phi::Allocator* GetZeroAllocator(int device_id) {
+  return MemoryUtils::Instance().GetZeroAllocator(device_id);
+}
+
+const phi::Allocator* GetHostZeroAllocator() {
+  return MemoryUtils::Instance().GetHostZeroAllocator();
+}
+
+// XPUs do not have the concept of pinned memory,
+// so the get_pinned_allocator function is not set.
+std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
+    int device_id) {
+  return MemoryUtils::Instance().GetXpuEvent(device_id);
 }
 #endif
 

@@ -38,7 +38,11 @@ const std::vector<symbol::DimExpr>& GetDimExprs(
     pir::Value value, const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
   const auto& shape_or_data_dim_exprs =
       dim_exprs_accessor.GetShapeOrDataDimExprs(value);
-  CHECK(shape_or_data_dim_exprs.data().has_value());
+  PADDLE_ENFORCE_EQ(
+      shape_or_data_dim_exprs.data().has_value(),
+      true,
+      ::common::errors::InvalidArgument(
+          "shape_or_data_dim_exprs has no data, it cannot be empty"));
   return shape_or_data_dim_exprs.data().value();
 }
 
@@ -53,6 +57,7 @@ std::vector<pir::Value> GetBlockArgs(pir::Block* block) {
   for (auto op = block->begin(); op != block->end(); ++op) {
     for (int i = 0; i < op->num_operands(); ++i) {
       pir::Value input = op->operand_source(i);
+      if (!input.type().isa<pir::DenseTensorType>()) continue;
       if (values_produced_by_block_op.count(input) == 0) {
         if (std::find(ret.begin(), ret.end(), input) == ret.end()) {
           ret.push_back(input);
@@ -64,7 +69,7 @@ std::vector<pir::Value> GetBlockArgs(pir::Block* block) {
 }
 
 // Returns `out` of GenerateShapeOp
-pir::Value InsertGenerateShapeOpToRunFirst(
+std::optional<pir::Value> InsertGenerateShapeOpToRunFirst(
     pir::Builder* builder,
     const std::vector<pir::Value>& block_args,
     pir::Value value,
@@ -73,23 +78,23 @@ pir::Value InsertGenerateShapeOpToRunFirst(
   std::vector<pir::Value> minimal_inputs{};
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
-  MakeGenerateShapeOpAttribute(builder->ir_context(),
-                               dim_exprs_accessor.GetShapeOrDataDimExprs,
-                               out_dim_exprs,
-                               block_args,
-                               &minimal_inputs,
-                               &output_dim_expr_attrs,
-                               &symbol_bindings);
-  return builder
-      ->Build<cinn::dialect::GenerateShapeOp>(
-          minimal_inputs, output_dim_expr_attrs, symbol_bindings)
-      .out();
-}
-
-void CloneDimExprInfo(pir::Value from,
-                      pir::Value to,
-                      const ShapeOrDataDimExprsAccessor& ctx) {
-  ctx.SetShapeOrDataDimExprs(to, ctx.GetShapeOrDataDimExprs(from));
+  bool success =
+      MakeGenerateShapeOpAttribute(builder->ir_context(),
+                                   dim_exprs_accessor.GetShapeOrDataDimExprs,
+                                   out_dim_exprs,
+                                   block_args,
+                                   &minimal_inputs,
+                                   &output_dim_expr_attrs,
+                                   &symbol_bindings);
+  if (success) {
+    return builder
+        ->Build<cinn::dialect::GenerateShapeOp>(minimal_inputs,
+                                                output_dim_expr_attrs,
+                                                symbol_bindings,
+                                                value.type())
+        .out();
+  }
+  return std::nullopt;
 }
 
 void ReplaceAllUses(pir::Value from, pir::Value to) {
@@ -112,10 +117,10 @@ bool RewriteOneGenerateShapeOpToRunFirst(
     if (RunningFirst(op, block_args)) continue;
     pir::Builder builder(ir_context, block);
     builder.set_insertion_point(op);
-    pir::Value new_shape = InsertGenerateShapeOpToRunFirst(
+    std::optional<pir::Value> new_shape = InsertGenerateShapeOpToRunFirst(
         &builder, block_args, op.out(), dim_exprs_accessor);
-    CloneDimExprInfo(op.out(), new_shape, dim_exprs_accessor);
-    ReplaceAllUses(op.out(), new_shape);
+    if (!new_shape.has_value()) continue;
+    ReplaceAllUses(op.out(), new_shape.value());
     EraseGenerateShapeOp(op_iter, block);
     return true;
   }

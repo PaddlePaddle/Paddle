@@ -135,6 +135,7 @@ void InterpolateKernel(
   bool nearest = "nearest" == interp_method;
   int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
   if (nearest) {
+    trans_mode = (align_corners == true) ? 0 : 2;
     PADDLE_ENFORCE_EQ(
         (data_layout == DataLayout::kNCHW),
         true,

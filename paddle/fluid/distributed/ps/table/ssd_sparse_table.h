@@ -18,6 +18,10 @@
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
 #include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
 
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
+
 namespace paddle {
 namespace distributed {
 
@@ -90,7 +94,7 @@ class SSDSparseTable : public MemorySparseTable {
   }
 
   int32_t Save(const std::string& path, const std::string& param) override;
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   int32_t Save_v2(const std::string& path, const std::string& param) override;
 #endif
   int32_t SaveWithString(const std::string& path, const std::string& param);
@@ -128,12 +132,19 @@ class SSDSparseTable : public MemorySparseTable {
 
   int32_t CacheTable(uint16_t pass_id) override;
 
+  void SetDayId(int day_id) override;
+
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
   double _local_show_threshold{0.0};
   std::vector<paddle::framework::Channel<std::string>> _fs_channel;
   std::mutex _table_mutex;
+  int _day_id = 0;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  paddle::framework::AfsWrapper _afs_wrapper;  // afs api wrapper
+#endif
+  bool _use_afs_api = false;
 };
 
 }  // namespace distributed

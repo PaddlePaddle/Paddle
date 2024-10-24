@@ -12,27 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _legacy_C_ops
 from paddle.framework import in_dynamic_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 def fused_gate_attention(
-    query,
-    key=None,
-    query_weight=None,
-    key_weight=None,
-    value_weight=None,
-    qkv_weight=None,
-    gate_linear_weight=None,
-    gate_linear_bias=None,
-    out_linear_weight=None,
-    out_linear_bias=None,
-    nonbatched_bias=None,
-    attn_mask=None,
-    has_gating=True,
-    merge_qkv=True,
-    use_flash_attn=False,
-):
+    query: Tensor,
+    key: Tensor | None = None,
+    query_weight: Tensor | None = None,
+    key_weight: Tensor | None = None,
+    value_weight: Tensor | None = None,
+    qkv_weight: Tensor | None = None,
+    gate_linear_weight: Tensor | None = None,
+    gate_linear_bias: Tensor | None = None,
+    out_linear_weight: Tensor | None = None,
+    out_linear_bias: Tensor | None = None,
+    nonbatched_bias: Tensor | None = None,
+    attn_mask: Tensor | None = None,
+    has_gating: bool = True,
+    merge_qkv: bool = True,
+    use_flash_attn: bool = False,
+) -> Tensor:
     r"""
     Attention maps queries and a set of key-value pairs to outputs, and
     Gate Attention performs multiple parallel attention to jointly attending

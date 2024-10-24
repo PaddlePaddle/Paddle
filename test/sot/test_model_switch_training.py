@@ -43,9 +43,9 @@ class TestModelSwitchTraining(unittest.TestCase):
 
     def check_mode(self, is_train):
         self.assertEqual(len(self.compile_cache.cache), 1)
-        mode = list(self.compile_cache.cache.values())[
-            0
-        ].partial_program.training
+        mode = next(
+            iter(self.compile_cache.cache.values())
+        ).partial_program.training
         self.assertEqual(mode, is_train)
 
     def get_dygraph_out(self, input):
@@ -59,7 +59,7 @@ class TestModelSwitchTraining(unittest.TestCase):
     def get_static_out(self, input):
         paddle.seed(self.seed)
         self.compile_cache.clear()
-        static_net = paddle.jit.to_static(self.net)
+        static_net = paddle.jit.to_static(self.net, full_graph=False)
         static_net.eval()
         eval_result = static_net(input)
         self.check_mode(is_train=False)

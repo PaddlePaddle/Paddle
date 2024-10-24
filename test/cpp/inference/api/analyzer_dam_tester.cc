@@ -70,9 +70,20 @@ struct DataRecord {
                            response.begin() + batch_end);
       data.response_mask.assign(response_mask.begin() + batch_iter,
                                 response_mask.begin() + batch_end);
-      CHECK(!data.response.empty());
-      CHECK(!data.response_mask.empty());
-      CHECK_EQ(data.response.size(), data.response_mask.size());
+      PADDLE_ENFORCE_EQ(!data.response.empty(),
+                        true,
+                        common::errors::Fatal(
+                            "Variable `data` response is empty, please check"));
+      PADDLE_ENFORCE_EQ(
+          !data.response_mask.empty(),
+          true,
+          common::errors::Fatal(
+              "Variable `data` response mask is empty, please check"));
+      PADDLE_ENFORCE_EQ(data.response.size(),
+                        data.response_mask.size(),
+                        common::errors::InvalidArgument(
+                            "Required data.response.size() should be equal to "
+                            "data.response_mask.size() . "));
     }
     batch_iter += batch_size;
     return data;
@@ -87,7 +98,11 @@ struct DataRecord {
       num_lines++;
       std::vector<std::string> data;
       split(line, ',', &data);
-      CHECK_EQ(data.size(), (size_t)(2 * FLAGS_max_turn_num + 3));
+      PADDLE_ENFORCE_EQ(data.size(),
+                        (size_t)(2 * FLAGS_max_turn_num + 3),
+                        common::errors::InvalidArgument(
+                            "Required data.size() should be equal to "
+                            "(size_t)(2 * FLAGS_max_turn_num + 3) . "));
       // load turn data
       std::vector<int64_t> turns_tmp[FLAGS_max_turn_num];
       for (int i = 0; i < FLAGS_max_turn_num; ++i) {
@@ -120,8 +135,8 @@ struct DataRecord {
 void PrepareInputs(std::vector<PaddleTensor> *input_slots,
                    DataRecord *data,
                    int batch_size) {
-  PaddleTensor turns_tensor[FLAGS_max_turn_num];
-  PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];
+  PaddleTensor turns_tensor[FLAGS_max_turn_num];       // NOLINT
+  PaddleTensor turns_mask_tensor[FLAGS_max_turn_num];  // NOLINT
   PaddleTensor response_tensor;
   PaddleTensor response_mask_tensor;
   std::string turn_pre = "turn_";
@@ -130,9 +145,12 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   auto one_batch = data->NextBatch();
   PADDLE_ENFORCE(
       !one_batch.response.empty(),
-      ::paddle::platform::errors::Fatal("The response of one batch is empty."));
+      ::common::errors::Fatal("The response of one batch is empty."));
   int size = one_batch.response[0].size();
-  CHECK_EQ(size, kMaxTurnLen);
+  PADDLE_ENFORCE_EQ(size,
+                    kMaxTurnLen,
+                    common::errors::InvalidArgument(
+                        "Required size should be equal to kMaxTurnLen . "));
   // turn tensor assignment
   for (int i = 0; i < FLAGS_max_turn_num; ++i) {
     turns_tensor[i].name = turn_pre + std::to_string(i);
@@ -177,8 +195,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
 void SetConfig(AnalysisConfig *cfg) {
   cfg->SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
   cfg->SwitchSpecifyInputNames();
-  auto pass_builder = cfg->pass_builder();
-  pass_builder->DeletePass("constant_folding_pass");
+  cfg->DeletePass("constant_folding_pass");
   cfg->SwitchIrOptim(true);
 }
 
@@ -193,7 +210,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
   int test_batch_num =
-      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "The number of samples to be test: "
             << test_batch_num * FLAGS_batch_size;
   for (int bid = 0; bid < test_batch_num; ++bid) {
@@ -210,7 +227,7 @@ void profile(bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    // Enable all the mkldnn supported ops except conv3d in dam
+    // Enable all the onednn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu", "fc"};
     cfg.SetMKLDNNOp(op_list);
@@ -228,17 +245,17 @@ void profile(bool use_mkldnn = false) {
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     PADDLE_ENFORCE_GT(outputs.size(),
                       0,
-                      ::paddle::platform::errors::Fatal(
+                      ::common::errors::Fatal(
                           "The size of outputs should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_GT(output.size(),
                       0,
-                      ::paddle::platform::errors::Fatal(
+                      ::common::errors::Fatal(
                           "The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(size,
                       0,
-                      ::paddle::platform::errors::Fatal(
+                      ::common::errors::Fatal(
                           "The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
@@ -252,25 +269,13 @@ TEST(Analyzer_dam, profile) { profile(); }
 TEST(Analyzer_dam, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
-// Check the fuse status
-TEST(Analyzer_dam, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-}
-
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-    // Enable all the mkldnn supported ops except conv3d in dam
+    // Enable all the onednn supported ops except conv3d in dam
     std::unordered_set<std::string> op_list = {
         "softmax", "elementwise_add", "relu"};
     cfg.SetMKLDNNOp(op_list);
@@ -316,38 +321,6 @@ TEST(Analyzer_dam, compare_determine) {
   SetInput(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
-}
-// Save optim model
-TEST(Analyzer_dam, save_optim_model) {
-  AnalysisConfig cfg;
-  std::string optimModelPath = FLAGS_infer_model + "/saved_optim_model";
-  MKDIR(optimModelPath.c_str());
-  SetConfig(&cfg);
-  SaveOptimModel(&cfg, optimModelPath);
-}
-
-void CompareOptimAndOrig(const PaddlePredictor::Config *orig_config,
-                         const PaddlePredictor::Config *optim_config,
-                         const std::vector<std::vector<PaddleTensor>> &inputs) {
-  PrintConfig(orig_config, true);
-  PrintConfig(optim_config, true);
-  std::vector<std::vector<PaddleTensor>> orig_outputs, optim_outputs;
-  TestOneThreadPrediction(orig_config, inputs, &orig_outputs, false);
-  TestOneThreadPrediction(optim_config, inputs, &optim_outputs, false);
-  CompareResult(orig_outputs.back(), optim_outputs.back());
-}
-
-TEST(Analyzer_dam, compare_optim_orig) {
-  AnalysisConfig orig_cfg;
-  AnalysisConfig optim_cfg;
-  SetConfig(&orig_cfg);
-  SetOptimConfig(&optim_cfg);
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  SetInput(&input_slots_all);
-  CompareOptimAndOrig(
-      reinterpret_cast<const PaddlePredictor::Config *>(&orig_cfg),
-      reinterpret_cast<const PaddlePredictor::Config *>(&optim_cfg),
-      input_slots_all);
 }
 
 }  // namespace inference

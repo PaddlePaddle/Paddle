@@ -29,39 +29,39 @@
 namespace phi {
 namespace distributed {
 
-#define NCCL_CHECK(cmd)                                                \
-  do {                                                                 \
-    ncclResult_t r = cmd;                                              \
-    if (r != ncclSuccess) {                                            \
-      PADDLE_THROW(                                                    \
-          phi::errors::External("Failed, NCCL error %s:%d '%s'\n",     \
-                                __FILE__,                              \
-                                __LINE__,                              \
-                                phi::dynload::ncclGetErrorString(r))); \
-    }                                                                  \
+#define NCCL_CHECK(cmd)                                                   \
+  do {                                                                    \
+    ncclResult_t r = cmd;                                                 \
+    if (r != ncclSuccess) {                                               \
+      PADDLE_THROW(                                                       \
+          common::errors::External("Failed, NCCL error %s:%d '%s'\n",     \
+                                   __FILE__,                              \
+                                   __LINE__,                              \
+                                   phi::dynload::ncclGetErrorString(r))); \
+    }                                                                     \
   } while (0)
 
 #ifdef PADDLE_WITH_NCCL
-#define CUDA_CHECK(expr)                                                    \
-  do {                                                                      \
-    cudaError_t r = expr;                                                   \
-    if (r != cudaSuccess) {                                                 \
-      PADDLE_THROW(phi::errors::External("Failed, cuda error %s:%d '%s'\n", \
-                                         __FILE__,                          \
-                                         __LINE__,                          \
-                                         cudaGetErrorString(r)));           \
-    }                                                                       \
+#define CUDA_CHECK(expr)                                                       \
+  do {                                                                         \
+    cudaError_t r = expr;                                                      \
+    if (r != cudaSuccess) {                                                    \
+      PADDLE_THROW(common::errors::External("Failed, cuda error %s:%d '%s'\n", \
+                                            __FILE__,                          \
+                                            __LINE__,                          \
+                                            cudaGetErrorString(r)));           \
+    }                                                                          \
   } while (0)
 #else  // PADDLE_WITH_RCCL
-#define HIP_CHECK(expr)                                                    \
-  do {                                                                     \
-    hipError_t r = expr;                                                   \
-    if (r != hipSuccess) {                                                 \
-      PADDLE_THROW(phi::errors::External("Failed, hip error %s:%d '%s'\n", \
-                                         __FILE__,                         \
-                                         __LINE__,                         \
-                                         hipGetErrorString(r)));           \
-    }                                                                      \
+#define HIP_CHECK(expr)                                                       \
+  do {                                                                        \
+    hipError_t r = expr;                                                      \
+    if (r != hipSuccess) {                                                    \
+      PADDLE_THROW(common::errors::External("Failed, hip error %s:%d '%s'\n", \
+                                            __FILE__,                         \
+                                            __LINE__,                         \
+                                            hipGetErrorString(r)));           \
+    }                                                                         \
   } while (0)
 #endif
 

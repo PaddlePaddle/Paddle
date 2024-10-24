@@ -34,9 +34,17 @@ class TestInputSpec(unittest.TestCase):
         self.assertIsNone(tensor_spec.name)
 
     def test_from_tensor(self):
-        x_bool = paddle.tensor.fill_constant(
-            shape=[1], dtype='bool', value=True
-        )
+        if paddle.framework.use_pir_api():
+            x_bool = paddle.pir.core.create_parameter(
+                dtype='float32',
+                shape=[1],
+                name='xx',
+                initializer=paddle.nn.initializer.Uniform(),
+            )
+        else:
+            x_bool = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
         bool_spec = InputSpec.from_tensor(x_bool)
         self.assertEqual(bool_spec.dtype, x_bool.dtype)
         self.assertEqual(list(bool_spec.shape), list(x_bool.shape))
@@ -295,11 +303,16 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
 
         # jit.save and jit.load with prune y and loss
         prune_specs = [self.x_spec, True]
+        if paddle.framework.use_pir_api():
+            output_spec = [0]
+        else:
+            output_spec = [st_out]
+
         paddle.jit.save(
             net,
             path,
             prune_specs,
-            output_spec=[st_out],
+            output_spec=output_spec,
             input_names_after_prune=[self.x_spec.name],
         )
         load_net = paddle.jit.load(path)
@@ -357,7 +370,7 @@ class TestNegSpecWithPrim(unittest.TestCase):
         )
         x = paddle.randn([2, 10])
         out = net(x)
-        np.testing.assert_equal(net.forward._input_spec, None)
+        np.testing.assert_equal(out.shape, [2, 5])
 
 
 if __name__ == '__main__':

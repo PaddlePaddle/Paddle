@@ -30,7 +30,7 @@ class AttributeVisitor;
 
 class AttributeTranslator {
  private:
-  AttributeTranslator();
+  TEST_API AttributeTranslator();
   AttributeVisitor* general_visitor;
   std::unordered_map<std::string, AttributeVisitor*> special_visitors;
 
@@ -45,9 +45,9 @@ class AttributeTranslator {
     return attribute_translator;
   }
 
-  pir::Attribute operator()(const framework::Attribute& attr);
-  pir::Attribute operator()(const std::string& target_type,
-                            const framework::Attribute& attr);
+  TEST_API pir::Attribute operator()(const framework::Attribute& attr);
+  TEST_API pir::Attribute operator()(const std::string& target_type,
+                                     const framework::Attribute& attr);
 };
 
 }  // namespace translator

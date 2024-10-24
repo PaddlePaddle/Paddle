@@ -31,32 +31,12 @@ TEST(DimExpr, DimExprNaive) {
 
 // Construct DimExpr by DimExprBuilder
 TEST(DimExpr, DimExprBuilder) {
-  DimExprBuilder builder{nullptr};
+  DimExprBuilder builder;
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
   DimExpr add = builder.Add(sym0, sym1);
   DimExpr out = builder.Broadcast(add, constant1);
-}
-
-// Add constraints by DimExprBuilder
-TEST(DimExpr, Constraint) {
-  std::vector<DimExprConstraint> constraints{};
-  DimExprBuilder builder(&constraints);
-  DimExpr sym0 = DimExpr("S0");
-  DimExpr sym1 = DimExpr("S1");
-  builder.CstrEq(sym0, sym1);
-  ASSERT_EQ(static_cast<int>(constraints.size()), 1);
-  std::vector<DimExpr> lhs = builder.ConstShape({1, 2, 3});
-  std::vector<DimExpr> rhs = builder.ConstShape({1, 2, 3});
-  std::pair<std::vector<DimExpr>, std::vector<DimExpr>> expr_pair =
-      builder.SplitAt(rhs, 1);
-  ASSERT_EQ(static_cast<int>(expr_pair.first.size()), 1);
-  ASSERT_EQ(static_cast<int>(expr_pair.second.size()), 2);
-  std::vector<DimExpr> merged =
-      builder.Concat(expr_pair.first, expr_pair.second);
-  builder.CstrEq(lhs, merged);
-  ASSERT_EQ(static_cast<int>(constraints.size()), 4);
 }
 
 /*
@@ -109,18 +89,18 @@ TEST(Simplify, NumberArithmetic) {
 }
 
 TEST(DimExpr, Equal) {
-  DimExprBuilder builder{nullptr};
+  DimExprBuilder builder;
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant1 = DimExpr(1);
   ASSERT_EQ(sym0 + sym1, sym0 + sym1);
-  ASSERT_NE(sym0 + sym1, sym1 + sym0);
+  ASSERT_EQ(sym0 + sym1, sym1 + sym0);
   ASSERT_EQ(sym0 + constant1, DimExpr("S0") + constant1);
   ASSERT_EQ(sym0 - sym1, sym0 - sym1);
   ASSERT_NE(sym0 - sym1, sym1 - sym0);
   ASSERT_EQ(sym0 - constant1, DimExpr("S0") - constant1);
   ASSERT_EQ(sym0 * sym1, sym0 * sym1);
-  ASSERT_NE(sym0 * sym1, sym1 * sym0);
+  ASSERT_EQ(sym0 * sym1, sym1 * sym0);
   ASSERT_EQ(sym0 * constant1, DimExpr("S0") * constant1);
   ASSERT_EQ(sym0 / sym1, sym0 / sym1);
   ASSERT_NE(sym0 / sym1, sym1 / sym0);
@@ -134,13 +114,13 @@ TEST(DimExpr, Equal) {
   ASSERT_EQ(builder.Min(sym0, constant1),
             builder.Min(DimExpr("S0"), constant1));
   ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym0, sym1));
-  ASSERT_NE(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
+  ASSERT_EQ(builder.Broadcast(sym0, sym1), builder.Broadcast(sym1, sym0));
   ASSERT_EQ(builder.Broadcast(sym0, constant1),
             builder.Broadcast(DimExpr("S0"), constant1));
 }
 
 TEST(DimExpr, Print) {
-  DimExprBuilder builder{nullptr};
+  DimExprBuilder builder;
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   ASSERT_EQ((ToString(sym0 + sym1)), "Add(S0, S1)");
@@ -153,12 +133,12 @@ TEST(DimExpr, Print) {
 }
 
 TEST(DimExpr, Hash) {
-  DimExprBuilder builder{nullptr};
+  DimExprBuilder builder;
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
             (std::hash<DimExpr>()(sym0 + sym1)));
-  ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
+  ASSERT_EQ((std::hash<DimExpr>()(sym0 + sym1)),
             (std::hash<DimExpr>()(sym1 + sym0)));
   ASSERT_NE((std::hash<DimExpr>()(sym0 + sym1)),
             (std::hash<DimExpr>()(sym0 - sym1)));

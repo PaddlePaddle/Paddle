@@ -13,15 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import logging
 import threading
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
 import paddle
 from paddle.base.log_helper import get_logger
 from paddle.incubate import asp
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from paddle.nn import Layer
+
+    from .utils import MaskAlgo
 
 __all__ = []
 
@@ -30,25 +40,27 @@ _logger = get_logger(
 )
 
 
-def _default_pruning(weight_nparray, m, n, func_name, param_name):
+def _default_pruning(
+    weight_nparray: npt.NDArray[Any],
+    m: int,
+    n: int,
+    func_name: MaskAlgo,
+    param_name: str,
+) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
     # if the to-be-pruned dimension's size is smaller than m, we don't prune it. This strong assertion is required by the inference from cuSparseLT.
     shape = weight_nparray.shape
     weight_pruned_nparray = copy.deepcopy(weight_nparray)
     weight_sparse_mask = np.ones_like(weight_pruned_nparray)
-    exlude_cond_shape2 = len(shape) == 2 and shape[0] < m
-    exlude_cond_shape4 = len(shape) == 4 and shape[1] < m
-    if exlude_cond_shape2:
+    exclude_cond_shape2 = len(shape) == 2 and shape[0] < m
+    exclude_cond_shape4 = len(shape) == 4 and shape[1] < m
+    if exclude_cond_shape2:
         _logger.warning(
-            '{} is not pruned because the first dimension of {} is smaller than {}'.format(
-                param_name, shape, m
-            )
+            f'{param_name} is not pruned because the first dimension of {shape} is smaller than {m}'
         )
         return weight_pruned_nparray, weight_sparse_mask
-    if exlude_cond_shape4:
+    if exclude_cond_shape4:
         _logger.warning(
-            '{} is not pruned because the second dimension of {} is smaller than {}'.format(
-                param_name, shape, m
-            )
+            f'{param_name} is not pruned because the second dimension of {shape} is smaller than {m}'
         )
         return weight_pruned_nparray, weight_sparse_mask
 
@@ -58,12 +70,12 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     # SPMMA in cuSparseLt: D = (AxB) + C, where matrix A (mxk) is sparse matrix.
     # cuSparseLt would prune matrix A along k dimension.
     # In sparse training, layer weight matrices is viewed sparse matrix A, so
-    # the math fomula should be 'Act(WX + b)'. However, default fomula in PaddlePaddle
+    # the math formula should be 'Act(WX + b)'. However, default formula in PaddlePaddle
     #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed
     # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension
-    # of W^T, which is m dimension of W. Moreove, all mask generating functions in
+    # of W^T, which is m dimension of W. Moreover, all mask generating functions in
     # asp/utils is row-major pruning. That is the reason we have to transpose weight
-    # matrices beforce invoking create_mask. Then we transpose the result mask to make
+    # matrices before invoking create_mask. Then we transpose the result mask to make
     # sure its shape to be the same as the input weight.
     weight_sparse_mask = asp.create_mask(
         weight_nparray.T, func_name=func_name, n=n, m=m
@@ -81,7 +93,16 @@ _supported_layers_and_prune_func_map_lock = threading.Lock()
 supported_layers_and_prune_func_map = {}
 
 
-def add_supported_layer(layer, pruning_func=None):
+def add_supported_layer(
+    layer: Layer | type[Layer] | str,
+    pruning_func: (
+        Callable[
+            [npt.NDArray[Any], int, int, MaskAlgo, str],
+            tuple[npt.NDArray[Any], npt.NDArray[Any]],
+        ]
+        | None
+    ) = None,
+) -> None:
     r"""
 
     Add supported layers and its corresponding pruning function.

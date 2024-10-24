@@ -84,7 +84,7 @@ message TensorProto {
   // For int64.
   // When this field is present, the data_type field MUST be INT64
   repeated int64 int64_data = 7 [packed = true];
-  
+
   // For double
   // Complex128 tensors are encoded as a single array of doubles,
   // with the real components appearing in odd numbered positions,
@@ -130,16 +130,16 @@ message ValueProto {
     STRINGS = 8;
     TENSORS = 9;
   }
-  optional string name = 1;           
-  
+  optional string name = 1;
+
   optional AttributeType type = 2;   // discriminator that indicates which field below is in use
-  
+
   // Exactly ONE of the following fields must be present
   optional float f = 3;               // float
   optional int64 i = 4;               // int
   optional bytes s = 5;               // UTF-8 string
   optional TensorProto t = 6;         // tensor value
-  
+
   repeated float floats = 7;          // list of floats
   repeated int64 ints = 8;            // list of ints
   repeated bytes strings = 9;         // list of UTF-8 strings
@@ -147,5 +147,5 @@ message ValueProto {
 }
 
 message PropertyVals {
-  repeated ValueProto entrys=1;  
+  repeated ValueProto entrys=1;
 }

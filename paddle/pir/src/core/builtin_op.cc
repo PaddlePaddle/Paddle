@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/pir/include/core/builtin_op.h"
+#include <glog/logging.h>
+
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
-
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 namespace pir {
 
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
@@ -64,11 +67,15 @@ Program *ModuleOp::program() {
 }
 
 Block &ModuleOp::block() {
-  IR_ENFORCE(operation()->num_regions(),
-             "The region size of ModuleOp must be equal to 1.");
+  PADDLE_ENFORCE_GT(operation()->num_regions(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "The region size of ModuleOp must be equal to 1."));
   auto &region = (*this)->region(0);
-  IR_ENFORCE(region.size() == 1,
-             "The region size of ModuleOp must be equal to 1.");
+  PADDLE_ENFORCE_EQ(region.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The region size of ModuleOp must be equal to 1."));
   return region.front();
 }
 
@@ -92,16 +99,91 @@ void ModuleOp::Destroy() {
 void ModuleOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
 
   // Verify attributes:
   auto &attributes = this->attributes();
   auto iter = attributes.find("program");
-  IR_ENFORCE(iter != attributes.end() && iter->second.isa<PointerAttribute>(),
-             "Type of attribute: program is not right.");
+  PADDLE_ENFORCE_EQ(
+      iter != attributes.end() && iter->second.isa<PointerAttribute>(),
+      true,
+      common::errors::InvalidArgument(
+          "Type of attribute: program is not right."));
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 0u, "The size of inputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(num_results(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
+}
+
+const char *GroupOp::attributes_name[attributes_num] = {"group_info"};
+
+void GroupOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const std::vector<Type> &output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+void GroupOp::Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<Block> &&block) {
+  VLOG(4) << "Start build GroupOp";
+  if (block && !block->empty()) {
+    PADDLE_ENFORCE_EQ(block->back().isa<pir::YieldOp>(), true);
+    auto &op = block->back();
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      argument.AddOutput(op.operand(i).type());
+    }
+  }
+  argument.AddRegion().push_back(block.release());
+}
+
+Block *GroupOp::block() {
+  pir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+Block *GroupOp::block() const {
+  pir::Region &region = (*this)->region(0);
+  PADDLE_ENFORCE_EQ(region.empty(),
+                    false,
+                    ::common::errors::Unavailable(
+                        "Required GroupOp's region must not be emptpy."));
+  return &region.front();
+}
+
+std::vector<pir::Operation *> GroupOp::GetOperators() const {
+  std::vector<pir::Operation *> rt_ops;
+  for (auto &op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+void GroupOp::VerifySig() {}
+
+void GroupOp::Print(IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(*op);
+  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  printer.PrintOpOperands(*op);
+  os << " -> ";
+  printer.PrintOpReturnType(*op);
+  os << " {\n";
+  printer.AddIndentation();
+  for (auto &sub_op : GetOperators()) {
+    printer.PrintOperation(*sub_op);
+    os << "\n";
+  }
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 const char *ParameterOp::attributes_name[attributes_num] = {  // NOLINT
@@ -130,16 +212,25 @@ std::string ParameterOp::param_name() const {
 void ParameterOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ParameterOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
 
   // Verify if attributes contain attribute name in attributes_name:
   auto &attributes = this->attributes();
   auto iter = attributes.find("parameter_name");
-  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
-             "Type of attribute: parameter_name is not right.");
+  PADDLE_ENFORCE_EQ(
+      iter != attributes.end() && iter->second.isa<StrAttribute>(),
+      true,
+      common::errors::InvalidArgument(
+          "Type of attribute: parameter_name is not right."));
 
   // Verify outputs type:
-  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
+  PADDLE_ENFORCE_EQ(num_results(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 }
 
 const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
@@ -156,16 +247,25 @@ void SetParameterOp::Build(Builder &builder,             // NOLINT
 void SetParameterOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 
   // Verify attributes:
   auto &attributes = this->attributes();
   auto iter = attributes.find("parameter_name");
-  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
-             "Type of attribute: parameter_name is not right.");
+  PADDLE_ENFORCE_EQ(
+      iter != attributes.end() && iter->second.isa<StrAttribute>(),
+      true,
+      common::errors::InvalidArgument(
+          "Type of attribute: parameter_name is not right."));
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(num_results(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 0."));
 }
 
 const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
@@ -182,16 +282,25 @@ void ShadowOutputOp::Build(Builder &builder,             // NOLINT
 void ShadowOutputOp::VerifySig() const {
   VLOG(10) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
   // Verify inputs:
-  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 
   // Verify attributes:
   auto &attributes = this->attributes();
   auto iter = attributes.find("output_name");
-  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
-             "Type of attribute: output_name is not right.");
+  PADDLE_ENFORCE_EQ(
+      iter != attributes.end() && iter->second.isa<StrAttribute>(),
+      true,
+      common::errors::InvalidArgument(
+          "Type of attribute: output_name is not right."));
 
   // Verify outputs:
-  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+  PADDLE_ENFORCE_EQ(num_results(),
+                    0u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 0."));
 }
 
 void CombineOp::Build(Builder &builder,
@@ -208,30 +317,40 @@ void CombineOp::Build(Builder &builder,
 
 void CombineOp::VerifySig() const {
   // outputs.size() == 1
-  IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
+  PADDLE_ENFORCE_EQ(num_results(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
 
   // output_type == Vector<Type>
   auto output_type = (*this)->result(0).type().dyn_cast<VectorType>();
-  IR_ENFORCE(output_type,
-             "The type of outputs[0] must be equal to VectorType.");
+  PADDLE_ENFORCE_NOT_NULL(
+      output_type,
+      common::errors::InvalidArgument(
+          "The type of outputs[0] must be equal to VectorType."));
 
   // inputs.size() == outputs[0].size()
   auto input_num = num_operands();
-  IR_ENFORCE(output_type.size() == input_num,
-             "The size %d of output must be equal to size %d of inputs.",
-             output_type.size(),
-             input_num);
+  PADDLE_ENFORCE_EQ(
+      output_type.size(),
+      input_num,
+      common::errors::InvalidArgument(
+          "The size %d of output must be equal to size %d of inputs.",
+          output_type.size(),
+          input_num));
 
   // forall i in inputs.size(): inputs[i].type == outputs[0][i].type
   for (size_t i = 0; i < input_num; ++i) {
     auto type = (*this)->operand(i).type();
-    IR_ENFORCE(output_type[i] == type,
-               "The type %s of outputs[0][%d] must be "
-               "equal to type %s of inputs[%d].",
-               output_type[i],
-               i,
-               type,
-               i);
+    PADDLE_ENFORCE_EQ(
+        output_type[i],
+        type,
+        common::errors::InvalidArgument("The type %s of outputs[0][%d] must be "
+                                        "equal to type %s of inputs[%d].",
+                                        output_type[i],
+                                        i,
+                                        type,
+                                        i));
   }
 }
 
@@ -256,9 +375,11 @@ void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
   if (auto input = argument.inputs[0]) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
-      IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
-                 "Required CombineOp must have attribute %s",
-                 kStopGradientAttrName);
+      PADDLE_ENFORCE_EQ(defining_op->HasAttribute(kStopGradientAttrName),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Required CombineOp must have attribute %s",
+                            kStopGradientAttrName));
       auto attrs = defining_op->attribute(kStopGradientAttrName)
                        .dyn_cast<pir::ArrayAttribute>()
                        .AsVector();
@@ -277,9 +398,11 @@ void SliceOp::RefreshStopGradients() {
   if (auto input = (*this)->operand_source(0)) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
-      IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
-                 "Required CombineOp must have attribute %s",
-                 kStopGradientAttrName);
+      PADDLE_ENFORCE_EQ(defining_op->HasAttribute(kStopGradientAttrName),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Required CombineOp must have attribute %s",
+                            kStopGradientAttrName));
       auto attr = defining_op->attribute(kStopGradientAttrName)
                       .dyn_cast<pir::ArrayAttribute>();
       outs_stop_gradient[0] = attr.at(static_cast<size_t>(index));
@@ -293,46 +416,63 @@ void SliceOp::RefreshStopGradients() {
 void SliceOp::VerifySig() const {
   // inputs.size() == 1
   auto input_size = num_operands();
-  IR_ENFORCE(
-      input_size == 1, "The size %d of inputs must be equal to 1.", input_size);
+  PADDLE_ENFORCE_EQ(input_size,
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 1."));
 
   // inputs[0].type == Vector<Type>
   auto input_type = (*this)->operand(0).type().dyn_cast<pir::VectorType>();
-  IR_ENFORCE(input_type,
-             "The type %s of inputs[0] must be equal to VectorType.",
-             input_type);
+  PADDLE_ENFORCE_NOT_NULL(
+      input_type,
+      common::errors::InvalidArgument(
+          "The type %s of inputs[0] must be equal to VectorType.", input_type));
 
   auto output_size = num_results();
   // outputs.size() == 1
-  IR_ENFORCE(output_size == 1,
-             "The size %d of outputs must be equal to 1.",
-             output_size);
+  PADDLE_ENFORCE_EQ(
+      output_size,
+      1,
+      common::errors::InvalidArgument(
+          "The size %d of outputs must be equal to 1.", output_size));
 
   // attributes contains index: Int32
   auto &attributes = this->attributes();
-  IR_ENFORCE(attributes.count("index") != 0,
-             "The attributes must contains index.");
+  PADDLE_ENFORCE_NE(
+      attributes.count("index"),
+      0,
+      common::errors::InvalidArgument("The attributes must contains index."));
   const pir::Attribute &attr = attributes.at("index");
-  IR_ENFORCE(attr.isa<pir::Int32Attribute>(),
-             "The attribute index must be INT32.");
+  PADDLE_ENFORCE_EQ(
+      attr.isa<pir::Int32Attribute>(),
+      true,
+      common::errors::InvalidArgument("The attribute index must be INT32."));
   auto index = attr.dyn_cast<pir::Int32Attribute>().data();
 
   // index >= 0 and < inputs[0].size()
-  IR_ENFORCE(
-      index >= 0, "The index %d must be greater or equal than 0.", index);
-  IR_ENFORCE(static_cast<size_t>(index) < input_type.size(),
-             "The index %d must be less or equal than size %d of inputs[0].",
-             index,
-             input_type.size());
+  PADDLE_ENFORCE_GE(
+      index,
+      0,
+      common::errors::InvalidArgument(
+          "The index %d must be greater or equal than 0.", index));
+  PADDLE_ENFORCE_LT(
+      static_cast<size_t>(index),
+      input_type.size(),
+      common::errors::InvalidArgument(
+          "The index %d must be less or equal than size %d of inputs[0].",
+          index,
+          input_type.size()));
 
   // inputs[index].type == outputs[0].type
   auto output_type = (*this)->result(0).type();
-  IR_ENFORCE(
-      input_type[index] == output_type,
-      "The type %s of inputs[%d] must be equal to type %s of outputs[0].",
+  PADDLE_ENFORCE_EQ(
       input_type[index],
-      index,
-      output_type);
+      output_type,
+      common::errors::InvalidArgument(
+          "The type %s of inputs[%d] must be equal to type %s of outputs[0].",
+          input_type[index],
+          index,
+          output_type));
 }
 
 void SplitOp::Build(Builder &builder,
@@ -353,12 +493,14 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
   if (auto input = argument.inputs[0]) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
-      IR_ENFORCE(argument.output_types.size(),
-                 defining_op->num_operands(),
-                 "Required SplitOp.output.size() == CombineOp.input.size(), "
-                 "but received %d != %d",
-                 argument.output_types.size(),
-                 defining_op->num_operands());
+      PADDLE_ENFORCE_EQ(
+          argument.output_types.size(),
+          defining_op->num_operands(),
+          common::errors::InvalidArgument(
+              "Required SplitOp.output.size() == CombineOp.input.size(), "
+              "but received %d != %d",
+              argument.output_types.size(),
+              defining_op->num_operands()));
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto attr =
             defining_op->operand_source(i).attribute<pir::BoolAttribute>(
@@ -395,12 +537,14 @@ void SplitOp::RefreshStopGradients() {
   if (auto input = (*this)->operand_source(0)) {
     auto *defining_op = input.defining_op();
     if (defining_op && defining_op->isa<CombineOp>()) {
-      IR_ENFORCE((*this)->num_results(),
-                 defining_op->num_operands(),
-                 "Required SplitOp.output.size() == CombineOp.input.size(), "
-                 "but received %d != %d",
-                 (*this)->num_results(),
-                 defining_op->num_operands());
+      PADDLE_ENFORCE_EQ(
+          (*this)->num_results(),
+          defining_op->num_operands(),
+          common::errors::InvalidArgument(
+              "Required SplitOp.output.size() == CombineOp.input.size(), "
+              "but received %d != %d",
+              (*this)->num_results(),
+              defining_op->num_operands()));
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
@@ -439,18 +583,27 @@ void SplitOp::RefreshStopGradients() {
 
 void SplitOp::VerifySig() const {
   // inputs.size() == 1
-  IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 1."));
 
   // input_type == Vector<Type>
   auto input_type = (*this)->operand(0).type().dyn_cast<VectorType>();
-  IR_ENFORCE(input_type, "The type of inputs[0] must be equal to VectorType.");
+  PADDLE_ENFORCE_NOT_NULL(
+      input_type,
+      common::errors::InvalidArgument(
+          "The type of inputs[0] must be equal to VectorType."));
 
   // inputs[0].size() == outputs.size()
   auto output_num = num_results();
-  IR_ENFORCE(input_type.size() == output_num,
-             "The size %d of output must be equal to size %d of inputs.",
-             output_num,
-             input_type.size());
+  PADDLE_ENFORCE_EQ(
+      input_type.size(),
+      output_num,
+      common::errors::InvalidArgument(
+          "The size %d of output must be equal to size %d of inputs.",
+          output_num,
+          input_type.size()));
 
   // for all i in outputs.size(): outputs[i].type == inputs[0][i].type
   // TODO(@xiongkun) consult zhangbo to check what to do with null type.
@@ -467,20 +620,31 @@ void ConstantOp::Build(Builder &builder,
 }
 
 void ConstantOp::VerifySig() const {
-  IR_ENFORCE(num_operands() == 0, "The size of inputs must be equal to 0.");
-  IR_ENFORCE(num_results() == 1, "The size of outputs must be equal to 1.");
-  IR_ENFORCE(attributes().count("value") > 0, "must has value attribute");
+  PADDLE_ENFORCE_EQ(num_operands(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "The size of inputs must be equal to 0."));
+  PADDLE_ENFORCE_EQ(num_results(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The size of outputs must be equal to 1."));
+  PADDLE_ENFORCE_GT(
+      attributes().count("value"),
+      0,
+      common::errors::InvalidArgument("must has value attribute"));
 }
 
 Attribute ConstantOp::value() const { return attributes().at("value"); }
 
 void ConstantTensorOp::VerifySig() const {
   ConstantOp::VerifySig();
-  IR_ENFORCE(value().isa<pir::TensorNameAttribute>(),
-             "Type of value must be str attribute");
+  PADDLE_ENFORCE_EQ(
+      value().isa<pir::TensorNameAttribute>(),
+      true,
+      common::errors::InvalidArgument("Type of value must be str attribute"));
 }
 
-ConstantTensorOp ConstantTensorOp::dyn_cast(Operation *op) {
+ConstantTensorOp ConstantTensorOp::dyn_cast(const Operation *op) {
   if (ConstantTensorOp::classof(op)) return ConstantTensorOp(op);
   return ConstantTensorOp(nullptr);
 }
@@ -513,3 +677,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::GroupOp)

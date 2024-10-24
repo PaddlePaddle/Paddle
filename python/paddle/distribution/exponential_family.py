@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class ExponentialFamily(distribution.Distribution):
@@ -47,8 +54,8 @@ class ExponentialFamily(distribution.Distribution):
     def _mean_carrier_measure(self):
         raise NotImplementedError
 
-    def entropy(self):
-        """caculate entropy use `bregman divergence`
+    def entropy(self) -> Tensor:
+        """calculate entropy use `bregman divergence`
         https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf
         """
         entropy_value = -self._mean_carrier_measure

@@ -16,9 +16,10 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/phi/kernels/p_norm_kernel.h"
 
 namespace phi {
 
@@ -53,7 +54,7 @@ struct EmbeddingCPUFunctor {
         PADDLE_ENFORCE_LT(
             ids[i],
             row_number,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
@@ -62,7 +63,7 @@ struct EmbeddingCPUFunctor {
         PADDLE_ENFORCE_GE(
             ids[i],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
@@ -107,8 +108,8 @@ void EmbeddingKernel(const Context& ctx,
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64, but get %s",
+    PADDLE_THROW(common::errors::Unimplemented(
+        "embedding input only support int32 and int64, but get %s",
         input.dtype()));
   }
 }
@@ -123,4 +124,6 @@ PD_REGISTER_KERNEL(embedding,
                    double,
                    int8_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

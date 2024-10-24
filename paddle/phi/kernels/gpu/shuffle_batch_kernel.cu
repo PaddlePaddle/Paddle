@@ -41,7 +41,7 @@ void ShuffleBatchKernel(const Context& dev_ctx,
                         DenseTensor* shuffleidx,
                         DenseTensor* seed_out) {
 #ifdef _MSC_VER
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "GPU shuffle_batch is not supported on Windows yet"));
 #else
   int64_t x_embed_size = x.dims()[x.dims().size() - 1];

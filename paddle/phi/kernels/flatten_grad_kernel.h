@@ -20,13 +20,13 @@ namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
-                       const DenseTensor& xshape,
+                       const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad);
 
 template <typename Context>
 void FlattenGradStridedKernel(const Context& dev_ctx,
-                              const DenseTensor& xshape,
+                              const DenseTensor& x,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad);
 

@@ -291,6 +291,22 @@ class TestReshapeSPMDRule(unittest.TestCase):
             infered_output_dist_attrs[0].dims_mapping, [1, -1, 0, -1]
         )
 
+        # shape: [1, 2048, 12288] --> [0, 0, 6, 2048]
+        # dims_mapping: [0, -1, 1] --> [0, -1, 1], [0, -1, 1, -1]
+        self.x_dist_tensor_spec.shape = [1, 2048, 12288]
+        self.attrs["shape"] = [0, 0, 6, 2048]
+        self.x_dist_tensor_spec.set_dims_mapping([0, -1, 1])
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec, self.attrs['shape']
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [0, -1, 1, -1]
+        )
+
         # shape: [6, 12, 48, 24] --> [3, 24, 6, -1, -1]
         # raise error
         self.attrs["shape"] = [3, 24, 6, -1, -1]

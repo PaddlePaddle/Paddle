@@ -17,13 +17,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import tensor
-from paddle.static import Program, program_guard
+from paddle import static, tensor
+from paddle.base.framework import in_pir_mode
 
 
 class TestMultiplyApi(unittest.TestCase):
     def _run_static_graph_case(self, x_data, y_data):
-        with program_guard(Program(), Program()):
+        with static.program_guard(static.Program(), static.Program()):
             paddle.enable_static()
             x = paddle.static.data(
                 name='x', shape=x_data.shape, dtype=x_data.dtype
@@ -110,13 +110,14 @@ class TestMultiplyError(unittest.TestCase):
     def test_errors(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with static.program_guard(static.Program(), static.Program()):
             x = paddle.static.data(name='x', shape=[100], dtype=np.int8)
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
-            self.assertRaises(TypeError, tensor.multiply, x, y)
+            if not in_pir_mode():
+                self.assertRaises(TypeError, tensor.multiply, x, y)
 
         # test static computation graph: inputs must be broadcastable
-        with program_guard(Program(), Program()):
+        with static.program_guard(static.Program(), static.Program()):
             x = paddle.static.data(name='x', shape=[20, 50], dtype=np.float64)
             y = paddle.static.data(name='y', shape=[20], dtype=np.float64)
             self.assertRaises(ValueError, tensor.multiply, x, y)
@@ -149,7 +150,7 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.multiply, x, y)
+        self.assertRaises(TypeError, paddle.multiply, x, y)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.int64)
@@ -183,7 +184,7 @@ class TestMultiplyError(unittest.TestCase):
 
 class TestMultiplyInplaceApi(TestMultiplyApi):
     def _run_static_graph_case(self, x_data, y_data):
-        with program_guard(Program(), Program()):
+        with static.program_guard(static.Program(), static.Program()):
             paddle.enable_static()
             x = paddle.static.data(
                 name='x', shape=x_data.shape, dtype=x_data.dtype

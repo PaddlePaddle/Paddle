@@ -28,8 +28,8 @@
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/string_helper.h"
 #ifdef PADDLE_WITH_HETERPS
 namespace paddle {
 namespace framework {

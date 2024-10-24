@@ -25,13 +25,12 @@ class OneDNNOperatorDialect : public pir::Dialect {
 
   static const char* name() { return "onednn_op"; }
 
-  pir::Type ParseType(pir::IrParser& parser) override;            // NOLINT
   pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT
 
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;
+  pir::OpPrintFn PrintOperation(const pir::Operation& op) const override;
 
  private:
   void initialize();

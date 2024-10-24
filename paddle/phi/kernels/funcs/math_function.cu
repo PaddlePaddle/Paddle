@@ -104,7 +104,7 @@ void BatchTranspose(T* output,
   int64_t input_num = batch * m * n;
 
   if (input_num >= std::numeric_limits<int>::max()) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported input size, batch: %ld,m: %ld, n: %ld", batch, m, n));
   }
 
@@ -142,6 +142,8 @@ template void BatchTranspose(bfloat16* output,
                              int64_t n,
                              const phi::GPUContext* dev_ctx);
 
+template struct SetConstant<phi::GPUContext, float8_e4m3fn>;
+template struct SetConstant<phi::GPUContext, float8_e5m2>;
 template struct SetConstant<phi::GPUContext, float16>;
 template struct SetConstant<phi::GPUContext, bfloat16>;
 template struct SetConstant<phi::GPUContext, float>;
@@ -173,6 +175,8 @@ template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<double>>;
   template struct Transpose<phi::GPUContext, unsigned char, RANK>; \
   template struct Transpose<phi::GPUContext, float, RANK>;         \
   template struct Transpose<phi::GPUContext, double, RANK>;        \
+  template struct Transpose<phi::GPUContext, float8_e4m3fn, RANK>; \
+  template struct Transpose<phi::GPUContext, float8_e5m2, RANK>;   \
   template struct Transpose<phi::GPUContext, float16, RANK>;       \
   template struct Transpose<phi::GPUContext, bfloat16, RANK>;      \
   template struct Transpose<phi::GPUContext, int8_t, RANK>;        \
@@ -320,6 +324,8 @@ struct TransposeNormal<phi::GPUContext, T> {
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::GPUContext, TYPE>
 
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
+DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
 DEFINE_GPU_TRANS_NORMAL(float);
@@ -383,7 +389,7 @@ struct RowwiseAdd<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         vector.numel(),
         size,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input vector size"
             " should be equal to the size of each row of input tensor."
             " Expected vector size=%d, but received %d",
@@ -394,7 +400,7 @@ struct RowwiseAdd<phi::GPUContext, T> {
     PADDLE_ENFORCE_EQ(
         out_dims,
         in_dims,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output tensor shape should be same as the input tensor"
             " shape. Expected output tensor shape: %s,"
             " but received %s",
@@ -429,7 +435,7 @@ void ColwiseSum<phi::GPUContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor column"
                         " dimension. Expected vector size=%d, but received %d",
@@ -467,7 +473,7 @@ void RowwiseSum<phi::GPUContext, double>::operator()(
   auto size = input.numel() / in_dims[0];
   PADDLE_ENFORCE_EQ(vector->numel(),
                     in_dims[0],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of input vector"
                         " should be equal to the size of input tensor row"
                         " dimension. Expected vector size=%d, but received %d",

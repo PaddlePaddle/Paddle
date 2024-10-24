@@ -53,8 +53,8 @@ void predictor_run() {
   const int width = 318;
   float *input = new float[batch_size * channels * height * width]();
 
-  int32_t shape[4] = {batch_size, channels, height, width};
-  PD_TensorReshape(tensor, 4, shape);
+  std::array<int32_t, 4> shape = {batch_size, channels, height, width};
+  PD_TensorReshape(tensor, 4, shape.data());
   PD_TensorCopyFromCpuFloat(tensor, input);
   EXPECT_TRUE(PD_PredictorRun(predictor));
 
@@ -78,9 +78,6 @@ TEST(PD_Config, profile_mkldnn) {
   PD_ConfigEnableMKLDNN(config);
   bool mkldnn_enable = PD_ConfigMkldnnEnabled(config);
   EXPECT_TRUE(mkldnn_enable);
-  PD_ConfigEnableMkldnnQuantizer(config);
-  bool quantizer_enable = PD_ConfigMkldnnQuantizerEnabled(config);
-  EXPECT_TRUE(quantizer_enable);
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetMkldnnCacheCapacity(config, 0);
   PD_ConfigSetModel(config, prog_file.c_str(), params_file.c_str());

@@ -83,7 +83,9 @@ std::string Flatten::to_string() {
   return ret_str + ")";
 }
 
-Split::Split() : DimTrans(DimTrans::Type::SPLIT) { input_dim_trans_ = nullptr; }
+Split::Split() : DimTrans(DimTrans::Type::SPLIT), split_id_(0) {
+  input_dim_trans_ = nullptr;
+}
 
 Split::Split(const std::shared_ptr<DimTrans> dim,
              const std::vector<int64_t>& shape,
@@ -125,7 +127,7 @@ std::string Split::to_string() {
 std::shared_ptr<DimTrans> make_flatten(
     const std::vector<std::shared_ptr<DimTrans>>& dims) {
   std::shared_ptr<DimTrans> ptr;
-  if (dims.size() == 0) {
+  if (dims.empty()) {
     ptr = std::make_shared<Singleton>();
   } else if (dims.size() == 1) {
     ptr = dims[0];
@@ -140,7 +142,7 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
                                      int64_t id) {
   PADDLE_ENFORCE_GT(shape.size(),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of the `shape` vector in `make_split` "
                         "must be greater than 0, but received %d",
                         shape.size()));
@@ -149,7 +151,7 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
     assert(id == 0);
     PADDLE_ENFORCE_EQ(id,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The `id` in `make_split` must be 0 when the "
                           "size of the `shape` vector is 1, but received %d",
                           id));
@@ -244,7 +246,7 @@ std::shared_ptr<DimTrans> GetDimTrans(
       if (dim != nullptr) {
         PADDLE_ENFORCE_EQ(dim->type(),
                           DimTrans::Type::INPUTDIM,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The returned dim_trans must be INPUTDIM."));
         std::shared_ptr<InputDim> inputdim =
             std::dynamic_pointer_cast<InputDim>(dim);
@@ -297,7 +299,7 @@ std::vector<std::vector<int64_t>> InferFromDimTrans(
   }
   PADDLE_ENFORCE_EQ(input_shape.size(),
                     input_spec.dist_attr().dims_mapping().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor X's rank [%d] and X's "
                         "dims_mapping size [%d] are not matched.",
                         input_shape.size(),

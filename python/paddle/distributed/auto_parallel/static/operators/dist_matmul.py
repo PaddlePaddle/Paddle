@@ -315,7 +315,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
     assert (
         dist_attr is not None
-    ), f"backward op [{str(backward_op)}] don't have dist attribute !"
+    ), f"backward op [{backward_op}] don't have dist attribute !"
 
     # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
     if rank_id not in dist_attr.process_mesh.process_ids:
@@ -485,14 +485,13 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
             )
             sync_group = new_process_group(group_ranks)
 
-            startup_block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
+            broadcast_op = startup_block.append_op(
+                type='broadcast',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={
                     'ring_id': sync_group.id,
                     'root': 0,
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
@@ -515,7 +514,7 @@ def update_dims_mapping_matmul(dist_op):
         trans_x = False
         trans_y = False
 
-    # TODO (zhangyichen) replace dist tensor spece by dist tensor in future.
+    # TODO (zhangyichen) replace dist tensor spec by dist tensor in future.
     x_spec = get_dist_tensor_spec(dist_op, x_name)
     y_spec = get_dist_tensor_spec(dist_op, y_name)
     out_spec = get_dist_tensor_spec(dist_op, out_name, False)
@@ -782,7 +781,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -818,9 +817,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             )[-2]
         assert (
             matmul_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_col_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -1039,7 +1036,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -1075,9 +1072,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             )[-1]
         assert (
             matmul_row_dim_mapping >= 0
-        ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_row_dim_mapping
-        )
+        ), f"row_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -1479,7 +1474,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -1515,9 +1510,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             )[-2]
         assert (
             matmul_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_col_dim_mapping}]"
 
         # infer new var shape with op dist attr
         x_tensor_dist_attr = ctx.get_tensor_dist_attr_for_program(X_var)
@@ -1730,7 +1723,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -1766,9 +1759,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             )[-1]
         assert (
             matmul_row_dim_mapping >= 0
-        ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_row_dim_mapping
-        )
+        ), f"row_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -2163,7 +2154,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -2193,9 +2184,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         )[-1]
         assert (
             matmul_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_col_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -2408,7 +2397,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -2438,9 +2427,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         )[-2]
         assert (
             matmul_row_dim_mapping >= 0
-        ), "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            matmul_row_dim_mapping
-        )
+        ), f"row_parallel_matmul's row should be divided by a specific mesh axis, but got [{matmul_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 

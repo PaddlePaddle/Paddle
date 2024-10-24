@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_add_ref(
@@ -29,12 +29,13 @@ def compute_index_add_ref(
         axis = axis + len(x_shape)
     if axis != 0:
         outer_loop = np.prod(x_shape[:axis]).astype(int)
-        x_reshape = [outer_loop] + list(x_shape[axis:])
+        x_reshape = [outer_loop, *x_shape[axis:]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
 
         add_value_reshape = [
-            np.prod(add_value_shape[:axis]).astype(int)
-        ] + list(add_value_shape[axis:])
+            np.prod(add_value_shape[:axis]).astype(int),
+            *add_value_shape[axis:],
+        ]
 
         add_value_np_reshape = np.reshape(
             add_value_np, tuple(add_value_reshape)
@@ -65,7 +66,9 @@ class TestIndexAddOp(OpTest):
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.axis], size=self.index_size
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(
@@ -122,7 +125,9 @@ class TestIndexAddBF16Op(OpTest):
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.axis], size=self.index_size
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(
@@ -185,7 +190,13 @@ class TestIndexAddAPI(unittest.TestCase):
         self.index_type = np.int32
 
     def setPlace(self):
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 
@@ -205,7 +216,9 @@ class TestIndexAddAPI(unittest.TestCase):
             self.x_type
         )
         self.index_np = np.random.randint(
-            low=0, high=self.x_shape[axis], size=self.index_size
+            low=-self.x_shape[axis],
+            high=self.x_shape[axis],
+            size=self.index_size,
         ).astype(self.index_type)
         if self.check_backward:
             self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
@@ -298,7 +311,6 @@ class TestIndexAddAPI(unittest.TestCase):
         )
         return res
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for device in self.place:

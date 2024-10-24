@@ -21,7 +21,7 @@ import subprocess
 
 def crepr(v):
     if isinstance(v, str):
-        return '"%s"' % v
+        return f'"{v}"'
     return str(v)
 
 
@@ -157,12 +157,14 @@ class Node:
         reprs = '{name} [label={label} {extra} ];'.format(
             name=self.name,
             label=self.label,
-            extra=','
-            + ','.join(
-                f"{key}={crepr(value)}" for key, value in self.attrs.items()
-            )
-            if self.attrs
-            else "",
+            extra=(
+                ','
+                + ','.join(
+                    f"{key}={crepr(value)}" for key, value in self.attrs.items()
+                )
+                if self.attrs
+                else ""
+            ),
         )
         return reprs
 
@@ -184,13 +186,15 @@ class Edge:
         repr = "{source} -> {target} {extra}".format(
             source=self.source.name,
             target=self.target.name,
-            extra=""
-            if not self.attrs
-            else "["
-            + ','.join(
-                f"{attr[0]}={crepr(attr[1])}" for attr in self.attrs.items()
-            )
-            + "]",
+            extra=(
+                ""
+                if not self.attrs
+                else "["
+                + ','.join(
+                    f"{attr[0]}={crepr(attr[1])}" for attr in self.attrs.items()
+                )
+                + "]"
+            ),
         )
         return repr
 
@@ -255,7 +259,7 @@ class GraphPreviewGenerator:
             highlight = kwargs['highlight']
             del kwargs['highlight']
         return self.graph.node(
-            "<<B>%s</B>>" % opType,
+            f"<<B>{opType}</B>>",
             prefix="op",
             description=opType,
             shape="box",

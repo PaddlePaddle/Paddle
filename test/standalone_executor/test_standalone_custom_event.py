@@ -180,19 +180,23 @@ class TestMannulEvent(unittest.TestCase):
     def test_result(self):
         if not core.is_compiled_with_cuda():
             return
-
-        baselines = self.run_program()
-        stream_outs = self.run_program(apply_custom_stream=True)
-        split_outs = self.run_program(apply_custom_stream=True, split_prog=True)
-        manual_outs = self.run_program(
-            apply_custom_stream=True, split_prog=True, apply_manual_event=True
-        )
-        for bl, out0, out1, out2 in zip(
-            baselines, stream_outs, split_outs, manual_outs
-        ):
-            self.assertEqual(bl[0], out0[0])
-            self.assertEqual(bl[0], out2[0])
-            # self.assertNotEqual(bl[0], out1[0])
+        with paddle.pir_utils.OldIrGuard():
+            baselines = self.run_program()
+            stream_outs = self.run_program(apply_custom_stream=True)
+            split_outs = self.run_program(
+                apply_custom_stream=True, split_prog=True
+            )
+            manual_outs = self.run_program(
+                apply_custom_stream=True,
+                split_prog=True,
+                apply_manual_event=True,
+            )
+            for bl, out0, out1, out2 in zip(
+                baselines, stream_outs, split_outs, manual_outs
+            ):
+                self.assertEqual(bl[0], out0[0])
+                self.assertEqual(bl[0], out2[0])
+                # self.assertNotEqual(bl[0], out1[0])
 
 
 if __name__ == "__main__":

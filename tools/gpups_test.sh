@@ -1,11 +1,11 @@
 # Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,6 @@
 # limitations under the License.
 
 failuretest=''
-
 function collect_failed_tests() {
     for file in `ls $tmp_dir`; do
         exit_code=0
@@ -40,7 +39,7 @@ function get_quickly_disable_ut() {
     fi
 }
 
-# disable test: 
+# disable test:
 # test_dygraph_dataparallel_bf16
 # test_dygraph_sharding_stage2_bf16
 # test_dygraph_sharding_stage3_bf16
@@ -58,8 +57,8 @@ parallel_list="^init_phi_test$|\
 ^test_collective_cpu_barrier_with_gloo$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
-^test_conv2d_api$|\
-^test_conv2d_layer$|\
+^test_conv2d_api_deprecated$|\
+^test_conv2d_layer_deprecated$|\
 ^test_conv2d_op_depthwise_conv$|\
 ^test_conv2d_transpose_layer$|\
 ^test_conv2d_transpose_op_depthwise_conv$|\
@@ -80,7 +79,6 @@ parallel_list="^init_phi_test$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
 ^test_executor_feed_non_tensor$|\
-^test_flash_attention$|\
 ^test_fuse_resunit_pass$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
@@ -99,18 +97,16 @@ parallel_list="^init_phi_test$|\
 ^test_fused_fc_elementwise_layernorm_op$|\
 ^test_fused_feedforward_op$|\
 ^test_fused_feedforward_op_static_build$|\
-^test_fused_gate_attention_op$|\
 ^test_fused_gemm_epilogue_grad_op$|\
 ^test_fused_gemm_epilogue_grad_op_with_es$|\
 ^test_fused_gemm_epilogue_op$|\
 ^test_fused_gemm_epilogue_op_with_es$|\
 ^test_fused_layernorm_residual_dropout_bias$|\
 ^test_fused_linear_param_grad_add$|\
-^test_fused_linear_pass$|\
+^test_fused_linear_pass_deprecated$|\
 ^test_fused_matmul_bias$|\
 ^test_fused_multi_transformer_decoder_pass$|\
 ^test_fused_multi_transformer_encoder_pass$|\
-^test_fused_multi_transformer_int8_op$|\
 ^test_fused_residual_dropout_bias$|\
 ^test_fused_rotary_position_embedding$|\
 ^test_fused_scale_bias_add_relu_op$|\
@@ -119,6 +115,7 @@ parallel_list="^init_phi_test$|\
 ^test_fused_transformer_encoder_layer$|\
 ^test_fused_transformer_with_amp_decorator$|\
 ^test_fused_dot_product_attention_op$|\
+^test_fused_dot_product_attention_op_static$|\
 ^test_fuse_dot_product_attention_pass$|\
 ^test_fused_dot_product_attention_pass$|\
 ^test_gather_nd_op$|\
@@ -128,7 +125,8 @@ parallel_list="^init_phi_test$|\
 ^test_roll_op$|\
 ^test_switch_autotune$|\
 ^test_to_tensor$|\
-^test_top_k_v2_op$"
+^test_top_k_v2_op$|\
+^test_pir_amp$"
 
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`

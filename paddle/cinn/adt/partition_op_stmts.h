@@ -18,7 +18,6 @@
 #include "paddle/cinn/adt/equation_graph.h"
 #include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 
 namespace cinn::adt {
 

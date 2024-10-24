@@ -125,15 +125,15 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
         f.write("add_custom_target(\n")
         f.write("  copy_dygraph_node\n")
         f.write(
-            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.tmp.h\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
+            '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.tmp.h" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h"\n'
         )
         for i in range(split_count):
             f.write(
-                "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes"
+                '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes'
                 + str(i + 1)
-                + ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes"
+                + '.tmp.cc" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes'
                 + str(i + 1)
-                + ".cc\"\n"
+                + '.cc"\n'
             )
 
         f.write("  DEPENDS legacy_eager_codegen\n")
@@ -151,24 +151,24 @@ def GenerateFileStructureForIntermediateDygraph(eager_dir, split_count):
         f.write("add_custom_target(\n")
         f.write("  copy_dygraph_forward_functions\n")
         f.write(
-            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.tmp.h\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h\"\n"
+            '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.tmp.h" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/dygraph_forward_api.h"\n'
         )
         for i in range(split_count):
             f.write(
-                "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions"
+                '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions'
                 + str(i + 1)
-                + ".tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions"
+                + '.tmp.cc" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions'
                 + str(i + 1)
-                + ".cc\"\n"
+                + '.cc"\n'
             )
         f.write(
-            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.cc\"\n"
+            '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.tmp.cc" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_info.cc"\n'
         )
         f.write(
-            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_type_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_type_info.cc\"\n"
+            '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_type_info.tmp.cc" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_args_type_info.cc"\n'
         )
         f.write(
-            "  COMMAND ${CMAKE_COMMAND} -E copy_if_different \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.tmp.cc\" \"${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.cc\"\n"
+            '  COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.tmp.cc" "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated/forwards/dygraph_forward_functions_returns_info.cc"\n'
         )
         f.write("  DEPENDS legacy_eager_codegen\n")
         f.write("  VERBATIM)\n")

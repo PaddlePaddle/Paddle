@@ -21,8 +21,11 @@ namespace utils {
 int SampleUniformInt(int min,
                      int max,
                      LinearRandomEngine::StateType* rand_seed) {
-  CHECK(min < max) << "Input value error: min(" << min
-                   << ") must be less than max(" << max << ")";
+  PADDLE_ENFORCE_EQ(
+      min < max,
+      true,
+      ::common::errors::InvalidArgument(
+          "Input value error: min(%d) must be less than max(%d)", min, max));
   if (min + 1 == max) {
     return min;
   }
@@ -36,8 +39,11 @@ int SampleUniformInt(int min,
 double SampleUniformDouble(double min,
                            double max,
                            LinearRandomEngine::StateType* rand_seed) {
-  CHECK(min < max) << "Input value error: min(" << min
-                   << ") must be less than max(" << max << ")";
+  PADDLE_ENFORCE_EQ(
+      min < max,
+      true,
+      ::common::errors::InvalidArgument(
+          "Input value error: min(%f) must be less than max(%f)", min, max));
   LinearRandomEngine engine(rand_seed);
   std::uniform_real_distribution<> dist(min, max);
   return dist(engine);

@@ -24,7 +24,7 @@ class ValueExecutionInfo;
 class BuiltinCombineInstruction : public InstructionBase {
  public:
   BuiltinCombineInstruction(size_t id,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             ::pir::Operation* op,
                             ValueExecutionInfo* value_exe_info);
 

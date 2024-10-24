@@ -40,26 +40,10 @@ struct SymbolAttributeStorage : public AttributeStorage {
   }
 
   static std::size_t HashValue(const ParamKey &key) {
-    std::size_t hash_value = 0;
-    for (size_t i = 0; i < key.shape().size(); ++i) {
-      hash_value = detail::hash_combine(
-          hash_value,
-          std::hash<std::string>()(symbol::ToString(key.shape()[i])));
-    }
-    if (key.data().has_value()) {
-      for (size_t i = 0; i < key.data().value().size(); ++i) {
-        hash_value = detail::hash_combine(
-            hash_value,
-            std::hash<std::string>()(symbol::ToString(key.data().value()[i])));
-      }
-    }
-
-    return hash_value;
+    return std::hash<ParamKey>()(key);
   }
 
-  bool operator==(const ParamKey &key) const {
-    return data_.shape() == key.shape() && data_.data() == key.data();
-  }
+  bool operator==(const ParamKey &key) const { return data_ == key; }
 
   ParamKey data() const { return data_; }
 

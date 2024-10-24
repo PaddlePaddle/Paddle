@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -30,15 +29,15 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // Step0: Verify input args based on split logic
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto x_dist_attr_src = x.dist_attr();
+  const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
@@ -108,11 +107,11 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   int out_ndim = static_cast<int>(common::vectorize(outs[0]->dims()).size());
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto x_dist_attr = x.dist_attr();
+  const auto& x_dist_attr = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(nouts,
                     num,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of Output Tensors [%d] is not equal "
                         "to the specified split number [%d]",
                         nouts,
@@ -120,23 +119,23 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   PADDLE_ENFORCE_EQ(
       x_ndim,
       out_ndim,
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] is not equal "
-                                   "to the Tensor Out's rank [%d]",
-                                   x_ndim,
-                                   out_ndim));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] is not equal "
+                                      "to the Tensor Out's rank [%d]",
+                                      x_ndim,
+                                      out_ndim));
   for (int i = 0; i < num; i++) {
     auto shape = common::vectorize(outs[i]->dims());
     int ndim = static_cast<int>(shape.size());
     auto dist_attr = outs[i]->dist_attr();
     int dims_mapping_size = static_cast<int>(dist_attr.dims_mapping().size());
-    PADDLE_ENFORCE_EQ(
-        ndim,
-        dims_mapping_size,
-        phi::errors::InvalidArgument("The Tensor Out[%d]'s rank [%d] and Its "
-                                     "dims_mapping size [%d] are not matched.",
-                                     i,
-                                     ndim,
-                                     dims_mapping_size));
+    PADDLE_ENFORCE_EQ(ndim,
+                      dims_mapping_size,
+                      common::errors::InvalidArgument(
+                          "The Tensor Out[%d]'s rank [%d] and Its "
+                          "dims_mapping size [%d] are not matched.",
+                          i,
+                          ndim,
+                          dims_mapping_size));
   }
 
   // Step1: Build Einsum Notation
@@ -159,7 +158,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   for (int i = 0; i < nouts; i++) {
     std::vector<int64_t> out_dims_mapping = outs[i]->dist_attr().dims_mapping();
-    axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
+    axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
   }
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
@@ -210,6 +209,13 @@ SpmdInfo SplitInferSpmd(const DistMetaTensor& x,
   return SplitWithNumInferSpmd(x, num, axis);
 }
 
+SpmdInfo SplitInferSpmdDynamic(const DistMetaTensor& x,
+                               const std::vector<int64_t>& sections,
+                               const Scalar& axis) {
+  int num = static_cast<int>(sections.size());
+  return SplitWithNumInferSpmdDynamic(x, num, axis);
+}
+
 SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
                                const std::vector<const DistMetaTensor*>& outs,
                                const std::vector<int>& sections,
@@ -227,6 +233,7 @@ SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
   SpmdInfo ret;
   ret.first = tmp.first;
   std::vector<TensorDistAttr> out_dist_attrs;
+  out_dist_attrs.reserve(tmp.second.size());
   for (const auto& out : tmp.second) {
     out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
   }
@@ -234,5 +241,4 @@ SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
   return ret;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

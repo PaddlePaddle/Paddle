@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Dict
 
 import paddle
 from paddle import nn
@@ -71,11 +71,9 @@ class IntermediateLayerGetter(nn.LayerDict):
             [('feat1', [1, 64, 56, 56]), ('feat2', [1, 256, 14, 14])]
     """
 
-    __annotations__ = {
-        "return_layers": Dict[str, str],
-    }
+    return_layers: dict[str, str]
 
-    def __init__(self, model: nn.Layer, return_layers: Dict[str, str]) -> None:
+    def __init__(self, model: nn.Layer, return_layers: dict[str, str]) -> None:
         if not set(return_layers).issubset(
             [name for name, _ in model.named_children()]
         ):

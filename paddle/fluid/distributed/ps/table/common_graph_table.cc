@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 
-#include <time.h>
+#include <ctime>
 
 #include <algorithm>
 #include <chrono>
@@ -27,12 +27,14 @@
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/platform/timer.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/platform/timer.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(graph_load_in_parallel);
 COMMON_DECLARE_bool(graph_get_neighbor_id);
@@ -56,8 +58,7 @@ PHI_DEFINE_EXPORTED_int32(graph_edges_debug_node_num,
                           2,
                           "graph debug node num");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #ifdef PADDLE_WITH_HETERPS
 int32_t GraphTable::Load_to_ssd(const std::string &path,
@@ -1229,7 +1230,10 @@ void GraphTable::fennel_graph_edge_partition() {
       }
       inter_cost[i] = 0;
     }
-    CHECK_GT(max_score, 0);
+    PADDLE_ENFORCE_GT(
+        max_score,
+        0,
+        common::errors::InvalidArgument("max_score should be greater than 0"));
     return index;
   };
   // 查找关系最远点作为起点
@@ -1270,7 +1274,10 @@ void GraphTable::fennel_graph_edge_partition() {
         break;
       }
     }
-    CHECK_NE(key, 0xffffffffffffffffL);
+    PADDLE_ENFORCE_NE(key,
+                      0xffffffffffffffffL,
+                      common::errors::InvalidArgument(
+                          "key should not be 0xffffffffffffffffL"));
     return key;
   };
   // 其它结点都添加完成，剩余的点就直接放到这个机器上面
@@ -1621,11 +1628,10 @@ void GraphTable::clear_edge_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : edge_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (auto &task : tasks) task.get();
@@ -1643,11 +1649,10 @@ void GraphTable::clear_feature_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : feature_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (auto &task : tasks) task.get();
@@ -1665,11 +1670,10 @@ void GraphTable::clear_node_shard() {
   std::vector<std::future<int>> tasks;
   for (auto &type_shards : node_shards) {
     for (auto &shard : type_shards) {
-      tasks.push_back(
-          load_node_edge_task_pool->enqueue([&shard, this]() -> int {
-            delete shard;
-            return 0;
-          }));
+      tasks.push_back(load_node_edge_task_pool->enqueue([&shard]() -> int {
+        delete shard;
+        return 0;
+      }));
     }
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
@@ -1821,7 +1825,7 @@ FeatureNode *GraphShard::add_feature_node(uint64_t id,
   if (is_overlap) {
     return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
   }
-  return NULL;
+  return nullptr;
 }
 
 void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
@@ -1834,7 +1838,7 @@ Node *GraphShard::find_node(uint64_t id) {
 }
 
 GraphTable::~GraphTable() {  // NOLINT
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   clear_graph();
 #endif
 }
@@ -1845,8 +1849,8 @@ int32_t GraphTable::Load(const std::string &path, const std::string &param) {
   if (load_edge) {
     bool reverse_edge = (param[1] == '<');
     std::string edge_type = param.substr(2);
-    int ret = this->load_edges(path, reverse_edge, edge_type);
-    if (ret != 0) {
+    auto ret = this->load_edges(path, reverse_edge, edge_type);
+    if (ret.first != 0) {
       VLOG(0) << "Fail to load edges, path[" << path << "] edge_type["
               << edge_type << "]";
       return -1;
@@ -1917,10 +1921,12 @@ int32_t GraphTable::parse_edge_and_load(
   std::string delim = ";";
   size_t total_len = etypes.size();
 
-  std::vector<std::future<int>> tasks;
+  std::vector<std::future<std::pair<uint64_t, uint64_t>>> tasks;
   for (size_t i = 0; i < total_len; i++) {
-    tasks.push_back(
-        _shards_task_pool[i % task_pool_size_]->enqueue([&, i, this]() -> int {
+    tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
+        [&, i, this]() -> std::pair<uint64_t, uint64_t> {
+          uint64_t edge_all_count = 0;
+          uint64_t edge_valid_count = 0;
           std::string etype_path = edge_to_edgedir[etypes[i]];
           bool only_load_reverse_edge = false;
           if (!reverse) {
@@ -1948,46 +1954,67 @@ int32_t GraphTable::parse_edge_and_load(
                 ::paddle::string::join_strings(etype_path_list, delim);
           }
           if (!only_load_reverse_edge) {
-            this->load_edges(etype_path_str, false, etypes[i], use_weight);
+            auto pair_res =
+                this->load_edges(etype_path_str, false, etypes[i], use_weight);
+            edge_all_count += pair_res.first;
+            edge_valid_count += pair_res.second;
             if (reverse) {
               std::string r_etype = get_inverse_etype(etypes[i]);
-              this->load_edges(etype_path_str, true, r_etype, use_weight);
+              pair_res =
+                  this->load_edges(etype_path_str, true, r_etype, use_weight);
+              edge_all_count += pair_res.first;
+              edge_valid_count += pair_res.second;
             }
           } else {
-            this->load_edges(etype_path_str, true, etypes[i], use_weight);
+            auto pair_res =
+                this->load_edges(etype_path_str, true, etypes[i], use_weight);
+            edge_all_count += pair_res.first;
+            edge_valid_count += pair_res.second;
           }
-          return 0;
+          return {edge_all_count, edge_valid_count};
         }));
   }
+  uint64_t edge_all_counts = 0;
+  uint64_t edge_valid_counts = 0;
   for (size_t i = 0; i < tasks.size(); i++) {
-    tasks[i].get();
+    auto res = tasks[i].get();
+    edge_all_counts += res.first;
+    edge_valid_counts += res.second;
   }
   tasks.clear();
+  VLOG(0) << " end load edges, edges now storage in CPU Memory";
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (node_num_ > 1) {
     graph_partition(true);
   }
 #endif
+  VLOG(0) << "load this node edge total edge count: " << edge_valid_counts
+          << " , all node edge count:" << edge_all_counts;
 
   // record all start node id
+  std::vector<std::future<int>> tasks1;
   for (size_t idx = 0; idx < edge_shards.size(); ++idx) {
     for (size_t part_id = 0; part_id < shard_num_per_server; ++part_id) {
-      tasks.push_back(load_node_edge_task_pool->enqueue([this, idx, part_id]() {
-        std::vector<std::vector<uint64_t>> all_keys;
-        edge_shards[idx][part_id]->get_all_id(&all_keys, 1);
-        int cnt = all_keys[0].size();
-        edge_shards_keys_[idx][part_id] = std::move(all_keys[0]);
-        all_keys[0].clear();
-        return cnt;
-      }));
+      tasks1.push_back(
+          load_node_edge_task_pool->enqueue([this, idx, part_id]() {
+            std::vector<std::vector<uint64_t>> all_keys;
+            edge_shards[idx][part_id]->get_all_id(&all_keys, 1);
+            int cnt = all_keys[0].size();
+            edge_shards_keys_[idx][part_id] = std::move(all_keys[0]);
+            all_keys[0].clear();
+            return cnt;
+          }));
     }
   }
   size_t total_cnt = 0;
-  for (auto &t : tasks) {
+  for (auto &t : tasks1) {
     total_cnt += t.get();
   }
   tasks.clear();
+  tasks1.clear();
+  VLOG(0) << "Node id= " << node_id_
+          << " Parallel Partition the graph successfully!";
   VLOG(0) << "load all etypes total edge nodes count=" << total_cnt;
 
   return 0;
@@ -2039,11 +2066,12 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
   }
   // fix node edge nodes
   fix_feature_node_shards(load_slot);
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (node_num_ > 1) {
     graph_partition(false);
   }
 #endif
+  VLOG(0) << " end load nodes, nodes now storage in CPU Memory";
   return 0;
 }
 void GraphTable::fix_feature_node_shards(bool load_slot) {
@@ -2224,7 +2252,8 @@ int32_t GraphTable::load_node_and_edge_file(
 }
 
 bool GraphTable::is_key_for_self_rank(const uint64_t &id) {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO) && \
+    defined(PADDLE_WITH_PSCORE)
   thread_local auto ps_wrapper =
       ::paddle::framework::PSGPUWrapper::GetInstance();
   if (FLAGS_graph_edges_split_debug && ps_wrapper->GetRankNum() == 1) {
@@ -2236,7 +2265,8 @@ bool GraphTable::is_key_for_self_rank(const uint64_t &id) {
 #endif
 }
 int GraphTable::partition_key_for_rank(const uint64_t &key) {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO) && \
+    defined(PADDLE_WITH_PSCORE)
   thread_local auto ps_wrapper =
       ::paddle::framework::PSGPUWrapper::GetInstance();
   if (FLAGS_graph_edges_split_debug && ps_wrapper->GetRankNum() == 1) {
@@ -2553,11 +2583,12 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
   return {local_count, local_valid_count};
 }
 
-int32_t GraphTable::load_edges(const std::string &path,
-                               bool reverse_edge,
-                               const std::string &edge_type,
-                               bool use_weight) {
-#ifdef PADDLE_WITH_GPU_GRAPH
+std::pair<uint64_t, uint64_t> GraphTable::load_edges(
+    const std::string &path,
+    bool reverse_edge,
+    const std::string &edge_type,
+    bool use_weight) {
+#ifdef PADDLE_WITH_HETERPS
   if (search_level == 2) total_memory_cost = 0;
 #endif
   int idx = 0;
@@ -2568,7 +2599,7 @@ int32_t GraphTable::load_edges(const std::string &path,
     if (edge_to_id.find(edge_type) == edge_to_id.end()) {
       VLOG(0) << "edge_type " << edge_type
               << " is not defined, nothing will be loaded";
-      return 0;
+      return {0, 0};
     }
     idx = edge_to_id[edge_type];
   }
@@ -2603,7 +2634,7 @@ int32_t GraphTable::load_edges(const std::string &path,
   std::string edge_size = edge_type + ":" + std::to_string(valid_count);
   edge_type_size.push_back(edge_size);
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (search_level == 2) {
     if (count > 0) {
       dump_edges_to_ssd(idx);
@@ -2611,7 +2642,7 @@ int32_t GraphTable::load_edges(const std::string &path,
       clear_graph(idx);
       count = 0;
     }
-    return 0;
+    return {0, 0};
   }
 #endif
 
@@ -2631,7 +2662,7 @@ int32_t GraphTable::load_edges(const std::string &path,
     }
   }
 
-  return 0;
+  return {count, valid_count};
 }
 
 Node *GraphTable::find_node(GraphTableType table_type, uint64_t id) {
@@ -2647,7 +2678,7 @@ Node *GraphTable::find_node(GraphTableType table_type, uint64_t id) {
                             : node_shards;
   for (auto &search_shard : search_shards) {
     PADDLE_ENFORCE_NOT_NULL(search_shard[index],
-                            ::paddle::platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "search_shard[%d] should not be null.", index));
     node = search_shard[index]->find_node(id);
     if (node != nullptr) {
@@ -2668,7 +2699,7 @@ Node *GraphTable::find_node(GraphTableType table_type, int idx, uint64_t id) {
       : table_type == GraphTableType::FEATURE_TABLE ? feature_shards[idx]
                                                     : node_shards[idx];
   PADDLE_ENFORCE_NOT_NULL(search_shards[index],
-                          ::paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "search_shard[%d] should not be null.", index));
   Node *node = search_shards[index]->find_node(id);
   return node;
@@ -2809,7 +2840,7 @@ int32_t GraphTable::random_sample_neighbors(
           int idy = seq_id[i][k];
           int &actual_size = actual_sizes[idy];
           if (node == nullptr) {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
             if (search_level == 2) {
               VLOG(2) << "enter sample from ssd for node_id " << node_id;
               char *buffer_addr = random_sample_neighbor_from_ssd(
@@ -2846,7 +2877,7 @@ int32_t GraphTable::random_sample_neighbors(
             memcpy(buffer_addr + offset, &id, Node::id_size);
             offset += Node::id_size;
             if (need_weight) {
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
               weight = node->get_neighbor_weight(x);
 #else
               weight = 1.0;
@@ -2898,7 +2929,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
         first -= total_size;
         second -= total_size;
         tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-            [&shards, this, first, second, i, &res, &mutex]() -> size_t {
+            [&shards, first, second, i, &res, &mutex]() -> size_t {
               std::vector<uint64_t> keys;
               shards[i]->get_ids_by_range(first, second, &keys);
 
@@ -3114,7 +3145,8 @@ int GraphTable::parse_feature(int idx,
 // thread safe shard vector merge
 class MergeShardVector {
  public:
-  MergeShardVector(std::vector<std::vector<uint64_t>> *output, int slice_num) {
+  MergeShardVector(std::vector<std::vector<uint64_t>> *output, int slice_num)
+      : _shard_keys() {
     _slice_num = slice_num;
     _shard_keys = output;
     _shard_keys->resize(slice_num);
@@ -3322,8 +3354,7 @@ int32_t GraphTable::pull_graph_list(GraphTableType table_type,
     int count = std::min(1 + (size + cur_size - start - 1) / step, total_size);
     int end = start + (count - 1) * step + 1;
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
-        [&search_shards, this, i, start, end, step, size]()
-            -> std::vector<Node *> {
+        [&search_shards, i, start, end, step, size]() -> std::vector<Node *> {
           return search_shards[i]->get_batch(start - size, end - size, step);
         }));
     start += count * step;
@@ -3414,7 +3445,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   task_pool_size_ = graph.task_pool_size();
   build_sampler_on_cpu = graph.build_sampler_on_cpu();
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#ifdef PADDLE_WITH_HETERPS
   _db = NULL;
   search_level = graph.search_level();
   if (search_level >= 2) {
@@ -3454,7 +3485,8 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   node_types_.assign(node_types.begin(), node_types.end());
   auto edge_types = graph.edge_types();
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_GLOO) && \
+    defined(PADDLE_WITH_PSCORE)
   auto ps_wrapper = ::paddle::framework::PSGPUWrapper::GetInstance();
   node_id_ = ps_wrapper->GetRankId();
   node_num_ = ps_wrapper->GetRankNum();
@@ -3470,7 +3502,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
           << ", graph_edges_split_only_by_src_id="
           << FLAGS_graph_edges_split_only_by_src_id;
   feat_id_map.resize(node_types.size());
-  for (int k = 0; k < edge_types.size(); k++) {
+  for (int k = 0; k < edge_types.size(); k++) {  // NOLINT
     VLOG(0) << "in initialize: get a edge_type " << edge_types[k];
     edge_to_id[edge_types[k]] = k;
     id_to_edge.push_back(edge_types[k]);
@@ -3517,10 +3549,17 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   nodeid_to_edgeids_.resize(node_type_str_to_node_types_idx.size());
   for (auto &obj : edge_to_id) {
     size_t pos = obj.first.find("2");
-    CHECK(pos != std::string::npos);
+    PADDLE_ENFORCE_EQ((pos != std::string::npos),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The string does not contain the character '2'."));
     std::string nodetype = obj.first.substr(0, pos);
     auto it = node_type_str_to_node_types_idx.find(nodetype);
-    CHECK(it != node_type_str_to_node_types_idx.end());
+    PADDLE_ENFORCE_EQ(
+        (it != node_type_str_to_node_types_idx.end()),
+        true,
+        common::errors::InvalidArgument(
+            "Node type not found in node_type_str_to_node_types_idx."));
     nodeid_to_edgeids_[it->second].push_back(obj.second);
     VLOG(0) << "add edge [" << obj.first << "=" << obj.second << "] to ["
             << nodetype << "=" << it->second << "]";
@@ -3543,7 +3582,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   edge_shards.resize(id_to_edge.size());
   node_weight.resize(2);
   node_weight[0].resize(id_to_edge.size());
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   partitions.resize(id_to_edge.size());
 #endif
   edge_shards_keys_.resize(id_to_edge.size());
@@ -3725,5 +3764,4 @@ void GraphTable::build_node_iter_type_keys() {
   VLOG(0) << "finish build_node_iter_type_keys";
 }
 
-}  // namespace distributed
-};  // namespace paddle
+}  // namespace paddle::distributed

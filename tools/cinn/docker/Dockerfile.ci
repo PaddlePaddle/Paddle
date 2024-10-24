@@ -1,5 +1,5 @@
 # Use SHA to specify the docker image to prevent the use of old cache images
-FROM registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda11.8-cudnn8.6-trt8.5-gcc82 
+FROM registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda11.8-cudnn8.6-trt8.5-gcc82
 
 # NVIDIA update GPG key on 04/29/2022. Fetch the public key for CI machine
 # Reference: https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/

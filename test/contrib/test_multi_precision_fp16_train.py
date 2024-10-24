@@ -20,6 +20,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.io import Dataset
+from paddle.nn import Layer
 from paddle.static.amp.fp16_utils import cast_model_to_fp16
 
 paddle.enable_static()
@@ -52,16 +53,17 @@ def resnet_cifar10(input, depth=32):
     def conv_bn_layer(
         input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
     ):
-        tmp = paddle.static.nn.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
+        conv = paddle.nn.Conv2D(
+            in_channels=input.shape[1],
+            out_channels=ch_out,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
-            act=None,
             bias_attr=bias_attr,
         )
-        return paddle.static.nn.batch_norm(input=tmp, act=act)
+        tmp = conv(input)
+        bn = paddle.nn.BatchNorm(tmp.shape[1], act=act)
+        return bn(tmp)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -86,10 +88,16 @@ def resnet_cifar10(input, depth=32):
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1
     )
-    with paddle.static.amp.fp16_guard():
-        res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
-        res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
-        res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    if paddle.framework.in_pir_mode():
+        with paddle.amp.auto_cast(level='O2'):
+            res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+            res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+            res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    else:
+        with paddle.static.amp.fp16_guard():
+            res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+            res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+            res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
     pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
@@ -104,19 +112,10 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
     paddle.seed(123)
     with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
-            name='pixel', shape=[-1] + data_shape, dtype='float32'
+            name='pixel', shape=[-1, *data_shape], dtype='float32'
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         net = resnet_cifar10(images)
-        logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
-        cost = paddle.nn.functional.softmax_with_cross_entropy(
-            logits, label, return_softmax=False
-        )
-        sum_cost = paddle.sum(cost)
-
-        # Test program
-        test_program = train_program.clone(for_test=True)
-
         if optimizer == "Adam":
             optimizer = paddle.optimizer.AdamW(
                 learning_rate=0.001,
@@ -136,16 +135,70 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 weight_decay=paddle.regularizer.L2Decay(1e-4),
                 multi_precision=use_pure_fp16,
             )
+        if paddle.framework.in_pir_mode() and use_pure_fp16:
 
-        if use_pure_fp16:
-            optimizer = paddle.static.amp.decorate(
-                optimizer,
-                init_loss_scaling=128.0,
-                use_dynamic_loss_scaling=True,
-                use_pure_fp16=True,
+            class layer(Layer):
+                def __init__(self, classdim, act):
+                    super().__init__()
+                    self.classdim = classdim
+                    self.act = act
+
+                def forward(self, x):
+                    logits = paddle.static.nn.fc(
+                        x=x, size=self.classdim, activation=self.act
+                    )
+                    cost = paddle.nn.functional.softmax_with_cross_entropy(
+                        logits, label, return_softmax=False
+                    )
+                    return cost
+
+            model = layer(classdim, "softmax")
+            model, optimizer = paddle.amp.decorate(
+                models=model,
+                optimizers=optimizer,
+                level="O2",
+                dtype="float16",
             )
+            scaler = paddle.amp.GradScaler(
+                init_loss_scaling=128.0, use_dynamic_loss_scaling=True
+            )
+            with paddle.amp.auto_cast(
+                enable=True, level="O2", dtype="float16", use_promote=True
+            ):
+                cost = model(net)
+                sum_cost = paddle.sum(cost)
+            value_map = paddle.pir.IrMapping()
+            test_program = train_program.clone(value_map)
+            fetch_list = [value_map.look_up(sum_cost)]
+            scaled = scaler.scale(sum_cost)
+            scaler.minimize(optimizer, scaled, startup_program=startup_prog)
+        else:
+            logits = paddle.static.nn.fc(
+                x=net, size=classdim, activation="softmax"
+            )
+            cost = paddle.nn.functional.softmax_with_cross_entropy(
+                logits, label, return_softmax=False
+            )
+            sum_cost = paddle.sum(cost)
 
-        optimizer.minimize(sum_cost)
+            # Test program
+            if paddle.framework.in_pir_mode():
+                value_map = paddle.pir.IrMapping()
+                test_program = train_program.clone(value_map)
+                fetch_list = [value_map.look_up(sum_cost)]
+            else:
+                test_program = train_program.clone(for_test=True)
+                fetch_list = [sum_cost]
+
+            if use_pure_fp16:
+                optimizer = paddle.static.amp.decorate(
+                    optimizer,
+                    init_loss_scaling=128.0,
+                    use_dynamic_loss_scaling=True,
+                    use_pure_fp16=True,
+                )
+
+            optimizer.minimize(sum_cost)
 
     train_reader = paddle.batch(
         reader_decorator(RandomDataset(16 * 5, seed=123)),
@@ -165,7 +218,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
 
     def train_loop():
         exe.run(startup_prog)
-        if use_pure_fp16:
+        if use_pure_fp16 and not paddle.framework.in_pir_mode():
             optimizer.amp_init(
                 place, test_program=test_program, use_fp16_test=True
             )
@@ -179,9 +232,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 )
                 loss_v = float(loss) if isinstance(loss, np.ndarray) else loss
                 print(
-                    'PassID {:1}, Train Batch ID {:04}, train loss {:2.4}'.format(
-                        pass_id, batch_id + 1, float(loss_v)
-                    )
+                    f'PassID {pass_id:1}, Train Batch ID {batch_id + 1:04}, train loss {float(loss_v):2.4}'
                 )
                 train_loss_list.append(float(loss_v))
 
@@ -189,13 +240,11 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 (loss_t,) = exe.run(
                     program=test_program,
                     feed=feeder.feed(test_data),
-                    fetch_list=[sum_cost],
+                    fetch_list=fetch_list,
                 )
                 test_loss_list.append(float(loss_t))
                 print(
-                    'PassID {:1}, Test Batch ID {:04}, test loss {:2.4}'.format(
-                        pass_id, tid + 1, float(loss_t)
-                    )
+                    f'PassID {pass_id:1}, Test Batch ID {tid + 1:04}, test loss {float(loss_t):2.4}'
                 )
 
         return train_loss_list, test_loss_list
@@ -300,7 +349,8 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
 
     def test_non_iterable_dataloader(self):
         if base.core.is_compiled_with_cuda():
-            self.decorate_with_data_loader()
+            with paddle.pir_utils.OldIrGuard():
+                self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

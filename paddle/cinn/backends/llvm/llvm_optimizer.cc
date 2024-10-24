@@ -74,12 +74,12 @@ class CustomPassManager : public PassManagerT {
   void add(llvm::Pass *pass) override {
     if (print_passes_) {
       if (is_function_pass_manager_) {
-        VLOG(1) << "llvm run function pass[" << std::string(pass->getPassName())
+        VLOG(4) << "llvm run function pass[" << std::string(pass->getPassName())
                 << "]";
       }
 
       if (is_module_pass_manager_) {
-        VLOG(1) << "llvm run module pass[" << std::string(pass->getPassName())
+        VLOG(4) << "llvm run module pass[" << std::string(pass->getPassName())
                 << "]";
       }
     }

@@ -227,13 +227,13 @@ bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
   PADDLE_ENFORCE_LE(
       TSIZE,
       16,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The tile size should smaller than 16, but received is:%d.", TSIZE));
 
   PADDLE_ENFORCE_EQ(
       (TSIZE & (TSIZE - 1)),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Data types should be powers of 2, but reived size is:%d.", TSIZE));
 
   const int kMaxLongSideLen = 1024;
@@ -313,7 +313,7 @@ struct NarrowDims2TransposeDispatch {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The length of the longer side of the tile should be power of 2."
             " But received value is:%d.",
             tile_long));
@@ -378,7 +378,7 @@ struct NarrowDims2TransposeDispatch<
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The length of the longer side of the tile should be power of 2."
             " But received value is:%d.",
             tile_long));
@@ -428,7 +428,7 @@ struct NarrowDims2TransposeDispatch<
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The length of the longer side of the tile should be power of 2,"
             " but received is:%d.",
             tile_long));
@@ -456,7 +456,7 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
   PADDLE_ENFORCE_EQ(
       ret,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "SelectProperTileSize should return true, but return value is:%d.",
           ret));
 
@@ -656,7 +656,7 @@ inline void CombineTransposeDim3(const DDim& shape,
                                  std::vector<int>* new_dims) {
   PADDLE_ENFORCE_EQ(shape.size(),
                     perm.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         " shape should have the save dim with perm, but"
                         " received shape size is:%d, perm size is:%d.",
                         shape.size(),

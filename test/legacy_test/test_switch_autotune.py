@@ -121,49 +121,50 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
 
 class TestStaticAutoTuneStatus(TestAutoTune):
     def run_program(self, enable_autotune):
-        paddle.enable_static()
+        with paddle.pir_utils.OldIrGuard():
+            paddle.enable_static()
 
-        data_shape = [1, 1, 8, 8]
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            data = paddle.static.data(
-                name='X', shape=data_shape, dtype='float32'
+            data_shape = [1, 1, 8, 8]
+            main_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program, startup_program):
+                data = paddle.static.data(
+                    name='X', shape=data_shape, dtype='float32'
+                )
+                net = SimpleNet()
+                loss = static_program(net, data)
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.base.core.is_compiled_with_cuda()
+                else paddle.CPUPlace()
             )
-            net = SimpleNet()
-            loss = static_program(net, data)
-        place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-        exe = paddle.static.Executor(place)
-        exe.run(startup_program)
-        x = np.random.random(size=data_shape).astype('float32')
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+            x = np.random.random(size=data_shape).astype('float32')
 
-        # Node(tizheng): warmup run to make sure the following runs
-        # are in the same thread. Necessary for CUDNNv8 tests
-        exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
-
-        self.set_flags(enable_autotune)
-        if enable_autotune:
-            config = {"kernel": {"enable": True, "tuning_range": [1, 2]}}
-            tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
-            json.dump(config, tfile)
-            tfile.close()
-            paddle.incubate.autotune.set_config(tfile.name)
-            os.remove(tfile.name)
-        else:
-            paddle.incubate.autotune.set_config(
-                config={"kernel": {"enable": False, "tuning_range": [1, 2]}}
-            )
-
-        for i in range(3):
+            # Node(tizheng): warmup run to make sure the following runs
+            # are in the same thread. Necessary for CUDNNv8 tests
             exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
-            status = paddle.base.core.autotune_status()
-            expected_res = self.get_expected_res(i, enable_autotune)
-            self.check_status(expected_res)
-        paddle.disable_static()
+
+            self.set_flags(enable_autotune)
+            if enable_autotune:
+                config = {"kernel": {"enable": True, "tuning_range": [1, 2]}}
+                tfile = tempfile.NamedTemporaryFile(mode="w+", delete=False)
+                json.dump(config, tfile)
+                tfile.close()
+                paddle.incubate.autotune.set_config(tfile.name)
+                os.remove(tfile.name)
+            else:
+                paddle.incubate.autotune.set_config(
+                    config={"kernel": {"enable": False, "tuning_range": [1, 2]}}
+                )
+
+            for i in range(3):
+                exe.run(program=main_program, feed={'X': x}, fetch_list=[loss])
+                status = paddle.base.core.autotune_status()
+                expected_res = self.get_expected_res(i, enable_autotune)
+                self.check_status(expected_res)
+            paddle.disable_static()
 
     def func_enable_autotune(self):
         self.run_program(enable_autotune=True)

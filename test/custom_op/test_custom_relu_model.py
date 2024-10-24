@@ -26,9 +26,7 @@ from paddle.utils.cpp_extension.extension_utils import run_cmd
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
-file = '{}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'.format(
-    get_build_directory()
-)
+file = f'{get_build_directory()}\\custom_relu_for_model_jit\\custom_relu_for_model_jit.pyd'
 if os.name == 'nt' and os.path.isfile(file):
     cmd = f'del {file}'
     run_cmd(cmd, True)
@@ -142,7 +140,9 @@ class TestDygraphModel(unittest.TestCase):
 
         net = Net(self.in_dim, self.out_dim, use_custom_op)
         if dy2stat:
-            net = paddle.jit.to_static(net, input_spec=[self.x_spec])
+            net = paddle.jit.to_static(
+                net, input_spec=[self.x_spec], full_graph=True
+            )
         mse_loss = paddle.nn.MSELoss()
         sgd = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=net.parameters()

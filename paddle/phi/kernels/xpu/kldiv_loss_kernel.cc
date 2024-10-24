@@ -24,6 +24,7 @@ void KLDivLossKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& label,
                      const std::string& reduction,
+                     bool log_target,
                      DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
@@ -32,14 +33,35 @@ void KLDivLossKernel(const Context& dev_ctx,
   }
 
   int r = XPU_SUCCESS;
-  r = xpu::kldiv_loss(dev_ctx.x_context(),
-                      reinterpret_cast<const XPUType*>(x.data<T>()),
-                      reinterpret_cast<const XPUType*>(label.data<T>()),
-                      reinterpret_cast<XPUType*>(out->data<T>()),
-                      out->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "kldiv_loss");
+
+  if (log_target) {
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    XPUType* label_exp = RAII_GUARD.alloc_l3_or_gm<XPUType>(label.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(label_exp);
+
+    r = xpu::exp(dev_ctx.x_context(),
+                 reinterpret_cast<const XPUType*>(label.data<T>()),
+                 label_exp,
+                 label.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "exp");
+
+    r = xpu::kldiv_loss(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(x.data<T>()),
+                        reinterpret_cast<const XPUType*>(label_exp),
+                        reinterpret_cast<XPUType*>(out->data<T>()),
+                        out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "kldiv_loss");
+  } else {
+    r = xpu::kldiv_loss(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(x.data<T>()),
+                        reinterpret_cast<const XPUType*>(label.data<T>()),
+                        reinterpret_cast<XPUType*>(out->data<T>()),
+                        out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "kldiv_loss");
+  }
+
   if ("none" != reduction) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Not supported reduction [%s] in kldiv_loss", reduction));
   }
 }

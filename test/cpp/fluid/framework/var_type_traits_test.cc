@@ -17,28 +17,28 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/framework/reader.h"
+#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
-#include "paddle/fluid/operators/cudnn_rnn_cache.h"
+#include "paddle/phi/kernels/funcs/cudnn_rnn_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
 #if defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"   // NOLINT
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"  // NOLINT
 #endif
-#include "paddle/fluid/operators/miopen_rnn_cache.h"
+#include "paddle/phi/kernels/funcs/miopen_rnn_cache.h"
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #endif
-#include "paddle/fluid/framework/raw_tensor.h"
+#include "paddle/phi/core/raw_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -95,8 +95,8 @@ TEST(var_type_traits, check_proto_type_id) {
   ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
   ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));
-  ASSERT_TRUE(CheckVarId<LoDTensorArray>(proto::VarType::LOD_TENSOR_ARRAY));
-  ASSERT_TRUE(CheckVarId<platform::PlaceList>(proto::VarType::PLACE_LIST));
+  ASSERT_TRUE(CheckVarId<phi::TensorArray>(proto::VarType::LOD_TENSOR_ARRAY));
+  ASSERT_TRUE(CheckVarId<phi::PlaceList>(proto::VarType::PLACE_LIST));
   ASSERT_TRUE(CheckVarId<ReaderHolder>(proto::VarType::READER));
   ASSERT_TRUE(CheckVarId<int>(proto::VarType::INT32));
   ASSERT_TRUE(CheckVarId<float>(proto::VarType::FP32));

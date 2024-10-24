@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #pragma once
+
 #include <functional>
+
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_interface.h"
+#include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 
 namespace pir {
 class IR_API YieldOp : public Op<YieldOp, SideEffectTrait> {
@@ -52,6 +55,7 @@ class IR_API TuplePushOp : public Op<TuplePushOp, SideEffectTrait> {
                     Value inlet,
                     std::initializer_list<Value> element_list);
   void VerifySig();
+  void VerifyRegion();
 
   Value container() { return container_interface().container(); }
   Value inlet() { return operand_source(0); }
@@ -79,7 +83,9 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
                     OperationArgument &argument,  // NOLINT
                     Value outlet);
   void VerifySig();
+  void VerifyRegion();
 
+  bool has_container() { return outlet().defining_op(); }
   Value container() { return container_interface().container(); }
   Value inlet() { return container_interface().inlet(); }
   Value outlet() { return operand_source(0); }
@@ -95,7 +101,9 @@ class IR_API TuplePopOp : public Op<TuplePopOp, SideEffectTrait> {
   TuplePushOp tuple_push_op() { return container_interface().tuple_push_op(); }
 };
 
-class IR_API StackCreateOp : public Op<StackCreateOp, ContainerOpInterface> {
+class IR_API StackCreateOp : public Op<StackCreateOp,
+                                       ContainerOpInterface,
+                                       pir::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cf.stack_create"; }
@@ -104,6 +112,8 @@ class IR_API StackCreateOp : public Op<StackCreateOp, ContainerOpInterface> {
   static void Build(Builder &builder,              // NOLINT
                     OperationArgument &argument);  // NOLINT
   void VerifySig();
+
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   Value container() { return result(0); }
   Value stack() { return result(0); }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <type_traits>
 
 #include "paddle/common/enforce.h"
@@ -28,10 +29,13 @@ class Block;
 
 class IR_API OpBase {
  public:
-  explicit OpBase(Operation *operation = nullptr) : operation_(operation) {}
+  explicit OpBase(const Operation *operation = nullptr)
+      : operation_(const_cast<pir::Operation *>(operation)) {}
 
   Operation *operation() const {
-    IR_ENFORCE(operation_, "Can't use operation() in a null op.");
+    PADDLE_ENFORCE_NOT_NULL(
+        operation_,
+        common::errors::InvalidArgument("Can't use operation() in a null op."));
     return operation_;
   }
 
@@ -88,11 +92,11 @@ template <class ConcreteTrait>
 class OpTraitBase : public OpBase {
  public:
   using Base = OpTraitBase<ConcreteTrait>;
-  explicit OpTraitBase(Operation *op) : OpBase(op) {}
+  explicit OpTraitBase(const Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
 
-  static ConcreteTrait dyn_cast(Operation *op) {
+  static ConcreteTrait dyn_cast(const Operation *op) {
     if (op && op->HasTrait<ConcreteTrait>()) {
       return ConcreteTrait(op);
     }
@@ -106,7 +110,7 @@ class OpTraitBase : public OpBase {
 template <typename ConcreteInterface>
 class OpInterfaceBase : public OpBase {
  public:
-  explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
+  explicit OpInterfaceBase(const Operation *op) : OpBase(op) {}
 
   ///
   /// \brief Accessor for the ID of this interface.
@@ -120,7 +124,7 @@ class OpInterfaceBase : public OpBase {
     return op->HasInterface<ConcreteInterface>();
   }
 
-  static ConcreteInterface dyn_cast(Operation *op) {
+  static ConcreteInterface dyn_cast(const Operation *op) {
     if (op && op->HasInterface<ConcreteInterface>()) {
       return ConcreteInterface(
           op, op->info().GetInterfaceImpl<ConcreteInterface>());
@@ -155,7 +159,7 @@ class Op : public OpBase {
                               std::tuple<TraitOrInterface...>>::Type;
 
   // TODO(zhangbopd): Use classof
-  static ConcreteOp dyn_cast(Operation *op) {
+  static ConcreteOp dyn_cast(const Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
     }

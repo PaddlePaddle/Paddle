@@ -3,33 +3,25 @@ file(GLOB_RECURSE DRR_SRCS "*.cc")
 set(op_creator_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_creator_drr_gen.py
 )
-set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
-set(op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
-)
-set(op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
-)
-set(fused_op_forward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
-)
-set(fused_op_backward_yaml_file
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
-)
+set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
 
-set(parsed_op_dir
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
+set(parsed_op_dir ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml)
 
-set(op_yaml_file_1 ${parsed_op_dir}/ops.parsed.yaml)
-set(op_yaml_file_2 ${parsed_op_dir}/ops_backward.parsed.yaml)
-set(op_yaml_file_3 ${parsed_op_dir}/update_ops.parsed.yaml)
+set(op_forward_yaml_file ${parsed_op_dir}/ops.parsed.yaml)
+set(op_backward_yaml_file ${parsed_op_dir}/backward.parsed.yaml)
+set(fused_op_forward_yaml_file ${parsed_op_dir}/fused_ops.parsed.yaml)
+set(fused_op_backward_yaml_file ${parsed_op_dir}/fused_backward.parsed.yaml)
+
+set(op_yaml_file_1 ${parsed_op_dir}/inconsistent/static_ops.parsed.yaml)
+set(op_yaml_file_2 ${parsed_op_dir}/inconsistent/static_backward.parsed.yaml)
+set(op_yaml_file_3 ${parsed_op_dir}/inconsistent/update_ops.parsed.yaml)
 
 set(op_yaml_files
     ${op_forward_yaml_file},${op_backward_yaml_file},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file_1},${op_yaml_file_2},${op_yaml_file_3}
 )
 
 set(pd_op_creator_file
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/pd_op_factory_generated.cc)
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/pd_op_factory_generated.cc)
 set(pd_op_creator_file_tmp ${pd_op_creator_file}.tmp)
 
 set(pd_dialect_name pd_op)
@@ -54,7 +46,7 @@ add_custom_command(
 
 set(DRR_SRCS ${DRR_SRCS} ${pd_op_creator_file})
 
-if(WITH_CINN AND NOT CINN_ONLY)
+if(WITH_CINN)
   set(cinn_op_yaml_file
       ${PADDLE_BINARY_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 
@@ -62,7 +54,7 @@ if(WITH_CINN AND NOT CINN_ONLY)
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
 
   set(cinn_op_creator_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/cinn_op_factory_generated.cc
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/cinn_op_factory_generated.cc
   )
   set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
   set(cinn_dialect_name cinn_op)
@@ -87,16 +79,15 @@ if(WITH_CINN AND NOT CINN_ONLY)
   set(DRR_SRCS ${DRR_SRCS} ${CINN_SOURCE_FILE})
 endif()
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   set(onednn_dialect_name onednn_op)
   set(pir_op_onednn_yaml
-      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/onednn.parsed.yaml
-  )
+      ${parsed_op_dir}/inconsistent/onednn_static.parsed.yaml)
   set(pd_ops_onednn_extra_yaml_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_onednn_extra.yaml
+      ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/onednn_ops_extra.yaml
   )
   set(onednn_op_creator_file
-      ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
+      ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/src/onednn_op_factory_generated.cc
   )
   set(onednn_op_creator_file_tmp ${onednn_op_creator_file}.tmp)
 
@@ -128,4 +119,4 @@ endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS}
-  DEPS op_dialect_vjp ${CINN_DEPS} pir)
+  DEPS op_dialect_vjp ${CINN_DEPS} pir pir_general_functions)

@@ -32,11 +32,14 @@ __global__ void GatherCUDAKernel(const T* params,
                                  const IndexT* indices,
                                  T* output,
                                  size_t index_size,
-                                 size_t slice_size) {
+                                 size_t slice_size,
+                                 int64_t index_dim_size) {
   CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = indices[indices_i];
+    IndexT gather_i =
+        (indices[indices_i] < 0 ? (indices[indices_i] + index_dim_size)
+                                : indices[indices_i]);
     int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
   }
@@ -58,13 +61,18 @@ __global__ void GatherNdCUDAKernel(const T* input,
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
       PADDLE_ENFORCE(
-          index_value >= 0 && index_value < input_dims[j],
+          index_value >= -input_dims[j] && index_value < input_dims[j],
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
-          "be less than [%d] and greater than or equal to 0, but received [%d]",
+          "be less than [%ld] and greater than or equal to [%ld], but "
+          "received [%ld]",
           input_dims[j],
+          -input_dims[j],
           index_value);
+      if (index_value < 0) {
+        index_value += input_dims[j];
+      }
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -89,8 +97,8 @@ void GPUGather(const phi::GPUContext& ctx,
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
-        phi::errors::InvalidArgument("If the index's rank of gather_op is 2,"
-                                     " the second dimension should be 1."));
+        common::errors::InvalidArgument("If the index's rank of gather_op is 2,"
+                                        " the second dimension should be 1."));
   }
 
   // index size
@@ -112,7 +120,7 @@ void GPUGather(const phi::GPUContext& ctx,
   phi::backends::gpu::LimitGridDim(ctx, &grid);
 
   GatherCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size);
+      p_src, p_index, p_output, index_size, slice_size, src_dims[0]);
 }
 
 template <typename T, typename IndexT = int>
@@ -180,13 +188,18 @@ __global__ void GatherGPUKernel(const T* input,
     U index_val = index[index_dim_index];
 
     PADDLE_ENFORCE(
-        index_val >= 0 && index_val < input_index_dim_size,
+        index_val >= -input_index_dim_size && index_val < input_index_dim_size,
         "The index is out of bounds, "
         "please check whether the dimensions of index and "
         "input meet the requirements. It should "
-        "be less than [%d] and greater than or equal to 0, but received [%d]",
+        "be less than [%ld] and greater than or equal to [%ld], but "
+        "received [%ld]",
         input_index_dim_size,
+        -input_index_dim_size,
         index_val);
+    if (index_val < 0) {
+      index_val += input_index_dim_size;
+    }
 
     int64_t out_dim_index = next_idx - outer_dim_size * index_dim_index;
     int64_t input_index =
@@ -301,7 +314,7 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
   auto* out_data = ctx.Alloc<T>(out);
   auto out_dim = out->dims();
   int64_t out_index_dim_size = out_dim[axis_index];
-  phi::funcs::set_constant(ctx, out, static_cast<T>(0.0));
+  phi::funcs::set_constant(ctx, out, static_cast<float>(0.0));
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, input_size);
   auto stream = ctx.stream();

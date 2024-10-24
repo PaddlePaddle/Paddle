@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/common/place.h"
 
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
 #include "paddle/common/flags.h"
@@ -102,7 +104,7 @@ void SetXPUDeviceId(int id) {
   PADDLE_ENFORCE_LT(
       id,
       GetXPUDeviceCount(),
-      phi::errors::InvalidArgument("id must less than XPU count"));
+      common::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
 }
 
@@ -204,6 +206,13 @@ XPUVersion get_xpu_version(int dev_id) {
   }
 }
 
+void set_xpu_debug_level(int level) {
+  auto* dev_ctx =
+      paddle::experimental::GetDeviceContextByBackend(phi::Backend::XPU);
+  auto* xpu_ctx = static_cast<const phi::XPUContext*>(dev_ctx);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_ctx->x_context()->set_debug_level(level));
+}
+
 int get_xpu_max_ptr_size(int dev_id) {
   auto xpu_version = get_xpu_version(dev_id);
   int max_ptr_size = 0;
@@ -218,7 +227,7 @@ int get_xpu_max_ptr_size(int dev_id) {
       max_ptr_size = 12;
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support get max ptr size of XPU1, XPU2 or XPU3."));
       break;
   }

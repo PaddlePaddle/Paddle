@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(1024)
 
@@ -34,7 +33,9 @@ class TestIndexSelectOp(OpTest):
         self.init_dtype_type()
 
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.dim], size=self.index_size
+            low=-self.x_shape[self.dim],
+            high=self.x_shape[self.dim],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         if self.dtype == np.complex64 or self.dtype == np.complex128:
@@ -45,7 +46,7 @@ class TestIndexSelectOp(OpTest):
         self.inputs = {'X': x_np, 'Index': index_np}
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -124,13 +125,15 @@ class TestIndexSelectBF16Op(OpTest):
         self.init_dtype_type()
         self.if_skip_cinn()
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.dim], size=self.index_size
+            low=-self.x_shape[self.dim],
+            high=self.x_shape[self.dim],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(x_np), 'Index': index_np}
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -193,7 +196,6 @@ class TestIndexSelectAPI(unittest.TestCase):
         ).astype("float32")
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
-    @test_with_pir_api
     def test_index_select_api(self):
         paddle.enable_static()
         self.input_data()

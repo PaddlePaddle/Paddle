@@ -33,8 +33,8 @@ void WarpctcGradKernel(const Context& dev_ctx,
 
   bool has_logits_length = logits_length.is_initialized();
   if (!has_logits_length) {
-    PADDLE_THROW(
-        phi::errors::External("XPU only support logits_length is_initialized"));
+    PADDLE_THROW(common::errors::External(
+        "XPU only support logits_length is_initialized"));
   }
 
   int max_seq_length = warpctcgrad.dims()[0];  // Tmax

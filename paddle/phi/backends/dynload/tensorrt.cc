@@ -16,8 +16,7 @@
 
 #include <string>
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 std::once_flag tensorrt_dso_flag;
 void* tensorrt_dso_handle;
@@ -42,7 +41,7 @@ void* GetDsoHandle(const std::string& dso_name) {
 
   PADDLE_ENFORCE_NOT_NULL(
       dso_handle,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "TensorRT is needed, "
           "but TensorRT dynamic library is not found.\n"
           "  Suggestions:\n"
@@ -80,5 +79,4 @@ void* GetTensorRtPluginHandle() {
   return GetDsoHandle(dso_name);
 }
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

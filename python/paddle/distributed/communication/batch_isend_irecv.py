@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import contextlib
+from typing import TYPE_CHECKING, Callable, Generator
 
 import paddle.distributed as dist
 from paddle import framework
@@ -20,6 +22,15 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed import Group
+
+    _P2POpType = Callable[[Tensor, int, Group], task]
 
 
 class P2POp:
@@ -61,7 +72,18 @@ class P2POp:
 
     """
 
-    def __init__(self, op, tensor, peer, group=None):
+    op: _P2POpType
+    tensor: Tensor
+    peer: int
+    group: Group | None
+
+    def __init__(
+        self,
+        op: _P2POpType,
+        tensor: Tensor,
+        peer: int,
+        group: Group | None = None,
+    ) -> None:
         if op not in [dist.isend, dist.irecv]:
             raise RuntimeError(
                 "Invalid ``op`` function. Expected ``op`` "
@@ -76,17 +98,22 @@ class P2POp:
 
 
 @contextlib.contextmanager
-def _with_batch_p2p_guard(backend):
-    if backend == "NCCL":
-        framework.core.ProcessGroupNCCL.group_start()
+def _coalescing_manager(
+    group: Group, tasks: task | None = None
+) -> Generator[None, None, None]:
+    group = _get_global_group() if group is None else group
+    pg = group.process_group
+    pg._start_coalescing()
     try:
         yield
     finally:
-        if backend == "NCCL":
-            framework.core.ProcessGroupNCCL.group_end()
+        if tasks is None or len(tasks) == 0:
+            pg._end_coalescing()
+        else:
+            pg._end_coalescing(tasks)
 
 
-def _check_p2p_op_list(p2p_op_list):
+def _check_p2p_op_list(p2p_op_list: Sequence[P2POp]) -> None:
     """
     Helper to check that the ``p2p_op_list`` is a list of P2POp instances and
     all ops use the same backend.
@@ -104,7 +131,7 @@ def _check_p2p_op_list(p2p_op_list):
         raise RuntimeError("All groups need to use the same backend.")
 
 
-def batch_isend_irecv(p2p_op_list):
+def batch_isend_irecv(p2p_op_list: list[P2POp]) -> list[task]:
     """
     Send or Receive a batch of tensors asynchronously and return a list of requests.
 
@@ -163,7 +190,7 @@ def batch_isend_irecv(p2p_op_list):
         group = _get_global_group() if group is None else group
         backend = group.backend
         tasks = []
-        with _with_batch_p2p_guard(backend):
+        with _coalescing_manager(group, tasks):
             for p2p_op in p2p_op_list:
                 op = p2p_op.op
                 tensor = p2p_op.tensor

@@ -16,6 +16,7 @@
 
 #include "paddle/pir/include/core/operation_utils.h"
 #include "paddle/pir/include/core/value.h"
+
 namespace pir {
 class Block;
 
@@ -53,10 +54,10 @@ class IR_API BlockArgument : public Value {
   void Destroy();
   /// set the position in the block argument list.
   void set_index(uint32_t index);
-  // Access create annd destroy.
+  // Access create and destroy.
   friend Block;
 
-  // Access classof annd dyn_cast_from.
+  // Access classof and dyn_cast_from.
   friend Value;
   static bool classof(Value value);
   static BlockArgument dyn_cast_from(Value value);

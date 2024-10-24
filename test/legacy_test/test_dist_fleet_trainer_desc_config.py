@@ -16,6 +16,8 @@ import os
 import unittest
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import paddle
 from paddle.distributed.fleet.base import role_maker
 
@@ -29,9 +31,9 @@ class TestDistStrategyTrainerDescConfig(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36001,127.0.0.2:36001"
+        )
 
     def test_trainer_desc_config(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"

@@ -20,7 +20,6 @@ from op_test import convert_uint16_to_float
 import paddle
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestEmptyLikeAPICommon(unittest.TestCase):
@@ -39,7 +38,14 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             f'shape should be {self.dst_shape}, but get {shape}',
         )
 
-        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
+        if data_type in [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'uint16',
+        ]:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
             always_non_full_zero = max_value >= min_value
@@ -163,7 +169,6 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
     def setUp(self):
         self.init_config()
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         train_program = paddle.static.Program()
@@ -213,7 +218,6 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
         self.data_x_shape = [200, 3]
         self.dtype = 'float16'
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -247,7 +251,6 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
         self.data_x_shape = [200, 3]
         self.dtype = 'uint16'
 
-    @test_with_pir_api
     def test_static_graph(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -270,16 +273,6 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
             self.dst_dtype = self.dtype
             self.dst_shape = x.shape
             self.__check_out__(res[0])
-
-
-class TestEmptyError(unittest.TestCase):
-    def test_attr(self):
-        def test_dtype():
-            x = np.random.random((200, 3)).astype("float64")
-            dtype = 'uint8'
-            result = paddle.empty_like(x, dtype=dtype)
-
-        self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':

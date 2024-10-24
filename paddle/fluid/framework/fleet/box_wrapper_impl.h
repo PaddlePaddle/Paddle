@@ -19,7 +19,7 @@ namespace paddle {
 namespace framework {
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
-void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
+void BoxWrapper::PullSparseCase(const phi::Place& place,
                                 const std::vector<const uint64_t*>& keys,
                                 const std::vector<float*>& values,
                                 const std::vector<int64_t>& slot_lengths,
@@ -40,10 +40,10 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
       reinterpret_cast<boxps::FeatureValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
           buf->ptr());
 
-  if (platform::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+  if (phi::is_cpu_place(place)) {
+    PADDLE_THROW(common::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
@@ -96,7 +96,7 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        platform::errors::PreconditionNotMet("PullSparseGPU failed in BoxPS."));
+        common::errors::PreconditionNotMet("PullSparseGPU failed in BoxPS."));
     pull_boxps_timer.Pause();
 
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
@@ -111,12 +111,12 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
                       expand_embed_dim,
                       total_length);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Please compile WITH_GPU option, because NCCL doesn't support "
         "windows."));
 #endif
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddleBox: PullSparse Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();
@@ -128,7 +128,7 @@ void BoxWrapper::PullSparseCase(const paddle::platform::Place& place,
 
 template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM>
 void BoxWrapper::PushSparseGradCase(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const std::vector<const uint64_t*>& keys,
     const std::vector<const float*>& grad_values,
     const std::vector<int64_t>& slot_lengths,
@@ -149,10 +149,10 @@ void BoxWrapper::PushSparseGradCase(
       total_grad_values_gpu = reinterpret_cast<
           boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
           buf->ptr());
-  if (platform::is_cpu_place(place)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+  if (phi::is_cpu_place(place)) {
+    PADDLE_THROW(common::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
     int device_id = place.GetDeviceId();
     phi::DenseTensor& cached_total_keys_tensor = keys_tensor[device_id];
@@ -178,15 +178,15 @@ void BoxWrapper::PushSparseGradCase(
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        platform::errors::PreconditionNotMet("PushSparseGPU failed in BoxPS."));
+        common::errors::PreconditionNotMet("PushSparseGPU failed in BoxPS."));
     push_boxps_timer.Pause();
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Please compile WITH_GPU option, because NCCL doesn't support "
         "windows."));
 #endif
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddleBox: PushSparseGrad Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();

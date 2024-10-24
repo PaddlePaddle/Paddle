@@ -19,8 +19,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class DeviceWorker;
 
@@ -86,5 +85,4 @@ REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

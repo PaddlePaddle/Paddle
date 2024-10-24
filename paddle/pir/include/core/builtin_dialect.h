@@ -24,14 +24,17 @@ namespace pir {
 ///
 class IR_API BuiltinDialect : public pir::Dialect {
  public:
-  explicit BuiltinDialect(pir::IrContext *context);
+  explicit BuiltinDialect(pir::IrContext* context);
   ///
   /// \brief Each Dialect needs to provide a name function to return the name of
   /// the Dialect.
   ///
   /// \return The name of this Dialect.
   ///
-  static const char *name() { return "builtin"; }
+  static const char* name() { return "builtin"; }
+
+  pir::Type ParseType(pir::IrParser& parser) override;  // NOLINT
+  void PrintType(pir::Type type, std::ostream& os) const override;
 
  private:
   void initialize();

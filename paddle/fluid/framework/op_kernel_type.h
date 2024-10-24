@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -45,7 +45,7 @@ class OpKernelType {
   constexpr static int kCustomizeBits = 4;
 
   OpKernelType(proto::VarType::Type data_type,
-               platform::Place place,
+               phi::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -84,7 +84,7 @@ class OpKernelType {
 
   proto::VarType::Type data_type_;
   DataLayout data_layout_;
-  platform::Place place_;
+  phi::Place place_;
   LibraryType library_type_;
   int customized_type_value_;
 };
@@ -107,7 +107,7 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   bool ret =
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_DNNL
-  // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
+  // Layout transform needed for either non-MKLDNN to OneDNN or vice versa
   ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
   ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
 #endif
@@ -142,7 +142,7 @@ inline bool NeedTransformBackend(const phi::Backend& type_for_var_backend,
   // NOTE(jiahongyu): KernelKey does not hold place information, so we need to
   // explicitly transform CUDAPinnedPlace->CUDAPlace
   if (type_for_var_backend != phi::Backend::ALL_BACKEND &&
-      paddle::platform::is_cuda_pinned_place(tensor.place()) &&
+      phi::is_cuda_pinned_place(tensor.place()) &&
       expected_backend != phi::Backend::CPU) {
     VLOG(3) << "Transform Variable " << tensor.name() << " from "
             << tensor.place() << " to "

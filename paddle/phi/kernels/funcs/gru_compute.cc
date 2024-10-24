@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/detail/gru_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 struct GRUUnitFunctor<phi::CPUContext, T> {
@@ -364,5 +363,4 @@ template struct GRUUnitFunctorV2<CPUContext, double>;
 template struct GRUUnitGradFunctorV2<CPUContext, float>;
 template struct GRUUnitGradFunctorV2<CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

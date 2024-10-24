@@ -59,6 +59,10 @@ class ApiBuilder {
   void SetInsertionPoint(pir::Operation* op) {
     builder_->set_insertion_point(op);
   }
+
+  void SetInsertionPointAfter(pir::Operation* op) {
+    builder_->SetInsertionPointAfter(op);
+  }
   /// Set the insertion point to the end of specified block.
   void SetInsertionPointToBlockEnd(pir::Block* block) {
     builder_->SetInsertionPointToBlockEnd(block);
@@ -70,6 +74,9 @@ class ApiBuilder {
   }
   // pop the insertion point and set it to the current insertion point.
   void LoadInsertionPoint();
+
+  void SetOpRole(int op_role) { builder_->set_op_role(op_role); }
+  int GetOpRole() const { return builder_->op_role(); }
 
  private:
   ApiBuilder();

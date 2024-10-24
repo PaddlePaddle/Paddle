@@ -114,11 +114,12 @@ class ArgumentMappingContext {
   virtual bool IsSparseCooTensorInput(const std::string& name) const = 0;
   virtual bool IsSparseCooTensorOutput(const std::string& name) const = 0;
   virtual bool IsSparseCsrTensorInput(const std::string& name) const = 0;
-  // For compatibility with LoDTensorArray
+  // For compatibility with phi::TensorArray
   virtual bool IsDenseTensorVectorInput(const std::string& name) const = 0;
 
   virtual bool IsDenseTensorOutput(const std::string& name) const = 0;
   virtual bool IsSelectedRowsOutput(const std::string& name) const = 0;
+  virtual bool IsVocabOutput(const std::string& name) const { return false; }
 
   // use this function to mark it comes from InferShapeArgumentMappingContext
   // and will be used in infershape

@@ -22,9 +22,9 @@ MatDescriptor CreateMatrixDescriptor(const DDim &tensor_dim,
   PADDLE_ENFORCE_GT(
       tensor_dim.size(),
       1,
-      phi::errors::InvalidArgument("The tensor dim size should be greater "
-                                   "than 1, but reveived dim size is %d",
-                                   tensor_dim.size()));
+      common::errors::InvalidArgument("The tensor dim size should be greater "
+                                      "than 1, but reveived dim size is %d",
+                                      tensor_dim.size()));
   MatDescriptor retv;
   if (num_flatten_cols > 1) {
     auto flatten_dim = common::flatten_to_2d(tensor_dim, num_flatten_cols);

@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -49,7 +48,7 @@ class TestArangeOp(OpTest):
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestFloatArangeOp(TestArangeOp):
@@ -64,9 +63,6 @@ class TestFloat16ArangeOp(TestArangeOp):
         self.dtype = np.float16
         self.python_api = paddle.arange
         self.case = (0, 5, 1)
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
@@ -100,7 +96,9 @@ class TestBFloat16ArangeOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_symbol_infer=False
+        )
 
 
 class TestInt32ArangeOp(TestArangeOp):
@@ -132,7 +130,7 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_static_errors(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
@@ -140,7 +138,7 @@ class TestArangeOpError(unittest.TestCase):
 
 
 class TestArangeAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(

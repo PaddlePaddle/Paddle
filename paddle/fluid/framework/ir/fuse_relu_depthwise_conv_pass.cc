@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseReluDepthwiseConv(graph, true);
@@ -34,7 +32,7 @@ void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
 ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     ir::Graph *graph, bool only_forward) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   if (only_forward)
     FusePassBase::Init("relu_depthwise_conv_only_forward", graph);
   else
@@ -116,48 +114,48 @@ ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
     PADDLE_ENFORCE_EQ(
         layer_op->Input("Input").size(),
         1UL,
-        platform::errors::InvalidArgument("Op(%s)'s input size(%d) must be 1.",
-                                          layer_op->Type(),
-                                          layer_op->Input("Input").size()));
+        common::errors::InvalidArgument("Op(%s)'s input size(%d) must be 1.",
+                                        layer_op->Type(),
+                                        layer_op->Input("Input").size()));
     PADDLE_ENFORCE_EQ(
         layer_op->Input("Input")[0],
         y_var->Name(),
-        platform::errors::InvalidArgument("Op(%s)'s input name(%s) must be %s.",
-                                          layer_op->Type(),
-                                          layer_op->Input("Input")[0],
-                                          y_var->Name()));
+        common::errors::InvalidArgument("Op(%s)'s input name(%s) must be %s.",
+                                        layer_op->Type(),
+                                        layer_op->Input("Input")[0],
+                                        y_var->Name()));
     layer_op->SetInput("Input", {x_var->Name()});
     subgraph.at(layer)->inputs.push_back(subgraph.at(x));
     subgraph.at(x)->outputs.push_back(subgraph.at(layer));
     VLOG(4) << "replace " << y_var->Name() << " -> " << x_var->Name();
 
     if (!only_forward) {
-      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input").size(),
-                        1UL,
-                        platform::errors::InvalidArgument(
-                            "Op(%s)'s input size(%d) must be 1.",
-                            layer_g_op->Type(),
-                            layer_g_op->Input("Input").size()));
-      PADDLE_ENFORCE_EQ(layer_g_op->Input("Input")[0],
-                        y_var->Name(),
-                        platform::errors::InvalidArgument(
-                            "Op(%s)'s input name(%s) must be %s.",
-                            layer_g_op->Type(),
-                            layer_g_op->Input("Input")[0],
-                            y_var->Name()));
+      PADDLE_ENFORCE_EQ(
+          layer_g_op->Input("Input").size(),
+          1UL,
+          common::errors::InvalidArgument("Op(%s)'s input size(%d) must be 1.",
+                                          layer_g_op->Type(),
+                                          layer_g_op->Input("Input").size()));
+      PADDLE_ENFORCE_EQ(
+          layer_g_op->Input("Input")[0],
+          y_var->Name(),
+          common::errors::InvalidArgument("Op(%s)'s input name(%s) must be %s.",
+                                          layer_g_op->Type(),
+                                          layer_g_op->Input("Input")[0],
+                                          y_var->Name()));
       layer_g_op->SetInput("Input", {x_var->Name()});
       subgraph.at(layer_g)->inputs.push_back(subgraph.at(x));
       subgraph.at(x)->outputs.push_back(subgraph.at(layer_g));
 
       PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input")).size(),
                         1UL,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Op(%s)'s input size(%d) must be 1.",
                             layer_g_op->Type(),
                             layer_g_op->Output(GradVarName("Input")).size()));
       PADDLE_ENFORCE_EQ(layer_g_op->Output(GradVarName("Input"))[0],
                         yg_var->Name(),
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Op(%s)'s input name(%s) must be %s.",
                             layer_g_op->Type(),
                             layer_g_op->Output(GradVarName("Input"))[0],
@@ -186,9 +184,7 @@ ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
   return graph;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_relu_depthwise_conv_pass,
               paddle::framework::ir::FuseReluDepthwiseConvPass);

@@ -38,12 +38,16 @@ void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
 
 void CollectTensorIndexIteratorsImpl(const Undefined& tensor_index_expr,
                                      std::unordered_set<Iterator>* ret) {
-  LOG(FATAL) << "Not Implemented";
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "CollectTensorIndexIteratorsImpl is not implemented for Undefined tensor "
+      "index expression. Please check your input."));
 }
 
 void CollectTensorIndexIteratorsImpl(const Ok& ok,
                                      std::unordered_set<Iterator>* ret) {
-  LOG(FATAL) << "Not Implemented";
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "CollectTensorIndexIteratorsImpl is not implemented for Ok state. Please "
+      "ensure the function is correctly called."));
 }
 
 void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
@@ -134,7 +138,7 @@ LoopIterators GetAnchorTensorLoopIterators(
 namespace {
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
-  LOG(FATAL) << "position not found";
+  PADDLE_THROW(::common::errors::Fatal("position not found"));
 }
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {
@@ -171,8 +175,11 @@ std::unordered_map<Index, LoopIterators> GenerateAnchorIndex2LoopIterators(
     const auto& anchor_tensor = GetAnchorTensor(anchor_group);
     const auto& anchor_loop_iters = GetAnchorTensorLoopIterators(
         anchor_tensor, loop_iters, TensorIndexExpr4Tensor);
-    CHECK(anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters)
-              .second);
+    PADDLE_ENFORCE_EQ(
+        anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters).second,
+        true,
+        ::common::errors::AlreadyExists("The anchor index has already "
+                                        "been associated with loop iters."));
   }
   return anchor_index2loop_iters;
 }

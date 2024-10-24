@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 RTOL = 1e-5
 ATOL = 1e-8
@@ -78,7 +77,6 @@ def generate_data(shape, count=1, dtype='int32'):
 class BaseTest(unittest.TestCase):
     """Test in each `PLACES` and in `static/dygraph`"""
 
-    @test_with_pir_api
     def _test_static_api(
         self,
         func_paddle,
@@ -375,7 +373,7 @@ class TestColumnStack(BaseTest, BaseCases):
 class TestRowStack(BaseTest, BaseCases):
     def setUp(self):
         self.func_paddle = paddle.row_stack
-        self.func_numpy = np.row_stack
+        self.func_numpy = np.vstack
 
     def test_mix_ndim(self):
         d0 = generate_data([2], count=1, dtype='float64')
@@ -495,7 +493,7 @@ class TestErrorColumnStack(BaseTest, ErrorCases0d1d):
 class TestErrorRowStack(BaseTest, ErrorCases0d1d):
     def setUp(self):
         self.func_paddle = paddle.row_stack
-        self.func_numpy = np.row_stack
+        self.func_numpy = np.vstack
 
 
 if __name__ == '__main__':

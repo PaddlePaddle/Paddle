@@ -300,7 +300,7 @@ void ScanKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       axis < out_dims.size() && axis >= (0 - out_dims.size()),
       true,
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "Attr(axis) is out of range, It's expected "
           "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
           out_dims.size(),

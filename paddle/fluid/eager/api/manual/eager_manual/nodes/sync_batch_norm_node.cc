@@ -26,6 +26,7 @@
 #include "paddle/phi/api/backward/sparse_bw_api.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_custom_impl.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 
@@ -37,6 +38,17 @@ SyncBatchNormGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  phi::RecordEvent node_execution_inner(
+      "Local_SyncBatchNormGradNode", phi::TracerEventType::OperatorInner, 1);
+
   // Fill Zero For GradIn Tensors
 
   // Apply Gradient Hooks
@@ -182,7 +194,7 @@ SyncBatchNormGradNode::operator()(
 
   // Create Grad Node
   if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The Op sync_batch_norm_grad doesn't have any grad"
         "op. If you don't intend calculating higher order"
         "derivatives, please set `create_graph`to False."));
@@ -256,6 +268,17 @@ SyncBatchNormGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "sync_batch_norm_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  phi::RecordEvent node_execution_inner(
+      "Local_SyncBatchNormGradNode", phi::TracerEventType::OperatorInner, 1);
+
   // Fill Zero For GradIn Tensors
 
   // Apply Gradient Hooks
@@ -401,7 +424,7 @@ SyncBatchNormGradNode::operator()(
 
   // Create Grad Node
   if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The Op sync_batch_norm_grad doesn't have any grad"
         "op. If you don't intend calculating higher order"
         "derivatives, please set `create_graph`to False."));

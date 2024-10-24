@@ -84,7 +84,7 @@ void AddNKernel(const Context &dev_ctx,
     PADDLE_ENFORCE_EQ(
         x[i]->initialized(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "This argument is invalid, %d-th tensor is uninitialized.", i));
   }
 

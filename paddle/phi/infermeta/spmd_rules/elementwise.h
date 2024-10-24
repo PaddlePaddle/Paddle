@@ -54,5 +54,16 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                         const DistMetaTensor& out_grad,
                                         int64_t axis = -1);
 
+SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y);
+SpmdInfo AssignInferSpmd(const DistMetaTensor& x);
+
+SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
+                                const DistMetaTensor& y,
+                                const DistMetaTensor& out);
+
+SpmdInfo SwiGLUGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& y,
+                             const DistMetaTensor& out_grad);
+
 }  // namespace distributed
 }  // namespace phi

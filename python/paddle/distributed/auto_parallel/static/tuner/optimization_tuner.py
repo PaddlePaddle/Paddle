@@ -411,15 +411,15 @@ class OptimizationTuner:
             paddle.distributed.ParallelEnv()
         )
         profile_ctx['group_map'] = parse_process_groups()
-        profile_ctx[
-            "loss_var_name"
-        ] = self._baseline_dist_context.serial_loss.name
-        profile_ctx[
-            "main_program_decs"
-        ] = trial.main_program.desc.serialize_to_string()
-        profile_ctx[
-            "startup_program_decs"
-        ] = trial.startup_program.desc.serialize_to_string()
+        profile_ctx["loss_var_name"] = (
+            self._baseline_dist_context.serial_loss.name
+        )
+        profile_ctx["main_program_decs"] = (
+            trial.main_program.desc.serialize_to_string()
+        )
+        profile_ctx["startup_program_decs"] = (
+            trial.startup_program.desc.serialize_to_string()
+        )
         self._dataset.batch_size = self._batch_size
         self._dataset.input_names = self._get_input_names()
 
@@ -459,7 +459,7 @@ class OptimizationTuner:
             + " "
             + profile_args
         )
-        cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
+        cmd = [sys.executable, "-u", *coverage_args, *shlex.split(cmd_args)]
 
         parent_env = copy.copy(os.environ.copy())
         # env flags need for profile
@@ -564,15 +564,11 @@ class OptimizationTuner:
         """
         # TODO summary with the trial_name with metric_of_trial
         best_trial = self._finished_trials[self._best_iter]
-        summary_ = """
+        summary_ = f"""
 Tuning Result Summary
-Run total {} trials with {} min.
-The best trial is: [{}], whose configuration is following:
-        """.format(
-            len(self._finished_trials),
-            (time.time() - self._tuning_start_time) / 60,
-            best_trial.name,
-        )
+Run total {len(self._finished_trials)} trials with {(time.time() - self._tuning_start_time) / 60} min.
+The best trial is: [{best_trial.name}], whose configuration is following:
+        """
         summary_ += "\n" + best_trial.summary() + "\n"
         self._logger.info(summary_)
         with open(os.path.join(self.project_dir, "summary.txt"), "w+") as fw:
@@ -633,9 +629,7 @@ The best trial is: [{}], whose configuration is following:
                 and self._config.early_stop <= i - self._best_iter
             ):
                 self._logger.info(
-                    "Early stop the Tuning since there is no better trial found within [{}] trials".format(
-                        self._config.early_stop
-                    )
+                    f"Early stop the Tuning since there is no better trial found within [{self._config.early_stop}] trials"
                 )
                 break
 

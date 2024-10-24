@@ -21,9 +21,7 @@
 #include <vector>
 #include "paddle/fluid/framework/ir/quantize_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                        \
@@ -86,14 +84,14 @@ DeleteQuantDequantLinearOpPass::DeleteQuantDequantLinearOpPass() {
 }
 // Delete quantize_linear_op dequantize_linear_op, then add input_scales
 void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
-  const std::string pattern_name = "delete_quantdequant_linear_op_pattern";
+  const std::string pattern_name = "delete_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Scope in DeleteQuantDequantLinearOpPass should not be null."));
 
   VLOG(3) << "Running delete_quant_dequant_linear_op_pass.";
@@ -124,17 +122,27 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     */
+    // Scale and ZeroPoint tensor should be removed in save_optimized_model_pass
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(quantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    auto& scale_and_zero_point_param = g->GetOrInit<std::vector<std::string>>(
+        framework::ir::kScaleAndZeroPointParamAttr);
+    scale_and_zero_point_param.insert(
+        scale_and_zero_point_param.end(), vars2rm.begin(), vars2rm.end());
+
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
     const phi::DenseTensor& input_scale_tensor =
         scope->GetVar(quantize_linear_op_scale->Name())
             ->Get<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        paddle::platform::is_cpu_place(input_scale_tensor.place()),
-        true,
-        platform::errors::InvalidArgument(
-            "Input scale tensor's place should be CPU."));
+    PADDLE_ENFORCE_EQ(phi::is_cpu_place(input_scale_tensor.place()),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input scale tensor's place should be CPU."));
 
     float input_scale = NAN;
     if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
@@ -145,8 +153,8 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
           input_scale_tensor.data<phi::dtype::float16>();
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented("%d is not supported.",
-                                                   input_scale_tensor.dtype()));
+      PADDLE_THROW(common::errors::Unimplemented("%d is not supported.",
+                                                 input_scale_tensor.dtype()));
     }
 
     int nums_any_ops =
@@ -184,9 +192,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_quant_dequant_linear_op_pass,
               paddle::framework::ir::DeleteQuantDequantLinearOpPass);

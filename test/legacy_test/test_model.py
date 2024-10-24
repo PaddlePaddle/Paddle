@@ -211,7 +211,12 @@ class TestModel(unittest.TestCase):
 
         seed = 555
         paddle.seed(seed)
-        paddle.framework.random._manual_program_seed(seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+        else:
+            paddle.framework.random._manual_program_seed(seed)
 
         dy_lenet = LeNetDygraph()
         cls.init_param = dy_lenet.state_dict()
@@ -277,7 +282,12 @@ class TestModel(unittest.TestCase):
         base.enable_dygraph(self.device) if dynamic else None
         seed = 555
         paddle.seed(seed)
-        paddle.framework.random._manual_program_seed(seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+        else:
+            paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
         optim_new = paddle.optimizer.Adam(
@@ -343,7 +353,12 @@ class TestModel(unittest.TestCase):
         base.enable_dygraph(self.device) if dynamic else None
         seed = 555
         paddle.seed(seed)
-        paddle.framework.random._manual_program_seed(seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+        else:
+            paddle.framework.random._manual_program_seed(seed)
 
         net = LeNet()
         optim_new = paddle.optimizer.Adam(
@@ -486,7 +501,12 @@ class MyDataset(Dataset):
 class TestModelFunction(unittest.TestCase):
     def set_seed(self, seed=1024):
         paddle.seed(seed)
-        paddle.framework.random._manual_program_seed(seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+        else:
+            paddle.framework.random._manual_program_seed(seed)
 
     def test_train_batch(self, dynamic=True):
         dim = 20
@@ -547,12 +567,16 @@ class TestModelFunction(unittest.TestCase):
             device = paddle.set_device('cpu')
             base.enable_dygraph(device) if dynamic else None
             self.set_seed()
+            startup = paddle.base.default_startup_program()
             net = MyModel()
             inputs = [InputSpec([None, dim], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
             (out,) = model.predict_batch([data])
-
+            if dynamic:
+                out_dy = out
+            else:
+                out_st = out
             np.testing.assert_allclose(out, ref, rtol=1e-6)
             base.disable_dygraph() if dynamic else None
 
@@ -563,6 +587,7 @@ class TestModelFunction(unittest.TestCase):
         for dynamic in [True, False]:
             device = paddle.set_device('cpu')
             base.enable_dygraph(device) if dynamic else None
+
             net = MyModel()
             inputs = [InputSpec([None, 20], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
@@ -590,14 +615,9 @@ class TestModelFunction(unittest.TestCase):
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
-            if new_optimizer:
-                optim = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=net.parameters()
-                )
-            else:
-                optim = paddle.optimizer.Adam(
-                    learning_rate=0.001, parameters=net.parameters()
-                )
+            optim = paddle.optimizer.Adam(
+                learning_rate=0.001, parameters=net.parameters()
+            )
             model = Model(net, inputs, labels)
             model.prepare(
                 optimizer=optim, loss=CrossEntropyLoss(reduction="sum")
@@ -641,6 +661,7 @@ class TestModelFunction(unittest.TestCase):
         )
         if not os.path.exists(path):
             os.makedirs(path)
+
         net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
@@ -670,6 +691,7 @@ class TestModelFunction(unittest.TestCase):
         for dynamic in [True, False]:
             device = paddle.set_device('cpu')
             base.enable_dygraph(device) if dynamic else None
+
             net = MyModel()
             inputs = [InputSpec([None, 20], 'float32', 'x')]
             model = Model(net, inputs)
@@ -829,7 +851,7 @@ class TestModelFunction(unittest.TestCase):
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)
             model.prepare()
-
+            np.random.seed(201)
             tensor_img = np.array(
                 np.random.random((1, 1, 28, 28)), dtype=np.float32
             )
@@ -1000,7 +1022,6 @@ class TestModelWithLRScheduler(unittest.TestCase):
         )
         # static test
         paddle.enable_static()
-
         net = MyModel()
         inputs = [InputSpec([None, 20], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]

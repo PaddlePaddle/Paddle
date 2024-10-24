@@ -42,7 +42,7 @@ class SparseCsrTensor : public TensorBase,
   SparseCsrTensor(const SparseCsrTensor& other);
 
   /// \brief create the sparse csr tensor.
-  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// \param non_zero_crows The compressed row index of non zero elements in
   /// original dense tensor.
   /// \param non_zero_cols The column index of non zero elements in original
   /// dense tensor.
@@ -130,9 +130,13 @@ class SparseCsrTensor : public TensorBase,
   /// \return Whether the non_zero_elements_ metadata is valid.
   bool valid() const noexcept override { return non_zero_elements_.valid(); }
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override { return values().has_allocation(); }
+
   /// \brief Test whether the non_zero_elements_ storage is allocated.
   /// In special cases, when nnz=0, non_zero_elements_ will not need to be
-  /// initialized, but it is neccessary to return true here, otherwise the
+  /// initialized, but it is necessary to return true here, otherwise the
   /// gradient will be None. return Whether the non_zero_elements_ storage is
   /// allocated.
   bool initialized() const override {
@@ -145,7 +149,7 @@ class SparseCsrTensor : public TensorBase,
   void Resize(const DDim& dense_dims, const int64_t non_zero_num);
 
   /// \brief set the member of sparse csr tensor.
-  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// \param non_zero_crows The compressed row index of non zero elements in
   /// original dense tensor.
   /// \param non_zero_cols The column index of non zero elements in original
   /// dense tensor.
@@ -157,7 +161,7 @@ class SparseCsrTensor : public TensorBase,
                  const DDim& dims);
 
   /// \brief set the member of sparse csr tensor.
-  /// \param non_zero_crows The compresessed row index of non zero elements in
+  /// \param non_zero_crows The compressed row index of non zero elements in
   /// original dense tensor.
   /// \param non_zero_cols The column index of non zero elements in original
   /// dense tensor.

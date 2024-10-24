@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/plugin/custom_generic_plugin.h"
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -46,7 +47,7 @@ void validate(const std::string& op_type,
   // https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html#ipluginv2
   PADDLE_ENFORCE_GE(supports_dtypes.count(datatype),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "custorm op [%s] has unsupported datatype: [%s], "
                         "now only support: [float32, float16, int8, int32].",
                         op_type,
@@ -54,7 +55,7 @@ void validate(const std::string& op_type,
   PADDLE_ENFORCE_GE(
       supports_tensor_formats.count(tensor_format),
       0,
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "custorm op [%s] has unsupported tensor format: [%s], "
           "now only support: [LINEAR, CHW32, CHW2, HWC8, CHW4, DHWC8(TensorRT "
           "7.2 and after), HWC16(TensorRT 8.0 and after)].",
@@ -66,7 +67,7 @@ void validate(const std::string& op_type,
     PADDLE_ENFORCE_GE(
         supports_formats_tmp.count(tensor_format),
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "custorm op [%s]: float32 only supports [LINEAR, CHW32], "
             "but got tensor format: [%s], ",
             op_type,
@@ -83,7 +84,7 @@ void validate(const std::string& op_type,
 #endif
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "custorm op [%s]: float16 only supports [LINEAR, "
                           "CHW2, HWC8, CHW4, DHWC8(TensorRT 7.2 and after), "
                           "HWC16(TensorRT 8.0 and after)], "
@@ -97,7 +98,7 @@ void validate(const std::string& op_type,
     PADDLE_ENFORCE_GE(
         supports_formats_tmp.count(tensor_format),
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "custorm op [%s]: int8 only supports [LINEAR, CHW32, CHW4], "
             "but got tensor format: [%s], ",
             op_type,
@@ -107,7 +108,7 @@ void validate(const std::string& op_type,
     std::unordered_set<std::string> supports_formats_tmp = {"LINEAR"};
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "custorm op [%s]: int32 only supports [LINEAR], "
                           "but got tensor format: [%s], ",
                           op_type,
@@ -164,7 +165,7 @@ nvinfer1::DataType getTrtDtype(std::string dtype) {
     return nvinfer1::DataType::kINT32;
   } else {
     PADDLE_THROW(
-        platform::errors::Unimplemented("Unsupported data type [%s]", dtype));
+        common::errors::Unimplemented("Unsupported data type [%s]", dtype));
   }
 }
 
@@ -188,8 +189,8 @@ nvinfer1::TensorFormat getTrtTensorFormat(std::string tensor_format) {
     return nvinfer1::TensorFormat::kHWC16;
 #endif
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "Unsupported tensor format [%s]", tensor_format));
+    PADDLE_THROW(common::errors::Unimplemented("Unsupported tensor format [%s]",
+                                               tensor_format));
   }
 }
 
@@ -225,7 +226,7 @@ ProtoTypeToGenerateCustomGenericPluginDataType(
     case VarType_Type::VarType_Type_COMPLEX128:
       return GenerateCustomGenericPluginDataType::PLUGIN_COMPLEX128;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "This data type is currently not supported"));
   }
 }
@@ -314,7 +315,7 @@ bool CustomGenericPlugin::supportsFormatCombination(
       OpMetaInfoHelper::GetTrtSupportsFormatConfig(op_info);
   PADDLE_ENFORCE_NE(supports_formate_config.empty(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The %s op has no tensorrt plugin "
                         "supportsFormatCombination config!"
                         "Please use SetTrtSupportsFormatConfig to set.",
@@ -328,7 +329,7 @@ bool CustomGenericPlugin::supportsFormatCombination(
     auto format_combination = parseConfig(op_desc_.Type(), config);
     PADDLE_ENFORCE_EQ(input_num + output_num,
                       format_combination.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Expexted %d format_combination, but got %d.",
                           input_num + output_num,
                           format_combination.size()));
@@ -375,7 +376,7 @@ nvinfer1::DataType CustomGenericPlugin::getOutputDataType(
   PADDLE_ENFORCE_NE(
       input_types,
       nullptr,
-      phi::errors::Unavailable("Input type should not be nullptr."));
+      common::errors::Unavailable("Input type should not be nullptr."));
   return input_types[0];
 }
 
@@ -392,14 +393,20 @@ nvinfer1::DimsExprs CustomGenericPlugin::getOutputDimensions(
     const nvinfer1::DimsExprs* inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
-  CHECK(output_index < getNbOutputs());
+  PADDLE_ENFORCE_LT(
+      output_index,
+      getNbOutputs(),
+      common::errors::InvalidArgument(
+          "Output index (%d) must be less than the number of outputs (%d).",
+          output_index,
+          getNbOutputs()));
   auto& op_meta_info_map = OpMetaInfoMap::Instance();
   const auto& meta_info_map = op_meta_info_map.GetMap();
   auto& op_info = meta_info_map.at(op_desc_.Type()).front();
   auto& infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);
   PADDLE_ENFORCE_NE(infer_shape_fn,
                     nullptr,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The %s op has no getOutputDimensions function!"
                         "Please use SetTrtInferShapeFn to set.",
                         op_desc_.Type().c_str()));
@@ -434,7 +441,7 @@ nvinfer1::DimsExprs CustomGenericPlugin::getOutputDimensions(
       custom_attrs.emplace_back(
           PADDLE_GET_CONST(std::vector<std::string>, attrs.at(attr_name)));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -453,8 +460,21 @@ void CustomGenericPlugin::configurePlugin(
     int nb_inputs,
     const nvinfer1::DynamicPluginTensorDesc* out,
     int nb_outputs) TRT_NOEXCEPT {
-  CHECK(nb_inputs == getNbInputs());
-  CHECK(nb_outputs == getNbOutputs());
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                    getNbInputs(),
+                    common::errors::InvalidArgument(
+                        "Number of inputs (%d) does not match the "
+                        "expected number of inputs (%d).",
+                        nb_inputs,
+                        getNbInputs()));
+
+  PADDLE_ENFORCE_EQ(nb_outputs,
+                    getNbOutputs(),
+                    common::errors::InvalidArgument(
+                        "Number of outputs (%d) does not match the "
+                        "expected number of outputs (%d).",
+                        nb_outputs,
+                        getNbOutputs()));
 }
 
 // Shutdown the layer. This is called when the engine is destroyed
@@ -469,7 +489,7 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                  void* const* outputs,
                                  void* workspace,
                                  cudaStream_t stream) TRT_NOEXCEPT {
-  platform::CUDAPlace place(platform::GetCurrentDeviceId());
+  phi::GPUPlace place(platform::GetCurrentDeviceId());
   // TODO(inference): custom generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](GenerateCustomGenericPluginDataType proto_type,
@@ -491,13 +511,21 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     } else if (proto_type == GenerateCustomGenericPluginDataType::PLUGIN_BOOL) {
       return {phi::DataType::BOOL, sizeof(bool)};
     } else {
-      CHECK(false) << "precision is not supported";
+      PADDLE_ENFORCE_EQ(
+          false,
+          true,
+          common::errors::InvalidArgument("Precision is not supported."));
     }
   };
 
   nvinfer1::DataType data_type = input_desc[0].type;
-  CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
-        (data_type == nvinfer1::DataType::kHALF));
+  PADDLE_ENFORCE_EQ(
+      (data_type == nvinfer1::DataType::kFLOAT) ||
+          (data_type == nvinfer1::DataType::kHALF),
+      true,
+      common::errors::InvalidArgument("The data type must be either kFLOAT or "
+                                      "kHALF, but received data type %d.",
+                                      static_cast<int>(data_type)));
 
   paddle::CustomOpKernelContext kernel_ctx;
   // input
@@ -588,7 +616,7 @@ int CustomGenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
       kernel_ctx.EmplaceBackAttr(
           PADDLE_GET_CONST(std::vector<std::string>, attrs.at(attr_name)));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "

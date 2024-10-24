@@ -36,7 +36,7 @@ imperative::ParallelStrategy GetStrategy(int local_rank) {
 #if defined(PADDLE_WITH_XPU_BKCL)
 void BcastBKCLId(int local_rank, std::vector<BKCLUniqueId>* bkcl_ids) {
   auto strategy = GetStrategy(local_rank);
-  platform::XPUPlace xpu(local_rank);
+  phi::XPUPlace xpu(local_rank);
   imperative::BKCLParallelContext ctx(strategy, xpu);
   ctx.BcastBKCLId(*bkcl_ids, 0);
 }

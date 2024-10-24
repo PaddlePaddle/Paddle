@@ -21,7 +21,6 @@ from testsuite import create_op
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def conv2d_forward_naive(
@@ -34,14 +33,14 @@ def conv2d_forward_naive(
 ):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{padding_algorithm}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
-            "Unknown Attr(data_format): '%s' ."
-            "It can only be 'NCHW' or 'NHWC'." % str(data_format)
+            f"Unknown Attr(data_format): '{data_format}' ."
+            "It can only be 'NCHW' or 'NHWC'."
         )
 
     channel_last = data_format == "NHWC"
@@ -498,7 +497,7 @@ class TestConv2DOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output_with_place(
             place,
             atol=1e-5,
@@ -512,7 +511,7 @@ class TestConv2DOp(OpTest):
         ):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             {'Input', 'Filter'},
@@ -528,7 +527,7 @@ class TestConv2DOp(OpTest):
         ):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Input'],
@@ -545,7 +544,7 @@ class TestConv2DOp(OpTest):
         ):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Filter'],
@@ -727,7 +726,7 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 
 class TestConv2DOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -738,7 +737,7 @@ class TestConv2DOpError(unittest.TestCase):
                 x1 = base.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], base.CPUPlace()
                 )
-                paddle.static.nn.conv2d(x1, 1, 1)
+                paddle.nn.Conv2D(x1.shape[1], 1, 1)(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -748,7 +747,7 @@ class TestConv2DOpError(unittest.TestCase):
                 x2 = paddle.static.data(
                     name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
-                paddle.static.nn.conv2d(x2, 1, 1)
+                paddle.nn.Conv2D(x2.shape[1], 1, 1)(x2)
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -831,7 +830,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         self.check_output_with_place(
             place,
@@ -841,7 +840,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_grad(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
@@ -855,7 +854,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_grad_no_filter(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
@@ -870,7 +869,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_grad_no_input(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()

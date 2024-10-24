@@ -42,7 +42,7 @@ T GetValueOfExpectedType(const Context& ctx, const DenseTensor& x) {
     case DataType::UINT8:
       return static_cast<T>(GetValue<uint8_t, Context>(ctx, x));
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           x.dtype()));
   }
@@ -63,9 +63,9 @@ void LinspaceKernel(const Context& ctx,
   PADDLE_ENFORCE_GT(
       num,
       0,
-      phi::errors::InvalidArgument("The num of linspace op should be larger "
-                                   "than 0, but received num is %d",
-                                   num));
+      common::errors::InvalidArgument("The num of linspace op should be larger "
+                                      "than 0, but received num is %d",
+                                      num));
 
   out->Resize(common::make_ddim({num}));
   T* out_data = ctx.template Alloc<T>(out);

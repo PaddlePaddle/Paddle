@@ -21,7 +21,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -32,7 +31,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
@@ -61,25 +59,29 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
     const Target &target) {
   std::string op_name("bitcast_convert");
 
-  framework::CINNCompute bitcast_convert_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.";
-        CINNValuePack pack_args = args[0];
-        CHECK_GE(pack_args.size(), 1U)
-            << "1 input tensor for " << op_name << " compute";
-        std::string tensor_name = UniqName(op_name + "_Out");
-        Expr A_expr = pack_args[0];
-        CHECK(A_expr.as_tensor());
-        ir::Tensor A = A_expr.as_tensor_ref();
-        auto out = BitcastConvert(A, out_type[0], tensor_name);
-        auto stages = CreateStages({A});
-        std::vector<CINNValue> res;
-        stages->InsertLazily(out);
-        res.push_back(CINNValue(out));
-        res.push_back(CINNValue(stages));
-        *ret = CINNValuePack{res};
-      });
+  framework::CINNCompute bitcast_convert_compute([=](lang::Args args,
+                                                     lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of %s compute is empty!", op_name));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      1U,
+                      ::common::errors::InvalidArgument(
+                          "The size of pack_args should be greater than 0 . "));
+    std::string tensor_name = UniqName(op_name + "_Out");
+    Expr A_expr = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(A_expr.as_tensor(),
+                            ::common::errors::InvalidArgument(
+                                "The input argument A  is not a tensor."));
+    ir::Tensor A = A_expr.as_tensor_ref();
+    auto out = BitcastConvert(A, out_type[0], tensor_name);
+    std::vector<CINNValue> res;
+    res.push_back(CINNValue(out));
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(bitcast_convert_compute,
@@ -87,44 +89,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
                     "strategy.bitcast_convert.x86",
                     1);
   return strategy;
-}
-
-std::vector<shape_t> InferShapeForBitcastConvert(
-    const std::vector<shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK_EQ(inputs_shape.size(), 1U)
-      << "The input's shape size should be 1! Please check again.";
-
-  auto input_data_type_name =
-      absl::get<std::string>(attrs.at("input_data_type"));
-  auto output_data_type_name = absl::get<std::string>(attrs.at("dtype"));
-  auto input_data_type = cinn::common::Str2Type(input_data_type_name);
-  auto output_data_type = cinn::common::Str2Type(output_data_type_name);
-
-  auto output_shape =
-      std::vector<shape_t>(inputs_shape.begin(), inputs_shape.end());
-  auto ratio = input_data_type.bits() / output_data_type.bits();
-  if (ratio == 1) return inputs_shape;
-
-  if (ratio > 0) {
-    output_shape.back().emplace_back(ratio);
-  } else {
-    if (output_shape.back().back() !=
-        (output_data_type.bits() / input_data_type.bits())) {
-      LOG(FATAL) << "The rightmost dimension of input must be equal to "
-                    "sizeof(output_data_type)/sizeof(input_data_type) when "
-                    "sizeof(output_data_type) > sizeof(input_data_type)";
-    }
-    output_shape.back().pop_back();
-  }
-
-  return output_shape;
-}
-
-std::vector<Type> InferDtypeForBitcastConvert(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("dtype"));
-  return {cinn::common::Str2Type(absl::get<std::string>(attrs.at("dtype")))};
 }
 
 }  // namespace op
@@ -138,10 +102,6 @@ CINN_REGISTER_HELPER(bitcast_convert_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForBitcastConvert)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForBitcastConvert))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBitcastConvert))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);

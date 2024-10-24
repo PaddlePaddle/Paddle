@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestRepeatInterleaveOp(OpTest):
@@ -36,7 +35,7 @@ class TestRepeatInterleaveOp(OpTest):
         self.attrs = {'dim': self.dim}
 
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -75,7 +74,7 @@ class TestRepeatInterleaveOp2(OpTest):
         self.attrs = {'dim': self.dim, 'Repeats': index_np}
 
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -115,7 +114,6 @@ class TestIndexSelectAPI(unittest.TestCase):
         self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
-    @test_with_pir_api
     def test_repeat_interleave_api(self):
         paddle.enable_static()
         self.input_data()

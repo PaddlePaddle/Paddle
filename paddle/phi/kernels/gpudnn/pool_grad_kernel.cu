@@ -73,6 +73,7 @@ void PoolGradRawGPUDNNKernel(const Context& ctx,
                                      global_pooling,
                                      adaptive,
                                      padding_algorithm,
+                                     0,
                                      dx);
     return;
   }

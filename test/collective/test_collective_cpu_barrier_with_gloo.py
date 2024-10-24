@@ -92,7 +92,7 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         num_of_ranks = 4
         sleep_time = 1
         # create endpoints
-        ep_str = "127.0.0.1:%s" % (self.find_free_port())
+        ep_str = f"127.0.0.1:{self.find_free_port()}"
         # call barrier op inside each process
         manager = multiprocessing.Manager()
         procs_out_dict = manager.dict()
@@ -113,7 +113,7 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         num_of_ranks = 4
         sleep_time = 1
         # create endpoints
-        ep_str = "127.0.0.1:%s" % (self.find_free_port())
+        ep_str = f"127.0.0.1:{self.find_free_port()}"
         # call barrier op inside each process
         manager = multiprocessing.Manager()
         procs_out_dict = manager.dict()

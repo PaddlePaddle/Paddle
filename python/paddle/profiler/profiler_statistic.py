@@ -68,6 +68,7 @@ class SortedKeys(Enum):
 
     - **SortedKeys.GPUMin**  : Sorted by GPU min time.
     """
+
     CPUTotal = 0
     CPUAvg = 1
     CPUMax = 2
@@ -582,9 +583,9 @@ class EventSummary:
             for child in node.children_node:
                 if child.type != TracerEventType.Operator:
                     if child.name not in self.operator_inners:
-                        self.operator_inners[
-                            child.name
-                        ] = EventSummary.OperatorItem(child.name)
+                        self.operator_inners[child.name] = (
+                            EventSummary.OperatorItem(child.name)
+                        )
                     self.operator_inners[child.name].add_item(child)
 
             for runtimenode in node.runtime_node:
@@ -604,9 +605,9 @@ class EventSummary:
             for child in node.children_node:
                 if child.type != TracerEventType.Operator:
                     if child.name not in self.operator_inners:
-                        self.operator_inners[
-                            child.name
-                        ] = EventSummary.OperatorItem(child.name)
+                        self.operator_inners[child.name] = (
+                            EventSummary.OperatorItem(child.name)
+                        )
                     self.operator_inners[child.name].add_item(child)
 
     class GeneralItem(ItemBase):
@@ -694,18 +695,18 @@ class EventSummary:
         self.items[operator_node.name].add_item(operator_node)
 
         if operator_node.name not in self.thread_items[operator_node.thread_id]:
-            self.thread_items[operator_node.thread_id][
-                operator_node.name
-            ] = EventSummary.OperatorItem(operator_node.name)
+            self.thread_items[operator_node.thread_id][operator_node.name] = (
+                EventSummary.OperatorItem(operator_node.name)
+            )
         self.thread_items[operator_node.thread_id][operator_node.name].add_item(
             operator_node
         )
 
     def add_userdefined_item(self, userdefined_node):
         if userdefined_node.name not in self.userdefined_items:
-            self.userdefined_items[
-                userdefined_node.name
-            ] = EventSummary.GeneralItem(userdefined_node.name)
+            self.userdefined_items[userdefined_node.name] = (
+                EventSummary.GeneralItem(userdefined_node.name)
+            )
 
         self.userdefined_items[userdefined_node.name].add_item(userdefined_node)
 
@@ -722,9 +723,9 @@ class EventSummary:
 
     def add_memory_manipulation_item(self, memory_manipulation_node):
         if memory_manipulation_node.name not in self.memory_manipulation_items:
-            self.memory_manipulation_items[
-                memory_manipulation_node.name
-            ] = EventSummary.GeneralItem(memory_manipulation_node.name)
+            self.memory_manipulation_items[memory_manipulation_node.name] = (
+                EventSummary.GeneralItem(memory_manipulation_node.name)
+            )
         self.memory_manipulation_items[memory_manipulation_node.name].add_item(
             memory_manipulation_node
         )
@@ -808,10 +809,10 @@ class MemorySummary:
                 or memnode.type == TracerMemEventType.Free
             ):
                 if event_name not in self.allocated_items[memnode.place]:
-                    self.allocated_items[memnode.place][
-                        event_name
-                    ] = MemorySummary.MemoryItem(
-                        event_name, memnode.place, 'Allocated'
+                    self.allocated_items[memnode.place][event_name] = (
+                        MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Allocated'
+                        )
                     )
                 self.allocated_items[memnode.place][
                     event_name
@@ -821,10 +822,10 @@ class MemorySummary:
                 or memnode.type == TracerMemEventType.ReservedFree
             ):
                 if event_name not in self.reserved_items[memnode.place]:
-                    self.reserved_items[memnode.place][
-                        event_name
-                    ] = MemorySummary.MemoryItem(
-                        event_name, memnode.place, 'Reserved'
+                    self.reserved_items[memnode.place][event_name] = (
+                        MemorySummary.MemoryItem(
+                            event_name, memnode.place, 'Reserved'
+                        )
                     )
                 self.reserved_items[memnode.place][
                     event_name
@@ -1027,9 +1028,9 @@ def _build_table(
             cpu_type_time[TracerEventType.Communication] = sum_ranges(
                 statistic_data.distributed_summary.cpu_communication_range
             )
-            cpu_call_times[
-                TracerEventType.Communication
-            ] = statistic_data.distributed_summary.cpu_calls
+            cpu_call_times[TracerEventType.Communication] = (
+                statistic_data.distributed_summary.cpu_calls
+            )
 
         for event_type in [
             TracerEventType.Dataloader,
@@ -1043,16 +1044,16 @@ def _build_table(
                 and event_type_name
                 in statistic_data.event_summary.model_perspective_items
             ):
-                cpu_call_times[
-                    event_type
-                ] = statistic_data.event_summary.model_perspective_items[
-                    event_type_name
-                ].call
-                cpu_type_time[
-                    event_type
-                ] = statistic_data.event_summary.model_perspective_items[
-                    event_type_name
-                ].cpu_time
+                cpu_call_times[event_type] = (
+                    statistic_data.event_summary.model_perspective_items[
+                        event_type_name
+                    ].call
+                )
+                cpu_type_time[event_type] = (
+                    statistic_data.event_summary.model_perspective_items[
+                        event_type_name
+                    ].cpu_time
+                )
 
         gpu_time_range = collections.defaultdict(list)
         for (
@@ -1069,9 +1070,9 @@ def _build_table(
             gpu_type_time[TracerEventType.Communication] = sum_ranges(
                 statistic_data.distributed_summary.gpu_communication_range
             )
-            gpu_call_times[
-                TracerEventType.Communication
-            ] = statistic_data.distributed_summary.gpu_calls
+            gpu_call_times[TracerEventType.Communication] = (
+                statistic_data.distributed_summary.gpu_calls
+            )
 
         sorted_items = sorted(
             cpu_type_time.items(), key=lambda x: x[1], reverse=True
@@ -1154,20 +1155,8 @@ def _build_table(
                     row_values = [
                         f'{name}',
                         item.call,
-                        '{} / {} / {} / {} / {}'.format(
-                            format_time(item.cpu_time, unit=time_unit),
-                            format_time(item.avg_cpu_time, unit=time_unit),
-                            format_time(item.max_cpu_time, unit=time_unit),
-                            format_time(item.min_cpu_time, unit=time_unit),
-                            format_ratio(float(item.cpu_time) / total_time),
-                        ),
-                        '{} / {} / {} / {} / {}'.format(
-                            format_time(item.gpu_time, unit=time_unit),
-                            format_time(item.avg_gpu_time, unit=time_unit),
-                            format_time(item.max_gpu_time, unit=time_unit),
-                            format_time(item.min_gpu_time, unit=time_unit),
-                            format_ratio(gpu_ratio),
-                        ),
+                        f'{format_time(item.cpu_time, unit=time_unit)} / {format_time(item.avg_cpu_time, unit=time_unit)} / {format_time(item.max_cpu_time, unit=time_unit)} / {format_time(item.min_cpu_time, unit=time_unit)} / {format_ratio(float(item.cpu_time) / total_time)}',
+                        f'{format_time(item.gpu_time, unit=time_unit)} / {format_time(item.avg_gpu_time, unit=time_unit)} / {format_time(item.max_gpu_time, unit=time_unit)} / {format_time(item.min_gpu_time, unit=time_unit)} / {format_ratio(gpu_ratio)}',
                     ]
                     all_row_values.append(row_values)
                     if 'ProfileStep' not in name:
@@ -1183,14 +1172,8 @@ def _build_table(
             row_values = [
                 '  Others',
                 '-',
-                '{} / - / - / - / {}'.format(
-                    format_time(other_time, unit=time_unit),
-                    format_ratio(float(other_time) / total_time),
-                ),
-                '{} / - / - / - / {}'.format(
-                    format_time(other_gpu_time, unit=time_unit),
-                    format_ratio(gpu_ratio),
-                ),
+                f'{format_time(other_time, unit=time_unit)} / - / - / - / {format_ratio(float(other_time) / total_time)}',
+                f'{format_time(other_gpu_time, unit=time_unit)} / - / - / - / {format_ratio(gpu_ratio)}',
             ]
             all_row_values.append(row_values)
             # Calculate the column width
@@ -1398,13 +1381,7 @@ def _build_table(
                     row_values = [
                         name,
                         item.call,
-                        '{} / {} / {} / {} / {}'.format(
-                            format_time(item.cpu_time, unit=time_unit),
-                            format_time(item.avg_cpu_time, unit=time_unit),
-                            format_time(item.max_cpu_time, unit=time_unit),
-                            format_time(item.min_cpu_time, unit=time_unit),
-                            format_ratio(cpu_ratio),
-                        ),
+                        f'{format_time(item.cpu_time, unit=time_unit)} / {format_time(item.avg_cpu_time, unit=time_unit)} / {format_time(item.max_cpu_time, unit=time_unit)} / {format_time(item.min_cpu_time, unit=time_unit)} / {format_ratio(cpu_ratio)}',
                         '{} / {} / {} / {} / {}'.format(
                             format_time(item.general_gpu_time, unit=time_unit),
                             format_time(
@@ -1660,13 +1637,7 @@ def _build_table(
                 row_values = [
                     name,
                     item.call,
-                    '{} / {} / {} / {} / {}'.format(
-                        format_time(item.gpu_time, unit=time_unit),
-                        format_time(item.avg_gpu_time, unit=time_unit),
-                        format_time(item.max_gpu_time, unit=time_unit),
-                        format_time(item.min_gpu_time, unit=time_unit),
-                        format_ratio(gpu_ratio),
-                    ),
+                    f'{format_time(item.gpu_time, unit=time_unit)} / {format_time(item.avg_gpu_time, unit=time_unit)} / {format_time(item.max_gpu_time, unit=time_unit)} / {format_time(item.min_gpu_time, unit=time_unit)} / {format_ratio(gpu_ratio)}',
                 ]
                 all_row_values.append(row_values)
 
@@ -1741,20 +1712,8 @@ def _build_table(
                 row_values = [
                     name,
                     item.call,
-                    '{} / {} / {} / {} / {}'.format(
-                        format_time(item.cpu_time, unit=time_unit),
-                        format_time(item.avg_cpu_time, unit=time_unit),
-                        format_time(item.max_cpu_time, unit=time_unit),
-                        format_time(item.min_cpu_time, unit=time_unit),
-                        format_ratio(float(item.cpu_time) / total_time),
-                    ),
-                    '{} / {} / {} / {} / {}'.format(
-                        format_time(item.general_gpu_time, unit=time_unit),
-                        format_time(item.avg_general_gpu_time, unit=time_unit),
-                        format_time(item.max_general_gpu_time, unit=time_unit),
-                        format_time(item.min_general_gpu_time, unit=time_unit),
-                        format_ratio(gpu_ratio),
-                    ),
+                    f'{format_time(item.cpu_time, unit=time_unit)} / {format_time(item.avg_cpu_time, unit=time_unit)} / {format_time(item.max_cpu_time, unit=time_unit)} / {format_time(item.min_cpu_time, unit=time_unit)} / {format_ratio(float(item.cpu_time) / total_time)}',
+                    f'{format_time(item.general_gpu_time, unit=time_unit)} / {format_time(item.avg_general_gpu_time, unit=time_unit)} / {format_time(item.max_general_gpu_time, unit=time_unit)} / {format_time(item.min_general_gpu_time, unit=time_unit)} / {format_ratio(gpu_ratio)}',
                 ]
                 all_row_values.append(row_values)
 
@@ -1878,13 +1837,7 @@ def _build_table(
                     row_values = [
                         name,
                         item.call,
-                        '{} / {} / {} / {} / {}'.format(
-                            format_time(item.cpu_time, unit=time_unit),
-                            format_time(item.avg_cpu_time, unit=time_unit),
-                            format_time(item.max_cpu_time, unit=time_unit),
-                            format_time(item.min_cpu_time, unit=time_unit),
-                            format_ratio(float(item.cpu_time) / total_time),
-                        ),
+                        f'{format_time(item.cpu_time, unit=time_unit)} / {format_time(item.avg_cpu_time, unit=time_unit)} / {format_time(item.max_cpu_time, unit=time_unit)} / {format_time(item.min_cpu_time, unit=time_unit)} / {format_ratio(float(item.cpu_time) / total_time)}',
                         '{} / {} / {} / {} / {}'.format(
                             format_time(item.general_gpu_time, unit=time_unit),
                             format_time(

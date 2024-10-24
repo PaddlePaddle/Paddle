@@ -163,7 +163,7 @@ class OpDescCreationMethod:
                         new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
-                        "A not supported attribute type: %s." % (str(attr.type))
+                        f"A not supported attribute type: {attr.type}."
                     )
         for attr_name, defalut_val in self.__extra_attrs__.items():
             user_defined_attr = kwargs.get(attr_name, None)
@@ -212,7 +212,7 @@ class OpDescCreationMethod:
                         new_attr.scalars.MergeFrom(item)
                 else:
                     raise NotImplementedError(
-                        "A not supported attribute type: %s." % (str(attr_type))
+                        f"A not supported attribute type: {attr_type}."
                     )
 
         return op_desc
@@ -273,15 +273,15 @@ class OperatorFactory:
         if "type" in kwargs:
             if len(args) != 0:
                 raise ValueError(
-                    "Except the argument \"type\","
-                    "all of the other arguments should be keyword arguments."
+                    'Except the argument "type",'
+                    'all of the other arguments should be keyword arguments.'
                 )
             t = kwargs.pop("type")
         else:
             if len(args) != 1:
                 raise ValueError(
-                    "Except the argument \"type\","
-                    "all of the other arguments should be keyword arguments."
+                    'Except the argument "type",'
+                    'all of the other arguments should be keyword arguments.'
                 )
             t = args[0]
 
@@ -292,7 +292,7 @@ class OperatorFactory:
 
     def get_op_info(self, t):
         if t not in self.op_methods:
-            raise ValueError("The operator: %s is not registered." % t)
+            raise ValueError(f"The operator: {t} is not registered.")
         return self.op_methods.get(t)
 
     def get_op_input_names(self, type):

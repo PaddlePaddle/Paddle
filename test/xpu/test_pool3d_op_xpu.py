@@ -68,15 +68,15 @@ def pool3D_forward_naive(
         padding_algorithm = padding_algorithm.upper()
         if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
             raise ValueError(
-                "Unknown Attr(padding_algorithm): '%s'. "
-                "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+                f"Unknown Attr(padding_algorithm): '{padding_algorithm}'. "
+                "It can only be 'SAME' or 'VALID'."
             )
 
         if padding_algorithm == "VALID":
             paddings = [0, 0, 0, 0, 0, 0]
             if ceil_mode is not False:
                 raise ValueError(
-                    "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
+                    'When Attr(pool_padding) is "VALID", Attr(ceil_mode)'
                     " must be False. "
                     "Received ceil_mode: True."
                 )

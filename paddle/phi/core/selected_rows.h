@@ -42,7 +42,8 @@ class SelectedRows : public TensorBase,
    *
    */
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
+  TEST_API SelectedRows(const std::vector<int64_t>& rows,
+                        const int64_t& height);
 
   TEST_API SelectedRows();
 
@@ -158,6 +159,10 @@ class SelectedRows : public TensorBase,
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept override { return impl_->valid(); }
+
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override { return impl_->has_allocation(); }
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.

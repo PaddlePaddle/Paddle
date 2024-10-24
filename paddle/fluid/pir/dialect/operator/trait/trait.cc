@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
+#include "paddle/fluid/pir/dialect/operator/trait/forward_only.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #endif
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InplaceTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomVjpTrait)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ForwardOnlyTrait)
 
 #ifdef PADDLE_WITH_DNNL
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNTrait)

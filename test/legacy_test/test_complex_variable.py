@@ -46,14 +46,24 @@ class TestComplexVariable(unittest.TestCase):
         self.compare()
 
     def test_convert_np_dtype_to_dtype(self):
-        self.assertEqual(
-            convert_np_dtype_to_dtype_(np.complex64),
-            core.VarDesc.VarType.COMPLEX64,
-        )
-        self.assertEqual(
-            convert_np_dtype_to_dtype_(np.complex64),
-            core.VarDesc.VarType.COMPLEX64,
-        )
+        if paddle.framework.use_pir_api():
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.DataType.COMPLEX64,
+            )
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.DataType.COMPLEX64,
+            )
+        else:
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.VarDesc.VarType.COMPLEX64,
+            )
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.VarDesc.VarType.COMPLEX64,
+            )
 
     def test_convert_dtype(self):
         self.assertEqual(

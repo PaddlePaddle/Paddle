@@ -172,9 +172,9 @@ class ParameterServerRuntime(RuntimeBase):
     def _init_worker(self):
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self.role_maker._get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self.role_maker._get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
@@ -382,7 +382,7 @@ class ParameterServerRuntime(RuntimeBase):
             return
 
         if not os.path.isdir(model_dirname):
-            raise ValueError("There is no directory named '%s'", model_dirname)
+            raise ValueError(f"There is no directory named '{model_dirname}'")
 
         # load dense
         paddle.static.load_vars(
@@ -449,9 +449,7 @@ class ParameterServerRuntime(RuntimeBase):
 
         if op not in supported_opts:
             raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}".format(
-                    op, supported_opts
-                )
+                f"fleet can not support optimizer: {op}, only this can be supported: {supported_opts}"
             )
 
         reshaped_names = [
@@ -499,7 +497,7 @@ class ParameterServerRuntime(RuntimeBase):
                 optimizer.type, varname
             )
 
-            for var_name in [varname] + reshaped_varnames + origin_varnames:
+            for var_name in [varname, *reshaped_varnames, *origin_varnames]:
                 var = self.origin_main_program.global_block().vars[var_name]
                 block.append_op(
                     type='recv_save',

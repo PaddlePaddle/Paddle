@@ -26,7 +26,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   PADDLE_ENFORCE_EQ(is_gpu_place,
                     true,
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "Softmax mask fuse op only supports GPU now."));
 }
 

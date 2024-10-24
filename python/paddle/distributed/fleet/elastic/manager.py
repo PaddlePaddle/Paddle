@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 import os
@@ -103,9 +104,7 @@ class LauncherInterface:
                     return ret
                 logger.error("ABORT!!! ABORT!!! ABORT!!!")
                 logger.error(
-                    "ERROR rank {} error with exit code {}, check log for detail.".format(
-                        p.rank, ret
-                    )
+                    f"ERROR rank {p.rank} error with exit code {ret}, check log for detail."
                 )
                 result = ret
         if not alive and result is None:
@@ -209,9 +208,7 @@ class ElasticManager:
 
         if not server or ':' not in server or not name or not self.np:
             logger.info(
-                'Elastic is not enabled with server {} name {} and np {}'.format(
-                    server, name, self.np
-                )
+                f'Elastic is not enabled with server {server} name {name} and np {self.np}'
             )
             self.enable = False
             return
@@ -390,7 +387,7 @@ class ElasticManager:
             min_np = int(np_dict[0])
             max_np = int(np_dict[1])
             min_np = 1 if min_np <= 0 else min_np
-            max_np = min_np if min_np > max_np else max_np
+            max_np = max(max_np, min_np)
         else:
             raise ValueError(
                 f'the np={np} needs to be in "MIN" or "MIN:MAX" format'
@@ -410,7 +407,7 @@ class ElasticManager:
 
         return int(self.etcd.get(self.prefix)[0]) == 1
 
-    def _match(self, host_list: list = None):
+    def _match(self, host_list: list | None = None):
         if host_list:
             self.hosts = host_list
         else:

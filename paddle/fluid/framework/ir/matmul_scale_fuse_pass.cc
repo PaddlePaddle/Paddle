@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -111,7 +109,7 @@ MatmulV2ScaleFusePass::MatmulV2ScaleFusePass() {
 
 void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "matmul_scale_fuse";
   FusePassBase::Init(name_scope, graph);
 
@@ -171,7 +169,7 @@ void MatmulScaleFusePass::ApplyImpl(ir::Graph* graph) const {
 
 void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   std::string name_scope = "matmul_v2_scale_fuse";
   FusePassBase::Init(name_scope, graph);
 
@@ -217,7 +215,7 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
 
     auto* matmul_y =
         scope->FindVar(matmul_v2_in_y->Name())->GetMutable<phi::DenseTensor>();
-    auto y_data = matmul_y->mutable_data<float>(platform::CPUPlace());
+    auto y_data = matmul_y->mutable_data<float>(phi::CPUPlace());
     for (int i = 0; i < matmul_y->numel(); ++i) {
       y_data[i] *= scale;
     }
@@ -237,9 +235,7 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(matmul_scale_fuse_pass,
               paddle::framework::ir::MatmulScaleFusePass);

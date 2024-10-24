@@ -24,7 +24,6 @@ from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import in_pir_mode
 from paddle.incubate.layers.nn import shuffle_batch
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -89,7 +88,6 @@ class TestWhileOp(unittest.TestCase):
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
-    @test_with_pir_api
     def test_simple_net(self):
         main_program = base.Program()
         startup_program = base.Program()
@@ -110,7 +108,6 @@ class TestWhileOp(unittest.TestCase):
             )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
-    @test_with_pir_api
     def test_simple_net_forward(self):
         main_program = base.Program()
         startup_program = base.Program()
@@ -131,7 +128,6 @@ class TestWhileOp(unittest.TestCase):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
@@ -147,7 +143,6 @@ class TestWhileOp(unittest.TestCase):
 
 class BadInputTest(unittest.TestCase):
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_error(self):
         with base.program_guard(base.Program()):
 
@@ -159,6 +154,7 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
+
     def test_ignore_var(self):
         def cond(i, ten, temp, y):
             return i < ten
@@ -189,9 +185,11 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         exe = base.Executor(base.CPUPlace())
         exe.run(base.default_startup_program())
 
-        input_x = numpy.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]])
+        input_x = numpy.array(
+            [[1.0, 2.0, 3.0, 4.0], [4.0, 5.0, 6.0, 7.0], [7.0, 8.0, 9.0, 10.0]]
+        ).astype('float32')
         input_x = input_x.reshape(3, 1, 4)
-        input_y = numpy.array([[10], [12], [33]])
+        input_y = numpy.array([[10.0], [12.0], [33.0]]).astype('float32')
         input_y = input_y.reshape(3, 1, 1)
 
         (res,) = exe.run(
@@ -205,7 +203,6 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
 class TestOutputsMustExistsInputs(unittest.TestCase):
     @compare_legacy_with_pt
-    @test_with_pir_api
     def test_outputs_exists_inputs(self):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
@@ -244,9 +241,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
                             continue
                         self.assertTrue(
                             out_name in op.input("X"),
-                            "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition.".format(
-                                out_name
-                            ),
+                            f"In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{out_name}` not meet the precondition.",
                         )
 
 

@@ -22,12 +22,12 @@
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -70,11 +70,11 @@ class EagerGroup {
   std::shared_ptr<ProcessGroup::Task> task;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::Place &);
+  void ConcatTensors(const phi::Place &);
 
   // context is used to select the stream for split
 
-  void SplitTensors(const platform::DeviceContext &);
+  void SplitTensors(const phi::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };
@@ -122,7 +122,7 @@ class EagerReducer {
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  platform::Place inner_place_;
+  phi::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;
 

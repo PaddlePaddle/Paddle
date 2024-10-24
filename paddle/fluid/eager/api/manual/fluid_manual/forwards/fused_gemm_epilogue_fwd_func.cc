@@ -14,21 +14,19 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 paddle::Tensor fused_gemm_epilogue_dygraph_function(
     const paddle::Tensor& X,
     const paddle::Tensor& Y,
     const paddle::Tensor& Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "fused_gemm_epilogue dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "fused_gemm_epilogue dygraph", phi::TracerEventType::Operator, 1);
   VLOG(3) << "Running Eager Forward Op: fused_gemm_epilogue";
   // Dygraph Forward Pass
 
@@ -39,8 +37,8 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {Y}, {Bias}};
 
-    auto amp_dst_dtype =
-        egr::GetAmpDestDtype("fused_gemm_epilogue", amp_tensors_vector);
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
+        "fused_gemm_epilogue", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast("X", X, amp_dst_dtype, "fused_gemm_epilogue");
     auto NEW_Y = egr::AmpAutoCast("Y", Y, amp_dst_dtype, "fused_gemm_epilogue");
@@ -93,9 +91,9 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_gemm_epilogue node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
     egr::AutogradMeta* p_autograd_Out = egr::EagerUtils::autograd_meta(&Out);
     if (require_any_grad) {

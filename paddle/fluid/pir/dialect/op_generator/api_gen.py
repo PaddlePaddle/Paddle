@@ -25,6 +25,53 @@ from op_gen import (
     to_pascal_case,
 )
 
+# white ops list whose kernel can automatically do type promotion.
+# future will get this list from same place with dynamic graph.
+type_promote_white_list = {
+    "add": ["x", "y"],
+    "subtract": ["x", "y"],
+    "divide": ["x", "y"],
+    "floor_divide": ["x", "y"],
+    "elementwise_pow": ["x", "y"],
+    "where": ["x", "y"],
+    "equal": ["x", "y"],
+    "not_equal": ["x", "y"],
+    "less_than": ["x", "y"],
+    "less_equal": ["x", "y"],
+    "greater_than": ["x", "y"],
+    "greater_equal": ["x", "y"],
+    "logical_and": ["x", "y"],
+    "logical_or": ["x", "y"],
+    "logical_xor": ["x", "y"],
+    "fmax": ["x", "y"],
+    "fmin": ["x", "y"],
+    "maximum": ["x", "y"],
+    "minimum": ["x", "y"],
+    "remainder": ["x", "y"],
+    "huber_loss": ["input", "label"],
+    "nextafter": ["x", "y"],
+    "atan2": ["x", "y"],
+    "multiply": ["x", "y"],
+}
+
+type_promote_inplace_white_list = {
+    "add_": ["x", "y"],
+    "subtract_": ["x", "y"],
+    "divide_": ["x", "y"],
+    "floor_divide_": ["x", "y"],
+    "where_": ["x", "y"],
+    "equal_": ["x", "y"],
+    "not_equal_": ["x", "y"],
+    "less_than_": ["x", "y"],
+    "less_equal_": ["x", "y"],
+    "greater_than_": ["x", "y"],
+    "greater_equal_": ["x", "y"],
+    "logical_and_": ["x", "y"],
+    "logical_or_": ["x", "y"],
+    "logical_xor_": ["x", "y"],
+    "remainder_": ["x", "y"],
+}
+
 PD_MANUAL_API_LIST = {
     'embedding_grad',
     'assign',
@@ -58,8 +105,11 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
-#include "paddle/fluid/pir/dialect/operator/utils/amp_utils.h"
+#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/type_defs.h"
+#include "paddle/phi/common/type_promotion.h"
+#include "paddle/fluid/pir/utils/type_promotion_utils.h"
 
 {body}
 
@@ -88,23 +138,31 @@ API_IMPL_TEMPLATE = """
 API_INNER_CODE_TEMPLATE = """
     // AMP Logic
     {amp_logic}
+    // Type Promotion Logic
+    {type_promotion_logic}
     {check_data_type}
     {handle_optional_inputs}
     {in_combine}
     {compute_op}
-    {handle_optional_outputs}
     {set_null_type}
+    {handle_optional_outputs}
     {out_split}
+    {set_stop_gradient}
     {return_result}"""
 
+SET_STOP_GRADIENT_TEMPLATE = """
+    if (!egr::Controller::Instance().HasGrad()) {{
+        SetStopGradient({value_list});
+    }}
+"""
 
 AMP_LOGIC_TEMPLATE = """
     if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() != paddle::imperative::AmpLevel::O0){{
-        VLOG(5) << "Check and Prepare For AMP";
+        VLOG(5) << "Check and Prepare For AMP: {op_name}";
         auto op_name = phi::TransToFluidOpName("{op_name}");
-        std::vector<std::vector<pir::Value>> amp_values_vector = {{ {no_optional_inputs} }};
+        paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize> amp_values_vector = {{ {no_optional_inputs} }};
         {optional_inputs}
-        auto amp_dst_dtype = paddle::dialect::GetAmpDestDtype("{op_name}", amp_values_vector);
+        auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_values_vector);
         {new_inputs}
         {{
             paddle::imperative::AutoCastGuard guard(egr::Controller::Instance().GetCurrentAmpAttrs(), paddle::imperative::AmpLevel::O0);
@@ -113,10 +171,29 @@ AMP_LOGIC_TEMPLATE = """
     }}
 """
 
-AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) amp_values_vector.push_back({vec_optional_input});
+AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) {{ amp_values_vector.push_back({vec_optional_input}); }}
 """
 
-AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::dialect::PirAmpAutoCast("{input}", {input}, amp_dst_dtype, op_name);
+AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::imperative::{cast_func}("{input}", {input}, amp_dst_dtype, op_name);
+"""
+
+TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    auto op_name = phi::TransToFluidOpName("{op_name}");
+    auto x_dtype = paddle::imperative::GetDataType({x});
+    auto y_dtype = paddle::imperative::GetDataType({y});
+    auto x_shape = pir::GetValueShape({x});
+    auto y_shape = pir::GetValueShape({y});
+    if (phi::NeedTypePromotion("{op_name}", x_dtype, y_dtype, x_shape, y_shape)) {{
+    VLOG(5) << "got different data type, run type promotion automatically.";
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
+    //{op_name}
+    auto promotion_type = phi::GetPromoteDtype("{op_name}", x_dtype, y_dtype, x_shape, y_shape);
+
+    {x_cast}
+    auto new_{y} = pir::PromoteCast("{y}", {y}, promotion_type);
+
+    return paddle::dialect::{op_name}({args});
+  }}
 """
 
 OP_DISPATCH_TEMPLATE = """
@@ -125,7 +202,7 @@ OP_DISPATCH_TEMPLATE = """
     }}"""
 
 OP_DISPATCH_ERROR_TEMPLATE = """
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The kernel of ({op_name}) for input Value is unimplemented, please check the type of input Value."));"""
 
 
@@ -178,14 +255,19 @@ OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE = """
         optional_{name} = paddle::make_optional<std::vector<pir::Value>>(optional_{name}_slice_op.outputs());
     }}"""
 
-SET_NULL_TYPE_TEMPLATE = """
+SET_NULL_TYPE_WITH_INPLACE_TEMPLATE = """
     if (!{input}) {{
         {op_name}_op.result({index}).set_type(pir::Type());
     }}"""
 
+SET_NULL_TYPE_TEMPLATE = """
+    pir::Type {op_name}_op_result_{index}_type = {op_name}_op.result({index}).type();
+    if ({op_name}_op_result_{index}_type.isa<paddle::dialect::DenseTensorType>() && {op_name}_op_result_{index}_type.dyn_cast<paddle::dialect::DenseTensorType>().dims().size() == -1) {{
+        {op_name}_op.result({index}).set_type(pir::Type());
+    }}"""
 
 COMBINE_OP_TEMPLATE = """
-    auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
+    auto {op_name} = builtin_combine({in_name}).defining_op<pir::CombineOp>();"""
 
 SPLIT_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({in_name});"""
@@ -221,40 +303,38 @@ class CodeGen:
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
-
-        op_yaml_items = []
+        op_info_items = []
         for yaml_file in op_yaml_files:
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
-                op_yaml_items = op_yaml_items + ops
 
-        op_info_items = []
-        for op in op_yaml_items:
-            op_compat_item = op_compat_parser.get_compat(op['name'])
-            if (
-                op_compat_item is None
-                and op['name'].endswith(('_grad', '_grad_'))
-                and 'forward' in op
-            ):
-                op_compat_item = op_compat_parser.get_compat(
-                    op['forward']['name']
+            for op in ops:
+                op_compat_item = op_compat_parser.get_compat(op['name'])
+                if (
+                    op_compat_item is None
+                    and op['name'].endswith(('_grad', '_grad_'))
+                    and 'forward' in op
+                ):
+                    op_compat_item = op_compat_parser.get_compat(
+                        op['forward']['name']
+                    )
+
+                if (
+                    op_compat_item is not None
+                    and op_compat_item['op'] == "pow"
+                    and 'scalar' in op_compat_item
+                ):
+                    op_compat_item = op_compat_item.pop('scalar')
+                if 'support_tensor' in op.keys() and op['support_tensor']:
+                    (
+                        scalar_item,
+                        int_array_item,
+                    ) = op_compat_parser.parse_support_tensor(op)
+                    op_compat_item['scalar'] = scalar_item
+                    op_compat_item['int_array'] = int_array_item
+                op_info_items.append(
+                    OpInfoParser(op, op_compat_item, yaml_file)
                 )
-
-            if (
-                op_compat_item is not None
-                and op_compat_item['op'] == "pow"
-                and 'scalar' in op_compat_item
-            ):
-                op_compat_item = op_compat_item.pop('scalar')
-            if 'support_tensor' in op.keys() and op['support_tensor']:
-                (
-                    scalar_item,
-                    int_array_item,
-                ) = op_compat_parser.parse_support_tensor(op)
-                op_compat_item['scalar'] = scalar_item
-                op_compat_item['int_array'] = int_array_item
-
-            op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
     def _need_skip(self, op_info, op_name):
@@ -273,6 +353,27 @@ class CodeGen:
         return False
 
     def _is_optional_output(self, op_info, output_name):
+        output_optional_list = op_info.output_optional_list
+        output_name_list = op_info.output_name_list
+        intermediate_list = op_info.output_intermediate_list
+        output_index = output_name_list.index(output_name)
+        if (
+            intermediate_list[output_index] == 'false'
+            and op_info.output_optional_list[output_index] == 'true'
+        ):
+            return True
+        else:
+            return False
+
+    def _is_backward_op(self, op_info):
+        op_names = op_info.op_phi_name
+        for name in op_names:
+            if name.endswith(('_grad', '_grad_')):
+                return True
+        else:
+            return False
+
+    def _is_optional_inplace_output(self, op_info, output_name):
         op_names = op_info.op_phi_name
         for name in op_names:
             if name.endswith(('_grad', '_grad_')):
@@ -287,6 +388,15 @@ class CodeGen:
             input_index = input_name_list.index(inplace_map[output_name])
             if input_optional_list[input_index] == 'true':
                 return True
+        return False
+
+    def _need_optional_output(self, op_info, name):
+        if self._is_optional_inplace_output(op_info, name):
+            return True
+        if self._is_backward_op(op_info) and self._is_optional_output(
+            op_info, name
+        ):
+            return True
         return False
 
     # =====================================
@@ -364,7 +474,7 @@ class CodeGen:
             ):
                 if intermediate == 'true':
                     continue
-                if self._is_optional_output(op_info, name):
+                if self._need_optional_output(op_info, name):
                     ret.append(OPTIONAL_VALUE_TYPE_MAP[type])
                 else:
                     ret.append(VALUE_TYPE_MAP[type])
@@ -372,7 +482,7 @@ class CodeGen:
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
-            if self._is_optional_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 return OPTIONAL_VALUE_TYPE_MAP[type_list[index]]
             else:
                 return VALUE_TYPE_MAP[type_list[index]]
@@ -382,6 +492,8 @@ class CodeGen:
     def _gen_one_declare(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
+        if op_info.is_sparse_op:
+            op_name += "sp_" if op_name[-1] == "_" else "_sp"
         return API_DECLARE_TEMPLATE.format(
             ret_type=self._gen_ret_type(op_info),
             api_name=op_name,
@@ -439,7 +551,7 @@ class CodeGen:
                     ret += OPTIONAL_VALUE_INPUT_TEMPLATE.format(name=name)
         return ret
 
-    def _gen_handle_optional_outputs(self, op_info, op_name):
+    def _gen_handle_optional_inplace_outputs(self, op_info, op_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -449,7 +561,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
@@ -467,16 +579,16 @@ class CodeGen:
     def _gen_set_null_type(self, op_info, op_name):
         name_list = op_info.output_name_list
         inplace_map = op_info.inplace_map
-        if inplace_map is None:
-            return ""
 
         ret = ""
         for i, out_name in enumerate(name_list):
-            if self._is_optional_output(op_info, out_name):
+            if self._is_optional_inplace_output(op_info, out_name):
                 in_name = inplace_map[out_name]
-                ret += SET_NULL_TYPE_TEMPLATE.format(
+                ret += SET_NULL_TYPE_WITH_INPLACE_TEMPLATE.format(
                     input=in_name, op_name=op_name, index=i
                 )
+            elif self._is_optional_output(op_info, out_name):
+                ret += SET_NULL_TYPE_TEMPLATE.format(op_name=op_name, index=i)
         return ret
 
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
@@ -545,7 +657,10 @@ class CodeGen:
     def _gen_compute_op(
         self, op_info, op_name, in_combine_op_list, is_mutable_attr
     ):
-        op_class_name = to_pascal_case(op_name) + 'Op'
+        if op_info.is_sparse_op:
+            op_class_name = to_pascal_case(op_name) + 'SpOp'
+        else:
+            op_class_name = to_pascal_case(op_name) + 'Op'
         op_inst_name = op_name + '_op'
         return (
             COMPUTE_OP_TEMPLATE.format(
@@ -577,7 +692,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
@@ -588,6 +703,14 @@ class CodeGen:
             else:
                 ret_list.append(f'{op_inst_name}.result({i})')
         return split_op_str, ret_list
+
+    def _gen_set_stop_gradient(self, ret_list):
+        if len(ret_list) > 0:
+            return SET_STOP_GRADIENT_TEMPLATE.format(
+                value_list=', '.join(ret_list)
+            )
+        else:
+            return ''
 
     def _gen_return_result(self, ret_list):
         if len(ret_list) > 1:
@@ -629,9 +752,13 @@ class CodeGen:
 
     def _gen_amp_new_inputs(self, op_info, op_name):
         name_list = op_info.input_name_list
+        type_list = op_info.input_type_list
         ret = ''
-        for name in name_list:
-            ret += AMP_NEW_INPUTS_TEMPLATE.format(input=name, op_name=op_name)
+        for name, type in zip(name_list, type_list):
+            cast_func = 'AmpAutoCasts' if VECTOR_TYPE in type else 'AmpAutoCast'
+            ret += AMP_NEW_INPUTS_TEMPLATE.format(
+                input=name, cast_func=cast_func
+            )
         return ret
 
     def _gen_amp_args(self, op_info, is_mutable_attr):
@@ -651,10 +778,14 @@ class CodeGen:
         input_list = op_info.input_name_list
         if not input_list:
             return (
-                f'VLOG(7) << " No AMP for {op_name} because it has no input. ";'
+                f'VLOG(5) << " No AMP for {op_name} because it has no input. ";'
             )
         if op_name.endswith(('_grad', '_grad_')):
-            return 'VLOG(7) << " No AMP for grad apis. ";'
+            return 'VLOG(5) << " No AMP for grad apis. ";'
+        if op_name.endswith('_') or op_name == 'cast':
+            return f'VLOG(5) << "No AMP for {op_name} because it is a inplace or cast api.";'
+        if op_info.is_sparse_op:
+            op_name += "sp_" if op_name[-1] == "_" else "_sp"
         return AMP_LOGIC_TEMPLATE.format(
             op_name=op_name,
             no_optional_inputs=self._gen_amp_no_optional_inputs(op_info),
@@ -662,6 +793,73 @@ class CodeGen:
             new_inputs=self._gen_amp_new_inputs(op_info, op_name),
             args=self._gen_amp_args(op_info, is_mutable_attr),
         )
+
+    def _gen_type_promotion_args(self, op_info, op_name):
+        type_promote_inputs_call_list = []
+        inplace_map = op_info.inplace_map
+        for name in op_info.input_name_list:
+            if op_name in type_promote_white_list:
+                if name in type_promote_white_list[op_name]:
+                    type_promote_inputs_call_list.append(f"new_{name}")
+                else:
+                    type_promote_inputs_call_list.append(f"{name}")
+            elif op_name in type_promote_inplace_white_list:
+                if name == type_promote_inplace_white_list[op_name][0]:
+                    type_promote_inputs_call_list.append(f"{name}")
+                elif name in type_promote_inplace_white_list[op_name]:
+                    type_promote_inputs_call_list.append(f"new_{name}")
+                else:
+                    type_promote_inputs_call_list.append(f"{name}")
+
+        attr_list = op_info.attribute_name_list
+        args = type_promote_inputs_call_list + attr_list
+        return ', '.join(args)
+
+    def _gen_type_promotion_logic(self, op_info, op_name):
+        input_list = op_info.input_name_list
+        if op_name in type_promote_white_list:
+            x = type_promote_white_list[op_name][0]
+            y = type_promote_white_list[op_name][1]
+
+            type_promote_inputs_call_args_str = self._gen_type_promotion_args(
+                op_info, op_name
+            )
+
+            x_cast = (
+                f'auto new_{x} = pir::PromoteCast("{x}", {x}, promotion_type);'
+            )
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_name=op_name,
+                x=x,
+                y=y,
+                x_cast=x_cast,
+                args=type_promote_inputs_call_args_str,
+            )
+        elif op_name in type_promote_inplace_white_list:
+            x = type_promote_inplace_white_list[op_name][0]
+            y = type_promote_inplace_white_list[op_name][1]
+
+            type_promote_inputs_call_args_str = self._gen_type_promotion_args(
+                op_info, op_name
+            )
+
+            x_cast = f'pir::PromoteCastInplace("{x}", {x}, promotion_type);'
+
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_name=op_name,
+                x=x,
+                y=y,
+                x_cast=x_cast,
+                args=type_promote_inputs_call_args_str,
+            )
+        else:
+            type_promotion_logic_str = (
+                f'\n VLOG(5) << " No Type Promotion for {op_name} api. "; '
+            )
+
+        return type_promotion_logic_str
 
     def _gen_check_data_type(self, op_info, op_name):
         mapping_input_name_to_type = dict(
@@ -714,14 +912,14 @@ class CodeGen:
                     if ret == "":
                         return CHECK_DATA_TYPE_TEMPLATE.format(
                             function=function_name,
-                            inputs=f"{name}, \"{name}\"",
+                            inputs=f'{name}, "{name}"',
                             op_name=op_name,
                         )
                     else:
                         ret += ELSE_TEMPLATE.format(
                             check_statement=CHECK_DATA_TYPE_TEMPLATE.format(
                                 function=function_name,
-                                inputs=f"{name}, \"{name}\"",
+                                inputs=f'{name}, "{name}"',
                                 op_name=op_name,
                             ).strip("\n")
                         )
@@ -736,7 +934,7 @@ class CodeGen:
                         condition=name,
                         check_statement=CHECK_DATA_TYPE_TEMPLATE.format(
                             function=function_name,
-                            inputs=f"{name}.get(), \"{name}\"",
+                            inputs=f'{name}.get(), "{name}"',
                             op_name=op_name,
                         ).strip("\n"),
                     )
@@ -753,7 +951,7 @@ class CodeGen:
                 return ""
             return CHECK_DATA_TYPE_TEMPLATE.format(
                 function=function_name,
-                inputs=f"{name}, \"{name}\"",
+                inputs=f'{name}, "{name}"',
                 op_name=op_name,
             )
         elif len(data_type_candidates) == 2:
@@ -766,7 +964,7 @@ class CodeGen:
             function_name = 'CheckDataTypeOrValue'
             return CHECK_DATA_TYPE_TEMPLATE.format(
                 function=function_name,
-                inputs=f"{dtype_name}, \"{dtype_name}\", {value_name}, \"{value_name}\"",
+                inputs=f'{dtype_name}, "{dtype_name}", {value_name}, "{value_name}"',
                 op_name=op_name,
             )
         return ""
@@ -778,7 +976,6 @@ class CodeGen:
         dispatch_kernel = None
         if op_info.kernel_map and 'dispatch' in op_info.kernel_map:
             dispatch_kernel = op_info.kernel_map['dispatch']
-
         if dispatch_kernel and len(dispatch_kernel.keys()) > 1:
             api_inner_code = ''
             for kernel_name in dispatch_kernel.keys():
@@ -807,12 +1004,28 @@ class CodeGen:
                             cond_list.append(
                                 f'{name}.type().isa<paddle::dialect::SelectedRowsType>()'
                             )
-
+                    elif type == 'sparse_coo':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name} || {name}->type().isa<paddle::dialect::SparseCooTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}.type().isa<paddle::dialect::SparseCooTensorType>()'
+                            )
+                    elif type == 'sparse_csr':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name} || {name}->type().isa<paddle::dialect::SparseCsrTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}.type().isa<paddle::dialect::SparseCsrTensorType>()'
+                            )
                 ret_type = self._gen_ret_type(op_info)
                 in_combine, in_combine_op_list = self._gen_in_combine(
                     op_info, is_mutable_attr, is_vector_mutable_attr
                 )
-
                 if op_name.endswith('_') and not kernel_name.endswith('_'):
                     kernel_name = kernel_name + '_'
                 compute_op, op_inst_name = self._gen_compute_op(
@@ -824,10 +1037,12 @@ class CodeGen:
                 out_split, ret_list = self._gen_out_split_and_ret_list(
                     op_info, op_inst_name
                 )
-
                 if_inner_code = API_INNER_CODE_TEMPLATE.format(
                     amp_logic=self._gen_amp_logic(
                         op_info, op_name, is_mutable_attr
+                    ),
+                    type_promotion_logic=self._gen_type_promotion_logic(
+                        op_info, op_name
                     ),
                     check_data_type=self._gen_check_data_type(
                         op_info, kernel_name
@@ -837,14 +1052,14 @@ class CodeGen:
                     ),
                     in_combine=in_combine,
                     compute_op=compute_op,
-                    handle_optional_outputs=self._gen_handle_optional_outputs(
+                    handle_optional_outputs=self._gen_handle_optional_inplace_outputs(
                         op_info, kernel_name
                     ),
                     set_null_type=self._gen_set_null_type(op_info, kernel_name),
                     out_split=out_split,
+                    set_stop_gradient=self._gen_set_stop_gradient(ret_list),
                     return_result=self._gen_return_result(ret_list),
                 )
-
                 if_inner_code = if_inner_code.split('\n')
                 if_inner_code = '\n'.join(
                     ['    ' + code for code in if_inner_code]
@@ -853,7 +1068,8 @@ class CodeGen:
                 api_inner_code += OP_DISPATCH_TEMPLATE.format(
                     cond=' && '.join(cond_list), inner_code=if_inner_code
                 )
-
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
             api_inner_code += OP_DISPATCH_ERROR_TEMPLATE.format(op_name=op_name)
             ret = API_IMPL_TEMPLATE.format(
                 ret_type=ret_type,
@@ -880,7 +1096,7 @@ class CodeGen:
             )
 
             kernel_name = (
-                list(dispatch_kernel.keys())[0]
+                next(iter(dispatch_kernel.keys()))
                 if dispatch_kernel and len(dispatch_kernel.keys()) == 1
                 else op_name
             )
@@ -890,20 +1106,25 @@ class CodeGen:
                 amp_logic=self._gen_amp_logic(
                     op_info, op_name, is_mutable_attr
                 ),
+                type_promotion_logic=self._gen_type_promotion_logic(
+                    op_info, op_name
+                ),
                 check_data_type=self._gen_check_data_type(op_info, kernel_name),
                 handle_optional_inputs=self._gen_handle_optional_inputs(
                     op_info
                 ),
                 in_combine=in_combine,
                 compute_op=compute_op,
-                handle_optional_outputs=self._gen_handle_optional_outputs(
+                handle_optional_outputs=self._gen_handle_optional_inplace_outputs(
                     op_info, op_name
                 ),
                 set_null_type=self._gen_set_null_type(op_info, op_name),
                 out_split=out_split,
+                set_stop_gradient=self._gen_set_stop_gradient(ret_list),
                 return_result=self._gen_return_result(ret_list),
             )
-
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
             ret = API_IMPL_TEMPLATE.format(
                 ret_type=ret_type,
                 api_name=op_name,
@@ -957,7 +1178,6 @@ class CodeGen:
         if os.path.exists(cpp_file_path):
             os.remove(cpp_file_path)
         op_info_items = self._parse_yaml(op_yaml_files, op_compat_yaml_file)
-
         self._gen_h_file(op_info_items, namespaces, h_file_path)
         self._gen_cpp_file(op_info_items, namespaces, cpp_file_path)
         try:

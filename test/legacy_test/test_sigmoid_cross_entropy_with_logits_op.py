@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
@@ -37,6 +38,8 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -59,10 +62,10 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
@@ -71,6 +74,8 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -98,10 +103,10 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
@@ -110,6 +115,8 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -132,10 +139,10 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
@@ -144,6 +151,8 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
 
@@ -164,22 +173,26 @@ class TestSigmoidCrossEntropyWithLogitsOp4(OpTest):
 
         # Fw Pass is implemented as elementwise sigmoid followed by
         # elementwise logistic loss
-        term1 = np.maximum(self.inputs['X'], 0)
-        term2 = self.inputs['X'] * self.inputs['Label']
-        term3 = np.log(1 + np.exp(-1 * np.abs(self.inputs['X']))) * pos_weight
-        self.outputs = {'Out': term1 - term2 + term3}
+        max_val = np.clip(-self.inputs['X'], 0, np.finfo(np.float64).max)
+        term1 = (1 - label) * self.inputs['X']
+        term2 = np.log(np.exp(-max_val) + np.exp(-self.inputs['X'] - max_val))
+        out = term1 + pos_weight * (term2 + max_val)
+
+        self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005, check_pir=True)
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -206,10 +219,10 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
@@ -218,17 +231,19 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
             'X': logit(
-                np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
-                ).astype("float64")
+                np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                    "float64"
+                )
             ),
-            'Label': np.random.uniform(
-                0, 1, tuple(batch_size + [num_classes])
-            ).astype("float64"),
+            'Label': np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                "float64"
+            ),
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -240,27 +255,29 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithNorm2(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         ignore_index = -1
         self.inputs = {
             'X': logit(
-                np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
-                ).astype("float64")
+                np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                    "float64"
+                )
             ),
             'Label': np.random.randint(
-                -1, 2, tuple(batch_size + [num_classes])
+                -1, 2, (*batch_size, num_classes)
             ).astype("float64"),
         }
         self.attrs = {'ignore_index': ignore_index, 'normalize': True}
@@ -276,10 +293,10 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
@@ -288,17 +305,19 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
         self.python_api = loss_wrapper
+        self.prim_op_type = "comp"
+        self.public_python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
             'X': logit(
-                np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
-                ).astype("float64")
+                np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                    "float64"
+                )
             ),
-            'Label': np.random.randint(
-                0, 2, tuple(batch_size + [num_classes])
-            ).astype("float64"),
+            'Label': np.random.randint(0, 2, (*batch_size, num_classes)).astype(
+                "float64"
+            ),
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -310,13 +329,14 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

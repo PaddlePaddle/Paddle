@@ -60,10 +60,10 @@ static int64_t GetMemorySize(
   auto *var_desc = TryGetLatestVarDesc(vars.at(var_name));
   PADDLE_ENFORCE_NOT_NULL(
       var_desc,
-      platform::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
+      common::errors::NotFound("Var(%s) can not find VarDesc.", var_name));
   PADDLE_ENFORCE_EQ(IsLoDTensor(var_desc),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
   return static_cast<int64_t>(
@@ -75,9 +75,9 @@ static int64_t GetMemorySize(
 }
 
 // Split all variables in the graph into phi::DenseTensor and
-// Non-phi::DenseTensor (e.g. SelectedRows, LoDTensorArray) Since partial GC is
-// based on static analysis of memory size of each variable So we should skip
-// SelectedRows and LoDTensorArray here
+// Non-phi::DenseTensor (e.g. SelectedRows, phi::TensorArray) Since partial GC
+// is based on static analysis of memory size of each variable So we should skip
+// SelectedRows and phi::TensorArray here
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
     const OpToVarNameSetMap &m,
     const details::GraphVars &vars,
@@ -119,12 +119,11 @@ struct GCVarInfo {
 };
 
 // Delete delete_lod_tensor_only is not used currently
-static OpToVarNameSetMap ShrinkGCVars(
-    const OpToVarNameSetMap &m,
-    const details::GraphVars &vars,
-    const std::vector<platform::Place> &places,
-    double fraction_of_memory_size,
-    bool delete_lod_tensor_only = false) {
+static OpToVarNameSetMap ShrinkGCVars(const OpToVarNameSetMap &m,
+                                      const details::GraphVars &vars,
+                                      const std::vector<phi::Place> &places,
+                                      double fraction_of_memory_size,
+                                      bool delete_lod_tensor_only = false) {
   // Do not perform gc when fraction_of_memory_size = 0
   if (fraction_of_memory_size <= 0.0) return {};
 
@@ -145,10 +144,10 @@ static OpToVarNameSetMap ShrinkGCVars(
    */
 
   // place -> variable info (name, memory size, place, scope_idx)
-  std::map<platform::Place, std::vector<GCVarInfo>> place_to_vars;
+  std::map<phi::Place, std::vector<GCVarInfo>> place_to_vars;
 
   // place -> total memory sizes
-  std::map<platform::Place, int64_t> place_to_size;
+  std::map<phi::Place, int64_t> place_to_size;
   for (auto &op_vars_pair : lod_tensors) {
     auto *op = op_vars_pair.first;
     auto &var_names = op_vars_pair.second;
@@ -187,7 +186,7 @@ static OpToVarNameSetMap ShrinkGCVars(
   }
 
   /**
-   * Step 4: Combine other vars (SelectedRows, LoDTensorArray)
+   * Step 4: Combine other vars (SelectedRows, phi::TensorArray)
    */
   if (!delete_lod_tensor_only) {
     for (auto &op_vars_pair : other_vars) {
@@ -212,7 +211,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
   const auto &gcs = Get<GarbageCollectorMap>(kGarbageCollector);
-  const auto &places = Get<std::vector<platform::Place>>(kAllPlaces);
+  const auto &places = Get<std::vector<phi::Place>>(kAllPlaces);
 
   // a reverse map of last_live_ops
   //   i.e., last op --> variable names which can be deleted.
@@ -275,7 +274,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
 
     eager_deletion_op->SetDeviceContext(
         places[op->GetScopeIdx()],
-        platform::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
+        phi::DeviceContextPool::Instance().Get(places[op->GetScopeIdx()]));
   }
 
   VLOG(10) << "FLAGS_memory_fraction_of_eager_deletion = " << memory_fraction;
@@ -301,17 +300,6 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
-
-  auto recurrent_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
-  recurrent_op_eager_deletion_pass->Apply(graph);
-
-#ifdef PADDLE_WITH_CINN
-  auto share_varinfo_into_cinn_pass =
-      ir::PassRegistry::Instance().Get("share_varinfo_into_cinn_pass");
-  share_varinfo_into_cinn_pass->SetNotOwned(kMemOptVarInfoMapList, &var_infos);
-  share_varinfo_into_cinn_pass->Apply(graph);
-#endif
 }
 
 }  // namespace ir
@@ -327,7 +315,3 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
 USE_PASS(conditional_block_op_eager_deletion_pass);
 USE_PASS(pylayer_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
-USE_PASS(recurrent_op_eager_deletion_pass);
-#ifdef PADDLE_WITH_CINN
-USE_PASS(share_varinfo_into_cinn_pass);
-#endif

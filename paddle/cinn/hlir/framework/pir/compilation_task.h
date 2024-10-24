@@ -15,42 +15,49 @@
 #pragma once
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/module.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
+class CompilationTask;
 
 class GroupCompilationContext {
  public:
   GroupCompilationContext(const Target& target,
-                          const pir::GroupPtr& group,
-                          std::shared_ptr<Scope> scope)
-      : target_(target), group_(group), scope_(scope) {}
+                          const pir::OpLoweringGroupPtr& group)
+      : target_(target),
+        group_(group),
+        module_builder_(cinn::common::UniqName("module"), target),
+        CX86_module_builder_(cinn::common::UniqName("module"),
+                             common::DefaultHostTarget()) {}
 
+  const pir::OpLoweringGroupPtr& GetGroup() const { return group_; }
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
+  void PrepareModuleBuilder();
   std::string PrintPredicate2Funcs() const;
-  void* FuncPtr();
-  std::shared_ptr<backends::Compiler> BackendCompiler();
 
  private:
   friend class CompilationTask;
-
+  friend void UnifyBroadcastGroupFuncArgs(
+      std::vector<GroupCompilationContext>* contexts,
+      pir::OpLoweringGroupPtr origin_group,
+      std::unordered_map<int, ir::Var>* symbolic_shape_var_index);
   const Target& target_;
-  const pir::GroupPtr& group_;
-  std::shared_ptr<Scope> scope_;
-
-  size_t func_size_ = 0;
+  const pir::OpLoweringGroupPtr& group_;
+  ir::SymbolicPredicate broadcast_condition_;
   std::vector<ir::SymbolicPredicate> predicates_;
+  std::vector<int> priorities_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
+  std::vector<ir::SymbolicPredicate> CX86_predicates_;
+  std::vector<ir::LoweredFunc> CX86_lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;
-  std::string host_func_name_;
-  std::string host_code_;
-  std::vector<std::string> device_code_;
-  std::shared_ptr<backends::Compiler> backend_compiler_;
+  ir::Module::Builder module_builder_;
+  ir::Module::Builder CX86_module_builder_;
 };
 
 class CompilationTask {
@@ -58,14 +65,17 @@ class CompilationTask {
   explicit CompilationTask(GroupCompilationContext* context)
       : context_(context) {}
 
-  void operator()();
-
+  std::shared_ptr<pir::CompilationResult> operator()();
   void Lowering();
-  void CodegenAndJit();
-  std::unique_ptr<Instruction> BuildInstruction();
-  pir::CINNKernelInfo BuildPirCINNKernelInfo();
+  std::shared_ptr<pir::CompilationResult> CompileBroadcastModules(
+      std::vector<GroupCompilationContext>* leaf_group_contexts,
+      const std::unordered_map<int, ir::Var>& symbolic_shape_var_index);
 
  private:
+  std::shared_ptr<pir::CompilationResult> CodegenAndJit();
+  std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
+      const ir::Module& module, const ir::Module& CX86module);
+
   GroupCompilationContext* context_;
 };
 

@@ -22,9 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -57,7 +57,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
   PADDLE_ENFORCE_EQ(
       fin.is_open(),
       true,
-      platform::errors::Unavailable("Failed to open file %s.", filename));
+      common::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -146,11 +146,6 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-  PADDLE_ENFORCE_EQ(
-      framework::IsProgramVersionSupported(main_program->Version()),
-      true,
-      platform::errors::Unavailable("Model version %ld is not supported.",
-                                    main_program->Version()));
 
   // model_from_memory is false in separate parameters.
   LoadPersistables(executor,
@@ -172,11 +167,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-  PADDLE_ENFORCE_EQ(
-      framework::IsProgramVersionSupported(main_program->Version()),
-      true,
-      platform::errors::Unavailable("Model version %ld is not supported.",
-                                    main_program->Version()));
+
   if (load_params) {
     LoadPersistables(executor,
                      scope,
@@ -195,11 +186,6 @@ std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
     const std::string& param_buffer) {
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(prog_buffer));
-  PADDLE_ENFORCE_EQ(
-      framework::IsProgramVersionSupported(main_program->Version()),
-      true,
-      platform::errors::Unavailable("Model version %ld is not supported.",
-                                    main_program->Version()));
 
   LoadPersistables(executor,
                    scope,
@@ -222,7 +208,7 @@ void SaveVars(const framework::Scope& scope,
   op->SetAttr("file_path", dirname + "/param");
   op->CheckAttrs();
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }

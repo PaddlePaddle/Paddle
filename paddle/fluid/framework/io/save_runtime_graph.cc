@@ -15,7 +15,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace framework {
@@ -30,7 +30,7 @@ void save_string(std::string content,
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fout),
       true,
-      phi::errors::Unavailable("Cannot open %s to save ", saved_path));
+      common::errors::Unavailable("Cannot open %s to save ", saved_path));
   fout << content;
   fout.close();
 }
@@ -45,7 +45,7 @@ void save_graph_compilation_key(int64_t graph_compilation_key,
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fout),
       true,
-      phi::errors::Unavailable("Cannot open %s to save ", saved_path));
+      common::errors::Unavailable("Cannot open %s to save ", saved_path));
   fout << std::to_string(graph_compilation_key);
   fout.close();
 }
@@ -67,7 +67,7 @@ void save_graph(const ir::Graph& graph,
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fout),
       true,
-      phi::errors::Unavailable("Cannot open %s to save ", saved_path));
+      common::errors::Unavailable("Cannot open %s to save ", saved_path));
   // record all nodes[var, op]
   // format
   int index = 0;

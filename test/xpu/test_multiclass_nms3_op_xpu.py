@@ -304,9 +304,9 @@ class XPUTestMulticlassNMS3Op(XPUOpTestWrapper):
                 nms_threshold,
                 nms_top_k,
                 keep_top_k,
-                gpu_logic=self.gpu_logic
-                if hasattr(self, 'gpu_logic')
-                else None,
+                gpu_logic=(
+                    self.gpu_logic if hasattr(self, 'gpu_logic') else None
+                ),
             )
             det_outs = np.array(det_outs)
             nmsed_outs = (

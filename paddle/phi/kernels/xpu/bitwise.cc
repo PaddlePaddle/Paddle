@@ -39,7 +39,7 @@ void BitwiseAndKernel(const Context& ctx,
                       const DenseTensor& y,
                       DenseTensor* out) {
   // XPU api do not support bitwise operation now.
-  // However, because biwise and logical operation is identical for bool type,
+  // However, because bitwise and logical operation is identical for bool type,
   // we can implement bitwise_and_bool kernel by calling their logical
   // counterpart. Need to be changed when adding support to other types.
   LogicalAndKernel<T, Context>(ctx, x, y, out);

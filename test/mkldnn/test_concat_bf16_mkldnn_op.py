@@ -52,7 +52,7 @@ class TestConcatBf16Op(OpTest):
         self.dxs = np.split(self.dout, self.sections, self.axis)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     def test_check_grad(self):
         self.calculate_grads()
@@ -62,6 +62,7 @@ class TestConcatBf16Op(OpTest):
             "Out",
             user_defined_grads=[self.dxs[0], self.dxs[1], self.dxs[2]],
             user_defined_grad_outputs=[self.dout],
+            check_pir_onednn=True,
         )
 
     # --------------------test concat bf16 in with axis 0--------------------

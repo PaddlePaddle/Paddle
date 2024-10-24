@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# type: ignore[abstract]
+
+from __future__ import annotations
+
 import abc
 import functools
 import multiprocessing
@@ -20,11 +24,27 @@ import re
 import shutil
 import subprocess
 import time
+from typing import TYPE_CHECKING, Callable, Literal, TypedDict, TypeVar
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
 
 from .log_util import logger
+
+if TYPE_CHECKING:
+    from typing_extensions import ParamSpec
+
+    _InputT = ParamSpec("_InputT")
+    _RetT = TypeVar("_RetT")
+
+    _HDFSClientConfig = TypedDict(
+        '_HDFSClientConfig', {'fs.default.name': str, 'hadoop.job.ugi': str}
+    )
+
+    class _FileInfo(TypedDict):
+        path: str
+        size: int
+
 
 __all__ = []
 
@@ -126,7 +146,7 @@ class LocalFS(FS):
 
     """
 
-    def ls_dir(self, fs_path):
+    def ls_dir(self, fs_path: str) -> tuple[list[str], list[str]]:
         """
         List directories and files under `fs_path` .
 
@@ -160,7 +180,7 @@ class LocalFS(FS):
 
         return dirs, files
 
-    def mkdirs(self, fs_path):
+    def mkdirs(self, fs_path: str) -> None:
         """
         Create a local directory.
 
@@ -181,7 +201,7 @@ class LocalFS(FS):
         assert not os.path.isfile(fs_path), f"{fs_path} is already a file"
         os.makedirs(fs_path, exist_ok=True)
 
-    def rename(self, fs_src_path, fs_dst_path):
+    def rename(self, fs_src_path: str, fs_dst_path: str) -> None:
         """
         Rename the file.
 
@@ -215,7 +235,7 @@ class LocalFS(FS):
     def _rm(self, fs_path):
         os.remove(fs_path)
 
-    def delete(self, fs_path):
+    def delete(self, fs_path: str) -> None:
         """
         Delete the local file path, whether it's a file or directory.
 
@@ -241,10 +261,10 @@ class LocalFS(FS):
 
         return self._rmr(fs_path)
 
-    def need_upload_download(self):
+    def need_upload_download(self) -> Literal[False]:
         return False
 
-    def is_file(self, fs_path):
+    def is_file(self, fs_path: str) -> bool:
         """
         Whether the local file path is a file.
 
@@ -269,7 +289,7 @@ class LocalFS(FS):
         """
         return os.path.isfile(fs_path)
 
-    def is_dir(self, fs_path):
+    def is_dir(self, fs_path: str) -> bool:
         """
         Whether the local file path is a directory.
 
@@ -294,7 +314,7 @@ class LocalFS(FS):
         """
         return os.path.isdir(fs_path)
 
-    def is_exist(self, fs_path):
+    def is_exist(self, fs_path: str) -> bool:
         """
         Whether the local file path exists.
 
@@ -317,7 +337,7 @@ class LocalFS(FS):
         """
         return os.path.exists(fs_path)
 
-    def touch(self, fs_path, exist_ok=True):
+    def touch(self, fs_path: str, exist_ok: bool = True) -> None:
         """
         Create a local file.
 
@@ -344,7 +364,13 @@ class LocalFS(FS):
         with open(fs_path, 'a'):
             pass
 
-    def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
+    def mv(
+        self,
+        src_path: str,
+        dst_path: str,
+        overwrite: bool = False,
+        test_exists: bool = False,
+    ) -> None:
         """
         Move a local file or directory from `src_path` to `dst_path` .
 
@@ -376,7 +402,7 @@ class LocalFS(FS):
 
         return self.rename(src_path, dst_path)
 
-    def list_dirs(self, fs_path):
+    def list_dirs(self, fs_path: str) -> list[str]:
         """
         Only list directories under `fs_path` .
 
@@ -406,10 +432,12 @@ class LocalFS(FS):
         return dirs
 
 
-def _handle_errors(max_time_out=None):
-    def decorator(f):
+def _handle_errors(
+    max_time_out: float | None = None,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    def decorator(f: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(f)
-        def handler(*args, **kwargs):
+        def handler(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             o = args[0]
             time_out = max_time_out
             if time_out is None:
@@ -434,9 +462,7 @@ def _handle_errors(max_time_out=None):
 
                 if time.time() - last_print_time > 30:
                     print(
-                        "hadoop operator timeout:args:{} timeout:{}".format(
-                            args, time.time() - start
-                        )
+                        f"hadoop operator timeout:args:{args} timeout:{time.time() - start}"
                     )
                     last_print_time = time.time()
 
@@ -473,15 +499,17 @@ class HDFSClient(FS):
 
     """
 
+    pre_commands: list[str]
+
     def __init__(
         self,
-        hadoop_home,
-        configs,
-        time_out=5 * 60 * 1000,  # ms
-        sleep_inter=1000,
-    ):  # ms
+        hadoop_home: str,
+        configs: _HDFSClientConfig,
+        time_out: int = 5 * 60 * 1000,  # ms
+        sleep_inter: int = 1000,
+    ) -> None:  # ms
         self.pre_commands = []
-        hadoop_bin = '%s/bin/hadoop' % hadoop_home
+        hadoop_bin = f'{hadoop_home}/bin/hadoop'
         self.pre_commands.append(hadoop_bin)
         dfs = 'fs'
         self.pre_commands.append(dfs)
@@ -515,7 +543,7 @@ class HDFSClient(FS):
         return ret, output.splitlines()
 
     def _run_safe_cmd(self, cmd, redirect_stderr=False, retry_times=5):
-        exe_cmd = [self._base_cmd] + cmd.split()
+        exe_cmd = [self._base_cmd, *cmd.split()]
         ret = 0
         output = ""
         retry_sleep_second = 3
@@ -525,9 +553,11 @@ class HDFSClient(FS):
                     exe_cmd,
                     check=True,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT
-                    if redirect_stderr
-                    else subprocess.PIPE,
+                    stderr=(
+                        subprocess.STDOUT
+                        if redirect_stderr
+                        else subprocess.PIPE
+                    ),
                     text=True,
                 )
                 output = process.stdout
@@ -543,7 +573,7 @@ class HDFSClient(FS):
             raise FSShellCmdAborted(cmd)
 
     @_handle_errors()
-    def list_dirs(self, fs_path):
+    def list_dirs(self, fs_path: str) -> list[str]:
         """
         Only list directories under `fs_path` .
 
@@ -577,7 +607,7 @@ class HDFSClient(FS):
         return dirs
 
     @_handle_errors()
-    def ls_dir(self, fs_path):
+    def ls_dir(self, fs_path: str) -> tuple[list[str], list[str]]:
         """
         List directories and files under `fs_path` .
 
@@ -611,8 +641,8 @@ class HDFSClient(FS):
         return self._ls_dir(fs_path)
 
     def _ls_dir(self, fs_path):
-        cmd = ["-ls", fs_path]
-        ret, lines = self._run_safe_cmd(cmd)
+        cmd = f"ls {fs_path}"
+        ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
             raise ExecuteError(cmd)
@@ -641,7 +671,7 @@ class HDFSClient(FS):
         return None
 
     @_handle_errors()
-    def is_dir(self, fs_path):
+    def is_dir(self, fs_path: str) -> bool:
         """
         Whether the remote HDFS path is a directory.
 
@@ -687,7 +717,7 @@ class HDFSClient(FS):
 
         return True
 
-    def is_file(self, fs_path):
+    def is_file(self, fs_path: str) -> bool:
         """
         Whether the remote HDFS path is a file.
 
@@ -720,7 +750,7 @@ class HDFSClient(FS):
         return not self._is_dir(fs_path)
 
     @_handle_errors()
-    def is_exist(self, fs_path):
+    def is_exist(self, fs_path: str) -> bool:
         """
         Whether the remote HDFS path exists.
 
@@ -755,7 +785,9 @@ class HDFSClient(FS):
 
         return True
 
-    def upload_dir(self, local_dir, dest_dir, overwrite=False):
+    def upload_dir(
+        self, local_dir: str, dest_dir: str, overwrite: bool = False
+    ) -> None:
         """
         upload dir to hdfs
         Args:
@@ -775,7 +807,13 @@ class HDFSClient(FS):
         self._try_upload(local_dir, dest_dir)
 
     # can't retry
-    def upload(self, local_path, fs_path, multi_processes=5, overwrite=False):
+    def upload(
+        self,
+        local_path: str,
+        fs_path: str,
+        multi_processes: int = 5,
+        overwrite: bool = False,
+    ) -> None:
         """
         Upload the local path to remote HDFS.
 
@@ -867,7 +905,13 @@ class HDFSClient(FS):
             raise e
 
     # can't retry
-    def download(self, fs_path, local_path, multi_processes=5, overwrite=False):
+    def download(
+        self,
+        fs_path: str,
+        local_path: str,
+        multi_processes: int = 5,
+        overwrite: bool = False,
+    ) -> None:
         """
         Download remote HDFS path to the local.
 
@@ -941,7 +985,7 @@ class HDFSClient(FS):
             raise e
 
     @_handle_errors()
-    def mkdirs(self, fs_path):
+    def mkdirs(self, fs_path: str) -> None:
         """
         Create a remote HDFS directory.
 
@@ -986,7 +1030,13 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
 
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
+    def mv(
+        self,
+        fs_src_path: str,
+        fs_dst_path: str,
+        overwrite: bool = False,
+        test_exists: bool = True,
+    ) -> None:
         """
         Move a remote HDFS file or directory from `fs_src_path` to `fs_dst_path` .
 
@@ -1051,7 +1101,7 @@ class HDFSClient(FS):
             raise ExecuteError(cmd)
 
     @_handle_errors()
-    def delete(self, fs_path):
+    def delete(self, fs_path: str) -> None:
         """
         Delete a remote HDFS path, whether it's a file or directory.
 
@@ -1084,7 +1134,7 @@ class HDFSClient(FS):
 
         return self._rm(fs_path)
 
-    def touch(self, fs_path, exist_ok=True):
+    def touch(self, fs_path: str, exist_ok: bool = True) -> None:
         """
         Create a remote HDFS file.
 
@@ -1124,15 +1174,15 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError(cmd)
 
-    def need_upload_download(self):
+    def need_upload_download(self) -> Literal[True]:
         return True
 
-    def cat(self, fs_path=None):
+    def cat(self, fs_path: str | None = None) -> str:
         """
         Cat a remote HDFS file.
 
         Args:
-            fs_path(str): The HDFS file path.
+            fs_path(str|None): The HDFS file path.
 
         Returns:
             file content
@@ -1194,7 +1244,7 @@ class HDFSClient(FS):
 
         return trainer_files[trainer_id]
 
-    def list_files_info(self, path_list):
+    def list_files_info(self, path_list: list[str]) -> list[_FileInfo]:
         """
         list_files return file path and size
         Args:
@@ -1216,7 +1266,7 @@ class HDFSClient(FS):
         )
         ret, lines = self._run_cmd(cmd)
         if len(lines) == 0:
-            logger.warning("list_files empty, path[%s]" % path_list)
+            logger.warning(f"list_files empty, path[{path_list}]")
             return []
         for line in lines:
             arr = line.split(' ')
@@ -1232,12 +1282,14 @@ class HDFSClient(FS):
 class AFSClient(FS):
     """
     A tool of AFS. Use AfsWrapper.
+    When WITH_PSLIB=ON, you can use this class directly.
+    When WITH_PSCORE=ON, you should export LD_LIBRARY_PATH='YOUR_AFSAPISO_PATH' before using this class.
 
     Examples:
 
         .. code-block:: python
 
-            >>> # doctest: +SKIP('depend on WITH_PSLIB')
+            >>> # doctest: +SKIP('depend on external file')
             >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
             >>> client = AFSClient()
@@ -1267,7 +1319,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1296,7 +1348,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1328,7 +1380,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1362,7 +1414,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1390,7 +1442,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1434,7 +1486,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1463,7 +1515,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1472,36 +1524,19 @@ class AFSClient(FS):
 
         """
 
-        def __subprocess_download(local_path, datas):
-            """
-            download file from HDFS
-            Args:
-                local_path(str): the local file path
-                datas(str): the hdfs file path list
-            """
-            for data in datas:
-                self._fs.download(local_path, data)
-
         if not self.is_exist(fs_path):
             raise FSFileNotExistsError(f"{fs_path} not exits")
         # download file
         if self.is_file(fs_path):
             return self._fs.download(local_path, fs_path)
         # download dir
+        # all_filenames return whole afs path
         _, all_filenames = self.ls_dir(fs_path)
-        all_files = [fs_path + i for i in all_filenames]
-        procs = []
-        for i in range(multi_processes):
-            process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(
-                target=__subprocess_download, args=(local_path, process_datas)
+        for file_name in all_filenames:
+            local_file_name = os.path.join(
+                local_path, os.path.split(file_name)[1]
             )
-            procs.append(p)
-            p.start()
-
-        # complete the processes
-        for proc in procs:
-            proc.join()
+            self._fs.download(local_file_name, file_name)
 
     def mkdirs(self, fs_path):
         """
@@ -1514,7 +1549,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1540,7 +1575,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1572,7 +1607,7 @@ class AFSClient(FS):
             .. code-block:: python
 
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1597,7 +1632,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()
@@ -1629,7 +1664,7 @@ class AFSClient(FS):
 
             .. code-block:: python
 
-                >>> # doctest: +SKIP('depend on WITH_PSLIB')
+                >>> # doctest: +SKIP('depend on external file')
                 >>> from paddle.distributed.fleet.utils.fs import AFSClient
 
                 >>> client = AFSClient()

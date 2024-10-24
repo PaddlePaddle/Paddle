@@ -16,5 +16,11 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(
-    inverse, CPU, ALL_LAYOUT, phi::InverseKernel, float, double) {}
+PD_REGISTER_KERNEL(inverse,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::InverseKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

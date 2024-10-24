@@ -94,10 +94,19 @@ def concat_static(func, dtype, np_inputs, axis_v, with_attr=False):
                     "x2": np_inputs[1].astype(dtype),
                     "axis": axis,
                 }
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [
+                    out,
+                    ops[-1].result(0),  # x1_grad
+                    ops[-1].result(1),
+                ]  # x2_grad
+            else:
+                fetch_list = [out.name, x1.name + "@GRAD", x2.name + "@GRAD"]
             out_v, x1_grad_v, x2_grad_v = exe.run(
                 static.default_main_program(),
                 feed=feed_dict,
-                fetch_list=[out.name, x1.name + "@GRAD", x2.name + "@GRAD"],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return out_v, x1_grad_v, x2_grad_v

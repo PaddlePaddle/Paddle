@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/phi/core/framework/reader.h"
 
 #include <memory>
 
@@ -24,24 +24,24 @@ class StubDecoratedReader : public paddle::framework::DecoratedReader {
   explicit StubDecoratedReader(const std::shared_ptr<ReaderBase> &reader)
       : DecoratedReader(reader) {}
 
-  void ReadNextImpl(paddle::framework::LoDTensorArray *out) override {}
+  void ReadNextImpl(phi::TensorArray *out) override {}
 };
 
 class StubRootReader : public paddle::framework::ReaderBase {
  public:
   explicit StubRootReader(
-      const std::vector<paddle::framework::DDim> &dims,
+      const std::vector<phi::DDim> &dims,
       const std::vector<paddle::framework::proto::VarType::Type> &var_types,
       const std::vector<bool> &need_check_feed)
       : paddle::framework::ReaderBase(dims, var_types, need_check_feed) {}
-  void ReadNextImpl(paddle::framework::LoDTensorArray *out) override {}
+  void ReadNextImpl(phi::TensorArray *out) override {}
 };
 
 TEST(READER, decorate_chain) {
   paddle::framework::proto::VarType::Type dtype =
       paddle::framework::proto::VarType::FP32;
-  paddle::framework::DDim dim = common::make_ddim({5, 7});
-  std::vector<paddle::framework::DDim> init_dims(4, dim);
+  phi::DDim dim = common::make_ddim({5, 7});
+  std::vector<phi::DDim> init_dims(4, dim);
   std::vector<paddle::framework::proto::VarType::Type> init_types(4, dtype);
   std::vector<bool> init_need_check(4, true);
   auto root =

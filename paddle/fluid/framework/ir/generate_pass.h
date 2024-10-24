@@ -14,7 +14,7 @@
 
 #pragma once
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/pass_desc.pb.h"
+#include "paddle/phi/core/framework/pass_desc.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -51,7 +51,8 @@ class OpHelper;
 class SubgraphHelper;
 
 // VarHelper is used to represent a variable node.
-struct VarHelper {
+class VarHelper {
+ public:
   enum class Type { kInput, kOutput };
 
   explicit VarHelper(const char* name);

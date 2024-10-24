@@ -41,15 +41,23 @@ class TestBase(IPUOpTest):
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         with paddle.static.ipu_shard_guard(index=0):
-            conv1 = paddle.static.nn.conv2d(
-                image, num_filters=3, filter_size=3, bias_attr=False
-            )
+            conv1 = paddle.nn.Conv2D(
+                in_channels=image.shape[1],
+                out_channels=3,
+                kernel_size=3,
+                bias_attr=False,
+            )(image)
+
         with paddle.static.ipu_shard_guard(index=1):
-            conv2 = paddle.static.nn.conv2d(
-                conv1, num_filters=3, filter_size=3, bias_attr=False
-            )
+            conv2 = paddle.nn.Conv2D(
+                in_channels=conv1.shape[1],
+                out_channels=3,
+                kernel_size=3,
+                bias_attr=False,
+            )(conv1)
+
             loss = paddle.mean(conv2)
-        self.fetch_list = [loss.name]
+        self.fetch_list = [loss]
 
     def run_model(self, exec_mode):
         ipu_strategy = paddle.static.IpuStrategy()

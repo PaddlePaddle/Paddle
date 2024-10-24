@@ -12,9 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class FusedTokenPruneOpConverter : public OpConverter {
  public:
@@ -100,7 +98,7 @@ class FusedTokenPruneOpConverter : public OpConverter {
       layer->setName(
           ("fused_token_prune(Output: " + output_name + ")").c_str());
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
           "is not supported for the time being.\n"
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
@@ -109,8 +107,6 @@ class FusedTokenPruneOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fused_token_prune, FusedTokenPruneOpConverter);

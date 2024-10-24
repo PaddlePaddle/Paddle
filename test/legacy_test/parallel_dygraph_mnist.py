@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+
+import paddle
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
     runtime_main,
 )
-
-import paddle
 
 
 class SimpleImgConvPool(paddle.nn.Layer):

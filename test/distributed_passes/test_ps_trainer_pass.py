@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import unittest
 
 from ps_pass_test_base import PsPassTestBase, remove_path_if_exists

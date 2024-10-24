@@ -99,7 +99,7 @@ def generate_input_data(
     weight = paddle.randn([vocab_size, hidden_size]).astype(weight_dtype)
     weight.stop_gradient = False
 
-    out_grad_shape = list(ids_shape) + [hidden_size]
+    out_grad_shape = [*ids_shape, hidden_size]
     if allow_duplicate_id and not allow_pure_random:
         out_grad = paddle.randint(low=-10, high=10, shape=out_grad_shape)
     else:
@@ -112,7 +112,12 @@ def get_all_dtypes():
     if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
         return []
 
-    dtypes = [paddle.float32, paddle.float16]
+    dtypes = [
+        paddle.float32,
+        paddle.float16,
+        paddle.complex64,
+        paddle.complex128,
+    ]
     if 'A100' in paddle.device.cuda.get_device_properties().name:
         dtypes.append(paddle.bfloat16)
     return dtypes

@@ -20,7 +20,6 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle.base import core
 from paddle.base.variable_index import _getitem_static
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestGetitemInDygraph(unittest.TestCase):
@@ -234,6 +233,26 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_res)
 
+    def test_combined_index_12(self):
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6)).astype(self.ndtype)
+        )
+
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+
+        np_res = np_data[:, :, [2, 4], :]
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        y = x[:, :, [2, 4], :]
+
+        if self.dtype == 'bfloat16':
+            y = paddle.cast(y, dtype='float32')
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
     def test_index_has_range(self):
         np_data = (
             np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6)).astype(self.ndtype)
@@ -320,6 +339,30 @@ class TestGetitemInDygraph(unittest.TestCase):
         x = paddle.to_tensor(np_data, dtype=self.dtype)
         y = x[[[2, 3, 4], [1, 2, 5]]]
         y_index_tensor = x[paddle.to_tensor([[2, 3, 4], [1, 2, 5]])]
+
+        if self.dtype == 'bfloat16':
+            y = paddle.cast(y, dtype='float32')
+            y_index_tensor = paddle.cast(y_index_tensor, dtype='float32')
+        np.testing.assert_allclose(y.numpy(), np_res)
+        np.testing.assert_allclose(y.numpy(), y_index_tensor.numpy())
+
+    def test_indexing_is_multi_negative_dim_list(self):
+        # indexing is multi-dim int list contains negative value.
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3)).astype(self.ndtype)
+        )
+
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+
+        index = [[2, -3, -4], [-1, 2, 5]]
+        np_res = np_data[np.array(index)]
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        y = x[index]
+        y_index_tensor = x[paddle.to_tensor(index)]
 
         if self.dtype == 'bfloat16':
             y = paddle.cast(y, dtype='float32')
@@ -436,7 +479,7 @@ class TestINT64GetitemInDygraph(TestGetitemInDygraph):
 class TestBOOLGetitemInDygraph(TestGetitemInDygraph):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -743,7 +786,7 @@ class TestFP32GetitemGradInDygraph(TestGetitemGrad):
 class TestBOOLGetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -794,7 +837,6 @@ class TestGetitemInStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
-    @test_with_pir_api
     def test_combined_index_1(self):
         # int tensor + slice (without decreasing axes)
         np_data = np.random.randn(3, 4, 5, 6)
@@ -808,7 +850,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_2(self):
         # int tensor + slice (with decreasing axes)
         np_data = np.random.randn(3, 4, 5, 6)
@@ -822,7 +863,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_3(self):
         # multiple int tensors, with one int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -838,7 +878,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_4(self):
         # multiple not adjacent int tensors, with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -854,7 +893,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_5(self):
         # multiple adjacent int tensors, with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -870,7 +908,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_6(self):
         # multiple adjacent and not adjacent int tensors, with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -887,7 +924,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_7(self):
         # multiple adjacent and not adjacent int tensors (rank > 1d), with no int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -910,7 +946,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_8(self):
         # multiple adjacent and not adjacent int tensors (rank > 1d), with int tensor at first axis
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -934,7 +969,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_9(self):
         # multiple int tensors, with broadcast.
         np_data = np.random.randn(3, 4, 5, 6, 7)
@@ -950,7 +984,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_10(self):
         # only one bool tensor with basic-index
         np_data = np.random.randn(3, 4, 5, 6)
@@ -966,7 +999,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_combined_index_11(self):
         # only one bool tensor with all False
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -982,7 +1014,20 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
+    def test_combined_index_12(self):
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[:, :, [2, 4], :]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x, (slice(None), slice(None), [2, 4], slice(None))
+            )
+            res = self.exe.run(fetch_list=[y])
+
+        np.testing.assert_allclose(res[0], np_res)
+
     def test_index_has_range(self):
         # only one bool tensor with all False
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -996,7 +1041,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_indexing_with_bool_list1(self):
         # test bool-list indexing when axes num less than x.rank
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -1013,7 +1057,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_indexing_with_bool_list2(self):
         # test bool-list indexing when axes num less than x.rank
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -1038,7 +1081,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -1057,7 +1099,24 @@ class TestGetitemInStatic(unittest.TestCase):
         np.testing.assert_allclose(res[0], np_res)
         np.testing.assert_allclose(res[1], np_res)
 
-    @test_with_pir_api
+    def test_indexing_is_multi_negative_dim_list(self):
+        # indexing is multi-dim int list contains negative value,
+        # should be treat as one index, like numpy>=1.23
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        index = [[2, -3, -4], [-1, 2, 5]]
+        np_res = np_data[np.array(index)]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(x, (index))
+            y_index_tensor = _getitem_static(x, paddle.to_tensor(index))
+
+            res = self.exe.run(fetch_list=[y, y_index_tensor])
+
+        np.testing.assert_allclose(res[0], np_res)
+        np.testing.assert_allclose(res[1], np_res)
+
     def test_indexing_is_boolean_true(self):
         # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -1073,7 +1132,6 @@ class TestGetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_res)
 
-    @test_with_pir_api
     def test_indexing_is_boolean_false(self):
         # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))

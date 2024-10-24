@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 
 devices = ['cpu', 'gpu']
 
@@ -123,6 +124,37 @@ class TestSparseCreate(unittest.TestCase):
         values = paddle.to_tensor(values, dtype='float32')
         coo = paddle.sparse.sparse_coo_tensor(indices, values)
         assert [2, 2] == coo.shape
+
+    def test_create_csr_no_shape(self):
+        # 2D sparse tensor
+        crows = [0, 2, 3, 5]
+        clos = [1, 3, 2, 0, 1]
+        values = [1.0, 2.0, 3.0, 4.0, 5.0]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        clos = paddle.to_tensor(clos, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 4] == csr.shape
+
+        # 3D sparse tensor
+        crows = [0, 2, 2, 0, 1, 1, 0, 0, 0]
+        clos = [0, 1, 1]
+        values = [1, 2, 5]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        clos = paddle.to_tensor(clos, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 2, 2] == csr.shape
+
+        # 3D sparse tensor
+        crows = [0, 1, 2, 0, 1, 1, 0, 1, 2]
+        clos = [0, 2, 1, 0, 1]
+        values = [1, 2, 3, 4, 5]
+        crows = paddle.to_tensor(crows, dtype='int32')
+        clos = paddle.to_tensor(clos, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        csr = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+        assert [3, 2, 3] == csr.shape
 
 
 class TestSparseConvert(unittest.TestCase):
@@ -487,6 +519,101 @@ class TestCsrError(unittest.TestCase):
             sparse_x = paddle.sparse.sparse_csr_tensor(
                 crows, cols, values, shape
             )
+
+    def test_error_crows(self):
+        with self.assertRaises(ValueError):
+            crows = [0, 2, 2, 0, 1, 1, 0, 0, 0, 0]
+            clos = [0, 1, 1]
+            values = [1, 2, 5]
+            crows = paddle.to_tensor(crows, dtype='int32')
+            clos = paddle.to_tensor(clos, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            coo = paddle.sparse.sparse_csr_tensor(crows, clos, values)
+
+
+devices = []
+if paddle.device.get_device() != "cpu":
+    devices.append(paddle.device.get_device())
+else:
+    devices.append('cpu')
+
+
+class TestSparseCoalesceStatic(unittest.TestCase):
+    '''
+    test the coalesce function in static graph in pir mode
+    '''
+
+    def sort_and_merge(self, indices, values):
+        '''
+        sort the indices and merge the duplicate values in the same indices, using numpy and provide the correct result
+        '''
+        indices = np.array(indices)
+        values = np.array(values)
+        indices = indices[:, np.lexsort((indices[1], indices[0]))]
+        unique_indices, unique_indices_idx = np.unique(
+            indices, axis=1, return_index=True
+        )
+        v = []
+        for interval in zip(
+            unique_indices_idx.tolist(),
+            unique_indices_idx.tolist()[1:] + [None],
+        ):
+            v.append(np.sum(values[interval[0] : interval[1]]))
+        unique_values = np.array(v)
+        return unique_indices, unique_values
+
+    def check_result(self, indices, values):
+        for device in devices:
+            paddle.device.set_device(device)
+            indices_tensor = paddle.to_tensor(indices, dtype='int32')
+            values_tensor = paddle.to_tensor(values, dtype='float32')
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_indices = paddle.static.data(
+                    name="x_indices",
+                    shape=indices_tensor.shape,
+                    dtype=indices_tensor.dtype,
+                )
+                x_values = paddle.static.data(
+                    name="x_values",
+                    shape=values_tensor.shape,
+                    dtype=values_tensor.dtype,
+                )
+                sp_x = paddle.sparse.sparse_coo_tensor(
+                    x_indices,
+                    x_values,
+                    dtype=x_values.dtype,
+                )
+                sp_x = paddle.sparse.coalesce(sp_x)
+
+                exe = paddle.static.Executor()
+                fetch = exe.run(
+                    feed={
+                        "x_indices": indices_tensor.numpy(),
+                        "x_values": values_tensor.numpy(),
+                    },
+                    fetch_list=[sp_x.indices(), sp_x.values()],
+                    return_numpy=True,
+                )
+                unique_indices, unique_values = self.sort_and_merge(
+                    indices, values
+                )
+                np.testing.assert_array_equal(fetch[0], unique_indices)
+                np.testing.assert_array_equal(fetch[1], unique_values)
+                paddle.disable_static()
+
+    def test_sparse_coalesce(self):
+        indices = [[0, 1, 1], [0, 1, 1]]
+        values = [1.0, 2.0, 3.0]
+        if in_pir_mode():
+            self.check_result(indices, values)
+
+        indices = [[0, 1, 1], [0, 1, 1]]
+        values = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
+        if in_pir_mode():
+            self.check_result(indices, values)
 
 
 if __name__ == "__main__":

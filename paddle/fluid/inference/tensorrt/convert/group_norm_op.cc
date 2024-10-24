@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class GroupNormOpConverter : public OpConverter {
  public:
@@ -44,7 +42,7 @@ class GroupNormOpConverter : public OpConverter {
 
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
-                         framework::DDim* dims) -> TensorRTEngine::Weight {
+                         phi::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
@@ -53,61 +51,37 @@ class GroupNormOpConverter : public OpConverter {
       return weight;
     };
 
-    framework::DDim scale_dims;
-    framework::DDim bias_dims;
+    phi::DDim scale_dims;
+    phi::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     bool with_int8 = engine_->WithInt8();
     // when int8 is on, allow fall back to fp16
     if (with_int8) with_fp16 = true;
-    if (engine_->with_dynamic_shape()) {
-      int gn_num = groups;
-      std::vector<int64_t> mean_shape({gn_num});
-      std::vector<int64_t> variance_shape({gn_num});
-      plugin::GroupNormPluginDynamic* plugin =
-          new plugin::GroupNormPluginDynamic(
-              static_cast<const float*>(scale_weights.get().values),
-              scale_weights.get().count,
-              static_cast<const float*>(bias_weights.get().values),
-              bias_weights.get().count,
-              epsilon,
-              groups,
-              mean_shape,
-              variance_shape,
-              with_silu,
-              with_fp16,
-              with_int8);
-      nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
-      auto output_name = op_desc.Output("Y")[0];
-      RreplenishLayerAndOutput(
-          groupnorm_layer, "group_norm", {output_name}, test_mode);
-    } else {
-      int gn_num = input_itensor->getDimensions().d[0] * groups;
-      std::vector<int64_t> mean_shape({gn_num});
-      std::vector<int64_t> variance_shape({gn_num});
-      plugin::GroupNormPlugin* plugin = new plugin::GroupNormPlugin(
-          static_cast<const float*>(scale_weights.get().values),
-          scale_weights.get().count,
-          static_cast<const float*>(bias_weights.get().values),
-          bias_weights.get().count,
-          epsilon,
-          groups,
-          mean_shape,
-          variance_shape,
-          with_fp16);
-      nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddPlugin(&input_itensor, 1, plugin);
-      auto output_name = op_desc.Output("Y")[0];
-      RreplenishLayerAndOutput(
-          groupnorm_layer, "group_norm", {output_name}, test_mode);
-    }
+    int gn_num = groups;
+    std::vector<int64_t> mean_shape({gn_num});
+    std::vector<int64_t> variance_shape({gn_num});
+    plugin::GroupNormPluginDynamic* plugin = new plugin::GroupNormPluginDynamic(
+        static_cast<const float*>(scale_weights.get().values),
+        scale_weights.get().count,
+        static_cast<const float*>(bias_weights.get().values),
+        bias_weights.get().count,
+        epsilon,
+        groups,
+        mean_shape,
+        variance_shape,
+        with_silu,
+        with_fp16,
+        with_int8);
+    nvinfer1::ILayer* groupnorm_layer =
+        engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
+    auto output_name = op_desc.Output("Y")[0];
+    ReplenishLayerAndOutput(
+        groupnorm_layer, "group_norm", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(group_norm, GroupNormOpConverter);

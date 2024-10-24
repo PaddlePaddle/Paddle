@@ -132,9 +132,7 @@ class FLClientBase(abc.ABC):
         self.train_dataset = train_dataset
         self.train_file_list = train_file_list
         logger.info(
-            "fl-ps > {}, data_feed_desc:\n {}".format(
-                type(self.train_dataset), self.train_dataset._desc()
-            )
+            f"fl-ps > {type(self.train_dataset)}, data_feed_desc:\n {self.train_dataset._desc()}"
         )
 
     def set_test_dataset_info(self, test_dataset, test_file_list):
@@ -178,9 +176,9 @@ class FLClientBase(abc.ABC):
             logger.info(f"fl-ps > persist_vars_list: {persist_vars_name}")
 
             if dump_fields_path is not None:
-                self.main_program._fleet_opt[
-                    'dump_fields_path'
-                ] = dump_fields_path
+                self.main_program._fleet_opt['dump_fields_path'] = (
+                    dump_fields_path
+                )
             if dump_fields is not None:
                 self.main_program._fleet_opt["dump_fields"] = dump_fields
             if dump_param is not None:

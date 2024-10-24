@@ -14,14 +14,14 @@ limitations under the License. */
 #include <map>
 #include <unordered_map>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
-#include "paddle/fluid/platform/profiler/output_logger.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/output_logger.h"
 
 namespace paddle {
 namespace platform {
 
-// Dump a NodeTrees into a profobuf file.
+// Dump a NodeTrees into a protobuf file.
 // A SerializationLogger object can only dump a NodeTrees object,
 // creates a file in the constructor and closes the file in the destructor.
 // Should only call LogNodeTrees and LogMetaInfo.
@@ -51,13 +51,15 @@ class SerializationLogger : public BaseLogger {
 
   std::string filename_;
   std::ofstream output_file_stream_;
-  NodeTreesProto* node_trees_proto_;
-  ThreadNodeTreeProto* current_thread_node_tree_proto_;
-  HostTraceEventNodeProto* current_host_trace_event_node_proto_;
-  CudaRuntimeTraceEventNodeProto* current_runtime_trace_event_node_proto_;
-  DeviceTraceEventNodeProto* current_device_trace_event_node_proto_;
-  MemTraceEventNodeProto* current_mem_trace_event_node_proto_;
-  OperatorSupplementEventNodeProto* current_op_supplement_event_node_proto_;
+  NodeTreesProto* node_trees_proto_ = nullptr;
+  ThreadNodeTreeProto* current_thread_node_tree_proto_ = nullptr;
+  HostTraceEventNodeProto* current_host_trace_event_node_proto_ = nullptr;
+  CudaRuntimeTraceEventNodeProto* current_runtime_trace_event_node_proto_ =
+      nullptr;
+  DeviceTraceEventNodeProto* current_device_trace_event_node_proto_ = nullptr;
+  MemTraceEventNodeProto* current_mem_trace_event_node_proto_ = nullptr;
+  OperatorSupplementEventNodeProto* current_op_supplement_event_node_proto_ =
+      nullptr;
 };
 
 }  // namespace platform

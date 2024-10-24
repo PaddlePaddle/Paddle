@@ -16,13 +16,11 @@ import unittest
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
 
 class TestDataFeeder(unittest.TestCase):
-    @test_with_pir_api
     def test_lod_level_0_converter(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -45,7 +43,6 @@ class TestDataFeeder(unittest.TestCase):
             except ValueError:
                 self.assertTrue(True)
 
-    @test_with_pir_api
     def test_lod_level_1_converter(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -69,12 +66,17 @@ class TestDataFeeder(unittest.TestCase):
 
             self.assertEqual(result['sentences'].shape(), [9, 1])
             self.assertEqual(result['label'].shape(), [3, 1])
-            self.assertEqual(
-                result['sentences'].recursive_sequence_lengths(), [[3, 2, 4]]
-            )
+            if paddle.framework.use_pir_api():
+                self.assertEqual(
+                    result['sentences'].recursive_sequence_lengths(), []
+                )
+            else:
+                self.assertEqual(
+                    result['sentences'].recursive_sequence_lengths(),
+                    [[3, 2, 4]],
+                )
             self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
-    @test_with_pir_api
     def test_lod_level_2_converter(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -98,10 +100,16 @@ class TestDataFeeder(unittest.TestCase):
 
             self.assertEqual(result['paragraphs'].shape(), [9, 1])
             self.assertEqual(result['label'].shape(), [2, 1])
-            self.assertEqual(
-                result['paragraphs'].recursive_sequence_lengths(),
-                [[2, 1], [3, 2, 4]],
-            )
+            if paddle.framework.use_pir_api():
+                self.assertEqual(
+                    result['paragraphs'].recursive_sequence_lengths(),
+                    [],
+                )
+            else:
+                self.assertEqual(
+                    result['paragraphs'].recursive_sequence_lengths(),
+                    [[2, 1], [3, 2, 4]],
+                )
             self.assertEqual(result['label'].recursive_sequence_lengths(), [])
 
     def test_errors(self):

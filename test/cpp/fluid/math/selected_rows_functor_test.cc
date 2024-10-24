@@ -15,11 +15,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, cpu_add) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -49,7 +49,7 @@ TEST(selected_rows_functor, cpu_add) {
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   auto* out_value = output->mutable_value();
 
-  // simplely concat two SelectedRows
+  // simply concat two SelectedRows
   out_value->mutable_data<float>(common::make_ddim({7, 10}), cpu_place);
 
   phi::funcs::SelectedRowsAdd<phi::CPUContext, float> add_functor;
@@ -113,7 +113,7 @@ TEST(selected_rows_functor, cpu_add) {
 }
 
 TEST(selected_rows_functor, cpu_add_to) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -144,7 +144,7 @@ TEST(selected_rows_functor, cpu_add_to) {
   output->set_height(height);
   auto* out_value = output->mutable_value();
 
-  // simplely concat two SelectedRows
+  // simply concat two SelectedRows
   out_value->mutable_data<float>(common::make_ddim({7, 10}), cpu_place);
 
   phi::funcs::SelectedRowsAddTo<phi::CPUContext, float> add_to_functor;
@@ -206,7 +206,7 @@ TEST(selected_rows_functor, cpu_add_to) {
 }
 
 TEST(selected_rows_functor, cpu_merge_average_float) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -244,7 +244,7 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_float) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -283,7 +283,7 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_int) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -322,7 +322,7 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_multi) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -374,7 +374,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 }
 
 TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -432,7 +432,7 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 }
 
 TEST(selected_rows_functor, cpu_sum_to) {
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   phi::CPUContext ctx(cpu_place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(cpu_place)
@@ -461,7 +461,7 @@ TEST(selected_rows_functor, cpu_sum_to) {
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   auto* out_value = output->mutable_value();
-  // simplely concat two SelectedRows
+  // simply concat two SelectedRows
   out_value->mutable_data<float>(common::make_ddim({7, 10}), cpu_place);
   phi::funcs::SelectedRowsSumTo<phi::CPUContext, float> sum_to_functor;
   sum_to_functor(ctx,

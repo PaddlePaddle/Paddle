@@ -20,7 +20,6 @@ import paddle
 from paddle.incubate.nn.layer.fused_transformer import (
     FusedBiasDropoutResidualLayerNorm,
 )
-from paddle.static import Program
 
 
 def layer_norm(x, has_scale, has_bias, weight, bias, epsilon=1e-05):
@@ -166,7 +165,7 @@ class TestFusedBiasDropoutResidualLayerNormAPI(unittest.TestCase):
 
     def test_static_api(self):
         paddle.enable_static()
-        with paddle.static.program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             out, linear_bias, ln_scale, ln_bias = self.run_static()
         ref_out = compute_reference(
             self.x, self.residual, ln_scale, ln_bias, linear_bias

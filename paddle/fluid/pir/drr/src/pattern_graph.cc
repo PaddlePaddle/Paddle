@@ -16,23 +16,24 @@
 
 #include <queue>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 const drr::OpCall &PatternGraph::AddOpCall(
     const std::shared_ptr<drr::OpCall> &op_call) {
   owned_op_call_.push_back(op_call);
   for (const auto *input : op_call->inputs()) {
     const auto &tensor_name = input->name();
-    PADDLE_ENFORCE_NE(id2owned_tensor_.count(tensor_name),
-                      0,
-                      phi::errors::NotFound("Not found tensor."
-                                            "The intput tensor [%s] must exist "
-                                            "in pattern graph to be obtained.",
-                                            tensor_name));
+    PADDLE_ENFORCE_NE(
+        id2owned_tensor_.count(tensor_name),
+        0,
+        common::errors::NotFound("Not found tensor."
+                                 "The input tensor [%s] must exist "
+                                 "in pattern graph to be obtained.",
+                                 tensor_name));
     id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());
 
     if (input->producer() == nullptr) {
@@ -44,12 +45,13 @@ const drr::OpCall &PatternGraph::AddOpCall(
   }
   for (auto &output : op_call->outputs()) {
     const auto &out_tensor_name = output->name();
-    PADDLE_ENFORCE_NE(id2owned_tensor_.count(out_tensor_name),
-                      0,
-                      phi::errors::NotFound("Not found tensor."
-                                            "The output tensor [%s] must exist "
-                                            "in pattern graph to be obtained.",
-                                            out_tensor_name));
+    PADDLE_ENFORCE_NE(
+        id2owned_tensor_.count(out_tensor_name),
+        0,
+        common::errors::NotFound("Not found tensor."
+                                 "The output tensor [%s] must exist "
+                                 "in pattern graph to be obtained.",
+                                 out_tensor_name));
     id2owned_tensor_[output->name()]->set_producer(op_call.get());
   }
   return *owned_op_call_.back();
@@ -68,7 +70,7 @@ drr::Tensor &PatternGraph::AddTmpTensor(
     const std::shared_ptr<drr::Tensor> &tensor) {
   PADDLE_ENFORCE_EQ(id2owned_tensor_.count(tensor->name()),
                     0,
-                    phi::errors::AlreadyExists(
+                    common::errors::AlreadyExists(
                         "Tensor already exists."
                         "The tensor [%s] must not exist in pattern graph.",
                         tensor->name()));
@@ -98,20 +100,6 @@ void PatternGraph::UpdateTmpTensor(const std::string &tmp_tensor_name,
 
 size_t PatternGraph::CountOfOpCalls() const { return owned_op_call_.size(); }
 
-OpCall *SourcePatternGraph::AnchorNode() const {
-  for (const auto &output_tensor : output_tensors_) {
-    OpCall *output_op_candidate =
-        id2owned_tensor_.at(output_tensor)->producer();
-    if (std::all_of(output_op_candidate->outputs().begin(),
-                    output_op_candidate->outputs().end(),
-                    [this](const Tensor *output) -> bool {
-                      return this->output_tensors().count(output->name());
-                    }))
-      return output_op_candidate;
-  }
-  IR_THROW("Unable to find a valid anchor");
-}
-
 std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
   std::unordered_set<const OpCall *> output_op_set;
   for (const auto &output_tensor : output_tensors_) {
@@ -124,6 +112,10 @@ std::unordered_set<const OpCall *> SourcePatternGraph::OutputNodes() const {
                     }))
       output_op_set.insert(output_op_candidate);
   }
+  if (output_op_set.empty()) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unable to find a valid anchor in drr's source result pattern!"));
+  }
   return output_op_set;
 }
 
@@ -132,12 +124,12 @@ void ResultPatternGraph::AssignTensor(const Tensor &from, const Tensor &to) {
     input_tensors_.insert(to.name());
   }
   output_tensors_.erase(to.name());
-  PADDLE_ENFORCE_EQ(
-      output_tensors_.count(from.name()),
-      1,
-      phi::errors::PreconditionNotMet("The Tensor (%s) which be assigned must "
-                                      "be the output of result pattern graph.",
-                                      from.name()));
+  PADDLE_ENFORCE_EQ(output_tensors_.count(from.name()),
+                    1,
+                    common::errors::PreconditionNotMet(
+                        "The Tensor (%s) which be assigned must "
+                        "be the output of result pattern graph.",
+                        from.name()));
   tensor_assign_map_[from.name()] = to.name();
 }
 
@@ -147,8 +139,8 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   const std::unordered_set<std::string> &inputs_tensor =
       graph_->input_tensors();
   const std::unordered_map<std::string, std::shared_ptr<Tensor>>
-      &id2owned_tensor = graph_->id2owend_tensor();
-  const std::vector<std::shared_ptr<OpCall>> &owend_opcall =
+      &id2owned_tensor = graph_->id2owned_tensor();
+  const std::vector<std::shared_ptr<OpCall>> &owned_opcall =
       graph_->owned_op_call();
 
   std::queue<const OpCall *> opcall_queue;
@@ -156,11 +148,11 @@ void GraphTopo::WalkGraphNodesTopoOrder(
       opcall_dependent;
 
   // init opcall_dependent
-  for (const std::shared_ptr<OpCall> &opcall_sptr : owend_opcall) {
-    if (opcall_sptr.get()->inputs().empty()) {  // opcall inputs is empty
+  for (const std::shared_ptr<OpCall> &opcall_sptr : owned_opcall) {
+    if (opcall_sptr->inputs().empty()) {  // opcall inputs is empty
       opcall_queue.push(opcall_sptr.get());
     } else {
-      for (const auto &pre_depd_tensor : opcall_sptr.get()->inputs()) {
+      for (const auto &pre_depd_tensor : opcall_sptr->inputs()) {
         opcall_dependent[opcall_sptr.get()].insert(pre_depd_tensor->name());
       }
     }
@@ -168,17 +160,18 @@ void GraphTopo::WalkGraphNodesTopoOrder(
 
   // init queue
   for (const auto &tensor_name : inputs_tensor) {
-    PADDLE_ENFORCE_NE(id2owned_tensor.count(tensor_name),
-                      0,
-                      phi::errors::NotFound("Not found tensor."
-                                            "The input tensor [%s] must exists "
-                                            "in pattern graph to be obtained.",
-                                            tensor_name));
-    for (const auto &tensor_comsumer :
+    PADDLE_ENFORCE_NE(
+        id2owned_tensor.count(tensor_name),
+        0,
+        common::errors::NotFound("Not found tensor."
+                                 "The input tensor [%s] must exists "
+                                 "in pattern graph to be obtained.",
+                                 tensor_name));
+    for (const auto &tensor_consumer :
          id2owned_tensor.at(tensor_name).get()->consumers()) {
-      opcall_dependent[tensor_comsumer].erase(tensor_name);
-      if (opcall_dependent[tensor_comsumer].empty()) {
-        opcall_queue.push(tensor_comsumer);
+      opcall_dependent[tensor_consumer].erase(tensor_name);
+      if (opcall_dependent[tensor_consumer].empty()) {
+        opcall_queue.push(tensor_consumer);
       }
     }
   }
@@ -190,10 +183,10 @@ void GraphTopo::WalkGraphNodesTopoOrder(
 
     // update opcall_dependent
     for (const auto &output_tensor : opcall->outputs()) {
-      for (const auto &tensor_comsumer : output_tensor->consumers()) {
-        opcall_dependent[tensor_comsumer].erase(output_tensor->name());
-        if (opcall_dependent[tensor_comsumer].empty()) {
-          opcall_queue.push(tensor_comsumer);
+      for (const auto &tensor_consumer : output_tensor->consumers()) {
+        opcall_dependent[tensor_consumer].erase(output_tensor->name());
+        if (opcall_dependent[tensor_consumer].empty()) {
+          opcall_queue.push(tensor_consumer);
         }
       }
     }
@@ -202,7 +195,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
 
 std::ostream &operator<<(std::ostream &os, const PatternGraph &pattern_graph) {
   os << "\nAll Tensors:\n";
-  for (const auto &kv : pattern_graph.id2owend_tensor()) {
+  for (const auto &kv : pattern_graph.id2owned_tensor()) {
     os << "  " << kv.first;
   }
   os << "\n\n";
@@ -237,5 +230,4 @@ std::ostream &operator<<(std::ostream &os, const PatternGraph &pattern_graph) {
   return os;
 }
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr

@@ -22,7 +22,6 @@ from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
 from paddle.base.framework import default_main_program
-from paddle.pir_utils import test_with_pir_api
 
 
 def _test_read_write(x):
@@ -83,14 +82,21 @@ class TestArrayReadWrite(unittest.TestCase):
         total_sum = paddle.add_n([a_sum, x_sum])
         total_sum_scaled = paddle.scale(x=total_sum, scale=1 / 6.0)
 
-        append_backward(total_sum_scaled)
-
-        g_vars = list(
-            map(
-                default_main_program().global_block().var,
-                [each_x.name + "@GRAD" for each_x in x],
+        grad_list = append_backward(total_sum_scaled, [x[0], x[1], x[2]])
+        if not paddle.framework.in_pir_mode():
+            g_vars = list(
+                map(
+                    default_main_program().global_block().var,
+                    [each_x.name + "@GRAD" for each_x in x],
+                )
             )
-        )
+        else:
+            g_vars = []
+            for each_x in x:
+                for p, g in grad_list:
+                    if p.is_same(each_x):
+                        g_vars.append(g)
+                        continue
         g_out = [
             item.sum()
             for item in exe.run(
@@ -192,7 +198,6 @@ class TestPirArrayOp(unittest.TestCase):
             fetched_out1, np.ones([1, 3], dtype="float32") * 6
         )
 
-    @test_with_pir_api
     def test_array_backward(self):
         np.random.seed(2013)
         main_program = paddle.static.Program()

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-
 from _collections import defaultdict
 
 import paddle
@@ -565,11 +564,7 @@ class DeleteOptimizesPass(PassBase):
             set(remote_optimize_op_role_vars)
         )  # param + grad
         print(
-            "remote_optimize_vars: {}, remote_optimize_op_role_vars: {}, local_optimize_vars: {}".format(
-                remote_optimize_vars,
-                remote_optimize_op_role_vars,
-                local_optimize_vars,
-            )
+            f"remote_optimize_vars: {remote_optimize_vars}, remote_optimize_op_role_vars: {remote_optimize_op_role_vars}, local_optimize_vars: {local_optimize_vars}"
         )
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
@@ -845,10 +840,21 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        from ..transpiler.collective import SingleProcessMultiThread
+        attrs = pass_ctx._attrs
+        if attrs['use_gpu_graph'] == 0:
+            from ..transpiler.collective import MultiThread
+
+            t = MultiThread()
+            print("ps_transpile_pass use MultiThread for non_gpu_graph mode")
+        else:
+            from ..transpiler.collective import SingleProcessMultiThread
+
+            t = SingleProcessMultiThread()
+            print(
+                "ps_transpile_pass use SingleProcessMultiThread for gpu_graph mode"
+            )
 
         attrs = pass_ctx._attrs
-        t = SingleProcessMultiThread()
         env = get_dist_env()
         t.transpile(
             startup_program=startup_program,
@@ -1110,7 +1116,7 @@ class SplitTrainerOpsPass(PassBase):
                 outputs={"Out": []},
                 attrs={
                     "mode": "forward",
-                    "send_var_name": entrance_var + ["microbatch_id"],
+                    "send_var_name": [*entrance_var, "microbatch_id"],
                     "recv_var_name": [],
                     "message_name": comm_info["block_input_var_name"],
                     "next_endpoints": next_heter_worker_endpoints,
@@ -1380,8 +1386,10 @@ class SplitFlOpsPass(PassBase):
             outputs={'Out': []},
             attrs={
                 'mode': 'forward',  # mode 直接关联前向和反向 channel 选择
-                'send_var_name': self.partA_to_partB_tensor_name
-                + ["microbatch_id"],
+                'send_var_name': [
+                    *self.partA_to_partB_tensor_name,
+                    "microbatch_id",
+                ],
                 'recv_var_name': [],
                 'message_name': comm_info,
                 'next_endpoints': get_next_stage_trainers(
@@ -1404,8 +1412,10 @@ class SplitFlOpsPass(PassBase):
             outputs={'Out': []},
             attrs={
                 'mode': 'backward',
-                'send_var_name': self.partB_to_partA_grad_name
-                + ["microbatch_id"],
+                'send_var_name': [
+                    *self.partB_to_partA_grad_name,
+                    "microbatch_id",
+                ],
                 'recv_var_name': [],
                 'message_name': comm_info,
                 'next_endpoints': get_next_stage_trainers(

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import _create_tensor
 from paddle.framework import ParamAttr, core
@@ -159,23 +159,28 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         accum = self._accum if self.training else None
 
         (
-            out,
-            _,
-            _,
-            _,
-        ) = _legacy_C_ops.fake_quantize_dequantize_moving_average_abs_max(
+            out1,
+            out2,
+            out3,
+            out4,
+        ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
             input,
             self._scale,
             accum,
             state,
-            quant_out,
-            self._scale,
-            state,
-            accum,
-            *attrs,
+            self._moving_rate,
+            self._bit_length,
+            not self.training,
+            1,
         )
-
-        return out
+        _C_ops.assign_out_(out1, quant_out)
+        if out2._is_initialized():
+            _C_ops.assign_out_(out2, self._scale)
+        if state:
+            _C_ops.assign_out_(out3, state)
+        if accum:
+            _C_ops.assign_out_(out4, accum)
+        return quant_out
 
     def static_forward(self, input):
         check_variable_and_dtype(
@@ -211,9 +216,44 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
 
         return quant_out
 
+    def pir_forward(self, input):
+
+        state = self._state if self.training else None
+        accum = self._accum if self.training else None
+
+        (
+            out1,
+            out2,
+            out3,
+            out4,
+        ) = _C_ops.fake_quantize_dequantize_moving_average_abs_max(
+            input,
+            self._scale,
+            accum,
+            state,
+            self._moving_rate,
+            self._bit_length,
+            not self.training,
+            1,
+        )
+
+        # TODO, need to check this modify can work correctly in PIR mode
+        # there is no `name` attribute of Value in PIR mode
+        # so, directly return quant_out in pir mode
+        quant_out = out1
+        _C_ops.assign_out_(out2, self._scale)
+
+        if self.training:
+            _C_ops.assign_out_(out3, state)
+        if self.training:
+            _C_ops.assign_out_(out4, accum)
+        return quant_out
+
     def forward(self, input):
         if paddle.in_dynamic_mode():
             return self.dynamic_forward(input)
+        elif paddle.base.framework.in_pir_mode():
+            return self.pir_forward(input)
         else:
             return self.static_forward(input)
 

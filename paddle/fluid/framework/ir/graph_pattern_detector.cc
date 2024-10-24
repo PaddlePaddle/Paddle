@@ -18,11 +18,9 @@
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 size_t PDPattern::id_ = 0UL;
 
@@ -37,7 +35,7 @@ PDNode *PDPattern::NewNode(const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name),
         0UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
@@ -52,7 +50,7 @@ PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name),
         0UL,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
@@ -73,14 +71,14 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
   PADDLE_ENFORCE_NOT_NULL(a,
-                          platform::errors::NotFound("PDNode %s is not found.",
-                                                     a->name()));  // NOLINT
+                          common::errors::NotFound("PDNode %s is not found.",
+                                                   a->name()));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(b,
-                          platform::errors::NotFound("PDNode %s is not found.",
-                                                     b->name()));  // NOLINT
+                          common::errors::NotFound("PDNode %s is not found.",
+                                                   b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
-                    platform::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
@@ -169,7 +167,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 
 struct HitGroup {
   std::map<PDNode *, Node *> roles;
-
+  HitGroup() : roles(), nodes_() {}
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
       if (roles.count(pat) && roles[pat] == node) return true;
@@ -722,12 +720,12 @@ bool IsNthInput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function IsNthInput must be Node::Var"));
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Second parameter of function IsNthInput must be Node::Op"));
   if (!HasInput(op, argument) || op->Op()->Input(argument).size() <= nth)
     return false;
@@ -738,7 +736,7 @@ bool HasInput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function HasInput must be Node::Op"));
   auto const &names = op->Op()->InputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
@@ -750,7 +748,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
@@ -762,12 +760,12 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function IsNthOutput must be Node::Var"));
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Second parameter of function IsNthOutput must be Node::Op"));
   if (!HasOutput(op, argument) || op->Op()->Output(argument).size() <= nth)
     return false;
@@ -781,8 +779,7 @@ void GraphSafeRemoveNodes(
   for (auto *node : nodes) {
     if (saved_nodes != nullptr) {
       // prevent unique_ptr node from being released
-      saved_nodes->insert(
-          std::move(graph->RemoveNode(const_cast<Node *>(node))));
+      saved_nodes->insert(graph->RemoveNode(const_cast<Node *>(node)));
     } else {
       graph->RemoveNode(const_cast<Node *>(node));
     }
@@ -2513,40 +2510,8 @@ PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
   attn_qk_matmul->LinksFrom({attn_q_scale_out_var, attn_k_transpose_out_var})
       .LinksTo({attn_qk_matmul_out_var});
 
-  auto *attn_mask_var =
-      pattern->NewNode(attn_mask_repr())->assert_is_op_input("cast", "X");
-  auto *attn_mask_cast1 =
-      pattern->NewNode(attn_mask_cast1_repr())->assert_is_op("cast");
-  auto *attn_mask_cast1_out_var = pattern->NewNode(attn_mask_cast1_out_repr())
-                                      ->assert_is_op_output("cast", "Out")
-                                      ->assert_is_op_input("cast", "X");
-  attn_mask_cast1->LinksFrom({attn_mask_var})
-      .LinksTo({attn_mask_cast1_out_var});
-
-  auto *attn_mask_cast2 =
-      pattern->NewNode(attn_mask_cast2_repr())->assert_is_op("cast");
-  auto *attn_mask_cast2_out_var = pattern->NewNode(attn_mask_cast2_out_repr())
-                                      ->assert_is_op_output("cast", "Out")
-                                      ->assert_is_op_input("scale", "X");
-  attn_mask_cast2->LinksFrom({attn_mask_cast1_out_var})
-      .LinksTo({attn_mask_cast2_out_var});
-
-  auto *attn_mask_scale1 =
-      pattern->NewNode(attn_mask_scale1_repr())->assert_is_op("scale");
-  auto *attn_mask_scale1_out_var = pattern->NewNode(attn_mask_scale1_out_repr())
-                                       ->assert_is_op_output("scale", "Out")
-                                       ->assert_is_op_input("scale", "X");
-  attn_mask_scale1->LinksFrom({attn_mask_cast2_out_var})
-      .LinksTo({attn_mask_scale1_out_var});
-
-  auto *attn_mask_scale2 =
-      pattern->NewNode(attn_mask_scale2_repr())->assert_is_op("scale");
-  auto *attn_mask_scale2_out_var =
-      pattern->NewNode(attn_mask_scale2_out_repr())
-          ->assert_is_op_output("scale", "Out")
-          ->assert_is_op_input("elementwise_add", "Y");
-  attn_mask_scale2->LinksFrom({attn_mask_scale1_out_var})
-      .LinksTo({attn_mask_scale2_out_var});
+  auto *attn_mask_var = pattern->NewNode(attn_mask_repr())
+                            ->assert_is_op_input("elementwise_add", "Y");
 
   auto *attn_mask_eleadd = pattern->NewNode(attn_mask_eleadd_repr())
                                ->assert_is_op("elementwise_add");
@@ -2554,8 +2519,7 @@ PDNode *patterns::DotProductAttention::operator()(bool with_dropout) {
       pattern->NewNode(attn_mask_eleadd_out_repr())
           ->assert_is_op_output("elementwise_add", "Out")
           ->assert_is_op_input("softmax", "X");
-  attn_mask_eleadd
-      ->LinksFrom({attn_mask_scale2_out_var, attn_qk_matmul_out_var})
+  attn_mask_eleadd->LinksFrom({attn_mask_var, attn_qk_matmul_out_var})
       .LinksTo({attn_mask_eleadd_out_var});
 
   auto *attn_softmax =
@@ -2981,7 +2945,7 @@ PDNode *patterns::SelfAttention::operator()(PDNode *in) {
   return transpose2_2_out;
 }
 
-PDNode *patterns::ConvElementwiseadd2Act::operator()(
+PDNode *patterns::ConvElementwiseAdd2Act::operator()(
     PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_filter = pattern->NewNode(conv_filter_repr())
@@ -3519,22 +3483,22 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
 }
 
 void patterns::DeleteQuantDequantOpPattern::operator()(
-    PDNode *input_node, const std::string &quantdequant_types) {
+    PDNode *input_node, const std::string &quant_dequant_types) {
   auto quant_dequant_op_inscale =
       pattern->NewNode(quant_dequant_op_inscale_repr())
-          ->assert_is_op_input(quantdequant_types, "InScale")
+          ->assert_is_op_input(quant_dequant_types, "InScale")
           ->AsInput();
   auto quant_dequant_op = pattern->NewNode(quant_dequant_op_repr())
-                              ->assert_is_op(quantdequant_types);
+                              ->assert_is_op(quant_dequant_types);
 
   auto quant_dequant_op_out =
       pattern->NewNode(quant_dequant_op_out_repr())
-          ->assert_is_op_output(quantdequant_types, "Out")
+          ->assert_is_op_output(quant_dequant_types, "Out")
           ->AsOutput();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
-          ->assert_is_op_output(quantdequant_types, "OutScale")
+          ->assert_is_op_output(quant_dequant_types, "OutScale")
           ->AsOutput();
 
   quant_dequant_op->LinksFrom({quant_dequant_op_inscale, input_node});
@@ -5451,6 +5415,21 @@ PDNode *patterns::BNAddActConvGrad::operator()(
   return bn1_grad;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+void patterns::SparseConvOptimPartern::operator()() {
+  auto sp_conv3d_x = pattern->NewNode(sp_conv3d_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("sparse_conv3d", "x");
+  auto sp_conv3d_kernel = pattern->NewNode(sp_conv3d_kernel_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("sparse_conv3d", "kernel");
+  auto sp_conv3d_op =
+      pattern->NewNode(sp_conv3d_op_repr())->assert_is_op("sparse_conv3d");
+  auto sp_conv3d_out = pattern->NewNode(sp_conv3d_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("sparse_conv3d", "out");
+
+  sp_conv3d_op->LinksFrom({sp_conv3d_x, sp_conv3d_kernel})
+      .LinksTo({sp_conv3d_out});
+}
+
+}  // namespace paddle::framework::ir

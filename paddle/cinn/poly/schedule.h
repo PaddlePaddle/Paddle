@@ -31,6 +31,7 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/poly/map.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace poly {
@@ -46,7 +47,11 @@ struct TimeDim {
 
   TimeDim() = default;
   TimeDim(const std::string &dim, int time) : dim(dim), time(time) {
-    CHECK(!dim.empty());
+    PADDLE_ENFORCE_EQ(
+        !dim.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The dimension is empty. Please provide a valid dimension."));
   }
 };
 

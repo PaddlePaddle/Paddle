@@ -15,108 +15,45 @@
 incubate layers just related to the neural network.
 """
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core, unique_name
 from paddle.base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.base.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.base.framework import (
+    Variable,
+    convert_np_dtype_to_dtype_,
+    in_dynamic_or_pir_mode,
+)
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
+from paddle.framework import in_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DTypeLike, ParamAttrLike
 
 __all__ = []
 
 
-def fused_embedding_seq_pool(
-    input,
-    size,
-    is_sparse=False,
-    padding_idx=None,
-    combiner='sum',
-    param_attr=None,
-    dtype='float32',
-):
-    r"""
-    **Embedding Sequence pool**
-
-    This layer is the fusion of lookup table and sequence_pool.
-
-    Args:
-        input (Tensor): Input is a Tensor<int64> , which contains the IDs' information.
-            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
-        size (tuple|list): The shape of the lookup_table parameter. It should
-            have two elements which indicate the size of the dictionary of
-            embedding and the size of each embedding vector respectively.
-        is_sparse (bool, optional): The flag indicating whether to use sparse update.
-            Default: False.
-        padding_idx (int|long|None, optional): It will output all-zero padding data whenever
-            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
-            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
-            will automatically be converted to :math:`size[0] + padding\_idx` to use.
-            Default: None.
-        combiner (str, optional): The pooling type of sequence_pool, and only support `sum`.
-            Default: sum.
-        param_attr (ParamAttr, optional): Parameters for this layer. Default: None.
-        dtype (np.dtype|core.VarDesc.VarType|str, optional): The dtype refers to the data type of output
-            tensor. It can be float32, float_16, int etc. Default: float32.
-
-    Returns:
-        The Tensor of sequence pooling.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import numpy as np
-            >>> import paddle
-            >>> paddle.enable_static()
-
-            >>> dict_size = 20
-            >>> data_t = paddle.static.data(
-            ...     name='word', shape=[-1, 1], dtype='int64', lod_level=1)
-            >>> padding_idx = np.random.randint(1, 10)
-            >>> out = paddle.incubate.layers.fused_embedding_seq_pool(
-            ...     input=data_t,
-            ...     size=[dict_size, 32],
-            ...     param_attr='w',
-            ...     padding_idx=padding_idx,
-            ...     is_sparse=False)
-
-    """
-    helper = LayerHelper('fused_embedding_seq_pool', **locals())
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False
-    )
-    out = helper.create_variable_for_type_inference(dtype)
-    padding_idx = (
-        -1
-        if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (size[0] + padding_idx)
-    )
-    helper.append_op(
-        type='fused_embedding_seq_pool',
-        inputs={'Ids': input, 'W': w},
-        outputs={'Out': out},
-        attrs={
-            'is_sparse': is_sparse,
-            'combiner': combiner,
-            'padding_idx': padding_idx,
-        },
-    )
-    return out
-
-
 def fused_seqpool_cvm(
-    input, pool_type, cvm, pad_value=0.0, use_cvm=True, cvm_offset=2
-):
+    input: Tensor,
+    pool_type: Literal['sum'],
+    cvm: Tensor,
+    pad_value: float = 0.0,
+    use_cvm: bool = True,
+    cvm_offset: int = 2,
+) -> Tensor:
     """
     :api_attr: Static Graph
 
@@ -192,156 +129,26 @@ def fused_seqpool_cvm(
     return outs
 
 
-def multiclass_nms2(
-    bboxes,
-    scores,
-    score_threshold,
-    nms_top_k,
-    keep_top_k,
-    nms_threshold=0.3,
-    normalized=True,
-    nms_eta=1.0,
-    background_label=0,
-    return_index=False,
-    name=None,
-):
-    """
-    **Multiclass NMS2**
-
-    This operator is to do multi-class non maximum suppression (NMS) on
-    boxes and scores.
-    In the NMS step, this operator greedily selects a subset of detection bounding
-    boxes that have high scores larger than score_threshold, if providing this
-    threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-    is larger than -1. Then this operator prunes away boxes that have high IOU
-    (intersection over union) overlap with already selected boxes by adaptive
-    threshold NMS based on parameters of nms_threshold and nms_eta.
-    After NMS step, at most keep_top_k number of total bboxes are to be kept
-    per image if keep_top_k is larger than -1.
-
-    Args:
-        bboxes (Tensor): Two types of bboxes are supported:
-                           1. (Tensor) A 3-D Tensor with shape
-                           [N, M, 4 or 8 16 24 32] represents the
-                           predicted locations of M bounding bboxes,
-                           N is the batch size. Each bounding box has four
-                           coordinate values and the layout is
-                           [xmin, ymin, xmax, ymax], when box size equals to 4.
-                           2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
-                           M is the number of bounding boxes, C is the
-                           class number.
-        scores (Tensor): Two types of scores are supported:
-                           1. (Tensor) A 3-D Tensor with shape [N, C, M]
-                           represents the predicted confidence predictions.
-                           N is the batch size, C is the class number, M is
-                           number of bounding boxes. For each category there
-                           are total M scores which corresponding M bounding
-                           boxes. Please note, M is equal to the 2nd dimension
-                           of BBoxes.
-                           2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
-                           M is the number of bbox, C is the class number.
-                           In this case, input BBoxes should be the second
-                           case with shape [M, C, 4].
-        score_threshold (float): Threshold to filter out bounding boxes with
-                                 low confidence score. If not provided,
-                                 consider all boxes.
-        nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences after the filtering detections based
-                         on score_threshold.
-        keep_top_k (int): Number of total bboxes to be kept per image after NMS
-                          step. -1 means keeping all bboxes after NMS step.
-        nms_threshold (float, optional): The threshold to be used in NMS. Default: 0.3.
-        normalized (bool, optional): Whether detections are normalized. Default: True.
-        nms_eta (float, optional): The threshold to be used in NMS. Default: 1.0.
-        background_label (int, optional): The index of background label, the background
-                                label will be ignored. If set to -1, then all
-                                categories will be considered. Default: 0.
-        return_index(bool, optional): Whether return selected index. Default: False.
-        name(str, optional): Name of the multiclass nms op. Default: None.
-
-    Returns:
-        A tuple with two dimensions of the tensor: (Out, Index) if return_index is True,
-        otherwise, a tuple with one dimension of the tensor(Out) is returned.
-        Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
-        Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
-        or A 2-D LoDTensor with shape [No, 10] represents the detections.
-        Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3,
-        x4, y4]. No is the total number of detections.
-        If all images have not detected results, all elements in LoD will be
-        0, and output tensor is empty (None).
-        Index: Only return when return_index is True. A 2-D LoDTensor with
-        shape [No, 1] represents the selected index which type is Integer.
-        The index is the absolute value cross batches. No is the same number
-        as Out. If the index is used to gather other attribute such as age,
-        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
-        N is the batch size and M is the number of boxes.
-
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.enable_static()
-            >>> boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
-            ...                           dtype='float32', lod_level=1)
-            >>> scores = paddle.static.data(name='scores', shape=[-1, 81],
-            ...                           dtype='float32', lod_level=1)
-            >>> out, index = paddle.incubate.layers.multiclass_nms2(bboxes=boxes,
-            ...                                   scores=scores,
-            ...                                   background_label=0,
-            ...                                   score_threshold=0.5,
-            ...                                   nms_top_k=400,
-            ...                                   nms_threshold=0.3,
-            ...                                   keep_top_k=200,
-            ...                                   normalized=False,
-            ...                                   return_index=True)
-    """
-    helper = LayerHelper('multiclass_nms2', **locals())
-
-    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
-    index = helper.create_variable_for_type_inference(dtype='int')
-    helper.append_op(
-        type="multiclass_nms2",
-        inputs={'BBoxes': bboxes, 'Scores': scores},
-        attrs={
-            'background_label': background_label,
-            'score_threshold': score_threshold,
-            'nms_top_k': nms_top_k,
-            'nms_threshold': nms_threshold,
-            'keep_top_k': keep_top_k,
-            'nms_eta': nms_eta,
-            'normalized': normalized,
-        },
-        outputs={'Out': output, 'Index': index},
-    )
-    output.stop_gradient = True
-    index.stop_gradient = True
-
-    if return_index:
-        return output, index
-    return output
-
-
 def search_pyramid_hash(
-    input,
-    num_emb,
-    space_len,
-    pyramid_layer,
-    rand_len,
-    drop_out_percent,
-    is_training,
-    use_filter,
-    white_list_len,
-    black_list_len,
-    seed,
-    lr,
-    param_attr=None,
-    param_attr_wl=None,
-    param_attr_bl=None,
-    name=None,
-    distribute_update_vars=None,
-    dtype='float32',
-):
+    input: Tensor,
+    num_emb: int,
+    space_len: int,
+    pyramid_layer: int,
+    rand_len: int,
+    drop_out_percent: float,
+    is_training: bool,
+    use_filter: bool,
+    white_list_len: int,
+    black_list_len: int,
+    seed: int,
+    lr: float,
+    param_attr: ParamAttrLike | None = None,
+    param_attr_wl: ParamAttrLike | None = None,
+    param_attr_bl: ParamAttrLike | None = None,
+    name: str | None = None,
+    distribute_update_vars: list[str] | None = None,
+    dtype: DTypeLike = 'float32',
+) -> Tensor:
     """
     **Pyramid hash embedding**
 
@@ -363,13 +170,13 @@ def search_pyramid_hash(
         seed (int): The number of random seed.
         lr (float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
-        param_attr (ParamAttr, optional): To specify the weight parameter property. Default: None, which means the
+        param_attr (ParamAttr|None, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` .
-        param_attr_wl (ParamAttr, optional): Specified parameters of white filter. Default: None.
-        param_attr_bl (ParamAttr, optional): Specified parameters of black filter. Default: None.
-        distribute_update_vars(list[ParamAttr.name], optional): Decided which params should be updated in distribute training.
+        param_attr_wl (ParamAttr|None, optional): Specified parameters of white filter. Default: None.
+        param_attr_bl (ParamAttr|None, optional): Specified parameters of black filter. Default: None.
+        distribute_update_vars(list[ParamAttr.name]|None, optional): Decided which params should be updated in distribute training.
             Used in Distribute Transpiler to create a trainer/server program. Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+        name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` . Default: None.
         dtype (str, optional): The data type of output Tensor, float32. Default: float32.
 
@@ -417,34 +224,54 @@ def search_pyramid_hash(
                     f"Pyramid Hash layer didn't have parameter {param}"
                 )
         distribute_update_vars_str = ",".join(distribute_update_vars)
+    if in_dynamic_or_pir_mode():
+        res, drop_pos = _C_ops.pyramid_hash(
+            input_vars['X'],
+            input_vars['W'],
+            input_vars['WhiteList'],
+            input_vars['BlackList'],
+            num_emb,
+            space_len,
+            pyramid_layer,
+            rand_len,
+            drop_out_percent,
+            int(is_training),
+            use_filter,
+            white_list_len,
+            black_list_len,
+            seed,
+            lr,
+            distribute_update_vars_str,
+        )
+        return res
+    else:
+        res = helper.create_variable_for_type_inference(dtype)
+        drop_pos = helper.create_variable_for_type_inference(dtype)
+        x_temp_out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='pyramid_hash',
+            inputs=input_vars,
+            outputs={"Out": res, "X_Temp_Out": x_temp_out, 'DropPos': drop_pos},
+            attrs={
+                'num_emb': num_emb,
+                'space_len': space_len,
+                'pyramid_layer': pyramid_layer,
+                'rand_len': rand_len,
+                'drop_out_percent': drop_out_percent,
+                'is_training': is_training,
+                'use_filter': use_filter,
+                'white_list_len': white_list_len,
+                'black_list_len': black_list_len,
+                'seed': seed,
+                'lr': lr,
+                'distribute_update_vars': distribute_update_vars_str,
+            },
+        )
 
-    res = helper.create_variable_for_type_inference(dtype)
-    drop_pos = helper.create_variable_for_type_inference(dtype)
-    x_temp_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='pyramid_hash',
-        inputs=input_vars,
-        outputs={"Out": res, "X_Temp_Out": x_temp_out, 'DropPos': drop_pos},
-        attrs={
-            'num_emb': num_emb,
-            'space_len': space_len,
-            'pyramid_layer': pyramid_layer,
-            'rand_len': rand_len,
-            'drop_out_percent': drop_out_percent,
-            'is_training': is_training,
-            'use_filter': use_filter,
-            'white_list_len': white_list_len,
-            'black_list_len': black_list_len,
-            'seed': seed,
-            'lr': lr,
-            'distribute_update_vars': distribute_update_vars_str,
-        },
-    )
-
-    return res
+        return res
 
 
-def shuffle_batch(x, seed=None):
+def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
     """
     This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
 
@@ -494,11 +321,19 @@ def shuffle_batch(x, seed=None):
     op_attrs = {}
     if isinstance(seed, int):
         op_attrs["startup_seed"] = seed
-        seed = helper.create_variable(
-            name=unique_name.generate("shuffle_batch_seed"),
-            dtype="int64",
-            persistable=False,
-        )
+        if in_pir_mode():
+            seed = paddle.full([0], 0, "int64")
+            out, _, _ = _C_ops.shuffle_batch(x, seed, op_attrs["startup_seed"])
+            return out
+        else:
+            seed = helper.create_variable(
+                name=unique_name.generate("shuffle_batch_seed"),
+                dtype="int64",
+                persistable=False,
+            )
+    if in_pir_mode():
+        out, _, _ = _C_ops.shuffle_batch(x, seed, 0)
+        return out
     helper.append_op(
         type='shuffle_batch',
         inputs={'X': x, 'Seed': seed},
@@ -508,7 +343,9 @@ def shuffle_batch(x, seed=None):
     return out
 
 
-def partial_concat(input, start_index=0, length=-1):
+def partial_concat(
+    input: list[Tensor], start_index: int = 0, length: int = -1
+) -> Tensor:
     """
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
@@ -552,8 +389,7 @@ def partial_concat(input, start_index=0, length=-1):
     """
     if not isinstance(input, list):
         warnings.warn(
-            "The type of input in partial_concat should be list, but received %s."
-            % (type(input))
+            f"The type of input in partial_concat should be list, but received {type(input)}."
         )
         input = [input]
     for id, x in enumerate(input):
@@ -564,6 +400,7 @@ def partial_concat(input, start_index=0, length=-1):
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int32',
                 'int64',
                 'complex64',
@@ -586,7 +423,9 @@ def partial_concat(input, start_index=0, length=-1):
     return out
 
 
-def partial_sum(input, start_index=0, length=-1):
+def partial_sum(
+    input: list[Tensor], start_index: int = 0, length: int = -1
+) -> Tensor:
     """
     **PartialSum**
     This Op can sum the vars by specifying the initial position(start_index) and length(length).
@@ -646,7 +485,13 @@ def partial_sum(input, start_index=0, length=-1):
     return out
 
 
-def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
+def tdm_child(
+    x: Tensor,
+    node_nums: int,
+    child_nums: int,
+    param_attr: ParamAttrLike | None = None,
+    dtype: DTypeLike = 'int32',
+) -> tuple[Tensor, Tensor]:
     """
     **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and
@@ -670,7 +515,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         x (Tensor): Tensor contained the node_id information, dtype support int32/int64.
         node_nums (int): Number of total nodes.
         child_nums (int): Maximum number of child nodes per node.
-        param_attr (ParamAttr, optional): To specify the tdm-tree-info parameter property. Default: None, which means the
+        param_attr (ParamAttr|None, optional): To specify the tdm-tree-info parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in: ref: `api_paddle_ParamAttr`, should
             has shape (node_nums, 3 + child_nums), dtype support int32/int64.
             The dimension[1] of tdm-tree-info contains the following:
@@ -718,6 +563,9 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     )
     tree_info.stop_gradient = True
 
+    if in_pir_mode():
+        return _C_ops.tdm_child(x, tree_info, child_nums, c_dtype)
+
     child = helper.create_variable_for_type_inference(dtype=dtype)
     leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
 
@@ -729,6 +577,57 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         stop_gradient=True,
     )
     return (child, leaf_mask)
+
+
+@overload
+def tdm_sampler(
+    x: Tensor,
+    neg_samples_num_list: list[int],
+    layer_node_num_list: list[int],
+    leaf_node_num: int,
+    tree_travel_attr: ParamAttrLike | None = ...,
+    tree_layer_attr: ParamAttrLike | None = ...,
+    output_positive: bool = ...,
+    output_list: Literal[True] = ...,
+    seed: int = ...,
+    tree_dtype: DTypeLike = ...,
+    dtype: DTypeLike = ...,
+) -> tuple[list[Tensor], list[Tensor], list[Tensor]]: ...
+
+
+@overload
+def tdm_sampler(
+    x: Tensor,
+    neg_samples_num_list: list[int],
+    layer_node_num_list: list[int],
+    leaf_node_num: int,
+    tree_travel_attr: ParamAttrLike | None = ...,
+    tree_layer_attr: ParamAttrLike | None = ...,
+    output_positive: bool = ...,
+    output_list: Literal[False] = ...,
+    seed: int = ...,
+    tree_dtype: DTypeLike = ...,
+    dtype: DTypeLike = ...,
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def tdm_sampler(
+    x: Tensor,
+    neg_samples_num_list: list[int],
+    layer_node_num_list: list[int],
+    leaf_node_num: int,
+    tree_travel_attr: ParamAttrLike | None = ...,
+    tree_layer_attr: ParamAttrLike | None = ...,
+    output_positive: bool = ...,
+    output_list: bool = ...,
+    seed: int = ...,
+    tree_dtype: DTypeLike = ...,
+    dtype: DTypeLike = ...,
+) -> (
+    tuple[Tensor, Tensor, Tensor]
+    | tuple[list[Tensor], list[Tensor], list[Tensor]]
+): ...
 
 
 def tdm_sampler(
@@ -771,10 +670,10 @@ def tdm_sampler(
         neg_samples_num_list (list(int)): Number of negative samples per layer.
         layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
         leaf_node_num (int): Number of leaf nodes.
-        tree_travel_attr (ParamAttr, optional): To specify the tdm-travel parameter property. Default: None, which means the
+        tree_travel_attr (ParamAttr|None, optional): To specify the tdm-travel parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr`, should
             has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
-        tree_layer_attr (ParamAttr, optional): To specify the tdm-layer parameter property. Default: None, which means the
+        tree_layer_attr (ParamAttr|None, optional): To specify the tdm-layer parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr`, should
             has shape (node_num, 1), dtype support int32/int64.
         output_positive (bool, optional): Whether to output positive samples (include label and mask )at the same time. Default: True.
@@ -841,10 +740,8 @@ def tdm_sampler(
     if len(neg_samples_num_list) != len(layer_node_num_list):
         raise ValueError(
             "The shape of negative samples list must match the shape of layers. "
-            "But received len of neg_samples_num_list: {},"
-            "and len of layer_node_num_list: {}, please check your input.".format(
-                len(neg_samples_num_list), len(layer_node_num_list)
-            )
+            f"But received len of neg_samples_num_list: {len(neg_samples_num_list)},"
+            f"and len of layer_node_num_list: {len(layer_node_num_list)}, please check your input."
         )
     assert leaf_node_num is not None, "leaf_node_num should not be None here."
 
@@ -858,13 +755,8 @@ def tdm_sampler(
         if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
             raise ValueError(
                 "The number of negative samples must be less than the number of nodes "
-                "in the layer {}, But received negative nums {}, and num of node at layer {} "
-                "is {}, please check your input.".format(
-                    layer_idx,
-                    neg_samples_num_list[layer_idx],
-                    layer_idx,
-                    layer_node_num_list[layer_idx],
-                )
+                f"in the layer {layer_idx}, But received negative nums {neg_samples_num_list[layer_idx]}, and num of node at layer {layer_idx} "
+                f"is {layer_node_num_list[layer_idx]}, please check your input."
             )
     assert (
         leaf_node_num < node_nums
@@ -885,6 +777,18 @@ def tdm_sampler(
         dtype=tree_dtype,
         default_initializer=paddle.nn.initializer.Constant(0),
     )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.tdm_sampler(
+            x,
+            travel,
+            layer,
+            output_positive,
+            neg_samples_num_list,
+            tree_layer_offset_lod,
+            seed,
+            c_dtype,
+        )
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
     out.stop_gradient = True
@@ -957,13 +861,13 @@ def tdm_sampler(
 
 
 def rank_attention(
-    input,
-    rank_offset,
-    rank_param_shape,
-    rank_param_attr,
-    max_rank=3,
-    max_size=0,
-):
+    input: Tensor,
+    rank_offset: Tensor,
+    rank_param_shape: list[int],
+    rank_param_attr: ParamAttrLike,
+    max_rank: int = 3,
+    max_size: int = 0,
+) -> Tensor:
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and
@@ -1025,7 +929,14 @@ def rank_attention(
     return output
 
 
-def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
+def batch_fc(
+    input: Tensor,
+    param_size: list[int],
+    param_attr: ParamAttrLike,
+    bias_size: list[int],
+    bias_attr: ParamAttrLike,
+    act: str | None = None,
+) -> Tensor:
     """
     **Batch FC layer**
     This Op can calculate BatchFC. This is similar to matmul op,
@@ -1089,132 +1000,16 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     return helper.append_activation(pre_act)
 
 
-def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
-    r"""
-    **Pull Box Extended Sparse Layer**
-    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
-    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
-    :attr:`input`.
-
-    Args:
-        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
-        size (int): The embedding size parameter, which indicates the size of
-            each embedding vector respectively.
-        extend_size (int, optional): The embedding size parameter in extended dim,
-            which indicates the size of each embedding vector respectively. Default is 64.
-        dtype (str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
-
-    Returns:
-        Tensor: The tensor storing the embeddings of the supplied inputs.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.enable_static()
-
-            >>> data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
-            >>> emb, emb_ex = paddle.incubate.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
-    """
-    helper = LayerHelper('pull_box_extended_sparse', **locals())
-    helper.input_dtype()
-    inputs = helper.multiple_input()
-    outs = [
-        helper.create_variable_for_type_inference(dtype)
-        for i in range(len(inputs))
-    ]
-    outs_extend = [
-        helper.create_variable_for_type_inference(dtype)
-        for i in range(len(inputs))
-    ]
-    helper.append_op(
-        type='pull_box_extended_sparse',
-        inputs={'Ids': inputs},
-        outputs={'Out': outs, 'OutExtend': outs_extend},
-        attrs={'emb_size': size, 'emb_extended_size': extend_size},
-    )
-    if len(outs) == 1:
-        return outs[0], outs_extend[0]
-    return outs, outs_extend
-
-
-def bilateral_slice(x, guide, grid, has_offset, name=None):
-    """
-    :alias_main: paddle.nn.functional.bilateral_slice
-        :alias: paddle.nn.functional.bilateral_slice,paddle.nn.functional.vision.bilateral_slice
-        :old_api: paddle.base.layers.bilateral_slice
-
-    This operation implements bilateral slicing on the input according to the guide map.
-    For more information of bilateral slicing, please refer to Deep Bilateral Learning for Real-Time Image Enhancement <https://groups.csail.mit.edu/graphics/hdrnet/data/hdrnet.pdf>_
-
-    Args:
-        x (Tensor): The input tensor, which is a 4-D tensor with shape
-                     [N, C, H, W], N is the batch size, C is the channel
-                     number, H and W is the feature height and width.
-                     The data type is float32 and float64.
-        guide (Tensor): Input grid tensor of shape [N, H, W]. The
-                        data type is float32 and float64.
-        grid (Tensor): Input grid tensor of shape [N, C, D, H, W]. The
-                        data type is float32 and float64.
-        has_offset (bool): Whether to slice with affine offset.
-        name (str, optional): For detailed information, please refer
-                             to :ref:`api_guide_Name`. Usually name is no need to set and
-                             None by default.
-
-    Returns:
-        Tensor: Output of shape [N, C, H, W]. The data type is same as input tensor.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.enable_static()
-
-            >>> x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
-            >>> guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')
-            >>> grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
-
-            >>> # without offset
-            >>> output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=False)
-
-            >>> # has offset
-            >>> output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=True)
-
-    """
-    if paddle.in_dynamic_mode():
-        attrs = ('has_offset', has_offset)
-        return _legacy_C_ops.bilateral_slice(x, grid, guide, *attrs)
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'bilateral_slice')
-    check_variable_and_dtype(
-        guide, 'guide', ['float32', 'float64'], 'bilateral_slice'
-    )
-    check_variable_and_dtype(
-        grid, 'grid', ['float32', 'float64'], 'bilateral_slice'
-    )
-    helper = LayerHelper("bilateral_slice", **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    inputs = {'X': x, 'Guide': guide, 'Grid': grid}
-    helper.append_op(
-        type='bilateral_slice',
-        inputs=inputs,
-        attrs={'has_offset': has_offset},
-        outputs={'Out': out},
-    )
-    return out
-
-
 def correlation(
-    x,
-    y,
-    pad_size,
-    kernel_size,
-    max_displacement,
-    stride1,
-    stride2,
-    corr_type_multiply=1,
-):
+    x: Tensor,
+    y: Tensor,
+    pad_size: int,
+    kernel_size: int,
+    max_displacement: int,
+    stride1: int,
+    stride2: int,
+    corr_type_multiply: int = 1,
+) -> Tensor:
     """
 
     This operation compute correlation of two tensor.
@@ -1295,17 +1090,17 @@ def correlation(
 
 
 def fused_bn_add_act(
-    x,
-    y,
-    momentum=0.9,
-    epsilon=1e-05,
-    param_attr=None,
-    bias_attr=None,
-    moving_mean_name=None,
-    moving_variance_name=None,
-    act=None,
-    name=None,
-):
+    x: Tensor,
+    y: Tensor,
+    momentum: float | Tensor = 0.9,
+    epsilon: float = 1e-05,
+    param_attr: ParamAttrLike | None = None,
+    bias_attr: ParamAttrLike | None = None,
+    moving_mean_name: str | None = None,
+    moving_variance_name: str | None = None,
+    act: str | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     This Op performs batch norm on input x, and adds the result to input y. Then
     it performs activation on the sum. The data format of inputs must be NHWC
@@ -1317,31 +1112,31 @@ def fused_bn_add_act(
         y (Tensor): The rank of input tensor can be 2, 3, 4, 5. The data type
             is float16.
         momentum (float|Tensor, optional): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a tensor with
-            shape [1] and data type as float32. The updated formula is:
+            moving_var computation. This should be a float number or a 0-D Tensor with
+            shape [] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
         epsilon (float, optional): A value added to the denominator for
             numerical stability. Default is 1e-05.
-        param_attr (ParamAttr, optional): The parameter attribute for Parameter `scale`
+        param_attr (ParamAttr|None, optional): The parameter attribute for Parameter `scale`
             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
             If the Initializer of the param_attr is not set, the parameter is initialized
             with Xavier. Default: None.
-        bias_attr (ParamAttr, optional): The parameter attribute for the bias of batch_norm.
+        bias_attr (ParamAttr|None, optional): The parameter attribute for the bias of batch_norm.
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
             If the Initializer of the bias_attr is not set, the bias is initialized zero.
             Default: None.
-        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. If it
+        moving_mean_name (str|None, optional): The name of moving_mean which store the global Mean. If it
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
             will save global mean with the string. Default: None.
-        moving_variance_name (str, optional): The name of the moving_variance which store the global Variance.
+        moving_variance_name (str|None, optional): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
             will save global variance with the string. Default: None.
-        act (string, optional): Activation type, linear|relu|prelu|... Default: None.
-        name (str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
+        act (str|None, optional): Activation type, linear|relu|prelu|... Default: None.
+        name (str:None, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default. Default: None.
 
     Examples:
@@ -1500,8 +1295,13 @@ def fused_bn_add_act(
 
 
 def pow2_decay_with_linear_warmup(
-    warmup_steps, total_steps, base_lr, end_lr, dtype='float32', name=None
-):
+    warmup_steps: float,
+    total_steps: float,
+    base_lr: float,
+    end_lr: float,
+    dtype: DTypeLike = 'float32',
+    name: str | None = None,
+) -> Tensor:
     if paddle.in_dynamic_mode():
         raise NotImplementedError(
             "pow2_decay_with_linear_warmup does not support dygraph mode yet."

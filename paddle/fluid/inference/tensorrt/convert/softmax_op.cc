@@ -58,10 +58,9 @@ class SoftMaxOpConverter : public OpConverter {
     uint32_t axes = std::max(0, input_dims - 3);
     // TODO(cryoco): Poor workaround. Fix padded dims problem when TRT layers
     // support Nd.
-    // Tips: Dynammic shape alreay fixes.
+    // Tips: Dynamic shape already fixes.
     int padded_dims = 0;
-    int explicit_batch = 0;
-    if (engine_->with_dynamic_shape()) explicit_batch = 1;
+    int explicit_batch = 1;
     for (int i = input_dims - 1; i > explicit_batch; i--) {
       if (input_shape.d[i] == 1) {
         padded_dims += 1;
@@ -69,18 +68,10 @@ class SoftMaxOpConverter : public OpConverter {
         break;
       }
     }
-    if (!engine_->with_dynamic_shape()) {
-      if (axis < 0) {
-        axes = input_dims + axis - padded_dims;
-      } else {
-        axes = axis - 1;
-      }
+    if (axis < 0) {
+      axes = input_dims + axis;
     } else {
-      if (axis < 0) {
-        axes = input_dims + axis;
-      } else {
-        axes = axis;
-      }
+      axes = axis;
     }
     layer->setAxes(1 << axes);
 
@@ -92,10 +83,10 @@ class SoftMaxOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
       reshaped_layer->setReshapeDimensions(
           engine_->GetITensor(op_desc.Input("X")[0])->getDimensions());
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           reshaped_layer, "reshape_softmax_reshape", {output_name}, test_mode);
     } else {
-      RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
     }
   }
 };

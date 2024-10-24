@@ -503,13 +503,13 @@ void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
   auto cudnn_version = phi::backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8800,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports CUDNN version >= 8800, "
                         "but got %d.",
                         cudnn_version));
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
@@ -527,15 +527,15 @@ void FusedScaleBiasReluConvBnKernel(const Context& dev_ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                    common::errors::InvalidArgument(
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // check optional inputs
   if (fuse_prologue) {
     PADDLE_ENFORCE_EQ(
         scale && bias,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "\"scale\" and \"bias\" must be provided "
             "when fuse_prologue = true. Got scale = %d; bias = %d.",
             scale,

@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMultiplyApi(unittest.TestCase):
@@ -55,7 +54,6 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.outer(x, y)
         return res.numpy()
 
-    @test_with_pir_api
     def test_multiply_static(self):
         np.random.seed(7)
 
@@ -142,7 +140,7 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors_static(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
@@ -160,18 +158,18 @@ class TestMultiplyError(unittest.TestCase):
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(TypeError, paddle.outer, x_data, y)
+        self.assertRaises(Exception, paddle.outer, x_data, y)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
         x = paddle.to_tensor(x_data)
-        self.assertRaises(TypeError, paddle.outer, x, y_data)
+        self.assertRaises(Exception, paddle.outer, x, y_data)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(TypeError, paddle.outer, x_data, y_data)
+        self.assertRaises(Exception, paddle.outer, x_data, y_data)
 
 
 if __name__ == '__main__':

@@ -27,9 +27,8 @@ void GatherNdKernel(const Context &ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   ctx.template Alloc<T>(out);
 
-  if (x.numel() == 0) {
-    return;
-  }
+  if (x.numel() == 0 || out->numel() == 0) return;
+  if (index.dims()[0] == 0 && index.numel() == 0) return;
 
   if (index.numel() == 0) {
     auto index_dims = index.dims();
@@ -39,7 +38,7 @@ void GatherNdKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         end_size,
         0,
-        phi::errors::InvalidArgument("end_size[%d] should be 0", end_size));
+        common::errors::InvalidArgument("end_size[%d] should be 0", end_size));
     // remain dim
     auto remain_ddim = common::slice_ddim(index_dims, 0, index_dims_size - 1);
     int64_t remain_numel = common::product(remain_ddim);
@@ -49,7 +48,7 @@ void GatherNdKernel(const Context &ctx,
     PADDLE_ENFORCE_EQ(
         x_numel * remain_numel,
         y_numel,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "x_numel[%d] * remain_numel[%d] should match y_numel[%d]",
             x_numel,
             remain_numel,
@@ -69,14 +68,14 @@ void GatherNdKernel(const Context &ctx,
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      phi::errors::InvalidArgument("Index holds the wrong type, it holds [%s],"
-                                   "but desires to be [%s] or [%s]",
-                                   index_type,
-                                   DataType::INT32,
-                                   DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s],"
+                        "but desires to be [%s] or [%s]",
+                        index_type,
+                        DataType::INT32,
+                        DataType::INT64));
 
   auto x_shape = common::vectorize<int>(x.dims());
   auto index_shape = common::vectorize<int>(index.dims());

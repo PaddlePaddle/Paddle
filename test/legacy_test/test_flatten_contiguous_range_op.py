@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestFlattenOp(OpTest):
@@ -466,7 +465,6 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         np_x = np.random.rand(2, 3, 4, 4).astype('float32')
@@ -487,7 +485,6 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -578,6 +575,29 @@ class TestFlatten0DTensorOpError(unittest.TestCase):
             out = paddle.flatten(x_var, start_axis=0, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError2)
+
+
+class TestFlattenZeroSizedTensorAPI(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        data = np.random.randn(2, 3, 0)
+        x = paddle.to_tensor(data)
+        out = paddle.flatten(x)
+        out_np = data.flatten()
+        np.testing.assert_equal(out.numpy(), out_np)
+
+    def test_static(self):
+        paddle.enable_static()
+        data = np.random.randn(2, 3, 0)
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3, 0], dtype='float64')
+            out = paddle.flatten(x)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetch_out = exe.run(main_prog, feed={"x": data}, fetch_list=[out])[0]
+        out_np = data.flatten()
+        np.testing.assert_equal(fetch_out, out_np)
 
 
 if __name__ == "__main__":

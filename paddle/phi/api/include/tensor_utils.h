@@ -35,6 +35,7 @@ using Deleter = std::function<void(void*)>;
  *
  * @param data The pointer to the memory buffer.
  * @param shape The dims of the tensor.
+ * @param strides The strides of the tensor.
  * @param dtype The data type of the tensor, should correspond to data type of
  *              `data`. See PD_FOR_EACH_DATA_TYPE in `phi/common/data_type.h`
  * @param layout The data layout of the tensor.
@@ -54,6 +55,13 @@ PADDLE_API Tensor from_blob(void* data,
                             phi::DataLayout layout = phi::DataLayout::NCHW,
                             const phi::Place& place = phi::Place(),
                             const Deleter& deleter = nullptr);
+PADDLE_API Tensor from_blob(void* data,
+                            const phi::IntArray& shape,
+                            const phi::IntArray& strides,
+                            phi::DataType dtype,
+                            phi::DataLayout layout = phi::DataLayout::NCHW,
+                            const phi::Place& place = phi::Place(),
+                            const Deleter& deleter = nullptr);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 /**
@@ -62,7 +70,7 @@ PADDLE_API Tensor from_blob(void* data,
  * @note Input of `Reshard` should be a `paddle::Tensor` whose impl is
  * shared_ptr of DistTensor. According to the given DistAttr, input will be
  * reshard to wanted distributed state. And it will return shared_ptr of a new
- * DistTensor as outptut.
+ * DistTensor as output.
  *
  * @param input The input tensor to be resharded.
  * @param dist_attr The dist_attr to be resharded.

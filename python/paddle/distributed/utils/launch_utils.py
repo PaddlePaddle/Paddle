@@ -20,9 +20,9 @@ import subprocess
 import sys
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
+from paddle.utils import strtobool
 
 from ..utils.log_utils import get_logger
 
@@ -80,9 +80,7 @@ def get_gpus(selected_gpus):
             for x in selected_gpus.split(','):
                 assert x in cuda_visible_devices_list, (
                     "Can't find "
-                    "your selected_gpus {} in CUDA_VISIBLE_DEVICES[{}].".format(
-                        x, cuda_visible_devices
-                    )
+                    f"your selected_gpus {x} in CUDA_VISIBLE_DEVICES[{cuda_visible_devices}]."
                 )
             gpus = [
                 cuda_visible_devices_list.index(x.strip())
@@ -111,9 +109,7 @@ class Hdfs:
         )
 
     def __str__(self):
-        return "hdfs_ugi:{} hdfs_name:{} hdfs_path{}".format(
-            self.hdfs_ugi, self.hdfs_name, self.hdfs_path
-        )
+        return f"hdfs_ugi:{self.hdfs_ugi} hdfs_name:{self.hdfs_name} hdfs_path{self.hdfs_path}"
 
     def __eq__(self, n):
         return (
@@ -134,12 +130,7 @@ class Cluster:
         self.job_stage_flag = None
 
     def __str__(self):
-        return "job_server:{} pods:{} job_stage_flag:{} hdfs:{}".format(
-            self.job_server,
-            [str(pod) for pod in self.pods],
-            self.job_stage_flag,
-            self.hdfs,
-        )
+        return f"job_server:{self.job_server} pods:{[str(pod) for pod in self.pods]} job_stage_flag:{self.job_stage_flag} hdfs:{self.hdfs}"
 
     def __eq__(self, cluster):
         if len(self.pods) != len(cluster.pods):
@@ -245,16 +236,7 @@ class Pod:
         self.gpus = []
 
     def __str__(self):
-        return (
-            "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
-                self.rank,
-                self.id,
-                self.addr,
-                self.port,
-                self.gpus,
-                [str(t) for t in self.trainers],
-            )
-        )
+        return f"rank:{self.rank} id:{self.id} addr:{self.addr} port:{self.port} visible_gpu:{self.gpus} trainers:{[str(t) for t in self.trainers]}"
 
     def __eq__(self, pod):
         if (
@@ -310,7 +292,7 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])
-            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.endpoint = f"{cur_node_endpoints[i]}"
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -410,19 +392,21 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
         backend = get_backend_by_compile_flag()  # for compatibility
     if backend == 'bkcl':
         proc_env = {
-            "FLAGS_selected_xpus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_xpus": "{}".format(
+                ",".join([str(g) for g in trainer.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'nccl':
         proc_env = {
-            "FLAGS_selected_gpus": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_gpus": "{}".format(
+                ",".join([str(g) for g in trainer.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
@@ -430,7 +414,7 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
         # NOTE (xiongkun) default fall back into cpu only
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_BACKEND": backend,  # only add here, other will be auto
@@ -440,10 +424,11 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
 
         custom_device_name = core.get_all_custom_device_type()[0]
         proc_env = {
-            f"FLAGS_selected_{custom_device_name}s": "%s"
-            % ",".join([str(g) for g in trainer.gpus]),
+            f"FLAGS_selected_{custom_device_name}s": "{}".format(
+                ",".join([str(g) for g in trainer.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{trainer.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
@@ -481,7 +466,7 @@ def start_local_trainers(
 
         logger.debug(f"trainer proc env:{current_env}")
 
-        cmd = [sys.executable, "-u", training_script] + training_script_args
+        cmd = [sys.executable, "-u", training_script, *training_script_args]
 
         logger.info(f"start trainer proc:{cmd} env:{proc_env}")
 
@@ -516,8 +501,7 @@ def pull_worker_log(tp):
                 except UnicodeEncodeError:
                     sys.stdout.write(
                         'UnicodeEncodeError occurs at this line. '
-                        'Please refer to the original log file "%s"\n'
-                        % tp.log_fn.name
+                        f'Please refer to the original log file "{tp.log_fn.name}"\n'
                     )
             tp.log_offset = fin.tell()
 
@@ -549,17 +533,13 @@ def watch_local_trainers(procs, nranks):
         raise
     except SystemExit:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
-                nranks, error_rank
-            )
+            f"ABORT!!! Out of all {nranks} trainers, the trainer process with rank={error_rank} was aborted. Please check its log."
         )
         terminate_local_procs(procs)
         raise
     except:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
-                nranks, error_rank
-            )
+            f"ABORT!!! Out of all {nranks} trainers, the trainer process with rank={error_rank} was aborted. Please check its log."
         )
         terminate_local_procs(procs)
         raise

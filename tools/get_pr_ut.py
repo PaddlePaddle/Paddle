@@ -93,9 +93,7 @@ class PRChecker:
             if code == 0:
                 return True
             print(
-                'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
-                    url, ix, ix * 10, proxy
-                )
+                f'PREC download {url} error, retry {ix} time(s) after {ix * 10} secs.[proxy_option={proxy}]'
             )
             time.sleep(ix * 10)
             ix += 1
@@ -119,9 +117,7 @@ class PRChecker:
             except Exception as e:
                 print(e)
                 print(
-                    'PREC download {} error, retry {} time(s) after {} secs.[proxy_option={}]'.format(
-                        url, ix, ix * 10, cur_proxy
-                    )
+                    f'PREC download {url} error, retry {ix} time(s) after {ix * 10} secs.[proxy_option={cur_proxy}]'
                 )
                 continue
             else:
@@ -146,7 +142,7 @@ class PRChecker:
             if file_count == 30:  # if pr file count = 31, nend to run all case
                 break
             page += 1
-        print("pr modify files: %s" % file_dict)
+        print(f"pr modify files: {file_dict}")
         return file_dict
 
     def get_is_white_file(self, filename):
@@ -280,7 +276,7 @@ class PRChecker:
                 all_counts = line.split()[-1]
         return int(all_counts)
 
-    def file_is_unnit_test(self, unittest_path):
+    def file_is_unit_test(self, unittest_path):
         # get all testcases by ctest-N
         all_ut_file = PADDLE_ROOT + 'build/all_ut_list'
         # all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
@@ -324,7 +320,7 @@ class PRChecker:
         filterFiles = []
         file_list = []
         file_dict = self.get_pr_files()
-        if len(file_dict) == 30:  # if pr file count = 31, nend to run all case
+        if len(file_dict) == 30:  # if pr file count = 31, need to run all case
             return ''
         for filename in file_dict:
             if filename.startswith(PADDLE_ROOT + 'python/'):
@@ -373,18 +369,14 @@ class PRChecker:
             PRECISION_TEST_Cases_ratio = format(
                 float(len(ut_list)) / float(self.get_all_count()), '.2f'
             )
-            print("filterFiles: %s" % filterFiles)
+            print(f"filterFiles: {filterFiles}")
             print("ipipe_log_param_PRECISION_TEST: true")
+            print(f"ipipe_log_param_PRECISION_TEST_Cases_count: {len(ut_list)}")
             print(
-                "ipipe_log_param_PRECISION_TEST_Cases_count: %s" % len(ut_list)
+                f"ipipe_log_param_PRECISION_TEST_Cases_ratio: {PRECISION_TEST_Cases_ratio}"
             )
             print(
-                "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
-                % PRECISION_TEST_Cases_ratio
-            )
-            print(
-                "The unittests in prec delta is shown as following: %s"
-                % ut_list
+                f"The unittests in prec delta is shown as following: {ut_list}"
             )
             return '\n'.join(ut_list)
         else:
@@ -423,28 +415,29 @@ class PRChecker:
                                         f_judge_in_added_ut = True
                             if f_judge_in_added_ut:
                                 print(
-                                    "Adding new unit tests not hit mapFiles: %s"
-                                    % f_judge
+                                    f"Adding new unit tests not hit mapFiles: {f_judge}"
                                 )
                             else:
                                 notHitMapFiles.append(f_judge)
                         elif file_dict[f] in ['removed']:
-                            print("remove file not hit mapFiles: %s" % f_judge)
+                            print(f"remove file not hit mapFiles: {f_judge}")
                         else:
                             if self.is_only_comment(f):
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
-                            if self.file_is_unnit_test(f_judge):
+                            if self.file_is_unit_test(f_judge):
                                 ut_list.append(
                                     os.path.split(f_judge)[1].split(".")[0]
                                 )
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
-                        notHitMapFiles.append(f_judge) if file_dict[
-                            f
-                        ] != 'removed' else print(
-                            "remove file not hit mapFiles: %s" % f_judge
+                        (
+                            notHitMapFiles.append(f_judge)
+                            if file_dict[f] != 'removed'
+                            else print(
+                                f"remove file not hit mapFiles: {f_judge}"
+                            )
                         )
                 else:
                     if file_dict[f] not in ['removed']:
@@ -461,9 +454,9 @@ class PRChecker:
             ut_list = list(set(ut_list))
             if len(notHitMapFiles) != 0:
                 print("ipipe_log_param_PRECISION_TEST: false")
-                print("notHitMapFiles: %s" % notHitMapFiles)
+                print(f"notHitMapFiles: {notHitMapFiles}")
                 if len(filterFiles) != 0:
-                    print("filterFiles: %s" % filterFiles)
+                    print(f"filterFiles: {filterFiles}")
                 return ''
             else:
                 if ut_list:
@@ -479,21 +472,19 @@ class PRChecker:
                     else:
                         print('PREC download prec_delta failed')
                         sys.exit(1)
-                    print("hitMapFiles: %s" % hitMapFiles)
+                    print(f"hitMapFiles: {hitMapFiles}")
                     print("ipipe_log_param_PRECISION_TEST: true")
                     print(
-                        "ipipe_log_param_PRECISION_TEST_Cases_count: %s"
-                        % len(ut_list)
+                        f"ipipe_log_param_PRECISION_TEST_Cases_count: {len(ut_list)}"
                     )
                     PRECISION_TEST_Cases_ratio = format(
                         float(len(ut_list)) / float(self.get_all_count()), '.2f'
                     )
                     print(
-                        "ipipe_log_param_PRECISION_TEST_Cases_ratio: %s"
-                        % PRECISION_TEST_Cases_ratio
+                        f"ipipe_log_param_PRECISION_TEST_Cases_ratio: {PRECISION_TEST_Cases_ratio}"
                     )
                     if len(filterFiles) != 0:
-                        print("filterFiles: %s" % filterFiles)
+                        print(f"filterFiles: {filterFiles}")
                 return '\n'.join(ut_list)
 
 

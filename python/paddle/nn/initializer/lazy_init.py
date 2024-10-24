@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ...base import framework
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
 
 __all__ = ["LazyGuard"]
 
@@ -110,7 +118,7 @@ class LazyGuard:
             ...     param.initialize()
     """
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """
         Construct instance from class_obj by Lazy Initializing parameters.
 
@@ -129,5 +137,10 @@ class LazyGuard:
         """
         lazy_init_helper().enable()
 
-    def __exit__(self, *args, **kwargs):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         lazy_init_helper().disable()

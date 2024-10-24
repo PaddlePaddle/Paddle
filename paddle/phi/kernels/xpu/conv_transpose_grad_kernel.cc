@@ -69,9 +69,9 @@ void Conv2dTransposeGradKernel(const Context& ctx,
   if (dfilter) {
     ctx.template Alloc<T>(dfilter);
   }
-  int fccal_type = FCCalcType<T>();
-  if (fccal_type == XPUFCCalcType::FC_INT32 ||
-      fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  int fc_calc_type = FCCalcType<T>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32 ||
+      fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     // xpu api do not support int31 quantization now.
     int r = xpu::conv2d_transpose_grad<float, float, float, int_with_ll_t>(
         ctx.x_context(),

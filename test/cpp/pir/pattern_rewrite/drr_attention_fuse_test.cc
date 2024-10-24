@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/constant_folding_pass.h"
-#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/fluid/pir/transforms/fusion/multihead_matmul_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
 
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -153,13 +153,16 @@ TEST(DrrTest, AttentionFuse) {
   pm.AddPass(pir::CreateMultiHeadMatmulFusePass());
   std::unique_ptr<pir::Pass> constant_folding_pass =
       pir::CreateConstantFoldingPass();
-  constant_folding_pass->Set(pir::kPlaceAttr, new phi::Place{phi::GPUPlace{}});
-  constant_folding_pass->Set(pir::kParamScopeAttr,
+  constant_folding_pass->Set(pir::Pass::kPlaceAttr,
+                             new phi::Place{phi::GPUPlace{}});
+  constant_folding_pass->Set(pir::Pass::kParamScopeAttr,
                              new paddle::framework::Scope{});
   pm.AddPass(std::move(constant_folding_pass));
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 2u);
 }

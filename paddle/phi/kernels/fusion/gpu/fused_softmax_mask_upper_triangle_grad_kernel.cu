@@ -249,7 +249,7 @@ void FusedSoftmaxMaskFuseUpperTriangleGradKernel(const Context& dev_ctx,
                                            key_seq_len);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented("Too large sequence length."));
+      PADDLE_THROW(common::errors::Unimplemented("Too large sequence length."));
       break;
   }
 }

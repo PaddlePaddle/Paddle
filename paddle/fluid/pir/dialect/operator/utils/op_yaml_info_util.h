@@ -98,8 +98,9 @@ struct OpRunTimeInfo {
   std::vector<std::string> skip_transform_inputs;
   pir::AttributeMap extra_args_default_value;
   std::vector<std::string> data_format_tensors;
-  bool is_onednn_only;
-  bool dynamic_fallback;
+  bool is_onednn_only = false;
+  bool dynamic_fallback = false;
+  OpRunTimeInfo() = default;
 
   OpRunTimeInfo(const std::string& infer_meta_func,
                 const std::vector<std::string>& infer_meta_param,

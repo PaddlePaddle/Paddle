@@ -30,10 +30,11 @@ def call_nonzero(x):
 class TestNonZeroAPI(unittest.TestCase):
     def test_nonzero_api_as_tuple(self):
         paddle.enable_static()
-        data = np.array([[True, False], [False, True]])
+        data = np.array([[1, 0], [0, 1]], dtype='float32')
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
@@ -41,48 +42,51 @@ class TestNonZeroAPI(unittest.TestCase):
             exe = base.Executor(base.CPUPlace())
 
             (res,) = exe.run(
-                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+                feed={'x': data}, fetch_list=[z], return_numpy=False
             )
         expect_out = np.array([[0, 0], [1, 1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
-        data = np.array([True, True, False])
+        data = np.array([1, 1, 0], dtype="float32")
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
             z = paddle.concat(list(y), axis=1)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+                feed={'x': data}, fetch_list=[z], return_numpy=False
             )
         expect_out = np.array([[0], [1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_nonzero_api(self):
         paddle.enable_static()
-        data = np.array([[True, False], [False, True]])
+        data = np.array([[1, 0], [0, 1]], dtype="float32")
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': data}, fetch_list=[y.name], return_numpy=False
+                feed={'x': data}, fetch_list=[y], return_numpy=False
             )
         expect_out = np.array([[0, 0], [1, 1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
-        data = np.array([True, True, False])
+        data = np.array([1, 1, 0], dtype="float32")
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
-                feed={'x': data}, fetch_list=[y.name], return_numpy=False
+                feed={'x': data}, fetch_list=[y], return_numpy=False
             )
         expect_out = np.array([[0], [1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
@@ -110,7 +114,7 @@ class TestNonzeroOp(OpTest):
         self.outputs = self.return_outputs()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def init_shape(self):
         self.shape = [8, 8]
@@ -158,7 +162,7 @@ class TestNonzeroBF16(OpTest):
         self.outputs = self.return_outputs()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def init_shape(self):
         self.shape = [12, 9]

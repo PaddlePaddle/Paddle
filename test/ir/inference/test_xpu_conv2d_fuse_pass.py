@@ -20,7 +20,13 @@ import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+from paddle.base import core
 
+
+@unittest.skipIf(
+    core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Unsupported on XPU3",
+)
 class TestConv2dXPUFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)

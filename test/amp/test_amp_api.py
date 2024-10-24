@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from contextlib import contextmanager
 
 import numpy as np
 from amp_base_models import AmpTestBase
@@ -25,18 +26,33 @@ from paddle.static import amp
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
+)
 class TestAutoCast(AmpTestBase):
-    def setUp(self):
+    def init_net(self):
         self._conv = paddle.nn.Conv2D(
             in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
         )
         self._linear = paddle.nn.Linear(in_features=4, out_features=4)
 
     def test_amp_OD_level(self):
+        self.init_net()
         with paddle.amp.auto_cast(level='OD'):
             out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
@@ -45,6 +61,23 @@ class TestAutoCast(AmpTestBase):
         self.assertEqual(out1.dtype, paddle.float16)
         self.assertEqual(out2.dtype, paddle.float32)
         self.assertEqual(out3.dtype, paddle.float32)
+
+    def test_pir_amp_OD_level(self):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                self.init_net()
+                with paddle.amp.auto_cast(level='OD'):
+                    out1 = self._conv(
+                        paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+                    )
+                    out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
+                    out3 = self._linear(out2)
+
+                self.assertEqual(out1.dtype, core.DataType.FLOAT16)
+                self.assertEqual(out2.dtype, core.DataType.FLOAT32)
+                self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
 
 class SimpleConvNet(nn.Layer):
@@ -63,9 +96,23 @@ class SimpleConvNet(nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestStaticDecorate(AmpTestBase):
     def check_results(
@@ -101,7 +148,12 @@ class TestStaticDecorate(AmpTestBase):
             op_stats_list[0], expected_fp16_calls=expected_op_calls
         )
 
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
 
         max_iters = 2
@@ -128,20 +180,35 @@ class TestStaticDecorate(AmpTestBase):
             "matmul_v2": 1,
             "reduce_mean": 0,
         }
-        self.check_results(
-            True,
-            'float16',
-            'OD',
-            use_promote=True,
-            expected_op_calls=expected_fp16_calls,
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.check_results(
+                True,
+                'float16',
+                'OD',
+                use_promote=True,
+                expected_op_calls=expected_fp16_calls,
+            )
         paddle.disable_static()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestGradScaler(AmpTestBase):
     def test_amp_grad_scaler(self):
@@ -169,18 +236,85 @@ class TestGradScaler(AmpTestBase):
         self.assertTrue('scale' not in op_list)
         self.assertTrue('check_finite_and_unscale' not in op_list)
 
+    def test_pir_amp_grad_scaler(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                model = paddle.nn.Conv2D(3, 2, 3)
+                optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.01, parameters=model.parameters()
+                )
+                model, optimizer = paddle.amp.decorate(
+                    models=model,
+                    optimizers=optimizer,
+                )
+                scaler = paddle.amp.GradScaler()
+                data = paddle.static.data('data', [1, 3, 8, 8], dtype='float32')
+
+                with paddle.amp.auto_cast(
+                    custom_black_list=['conv2d'], dtype='bfloat16'
+                ):
+                    out = model(data)
+                    loss = out.mean()
+                scaled = scaler.scale(loss)
+                scaler.minimize(optimizer, scaled)
+
+                if paddle.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                elif paddle.device.is_compiled_with_xpu():
+                    place = paddle.device.XPUPlace(0)
+                else:
+                    raise ValueError("Only support CUDA or XPU Place.")
+                exe = paddle.static.Executor(place)
+                exe.run(startup)
+                paddle.amp.debugging.enable_operator_stats_collection()
+                exe.run(
+                    main,
+                    feed={'data': np.random.rand(1, 3, 8, 8).astype('float32')},
+                    fetch_list=[loss],
+                )
+                paddle.amp.debugging.disable_operator_stats_collection()
+                op_list = paddle.base.core.get_low_precision_op_list()
+
+                self.assertEqual(scaler._enable, False)
+                self.assertEqual(scaler._use_dynamic_loss_scaling, False)
+                self.assertTrue('pd_op.scale' not in op_list)
+                self.assertTrue(
+                    'pd_op.check_finite_and_unscale_' not in op_list
+                )
+
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestFp16Guard(AmpTestBase):
     def test_fp16_guard(self):
         paddle.enable_static()
 
         def run_example_code():
-            place = paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -232,7 +366,7 @@ class TestFp16Guard(AmpTestBase):
 
             x_fp32 = np.random.random(size=[1, 1, 28, 28]).astype("float32")
             (loss_data,) = exe.run(
-                main_program, feed={"X": x_fp32}, fetch_list=[loss.name]
+                main_program, feed={"X": x_fp32}, fetch_list=[loss]
             )
 
             self.assertEqual(
@@ -254,7 +388,14 @@ class TestFp16Guard(AmpTestBase):
             paddle.is_compiled_with_cuda()
             and len(paddle.static.cuda_places()) > 0
         ):
-            run_example_code()
+            with paddle.pir_utils.OldIrGuard():
+                run_example_code()
+        elif (
+            paddle.is_compiled_with_xpu()
+            and len(paddle.static.xpu_places()) > 0
+        ):
+            with paddle.pir_utils.OldIrGuard():
+                run_example_code()
         paddle.disable_static()
 
 
@@ -273,13 +414,39 @@ class SimpleModelIncludeSetValue(nn.Layer):
         return z
 
 
+# Copy from ../dygraph_to_static/dygraph_to_static_utils.py
+@contextmanager
+def pir_dygraph_guard():
+    in_dygraph_mode = paddle.in_dynamic_mode()
+    with paddle.pir_utils.IrGuard():
+        if in_dygraph_mode:
+            paddle.disable_static()
+        yield
+
+
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestDy2STWithSetValue(AmpTestBase):
     def test_op_called_as_expected(self):
+        if paddle.framework.use_pir_api():
+            return
         expected_fp16_calls = {
             "cast": 1,
             "layer_norm": 1,
@@ -292,7 +459,7 @@ class TestDy2STWithSetValue(AmpTestBase):
         func = paddle.jit.to_static(func, full_graph=True)
         input = paddle.randn((2, 3))
 
-        with paddle.amp.auto_cast(level='O2'):
+        with paddle.amp.auto_cast(level='O2', use_promote=False):
             res = func(input)
             loss = res.sum()
             prog = func.forward.get_concrete_program(input)[1].forward_program
@@ -302,6 +469,33 @@ class TestDy2STWithSetValue(AmpTestBase):
         self._check_op_calls(
             op_stats_list[0], expected_fp16_calls=expected_fp16_calls
         )
+
+    def test_pir_op_called_as_expected(self):
+        expected_fp16_calls = {
+            "pd_op.cast_": 1,
+            "pd_op.layer_norm": 1,
+            "pd_op.scale": 1,
+            "pd_op.scale_": 2,
+            "pd_op.set_value_with_tensor_": 1,
+        }
+
+        with pir_dygraph_guard():
+            func = SimpleModelIncludeSetValue()
+            func = paddle.amp.decorate(func, level='O2')
+            func = paddle.jit.to_static(func, full_graph=True)
+            input = paddle.randn((2, 3))
+
+            paddle.amp.debugging.enable_operator_stats_collection()
+            with paddle.amp.auto_cast(level='O2', use_promote=False):
+                res = func(input)
+                loss = res.sum()
+                paddle.amp.debugging.disable_operator_stats_collection()
+                op_stats = paddle.base.core.get_low_precision_op_list()
+
+            loss.backward()
+            self._check_op_calls(
+                op_stats, expected_fp16_calls=expected_fp16_calls
+            )
 
 
 if __name__ == '__main__':

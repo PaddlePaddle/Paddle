@@ -55,7 +55,7 @@ struct Operation {
       return false;
     }
     if (IsGradOp() && exprs.size() != static_cast<size_t>(num_operands)) {
-      // When it is a backward opertion, it should hold a expression for each
+      // When it is a backward operation, it should hold a expression for each
       // operand.
       return false;
     }
@@ -77,7 +77,7 @@ class OperationMap {
   static OperationMap& Instance() {
     PADDLE_ENFORCE_NOT_NULL(
         map,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Please initialize OperationMap first, by calling "
             "framework::fusion_group::OperationMap::Init()!"));
     return *map;
@@ -100,7 +100,7 @@ class OperationMap {
     auto iter = operations_.find(op_type);
     PADDLE_ENFORCE_NE(iter,
                       operations_.end(),
-                      platform::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "Operation %s is not supported yet.", op_type));
     return iter->second;
   }

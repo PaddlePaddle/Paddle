@@ -33,7 +33,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   PADDLE_ENFORCE_GT(table_id,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "table id should > 0, but value is ", table_id));
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
   const auto& ids = ctx.MultiInput<phi::DenseTensor>("Ids");
@@ -41,7 +41,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
       ids[0]->lod().size() ? ids[0]->lod()[0].size() - 1 : ids[0]->dims()[0];
   PADDLE_ENFORCE_GT(batch_size,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "batch size should > 0, but value is ", batch_size));
 
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
@@ -53,7 +53,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   auto pull_dense_worker = framework::PullDenseWorker::GetInstance();
   PADDLE_ENFORCE_NE(pull_dense_worker,
                     nullptr,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "pull_dense_worker should not be null"));
   int thread_id = pull_dense_worker->GetThreadIdByScope(&ctx.scope());
   pull_dense_worker->IncreaseThreadVersion(thread_id, table_id);

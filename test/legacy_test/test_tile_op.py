@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -22,7 +23,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 # Situation 1: repeat_times is a list (without tensor)
@@ -159,6 +159,24 @@ class TestTileOpRank4(TestTileOpRank1):
         )
 
 
+class TestTileOpRank5(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (4, 2, 2, 2, 6)
+        self.repeat_times = (2, 3, 4, 5, 7)
+
+    def if_enable_cinn(self):
+        self.check_cinn = True
+
+
+class TestTileOpRank6(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 2, 2, 2, 2, 6)
+        self.repeat_times = (2, 2, 3, 4, 5, 7)
+
+    def if_enable_cinn(self):
+        self.check_cinn = True
+
+
 # Situation 2: repeat_times is a list (with tensor)
 # CINN not support repeat_times is a tensor now
 class TestTileOpRank1_tensor_attr(OpTest):
@@ -186,7 +204,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.infer_repeat_times = [-1]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -227,7 +245,7 @@ class TestTileOpRank1_tensor(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -385,7 +403,7 @@ class TestTileOpInt64_t(OpTest):
 
 
 class TestTileError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -403,7 +421,7 @@ class TestTileError(unittest.TestCase):
 
 
 class TestTileAPIStatic(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -449,7 +467,6 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -470,7 +487,13 @@ class TestTileDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -481,7 +504,6 @@ class TestTileTripleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -502,7 +524,13 @@ class TestTileTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -541,7 +569,7 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 
 class Testfp16TileOp(unittest.TestCase):
-    @test_with_pir_api
+
     def testfp16(self):
         if not paddle.is_compiled_with_cuda():
             return

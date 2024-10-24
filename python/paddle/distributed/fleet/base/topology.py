@@ -11,22 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import collections
 import os
 from functools import reduce
 from itertools import product
+from typing import TYPE_CHECKING, Any, Literal
 
 import paddle
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
 
+if TYPE_CHECKING:
+    from paddle.distributed.collective import Group
+
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 
 _HYBRID_PARALLEL_GROUP = None
 _use_four_directions = os.environ.get(
     'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
+)
+
+g_pipeline_nccl_comm_init_option = int(
+    os.environ.get("FLAGS_pipeline_nccl_comm_init_option", 0)
 )
 
 
@@ -61,9 +70,15 @@ class ParallelMode:
 class CommunicateTopology:
     def __init__(
         self,
-        hybrid_group_names=["data", "pipe", "sharding", "sep", "model"],
-        dims=[1, 1, 1, 1, 1],
-    ):
+        hybrid_group_names: list[str] = [
+            "data",
+            "pipe",
+            "sharding",
+            "sep",
+            "model",
+        ],
+        dims: list[int] = [1, 1, 1, 1, 1],
+    ) -> None:
         self._parallel_names = hybrid_group_names
         self._dims = dims
         self.coordinate = collections.namedtuple(
@@ -79,27 +94,27 @@ class CommunicateTopology:
             zip(self._coord2rank.values(), self._coord2rank.keys())
         )
 
-    def get_hybrid_group_names(self):
+    def get_hybrid_group_names(self) -> list[str]:
         return self._parallel_names
 
-    def get_dim(self, axis_name):
+    def get_dim(self, axis_name: str) -> int:
         return self._dims[self._parallel_names.index(axis_name)]
 
-    def world_size(self):
+    def world_size(self) -> int:
         return self._world_size
 
-    def get_rank(self, **args):
+    def get_rank(self, **args: Any) -> int:
         assert len(args) == len(self._dims)
         key = self.coordinate(**args)
         assert key in self._coord2rank.keys()
         return self._coord2rank[key]
 
-    def get_coord(self, rank):
+    def get_coord(self, rank: int) -> Any:
         assert rank < self._world_size
         assert rank in self._rank2coord.keys()
         return self._rank2coord[rank]
 
-    def get_axis_list(self, axis_name, index):
+    def get_axis_list(self, axis_name: str, index: int) -> list[int]:
         axis = self._parallel_names.index(axis_name)
         ranks = [
             self._coord2rank[coord]
@@ -109,11 +124,11 @@ class CommunicateTopology:
         ranks.sort()
         return ranks
 
-    def get_dim_size(self, axis_name):
+    def get_dim_size(self, axis_name: str) -> int:
         assert axis_name in self._parallel_names
         return self._dims[self._parallel_names.index(axis_name)]
 
-    def get_fused_ranks(self, fused_axis):
+    def get_fused_ranks(self, fused_axis: list[int]) -> list[list[int]]:
         non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
         non_fused_ranges = []
         for axis_name in non_fused_axis:
@@ -140,7 +155,7 @@ class CommunicateTopology:
 
         return rank_list
 
-    def get_comm_list(self, axis_name):
+    def get_comm_list(self, axis_name: str) -> list[list[int]]:
         assert axis_name in self._parallel_names
         other_axis_names = [
             name for name in self._parallel_names if name != axis_name
@@ -165,14 +180,14 @@ class CommunicateTopology:
 
         return all_result
 
-    def get_rank_from_stage(self, global_rank, **kwargs):
+    def get_rank_from_stage(self, global_rank: int, **kwargs: Any) -> int:
         coord = self.get_coord(global_rank)
         tf = coord._replace(**kwargs)._asdict()
         return self.get_rank(**tf)
 
 
 class HybridCommunicateGroup:
-    def __init__(self, topology):
+    def __init__(self, topology: CommunicateTopology) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
@@ -191,14 +206,7 @@ class HybridCommunicateGroup:
 
         assert (
             self._check_valid_topo()
-        ), "nranks: {}, mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
-            self.nranks,
-            self._mp_degree,
-            self._sharding_degree,
-            self._pp_degree,
-            self._dp_degree,
-            self._sep_degree,
-        )
+        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
@@ -212,6 +220,11 @@ class HybridCommunicateGroup:
             op=paddle.distributed.ReduceOp.SUM,
             group=self._pp_comm_group,
         )
+
+        env_name = "FLAGS_eager_communication_connection"
+        if paddle.get_flags(env_name)[env_name]:
+            if self._pp_comm_group is not None:
+                self._pp_comm_group.process_group.eager_connect_ring_exchange()
 
         # create comm group for data parallel
         self._dp_group, self._dp_comm_group = self._set_comm_group("data")
@@ -278,20 +291,13 @@ class HybridCommunicateGroup:
                 self._sep_degree,
             )
         )
-        debug_str += ", mp_group: {},  sharding_group: {}, pp_group: {}, dp_group: {}, sep:group: {}, check/clip group: {}".format(
-            self._mp_group,
-            self._sharding_group,
-            self._pp_group,
-            self._dp_group,
-            self._sep_group,
-            self._check_group,
-        )
+        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
-    def get_parallel_mode(self):
+    def get_parallel_mode(self) -> Literal[0, 1, 2, 3, 4]:
         # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParallel
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
@@ -329,7 +335,7 @@ class HybridCommunicateGroup:
             # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
-    def _check_valid_topo(self):
+    def _check_valid_topo(self) -> bool:
         return (
             self._dp_degree
             * self._mp_degree
@@ -339,16 +345,26 @@ class HybridCommunicateGroup:
             == self.nranks
         )
 
-    def _check_sep_exist(self):
+    def _check_sep_exist(self) -> None:
         assert self._sep_degree > 1, "sep not exist"
 
-    def _set_comm_group(self, parallel_method="data"):
+    def _set_comm_group(
+        self, parallel_method: str = "data"
+    ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
 
+        group_nccl_comm_init_option = (
+            g_pipeline_nccl_comm_init_option
+            if (parallel_method == "pipe")
+            else 0
+        )
         for group in parallel_groups:
-            comm_group = paddle.distributed.new_group(ranks=group)
+            comm_group = paddle.distributed.new_group(
+                ranks=group,
+                nccl_comm_init_option=group_nccl_comm_init_option,
+            )
             if self.global_rank in group:
                 parallel_group = group
                 parallel_comm_group = comm_group
@@ -357,13 +373,13 @@ class HybridCommunicateGroup:
         assert parallel_comm_group is not None
 
         logger.info(
-            "Total {} {} comm group(s) create successfully!".format(
-                len(parallel_groups), parallel_method
-            )
+            f"Total {len(parallel_groups)} {parallel_method} comm group(s) create successfully!"
         )
         return parallel_group, parallel_comm_group
 
-    def _set_check_group(self, parallel_method="data"):
+    def _set_check_group(
+        self, parallel_method: str = "data"
+    ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
         parallel_size = self._topo.get_dim(parallel_method)
@@ -379,15 +395,15 @@ class HybridCommunicateGroup:
 
         return parallel_group, parallel_comm_group
 
-    def _get_p2p_next_rank(self):
+    def _get_p2p_next_rank(self) -> int:
         assert hasattr(self, 'next_rank'), "next_rank has not been inited"
         return self.next_rank
 
-    def _get_p2p_prev_rank(self):
+    def _get_p2p_prev_rank(self) -> int:
         assert hasattr(self, 'prev_rank'), "prev_rank has not been inited"
         return self.prev_rank
 
-    def _set_p2p_prev_next(self):
+    def _set_p2p_prev_next(self) -> None:
         comm_lists = self._topo.get_comm_list('pipe')
 
         for comm_ranks in comm_lists:
@@ -401,7 +417,7 @@ class HybridCommunicateGroup:
                     self.next_rank = next_rank
                     self.prev_rank = prev_rank
 
-    def _set_four_directions_p2p_group(self):
+    def _set_four_directions_p2p_group(self) -> None:
         comm_lists = self._topo.get_comm_list('pipe')
 
         self.send_next_group = None
@@ -438,75 +454,75 @@ class HybridCommunicateGroup:
         assert self.recv_next_group is not None
         assert self.recv_prev_group is not None
 
-    def topology(self):
+    def topology(self) -> CommunicateTopology:
         return self._topo
 
-    def get_global_rank(self):
+    def get_global_rank(self) -> int:
         return self.global_rank
 
     # data parallel message:
-    def _get_data_parallel_id(self):
+    def _get_data_parallel_id(self) -> int:
         return self._topo.get_coord(self.global_rank).data
 
-    def get_data_parallel_rank(self):
+    def get_data_parallel_rank(self) -> int:
         return self._data_parallel_id
 
-    def get_data_parallel_world_size(self):
+    def get_data_parallel_world_size(self) -> int:
         return self._dp_degree
 
-    def get_data_parallel_group(self):
+    def get_data_parallel_group(self) -> Group:
         return self._dp_comm_group
 
-    def get_data_parallel_group_src_rank(self):
+    def get_data_parallel_group_src_rank(self) -> int:
         return self._dp_comm_group.ranks[0]
 
     # model parallel message:
-    def _get_model_parallel_id(self):
+    def _get_model_parallel_id(self) -> str:
         return self._topo.get_coord(self.global_rank).model
 
-    def get_model_parallel_rank(self):
+    def get_model_parallel_rank(self) -> int:
         return self._model_parallel_id
 
-    def get_model_parallel_world_size(self):
+    def get_model_parallel_world_size(self) -> int:
         return self._mp_degree
 
-    def get_model_parallel_group(self):
+    def get_model_parallel_group(self) -> Group:
         return self._mp_comm_group
 
-    def get_model_parallel_group_src_rank(self):
+    def get_model_parallel_group_src_rank(self) -> int:
         return self._mp_comm_group.ranks[0]
 
     # pipeline parallel message
-    def _get_pipe_parallel_id(self):
+    def _get_pipe_parallel_id(self) -> int:
         return self._topo.get_coord(self.global_rank).pipe
 
-    def get_stage_id(self):
+    def get_stage_id(self) -> int:
         return self.stage_id
 
-    def get_pipe_parallel_world_size(self):
+    def get_pipe_parallel_world_size(self) -> int:
         return self._pp_degree
 
-    def _get_sep_parallel_id(self):
+    def _get_sep_parallel_id(self) -> int:
         return self._topo.get_coord(self.global_rank).sep
 
-    def get_sep_parallel_rank(self):
+    def get_sep_parallel_rank(self) -> int:
         return self._sep_parallel_id
 
-    def get_sep_parallel_world_size(self):
+    def get_sep_parallel_world_size(self) -> int:
         return self._sep_degree
 
-    def get_sep_parallel_group(self):
+    def get_sep_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._sep_comm_group
 
-    def get_sep_parallel_group_src_rank(self):
+    def get_sep_parallel_group_src_rank(self) -> int:
         self._check_sep_exist()
         return self._sep_comm_group.ranks[0]
 
-    def get_pipe_parallel_group(self):
+    def get_pipe_parallel_group(self) -> Group:
         return self._pp_comm_group
 
-    def get_p2p_groups(self):
+    def get_p2p_groups(self) -> tuple[Group, Group, Group, Group]:
         assert (
             _use_four_directions
         ), "If you want to use four directions p2p group, set the environment variable PADDLE_USE_FOUR_DIRECTIONS_P2P to True."
@@ -518,44 +534,46 @@ class HybridCommunicateGroup:
         )
 
     # sharding parallel message:
-    def _get_sharding_parallel_id(self):
+    def _get_sharding_parallel_id(self) -> int:
         return self._topo.get_coord(self.global_rank).sharding
 
-    def get_sharding_parallel_rank(self):
+    def get_sharding_parallel_rank(self) -> int:
         return self._sharding_parallel_id
 
-    def get_sharding_parallel_world_size(self):
+    def get_sharding_parallel_world_size(self) -> int:
         return self._sharding_degree
 
-    def get_sharding_parallel_group(self):
+    def get_sharding_parallel_group(self) -> Group:
         return self._sharding_comm_group
 
-    def get_sharding_parallel_group_src_rank(self):
+    def get_sharding_parallel_group_src_rank(self) -> int:
         # TODO should the src rank related to the shard rank for each parameter ?
         return self._sharding_comm_group.ranks[0]
 
     # check parallel group
-    def get_check_parallel_group(self, sharding=False):
+    def get_check_parallel_group(self, sharding: bool = False) -> Group:
         if sharding:
             return self.sharding_check_comm_group
         else:
             return self._check_comm_group
 
-    def get_rank_from_stage(self, stage_id, **kwargs):
+    def get_rank_from_stage(self, stage_id: int, **kwargs: Any) -> int:
         return self._topo.get_rank_from_stage(
             self.global_rank, pipe=stage_id, **kwargs
         )
 
     # fuse comm group message
-    def get_dp_sep_parallel_group(self):
+    def get_dp_sep_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._dp_sep_comm_group
 
-    def get_pp_mp_parallel_group(self):
+    def get_pp_mp_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._pp_mp_comm_group
 
-    def create_fuse_group(self, fused_strategy_list):
+    def create_fuse_group(
+        self, fused_strategy_list: list[str]
+    ) -> tuple[list[list[int]], list[Group]] | tuple[list[int], Group]:
         assert (
             len(fused_strategy_list) > 0
         ), "the length of fused_strategy_list must be greater than 0."
@@ -575,9 +593,7 @@ class HybridCommunicateGroup:
         assert len(parallel_comm_group) > 0
 
         logger.info(
-            "Total {} comm group(s) of fused {} create successfully!".format(
-                len(parallel_groups), fused_strategy_list
-            )
+            f"Total {len(parallel_groups)} comm group(s) of fused {fused_strategy_list} create successfully!"
         )
         if len(parallel_group) > 1:
             return parallel_group, parallel_comm_group

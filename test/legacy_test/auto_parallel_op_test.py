@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import pathlib
 import pickle
@@ -20,7 +22,7 @@ import sys
 import tempfile
 import uuid
 from collections import defaultdict
-from typing import Dict, List, Tuple, cast
+from typing import cast
 
 import numpy as np
 from prim_op_test import OpTestUtils, _as_list, convert_uint16_to_float, flatten
@@ -220,16 +222,20 @@ def dump_test_info(
         if isinstance(place, paddle.base.libpaddle.CUDAPlace):
             test_info["place"] = "gpu"
         eager_auto_parallel_threshold = {
-            "atol": op_test.eager_auto_parallel_atol
-            if hasattr(op_test, "eager_auto_parallel_atol")
-            else None,
-            "rtol": op_test.eager_auto_parallel_atol
-            if hasattr(op_test, "eager_auto_parallel_atol")
-            else None,
+            "atol": (
+                op_test.eager_auto_parallel_atol
+                if hasattr(op_test, "eager_auto_parallel_atol")
+                else None
+            ),
+            "rtol": (
+                op_test.eager_auto_parallel_atol
+                if hasattr(op_test, "eager_auto_parallel_atol")
+                else None
+            ),
         }
-        test_info[
-            "eager_auto_parallel_threshold"
-        ] = eager_auto_parallel_threshold
+        test_info["eager_auto_parallel_threshold"] = (
+            eager_auto_parallel_threshold
+        )
         test_info["python_out_sig"] = (
             op_test.python_out_sig
             if hasattr(op_test, "python_out_sig")
@@ -289,19 +295,15 @@ def run_subprocess(start_command, env, timeout):
         )
     except subprocess.TimeoutExpired as err:
         raise TimeoutError(
-            "Timeout while running command {}, try to set a longer period, {} is not enough.".format(
-                err.cmd, err.timeout
-            )
+            f"Timeout while running command {err.cmd}, try to set a longer period, {err.timeout} is not enough."
         )
     except subprocess.CalledProcessError as err:
         raise RuntimeError(
-            "Error occurs when running this test case. The return code of command {} is {}".format(
-                err.cmd, err.returncode
-            )
+            f"Error occurs when running this test case. The return code of command {err.cmd} is {err.returncode}"
         )
 
 
-def convert_input_placements_to_dims_map(placements: Dict, inputs: Dict):
+def convert_input_placements_to_dims_map(placements: dict, inputs: dict):
     all_dims_map = {}
     for name, item in inputs.items():
         if name not in placements:
@@ -326,7 +328,7 @@ def convert_input_placements_to_dims_map(placements: Dict, inputs: Dict):
 
 
 def convert_input_dims_map_to_placements(
-    dims_map: Dict, inputs: Dict, mesh_ndim: int
+    dims_map: dict, inputs: dict, mesh_ndim: int
 ):
     placements_map = {}
     for name, item in inputs.items():
@@ -352,7 +354,7 @@ def convert_input_dims_map_to_placements(
 # TODO: This method has been implementd in
 # paddle/phi/core/distributed/auto_parallel/placement_types.h, bind it
 # python and it's logic.
-def placements_to_dims_map(placements: List, tensor_ndim: int) -> Tuple[int]:
+def placements_to_dims_map(placements: list, tensor_ndim: int) -> tuple[int]:
     r = [-1] * tensor_ndim
     for i, placement in enumerate(placements):
         if placement.is_shard():
@@ -371,13 +373,13 @@ def placements_to_dims_map(placements: List, tensor_ndim: int) -> Tuple[int]:
 # paddle/phi/core/distributed/auto_parallel/placement_types.h, and bind it to
 # python
 def dims_map_to_placements(
-    dim_map: Tuple[int], mesh_ndim: int, sums: Tuple[int] = ()
-) -> Tuple[dist.Placement]:
+    dim_map: tuple[int], mesh_ndim: int, sums: tuple[int] = ()
+) -> tuple[dist.Placement]:
     """
     Construct a placements from dim_map list and pending sum.
 
     Args:
-        dim_map (Tuple[int]): a list of integer that represents sharding on each
+        dim_map (tuple[int]): a list of integer that represents sharding on each
             tensor dimension, see `dim_map` property doc for details
         mesh_ndim (int): the ndim of Process mesh.
         sums (Tuple[int]): a list of integer that represents the dist tensor have
@@ -387,7 +389,7 @@ def dims_map_to_placements(
         a placement sequence.
     """
     # by default replicate on device mesh dims
-    placements: List[dist.Placement] = [
+    placements: list[dist.Placement] = [
         dist.Replicate() for _ in range(mesh_ndim)
     ]
 
@@ -498,12 +500,8 @@ class AutoParallelForwardChecker:
             # check eager auto parallel forward
             if len(actual_ret) != len(self.eager_forward_desire):
                 msg = (
-                    "The eager auto parallel out tensor nums is different with eager out tensor nums on {}."
-                    'eager auto parallel out tensor nums = {}, eager out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        len(actual_ret),
-                        len(self.eager_forward_desire),
-                    )
+                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {self.place}."
+                    f'eager auto parallel out tensor nums = {len(actual_ret)}, eager out tensor nums = {len(self.eager_forward_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_ret)):
@@ -721,12 +719,8 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             # check eager auto parallel forward
             if len(actual_forward_res) != len(self.eager_forward_desire):
                 msg = (
-                    "The eager auto parallel out tensor nums is different with eager out tensor nums on {}."
-                    'eager auto parallel out tensor nums = {}, eager out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        len(actual_forward_res),
-                        len(self.eager_forward_desire),
-                    )
+                    f"The eager auto parallel out tensor nums is different with eager out tensor nums on {self.place}."
+                    f'eager auto parallel out tensor nums = {len(actual_forward_res)}, eager out tensor nums = {len(self.eager_forward_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_forward_res)):
@@ -751,12 +745,8 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
             # check eager auto parallel grad
             if len(actual_grad_res) != len(self.eager_grad_desire):
                 msg = (
-                    "The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {}."
-                    'eager auto parallel grad out tensor nums = {}, eager grad out tensor nums = {}. \n'.format(
-                        str(self.place),
-                        len(actual_grad_res),
-                        len(self.eager_grad_desire),
-                    )
+                    f"The eager auto parallel grad out tensor nums is different with eager grad out tensor nums on {self.place}."
+                    f'eager auto parallel grad out tensor nums = {len(actual_grad_res)}, eager grad out tensor nums = {len(self.eager_grad_desire)}. \n'
                 )
                 raise RuntimeError(msg)
             for i in range(len(actual_grad_res)):
@@ -787,17 +777,19 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                 paddle.to_tensor(
                     data=np_v,
                     place=self.place,
-                    dtype="bfloat16"
-                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
-                    else np_v.dtype,
+                    dtype=(
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                        else np_v.dtype
+                    ),
                 )
             )
         return eager_vs
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
-        assert len(api_outputs) <= len(outputs_sig), (
-            "forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {} and {}"
-        ).format(len(api_outputs), len(outputs_sig))
+        assert len(api_outputs) <= len(
+            outputs_sig
+        ), f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
         output_dict = {}
         for i in range(len(api_outputs)):
             output_name = outputs_sig[i]

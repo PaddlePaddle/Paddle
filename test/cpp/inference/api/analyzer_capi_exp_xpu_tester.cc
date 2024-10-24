@@ -44,7 +44,7 @@ TEST(PD_Config, use_xpu) {
   bool use_xpu = PD_ConfigUseXpu(config);
   EXPECT_TRUE(use_xpu);
   int32_t device_id = PD_ConfigXpuDeviceId(config);
-  EXPECT_EQ(devive_id, 0);
+  EXPECT_EQ(device_id, 0);
   PD_ConfigSwitchIrOptim(config, TRUE);
   bool ir_optim = PD_IrOptim(config);
   EXPECT_TRUE(ir_optim);

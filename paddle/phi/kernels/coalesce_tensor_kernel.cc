@@ -20,7 +20,7 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_alignment.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -84,7 +84,7 @@ void GetMemSizeAndDtype(const std::vector<const DenseTensor *> &lod_tensors,
         lod_tensors[i]->initialized() ? lod_tensors[i]->data() : nullptr;
     VLOG(4) << size << " " << len;
     ss << "input(" << i << "-th tensor) dim:(" << lod_tensors[i]->dims() << ") "
-       << " addres:" << ptr << " len: " << len << ", ";
+       << " address:" << ptr << " len: " << len << ", ";
     *numel += len;
   }
   VLOG(10) << ss.str();

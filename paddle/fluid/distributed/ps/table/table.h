@@ -30,9 +30,9 @@
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -92,7 +92,7 @@ class Table {
   // only for tensor table
   virtual int32_t SetProgramEnv(
       framework::Scope *scope UNUSED,
-      platform::Place place UNUSED,
+      phi::Place place UNUSED,
       const std::vector<framework::ProgramDesc> *sub_program UNUSED) {
     return 0;
   }
@@ -115,7 +115,7 @@ class Table {
   virtual int32_t Save(const std::string &path,
                        const std::string &converter) = 0;
 
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   // pglbox支持将非9008 slot的feature额外保存一份，实际支持用户可配置过滤slot
   virtual int32_t Save_v2(const std::string &path,
                           const std::string &converter) = 0;
@@ -163,6 +163,8 @@ class Table {
   virtual void Revert() {}
   virtual void CheckSavePrePatchDone() {}
 
+  virtual void SetDayId(int day_id) {}
+
  protected:
   virtual int32_t Initialize() = 0;
   virtual int32_t InitializeAccessor();
@@ -178,6 +180,9 @@ class Table {
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accessor;
   AfsClient _afs_client;
+  std::string _fs_name;
+  std::string _fs_user;
+  std::string _pass_wd;
 };
 REGISTER_PSCORE_REGISTERER(Table);
 

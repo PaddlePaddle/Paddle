@@ -35,7 +35,7 @@ class RandomWeight:
     def __init__(self):
         pass
 
-    def updata_weight(self, hidden_size, input_size, dtype):
+    def update_weight(self, hidden_size, input_size, dtype):
         std = 1.0 / math.sqrt(hidden_size)
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -432,7 +432,7 @@ class TestCUDNNLstmOp(OpTest):
         input[9][3:][:] = 0
         input[8][4:][:] = 0
 
-        weight.updata_weight(hidden_size, input_size, self.dtype)
+        weight.update_weight(hidden_size, input_size, self.dtype)
         rnn1 = LSTM(
             input_size,
             hidden_size,

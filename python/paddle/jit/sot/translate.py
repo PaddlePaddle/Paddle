@@ -14,18 +14,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import Callable, TypeVar
+
+from typing_extensions import ParamSpec
 
 import paddle
 
 from .opcode_translator import eval_frame_callback
+from .profiler import SotStepProfilerGuard
 from .utils import GraphLogger, StepInfoManager, StepState, log_do
 
-if TYPE_CHECKING:
-    from typing_extensions import ParamSpec
-
-    P = ParamSpec("P")
-    R = TypeVar("R")
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
@@ -112,7 +112,7 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
         return outs
 
     def impl(*args: P.args, **kwargs: P.kwargs) -> R:
-        with StepInfoManager().step_guard(fn.__code__):
+        with StepInfoManager().step_guard(fn.__code__), SotStepProfilerGuard():
             state = StepInfoManager().current_state
 
             if state == StepState.RUN_SOT:
@@ -123,5 +123,7 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
                 return StepInfoManager().collect_info(
                     impl_dynamic, impl_sot, *args, **kwargs
                 )
+            else:
+                raise RuntimeError("Unknown state.")
 
     return impl

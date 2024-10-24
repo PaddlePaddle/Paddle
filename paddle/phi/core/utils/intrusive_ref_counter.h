@@ -57,7 +57,7 @@ inline void intrusive_ptr_release(
     const intrusive_ref_counter<DerivedT>* p) noexcept {
   if (p->ref_.load(std::memory_order_acquire) == 0 ||
       p->ref_.fetch_sub(1) == 0) {
-    delete static_cast<const DerivedT*>(p);
+    delete static_cast<const DerivedT*>(p);  // NOLINT
   }
 }
 

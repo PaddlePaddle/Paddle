@@ -3,6 +3,7 @@ add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)
 add_subdirectory(jit)
+add_subdirectory(math)
 
 file(
   GLOB func_cc_srcs

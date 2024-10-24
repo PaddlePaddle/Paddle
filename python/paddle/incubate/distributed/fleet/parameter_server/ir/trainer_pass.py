@@ -967,9 +967,7 @@ def find_heter_ops(program, default_device="cpu"):
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(
-            len(block.ops), total_heter_ops, heter_blocks
-        )
+        f"There are {len(block.ops)} OPs in your main_program, and contains {total_heter_ops} heter-OPs which is made up of {heter_blocks} heter-blocks."
     )
 
     return origin_program, heter_ops, default_ops, program_block_ops
@@ -1266,7 +1264,7 @@ def insert_communicate_op(
         outputs={"Out": []},
         attrs={
             "mode": "forward" if is_forward else "backward",
-            "send_var_name": entrance_var + ["microbatch_id"],
+            "send_var_name": [*entrance_var, "microbatch_id"],
             "recv_var_name": [],
             "message_name": comm_info["block_input_var_name"],
             "next_endpoints": next_heter_worker_endpoints,
@@ -1341,7 +1339,7 @@ def replace_ops_by_communicate_op(
             outputs={"Out": []},
             attrs={
                 "mode": "forward",
-                "send_var_name": entrance_var + ["microbatch_id"],
+                "send_var_name": [*entrance_var, "microbatch_id"],
                 "recv_var_name": [],
                 "message_name": comm_info["block_input_var_name"],
                 "next_endpoints": next_heter_worker_endpoints,

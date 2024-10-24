@@ -20,7 +20,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
-
+#ifdef PADDLE_WITH_XPU_XRE5
+#include "xpudnn/xpudnn.h"
+namespace xpudnn = baidu::xpu::xpudnn;
+#endif
 namespace phi {
 
 // target_len == 2 || target_len == 4
@@ -51,7 +54,7 @@ void Conv2dTransposeKernel(const Context& ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format,
                            DenseTensor* out) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   ctx.template Alloc<T>(out);
 
@@ -63,8 +66,163 @@ void Conv2dTransposeKernel(const Context& ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   DDim filter_data_dims = slice_ddim(filter.dims(), 2, filter.dims().size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
 
+#ifdef PADDLE_WITH_XPU_XRE5
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  std::vector<int64_t> paddings_ =
+      std::vector<int64_t>(paddings.begin(), paddings.end());
+  std::vector<int64_t> dilations_ =
+      std::vector<int64_t>(dilations.begin(), dilations.end());
+  std::vector<int64_t> strides_ =
+      std::vector<int64_t>(strides.begin(), strides.end());
+  UpdatePaddingAndDilation(&paddings_,
+                           &dilations_,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides_,
+                           ksize);
+
+  const int64_t batch_size = static_cast<int64_t>(x.dims()[0]);
+  const int64_t img_yc = static_cast<int64_t>(x.dims()[1]);
+  const int64_t img_xc = static_cast<int64_t>(out->dims()[1]);
+  const int64_t img_xh = static_cast<int64_t>(out->dims()[2]);
+  const int64_t img_xw = static_cast<int64_t>(out->dims()[3]);
+
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
+    int r = xpudnn::conv2d_transpose_fusion_v2<float, float, float, int32_t>(
+        ctx.x_context(),
+        x.data<float>(),
+        filter.data<float>(),
+        out->data<float>(),
+        batch_size,
+        img_yc,
+        img_xh,
+        img_xw,
+        img_xc,
+        ksize,
+        strides_,
+        paddings_,
+        dilations_,
+        static_cast<int64_t>(groups),
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        xpu::Activation_t::LINEAR,
+        true,
+        nullptr);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
+    int r = xpudnn::conv2d_transpose_fusion_v2<float, float, float, float>(
+        ctx.x_context(),
+        x.data<float>(),
+        filter.data<float>(),
+        out->data<float>(),
+        batch_size,
+        img_yc,
+        img_xh,
+        img_xw,
+        img_xc,
+        ksize,
+        strides_,
+        paddings_,
+        dilations_,
+        static_cast<int64_t>(groups),
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        xpu::Activation_t::LINEAR,
+        true,
+        nullptr);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+    if (output_size.size()) {
+      VLOG(4) << "int_with_ll quantization is not supported when output_size "
+                 "is specified, "
+              << "use int31 instead";
+      int r = xpudnn::conv2d_transpose_fusion_v2<float, float, float, int32_t>(
+          ctx.x_context(),
+          x.data<float>(),
+          filter.data<float>(),
+          out->data<float>(),
+          batch_size,
+          img_yc,
+          img_xh,
+          img_xw,
+          img_xc,
+          ksize,
+          strides_,
+          paddings_,
+          dilations_,
+          static_cast<int64_t>(groups),
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          xpu::Activation_t::LINEAR,
+          true,
+          nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
+    } else {
+      // xpu::conv2d_transpose_v2 do not support int_with_ll now
+      // use xpu::conv2d_transpose
+      int64_t img_yh = static_cast<int64_t>(x.dims()[2]);
+      int64_t img_yw = static_cast<int64_t>(x.dims()[3]);
+      int r = xpudnn::
+          conv2d_transpose_fusion_v2<float, float, float, int_with_ll_t>(
+              ctx.x_context(),
+              x.data<float>(),
+              filter.data<float>(),
+              out->data<float>(),
+              batch_size,
+              img_yc,
+              img_yh,
+              img_yw,
+              img_xc,
+              ksize,
+              strides_,
+              paddings_,
+              dilations_,
+              static_cast<int64_t>(groups),
+              nullptr,
+              nullptr,
+              nullptr,
+              nullptr,
+              xpu::Activation_t::LINEAR,
+              true,
+              nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
+    }
+  } else {
+    int r =
+        xpudnn::conv2d_transpose_fusion_v2<XPUType, XPUType, XPUType, int16_t>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            reinterpret_cast<const XPUType*>(filter.data<T>()),
+            reinterpret_cast<XPUType*>(out->data<T>()),
+            batch_size,
+            img_yc,
+            img_xh,
+            img_xw,
+            img_xc,
+            ksize,
+            strides_,
+            paddings_,
+            dilations_,
+            static_cast<int64_t>(groups),
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr,
+            xpu::Activation_t::LINEAR,
+            true,
+            nullptr);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_fusion_v2");
+  }
+#else
+  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
   UpdatePaddingAndDilation(
@@ -76,8 +234,8 @@ void Conv2dTransposeKernel(const Context& ctx,
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
 
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
+  int fc_calc_type = FCCalcType<XPUType>();
+  if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
         ctx.x_context(),
         x.data<float>(),
@@ -98,7 +256,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
     int r = xpu::conv2d_transpose_v2<float, float, float, float>(
         ctx.x_context(),
         x.data<float>(),
@@ -119,7 +277,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         nullptr,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+  } else if (fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     if (output_size.size()) {
       VLOG(4) << "int_with_ll quantization is not supported when output_size "
                  "is specified, "
@@ -171,11 +329,11 @@ void Conv2dTransposeKernel(const Context& ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
     }
   } else {
-    int r = xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, int16_t>(
+    int r = xpu::conv2d_transpose_v2<XPUType, XPUType, XPUType, int16_t>(
         ctx.x_context(),
-        reinterpret_cast<const XPUT*>(x.data<T>()),
-        reinterpret_cast<const XPUT*>(filter.data<T>()),
-        reinterpret_cast<XPUT*>(out->data<T>()),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(filter.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
         batch_size,
         img_yc,
         img_xh,
@@ -192,6 +350,7 @@ void Conv2dTransposeKernel(const Context& ctx,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
   }
+#endif
 }
 template <typename T, typename Context>
 void DepthwiseConv2dTransposeKernel(const Context& ctx,

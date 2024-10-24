@@ -100,11 +100,6 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     attrs={'file_path': os.path.join(dirname, origin_var.name)},
                 )
 
-        load_block.append_op(
-            type='delete_var',
-            inputs={'X': need_delete_vars},
-        )
-
         executor.run(load_prog)
 
     if not isinstance(main_program, Program):
@@ -561,7 +556,7 @@ def load_inference_model_distributed(
     if dirname is not None:
         load_dirname = os.path.normpath(dirname)
         if not os.path.isdir(load_dirname):
-            raise ValueError("There is no directory named '%s'" % dirname)
+            raise ValueError(f"There is no directory named '{dirname}'")
 
         if model_filename is None:
             model_filename = '__model__'

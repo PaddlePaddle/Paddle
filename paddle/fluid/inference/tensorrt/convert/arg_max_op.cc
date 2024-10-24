@@ -32,9 +32,6 @@ class ArgMaxOpConverter : public OpConverter {
     int axis = op_desc.HasAttr("axis")
                    ? PADDLE_GET_CONST(int64_t, op_desc.GetAttr("axis"))
                    : -1;
-    if (axis > 0 && !engine_->with_dynamic_shape()) {
-      axis -= 1;
-    }
     if (axis < 0) axis += rank;
     auto* topk_layer = TRT_ENGINE_ADD_LAYER(
         engine_, TopK, *input, nvinfer1::TopKOperation::kMAX, 1, 1 << axis);
@@ -42,10 +39,10 @@ class ArgMaxOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     bool keepdims = PADDLE_GET_CONST(bool, op_desc.GetAttr("keepdims"));
     if (keepdims) {
-      RreplenishLayerAndOutput(topk_layer,
-                               "arg_max",
-                               {output_name + "_value", output_name},
-                               test_mode);
+      ReplenishLayerAndOutput(topk_layer,
+                              "arg_max",
+                              {output_name + "_value", output_name},
+                              test_mode);
     } else {
       auto squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *topk_layer->getOutput(1));
@@ -55,7 +52,7 @@ class ArgMaxOpConverter : public OpConverter {
         dims.d[i] = dims.d[i + 1];
       }
       squeeze_layer->setReshapeDimensions(dims);
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           squeeze_layer, "arg_max", {output_name}, test_mode);
     }
   }

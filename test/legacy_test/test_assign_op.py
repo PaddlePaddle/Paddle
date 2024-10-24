@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -24,8 +25,6 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
-from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestAssignOp(op_test.OpTest):
@@ -115,7 +114,7 @@ class TestAssignBFP16Op(op_test.OpTest):
 
 
 class TestAssignOpWithTensorArray(unittest.TestCase):
-    @test_with_pir_api
+
     def test_assign_tensor_array(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -132,7 +131,7 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
             array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
-            append_backward(mean)
+            [(_, x_grad)] = append_backward(mean, parameter_list=[x])
 
         place = (
             paddle.CUDAPlace(0)
@@ -143,32 +142,18 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
         feed_x = np.random.random(size=(100, 10)).astype('float32')
         ones = np.ones((100, 10)).astype('float32')
         feed_add = feed_x + ones
-        if in_pir_mode():
-            x_grad = None
-            for op in main_program.global_block().ops:
-                if "grad" not in op.name():
-                    continue
-                if op.operands()[0].source().is_same(x):
-                    x_grad = op.results()[0]
-            assert x_grad is not None, "Can not find x_grad in main_program"
-            res = exe.run(
-                main_program,
-                feed={'x': feed_x},
-                fetch_list=[sums, x_grad],
-            )
-        else:
-            res = exe.run(
-                main_program,
-                feed={'x': feed_x},
-                fetch_list=[sums.name, x.grad_name],
-            )
+        res = exe.run(
+            main_program,
+            feed={'x': feed_x},
+            fetch_list=[sums, x_grad],
+        )
         np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
         np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()
 
 
 class TestAssignOpError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -291,7 +276,7 @@ class TestAssignOut_(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -307,7 +292,6 @@ class TestAssignOpErrorApi(unittest.TestCase):
             self.assertRaises(TypeError, paddle.assign, x2)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_type_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -323,7 +307,6 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
     def assign_wrapper(self, x):
         return paddle.assign(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -344,7 +327,13 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -356,7 +345,6 @@ class TestAssignTripleGradCheck(unittest.TestCase):
     def assign_wrapper(self, x):
         return paddle.assign(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -377,7 +365,13 @@ class TestAssignTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

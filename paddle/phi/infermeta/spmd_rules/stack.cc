@@ -20,14 +20,13 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 std::string FillStackNotation(int64_t n_axis) {
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
   PADDLE_ENFORCE_GT(alphabet.size(),
                     static_cast<size_t>(n_axis),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "alphabet.size() [%d]; n_axis [%d] is too large",
                         alphabet.size(),
                         n_axis));
@@ -70,6 +69,7 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
 
   TensorDistAttr output_attr =
       CopyTensorDistAttrForOutput(input_attrs[non_empty_index]);
+  output_attr.set_partial_status(input_attrs[non_empty_index].partial_status());
   std::vector<int64_t> dim_mapping(ndim + 1, -1);
   const auto& input_dim_mapping = input_attrs[non_empty_index].dims_mapping();
   for (size_t i = 0; i < ndim; i++) {
@@ -118,5 +118,4 @@ SpmdInfo StackGradInferSpmd(const DistMetaTensor& output_grad, int axis) {
   return {{out_dist_attr}, {input_attrs}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

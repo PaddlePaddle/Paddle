@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "paddle/fluid/framework/block_desc.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
@@ -31,6 +30,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
@@ -72,7 +72,7 @@ TEST(OperatorDialectTest, MainProgram) {
   // ops.size() = op size in BlockDesc + parameter_op + combine op + int
   // array op + full op (Note: p already has a full)
   EXPECT_EQ(program->block()->size(),
-            p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 8);
+            p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 9);
   EXPECT_GT(ss.str().size(), 0u);
 }
 
@@ -278,7 +278,7 @@ TEST(OperatorDialectTest, WhileOpProgram) {
               EXPECT_TRUE(op2.isa<paddle::dialect::LessThanOp>());
             }
             if (body_body_id == 3 || body_body_id == 4) {
-              EXPECT_TRUE(op2.isa<paddle::dialect::AssignOp>());
+              EXPECT_TRUE(op2.isa<paddle::dialect::AssignOut_Op>());
             }
             if (body_body_id == 5) {
               EXPECT_TRUE(op2.isa<pir::YieldOp>());
@@ -290,7 +290,7 @@ TEST(OperatorDialectTest, WhileOpProgram) {
           EXPECT_TRUE(op1.isa<paddle::dialect::LessThanOp>());
         }
         if (body_id == 5 || body_id == 6) {
-          EXPECT_TRUE(op1.isa<paddle::dialect::AssignOp>());
+          EXPECT_TRUE(op1.isa<paddle::dialect::AssignOut_Op>());
         }
         if (body_id == 7) {
           EXPECT_TRUE(op1.isa<pir::YieldOp>());

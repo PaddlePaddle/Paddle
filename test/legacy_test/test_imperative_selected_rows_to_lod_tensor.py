@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -19,7 +20,7 @@ from test_imperative_base import new_program_scope
 
 import paddle
 from paddle import base
-from paddle.base import core, framework
+from paddle.base import core
 from paddle.nn import Embedding
 
 
@@ -94,129 +95,138 @@ class TestDygraphSimpleNet(unittest.TestCase):
             for dtype in dtype_list:
                 self.simple_net_float(is_sparse, dtype)
 
+    def run_case(self, place, is_sort_sum_gradient, is_sparse, dtype):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        paddle.seed(seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+        else:
+            paddle.framework.random._manual_program_seed(seed)
+
+        traced_layer = None
+        with base.dygraph.guard(place):
+            simple_net = SimpleNet(
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_steps=num_steps,
+                init_scale=init_scale,
+                is_sparse=is_sparse,
+                dtype=dtype,
+            )
+
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3,
+                parameters=simple_net.parameters(),
+            )
+            dy_param_updated = {}
+            dy_param_init = {}
+            dy_loss = None
+
+            base.set_flags({'FLAGS_sort_sum_gradient': is_sort_sum_gradient})
+
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps))
+                y_data = y_data.reshape((-1, 1))
+
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                outs = simple_net(x, y)
+                dy_loss = outs
+                if i == 0:
+                    for param in simple_net.parameters():
+                        dy_param_init[param.name] = param.numpy()
+                dy_loss.backward()
+                sgd.minimize(dy_loss)
+                sgd.clear_gradients()
+                if i == batch_num - 1:
+                    for param in simple_net.parameters():
+                        dy_param_updated[param.name] = param.numpy()
+            dy_loss_value = dy_loss.numpy()
+        paddle.enable_static()
+        with new_program_scope():
+            simple_net = SimpleNet(
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_steps=num_steps,
+                is_sparse=is_sparse,
+                dtype=dtype,
+            )
+            exe = base.Executor(place)
+            sgd = paddle.optimizer.SGD(learning_rate=1e-3)
+            x = paddle.static.data(
+                name="x", shape=[-1, num_steps], dtype='int64'
+            )
+            y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
+                y.desc.set_need_check_feed(False)
+            static_loss = simple_net(x, y)
+            sgd.minimize(static_loss)
+            static_param_updated = {}
+            static_param_init = {}
+            static_param_name_list = []
+            for param in simple_net.parameters():
+                static_param_name_list.append(param)
+
+            out = exe.run(
+                paddle.base.default_startup_program(),
+                fetch_list=static_param_name_list,
+            )
+            for i in range(len(static_param_name_list)):
+                static_param_init[static_param_name_list[i].name] = out[i]
+            static_loss_value = None
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps))
+                y_data = y_data.reshape((-1, 1))
+                fetch_list = [static_loss]
+                fetch_list.extend(static_param_name_list)
+                out = exe.run(
+                    paddle.base.default_main_program(),
+                    feed={"x": x_data, "y": y_data},
+                    fetch_list=fetch_list,
+                )
+                static_loss_value = out[0]
+
+                if i == batch_num - 1:
+                    for k in range(3, len(out)):
+                        static_param_updated[
+                            static_param_name_list[k - 1].name
+                        ] = out[k]
+
+        np.testing.assert_array_equal(static_loss_value, dy_loss_value)
+        for key, value in static_param_init.items():
+            np.testing.assert_array_equal(value, dy_param_init[key])
+        for key, value in static_param_updated.items():
+            np.testing.assert_array_equal(value, dy_param_updated[key])
+
     def simple_net_float(self, is_sparse, dtype):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
         for place in places:
-            seed = 90
-            hidden_size = 10
-            vocab_size = 1000
-            num_steps = 3
-            init_scale = 0.1
-            batch_size = 4
-            batch_num = 200
-
             for is_sort_sum_gradient in [True, False]:
-                traced_layer = None
-                with base.dygraph.guard(place):
-                    paddle.seed(seed)
-                    paddle.framework.random._manual_program_seed(seed)
-
-                    simple_net = SimpleNet(
-                        hidden_size=hidden_size,
-                        vocab_size=vocab_size,
-                        num_steps=num_steps,
-                        init_scale=init_scale,
-                        is_sparse=is_sparse,
-                        dtype=dtype,
-                    )
-
-                    sgd = paddle.optimizer.SGD(
-                        learning_rate=1e-3,
-                        parameters=simple_net.parameters(),
-                    )
-                    dy_param_updated = {}
-                    dy_param_init = {}
-                    dy_loss = None
-
-                    base.set_flags(
-                        {'FLAGS_sort_sum_gradient': is_sort_sum_gradient}
-                    )
-
-                    for i in range(batch_num):
-                        x_data = np.arange(12).reshape(4, 3).astype('int64')
-                        y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                        x_data = x_data.reshape((-1, num_steps))
-                        y_data = y_data.reshape((-1, 1))
-
-                        x = paddle.to_tensor(x_data)
-                        y = paddle.to_tensor(y_data)
-                        outs = simple_net(x, y)
-                        dy_loss = outs
-                        if i == 0:
-                            for param in simple_net.parameters():
-                                dy_param_init[param.name] = param.numpy()
-                        dy_loss.backward()
-                        sgd.minimize(dy_loss)
-                        sgd.clear_gradients()
-                        if i == batch_num - 1:
-                            for param in simple_net.parameters():
-                                dy_param_updated[param.name] = param.numpy()
-                    dy_loss_value = dy_loss.numpy()
-
-                paddle.enable_static()
-                with new_program_scope():
-                    paddle.seed(seed)
-                    paddle.framework.random._manual_program_seed(seed)
-
-                    simple_net = SimpleNet(
-                        hidden_size=hidden_size,
-                        vocab_size=vocab_size,
-                        num_steps=num_steps,
-                        is_sparse=is_sparse,
-                        dtype=dtype,
-                    )
-
-                    exe = base.Executor(place)
-                    sgd = paddle.optimizer.SGD(learning_rate=1e-3)
-                    x = paddle.static.data(
-                        name="x", shape=[-1, num_steps], dtype='int64'
-                    )
-                    x.desc.set_need_check_feed(False)
-                    y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
-                    y.desc.set_need_check_feed(False)
-                    static_loss = simple_net(x, y)
-                    sgd.minimize(static_loss)
-                    static_param_updated = {}
-                    static_param_init = {}
-                    static_param_name_list = []
-                    for param in simple_net.parameters():
-                        static_param_name_list.append(param.name)
-
-                    out = exe.run(
-                        framework.default_startup_program(),
-                        fetch_list=static_param_name_list,
-                    )
-                    for i in range(len(static_param_name_list)):
-                        static_param_init[static_param_name_list[i]] = out[i]
-                    static_loss_value = None
-                    for i in range(batch_num):
-                        x_data = np.arange(12).reshape(4, 3).astype('int64')
-                        y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                        x_data = x_data.reshape((-1, num_steps))
-                        y_data = y_data.reshape((-1, 1))
-                        fetch_list = [static_loss]
-                        fetch_list.extend(static_param_name_list)
-                        out = exe.run(
-                            base.default_main_program(),
-                            feed={"x": x_data, "y": y_data},
-                            fetch_list=fetch_list,
-                        )
-                        static_loss_value = out[0]
-
-                        if i == batch_num - 1:
-                            for k in range(3, len(out)):
-                                static_param_updated[
-                                    static_param_name_list[k - 1]
-                                ] = out[k]
-
-                np.testing.assert_array_equal(static_loss_value, dy_loss_value)
-                for key, value in static_param_init.items():
-                    np.testing.assert_array_equal(value, dy_param_init[key])
-                for key, value in static_param_updated.items():
-                    np.testing.assert_array_equal(value, dy_param_updated[key])
+                self.run_case(place, is_sort_sum_gradient, is_sparse, dtype)
 
 
 if __name__ == '__main__':

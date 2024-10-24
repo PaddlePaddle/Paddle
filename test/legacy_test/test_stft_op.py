@@ -32,11 +32,11 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
 
     if axis == -1:
         shape = list(x.shape)[:-1] + [frame_length, n_frames]
-        strides = list(strides) + [hop_length * x.itemsize]
+        strides = [*strides, hop_length * x.itemsize]
 
     elif axis == 0:
         shape = [n_frames, frame_length] + list(x.shape)[1:]
-        strides = [hop_length * x.itemsize] + list(strides)
+        strides = [hop_length * x.itemsize, *strides]
 
     else:
         raise ValueError(f"Frame axis={axis} must be either 0 or -1")
@@ -87,6 +87,27 @@ class TestStftOp(OpTest):
         paddle.enable_static()
         self.check_grad(['X'], 'Out', check_dygraph=False)
         paddle.disable_static()
+
+
+class TestStftOpReal(unittest.TestCase):
+    def test_as_real(self):
+        input = np.random.randn(4410)
+        x = paddle.to_tensor(data=input, dtype='float32')
+        n_fft = 400
+        res0 = paddle.signal.stft(n_fft=n_fft, x=x)
+        res_a = paddle.as_real(res0)
+
+        res_np = res0.numpy()
+        res_p = paddle.to_tensor(data=res_np)
+        res_b = paddle.as_real(res_p)
+
+        np.testing.assert_allclose(
+            res0.numpy(), res_p.numpy(), rtol=1e-5, atol=1e-5
+        )
+
+        np.testing.assert_allclose(
+            res_a.numpy(), res_b.numpy(), rtol=1e-5, atol=1e-5
+        )
 
 
 if __name__ == '__main__':

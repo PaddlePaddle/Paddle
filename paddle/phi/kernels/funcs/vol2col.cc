@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 /*
  * vol = [input_channels, input_depth, input_height, input_width]
@@ -38,13 +37,13 @@ class Vol2ColFunctor<phi::CPUContext, T> {
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol.dims().size(),
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dimension of vol should be 4, but received %d.",
                           vol.dims().size()));
 
     PADDLE_ENFORCE_EQ(col->dims().size(),
                       7,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dimension of col should be 7, but received %d.",
                           col->dims().size()));
 
@@ -81,7 +80,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         input_depth_tmp,
         output_depth,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_depth(%d) and output_depth(%d) are mismatching.",
             input_depth_tmp,
             output_depth));
@@ -92,7 +91,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         input_height_tmp,
         output_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_height(%d) and output_height(%d) are mismatching.",
             input_height_tmp,
             output_height));
@@ -103,7 +102,7 @@ class Vol2ColFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         input_width_tmp,
         output_width,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_width(%d) and output_width(%d) are mismatching.",
             input_width_tmp,
             output_width));
@@ -164,13 +163,13 @@ class Col2VolFunctor<phi::CPUContext, T> {
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol->dims().size(),
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dimension of vol should be 4, but received %d.",
                           vol->dims().size()));
 
     PADDLE_ENFORCE_EQ(col.dims().size(),
                       7,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dimension of col  should be 7, but received %d.",
                           col.dims().size()));
 
@@ -206,7 +205,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         input_depth_tmp,
         output_depth,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_depth(%d) and output_depth(%d) are mismatching.",
             input_depth_tmp,
             output_depth));
@@ -217,7 +216,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         input_height_tmp,
         output_height,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_height(%d) and output_height(%d) are mismatching.",
             input_height_tmp,
             output_height));
@@ -228,7 +227,7 @@ class Col2VolFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         input_width_tmp,
         output_width,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input_width(%d) and output_width(%d) are mismatching.",
             input_width_tmp,
             output_width));
@@ -278,5 +277,4 @@ template class Vol2ColFunctor<phi::CPUContext, double>;
 template class Col2VolFunctor<phi::CPUContext, float>;
 template class Col2VolFunctor<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

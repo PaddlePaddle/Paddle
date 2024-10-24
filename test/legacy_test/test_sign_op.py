@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -22,7 +23,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSignOp(OpTest):
@@ -35,7 +35,7 @@ class TestSignOp(OpTest):
         self.outputs = {'Out': np.sign(self.inputs['X'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -71,7 +71,9 @@ class TestSignBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(self.place, ['X'], 'Out', check_pir=True)
@@ -79,7 +81,13 @@ class TestSignBF16Op(OpTest):
 
 class TestSignAPI(unittest.TestCase):
     def setUp(self):
-        self.place = [base.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(base.CUDAPlace(0))
 
@@ -92,7 +100,6 @@ class TestSignAPI(unittest.TestCase):
             z_expected = np.sign(np_x)
             self.assertEqual((np_z == z_expected).all(), True)
 
-    @test_with_pir_api
     def test_static(self):
         np_input1 = np.random.uniform(-10, 10, (12, 10)).astype("int8")
         np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("uint8")
@@ -164,7 +171,6 @@ class TestSignDoubleGradCheck(unittest.TestCase):
     def sign_wrapper(self, x):
         return paddle.sign(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -185,7 +191,13 @@ class TestSignDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -196,7 +208,6 @@ class TestSignTripleGradCheck(unittest.TestCase):
     def sign_wrapper(self, x):
         return paddle.sign(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -217,7 +228,13 @@ class TestSignTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

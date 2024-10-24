@@ -13,8 +13,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle {
 namespace framework {
@@ -290,7 +290,7 @@ __global__ void PushMergeCopy(const size_t N,
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     uint64_t** gpu_keys,
     const std::vector<float*>& values,
     const float* total_values_gpu,
@@ -303,7 +303,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto buf_value = memory::Alloc(place, values.size() * sizeof(float*));
   float** gpu_values = reinterpret_cast<float**>(buf_value->ptr());
@@ -326,7 +326,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const std::vector<const float*>& grad_values,
     float* total_grad_values_gpu,
     const std::vector<int64_t>& slot_lengths,
@@ -338,7 +338,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   auto slot_lengths_lod = slot_lengths;
   for (int i = 1; i < slot_lengths_lod.size(); i++) {
@@ -355,22 +355,26 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
   int64_t* gpu_len = reinterpret_cast<int64_t*>(buf_length->ptr());
   int* d_slot_vector = reinterpret_cast<int*>(buf_slot_vector->ptr());
   int* d_mf_dim_vector = reinterpret_cast<int*>(buf_mf_dim_vector->ptr());
-  cudaMemcpy(gpu_values,
-             grad_values.data(),
-             grad_values.size() * sizeof(float*),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(gpu_len,
-             slot_lengths_lod.data(),
-             slot_lengths.size() * sizeof(int64_t),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_slot_vector,
-             slot_vector.data(),
-             slot_lengths_lod.size() * sizeof(int),
-             cudaMemcpyHostToDevice);
-  cudaMemcpy(d_mf_dim_vector,
-             slot_mf_dim_vector.data(),
-             slot_lengths_lod.size() * sizeof(int),
-             cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(gpu_values,
+                  grad_values.data(),
+                  grad_values.size() * sizeof(float*),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(gpu_len,
+                  slot_lengths_lod.data(),
+                  slot_lengths.size() * sizeof(int64_t),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(d_slot_vector,
+                  slot_vector.data(),
+                  slot_lengths_lod.size() * sizeof(int),
+                  cudaMemcpyHostToDevice,
+                  stream);
+  cudaMemcpyAsync(d_mf_dim_vector,
+                  slot_mf_dim_vector.data(),
+                  slot_lengths_lod.size() * sizeof(int),
+                  cudaMemcpyHostToDevice,
+                  stream);
   PushCopyWithPool<<<(total_length + 1024 - 1) / 1024, 1024, 0, stream>>>(
       total_grad_values_gpu,
       gpu_values,
@@ -387,7 +391,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const uint64_t* total_keys,
     float** gpu_values,
     const float* total_values_gpu,
@@ -401,7 +405,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   size_t N = total_length * hidden_size;
   PullDedupCopy<<<CUDA_BLOCK(N), stream>>>(N,
@@ -420,7 +424,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPullDedupImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const uint64_t* total_keys,
     float** grad_values,
     float* total_grad_values_gpu,
@@ -437,7 +441,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   cudaMemsetAsync(
       total_grad_values_gpu, 0, dedup_length * grad_value_size, stream);
@@ -462,7 +466,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
 
 template <typename GPUAccessor>
 void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
-    const paddle::platform::Place& place,
+    const phi::Place& place,
     const uint64_t* total_keys,
     float** grad_values,
     float* total_grad_values_gpu,
@@ -481,7 +485,7 @@ void AccessorWrapper<GPUAccessor>::CopyForPushDedupImpl(
   int device_id = place.GetDeviceId();
   platform::CUDADeviceGuard guard(device_id);
   auto stream = dynamic_cast<phi::GPUContext*>(
-                    paddle::platform::DeviceContextPool::Instance().Get(place))
+                    phi::DeviceContextPool::Instance().Get(place))
                     ->stream();
   // merge all grad to one
   size_t N = dedup_length * hidden_size;

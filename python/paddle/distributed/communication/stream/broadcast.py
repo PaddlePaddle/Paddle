@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import framework
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from paddle import _C_ops, framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
+from paddle.distributed.communication.reduce import _to_inplace_op
+from paddle.framework import in_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def _broadcast_in_dygraph(
@@ -55,23 +66,35 @@ def _broadcast_in_static_mode(
         'broadcast',
     )
 
-    op_type = 'c_broadcast'
+    op_type = 'broadcast'
     helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
 
-    helper.append_op(
+    if in_pir_mode():
+        op_type = _to_inplace_op(op_type)
+        getattr(_C_ops, op_type)(tensor, ring_id, src_rank_in_group, sync_op)
+        return
+
+    op = helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'root': src_rank_in_group,
-            'use_calc_stream': sync_op,
             'ring_id': ring_id,
         },
     )
+    if sync_op:
+        op.dist_attr.execution_stream = "default"
 
 
-def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
+def broadcast(
+    tensor: Tensor,
+    src: int,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Broadcast a tensor to all devices.
@@ -79,7 +102,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
     Args:
         tensor (Tensor): The tensor to broadcast. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
         src (int, optional): Rank of the source device.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.
@@ -104,7 +127,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.broadcast(data, src=1, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data.numpy()
             >>> print(out)
             >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)

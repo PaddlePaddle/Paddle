@@ -117,7 +117,9 @@ class TestRepeatedFcReluFusePass(PassAutoScanTest):
         yield config, ["fusion_repeated_fc_relu"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(passes=["repeated_fc_relu_fuse_pass"])
+        self.run_and_statis(
+            min_success_num=20, passes=["repeated_fc_relu_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

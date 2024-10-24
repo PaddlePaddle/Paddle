@@ -22,6 +22,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "test/cpp/inference/api/tester_helper.h"
@@ -72,15 +73,15 @@ void PD_run() {
   PD_DeletePaddleTensor(input);
   int size;
   const int* out_shape = PD_GetPaddleTensorShape(out_data, &size);
-  PADDLE_ENFORCE_EQ(size,
-                    2,
-                    paddle::platform::errors::InvalidArgument(
-                        "The Output shape's size is NOT match."));
+  PADDLE_ENFORCE_EQ(
+      size,
+      2,
+      common::errors::InvalidArgument("The Output shape's size is NOT match."));
   std::vector<int> ref_outshape_size({9, 6});
   for (int i = 0; i < 2; ++i) {
     PADDLE_ENFORCE_EQ(out_shape[i],
                       ref_outshape_size[i],
-                      paddle::platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The Output shape's size is NOT match."));
   }
   PD_DeletePaddleBuf(buf);
@@ -127,7 +128,9 @@ void buffer_run() {
                     params_str.size());
   LOG(INFO) << PD_ProgFile(config);
   LOG(INFO) << PD_ParamsFile(config);
-  CHECK(PD_ModelFromMemory(config)) << "NO";
+  PADDLE_ENFORCE(PD_ModelFromMemory(config),
+                 common::errors::PreconditionNotMet(
+                     "PD_ModelFromMemory(config) is failed"));
 
   PD_Tensor* input = PD_NewPaddleTensor();
   PD_PaddleBuf* buf = PD_NewPaddleBuf();

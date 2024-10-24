@@ -20,6 +20,7 @@ from paddle import base
 
 
 class TestSaveModelWithoutVar(unittest.TestCase):
+
     def test_no_var_save(self):
         data = paddle.static.data(name='data', shape=[-1, 1], dtype='float32')
         data_plus = data + 1

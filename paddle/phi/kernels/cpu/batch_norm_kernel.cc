@@ -61,14 +61,14 @@ void BatchNormKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input X's dimensions should be larger than 1."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensions is [%d]",
           x_dims.size()));
@@ -144,8 +144,8 @@ void BatchNormKernel(const Context& ctx,
         break;
       }
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
-                                                  data_layout_str));
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Unknown storage order: %s", data_layout_str));
     }
 
     // if MomentumTensor is set, use MomentumTensor value, momentum
@@ -159,7 +159,7 @@ void BatchNormKernel(const Context& ctx,
 
   // use SavedMean and SavedVariance to do normalize
   Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
-  if (global_stats) {
+  if (global_stats) {  // NOLINT
     ConstEigenVectorArrayMap<T> var_arr(variance.data<T>(), C);
     inv_std = (var_arr + epsilon).sqrt().inverse();
   } else {
@@ -178,7 +178,7 @@ void BatchNormKernel(const Context& ctx,
   auto* Bias = bias.get_ptr();
   Eigen::Array<T, Eigen::Dynamic, 1> new_scale(C);
   Eigen::Array<T, Eigen::Dynamic, 1> new_bias(C);
-  if (Scale && Bias) {
+  if (Scale && Bias) {  // NOLINT
     ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
     ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
     new_scale = inv_std * scale_arr;
@@ -214,8 +214,8 @@ void BatchNormKernel(const Context& ctx,
       break;
     }
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %d",
-                                                data_layout));
+      PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %d",
+                                                   data_layout));
   }
 }
 

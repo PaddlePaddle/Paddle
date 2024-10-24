@@ -30,7 +30,7 @@ class RNNEncoder(nn.Layer):
         direction="forward",
         dropout=0.0,
         pooling_type=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self._input_size = input_size
@@ -44,7 +44,7 @@ class RNNEncoder(nn.Layer):
             num_layers=num_layers,
             direction=direction,
             dropout=dropout,
-            **kwargs
+            **kwargs,
         )
 
     def get_input_dim(self):
@@ -138,9 +138,9 @@ def rnn_pretrain_forward(train_program, start_program, topo=None):
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"
-        ] = "127.0.0.1:36001,127.0.0.1:36002"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = (
+            "127.0.0.1:36001,127.0.0.1:36002"
+        )
 
     def test_rnn_raw_optimizer(self):
         from paddle.distributed import fleet

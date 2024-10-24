@@ -53,7 +53,7 @@ class NetWithEagerTensor(paddle.nn.Layer):
     # at transform time.
     @paddle.jit.not_to_static
     def forward_impl(self, x):
-        return paddle.concat([x] + self.extra_inputs, axis=0)
+        return paddle.concat([x, *self.extra_inputs], axis=0)
 
     def forward(self, x):
         return self.forward_impl(x)

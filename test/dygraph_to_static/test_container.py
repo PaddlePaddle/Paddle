@@ -17,10 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+)
 
 import paddle
-from paddle.framework import use_pir_api
 
 
 class BufferLayers(paddle.nn.Layer):
@@ -73,7 +74,6 @@ class NestSequentialNet(paddle.nn.Layer):
 
 class TestSequential(Dy2StTestBase):
     def setUp(self):
-        paddle.set_device('cpu')
         self.seed = 2021
         self.temp_dir = tempfile.TemporaryDirectory()
         self._init_config()
@@ -96,9 +96,6 @@ class TestSequential(Dy2StTestBase):
             net = paddle.jit.to_static(net)
         x = paddle.rand([16, 10], 'float32')
         out = net(x)
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if use_pir_api():
-            return out
         if to_static:
             load_out = self._test_load(net, x)
             np.testing.assert_allclose(
@@ -111,7 +108,6 @@ class TestSequential(Dy2StTestBase):
         return out
 
     def test_train(self):
-        paddle.jit.set_code_level(100)
         dy_out = self._run(to_static=False)
         st_out = self._run(to_static=True)
         np.testing.assert_allclose(

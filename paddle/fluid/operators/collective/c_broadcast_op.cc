@@ -59,7 +59,6 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_broadcast,
                              ops::CBroadcastOp,
@@ -73,4 +72,4 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

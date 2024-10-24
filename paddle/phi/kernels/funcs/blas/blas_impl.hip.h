@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 COMMON_DECLARE_bool(enable_cublas_tensor_op_math);
+COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace phi {
 namespace funcs {
@@ -65,7 +66,7 @@ struct CUBlas<float> {
   // https://github.com/ROCm-Developer-Tools/HIP/blob/roc-3.5.x/docs/markdown/CUBLAS_API_supported_by_HIP.md
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgemmEx is not supported on HIP platform."));
   }
 
@@ -76,25 +77,25 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgetrfBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgetriBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSmatinvBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasStrsmBatched is not supported on HIP platform."));
   }
 };
@@ -134,8 +135,8 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Currently there are not cublasDgemmEx."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Currently there are not cublasDgemmEx."));
   }
 
   template <typename... ARGS>
@@ -145,25 +146,25 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDgetrfBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDgetriBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDmatinvBatched is not supported on HIP platform."));
   }
 
   template <typename... ARGS>
   static void TRSM_BATCH(ARGS... args) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasDtrsmBatched is not supported on HIP platform."));
   }
 };
@@ -695,13 +696,20 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
 
   float h_alpha = static_cast<float>(alpha);
   float h_beta = static_cast<float>(beta);
+
+  rocblas_datatype compute_type = rocblas_datatype_f32_r;
+  if (FLAGS_gemm_use_half_precision_compute_type == true) {
+    compute_type = rocblas_datatype_f16_r;
+  }
+  VLOG(4) << "gemm_use_half_precision_compute_type: "
+          << FLAGS_gemm_use_half_precision_compute_type;
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
   CUBlas<phi::dtype::float16>::GEMM_EX(&cuda_ctx,
@@ -721,7 +729,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                        C,
                                        rocblas_datatype_f16_r,
                                        N,
-                                       rocblas_datatype_f32_r);
+                                       compute_type);
 }
 
 template <>
@@ -749,9 +757,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   // TODO(zhiqiu): 80 has the same meaning for rocm and cuda?
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
-      80,
-      phi::errors::InvalidArgument(
-          "rocblas bf16 gemm requires GPU compute capability >= 80,"
+      53,
+      common::errors::InvalidArgument(
+          "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
 
@@ -815,7 +823,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas complex64 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -872,7 +880,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas complex128 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1005,9 +1013,9 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
       transB ? rocblas_operation_none : rocblas_operation_transpose;
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
-      80,
-      phi::errors::InvalidArgument(
-          "rocblas bf16 gemm requires GPU compute capability >= 80,"
+      53,
+      common::errors::InvalidArgument(
+          "rocblas bf16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
 
@@ -1497,7 +1505,7 @@ void Blas<phi::GPUContext>::BatchedGETRI(int n,
   PADDLE_ENFORCE_NE(
       a_inv,
       a,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
           "in-place. The memory space of output matrix (address: %p) cannot "
           "overlap memory space of input matrix (address: %p).",
@@ -1580,6 +1588,190 @@ void Blas<phi::GPUContext>::BatchedTRSM(CBLAS_SIDE side,
                           ldb,
                           batch_size);
   });
+}
+
+static void Int8GEMM_EX(phi::GPUContext *dev_ctx,
+                        rocblas_operation transa,
+                        rocblas_operation transb,
+                        int m,
+                        int n,
+                        int k,
+                        const void *alpha,
+                        const void *A,
+                        rocblas_datatype Atype,
+                        int lda,
+                        const void *B,
+                        rocblas_datatype Btype,
+                        int ldb,
+                        const void *beta,
+                        void *C,
+                        rocblas_datatype Ctype,
+                        int ldc,
+                        rocblas_datatype computeType) {
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+  dev_ctx->CublasCall([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_gemm_ex(handle,
+                                                             transa,
+                                                             transb,
+                                                             m,
+                                                             n,
+                                                             k,
+                                                             alpha,
+                                                             A,
+                                                             Atype,
+                                                             lda,
+                                                             B,
+                                                             Btype,
+                                                             ldb,
+                                                             beta,
+                                                             C,
+                                                             Ctype,
+                                                             ldc,
+                                                             C,
+                                                             Ctype,
+                                                             ldc,
+                                                             computeType,
+                                                             algo,
+                                                             0,
+                                                             0));
+  });
+}
+
+inline void Int8GEMM(const GPUContext &context_,
+                     CBLAS_TRANSPOSE transA,
+                     CBLAS_TRANSPOSE transB,
+                     int M,
+                     int N,
+                     int K,
+                     int32_t alpha,
+                     const int8_t *A,
+                     const int8_t *B,
+                     int32_t beta,
+                     int32_t *C) {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  Int8GEMM_EX(&cuda_ctx,
+              cuTransB,
+              cuTransA,
+              N,
+              M,
+              K,
+              &alpha,
+              B,
+              rocblas_datatype_i8_r,
+              ldb,
+              A,
+              rocblas_datatype_i8_r,
+              lda,
+              &beta,
+              C,
+              rocblas_datatype_i32_r,
+              N,
+              rocblas_datatype_i32_r);
+}
+
+inline void Int8BatchedGEMM(const GPUContext &context_,
+                            CBLAS_TRANSPOSE transA,
+                            CBLAS_TRANSPOSE transB,
+                            int M,
+                            int N,
+                            int K,
+                            int32_t alpha,
+                            const int8_t *A,
+                            const int8_t *B,
+                            int32_t beta,
+                            int32_t *C,
+                            int batchCount,
+                            int64_t strideA,
+                            int64_t strideB) {
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  const int64_t strideC = M * N;
+  rocblas_operation cuTransA = (transA == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+  rocblas_operation cuTransB = (transB == CblasNoTrans)
+                                   ? rocblas_operation_none
+                                   : rocblas_operation_transpose;
+
+  rocblas_gemm_algo algo = rocblas_gemm_algo_standard;
+
+  context_.CublasCall([&](rocblas_handle handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::rocblas_gemm_strided_batched_ex(handle,
+                                                      cuTransB,
+                                                      cuTransA,
+                                                      N,
+                                                      M,
+                                                      K,
+                                                      &alpha,
+                                                      B,
+                                                      rocblas_datatype_i8_r,
+                                                      ldb,
+                                                      strideB,
+                                                      A,
+                                                      rocblas_datatype_i8_r,
+                                                      lda,
+                                                      strideA,
+                                                      &beta,
+                                                      C,
+                                                      rocblas_datatype_i32_r,
+                                                      ldc,
+                                                      strideC,
+                                                      C,
+                                                      rocblas_datatype_i32_r,
+                                                      ldc,
+                                                      strideC,
+                                                      batchCount,
+                                                      rocblas_datatype_i32_r,
+                                                      algo,
+                                                      0,
+                                                      0));
+  });
+}
+
+inline void Int8BatchedGEMM(const GPUContext &context_,
+                            CBLAS_TRANSPOSE transA,
+                            CBLAS_TRANSPOSE transB,
+                            int M,
+                            int N,
+                            int K,
+                            int32_t alpha,
+                            const int8_t **A,
+                            const int8_t **B,
+                            int32_t beta,
+                            int32_t **C,
+                            int batchCount) {
+  for (int k = 0; k < batchCount; ++k) {
+    Int8GEMM(context_, transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
+  }
+}
+
+inline void Int8GEMV(const GPUContext &context_,
+                     bool trans_a,
+                     int M,
+                     int N,
+                     int32_t alpha,
+                     const int8_t *A,
+                     const int8_t *B,
+                     int32_t beta,
+                     int32_t *C) {
+  if (trans_a) {
+    Int8GEMM(
+        context_, CblasNoTrans, CblasNoTrans, 1, N, M, alpha, B, A, beta, C);
+  } else {
+    Int8GEMM(
+        context_, CblasNoTrans, CblasNoTrans, M, 1, N, alpha, A, B, beta, C);
+  }
 }
 
 }  // namespace funcs

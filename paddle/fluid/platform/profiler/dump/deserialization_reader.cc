@@ -12,10 +12,9 @@ limitations under the License. */
 
 #include <cstring>
 
-#include "paddle/fluid/platform/profiler/extra_info.h"
+#include "paddle/phi/core/platform/profiler/extra_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 DeserializationReader::DeserializationReader(const std::string& filename)
     : filename_(filename) {
@@ -44,12 +43,12 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
     return nullptr;
   }
   // restore extra info
-  ExtraInfo extrainfo;
+  ExtraInfo extra_info;
   for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
     ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
-    extrainfo.AddExtraInfo(extra_info_map.key(),
-                           std::string("%s"),
-                           extra_info_map.value().c_str());
+    extra_info.AddExtraInfo(extra_info_map.key(),
+                            std::string("%s"),
+                            extra_info_map.value().c_str());
   }
 
   // restore NodeTrees
@@ -139,10 +138,10 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
         RestoreDeviceProperty(device_property_proto);
   }
   ProfilerResult* profiler_result_ptr =
-      new ProfilerResult(std::move(tree), extrainfo, device_property_map);
+      new ProfilerResult(std::move(tree), extra_info, device_property_map);
 #else
   ProfilerResult* profiler_result_ptr =
-      new ProfilerResult(std::move(tree), extrainfo);
+      new ProfilerResult(std::move(tree), extra_info);
 #endif
   // restore version and span indx
   profiler_result_ptr->SetVersion(node_trees_proto_->version());
@@ -366,5 +365,4 @@ MemsetEventInfo DeserializationReader::HandleMemsetEventInfoProto(
   return memset_info;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

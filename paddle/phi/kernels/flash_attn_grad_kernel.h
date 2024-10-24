@@ -56,4 +56,22 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv);
 
+template <typename T, typename Context>
+void FlashAttnWithSparseMaskGradKernel(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const DenseTensor& attn_mask_start_row_indices,
+    const DenseTensor& out,
+    const DenseTensor& softmax_lse,
+    const DenseTensor& seed_offset,
+    const DenseTensor& dout,
+    float dropout,
+    bool causal,
+    int attn_mask_start_row,
+    DenseTensor* dq,
+    DenseTensor* dk,
+    DenseTensor* dv);
+
 }  // namespace phi

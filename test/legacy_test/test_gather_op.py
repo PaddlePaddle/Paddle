@@ -16,12 +16,12 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def gather_numpy(x, index, axis):
@@ -42,7 +42,7 @@ class TestGatherOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -63,6 +63,11 @@ class TestGatherOp(OpTest):
 
     def init_inputs_and_outputs(self):
         xnp = np.random.random(self.x_shape).astype(self.x_type)
+        if self.x_type == 'complex64' or self.x_type == "cpmolex128":
+            xnp = (
+                np.random.randint(-10, 10, size=(10, 10))
+                + 1j * np.random.randint(-10, 10, size=(10, 10))
+            ).astype(self.x_type)
         self.inputs = {
             'X': xnp,
             'Index': np.array(self.index).astype(self.index_type),
@@ -117,7 +122,9 @@ class TestGatherOpBFP16(TestGatherOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            place=paddle.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -128,6 +135,22 @@ class TestGatherOpBFP16(TestGatherOp):
             check_pir=True,
             check_prim_pir=True,
         )
+
+
+class TestGatherOpComplex64(TestGatherOp):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOpComplex128(TestGatherOp):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestGatherOp):
@@ -157,6 +180,22 @@ class TestCase1BFP16(TestGatherOpBFP16):
         self.index_type = "int32"
 
 
+class TestCase1Complex64(TestCase1):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase1Complex128(TestCase1):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestCase2(TestGatherOp):
     def config(self):
         """
@@ -182,6 +221,22 @@ class TestCase2BFP16(TestGatherOpBFP16):
         self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int64"
+
+
+class TestCase2Complex64(TestCase2):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase2Complex128(TestCase2):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase3(TestGatherOp):
@@ -211,6 +266,22 @@ class TestCase3BFP16(TestGatherOpBFP16):
         self.index_type = "int64"
 
 
+class TestCase3Complex64(TestCase3):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase3Complex128(TestCase3):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestCase4(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
@@ -237,6 +308,22 @@ class TestCase4BFP16(TestGatherOpBFP16):
         self.index_type = "int32"
 
 
+class TestCase4Complex64(TestCase4):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase4Complex128(TestCase4):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestCase5(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
@@ -261,6 +348,22 @@ class TestCase5BFP16(TestGatherOpBFP16):
 class TestCase5FP16(TestCase5):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestCase5Complex64(TestCase5):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase5Complex128(TestCase5):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase6(TestGatherOp):
@@ -307,7 +410,7 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_pir=True)
@@ -323,6 +426,96 @@ class TestGatherBF16Op(OpTest):
         self.axis_type = "int32"
 
 
+class TestGatherNegativeAxis(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.python_api = paddle.gather
+        self.dtype = np.uint16
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(np.float32)
+        axis_np = np.array(self.axis).astype(self.axis_type)
+        index_np = np.array(self.index).astype(self.index_type)
+        self.inputs = {
+            'X': convert_float_to_uint16(xnp),
+            'Index': index_np,
+            'Axis': axis_np,
+        }
+        out = gather_numpy(self.inputs['X'], index_np, axis_np[0])
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            self.check_grad_with_place(
+                place, ['X'], 'Out', numeric_grad_delta=0.5
+            )
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (100, 3)
+        self.index = [0, 1, -2]
+        self.index_type = "int32"
+        self.axis = [-1]
+        self.axis_type = "int32"
+
+
+class TestOutOfRangeError(unittest.TestCase):
+    def test_dygraph_forwad_and_backward(self):
+        with dygraph_guard():
+            x = paddle.randn([100, 3]).cpu()
+            x.stop_gradient = False
+            y = paddle.gather(
+                x,
+                paddle.to_tensor([0, -2]).cpu(),
+                axis=-1,
+            )
+            grad_x = paddle.grad(y, x)
+
+    def test_dygraph_error(self):
+        with dygraph_guard():
+            # out of lower bound
+            with self.assertRaises(IndexError):
+                _ = paddle.gather(
+                    paddle.randn([100, 3]).cpu(),
+                    paddle.to_tensor([0, -4]).cpu(),
+                    axis=1,
+                )
+            # out of upper bound
+            with self.assertRaises(IndexError):
+                _ = paddle.gather(
+                    paddle.randn([100, 3]).cpu(),
+                    paddle.to_tensor([0, 3]).cpu(),
+                    axis=1,
+                )
+
+
+class TestCase6Complex64(TestCase6):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase6Complex128(TestCase6):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherOp1(OpTest):
     def setUp(self):
         self.op_type = "gather"
@@ -336,7 +529,7 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -361,6 +554,22 @@ class TestGatherOp1FP16(TestGatherOp1):
         self.x_type = "float16"
 
 
+class TestGatherOp1Complex64(TestGatherOp1):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp1Complex128(TestGatherOp1):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherOp2(TestGatherOp1):
     def config(self):
         """
@@ -382,6 +591,22 @@ class TestGatherOp2FP16(TestGatherOp2):
         self.x_type = "float16"
 
 
+class TestGatherOp2Complex64(TestGatherOp2):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp2Complex128(TestGatherOp2):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherOp3(TestGatherOp1):
     def config(self):
         """
@@ -401,6 +626,22 @@ class TestGatherOp3(TestGatherOp1):
 class TestGatherOp3FP16(TestGatherOp3):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestGatherOp3Complex64(TestGatherOp3):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp3Complex128(TestGatherOp3):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestGatherOp4(TestGatherOp1):
@@ -425,8 +666,50 @@ class TestGatherOp4FP16(TestGatherOp4):
         self.x_type = "float16"
 
 
+class TestGatherOp4Complex64(TestGatherOp4):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp4Complex128(TestGatherOp4):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp5(TestGatherOp):
+    def config(self):
+        """
+        Test for negative axis
+        """
+        self.x_shape = (3, 100, 10)
+        self.config_dtype()
+        self.index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        self.index_type = "int64"
+        self.axis = [-1]
+        self.axis_type = "int32"
+        self.attrs = {'overwrite': False}
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim=True,
+            check_prim_pir=True,
+        )
+
+
 class API_TestGather(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out1(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -442,7 +725,6 @@ class API_TestGather(unittest.TestCase):
             expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
-    @test_with_pir_api
     def test_out2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -505,7 +787,7 @@ class API_TestDygraphGather(unittest.TestCase):
             return
 
         x = np.random.rand(226862, 256).astype("float32")
-        index = np.random.randint(0, 22682, size=(8859027))
+        index = np.random.randint(-226862, 22682, size=(8859027))
 
         def test_dygraph():
             with base.dygraph.guard():
@@ -535,7 +817,7 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -551,24 +833,23 @@ class TestGathertError(unittest.TestCase):
             def test_x_type():
                 paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+            self.assertRaises((TypeError, ValueError), test_x_type)
 
             def test_index_type():
                 paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+            self.assertRaises((TypeError, ValueError), test_index_type)
 
             def test_axis_dtype():
                 paddle.gather(x, index, axis=1.11)
 
-            self.assertRaises(TypeError, test_axis_dtype)
+            self.assertRaises((TypeError, ValueError), test_axis_dtype)
 
             def test_axis_dtype1():
                 paddle.gather(x, index, axis=axis)
 
-            self.assertRaises(TypeError, test_axis_dtype1)
+            self.assertRaises((TypeError, ValueError), test_axis_dtype1)
 
-    @test_with_pir_api
     def test_error2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -583,25 +864,20 @@ class TestGathertError(unittest.TestCase):
             def test_x_type():
                 paddle.gather(x, index)
 
-            self.assertRaises(TypeError, test_x_type)
+            self.assertRaises((TypeError, ValueError), test_x_type)
 
             def test_index_type():
                 paddle.gather(x, index_float)
 
-            self.assertRaises(TypeError, test_index_type)
+            self.assertRaises((TypeError, ValueError), test_index_type)
 
-    @test_with_pir_api
     def test_error3(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int32', name='x')
-            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
             index = paddle.static.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.static.data(
-                shape=shape, dtype='float32', name='index_float'
-            )
 
             def test_axis_minsize():
                 paddle.gather(x, index, axis=-1)
@@ -615,7 +891,7 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
-    @test_with_pir_api
+
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')

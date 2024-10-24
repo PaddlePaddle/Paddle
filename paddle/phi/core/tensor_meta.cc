@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -112,7 +115,7 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
       p_strides[0] = p_strides[1] * p_dims[1];
       return strides;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.",
           dims.size()));
   }
@@ -208,8 +211,14 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-bool DenseTensorMeta::is_contiguous() const noexcept {
-  return strides == calc_strides(dims);
+bool DenseTensorMeta::is_contiguous() const {
+  bool is_contiguous = (strides == calc_strides(dims));
+  if (!is_contiguous && !FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Not contiguous "
+        "Tensor found, something wrong has happened!"));
+  }
+  return is_contiguous;
 }
 
 StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}

@@ -11,13 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-def softmax_mask_fuse(x, mask, name=None):
+
+def softmax_mask_fuse(
+    x: Tensor, mask: Tensor, name: str | None = None
+) -> Tensor:
     """
     Do a masked softmax on x.
 
@@ -52,7 +60,7 @@ def softmax_mask_fuse(x, mask, name=None):
             >>> x = paddle.rand([2, 8, 8, 32])
             >>> mask = paddle.rand([2, 1, 8, 32])
 
-            >>> rst = incubate.softmax_mask_fuse(x, mask)
+            >>> rst = incubate.softmax_mask_fuse(x, mask) # type: ignore[operator]
             >>> rst.shape
             [2, 8, 8, 32]
     """

@@ -16,13 +16,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 
 void TransDataDevice(const phi::DenseTensor& in,
-                     const platform::Place& dst_place,
+                     const phi::Place& dst_place,
                      phi::DenseTensor* out);
 
 }  // namespace framework

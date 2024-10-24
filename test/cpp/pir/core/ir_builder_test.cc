@@ -36,6 +36,8 @@ TEST(builder_test, type_api) {
   EXPECT_EQ(pir::BoolType::get(&ctx), builder.bool_type());
   EXPECT_EQ(pir::Complex64Type::get(&ctx), builder.complex64_type());
   EXPECT_EQ(pir::Complex128Type::get(&ctx), builder.complex128_type());
+  EXPECT_EQ(pir::Float8E4M3FNType::get(&ctx), builder.float8e4m3fn_type());
+  EXPECT_EQ(pir::Float8E5M2Type::get(&ctx), builder.float8e5m2_type());
 }
 
 TEST(builder_test, attribute_api) {

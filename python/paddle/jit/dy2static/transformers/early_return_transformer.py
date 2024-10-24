@@ -36,9 +36,7 @@ class EarlyReturnTransformer(BaseTransformer):
     def is_define_return_in_if(self, node):
         assert isinstance(
             node, gast.If
-        ), "Type of input node should be gast.If, but received %s ." % type(
-            node
-        )
+        ), f"Type of input node should be gast.If, but received {type(node)}."
         for child in node.body:
             if isinstance(child, gast.Return):
                 return True

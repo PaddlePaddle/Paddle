@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def test_static_layer(
@@ -123,11 +123,17 @@ def calc_softmarginloss(
 
 
 class TestSoftMarginLoss(unittest.TestCase):
-    @test_with_pir_api
+
     def test_SoftMarginLoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         types = [np.int32, np.int64, np.float32, np.float64]
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.device.is_compiled_with_cuda():
             places.append('gpu')
         reductions = ['sum', 'mean', 'none']

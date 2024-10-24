@@ -66,23 +66,27 @@ def convert_attr(x, attr):
     # Value and Tensor are unified. So we don't need to transform
     # the size attr into a method call. The AttributeJstTransformer and
     # convert_attr can be safely removed.
-    if isinstance(x, Variable) and attr == "size":
+    if (
+        isinstance(x, Variable)
+        and not isinstance(x, paddle.Tensor)
+        and attr == "size"
+    ):
         return x.size()
     else:
         return getattr(x, attr)
 
 
 def convert_load(x):
+    # convert dygraph `PyLayer` into StaticPyLayer
+    if isinstance(x, PyLayerMeta):
+        return StaticPyLayer(x)
+
     if in_to_static_mode():
         if isinstance(x, paddle.Tensor):
             """
             TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
             """
             return _convert_into_variable(x)
-
-        # convert dygraph `PyLayer` into StaticPyLayer
-        if isinstance(x, PyLayerMeta):
-            return StaticPyLayer(x)
 
         # get the new output of the var
         if isinstance(x, Value):
@@ -109,7 +113,7 @@ def convert_load(x):
             if new_var is not None:
                 return new_var
 
-        if x is paddle.amp.auto_cast:
+        if x is paddle.amp.auto_cast and not use_pir_api():
             return convert_auto_cast
 
     return x
@@ -192,7 +196,12 @@ def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
 
     def maybe_to_tensor_array(v):
         if isinstance(v, list):
-            return paddle.tensor.create_array("float32", initialized_list=v)
+            dtype = (
+                paddle.base.libpaddle.DataType.UNDEFINED
+                if use_pir_api()
+                else "float32"
+            )
+            return paddle.tensor.create_array(dtype, initialized_list=v)
         else:
             return v
 
@@ -438,8 +447,12 @@ def _run_paddle_cond(
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
     from paddle.jit.dy2static.program_translator import ProgramTranslator
+    from paddle.jit.pir_dy2static.parameter_recorder import _global_inplace_map
 
-    inplace_map = ProgramTranslator.get_instance()._inplace_map
+    if use_pir_api():
+        inplace_map = _global_inplace_map
+    else:
+        inplace_map = ProgramTranslator.get_instance()._inplace_map
     union_name = None
     # TODO(@xiongkun) lambda can have push_pop_names, which will cause error.
     if return_name_ids is None and push_pop_names is None:
@@ -489,11 +502,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                f"Your if/else have different return type. TODO: add link to modifty. {str(e)}"
+                f"Your if/else have different return type. TODO: add link to modifty. {e}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                f"Your if/else have different number of return value. TODO: add link to modifty. {str(e)}"
+                f"Your if/else have different number of return value. TODO: add link to modifty. {e}"
             )
         raise e
     get_args = lambda: helper.get(union_name)
@@ -554,9 +567,7 @@ def _check_no_undefined_var(outs, names, branch_name):
     for var, name in zip(list(outs), names):
         if isinstance(var, UndefinedVar):
             raise ValueError(
-                "Required '{}' must be initialized both in if-else branch, but found it not initialized in '{}'.".format(
-                    name, branch_name
-                )
+                f"Required '{name}' must be initialized both in if-else branch, but found it not initialized in '{branch_name}'."
             )
 
 
@@ -613,8 +624,7 @@ def convert_len(var):
             return paddle.tensor.array_length(var)
         else:
             raise TypeError(
-                'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
-                % type(var)
+                f'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received {type(var)}.'
             )
     elif isinstance(var, Value):
         if var.is_dense_tensor_type() or var.is_selected_row_type():
@@ -643,9 +653,15 @@ def convert_zip(*args):
         if isinstance(arg, (Variable, Value)) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
+                f"but found args[{i}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
+
+
+def convert_super(super_fn):
+    if super_fn is super:
+        return super_fn
+    return lambda cls, instance: super_fn()
 
 
 # TODO(xiongkun): delete when list<variable> is ready.
@@ -734,9 +750,7 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], "The dtype of var {} is {}, which is not supported in the cast op.".format(
-            var.name, src_dtype
-        )
+        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
         assert dtype in [
             'bool',
             'int',

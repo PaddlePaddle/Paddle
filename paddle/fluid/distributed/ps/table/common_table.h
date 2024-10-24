@@ -86,7 +86,7 @@ class BarrierTable : public Table {
                        const std::string &param UNUSED) {
     return 0;
   }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   virtual int32_t Save_v2(const std::string &path, const std::string &param) {
     return 0;
   }

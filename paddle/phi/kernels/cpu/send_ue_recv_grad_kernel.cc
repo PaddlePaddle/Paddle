@@ -378,10 +378,8 @@ void GraphSendUERecvGradOpKernelLaunchHelper(
   const auto& x_dims = x.dims();
   const auto& y_dims = y.dims();
   int64_t memset_size_x = 1, memset_size_y = 1;
-  int64_t slice_size = 1;
   for (int i = 0; i < x_dims.size(); i++) {
     memset_size_x *= x_dims[i];
-    if (i > 0) slice_size *= x_dims[i];
   }
   for (int i = 0; i < y_dims.size(); i++) {
     memset_size_y *= y_dims[i];

@@ -16,10 +16,12 @@ test_arg_min_max_op_static_build
 test_arg_min_max_v2_op
 test_argsort_op
 test_assign_op
+test_assign_pos_op
 test_assign_value_op
 test_atan2_op
 test_auc_op
 test_auc_single_pred_op
+test_batch_fc_op
 test_bce_loss
 test_bernoulli_op
 test_bicubic_interp_v2_op
@@ -41,6 +43,7 @@ test_class_center_sample_op
 test_clip_by_norm_op
 test_clip_mkldnn_op
 test_clip_op
+test_coalesce_tensor_op
 test_compare_op
 test_compare_reduce_op
 test_complex_abs
@@ -109,13 +112,16 @@ test_fold_op
 test_frame_op
 test_ftrl_op
 test_full_like_op
+test_fused_adam_op
 test_fused_attention_op
 test_fused_attention_op_api
 test_fused_bias_dropout_residual_layer_norm_op
+test_fused_conv2d_add_act_op
 test_fused_fc_elementwise_layernorm_op
 test_fused_feedforward_op
 test_fused_gate_attention_op
 test_fused_multihead_matmul_op
+test_fused_token_prune_op
 test_fusion_seqexpand_concat_fc_op
 test_fusion_transpose_flatten_concat_op
 test_gather_nd_op
@@ -136,7 +142,7 @@ test_i0_op
 test_i0e_op
 test_i1_op
 test_i1e_op
-test_imperative_lod_tensor_to_selected_rows
+test_imperative_lod_tensor_to_selected_rows_deprecated
 test_index_add_op
 test_index_sample_op
 test_index_select_op
@@ -200,6 +206,8 @@ test_one_hot_v2_op
 test_one_hot_v2_op_static_build
 test_overlap_add_op
 test_pad3d_op
+test_partial_concat_op
+test_partial_sum_op
 test_pass_quantization
 test_pixel_shuffle_op
 test_poisson_op
@@ -216,6 +224,7 @@ test_qr_op
 test_randint_op
 test_randperm_op
 test_range
+test_rank_attention_op
 test_reduce_op
 test_reduce_op_static_build
 test_repeat_interleave_op
@@ -244,6 +253,7 @@ test_sigmoid_cross_entropy_with_logits_op
 test_sign_op
 test_size_op
 test_slice_op
+test_softmax_mask_fuse_op
 test_softmax_mask_fuse_upper_triangle_op
 test_softmax_op
 test_solve_op

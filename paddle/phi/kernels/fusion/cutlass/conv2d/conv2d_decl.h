@@ -20,12 +20,18 @@ namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
+typedef enum {
+  fp32,
+  fp16,
+  bf16,
+} Conv2dDataType;
+
 typedef struct {
-  const half *input;
-  const half *weight;
-  const half *bias;
-  const half *residual;
-  half *output;
+  const void *input;
+  const void *weight;
+  const void *bias;
+  const void *residual;
+  void *output;
   int batch;
   int ic;
   int ih;
@@ -48,23 +54,22 @@ typedef struct {
   cudaStream_t stream;
   float alpha;  // for leaky_relu use
   int sm_version = 75;
+  Conv2dDataType data_type;
   void *workspace = nullptr;
 } ConvAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.
-extern "C" void Conv2dBiasAddRelu(ConvAllParams params);
-extern "C" void Conv2dBiasRelu(ConvAllParams params);
-extern "C" void Conv2dBiasLeakyRelu(ConvAllParams params);
-extern "C" void Conv2dBiasSilu(ConvAllParams params);
-extern "C" void Conv2dBias(ConvAllParams params);
-extern "C" void Conv2dBiasSigmoid(ConvAllParams params);
+extern "C" bool Conv2dBiasAddRelu(ConvAllParams params);
+extern "C" bool Conv2dBiasRelu(ConvAllParams params);
+extern "C" bool Conv2dBiasLeakyRelu(ConvAllParams params);
+extern "C" bool Conv2dBiasSilu(ConvAllParams params);
+extern "C" bool Conv2dBias(ConvAllParams params);
+extern "C" bool Conv2dBiasSigmoid(ConvAllParams params);
 
-extern "C" void Conv2dDepthwiseBias(ConvAllParams params);
-extern "C" void Conv2dDepthwiseBiasRelu(ConvAllParams params);
-extern "C" void Conv2dDepthwiseBiasSigmoid(ConvAllParams params);
-extern "C" void Conv2dDepthwiseBiasSilu(ConvAllParams params);
-
-extern "C" int HelloFromCutlassConv2d(int a, int b);
+extern "C" bool Conv2dDepthwiseBias(ConvAllParams params);
+extern "C" bool Conv2dDepthwiseBiasRelu(ConvAllParams params);
+extern "C" bool Conv2dDepthwiseBiasSigmoid(ConvAllParams params);
+extern "C" bool Conv2dDepthwiseBiasSilu(ConvAllParams params);
 
 }  // namespace cutlass_internal
 }  // namespace fusion

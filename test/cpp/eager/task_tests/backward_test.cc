@@ -35,15 +35,15 @@ namespace egr {
 
 TEST(Backward, SingleNodeEmptyGrad) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor target_tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,
@@ -86,16 +86,16 @@ TEST(Backward, SingleNodeEmptyGrad) {
 
 TEST(Backward, SingleNodeCustomGrad) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,
@@ -106,7 +106,7 @@ TEST(Backward, SingleNodeCustomGrad) {
   // Create Grad Tensor
   paddle::Tensor grad_tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         10.0 /*value*/,
@@ -158,16 +158,16 @@ Node0
 */
 TEST(Backward, LinearNodes) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   paddle::Tensor tensor =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,
@@ -234,23 +234,23 @@ Node0   Node1
 */
 TEST(Backward, WithAccumulation) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
   std::vector<paddle::Tensor> target_tensors;
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,
                                         false /*is_leaf*/);
   paddle::Tensor tensor1 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         1.0 /*value*/,
@@ -262,14 +262,14 @@ TEST(Backward, WithAccumulation) {
   std::vector<paddle::Tensor> grad_tensors;
   paddle::Tensor grad_tensor0 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
                                         false /*is_leaf*/);
   paddle::Tensor grad_tensor1 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         10.0 /*value*/,

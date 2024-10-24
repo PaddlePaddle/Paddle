@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/collective_helper.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -33,11 +33,11 @@
 #include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
-#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -45,13 +45,13 @@ namespace framework {
 
 PyLayerInstruction::PyLayerInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place), output_vars_(), fwd_skip_gc_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Cond instruction only support pylayer op"));
   auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
   op_ = op;
@@ -68,7 +68,7 @@ PyLayerInstruction::PyLayerInstruction(
   auto& fwd_block = pylayer_op.forward_block();
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *value_exec_info, &inputs);
-  auto fwd_outside_inputs =
+  const auto fwd_outside_inputs =
       GetExternalInputs(&fwd_block, *value_exec_info, &inputs);
 
   // NOTE(chenxi67): the variable corresponding to container value if a
@@ -95,7 +95,7 @@ PyLayerInstruction::PyLayerInstruction(
       PADDLE_ENFORCE_EQ(
           value_exec_info->HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "output should in name map, [%d] 'th output of [%s] op",
               i,
               "pylayer op"));
@@ -129,11 +129,6 @@ PyLayerInstruction::PyLayerInstruction(
                                   execution_config);
 
   std::set<std::string> fwd_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&fwd_block)) {
-    fwd_outputs_.push_back(fwd_inter_->GetNameByValue(value));
-    fwd_skip_gc_names_.push_back(fwd_inter_->GetNameByValue(value));
-    fwd_skip_gc_names_set.insert(fwd_inter_->GetNameByValue(value));
-  }
 
   // NOTE(zhangbo): According to the concept of control flow, child scopes
   // should not control the lifecycle of parent scope variables.
@@ -150,11 +145,7 @@ PyLayerInstruction::PyLayerInstruction(
   VLOG(6) << "finish process forward block interpreter";
 }
 
-PyLayerInstruction::~PyLayerInstruction() {
-  if (fwd_inter_ != nullptr) {
-    delete fwd_inter_;
-  }
-}
+PyLayerInstruction::~PyLayerInstruction() { delete fwd_inter_; }
 
 void PyLayerInstruction::Run() {
   VLOG(6) << "start pylayer forward block interpreter";
@@ -166,7 +157,6 @@ void PyLayerInstruction::Run() {
   paddle::platform::DontClearMKLDNNCache(fwd_inter_->GetPlace());
 #endif
   fwd_inter_->Run({}, false);
-  CopyBranchOutput(fwd_outputs_, output_vars_, fwd_inter_->InnerScope());
 }
 
 }  // namespace framework

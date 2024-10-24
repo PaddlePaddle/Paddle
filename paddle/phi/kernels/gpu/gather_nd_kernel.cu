@@ -27,14 +27,14 @@ void GatherNdKernel(const Context &ctx,
                     const DenseTensor &index,
                     DenseTensor *out) {
   ctx.template Alloc<T>(out);
-  if (x.numel() == 0) return;
+  if (x.numel() == 0 || out->numel() == 0) return;
   if (index.dims()[0] == 0 && index.numel() == 0) return;
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Index holds the wrong type, it holds [%s], but "
                         "desires to be [%s] or [%s].",
                         index_type,

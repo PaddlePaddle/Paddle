@@ -22,7 +22,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 namespace dynload {
@@ -52,8 +52,8 @@ extern void *cublasLt_dso_handle;
   };                                                                        \
   extern DynLoad__##__name __name
 
-// APIs available after CUDA 10.1
-// #if CUDA_VERSION >= 10100
+// APIs available after CUDA 11.1
+#if CUDA_VERSION >= 11010
 #define CUBLASLT_BLAS_ROUTINE_EACH(__macro)         \
   __macro(cublasLtCreate);                          \
   __macro(cublasLtDestroy);                         \
@@ -75,7 +75,34 @@ extern void *cublasLt_dso_handle;
   __macro(cublasLtMatrixTransformDescDestroy);      \
   __macro(cublasLtMatrixTransformDescSetAttribute); \
   __macro(cublasLtMatmulAlgoInit);                  \
-  __macro(cublasLtMatmulAlgoConfigSetAttribute);
+  __macro(cublasLtMatmulAlgoConfigSetAttribute);    \
+  __macro(cublasLtMatmulAlgoConfigGetAttribute);    \
+  __macro(cublasLtMatmulAlgoGetIds);                \
+  __macro(cublasLtMatmulAlgoCapGetAttribute);       \
+  __macro(cublasLtMatmulAlgoCheck);                 \
+  __macro(cublasLtGetCudartVersion);
+#else
+#define CUBLASLT_BLAS_ROUTINE_EACH(__macro)      \
+  __macro(cublasLtCreate);                       \
+  __macro(cublasLtDestroy);                      \
+  __macro(cublasLtMatmul);                       \
+  __macro(cublasLtMatmulDescCreate);             \
+  __macro(cublasLtMatmulDescDestroy);            \
+  __macro(cublasLtMatmulDescSetAttribute);       \
+  __macro(cublasLtMatmulDescGetAttribute);       \
+  __macro(cublasLtMatrixLayoutCreate);           \
+  __macro(cublasLtMatrixLayoutDestroy);          \
+  __macro(cublasLtMatrixLayoutSetAttribute);     \
+  __macro(cublasLtMatrixLayoutGetAttribute);     \
+  __macro(cublasLtMatmulPreferenceCreate);       \
+  __macro(cublasLtMatmulPreferenceDestroy);      \
+  __macro(cublasLtMatmulPreferenceSetAttribute); \
+  __macro(cublasLtMatmulAlgoGetHeuristic);       \
+  __macro(cublasLtMatrixTransform);              \
+  __macro(cublasLtMatrixTransformDescCreate);    \
+  __macro(cublasLtMatrixTransformDescDestroy);   \
+  __macro(cublasLtMatrixTransformDescSetAttribute);
+#endif
 
 CUBLASLT_BLAS_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUBLASLT_WRAP)
 // #endif

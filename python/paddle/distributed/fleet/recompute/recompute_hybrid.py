@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import paddle
 from paddle import framework
@@ -25,6 +28,20 @@ from .recompute import (
     switch_rng_state_tracker,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from typing_extensions import NotRequired
+
+    from paddle.distributed.communication.group import Group
+    from paddle.nn import Layer
+
+    class _Ctx(TypedDict):
+        mp_group: Group
+        offload: NotRequired[bool]
+        partition: NotRequired[bool]
+
+
 __all__ = []
 
 
@@ -38,9 +55,7 @@ def _split_activation(tensor, mp_group):
     assert tensor_numel != 0, "can't recompute zero element"
     assert (
         tensor_numel % mp_degree == 0
-    ), "The capacity of the activation ({}) cannot be divisible by mp_degree({})".format(
-        tensor_numel, mp_degree
-    )
+    ), f"The capacity of the activation ({tensor_numel}) cannot be divisible by mp_degree({mp_degree})"
 
     # use inplace operation to save memory
     data = tensor.flatten_()
@@ -247,7 +262,9 @@ class _HPRecomputeFunction(PyLayer):
             return grads
 
 
-def recompute_hybrid(ctx, function, *args, **kwargs):
+def recompute_hybrid(
+    ctx: _Ctx, function: Layer | Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     """
     recompute intermediate activations to save the memory in hybrid parallel scene.
     # NOTE(shenliang03)The current hybrid parallel recompute has limitations.

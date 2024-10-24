@@ -749,7 +749,7 @@ void _BnActWgradImpl(const Context& dev_ctx,
   auto tensor_format = phi::backends::gpu::ToCudnnDataType(conv_input->dtype());
   auto tensor_format_math = CUDNN_DATA_FLOAT;
   auto compute_dtype = CUDNN_DATA_FLOAT;
-  // create tensor discriptors
+  // create tensor descriptors
   auto dim_x = phi::backends::gpu::TransformDimOrder(
       phi::vectorize<int64_t>(conv_input->dims()));
   auto dim_filt = phi::backends::gpu::TransformDimOrder(
@@ -992,14 +992,14 @@ void FusedDconvDreluDbnKernel(
     DenseTensor* grad_bn2_beta) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
   auto cudnn_version = phi::backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8900,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports CUDNN version >= 8900, "
                         "but got %d.",
                         cudnn_version));
@@ -1009,8 +1009,8 @@ void FusedDconvDreluDbnKernel(
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                    common::errors::InvalidArgument(
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // update padding and dilation
   std::vector<int> paddings_vec = paddings;

@@ -112,13 +112,13 @@ class TrainerRuntimeConfig:
         self.runtime_configs['communicator_send_queue_size'] = os.getenv(
             "FLAGS_communicator_send_queue_size", send_queue_size
         )
-        self.runtime_configs[
-            'communicator_independent_recv_thread'
-        ] = os.getenv("FLAGS_communicator_independent_recv_thread", "1")
-        self.runtime_configs[
-            'communicator_min_send_grad_num_before_recv'
-        ] = os.getenv(
-            "FLAGS_communicator_min_send_grad_num_before_recv", num_threads
+        self.runtime_configs['communicator_independent_recv_thread'] = (
+            os.getenv("FLAGS_communicator_independent_recv_thread", "1")
+        )
+        self.runtime_configs['communicator_min_send_grad_num_before_recv'] = (
+            os.getenv(
+                "FLAGS_communicator_min_send_grad_num_before_recv", num_threads
+            )
         )
         self.runtime_configs['communicator_thread_pool_size'] = os.getenv(
             "FLAGS_communicator_thread_pool_size", "5"
@@ -171,28 +171,24 @@ class TrainerRuntimeConfig:
             ]
             if max_merge_var_num != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_max_merge_var_num '
+                    f'WARNING: In {mode_str} mode, communicator_max_merge_var_num '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_max_merge_var_num = {}, CPU_NUM = '
-                    '{}. communicator_max_merge_var_num will be forced to {}.'.format(
-                        mode_str, max_merge_var_num, num_threads, num_threads
-                    )
+                    f'communicator_max_merge_var_num = {max_merge_var_num}, CPU_NUM = '
+                    f'{num_threads}. communicator_max_merge_var_num will be forced to {num_threads}.'
                 )
-                self.runtime_configs[
-                    'communicator_max_merge_var_num'
-                ] = num_threads
+                self.runtime_configs['communicator_max_merge_var_num'] = (
+                    num_threads
+                )
             if send_queue_size != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_send_queue_size '
+                    f'WARNING: In {mode_str} mode, communicator_send_queue_size '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_send_queue_size = {}, CPU_NUM = '
-                    '{}. communicator_send_queue_size will be forced to {}.'.format(
-                        mode_str, send_queue_size, num_threads, num_threads
-                    )
+                    f'communicator_send_queue_size = {send_queue_size}, CPU_NUM = '
+                    f'{num_threads}. communicator_send_queue_size will be forced to {num_threads}.'
                 )
-                self.runtime_configs[
-                    'communicator_send_queue_size'
-                ] = num_threads
+                self.runtime_configs['communicator_send_queue_size'] = (
+                    num_threads
+                )
 
         return {key: str(self.runtime_configs[key]) for key in need_keys}
 
@@ -481,8 +477,7 @@ def get_dense_send_context(
 def get_geo_trainer_send_context(attrs):
     if attrs['ps_mode'] != DistributedMode.GEO:
         raise ValueError(
-            "ps mode: {} not matched {}",
-            format(attrs['ps_mode'], "get_geo_trainer_send_context"),
+            f"ps mode: {attrs['ps_mode']} not matched get_geo_trainer_send_context",
         )
     send_ctx = {}
     trainer_id = get_role_id(attrs['role_maker'])
@@ -905,9 +900,7 @@ def find_heter_ops(program, default_device="cpu"):
         for _, heter_block in heter_block_dict.items():
             total_heter_ops += len(heter_block)
     print(
-        "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".format(
-            len(block.ops), total_heter_ops, heter_blocks
-        )
+        f"There are {len(block.ops)} OPs in your main_program, and contains {total_heter_ops} heter-OPs which is made up of {heter_blocks} heter-blocks."
     )
 
     return origin_program, heter_ops, default_ops, program_block_ops
@@ -1361,7 +1354,7 @@ def insert_communicate_op(
         outputs={"Out": []},
         attrs={
             "mode": "forward" if is_forward else "backward",
-            "send_var_name": entrance_var + ["microbatch_id"],
+            "send_var_name": [*entrance_var, "microbatch_id"],
             "recv_var_name": [],
             "message_name": comm_info["block_input_var_name"],
             "next_endpoints": next_heter_worker_endpoints,
@@ -1807,9 +1800,7 @@ def check_program(program):
             for var_name in input_var_names + output_var_names:
                 if not block._find_var_recursive(str(var_name)):
                     raise ValueError(
-                        'var: {} needed by op is not found in block: {}'.format(
-                            str(var_name), block_idx
-                        )
+                        f'var: {var_name} needed by op is not found in block: {block_idx}'
                     )
         block_idx += 1
     print('program checked valid')

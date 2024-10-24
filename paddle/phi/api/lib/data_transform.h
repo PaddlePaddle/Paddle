@@ -64,7 +64,7 @@ class TransformFlag {
   // trans_data_type_ can be setted by api[data_transform->support_trans_dtype]
   // in the yaml file.
   // trans_data_type_ only affect the non complex types,
-  // the complex is always transferd, except stop_transform_ is true.
+  // the complex is always transfered, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
   // trans_backend_ and trans_layout_ are true defaultly,
@@ -174,10 +174,29 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   if (!transform_flag.need_trans_backend()) {
     return false;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool ret = src_place.GetType() == AllocationType::GPUPINNED ||
              (target != Backend::ALL_BACKEND &&
               phi::TransToPhiBackend(src_place) !=
                   (target != Backend::GPUDNN ? target : Backend::GPU));
+#elif defined(PADDLE_WITH_XPU)
+  bool ret = target != Backend::ALL_BACKEND &&
+             phi::TransToPhiBackend(src_place) != target;
+#elif defined(PADDLE_WITH_IPU)
+  bool ret = target != Backend::ALL_BACKEND &&
+             phi::TransToPhiBackend(src_place) != target;
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  bool ret = target != Backend::ALL_BACKEND;
+  if (target == Backend::CUSTOM) {
+    ret = ret && !is_custom_place(src_place);
+  } else {
+    ret = ret && phi::TransToPhiBackend(src_place) != target;
+  }
+#else
+  bool ret = false;
+#endif
+
 #ifdef PADDLE_WITH_DNNL
   if (target == Backend::ONEDNN) {
     ret = src_place.GetType() != AllocationType::CPU;

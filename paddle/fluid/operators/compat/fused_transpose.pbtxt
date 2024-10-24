@@ -17,26 +17,26 @@ def {
 extra {
   attrs{
     name: "fused_squeeze2_axes"
-    type: INTS        
+    type: INTS
   }
   attrs{
     name: "fused_unsqueeze2_axes"
-    type: INTS        
+    type: INTS
   }
   attrs{
     name: "fused_reshape2_shape"
-    type: INTS        
+    type: INTS
   }
   attrs{
     name: "scale"
-    type: FLOAT        
+    type: FLOAT
   }
   attrs{
     name: "shift"
-    type: FLOAT        
+    type: FLOAT
   }
   attrs{
     name: "output_data_type"
-    type: STRING        
+    type: STRING
   }
 }

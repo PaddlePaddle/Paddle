@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <glog/logging.h>
+
 #include "paddle/pir/include/core/dialect.h"
 
 namespace pir {
@@ -26,7 +28,7 @@ void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
                                  std::move(interface));
 }
 
-OpPrintFn Dialect::PrintOperation(Operation *op) const { return nullptr; }
+OpPrintFn Dialect::PrintOperation(const Operation &op) const { return nullptr; }
 
 DialectInterface::~DialectInterface() = default;
 

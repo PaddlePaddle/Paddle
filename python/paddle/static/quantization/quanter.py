@@ -197,10 +197,8 @@ def _parse_configs(user_config):
         for op_type in configs['quantize_op_types']:
             assert (op_type in QUANT_DEQUANT_PASS_OP_TYPES) or (
                 op_type in TRANSFORM_PASS_OP_TYPES
-            ), "{} is not support, \
-                        now support op types are {}".format(
-                op_type, TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
-            )
+            ), f"{op_type} is not support, \
+                        now support op types are {TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES}"
 
     assert isinstance(configs['dtype'], str), "dtype must be a str."
 
@@ -329,7 +327,7 @@ def quant_aware(
         sub_graphs = list(main_graph.all_sub_graphs())
         transform_pass_ops = []
         quant_dequant_ops = []
-        if 'quant_config' in config and config['quant_config']:
+        if config.get('quant_config'):
             transform_pass_ops = config[
                 'quant_config'
             ].weight_quant_operation_types

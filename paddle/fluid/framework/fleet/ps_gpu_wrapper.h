@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -44,22 +44,23 @@ limitations under the License. */
 #include "paddle/fluid/framework/heter_util.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
+#include "paddle/phi/backends/dynload/afs_api.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "afs_api.h"            // NOLINT
@@ -102,6 +103,112 @@ class AfsWrapper {
 };
 #endif
 
+#ifdef PADDLE_WITH_PSCORE
+class AfsWrapper {
+ public:
+  AfsWrapper() {}
+  const AfsAPIWrapperHandle& GetAfsWrapper() const { return handle_; }
+
+  ~AfsWrapper() {
+    if (handle_ != nullptr) {
+      phi::dynload::destroyAfsAPIWrapper(handle_);
+    }
+  }
+
+  int Init(const std::string& fs_name,
+           const std::string& fs_user,
+           const std::string& pass_wd,
+           const std::string& conf) {
+    if (handle_ == nullptr) {
+      handle_ = phi::dynload::createAfsAPIWrapper();
+    }
+    int ret = phi::dynload::afs_init(handle_,
+                                     fs_name.c_str(),
+                                     fs_user.c_str(),
+                                     pass_wd.c_str(),
+                                     conf.c_str());
+    VLOG(1) << "AfsWrapper Init" << handle_ << " ret: " << ret
+            << "  fs_name :" << fs_name << "  fs_user :" << fs_user
+            << "  pass_wd :" << pass_wd << "  conf :" << conf;
+    return ret;
+  }
+
+  AfsWriterHandle OpenWriter(const std::string& filename) {
+    return phi::dynload::afs_open_writer(handle_, filename.c_str());
+  }
+
+  AfsReaderHandle OpenReader(const std::string& filename) {
+    return phi::dynload::afs_open_reader(handle_, filename.c_str());
+  }
+
+  void CloseReader(AfsReaderHandle reader_handle) {
+    phi::dynload::afs_close_reader(handle_, reader_handle);
+  }
+
+  void CloseWriter(AfsWriterHandle writer_handle) {
+    phi::dynload::afs_close_writer(handle_, writer_handle);
+  }
+
+  int Touchz(const std::string& path) {
+    return phi::dynload::afs_touchz(handle_, path.c_str());
+  }
+
+  int Mv(const std::string& old_path, const std::string& dest_path) {
+    return phi::dynload::afs_mv(handle_, old_path.c_str(), dest_path.c_str());
+  }
+
+  int Remove(const std::string& path) {
+    return phi::dynload::afs_remove(handle_, path.c_str());
+  }
+
+  int Mkdir(const std::string& path) {
+    return phi::dynload::afs_mkdir(handle_, path.c_str());
+  }
+
+  int DownloadFile(const std::string& local_file, const std::string& afs_file) {
+    return phi::dynload::afs_download_file(
+        handle_, local_file.c_str(), afs_file.c_str());
+  }
+
+  int UploadFile(const std::string& local_file, const std::string& afs_file) {
+    return phi::dynload::afs_upload_file(
+        handle_, local_file.c_str(), afs_file.c_str());
+  }
+
+  std::vector<std::string> List(const std::string& path) {
+    size_t list_size = 0;
+    char** lists = phi::dynload::afs_list(handle_, path.c_str(), &list_size);
+    std::vector<std::string> ret_lists(list_size);
+    for (size_t i = 0; i < list_size; i++) {
+      ret_lists[i] = std::string(lists[i]);
+    }
+
+    for (size_t i = 0; i < list_size; i++) {
+      phi::dynload::afs_free(reinterpret_cast<void*>(lists[i]));
+    }
+    phi::dynload::afs_free(reinterpret_cast<void*>(lists));
+    return ret_lists;
+  }
+
+  std::string Cat(const std::string& path) {
+    size_t file_len = 0;
+    char* ret = phi::dynload::afs_cat(handle_, path.c_str(), &file_len);
+    auto ret_str = std::string(ret, file_len);
+    phi::dynload::afs_free(reinterpret_cast<void*>(ret));
+    return ret_str;
+  }
+
+  int Exist(const std::string& path) {
+    int ret = phi::dynload::afs_exist(handle_, path.c_str());
+    VLOG(1) << "AfsWrapper Exist " << ret << " path: " << path;
+    return ret;
+  }
+
+ private:
+  AfsAPIWrapperHandle handle_ = nullptr;
+};
+#endif
+
 struct task_info {
   std::shared_ptr<char> build_values;
   size_t offset;
@@ -120,8 +227,7 @@ class PSGPUWrapper {
      * @Brief get data
      */
     template <typename T>
-    T* mutable_data(const size_t total_bytes,
-                    const paddle::platform::Place& place) {
+    T* mutable_data(const size_t total_bytes, const phi::Place& place) {
       if (buf_ == nullptr) {
         buf_ = memory::AllocShared(place, total_bytes);
       } else if (buf_->size() < total_bytes) {
@@ -169,33 +275,33 @@ class PSGPUWrapper {
     sleep_seconds_before_fail_exit_ = 300;
   }
 
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const std::vector<int>& slot_dim,
                   const int hidden_size);
-  void PullSparse(const paddle::platform::Place& place,
+  void PullSparse(const phi::Place& place,
                   const int table_id,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
                   const int hidden_size);
-  void PushSparseGrad(const paddle::platform::Place& place,
+  void PushSparseGrad(const phi::Place& place,
                       const int table_id,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
                       const int hidden_size,
                       const int batch_size);
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
                 int slot_num,
                 int total_len);
-  void CopyKeys(const paddle::platform::Place& place,
+  void CopyKeys(const phi::Place& place,
                 uint64_t** origin_keys,
                 uint64_t* total_keys,
                 const int64_t* gpu_len,
@@ -252,9 +358,11 @@ class PSGPUWrapper {
     if (s_instance_ == nullptr) {
       return;
     }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
-      this->EndPass();
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
+        this->EndPass();
+      }
     }
 #endif
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
@@ -299,7 +407,7 @@ class PSGPUWrapper {
       }
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("heter ps need compile with GLOO"));
+          common::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
 #ifdef PADDLE_WITH_CUDA
       if (multi_node_) {
@@ -307,40 +415,40 @@ class PSGPUWrapper {
         // init inner comm
         inner_comms_.resize(dev_size);
         inter_ncclids_.resize(dev_size);
-        platform::dynload::ncclCommInitAll(
+        phi::dynload::ncclCommInitAll(
             &(inner_comms_[0]), dev_size, &dev_ids[0]);
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
         inter_comms_.resize(dev_size);
         if (gloo->Rank() == 0) {
           for (int i = 0; i < dev_size; ++i) {
-            platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
+            phi::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
           }
         }
 
         PADDLE_ENFORCE_EQ(
             gloo->IsInitialized(),
             true,
-            platform::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "You must initialize the gloo environment first to use it."));
         gloo::BroadcastOptions opts(gloo->GetContext());
         opts.setOutput(&inter_ncclids_[0], dev_size);
         opts.setRoot(0);
         gloo::broadcast(opts);
 
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
         for (int i = 0; i < dev_size; ++i) {
           platform::CUDADeviceGuard guard(dev_ids[i]);
-          platform::dynload::ncclCommInitRank(
+          phi::dynload::ncclCommInitRank(
               &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
 
         rank_id_ = gloo->Rank();
         node_size_ = gloo->Size();
 #else
         PADDLE_THROW(
-            platform::errors::Unavailable("heter ps need compile with GLOO"));
+            common::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
       }
 #endif
@@ -814,10 +922,12 @@ class PSGPUWrapper {
   void SetPullFeatureSlotNum(int sparse_slot_num, int float_slot_num) {
     slot_num_for_pull_feature_ = sparse_slot_num;
     float_slot_num_ = float_slot_num;
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
-    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-    gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
-                                    float_slot_num_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+      gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
+                                      float_slot_num_);
+    }
 #endif
     VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_
             << ", float_slot_num is " << float_slot_num_;
@@ -920,6 +1030,42 @@ class PSGPUWrapper {
                   const std::string& conf);
 #endif
 
+#ifdef PADDLE_WITH_PSCORE
+  AfsReaderHandle OpenReader(const std::string& filename) {
+    return afs_handle_.OpenReader(filename);
+  }
+
+  AfsWriterHandle OpenWriter(const std::string& filename) {
+    return afs_handle_.OpenWriter(filename);
+  }
+
+  void CloseReader(AfsReaderHandle handle) { afs_handle_.CloseReader(handle); }
+
+  void CloseWriter(AfsWriterHandle handle) { afs_handle_.CloseWriter(handle); }
+
+  int AfsRead(AfsReaderHandle handle, char* buf, int len) {
+    return phi::dynload::afs_reader_read(handle, buf, len);
+  }
+
+  int AfsWrite(AfsWriterHandle handle,
+               const char* data,
+               size_t len,
+               bool direct) {
+    return phi::dynload::afs_writer_write(handle, data, len, direct);
+  }
+
+  int AfsWrite(AfsWriterHandle handle,
+               const uint64_t k,
+               const std::vector<float>& value) {
+    return phi::dynload::afs_writer_write_v2(
+        handle, k, value.data(), value.size());
+  }
+
+  void InitAfsApi(const std::string& fs_name,
+                  const std::string& fs_user,
+                  const std::string& pass_wd,
+                  const std::string& conf);
+#endif
   // for node rank
   int PartitionKeyForRank(const uint64_t& key) {
     return static_cast<int>((key / device_num_) % node_size_);
@@ -943,6 +1089,9 @@ class PSGPUWrapper {
   Dataset* dataset_;
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
+#endif
+#ifdef PADDLE_WITH_PSCORE
+  AfsWrapper afs_handle_;
 #endif
   std::unordered_map<
       uint64_t,

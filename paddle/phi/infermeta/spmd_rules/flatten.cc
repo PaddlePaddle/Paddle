@@ -21,10 +21,10 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
+#include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -36,10 +36,10 @@ int PreprocessAxis(int axis, int ndim) {
   PADDLE_ENFORCE_LT(
       axis,
       ndim,
-      phi::errors::InvalidArgument("The Start_axis or Stop_axis [%d] is not "
-                                   "less than the Tensor X's rank [%d].",
-                                   axis,
-                                   ndim));
+      common::errors::InvalidArgument("The Start_axis or Stop_axis [%d] is not "
+                                      "less than the Tensor X's rank [%d].",
+                                      axis,
+                                      ndim));
 
   return axis;
 }
@@ -100,46 +100,36 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
-  // Step1: Build the transformation from
-  // the original shape to the target shape
-
+  // obtain target shape and use ReshapeInferSpmd to infer
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
-  std::vector<std::shared_ptr<DimTrans>> trans =
-      MakeFlattenDimTrans(src_shape, start_axis, stop_axis);
-
-  // Step2: Infer the dims mapping of input (if reshard is
-  // needed) and output from the dimension transformation.
-  std::vector<std::vector<int64_t>> dims_mapping_vec =
-      InferFromDimTrans(x, trans);
-
-  // Step3: Update the dist attributes of input
-  // and output with the inferred dims mapping.
-  TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  x_dist_attr_dst.set_dims_mapping(dims_mapping_vec[0]);
-  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  out_dist_attr.set_dims_mapping(dims_mapping_vec[1]);
+  std::vector<int64_t> dst_shape;
+  int64_t flatten_size = 1;
+  for (int64_t i = 0; i < x_ndim; i++) {
+    if (i < start_axis || i > stop_axis) {
+      dst_shape.emplace_back(src_shape[i]);
+    } else {
+      flatten_size *= src_shape[i];
+      if (i == stop_axis) {
+        dst_shape.emplace_back(flatten_size);
+      }
+    }
+  }
 
   VLOG(4) << "FlattenInferSpmd: X shape: [" << str_join(src_shape) << "]";
   VLOG(4) << "Start_axis: " << start_axis;
-  VLOG(4) << "Stop_axis: " << start_axis;
-  VLOG(4) << "Transformation from input to output:";
-  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-    std::shared_ptr<DimTrans> t = trans[i];
-    VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
-  }
-  VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
-          << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
-  VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
-
-  return {{x_dist_attr_dst}, {out_dist_attr}};
+  VLOG(4) << "Stop_axis: " << stop_axis;
+  VLOG(4) << "FlattenInferSpmd: output shape: [" << str_join(dst_shape) << "]";
+  VLOG(4) << "use ReshapeInferSpmd to infer distributed attribute";
+  return ReshapeInferSpmd(x, dst_shape);
 }
 
+// TODO(jeff41404): consider xshape and use ReshapeInferSpmdReverse in future
 SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  int start_axis,
@@ -154,10 +144,10 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
 
   // Step1: Build the transformation from the output shape
   // to original shape. This function infers the dims mapping
@@ -198,5 +188,11 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& x,
+                              const DistMetaTensor& out_grad) {
+  auto shape = phi::vectorize(x.dims());
+  const auto& spmd = ReshapeInferSpmd(out_grad, shape);
+  return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+}
+
+}  // namespace phi::distributed

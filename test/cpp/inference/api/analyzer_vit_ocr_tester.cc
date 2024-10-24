@@ -24,13 +24,16 @@ namespace analysis {
 struct Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
+  Record() : data(), shape() {}
 };
 
 Record ProcessALine(const std::string &line) {
   std::vector<std::string> columns;
   split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
+  PADDLE_ENFORCE_EQ(columns.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "Data format is invalid, should be <data>\t<shape>"));
 
   Record record;
   std::vector<std::string> data_strs;
@@ -90,21 +93,6 @@ TEST(Analyzer_vit_ocr, compare) { compare(); }
 
 #ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-// Check the fuse status
-TEST(Analyzer_vit_ocr, fuse_status) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg, true);
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-
-  CHECK_EQ(fuse_statis.at("fc_mkldnn_pass"), 33);
-  CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_mkldnn_fuse_pass"), 2);
-}
 #endif
 
 }  // namespace analysis

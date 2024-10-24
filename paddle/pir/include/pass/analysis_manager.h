@@ -163,7 +163,7 @@ class AnalysisMap {
   void Invalidate(const PreservedAnalyses& pa) {
     PreservedAnalyses pa_copy(pa);
 
-    // Remove any analyses that were invalidaed.
+    // Remove any analyses that were invalidated.
     // As using MapVector, order of insertion is preserved and
     // dependencies always go before users, so need only one iteration.
     for (auto it = analyses_.begin(); it != analyses_.end();) {
@@ -225,11 +225,18 @@ class AnalysisMap {
   template <
       typename AnalysisT,
       typename OpT,
-      std::enable_if_t<
-          !std::is_constructible<AnalysisT, OpT, AnalysisManager&>::value>* =
-          nullptr>
+      std::enable_if_t<std::is_constructible<AnalysisT, OpT>::value>* = nullptr>
   static auto ConstructAnalysis(AnalysisManager&, OpT op) {
     return std::make_unique<AnalysisModel<AnalysisT>>(op);
+  }
+
+  /// Construct analysis using default constructor
+  template <typename AnalysisT,
+            typename OpT,
+            std::enable_if_t<std::is_default_constructible<AnalysisT>::value>* =
+                nullptr>
+  static auto ConstructAnalysis(AnalysisManager&, OpT op) {
+    return std::make_unique<AnalysisModel<AnalysisT>>();
   }
 
  private:
@@ -240,7 +247,7 @@ class AnalysisMap {
 }  // namespace detail
 
 /// This class is intended to be passed around by value, and can not be
-/// constructed direcyly.
+/// constructed directly.
 class AnalysisManager {
  public:
   using PreservedAnalyses = detail::PreservedAnalyses;

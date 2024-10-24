@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -26,10 +27,9 @@ from paddle.base import Program, Scope, core, program_guard
 from paddle.base.executor import scope_guard
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
-from paddle.pir_utils import test_with_pir_api
 
 
-def dropout_wapper(
+def dropout_wrapper(
     X,
     Seed=None,
     dropout_prob=0.5,
@@ -71,7 +71,7 @@ class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.prim_op_type = "comp"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
@@ -99,7 +99,7 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.prim_op_type = "comp"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random(()).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
@@ -119,7 +119,7 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((2000,)).astype("float32")}
@@ -147,7 +147,7 @@ class TestDropoutOpInput1d(OpTest):
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -164,7 +164,7 @@ class TestDropoutOp2(TestDropoutOp):
 class TestDropoutOp2_ZeroDim(TestDropoutOp2):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random(()).astype("float32")}
@@ -181,7 +181,7 @@ class TestDropoutOp2_ZeroDim(TestDropoutOp2):
 class TestDropoutOp3(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
@@ -203,7 +203,7 @@ class TestDropoutOp3(TestDropoutOp):
 class TestDropoutOp4(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -223,7 +223,7 @@ class TestDropoutOp4(OpTest):
 class TestDropoutOp5(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
@@ -242,7 +242,7 @@ class TestDropoutOp5(OpTest):
 class TestDropoutOp6(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -264,7 +264,7 @@ class TestDropoutOp6(TestDropoutOp):
 class TestDropoutOp7(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
@@ -291,7 +291,7 @@ class TestDropoutOp7(TestDropoutOp):
 class TestDropoutOp8(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -314,7 +314,7 @@ class TestDropoutOp8(OpTest):
 class TestDropoutOp9(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
@@ -335,7 +335,7 @@ class TestDropoutOp9(OpTest):
 class TestDropoutOpWithSeed(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {
@@ -380,7 +380,7 @@ class TestDropoutOpWithSeed(OpTest):
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.init_test_case()
@@ -431,7 +431,7 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
 class TestBF16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.dtype = np.uint16
@@ -538,8 +538,11 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
 
 
 class TestDropoutOpError(unittest.TestCase):
+
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
 
             def test_Variable():
@@ -565,11 +568,16 @@ class TestDropoutOpError(unittest.TestCase):
 class TestDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -656,7 +664,6 @@ class TestDropoutFAPI(unittest.TestCase):
                 )
                 np.testing.assert_allclose(fetches[0], res_np, rtol=1e-05)
 
-    @test_with_pir_api
     def check_static_result2(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -792,9 +799,12 @@ class TestDropoutFAPI(unittest.TestCase):
 
 
 class TestDropoutFAPIError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_Variable():
                 # the input of dropout must be Variable.
@@ -824,7 +834,6 @@ class TestDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
-    @test_with_pir_api
     def test_errors2(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -898,7 +907,13 @@ class TestDropoutFAPIError(unittest.TestCase):
 class TestDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -919,11 +934,16 @@ class TestDropoutCAPI(unittest.TestCase):
 class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -976,7 +996,7 @@ class TestDropout2DFAPI(unittest.TestCase):
 
 
 class TestDropout2DFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1005,7 +1025,13 @@ class TestDropout2DFAPIError(unittest.TestCase):
 class TestDropout2DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1022,7 +1048,6 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
-    @test_with_pir_api
     def test_static_fp16_with_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1051,11 +1076,16 @@ class TestDropout2DCAPI(unittest.TestCase):
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1108,7 +1138,7 @@ class TestDropout3DFAPI(unittest.TestCase):
 
 
 class TestDropout3DFAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1137,7 +1167,13 @@ class TestDropout3DFAPIError(unittest.TestCase):
 class TestDropout3DCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1158,11 +1194,16 @@ class TestDropout3DCAPI(unittest.TestCase):
 class TestAlphaDropoutFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1217,8 +1258,11 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFAPIError(unittest.TestCase):
+
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_Variable():
                 # the input of dropout must be Variable.
@@ -1229,7 +1273,6 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-    @test_with_pir_api
     def test_errors2(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1267,7 +1310,13 @@ class TestAlphaDropoutFAPIError(unittest.TestCase):
 class TestAlphaDropoutCAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1284,7 +1333,6 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
-    @test_with_pir_api
     def test_static_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
@@ -1316,7 +1364,13 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
         paddle.framework.random.set_random_seed_generator('seed1', 123)
         rng0 = paddle.framework.random.get_random_seed_generator('seed0')
         rng1 = paddle.framework.random.get_random_seed_generator('seed1')
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -1363,7 +1417,13 @@ class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):
 class TestDropoutBackward(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -1501,7 +1561,13 @@ class TestRandomValue(unittest.TestCase):
         paddle.enable_static()
 
 
-places = [paddle.CPUPlace()]
+places = []
+if (
+    os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+    in ['1', 'true', 'on']
+    or not paddle.is_compiled_with_cuda()
+):
+    places.append(paddle.CPUPlace())
 if paddle.is_compiled_with_cuda():
     places.append(paddle.CUDAPlace(0))
 
@@ -1528,7 +1594,9 @@ class PrimNet(paddle.nn.Layer):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 @param.parameterized_class(
@@ -1744,9 +1812,11 @@ class TestCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     y = paddle.assign(input_)
@@ -2094,9 +2164,11 @@ class TestPirCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     output = paddle.nn.functional.dropout(

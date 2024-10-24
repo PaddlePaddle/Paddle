@@ -46,7 +46,7 @@ class ArchiveBase {
   // Archive is not copyable. But to allow move capture by function objects,
   // check it at runtime rather than at compile time.
   ArchiveBase(const ArchiveBase&) {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "ArchiveBase class does not support copy construction."));
   }
 
@@ -67,7 +67,7 @@ class ArchiveBase {
 
  public:
   ArchiveBase& operator=(const ArchiveBase&) {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "ArchiveBase class does not support assignment construction."));
     return *this;
   }
@@ -107,7 +107,14 @@ class ArchiveBase {
                  size_t length,
                  size_t capacity,
                  std::function<void(char*)>&& deleter) {
-    CHECK(length <= capacity);
+    PADDLE_ENFORCE_LE(
+        length,
+        capacity,
+        common::errors::InvalidArgument(
+            "Param length should be less than or equal to param capacity, but "
+            "the length got %d, the capacity got %d.",
+            length,
+            capacity));
     FreeBuffer();
     buffer_ = buffer;
     cursor_ = buffer_;
@@ -119,24 +126,54 @@ class ArchiveBase {
   char* Cursor() { return cursor_; }
 
   void SetCursor(char* cursor) {
-    CHECK(cursor >= buffer_ && cursor <= finish_);
+    PADDLE_ENFORCE_EQ(
+        cursor >= buffer_ && cursor <= finish_,
+        true,
+        common::errors::InvalidArgument(
+            "Param cursor should be greater than or equal to buffer, and "
+            "should be less than or equal to finish, but the cursor got %d, "
+            "the buffer got %d, the finish got %d.",
+            cursor,
+            buffer_,
+            finish_));
     cursor_ = cursor;
   }
 
   void AdvanceCursor(size_t offset) {
-    CHECK(offset <= size_t(finish_ - cursor_));
+    PADDLE_ENFORCE_LE(
+        offset,
+        size_t(finish_ - cursor_),
+        common::errors::InvalidArgument(
+            "Param offset should be less than or equal to %d, but got %d.",
+            size_t(finish_ - cursor_),
+            offset));
     cursor_ += offset;
   }
 
   char* Finish() { return finish_; }
 
   void SetFinish(char* finish) {
-    CHECK(finish >= cursor_ && finish <= limit_);
+    PADDLE_ENFORCE_EQ(
+        finish >= cursor_ && finish <= limit_,
+        true,
+        common::errors::InvalidArgument(
+            "Param finish should be greater than or equal to cursor, and "
+            "should be less than or equal to limit, but the finish got %d, "
+            "the cursor got %d, the limit got %d.",
+            finish,
+            cursor_,
+            limit_));
     finish_ = finish;
   }
 
   void AdvanceFinish(size_t offset) {
-    CHECK(offset <= size_t(limit_ - finish_));
+    PADDLE_ENFORCE_LE(
+        offset,
+        size_t(limit_ - finish_),
+        common::errors::InvalidArgument(
+            "Param offset should be less than or equal to %d, but got %d.",
+            size_t(limit_ - finish_),
+            offset));
     finish_ += offset;
   }
 
@@ -188,7 +225,10 @@ class ArchiveBase {
     if (newcap > Capacity()) {
       char* newbuf = NULL;
       newbuf = new char[newcap];
-      CHECK(newbuf != nullptr) << "Reserve failed, out of memory";
+      PADDLE_ENFORCE_NE(
+          newbuf,
+          nullptr,
+          common::errors::InvalidArgument("Reserve failed, out of memory."));
       if (Length() > 0) {
         memcpy(newbuf, buffer_, Length());
       }
@@ -207,7 +247,13 @@ class ArchiveBase {
 #else
     if (!(size <= size_t(finish_ - cursor_))) {
 #endif
-      CHECK(size <= size_t(finish_ - cursor_));
+      PADDLE_ENFORCE_LE(
+          size,
+          size_t(finish_ - cursor_),
+          common::errors::InvalidArgument(
+              "Param size should be less than or equal to %d, but got %d.",
+              size_t(finish_ - cursor_),
+              size));
     }
   }
 
@@ -231,7 +277,13 @@ class ArchiveBase {
 
   void ReadBack(void* data, size_t size) {
     if (size > 0) {
-      CHECK(size <= size_t(finish_ - cursor_));
+      PADDLE_ENFORCE_LE(
+          size,
+          size_t(finish_ - cursor_),
+          common::errors::InvalidArgument(
+              "Param size should be less than or equal to %d, but got %d.",
+              size_t(finish_ - cursor_),
+              size));
       memcpy(data, finish_ - size, size);
       finish_ -= size;
     }
@@ -326,11 +378,22 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
   void Printf(const char* fmt, ARGS&&... args) {
     size_t temp = Limit() - Finish();
     int len = snprintf(Finish(), temp, fmt, args...);
-    CHECK(len >= 0);  // NOLINT
+    PADDLE_ENFORCE_GE(
+        len,
+        0,
+        common::errors::InvalidArgument(
+            "Param len should be greater than or equal to 0, but got %d.",
+            len));  // NOLINT
     if (static_cast<size_t>(len) >= temp) {
       PrepareWrite(len + 1);
-      CHECK(snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, args...) ==
-            len);
+      PADDLE_ENFORCE_EQ(
+          snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, args...),
+          len,
+          common::errors::InvalidArgument(
+              "The snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, "
+              "args...) should be equal to %d, but got %d.",
+              len,
+              snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, args...)));
     }
     AdvanceFinish(len);
   }

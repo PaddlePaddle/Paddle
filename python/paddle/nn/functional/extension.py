@@ -12,13 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the extension functions
+from __future__ import annotations
 
+from typing import (
+    TYPE_CHECKING,
+)
 
 from paddle import _C_ops, tensor
 from paddle.utils import deprecated
 
-from ...base.data_feeder import check_type, check_variable_and_dtype
+from ...base.data_feeder import (
+    check_dtype,
+    check_type,
+    check_variable_and_dtype,
+)
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...framework import (
@@ -26,6 +33,10 @@ from ...framework import (
     core,
     in_dynamic_or_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import DataLayout2D, DTypeLike
 
 __all__ = []
 
@@ -36,11 +47,18 @@ __all__ = []
     level=1,
     reason="diag_embed in paddle.nn.functional will be removed in future",
 )
-def diag_embed(input, offset=0, dim1=-2, dim2=-1):
+def diag_embed(
+    input: Tensor, offset: int = 0, dim1: int = -2, dim2: int = -1
+) -> Tensor:
     return tensor.diag_embed(input, offset, dim1, dim2)
 
 
-def sequence_mask(x, maxlen=None, dtype='int64', name=None):
+def sequence_mask(
+    x: Tensor,
+    maxlen: int | None = None,
+    dtype: DTypeLike = 'int64',
+    name: str | None = None,
+) -> Tensor:
     r"""
     **SequenceMask Layer**
 
@@ -71,11 +89,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         x (Variable): Input tensor of sequence_mask layer, \
             whose elements are integers less than :code:`maxlen`. \
             Tensor or LodTensor with shape [d_1, d_2, ..., d_n].
-        maxlen (int, optional): Maximum length of the sequence. If :code:`maxlen` \
+        maxlen (int|None, optional): Maximum length of the sequence. If :code:`maxlen` \
                            is None, it would be replace with :math:`max(x)`.
         dtype (np.dtype|paddle.dtype|str, optional): Data type of the output, \
              ``int64`` by default.
-        name(str, optional): For detailed information, please refer \
+        name(str|None, optional): For detailed information, please refer \
             to :ref:`api_guide_Name`. Usually name is no need to set and \
             None by default.
 
@@ -128,7 +146,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     return out
 
 
-def gather_tree(ids, parents):
+def gather_tree(ids: Tensor, parents: Tensor) -> Tensor:
     r"""
     To be used after beam search. After beam search, we get selected ids at
     each time step and the corresponding parents in the search tree. Both ids
@@ -207,6 +225,7 @@ def gather_tree(ids, parents):
         raise ValueError("The ids's shape must be the same as parents' shape. ")
 
     if in_dynamic_or_pir_mode():
+        check_dtype(parents.dtype, "parents", ['int32', 'int64'], 'gather_tree')
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
@@ -225,7 +244,13 @@ def gather_tree(ids, parents):
         return out
 
 
-def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
+def temporal_shift(
+    x: Tensor,
+    seg_num: int,
+    shift_ratio: float = 0.25,
+    name: str | None = None,
+    data_format: DataLayout2D | str = 'NCHW',
+) -> Tensor:
     """
 
     **Temporal Shift Operator**
@@ -268,7 +293,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
         x(Tensor): ${x_comment}
         seg_num(int): ${seg_num_comment}
         shift_ratio(float): ${shift_ratio_comment}
-        name(str, optional): For detailed information, please refer
+        name(str|None, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
         data_format(str, optional): Data format that specifies the layout of input.

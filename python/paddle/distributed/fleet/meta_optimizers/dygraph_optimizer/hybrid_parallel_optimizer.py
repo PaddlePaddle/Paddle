@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 
 import paddle
 from paddle import framework
@@ -29,25 +28,26 @@ from paddle.framework import core
 from paddle.nn import ClipGradByGlobalNorm, clip
 
 from ...base.topology import ParallelMode
+from ...utils import timer_helper as timer
 from ...utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
     unwrap_optimizer,
 )
-from ...utils.log_util import logger
+from ...utils.log_util import logger, sync_rotate_logger
 from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
-g_shard_norm_align_dp = int(os.environ.get("FLAGS_shard_norm_align_dp", 0))
-
 
 class HybridParallelClipGrad:
-    def __init__(self, clip, hcg):
+    def __init__(self, clip, hcg, timers=None):
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
+        self._timers = timers
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
+        sync_rotate_logger().info("Starting to calculate global norm.")
         # sharding first
         sharding_flag = self._hcg.get_sharding_parallel_world_size() > 1
         dp_flag = self._hcg.get_data_parallel_world_size() > 1
@@ -55,7 +55,7 @@ class HybridParallelClipGrad:
         pp_flag = self._hcg.get_pipe_parallel_world_size() > 1
 
         # add all reduce to get global norm of distributed params_and_grads
-        if sharding_flag and not g_shard_norm_align_dp:
+        if sharding_flag:
             # norm of mp distributed variable
             if mp_flag:
                 # dist should reduce among sharding group、mp group、pp group
@@ -97,8 +97,12 @@ class HybridParallelClipGrad:
                 group=self._hcg.get_pipe_parallel_group(),
             )
 
+        sync_rotate_logger().info("Finished calculating global norm.")
+
     @no_grad()
     def _dygraph_clip(self, params_grads):
+        if self._timers:
+            self._timers("dygraph-clip").start()
         sum_square_dist_fp16 = []
         sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
@@ -200,9 +204,13 @@ class HybridParallelClipGrad:
             + global_norm_not_dist_fp32
         )
 
-        return self._comm_and_clip(
+        result = self._comm_and_clip(
             params_grads, global_norm_var_dist, global_norm_var_not_dist
         )
+        if self._timers:
+            self._timers("dygraph-clip").stop()
+
+        return result
 
     def _comm_and_clip(
         self, params_grads, global_norm_var_dist, global_norm_var_not_dist
@@ -225,8 +233,12 @@ class HybridParallelClipGrad:
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
-        if not isinstance(
-            paddle.framework._current_expected_place(), paddle.CustomPlace
+        if (
+            not isinstance(
+                paddle.framework._current_expected_place(), paddle.CustomPlace
+            )
+            or paddle.framework._current_expected_place().get_device_type()
+            == 'npu'
         ):
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
@@ -266,6 +278,16 @@ class HybridParallelOptimizer:
                 else DygraphShardingOptimizer
             )
             optimizer = ShardingOptimizer(optimizer, hcg)
+
+        self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
+
+        if self._enable_timer:
+            if not timer.is_timer_initialized():
+                timer.set_timers()
+            self._timers = timer.get_timers()
+        else:
+            self._timers = None
+
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
@@ -315,11 +337,11 @@ class HybridParallelOptimizer:
                 > 0
             ):
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg
+                    inner_opt._grad_clip, hcg, self._timers
                 )
             else:
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg
+                    inner_opt._grad_clip, hcg, self._timers
                 )
                 if inner_opt._parameter_list and isinstance(
                     inner_opt._parameter_list[0], dict
@@ -327,8 +349,26 @@ class HybridParallelOptimizer:
                     for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                inner_opt._grad_clip, hcg
+                                inner_opt._grad_clip, hcg, self._timers
                             )
+
+    def _set_all_gather_overlap_forward(
+        self, all_gather_overlap_forward, layers=None
+    ):
+        self._all_gather_overlap_forward = all_gather_overlap_forward
+        if self._all_gather_overlap_forward:
+            self._layers = layers
+            self._inner_opt._set_all_gather_overlap_forward(
+                self._all_gather_overlap_forward, self._layers
+            )
+
+    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
+        self._broadcast_overlap = broadcast_overlap
+        if self._broadcast_overlap:
+            self._layers = layers
+            self._inner_opt._set_broadcast_overlap(
+                self._broadcast_overlap, self._layers
+            )
 
     def _insert_sync(self, sync_var, src, mp_group, sync_mode):
         if sync_mode == "broadcast":
@@ -357,6 +397,8 @@ class HybridParallelOptimizer:
         return False
 
     def _step(self, parameters_list):
+        sync_rotate_logger().info("Starting hybridoptimizer step")
+
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
         params = None
@@ -392,10 +434,14 @@ class HybridParallelOptimizer:
                     p.grad, src_rank, mp_group, mp_configs.sync_mode
                 )
 
+        sync_rotate_logger().info("Starting mp grad sync")
+
         # Grad sync before opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
             for p in params:
                 syc_grad(p)
+
+        sync_rotate_logger().info("Finished mp grad sync")
 
         self._inner_opt.step()
 
@@ -458,6 +504,7 @@ class HybridParallelOptimizer:
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
                 syc_moment(p)
+        sync_rotate_logger().info("Finishing hybridoptimizer step")
 
     def _hybrid_sync_grad(self, parameter_list):
         dp_parameter_list = parameter_list
@@ -467,11 +514,9 @@ class HybridParallelOptimizer:
                 (DygraphShardingOptimizer, DygraphShardingOptimizerV2),
             )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)
-            # dp later do not need to use global parameter list
-            if not g_shard_norm_align_dp:
-                dp_parameter_list = self._inner_opt.filter_parameters(
-                    parameter_list, self._hcg
-                )
+            dp_parameter_list = self._inner_opt.filter_parameters(
+                parameter_list, self._hcg
+            )
         if self._dp_enable or self._sep_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
 

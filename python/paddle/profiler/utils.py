@@ -12,14 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import sys
 from contextlib import ContextDecorator, contextmanager
-from typing import Any
+from typing import TYPE_CHECKING
 from warnings import warn
 
 from paddle.base import core
 from paddle.base.core import TracerEventType, _RecordEvent
+
+if TYPE_CHECKING:
+    import types
+
+    from typing_extensions import Self
+
+    from paddle.base.core import _ProfilerResult
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
@@ -69,23 +78,32 @@ class RecordEvent(ContextDecorator):
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 
+    name: str
+    event_type: TracerEventType
+    event: _RecordEvent | None
+
     def __init__(
         self,
         name: str,
         event_type: TracerEventType = TracerEventType.PythonUserDefined,
-    ):
+    ) -> None:
         self.name = name
         self.event_type = event_type
         self.event = None
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self.begin()
         return self
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> None:
         self.end()
 
-    def begin(self):
+    def begin(self) -> None:
         r"""
         Record the time of beginning.
 
@@ -117,7 +135,7 @@ class RecordEvent(ContextDecorator):
         else:
             self.event = _RecordEvent(self.name, self.event_type)
 
-    def end(self):
+    def end(self) -> None:
         r"""
         Record the time of ending.
 
@@ -140,7 +158,7 @@ class RecordEvent(ContextDecorator):
             self.event.end()
 
 
-def load_profiler_result(filename: str):
+def load_profiler_result(filename: str) -> _ProfilerResult:
     r"""
     Load dumped profiler data back to memory.
 
@@ -248,3 +266,12 @@ def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
         if iter_id == end - 1:
             if exit_after_prof:
                 sys.exit()
+
+
+def switch_job_schedule_profiler(
+    model, iter_id, start, end, exit_after_prof=True
+):
+    with job_schedule_profiler_range(
+        iter_id, start, end, exit_after_prof
+    ) as status:
+        model._engine.enable_job_schedule_profiler = status

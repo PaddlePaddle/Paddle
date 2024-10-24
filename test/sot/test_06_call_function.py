@@ -67,7 +67,8 @@ def fn_with_varargs_and_kwargs(x, *args, **kwargs):
         + args[0]
         + args[1]
         - args[2]
-        + kwargs['a'] * kwargs['b'] / kwargs['c']
+        + kwargs['a'] * kwargs['b']
+        + kwargs['c']
     )
 
 

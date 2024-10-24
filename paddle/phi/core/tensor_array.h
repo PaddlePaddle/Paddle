@@ -54,13 +54,13 @@ class TensorArray : public TensorBase,
   /// \return The name of the class.
   static const char* name() { return "TensorArray"; }
 
-  /// \brief This overrided function is not used in TensorArray.
+  /// \brief This overridden function is not used in TensorArray.
   TEST_API int64_t numel() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
+  /// \brief This overridden function is not used in TensorArray.
   TEST_API const DDim& dims() const override;
 
-  /// \brief This overrided function is not used in TensorArray.
+  /// \brief This overridden function is not used in TensorArray.
   TEST_API const Place& place() const override;
 
   TEST_API DataType dtype() const override;
@@ -75,8 +75,12 @@ class TensorArray : public TensorBase,
   void set_layout(const DataLayout layout);
 #endif
 
-  /// \brief This overrided function is not used in TensorArray.
+  /// \brief This overridden function is not used in TensorArray.
   TEST_API bool valid() const override;
+
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  TEST_API bool has_allocation() const override;
 
   /// \brief Test whether the tensor's storage in TensorArray is allocated.
   /// return Whether all tensors in TensorArray is allocated.

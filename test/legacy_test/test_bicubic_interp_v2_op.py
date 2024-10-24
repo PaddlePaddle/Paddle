@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.nn.functional import interpolate
-from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_case0(self):
@@ -315,7 +314,9 @@ class TestBicubicInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True, check_symbol_infer=(self.out_size is None)
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
@@ -356,7 +357,11 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
 
 class TestBicubicInterpOpFP16(TestBicubicInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3, check_pir=True)
+        self.check_output(
+            atol=1e-3,
+            check_pir=True,
+            check_symbol_infer=(self.out_size is None),
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -479,7 +484,9 @@ class TestBicubicInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            check_pir=True, check_symbol_infer=(self.out_size is None)
+        )
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
@@ -581,7 +588,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
-    @test_with_pir_api
+
     def test_case(self):
         np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")

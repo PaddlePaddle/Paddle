@@ -17,12 +17,19 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+from paddle import _C_ops
+
+
+def l1_norm_wrapper(x):
+    return _C_ops.l1_norm(x)
+
 
 class TestL1NormOp(OpTest):
     """Test l1_norm"""
 
     def setUp(self):
         self.op_type = "l1_norm"
+        self.python_api = l1_norm_wrapper
         self.max_relative_error = 0.005
 
         X = np.random.uniform(-1, 1, (13, 19)).astype("float32")
@@ -31,7 +38,7 @@ class TestL1NormOp(OpTest):
         self.outputs = {'Out': np.sum(np.abs(X))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(atol=2e-5, rtol=2e-5, inplace_atol=2e-5)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')

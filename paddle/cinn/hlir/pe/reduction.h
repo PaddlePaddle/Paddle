@@ -471,6 +471,12 @@ std::vector<ir::Tensor> TwoStepBlockReduceAny(
 std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor);
 
+std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
+                                           const ir::Expr& tensor);
+
+std::string GridReduceExternalFuncName(const ir::Expr& op,
+                                       const cinn::common::Type type);
+
 std::string Type2StrForReduce(cinn::common::Type type);
 }  // namespace pe
 }  // namespace hlir

@@ -54,10 +54,15 @@ void LogsumexpGradKernel(const Context& dev_ctx,
                          const DenseTensor& in,
                          const DenseTensor& out,
                          const DenseTensor& out_grad,
-                         const std::vector<int64_t>& axis,
+                         const std::vector<int>& axis_in,
                          bool keepdim UNUSED,
                          bool reduce_all,
                          DenseTensor* in_grad) {
+  std::vector<int64_t> axis;
+  axis.reserve(axis_in.size());
+  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
+    axis.push_back(static_cast<int64_t>(t));
+  });
   dev_ctx.template Alloc<T>(in_grad);
 
   reduce_all = recompute_reduce_all(in, axis, reduce_all);
@@ -97,7 +102,7 @@ void LogsumexpGradKernel(const Context& dev_ctx,
             dev_ctx, in, out, out_grad, in_grad, functor, axis32);
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported dimensions, please keep maximum dimensions of input "
             "data less than 4."));
         break;

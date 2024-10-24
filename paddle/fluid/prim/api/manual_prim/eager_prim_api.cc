@@ -16,8 +16,7 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
 
-namespace paddle {
-namespace prim {
+namespace paddle::prim {
 
 template <>
 Tensor full<Tensor>(const IntArray& shape,
@@ -44,5 +43,4 @@ Tensor slice<Tensor>(const Tensor& input,
   return ::slice_ad_func(input, axes, starts, ends, infer_flags, decrease_axis);
 }
 
-}  // namespace prim
-}  // namespace paddle
+}  // namespace paddle::prim

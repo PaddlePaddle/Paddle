@@ -18,6 +18,7 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT
@@ -29,6 +30,16 @@ ReshardGradNode::operator()(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "reshard_grad";
+  // This 'Local_XXXGradNode' record event is different with
+  // 'Global_XXXGradNode' event.
+  // * 'Local_XXXGradNode' will only cover execution time of this function.
+  // * 'Global_XXXGradNode' will not only cover execution time of this function,
+  // but also include gradient
+  //    accumulation when the output(s) of corresponding forward OP are shared
+  //    by other OP(s), which may have extra accumulation overhead than
+  //    'Local_XXXGradNode'.
+  phi::RecordEvent node_execution_inner(
+      "Local_ReshardGradNode", phi::TracerEventType::OperatorInner, 1);
 
   // Apply Gradient Hooks
   auto hooked_grad = ApplyGradientHooks(grads);
@@ -97,7 +108,7 @@ ReshardGradNode::operator()(
 
   return returns;
 #else
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ReshardGrad is not supported in this version of Paddle. Try to "
       "recompile it with WITH_DISTRIBUTE=ON and reinstall this package."));
   return paddle::small_vector<std::vector<paddle::Tensor>,

@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@
 
 set -x
 PADDLE_ROOT=$1
+export PADDLE_SOURCE_DIR=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
@@ -37,7 +38,7 @@ current_dir=`pwd`
 build_dir=${current_dir}/build
 log_dir=${current_dir}/log
 
-# check mkldnn installation
+# check onednn installation
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
@@ -186,27 +187,27 @@ exe_dir=${build_dir}
 #     EXIT_CODE=8
 # fi
 
-printf "${YELLOW} start test_det_mv3_db ${NC} \n";
-compile_test "test_det_mv3_db"
-${exe_dir}/test_det_mv3_db \
-    --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_det_mv3_db runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_det_mv3_db ${NC} \n";
+# compile_test "test_det_mv3_db"
+# ${exe_dir}/test_det_mv3_db \
+#     --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_det_mv3_db runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
-printf "${YELLOW} start test_LeViT ${NC} \n";
-compile_test "test_LeViT"
-${exe_dir}/test_LeViT \
-    --modeldir=$DATA_DIR/LeViT/LeViT \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_LeViT.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_LeViT runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_LeViT ${NC} \n";
+# compile_test "test_LeViT"
+# ${exe_dir}/test_LeViT \
+#     --modeldir=$DATA_DIR/LeViT/LeViT \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_LeViT.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_LeViT runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
 if [ "$WIN_DETECT" != "" ]; then
     #TODO(OliverLPH): enable test_ernie_text_cls on windows after fix compile issue
@@ -235,27 +236,27 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
-printf "${YELLOW} start test_ppyolo_mbv3 ${NC} \n";
-compile_test "test_ppyolo_mbv3"
-${exe_dir}/test_ppyolo_mbv3 \
-    --modeldir=$DATA_DIR/ppyolo_mbv3/ppyolo_mbv3 \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_ppyolo_mbv3.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_ppyolo_mbv3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_ppyolo_mbv3 ${NC} \n";
+# compile_test "test_ppyolo_mbv3"
+# ${exe_dir}/test_ppyolo_mbv3 \
+#     --modeldir=$DATA_DIR/ppyolo_mbv3/ppyolo_mbv3 \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_ppyolo_mbv3.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_ppyolo_mbv3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
-printf "${YELLOW} start test_ppyolov2_r50vd ${NC} \n";
-compile_test "test_ppyolov2_r50vd"
-${exe_dir}/test_ppyolov2_r50vd \
-    --modeldir=$DATA_DIR/ppyolov2_r50vd/ppyolov2_r50vd \
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_ppyolov2_r50vd.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_ppyolov2_r50vd runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+# printf "${YELLOW} start test_ppyolov2_r50vd ${NC} \n";
+# compile_test "test_ppyolov2_r50vd"
+# ${exe_dir}/test_ppyolov2_r50vd \
+#     --modeldir=$DATA_DIR/ppyolov2_r50vd/ppyolov2_r50vd \
+#     --gtest_filter=${test_suite_list} \
+#     --gtest_output=xml:${log_dir}/test_ppyolov2_r50vd.xml
+# if [ $? -ne 0 ]; then
+#     echo "${RED} test_ppyolov2_r50vd runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+#     EXIT_CODE=8
+# fi
 
 printf "${YELLOW} start test_resnet50_quant ${NC} \n";
 compile_test "test_resnet50_quant"

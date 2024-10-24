@@ -63,7 +63,9 @@ class GridSearch(SearchAlgo):
         stop = False
         if history_cfgs:
             if history_cfgs[-1].get("time", -1) > 0:
-                if self.baseline is None:
+                if self.baseline is None and self.tuner_cfg.get(
+                    "need_baseline", False
+                ):
                     from .utils import performance_sort
 
                     self.baseline = history_cfgs[-1]

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -20,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -256,7 +256,13 @@ class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
 class TestMatrixPowerAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -278,7 +284,6 @@ class TestMatrixPowerAPI(unittest.TestCase):
                 fetches[0], np.linalg.matrix_power(input_np, -2), rtol=1e-05
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -297,7 +302,7 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -343,6 +348,8 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         )
 
     def test_old_ir_errors(self):
+        if paddle.framework.use_pir_api():
+            return
         # When out is set, the data type must be the same as input.
         input = paddle.static.data(
             name="input_1", shape=[4, 4], dtype="float32"
@@ -353,7 +360,13 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -377,7 +390,6 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
             except ValueError as ex:
                 print("The mat is singular")
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for place in self.places:

@@ -19,6 +19,8 @@
 
 PD_REGISTER_KERNEL(
     pool2d_grad, CPU, ALL_LAYOUT, phi::Pool2dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    lp_pool2d_grad, CPU, ALL_LAYOUT, phi::LPPool2dGradKernel, float, double) {}
 PD_REGISTER_KERNEL(pool2d_double_grad,
                    CPU,
                    ALL_LAYOUT,

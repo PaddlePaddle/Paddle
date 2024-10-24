@@ -18,6 +18,8 @@
 #include "paddle/phi/kernels/impl/pool_kernel_impl.h"
 
 PD_REGISTER_KERNEL(pool2d, CPU, ALL_LAYOUT, phi::Pool2dKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    lp_pool2d, CPU, ALL_LAYOUT, phi::LPPool2dKernel, float, double) {}
 PD_REGISTER_KERNEL(max_pool2d_with_index,
                    CPU,
                    ALL_LAYOUT,

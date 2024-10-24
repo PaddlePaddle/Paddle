@@ -155,6 +155,139 @@ struct AllocatedSelectedRowsTypeStorage : public pir::TypeStorage {
 };
 
 ///
+/// \brief Define Parametric TypeStorage for
+/// AllocatedSparseCooTensorTypeStorage.
+///
+///
+struct AllocatedSparseCooTensorTypeStorage : public pir::TypeStorage {
+  using Place = phi::Place;
+  ///
+  /// \brief Declare ParamKey according to parameter type.
+  ///
+  using ParamKey = std::tuple<phi::Place, dialect::SparseCooTensorType>;
+
+  AllocatedSparseCooTensorTypeStorage(const phi::Place& place,
+                                      const dialect::SparseCooTensorType& type)
+      : place_(place), sparsecoo_tensor_type_(type) {}
+
+  ///
+  /// \brief Each derived TypeStorage must define a Construct method, which
+  /// StorageManager uses to construct a derived TypeStorage.
+  ///
+  static AllocatedSparseCooTensorTypeStorage* Construct(const ParamKey& key) {
+    return new AllocatedSparseCooTensorTypeStorage(std::get<0>(key),
+                                                   std::get<1>(key));
+  }
+
+  ///
+  /// \brief Each derived TypeStorage must provide a HashValue method.
+  ///
+  static std::size_t HashValue(const ParamKey& key) {
+    std::size_t hash_value = 791;
+    // hash place
+    hash_value =
+        pir::detail::hash_combine(hash_value, std::get<0>(key).HashValue());
+
+    // hash dtype
+    auto sparsecoo_tensor_type = std::get<1>(key);
+    hash_value = pir::detail::hash_combine(
+        hash_value,
+        dialect::SparseCooTensorTypeStorage::HashValue(
+            dialect::SparseCooTensorTypeStorage::ParamKey(
+                sparsecoo_tensor_type.dtype(),
+                sparsecoo_tensor_type.dims(),
+                sparsecoo_tensor_type.non_zero_dims(),
+                sparsecoo_tensor_type.data_layout(),
+                sparsecoo_tensor_type.non_zero_indices(),
+                sparsecoo_tensor_type.non_zero_elements(),
+                sparsecoo_tensor_type.coalesced())));
+    return hash_value;
+  }
+
+  ///
+  /// \brief Each derived TypeStorage needs to overload operator==.
+  ///
+  bool operator==(const ParamKey& key) const {
+    return ParamKey(place_, sparsecoo_tensor_type_) == key;
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(place_, sparsecoo_tensor_type_); }
+
+  ///
+  /// \brief AllocatedSparseCooTensorTypeStorage include five parameters: place,
+  /// SparseCooTensorType
+  ///
+  phi::Place place_;
+  dialect::SparseCooTensorType sparsecoo_tensor_type_;
+};
+
+///
+/// \brief Define Parametric TypeStorage for
+/// AllocatedSparseCsrTensorTypeStorage.
+///
+///
+struct AllocatedSparseCsrTensorTypeStorage : public pir::TypeStorage {
+  using Place = phi::Place;
+  ///
+  /// \brief Declare ParamKey according to parameter type.
+  ///
+  using ParamKey = std::tuple<phi::Place, dialect::SparseCsrTensorType>;
+
+  AllocatedSparseCsrTensorTypeStorage(const phi::Place& place,
+                                      const dialect::SparseCsrTensorType& type)
+      : place_(place), sparsecsr_tensor_type_(type) {}
+
+  ///
+  /// \brief Each derived TypeStorage must define a Construct method, which
+  /// StorageManager uses to construct a derived TypeStorage.
+  ///
+  static AllocatedSparseCsrTensorTypeStorage* Construct(const ParamKey& key) {
+    return new AllocatedSparseCsrTensorTypeStorage(std::get<0>(key),
+                                                   std::get<1>(key));
+  }
+
+  ///
+  /// \brief Each derived TypeStorage must provide a HashValue method.
+  ///
+  static std::size_t HashValue(const ParamKey& key) {
+    std::size_t hash_value = 791;
+    // hash place
+    hash_value =
+        pir::detail::hash_combine(hash_value, std::get<0>(key).HashValue());
+
+    // hash dtype
+    auto sparsecsr_tensor_type = std::get<1>(key);
+    hash_value = pir::detail::hash_combine(
+        hash_value,
+        dialect::SparseCsrTensorTypeStorage::HashValue(
+            dialect::SparseCsrTensorTypeStorage::ParamKey(
+                sparsecsr_tensor_type.dtype(),
+                sparsecsr_tensor_type.dims(),
+                sparsecsr_tensor_type.data_layout(),
+                sparsecsr_tensor_type.non_zero_crows(),
+                sparsecsr_tensor_type.non_zero_cols(),
+                sparsecsr_tensor_type.non_zero_elements())));
+    return hash_value;
+  }
+
+  ///
+  /// \brief Each derived TypeStorage needs to overload operator==.
+  ///
+  bool operator==(const ParamKey& key) const {
+    return ParamKey(place_, sparsecsr_tensor_type_) == key;
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(place_, sparsecsr_tensor_type_); }
+
+  ///
+  /// \brief AllocatedSparseCooTensorTypeStorage include five parameters: place,
+  /// SparseCooTensorType
+  ///
+  phi::Place place_;
+  dialect::SparseCsrTensorType sparsecsr_tensor_type_;
+};
+
+///
 /// \brief Define Parametric TypeStorage for AllocatedSelectedRowsTypeStorage.
 ///
 ///

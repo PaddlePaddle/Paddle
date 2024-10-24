@@ -131,9 +131,7 @@ class SegmentLayers:
                 return seg_method
             else:
                 raise ValueError(
-                    "We set seg_method as {}, this length is {}, but the number of stages is {}".format(
-                        seg_method, len(seg_method), self.num_parts
-                    )
+                    f"We set seg_method as {seg_method}, this length is {len(seg_method)}, but the number of stages is {self.num_parts}"
                 )
 
         elif self.method == "uniform":
@@ -155,9 +153,7 @@ class SegmentLayers:
 
             assert (
                 sum(weights) % actual_num_parts == 0
-            ), "number of layers ({}) should be divided by part number({})".format(
-                sum(weights), actual_num_parts
-            )
+            ), f"number of layers ({sum(weights)}) should be divided by part number({actual_num_parts})"
             part_size = sum(weights) // actual_num_parts
             result = [0 for _ in range(actual_num_parts + 1)]
 
@@ -381,7 +377,7 @@ class PipelineLayer(nn.Layer):
 
         self.device_id = dist.ParallelEnv().device_id
         self.layers = layers
-        self._loss_fn = loss_fn
+        self._loss_fn = loss_fn if isinstance(loss_fn, list) else [loss_fn]
         self._topo = topology
         self._recompute_interval = recompute_interval
         self.recompute_ctx = recompute_ctx
@@ -398,9 +394,7 @@ class PipelineLayer(nn.Layer):
             offload = recompute_ctx.get('offload', False)
             partition = recompute_ctx.get('partition', False)
             logger.info(
-                "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".format(
-                    offload, partition
-                )
+                f"Start Recompute for PipeLineParallel. recompute_offload: {offload}, recompute_partition: {partition}"
             )
 
         world_size = dist.get_world_size()
@@ -559,9 +553,11 @@ class PipelineLayer(nn.Layer):
             if framework.in_dynamic_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad
-                        if not hasattr(param, "main_grad")
-                        else param.main_grad,
+                        (
+                            param.grad
+                            if not hasattr(param, "main_grad")
+                            else param.main_grad
+                        ),
                         group=comm['group'],
                     )
             else:
@@ -633,13 +629,11 @@ class PipelineLayer(nn.Layer):
             start = self.segment_parts[stage]
             end = self.segment_parts[stage + 1]
             logger.info(
-                "stage={}, global_rank={} ,layer_number={}".format(
-                    stage, self.global_rank, end - start
-                )
+                f"stage={stage}, global_rank={self.global_rank} ,layer_number={end - start}"
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):
-                logger.info(f"{index + start}: {str(layer)}")
+                logger.info(f"{index + start}: {layer}")
 
         if self._num_virtual_pipeline_stages > 1:
             for stage in range(self._num_stages):
@@ -654,11 +648,14 @@ class PipelineLayer(nn.Layer):
                     stage_to_virtual_stage_info += f" {i},"
                 logger.info(stage_to_virtual_stage_info)
 
-        if self._loss_fn:
-            try:
-                logger.info(f"loss: {self._loss_fn.__name__}")
-            except AttributeError:
-                logger.info(f"loss: {self._loss_fn.__class__.__name__}")
+        if self._loss_fn[0]:
+            loss_fn_names = []
+            for idx in range(len(self._loss_fn)):
+                try:
+                    loss_fn_names.append(self._loss_fn[idx].__name__)
+                except AttributeError:
+                    loss_fn_names.append(self._loss_fn[idx].__class__.__name__)
+            logger.info(f"loss: {', '.join(loss_fn_names)}")
 
     def _build_layer_with_interleave(self):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
@@ -739,9 +736,9 @@ class PipelineLayer(nn.Layer):
                 flush_into_run_function()
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
-                    self.shared_weight_attrs[
-                        layer.layer_name
-                    ] = layer.shared_weight_attr
+                    self.shared_weight_attrs[layer.layer_name] = (
+                        layer.shared_weight_attr
+                    )
                     for param in self.shared_layers[
                         layer.layer_name
                     ].parameters():

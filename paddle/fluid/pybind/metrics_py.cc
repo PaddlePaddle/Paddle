@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/metrics.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/fluid/pybind/metrics_py.h"
 

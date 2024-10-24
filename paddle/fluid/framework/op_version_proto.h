@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 
 namespace paddle {
 namespace framework {
@@ -55,7 +55,7 @@ class OpVersionMap {
 };
 
 // get version id for operators with version id in paddle 2.4.2, this is used
-// for converting ProgramDesc in 2.4 comtabible format
+// for converting ProgramDesc in 2.4 compatible format
 const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions();
 
 }  // namespace pb

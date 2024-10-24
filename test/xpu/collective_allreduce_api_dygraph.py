@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import test_collective_api_base as test_base
 
 import paddle
@@ -25,14 +27,15 @@ class TestCollectiveAllreduceAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with base.program_guard(main_prog, startup_program):
+            reduce_type = int(os.getenv("REDUCE_TYPE"))
             # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
             if indata.dtype == "bfloat16":
                 tindata = paddle.to_tensor(indata, "float32").cast("uint16")
-                dist.all_reduce(tindata)
+                dist.all_reduce(tindata, op=reduce_type)
                 return [tindata.cast("float32").numpy()]
             else:
                 tindata = paddle.to_tensor(indata)
-                dist.all_reduce(tindata)
+                dist.all_reduce(tindata, op=reduce_type)
                 return [tindata.numpy()]
 
 

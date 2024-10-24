@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
@@ -171,5 +170,4 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   ASSERT_NE(acc->ParseFromString(str, value), 0);
   // make sure init_zero=true
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -43,39 +43,40 @@ class TestCrossStepOverlap(unittest.TestCase):
         # synchronization is required. An Event should be recorded after the
         # last reduce_min in the first step and waited before the fill_constant
         # in the second step. Otherwise, the result of z will be wrong.
-        program = static.Program()
-        with static.program_guard(program):
-            x = paddle.full(
-                self.shape, fill_value=self.x_value, dtype='float64'
-            )
-            y = paddle.full(
-                self.shape, fill_value=self.y_value, dtype='float64'
-            )
-            z = paddle.add(x, y)
-
-            block = program.global_block()
-            block.var(x.name).desc.set_persistable(True)
-            block.var(y.name).desc.set_persistable(True)
-            for i in range(self.overlap_op_num):
-                block.append_op(
-                    type='reduce_min',
-                    inputs={'X': x.name},
-                    outputs={'Out': y.name},
-                    attrs={'axis': 0, 'keepdim': True},
+        with paddle.pir_utils.OldIrGuard():
+            program = static.Program()
+            with static.program_guard(program):
+                x = paddle.full(
+                    self.shape, fill_value=self.x_value, dtype='float64'
                 )
-                block.ops[-1].dist_attr.execution_stream = "custom"
-
-            exe = static.Executor()
-            results = []
-            for i in range(self.step_num):
-                result = exe.run(program, fetch_list=[z])
-                results.append(result)
-
-            for result in results:
-                self.assertAlmostEqual(
-                    np.sum(result),
-                    (self.x_value + self.y_value) * np.prod(self.shape),
+                y = paddle.full(
+                    self.shape, fill_value=self.y_value, dtype='float64'
                 )
+                z = paddle.add(x, y)
+
+                block = program.global_block()
+                block.var(x.name).desc.set_persistable(True)
+                block.var(y.name).desc.set_persistable(True)
+                for i in range(self.overlap_op_num):
+                    block.append_op(
+                        type='reduce_min',
+                        inputs={'X': x.name},
+                        outputs={'Out': y.name},
+                        attrs={'axis': 0, 'keepdim': True},
+                    )
+                    block.ops[-1].dist_attr.execution_stream = "custom"
+
+                exe = static.Executor()
+                results = []
+                for i in range(self.step_num):
+                    result = exe.run(program, fetch_list=[z])
+                    results.append(result)
+
+                for result in results:
+                    self.assertAlmostEqual(
+                        np.sum(result),
+                        (self.x_value + self.y_value) * np.prod(self.shape),
+                    )
 
 
 if __name__ == "__main__":

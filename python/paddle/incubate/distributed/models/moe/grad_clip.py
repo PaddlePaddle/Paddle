@@ -100,7 +100,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         self.is_expert_param_func = is_expert_param_func
 
     def __str__(self):
-        return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
+        return f"Gradient Clip By GlobalNorm, global_norm={self.clip_norm:f}"
 
     @staticmethod
     def get_l2_norm_pow(params_grads, sum_dtype=None):

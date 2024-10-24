@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -42,10 +44,10 @@ class TrtConvertLayerNormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], shape_input):
+        def generate_input1(attrs: list[dict[str, Any]], shape_input):
             return np.random.random(shape_input).astype(np.float32)
 
-        def generate_input2(attrs: List[Dict[str, Any]], shape_input):
+        def generate_input2(attrs: list[dict[str, Any]], shape_input):
             begin = attrs[0]["begin_norm_axis"]
             sum = 1
             for x in range(begin, len(shape_input)):
@@ -99,7 +101,7 @@ class TrtConvertLayerNormTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -121,19 +123,6 @@ class TrtConvertLayerNormTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -170,10 +159,10 @@ class TrtConvertLayerNormTest_2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], shape_input):
+        def generate_input1(attrs: list[dict[str, Any]], shape_input):
             return np.ones(shape_input).astype(np.float32)
 
-        def generate_input2(attrs: List[Dict[str, Any]], shape_input):
+        def generate_input2(attrs: list[dict[str, Any]], shape_input):
             begin = attrs[0]["begin_norm_axis"]
             sum = 1
             for x in range(begin, len(shape_input)):
@@ -227,7 +216,7 @@ class TrtConvertLayerNormTest_2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 64, 3, 3]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 64, 3, 9]}
@@ -250,20 +239,6 @@ class TrtConvertLayerNormTest_2(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2
-
-        # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)

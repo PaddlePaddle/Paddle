@@ -13,15 +13,13 @@
 // limitations under the License.
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 COMMON_DECLARE_bool(check_nan_inf);
@@ -48,10 +46,8 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   VLOG(3) << "Running AD API: "
           << "sync_batch_norm_";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "sync_batch_norm_ dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "sync_batch_norm_ dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
 
@@ -211,9 +207,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "sync_batch_norm_ node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
 
     egr::EagerUtils::PassStopGradient(false,
@@ -390,10 +386,8 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   VLOG(3) << "Running AD API: "
           << "sync_batch_norm_";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "sync_batch_norm_ dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "sync_batch_norm_ dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
 
@@ -553,9 +547,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "sync_batch_norm_ node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
 
     egr::EagerUtils::PassStopGradient(false,

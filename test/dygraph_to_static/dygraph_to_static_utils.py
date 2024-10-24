@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import importlib
 import inspect
 import logging
@@ -60,6 +62,9 @@ logger.setLevel(logging.WARNING)
 ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
     "FLAGS_enable_pir_with_pt_in_dy2st", True
 )
+ENV_EXE_SEQUENTIAL_RUN = BooleanEnvironmentVariable(
+    "FLAGS_new_executor_sequential_run", False
+)
 
 
 class ToStaticMode(Flag):
@@ -86,7 +91,7 @@ class IrMode(Flag):
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
-DEFAULT_IR_MODE = IrMode.LEGACY_IR | IrMode.PT
+DEFAULT_IR_MODE = IrMode.PT | IrMode.PIR
 
 DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.AST: [],
@@ -101,6 +106,24 @@ DISABLED_IR_TEST_FILES = {
     ],
     IrMode.PIR: [],
 }
+
+
+@contextmanager
+def pir_dygraph_guard():
+    in_dygraph_mode = paddle.in_dynamic_mode()
+    with paddle.pir_utils.IrGuard():
+        if in_dygraph_mode:
+            paddle.disable_static()
+        yield
+
+
+@contextmanager
+def legacy_ir_dygraph_guard():
+    in_dygraph_mode = paddle.in_dynamic_mode()
+    with paddle.pir_utils.OldIrGuard():
+        if in_dygraph_mode:
+            paddle.disable_static()
+        yield
 
 
 def to_ast_test(fn):
@@ -155,15 +178,18 @@ def to_legacy_ir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[LEGACY_IR] running legacy ir")
-        pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
-        original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
-        with EnvironmentVariableGuard(ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, False):
-            try:
-                set_flags({pt_in_dy2st_flag: False})
-                ir_outs = fn(*args, **kwargs)
-            finally:
-                set_flags({pt_in_dy2st_flag: original_flag_value})
-            return ir_outs
+        with legacy_ir_dygraph_guard():
+            pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
+            original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
+            with EnvironmentVariableGuard(
+                ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, False
+            ):
+                try:
+                    set_flags({pt_in_dy2st_flag: False})
+                    ir_outs = fn(*args, **kwargs)
+                finally:
+                    set_flags({pt_in_dy2st_flag: original_flag_value})
+                return ir_outs
 
     return impl
 
@@ -172,20 +198,21 @@ def to_pt_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[PT] running PT")
-        pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
-        original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
-        if os.environ.get('FLAGS_use_stride_kernel', False):
-            return
-        with static.scope_guard(static.Scope()):
-            with static.program_guard(static.Program()):
-                with EnvironmentVariableGuard(
-                    ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True
-                ):
-                    try:
-                        set_flags({pt_in_dy2st_flag: True})
-                        ir_outs = fn(*args, **kwargs)
-                    finally:
-                        set_flags({pt_in_dy2st_flag: original_flag_value})
+        with legacy_ir_dygraph_guard():
+            pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
+            original_flag_value = get_flags(pt_in_dy2st_flag)[pt_in_dy2st_flag]
+            if os.environ.get('FLAGS_use_stride_kernel', False):
+                return
+            with static.scope_guard(static.Scope()):
+                with static.program_guard(static.Program()):
+                    with EnvironmentVariableGuard(
+                        ENV_ENABLE_PIR_WITH_PT_IN_DY2ST, True
+                    ):
+                        try:
+                            set_flags({pt_in_dy2st_flag: True})
+                            ir_outs = fn(*args, **kwargs)
+                        finally:
+                            set_flags({pt_in_dy2st_flag: original_flag_value})
         return ir_outs
 
     return impl
@@ -195,10 +222,7 @@ def to_pir_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[PIR] running pir")
-        in_dygraph_mode = paddle.in_dynamic_mode()
-        with paddle.pir_utils.IrGuard():
-            if in_dygraph_mode:
-                paddle.disable_static()
+        with pir_dygraph_guard():
             ir_outs = fn(*args, **kwargs)
         return ir_outs
 
@@ -281,9 +305,9 @@ class Dy2StTestMeta(type):
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
                     to_static_mode == ToStaticMode.SOT_MGS10
-                    and ir_mode != IrMode.LEGACY_IR
+                    and ir_mode != IrMode.PIR
                 ):
-                    # SOT_MGS10 only test with LEGACY_IR
+                    # SOT_MGS10 only test with PIR
                     continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
@@ -325,7 +349,7 @@ def set_ir_mode(mode: IrMode):
     return decorator
 
 
-def disable_test_case(flags):
+def disable_test_case(flags: tuple[ToStaticMode, IrMode]):
     def decorator(fn):
         disabled_test_cases = getattr(fn, "disabled_test_cases", [])
         disabled_test_cases.append(flags)
@@ -364,6 +388,11 @@ def test_pir_only(fn):
 
 def test_legacy_and_pt(fn):
     fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PT)(fn)
+    return fn
+
+
+def test_pt_and_pir(fn):
+    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
     return fn
 
 
@@ -438,3 +467,17 @@ def enable_to_static_guard(flag: bool):
         yield
     finally:
         program_translator.enable(original_flag_value)
+
+
+@contextmanager
+def exe_sequential_run_guard(value: bool):
+    exe_sequential_run_flag = ENV_EXE_SEQUENTIAL_RUN.name
+    original_flag_value = paddle.get_flags(exe_sequential_run_flag)[
+        exe_sequential_run_flag
+    ]
+    with EnvironmentVariableGuard(ENV_EXE_SEQUENTIAL_RUN, value):
+        try:
+            set_flags({exe_sequential_run_flag: value})
+            yield
+        finally:
+            set_flags({exe_sequential_run_flag: original_flag_value})

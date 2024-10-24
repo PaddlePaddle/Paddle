@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -89,6 +90,26 @@ class XPUTestSliceOp(XPUOpTestWrapper):
             self.axes = [0, 1, 3]
             self.infer_flags = [1, 1, 1]
             self.out = self.input[-3:3, 0:100, :, 2:-1]
+
+    @check_run_big_shape_test()
+    class TestCaseLargeShape1(TestSliceOp):
+        def config(self):
+            self.input = np.random.random([8192, 5120])
+            self.starts = [0, 5119]
+            self.ends = [8192, 5120]
+            self.axes = [0, 1]
+            self.infer_flags = [1, 1]
+            self.out = self.input[:, -1:]
+
+    @check_run_big_shape_test()
+    class TestCaseLargeShape2(TestSliceOp):
+        def config(self):
+            self.input = np.random.random([2, 1, 8192, 1, 128])
+            self.starts = [0, 0, 0, 0, 0]
+            self.ends = [2, 1, 1, 1, 128]
+            self.axes = [0, 1, 2, 3, 4]
+            self.infer_flags = [1, 1, 1, 1, 1]
+            self.out = self.input[:, :, -1:, :, :]
 
 
 # 1.2 with attr(decrease)

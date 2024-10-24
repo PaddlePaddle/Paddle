@@ -83,10 +83,16 @@ def conj_static(func, shape, dtype, np_input):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [out, ops[-1].result(0)]
+            else:
+                fetch_list = [out.name, x.name + "@GRAD"]
+
             out_v, x_grad_v = exe.run(
                 static.default_main_program(),
                 feed={"x": np_input},
-                fetch_list=[out.name, x.name + "@GRAD"],
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return out_v, x_grad_v

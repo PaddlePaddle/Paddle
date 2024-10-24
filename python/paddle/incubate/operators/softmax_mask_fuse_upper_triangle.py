@@ -11,13 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-def softmax_mask_fuse_upper_triangle(x):
+
+def softmax_mask_fuse_upper_triangle(x: Tensor) -> Tensor:
     """
     Do a masked softmax on x, which will always mask upper triangle part of x.
 
@@ -51,7 +57,7 @@ def softmax_mask_fuse_upper_triangle(x):
             >>> paddle.set_device("gpu")
             >>> x = paddle.rand((1, 1, 32, 32))
 
-            >>> rst = incubate.softmax_mask_fuse_upper_triangle(x)
+            >>> rst = incubate.softmax_mask_fuse_upper_triangle(x) # type: ignore[operator]
             >>> print(rst)
             Tensor(shape=[1, 1, 32, 32], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[[[1.        , 0.        , 0.        , ..., 0.        ,

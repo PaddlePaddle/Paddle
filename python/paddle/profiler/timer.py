@@ -261,10 +261,12 @@ class TimerHook(Hook):
             return
         print('Perf Summary'.center(100, '='))
         if summary['reader_ratio'] != 0:
-            print('Reader Ratio: ' + '%.3f' % (summary['reader_ratio']) + '%')
-        print(
-            'Time Unit: s, IPS Unit: %s' % (benchmark.current_event.speed_unit)
-        )
+            print(
+                'Reader Ratio: '
+                + '{:.3f}'.format(summary['reader_ratio'])
+                + '%'
+            )
+        print(f'Time Unit: s, IPS Unit: {benchmark.current_event.speed_unit}')
         print(
             '|',
             ''.center(15),
@@ -283,9 +285,9 @@ class TimerHook(Hook):
         self._print_stats('ips', summary['ips_summary'])
 
     def _print_stats(self, item, message_dict):
-        avg_str = '%.5f' % (message_dict['avg'])
-        max_str = '%.5f' % (message_dict['max'])
-        min_str = '%.5f' % (message_dict['min'])
+        avg_str = '{:.5f}'.format(message_dict['avg'])
+        max_str = '{:.5f}'.format(message_dict['max'])
+        min_str = '{:.5f}'.format(message_dict['min'])
         print(
             '|',
             item.center(15),
@@ -379,7 +381,7 @@ class Benchmark:
         reader_average = self.current_event.reader_average()
         batch_average = self.current_event.batch_average()
         if reader_average:
-            message += ' reader_cost: %.5f s' % (reader_average)
+            message += f' reader_cost: {reader_average:.5f} s'
         if batch_average:
             if self.current_event.speed_mode == 'steps/s':
                 self.current_event.speed_unit = 'steps/s'

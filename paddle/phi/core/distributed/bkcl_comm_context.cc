@@ -42,6 +42,20 @@ void BKCLCommContext::SetDevContext(
   dev_ctx_ = std::move(dev_ctx);
 }
 
+XPUEvent BKCLCommContext::GetComputeEvent() { return compute_event_.get(); }
+
+void BKCLCommContext::SetComputeEvent(
+    std::shared_ptr<std::remove_pointer<XPUEvent>::type>&& compute_event) {
+  compute_event_ = std::move(compute_event);
+}
+
+XPUEvent BKCLCommContext::GetCommEvent() { return comm_event_.get(); }
+
+void BKCLCommContext::SetCommEvent(
+    std::shared_ptr<std::remove_pointer<XPUEvent>::type>&& comm_event) {
+  comm_event_ = std::move(comm_event);
+}
+
 void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root,
@@ -148,6 +162,23 @@ void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                              in_tensor.numel(),
                                              ToBKCLDataType(in_tensor.type()),
                                              reduce_type,
+                                             stream));
+}
+
+void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
+                               const phi::DenseTensor& in_tensor,
+                               XPUStream stream) {
+  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
+                                               in_tensor,
+                                               /*dst_rank*/ rank_,
+                                               /*cur_rank*/ rank_,
+                                               size_,
+                                               phi::AllocationType::XPU);
+  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_to_all(bkcl_comm_,
+                                             in_tensor.data(),
+                                             in_tensor.numel() / size_,
+                                             out_tensor->data(),
+                                             ToBKCLDataType(in_tensor.type()),
                                              stream));
 }
 

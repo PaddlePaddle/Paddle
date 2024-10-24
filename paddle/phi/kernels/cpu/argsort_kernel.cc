@@ -30,7 +30,8 @@ static void FullSort(Type input_height,
                      const DenseTensor* input,
                      T* t_out,
                      Type* t_indices,
-                     bool descending) {
+                     bool descending,
+                     bool stable) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
@@ -48,18 +49,34 @@ static void FullSort(Type input_height,
         col_vec.push_back(std::pair<T, Type>(e_input(i, j), j));
       }
     }
-    std::sort(col_vec.begin(),
-              col_vec.end(),
-              [&](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
-                if (descending)
-                  return (std::isnan(static_cast<double>(l.first)) &&
-                          !std::isnan(static_cast<double>(r.first))) ||
-                         (l.first > r.first);
-                else
-                  return (!std::isnan(static_cast<double>(l.first)) &&
-                          std::isnan(static_cast<double>(r.first))) ||
-                         (l.first < r.first);
-              });
+    if (stable) {
+      std::stable_sort(
+          col_vec.begin(),
+          col_vec.end(),
+          [&](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
+            if (descending)
+              return (std::isnan(static_cast<double>(l.first)) &&
+                      !std::isnan(static_cast<double>(r.first))) ||
+                     (l.first > r.first);
+            else
+              return (!std::isnan(static_cast<double>(l.first)) &&
+                      std::isnan(static_cast<double>(r.first))) ||
+                     (l.first < r.first);
+          });
+    } else {
+      std::sort(col_vec.begin(),
+                col_vec.end(),
+                [&](const std::pair<T, Type>& l, const std::pair<T, Type>& r) {
+                  if (descending)
+                    return (std::isnan(static_cast<double>(l.first)) &&
+                            !std::isnan(static_cast<double>(r.first))) ||
+                           (l.first > r.first);
+                  else
+                    return (!std::isnan(static_cast<double>(l.first)) &&
+                            std::isnan(static_cast<double>(r.first))) ||
+                           (l.first < r.first);
+                });
+    }
 
     for (Type j = 0; j < input_width; ++j) {
       t_out[i * input_width + j] = col_vec[j].first;
@@ -73,6 +90,7 @@ void ArgsortKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    int axis,
                    bool descending,
+                   bool stable,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
@@ -100,7 +118,8 @@ void ArgsortKernel(const Context& dev_ctx,
                          &input,
                          out_data,
                          ids_data,
-                         descending);
+                         descending,
+                         stable);
   } else {
     // If not full sort do transpose
     std::vector<int> trans;
@@ -141,7 +160,8 @@ void ArgsortKernel(const Context& dev_ctx,
                          &trans_inp,
                          t_out,
                          t_ind,
-                         descending);
+                         descending,
+                         stable);
 
     dev_ctx.template Alloc<int64_t>(indices);
     TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);

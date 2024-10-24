@@ -31,11 +31,11 @@ class Variable {
         IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, platform::errors::NotFound("Variable is not initialized."));
+        holder_, common::errors::NotFound("Variable is not initialized."));
     PADDLE_ENFORCE_EQ(
         holder_->Type(),
         VarTypeTrait<T>::kId,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Variable type must be %s, but the type it holds is %s.",
             ToTypeName(VarTypeTrait<T>::kId),
             ToTypeName(holder_->Type())));
@@ -49,10 +49,16 @@ class Variable {
     if (!holder_) {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
+      // If holder_ is RawTensor, call holder_->Ptr() GetMutable again. Used for
+      // load_combine.
+      if (holder_->Type() == VarTypeTrait<RawTensor>::kId &&
+          holder_->Type() != VarTypeTrait<T>::kId) {
+        return static_cast<RawTensor*>(holder_->Ptr())->GetMutable<T>();
+      }
       PADDLE_ENFORCE_EQ(
           holder_->Type(),
           VarTypeTrait<T>::kId,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The Variable type must be %s, but the type it holds is %s.",
               ToTypeName(VarTypeTrait<T>::kId),
               ToTypeName(holder_->Type())));
@@ -69,7 +75,7 @@ class Variable {
 
   int Type() const {
     PADDLE_ENFORCE_NOT_NULL(
-        holder_, platform::errors::NotFound("Variable is not initialized."));
+        holder_, common::errors::NotFound("Variable is not initialized."));
     return holder_->Type();
   }
 
@@ -135,7 +141,7 @@ inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
     VLOG(4) << "Only supports phi::DenseTensor, phi::DenseTensor, SelectedRows "
                "to have "
                "TensorInplaceVersion, but received type "
-            << platform::demangle(framework::ToTypeName(Type()));
+            << common::demangle(framework::ToTypeName(Type()));
   }
   return version_counter_ptr;
 }
@@ -163,7 +169,7 @@ inline void Variable::BumpInplaceVersion() {
     VLOG(4) << "Only supports phi::DenseTensor, phi::DenseTensor, SelectedRows "
                "to have "
                "TensorInplaceVersion, but received type "
-            << platform::demangle(framework::ToTypeName(Type()));
+            << common::demangle(framework::ToTypeName(Type()));
   }
 }
 }  // namespace framework

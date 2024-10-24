@@ -22,36 +22,42 @@ class CConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_concat");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_concat");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "Input 'X' of c_concat must be provided."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "Output 'Out' of c_concat must be provided."));
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
-    PADDLE_ENFORCE_GE(nranks,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The number of ranks (%d) for c_concat "
-                          "must be greater than 1.",
-                          nranks));
+    PADDLE_ENFORCE_GE(
+        nranks,
+        2,
+        common::errors::InvalidArgument("The number of ranks (%d) for c_concat "
+                                        "must be greater than 1.",
+                                        nranks));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for c_concat must be non-negative.", ring_id));
     PADDLE_ENFORCE_GE(
         rank,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The rank (%d) for c_concat must be non-negative.", rank));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The value of rank (%d) for c_concat must "
                           "be less than that of nranks.",
                           rank,
                           nranks));
 
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
     if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
     ctx->SetOutputDim("Out", dim);
@@ -105,20 +111,9 @@ AllGather the tensors on different trainers and concat them along the last dimen
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_concat,
                   ops::CConcatOp,
                   ops::CConcatOpGradMaker<paddle::framework::OpDesc>,
                   ops::CConcatOpGradMaker<paddle::imperative::OpBase>,
                   ops::CConcatOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_concat,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CConcatOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          plat::float16) {}

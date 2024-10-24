@@ -26,9 +26,9 @@ class TestDistributedStrategyAuto(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36001,127.0.0.2:36001"
+        )
 
     def test_distributed_strategy_auto(self):
         fleet.init(is_collective=True)

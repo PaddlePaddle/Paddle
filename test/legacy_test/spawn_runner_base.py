@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 
+import paddle
+
 # used by model.run_trainer in test_dist_base
 from legacy_test.test_dist_base import RUN_STEP
-
-import paddle
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args

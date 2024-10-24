@@ -14,11 +14,11 @@
 # limitations under the License.
 
 #
-# A simple test driver for cmake. 
+# A simple test driver for cmake.
 # set PYTHONPATH before run command.
 # Usage:
 #    ./.set_python_pash.sh -p YOUR_PYTHON_PATH {exec...}
-# 
+#
 # It same as PYTHONPATH=${YOUR_PYTHON_PATH}:$PYTHONPATH {exec...}
 #
 PYPATH=""

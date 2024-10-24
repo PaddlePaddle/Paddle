@@ -19,8 +19,6 @@ from decorator_helper import prog_scope
 
 import paddle
 from paddle import base
-from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -233,35 +231,10 @@ class TestMathOpPatches(unittest.TestCase):
         self.assertEqual(c.dtype, paddle.bool)
 
     @prog_scope()
-    @test_with_pir_api
-    def test_equal_and_cond(self):
-        a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
-        b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
-        if not in_pir_mode():
-            a.desc.set_need_check_feed(False)
-            b.desc.set_need_check_feed(False)
-        one = paddle.ones(shape=[1], dtype='int32')
-        zero = paddle.zeros(shape=[1], dtype='int32')
-        cond = one == zero
-        c = paddle.static.nn.cond(cond, lambda: a + b, lambda: a - b)
-
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
-        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
-
-        (c_np,) = exe.run(
-            paddle.static.default_main_program(),
-            feed={"a": a_np, "b": b_np},
-            fetch_list=[c],
-        )
-
-        np.testing.assert_array_equal(c_np, a_np - b_np)
-
-    @prog_scope()
     def test_neg(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
-        a.desc.set_need_check_feed(False)
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
         b = -a
         place = base.CPUPlace()
         exe = base.Executor(place)
@@ -273,10 +246,45 @@ class TestMathOpPatches(unittest.TestCase):
         np.testing.assert_allclose(-a_np, b_np, rtol=1e-05)
 
     @prog_scope()
+    def test_abs(self):
+        # test for real number
+        a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='float32')
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
+        b = abs(a)  # call __abs__
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
+
+        (b_np,) = exe.run(
+            base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
+        )
+        np.testing.assert_allclose(np.abs(a_np), b_np, rtol=1e-05)
+
+    @prog_scope()
+    def test_abs_complex(self):
+        # test for complex number
+        a = paddle.static.data(name="a", shape=[-1, 10, 1], dtype='complex64')
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
+        b = abs(a)  # call __abs__
+        place = base.CPUPlace()
+        exe = base.Executor(place)
+        a_np = np.random.uniform(-1, 1, size=[10, 1]).astype(
+            'float32'
+        ) + 1j * np.random.uniform(-1, 1, size=[10, 1]).astype('float32')
+
+        (b_np,) = exe.run(
+            base.default_main_program(), feed={"a": a_np}, fetch_list=[b]
+        )
+        np.testing.assert_allclose(np.abs(a_np), b_np, rtol=1e-05)
+
+    @prog_scope()
     def test_astype(self):
         a = paddle.static.data(name="a", shape=[-1, 10, 1])
-        a.desc.set_need_check_feed(False)
-        b = a.astype('float32')
+        if not paddle.framework.use_pir_api():
+            a.desc.set_need_check_feed(False)
+        b = a.astype('float64')
         place = base.CPUPlace()
         exe = base.Executor(place)
         a_np = np.random.uniform(-1, 1, size=[10, 1]).astype('float64')

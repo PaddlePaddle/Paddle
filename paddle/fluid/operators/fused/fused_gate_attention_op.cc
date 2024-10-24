@@ -17,10 +17,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 class FusedGateAttentionOp : public framework::OperatorWithKernel {
  public:
@@ -365,8 +364,7 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

@@ -10,13 +10,19 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+from __future__ import annotations
+
 import math
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import paddle
-from paddle import Tensor
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    from ..features.layers import _WindowLiteral
 
 
 class WindowFunctionRegister:
@@ -39,7 +45,7 @@ window_function_register = WindowFunctionRegister()
 
 
 @window_function_register.register()
-def _cat(x: List[Tensor], data_type: str) -> Tensor:
+def _cat(x: list[Tensor], data_type: str) -> Tensor:
     l = []
     for t in x:
         if np.isscalar(t) and not isinstance(t, str):
@@ -50,7 +56,62 @@ def _cat(x: List[Tensor], data_type: str) -> Tensor:
 
 
 @window_function_register.register()
-def _acosh(x: Union[Tensor, float]) -> Tensor:
+def _bartlett(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
+    """
+    Computes the Bartlett window.
+    This function is consistent with scipy.signal.windows.bartlett().
+    """
+    if _len_guards(M):
+        return paddle.ones((M,), dtype=dtype)
+    M, needs_trunc = _extend(M, sym)
+
+    n = paddle.arange(0, M, dtype=dtype)
+    M = paddle.to_tensor(M, dtype=dtype)
+    w = paddle.where(
+        paddle.less_equal(n, (M - 1) / 2.0),
+        2.0 * n / (M - 1),
+        2.0 - 2.0 * n / (M - 1),
+    )
+
+    return _truncate(w, needs_trunc)
+
+
+@window_function_register.register()
+def _kaiser(
+    M: int, beta: float, sym: bool = True, dtype: str = 'float64'
+) -> Tensor:
+    """Compute the Kaiser window.
+    This function is consistent with scipy.signal.windows.kaiser().
+    """
+    if _len_guards(M):
+        return paddle.ones((M,), dtype=dtype)
+    M, needs_trunc = _extend(M, sym)
+
+    beta = paddle.to_tensor(beta, dtype=dtype)
+
+    n = paddle.arange(0, M, dtype=dtype)
+    M = paddle.to_tensor(M, dtype=dtype)
+    alpha = (M - 1) / 2.0
+    w = paddle.i0(
+        beta * paddle.sqrt(1 - ((n - alpha) / alpha) ** 2.0)
+    ) / paddle.i0(beta)
+
+    return _truncate(w, needs_trunc)
+
+
+@window_function_register.register()
+def _nuttall(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
+    """Nuttall window.
+    This function is consistent with scipy.signal.windows.nuttall().
+    """
+    a = paddle.to_tensor(
+        [0.3635819, 0.4891775, 0.1365995, 0.0106411], dtype=dtype
+    )
+    return _general_cosine(M, a=a, sym=sym, dtype=dtype)
+
+
+@window_function_register.register()
+def _acosh(x: Tensor | float) -> Tensor:
     if isinstance(x, float):
         return math.log(x + math.sqrt(x**2 - 1))
     return paddle.log(x + paddle.sqrt(paddle.square(x) - 1))
@@ -102,7 +163,7 @@ def _general_gaussian(
 
 @window_function_register.register()
 def _general_cosine(
-    M: int, a: float, sym: bool = True, dtype: str = 'float64'
+    M: int, a: list[float], sym: bool = True, dtype: str = 'float64'
 ) -> Tensor:
     """Compute a generic weighted sum of cosine terms window.
     This function is consistent with scipy.signal.windows.general_cosine().
@@ -333,7 +394,7 @@ def _cosine(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
 
 
 def get_window(
-    window: Union[str, Tuple[str, float]],
+    window: _WindowLiteral | tuple[_WindowLiteral, float],
     win_length: int,
     fftbins: bool = True,
     dtype: str = 'float64',
@@ -341,7 +402,7 @@ def get_window(
     """Return a window of a given length and type.
 
     Args:
-        window (Union[str, Tuple[str, float]]): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'general_gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'.
+        window (Union[str, Tuple[str, float]]): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'general_gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor', 'bartlett', 'kaiser', 'nuttall'.
         win_length (int): Number of samples.
         fftbins (bool, optional): If True, create a "periodic" window. Otherwise, create a "symmetric" window, for use in filter design. Defaults to True.
         dtype (str, optional): The data type of the return window. Defaults to 'float64'.
@@ -358,17 +419,16 @@ def get_window(
             >>> cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
 
             >>> std = 7
-            >>> gaussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
+            >>> gaussian_window = paddle.audio.functional.get_window(('gaussian', std), n_fft)
     """
     sym = not fftbins
-
     args = ()
     if isinstance(window, tuple):
         winstr = window[0]
         if len(window) > 1:
             args = window[1:]
     elif isinstance(window, str):
-        if window in ['gaussian', 'exponential']:
+        if window in ['gaussian', 'exponential', 'kaiser']:
             raise ValueError(
                 "The '" + window + "' window needs one or "
                 "more parameters -- pass a tuple."
@@ -376,15 +436,12 @@ def get_window(
         else:
             winstr = window
     else:
-        raise ValueError(
-            "%s as window type is not supported." % str(type(window))
-        )
+        raise ValueError(f"{type(window)} as window type is not supported.")
 
     try:
         winfunc = window_function_register.get('_' + winstr)
     except KeyError as e:
         raise ValueError("Unknown window type.") from e
-
-    params = (win_length,) + args
+    params = (win_length, *args)
     kwargs = {'sym': sym}
     return winfunc(*params, dtype=dtype, **kwargs)

@@ -13,7 +13,11 @@
 # limitations under the License.
 
 
+import inspect
+import textwrap
 import warnings
+
+import numpy as np
 
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
@@ -30,6 +34,29 @@ _supported_int_dtype_ = [
     DataType.INT16,
     DataType.INT32,
     DataType.INT64,
+]
+
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+    "__mod__",
+    "__div__",
+    "__rdiv__",
+    "__truediv__",
+    "__rtruediv__",
+    "__floordiv__",
+    "__pow__",
+    "__rpow__",
+    "__eq__",
+    "__ne__",
+    "__lt__",
+    "__le__",
+    "__gt__",
+    "__ge__",
 ]
 
 
@@ -141,6 +168,7 @@ def monkey_patch_value():
         # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
 
+    @property
     def place(self):
         """
         Value don't have 'place' interface in static graph mode
@@ -306,6 +334,9 @@ def monkey_patch_value():
     def _scalar_neg_(var):
         return paddle.scale(var, -1.0, 0.0)
 
+    def _scalar_abs_(var):
+        return paddle.abs(var)
+
     def _binary_creator_(
         method_name,
         python_api,
@@ -338,7 +369,10 @@ def monkey_patch_value():
                     python_api == paddle.divide
                     and self.dtype in _supported_int_dtype_
                 ):
-                    paddle.cast(self, DataType.FLOAT32)
+                    self = paddle.cast(self, DataType.FLOAT32)
+                # bool(tensor) + int(scalar) will do type promotion to int64
+                if self.dtype == paddle.bool:
+                    self = paddle.cast(self, DataType.INT64)
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
@@ -349,47 +383,36 @@ def monkey_patch_value():
 
             # 2. create Value for scalar
             lhs_dtype = safe_get_dtype(self)
-            other_var_value = other_var
             if not isinstance(other_var, Value):
                 if reverse:
                     for elem in self.shape:
                         if elem < 0:
-                            other_var_value = create_tensor_with_batchsize(
+                            other_var = create_tensor_with_batchsize(
                                 self, other_var, lhs_dtype
                             )
 
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_value = paddle.tensor.creation.fill_constant(
+                        other_var = paddle.tensor.creation.fill_constant(
                             self.shape,
                             lhs_dtype,
                             other_var,
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_value = paddle.tensor.creation.fill_constant(
+                    other_var = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
                     )
 
-            # 3. unify right var type to left var
-            rhs_dtype = safe_get_dtype(other_var_value)
-            if lhs_dtype != rhs_dtype:
-                other_var_value = paddle.cast(other_var_value, lhs_dtype)
             if reverse:
                 tmp = self
-                self = other_var_value
-                other_var_value = tmp
+                self = other_var
+                other_var = tmp
 
-            if (
-                python_api == paddle.divide
-            ) and self.dtype in _supported_int_dtype_:
-                self = paddle.cast(self, DataType.FLOAT32)
-                other_var_value = paddle.cast(other_var_value, DataType.FLOAT32)
-
-            out = python_api(self, other_var_value)
+            out = python_api(self, other_var)
             return out
 
         __impl__.__doc__ = """
@@ -456,26 +479,119 @@ def monkey_patch_value():
 
         return _C_ops.transpose(self, perm)
 
+    @property
+    def _mT_(self):
+        """
+
+        Permute current Value with its last two dimensions reversed.
+
+        If `n` is the dimensions of `x` , `x.mT` is equivalent to `x.transpose([0, 1, ..., n-1, n-2])`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> paddle.enable_static()
+
+                >>> x = paddle.ones(shape=[2, 3, 5])
+                >>> x_mT = x.mT
+
+                >>> exe = paddle.static.Executor()
+                >>> x_mT_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_mT])[0]
+                >>> print(x_mT_np.shape)
+                (2, 5, 3)
+
+        """
+        if len(self.shape) < 2:
+            raise ValueError(
+                f"Tensor.ndim({len(self.shape)}) is required to be greater than or equal to 2."
+            )
+
+        perm = list(range(len(self.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+
+        return _C_ops.transpose(self, perm)
+
     def _int_(self):
-        raise TypeError(
-            "int(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
-            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
-            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.int32), and do not use int(Value)."
-        )
+        error_msg = """\
+            int(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
+            It's usually triggered by the logging implicitly, for example:
+                >>> logging.info("The value of x is: {int(x)}")
+                                                          ^ `x` is Tensor, `int(x)` triggers int(Tensor)
+
+                There are two common workarounds available:
+                If you are logging Tensor values, then consider logging only at dynamic graphs, for example:
+
+                    Modify the following code
+                    >>> logging.info("The value of x is: {int(x)}")
+                    to
+                    >>> if paddle.in_dynamic_mode():
+                    ...     logging.info("The value of x is: {int(x)}")
+
+                If you need to convert the Tensor type, for example:
+                    Modify the following code
+                    >>> x = int(x)
+                    to
+                    >>> x = x.astype("int64")
+        """
+
+        raise TypeError(textwrap.dedent(error_msg))
 
     def _float_(self):
-        raise TypeError(
-            "float(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
-            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
-            "2. If you want to run it in full graph mode, you need use Value directly, and do not use float(Value)."
-        )
+        error_msg = """\
+            float(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
+            It's usually triggered by the logging implicitly, for example:
+                >>> logging.info("The value of x is: {float(x)}")
+                                                            ^ `x` is Tensor, `float(x)` triggers float(Tensor)
+
+                There are two common workarounds available:
+                If you are logging Tensor values, then consider logging only at dynamic graphs, for example:
+
+                    Modify the following code
+                    >>> logging.info("The value of x is: {float(x)}")
+                    to
+                    >>> if paddle.in_dynamic_mode():
+                    ...     logging.info("The value of x is: {float(x)}")
+
+                If you need to convert the Tensor type, for example:
+                    Modify the following code
+                    >>> x = float(x)
+                    to
+                    >>> x = x.astype("float64")
+        """
+        raise TypeError(textwrap.dedent(error_msg))
 
     def _bool_(self):
-        raise TypeError(
-            "bool(Value) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
-            "1. If you want to get the value of Value, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
-            "2. If you want to run it in full graph mode, you need use Value.astype(paddle.bool), and do not use bool(Value)."
-        )
+        error_msg = """\
+            bool(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
+            If you haven't call bool(Tensor) explicitly, it's usually triggered by the control flow implicitly, for example:
+                >>> if x > 0:
+                       ^ `x` is Tensor, `x` > 0 is also a Tensor, `if x > 0` triggers bool(Tensor)
+                ...     y = y + 1
+
+            There are two common workarounds available:
+            If you are checking for Tensor values, then consider checking only at dynamic graphs, for example:
+
+                Modify the following code
+                >>> if x > 0:
+                ...     raise ValueError("x should be positive")
+                to
+                >>> if paddle.in_dynamic_mode() and x < 0:
+                >>>     raise ValueError("x should be positive")
+
+            If you need to control the flow of execution based on the value of the Tensor, then you need to rewrite the code as a control flow, for example:
+
+                Modify the following code
+                >>> if x < y:
+                ...     y = y + 1
+                ... else:
+                ...     y = y - 1
+                to
+                >>> pred = paddle.less_than(x=x, y=y, name=None)
+                >>> y = paddle.static.nn.cond(pred, lambda: y + 1, lambda: y - 1)
+                For more info, please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/static/nn/cond_cn.html
+            """
+        raise TypeError(textwrap.dedent(error_msg))
 
     def clone(self):
         """
@@ -576,6 +692,15 @@ def monkey_patch_value():
 
         return paddle._pir_ops.array_pop(self, idx)
 
+    def to_dense(self):
+        return _C_ops.sparse_to_dense(self)
+
+    def values(self):
+        return _C_ops.sparse_values(self)
+
+    def indices(self):
+        return _C_ops.sparse_indices(self)
+
     def set_shape(self, shape):
         assert (
             paddle.base.dygraph.base.in_to_static_mode()
@@ -590,7 +715,281 @@ def monkey_patch_value():
             )
 
     def value_hash(self):
-        raise NotImplementedError('In python Value can not hash!')
+        return hash(id(self))
+
+    def _to(
+        self,
+        device=None,
+        dtype=None,
+        blocking=None,
+    ):
+        if device is None and dtype is None and blocking is None:
+            return self
+
+        if device is not None:
+            if isinstance(device, str):
+                device = paddle.device._convert_to_place(device)
+            elif isinstance(
+                device,
+                (
+                    paddle.core.Place,
+                    paddle.CPUPlace,
+                    paddle.CUDAPlace,
+                    paddle.CUDAPinnedPlace,
+                    # paddle.XPUPlace, # no support
+                    # paddle.CustomPlace, # no support
+                ),
+            ):
+                pass
+            else:
+                raise ValueError(
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace() or paddle.CustomPlace(), but the type of device is "
+                    + type(device).__name__
+                )
+
+        if blocking is None:
+            blocking = True
+        else:
+            assert isinstance(
+                blocking, bool
+            ), "blocking value error, must be the True, False or None"
+
+        def transform(t, device, dtype, blocking):
+            if dtype is None:
+                dtype = t.dtype
+            t_used = t
+
+            # 1. cast Tensor to dtype
+            if dtype != t_used.dtype:
+                with paddle.base.framework._dygraph_place_guard(
+                    place=t_used.place
+                ):
+                    t_casted = t_used.cast(dtype=dtype)
+            else:
+                t_casted = t_used
+
+            # 2. Copy casted Tensor(in CPU or GPU) to device
+            if isinstance(device, paddle.CUDAPlace):
+                new_t = t_casted.cuda(blocking=blocking)
+            elif isinstance(device, paddle.CUDAPinnedPlace):
+                if blocking is not True:
+                    warnings.warn(
+                        "blocking is not supported, and it will be ignored."
+                    )
+                new_t = _C_ops.memcpy(self, 2)
+            elif isinstance(device, paddle.CPUPlace):
+                new_t = t_casted.cpu()
+            else:
+                new_t = t_casted
+
+            return new_t
+
+        return transform(self, device, dtype, blocking)
+
+    def to(self, *args, **kwargs):
+        """
+        Performs Tensor dtype and/or device conversion. A paddle.dtype and place
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
+        three ways to call `to`:
+
+            1. to(dtype, blocking=True)
+            2. to(device, dtype=None, blocking=True)
+            3. to(other, blocking=True)
+
+        Returns:
+            Tensor: self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> tensorx = paddle.to_tensor([1,2,3])
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+
+                >>> tensorx = tensorx.to("cpu")
+                >>> print(tensorx.place)
+                Place(cpu)
+
+                >>> tensorx = tensorx.to("float32")
+                >>> print(tensorx.dtype)
+                paddle.float32
+
+                >>> tensorx = tensorx.to("gpu", "int16")
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+                >>> tensor2 = paddle.to_tensor([4,5,6])
+                >>> tensor2
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+                >>> tensor2 = tensor2.to(tensorx)
+                >>> print(tensor2)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+        """
+
+        size_args = len(args)
+        size_kwargs = len(kwargs)
+
+        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
+            raise TypeError(
+                "to() received too many arguments - expected one of:\n  \
+                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
+                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (paddle.Tensor other, bool blocking) "
+            )
+        valid_keys = {"device", "dtype", "blocking", "other"}
+        invalid_keys = set(kwargs.keys()) - valid_keys
+        if len(invalid_keys) != 0:
+            raise TypeError(
+                "to() got an unexpected keyword argument "
+                + next(iter(invalid_keys))
+            )
+
+        def dtype_first_sig(dtype, blocking=None): ...
+
+        def device_first_sig(device, dtype=None, blocking=None): ...
+
+        def tensor_like_first_sig(other, blocking=None): ...
+
+        class _NoArg: ...
+
+        def is_dtype(arg):
+            valid_dtypes = [
+                "bfloat16",
+                "float16",
+                "float32",
+                "float64",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "uint8",
+                "complex64",
+                "complex128",
+                "bool",
+            ]
+            return isinstance(arg, (paddle.dtype, np.dtype)) or (
+                isinstance(arg, str) and arg.lower() in valid_dtypes
+            )
+
+        def is_device(arg):
+            # in dy2static, arg can be None
+            return arg is None or isinstance(arg, (paddle.core.Place, str))
+
+        def is_tensor(arg):
+            return isinstance(arg, paddle.pir.Value)
+
+        def create_positional_arg_extractor(position: int):
+            def extract_positional_arg(args, kwargs):
+                if len(args) > position:
+                    return args[position]
+                return _NoArg()
+
+            return extract_positional_arg
+
+        def create_keyword_arg_extractor(key: str, position: int):
+            def extract_keyword_arg(args, kwargs):
+                if (
+                    key in kwargs
+                    and len(kwargs) > position
+                    and list(kwargs.keys())[position] == key
+                ):
+                    return kwargs[key]
+                return _NoArg()
+
+            return extract_keyword_arg
+
+        def chain_extractors(*extractors):
+            def chain(args, kwargs):
+                for extractor in extractors:
+                    if not isinstance(arg := extractor(args, kwargs), _NoArg):
+                        return arg
+                return _NoArg()
+
+            return chain
+
+        def dispatch_to_signature(*args, **kwargs):
+            # dict[signature, (extractor, condition)]
+            signature_map = {
+                dtype_first_sig: (
+                    chain_extractors(
+                        create_positional_arg_extractor(position=0),
+                        create_keyword_arg_extractor(key="dtype", position=0),
+                    ),
+                    is_dtype,
+                ),
+                device_first_sig: (
+                    chain_extractors(
+                        create_positional_arg_extractor(position=0),
+                        create_keyword_arg_extractor(key="device", position=0),
+                    ),
+                    is_device,
+                ),
+                tensor_like_first_sig: (
+                    chain_extractors(
+                        create_positional_arg_extractor(position=0),
+                        create_keyword_arg_extractor(key="other", position=0),
+                    ),
+                    is_tensor,
+                ),
+            }
+
+            for sig, (extractor, condition) in signature_map.items():
+                if not isinstance(
+                    arg := extractor(args, kwargs), _NoArg
+                ) and condition(arg):
+                    bound_args = inspect.signature(sig).bind(*args, **kwargs)
+                    bound_args.apply_defaults()
+                    return bound_args.arguments
+            raise ValueError("No matching signature found.")
+
+        args = dispatch_to_signature(*args, **kwargs)
+        other = args.get("other", None)
+        if other is not None:
+            args.pop("other")
+            args["dtype"] = other.dtype
+            # in dy2static, we need show warning for this case
+            other.place  # noqa: B018
+
+        return self._to(**args)
+
+    @fake_interface_only
+    def numpy(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
+        Returns:
+            ndarray: The numpy value of current Variable.
+        Returns type:
+            ndarray: dtype is same as current Variable
+        Examples:
+            .. code-block:: python
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> from paddle.nn import Linear
+                >>> import numpy as np
+                >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                >>> with base.dygraph.guard():
+                ...     linear = Linear(32, 64)
+                ...     data_tensor = paddle.to_tensor(data)
+                ...     x = linear(data_tensor)
+                ...     print(x.numpy())
+        """
+        pass
+
+    @fake_interface_only
+    def register_hook(self, hook):
+        """
+        Value don't have 'register_hook' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a error here.
+        """
+        pass
 
     import paddle
 
@@ -607,12 +1006,20 @@ def monkey_patch_value():
         ('astype', astype),
         ('size', _size_),
         ('T', _T_),
+        ('mT', _mT_),
         ('clone', clone),
         ('clear_gradient', clear_gradient),
         ('append', append),
         ('pop', pop),
         ('set_shape', set_shape),
         ('__hash__', value_hash),
+        ('to_dense', to_dense),
+        ('indices', indices),
+        ('values', values),
+        ("_to", _to),
+        ("to", to),
+        ("numpy", numpy),
+        ("register_hook", register_hook),
         # For basic operators
         (
             '__add__',
@@ -693,6 +1100,7 @@ def monkey_patch_value():
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
         ('__neg__', _scalar_neg_),
+        ('__abs__', _scalar_abs_),
         # For compare operators
         (
             '__eq__',

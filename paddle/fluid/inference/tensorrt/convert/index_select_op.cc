@@ -14,19 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
 
-namespace proto {
+}  // namespace paddle::framework
+namespace paddle::framework::proto {
 class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::proto
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * Gather Op
@@ -64,12 +60,10 @@ class IndexSelectConverter : public OpConverter {
         engine_, Gather, *input_tensor, *reshape_layer->getOutput(0), axis);
     layer->setNbElementWiseDims(0);
 
-    RreplenishLayerAndOutput(layer, "index_select", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "index_select", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(index_select, IndexSelectConverter);

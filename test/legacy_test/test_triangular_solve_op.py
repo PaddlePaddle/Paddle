@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
+import os
 import sys
 import unittest
 
@@ -23,7 +24,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -744,8 +744,14 @@ class TestTriangularSolveOpCp12854b(TestTriangularSolveOp):
 class TestTriangularSolveAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.dtype = "float64"
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -769,7 +775,6 @@ class TestTriangularSolveAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)
@@ -805,7 +810,6 @@ class TestTriangularSolveOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.linalg.triangular_solve, x1, y1)
 
-    @test_with_pir_api
     def test_errors2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

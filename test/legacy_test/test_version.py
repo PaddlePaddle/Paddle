@@ -15,6 +15,7 @@
 import re
 import unittest
 
+import paddle
 import paddle.version as base_version
 
 
@@ -30,10 +31,10 @@ class VersionTest(unittest.TestCase):
     def test_check_output(self):
         # check commit format
         self.assertTrue(re.match(self._commit_regex, base_version.commit))
-        self.assertTrue(isinstance(base_version.istaged, bool))
+        self.assertTrue(isinstance(base_version.is_tagged, bool))
 
         # check version format
-        if base_version.istaged:
+        if base_version.is_tagged:
             self.assertTrue(re.match(self._major_regex, base_version.major))
             self.assertTrue(re.match(self._minor_regex, base_version.minor))
             self.assertTrue(re.match(self._patch_regex, base_version.patch))
@@ -47,6 +48,12 @@ class VersionTest(unittest.TestCase):
             self.assertEqual(base_version.patch, "0")
             self.assertEqual(base_version.rc, "0")
             self.assertEqual(base_version.full_version, "0.0.0")
+
+        if paddle.is_compiled_with_cuda():
+            self.assertTrue(isinstance(base_version.cuda(), str))
+            self.assertTrue(isinstance(base_version.cuda_archs(), list))
+        else:
+            self.assertEqual(base_version.cuda(), "False")
 
 
 if __name__ == '__main__':

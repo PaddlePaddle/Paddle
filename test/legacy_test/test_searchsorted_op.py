@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -92,6 +92,91 @@ class TestSearchSortedOp5(TestSearchSorted):
         self.side = "right"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the float16",
+)
+class TestSearchSortedFP16OP(TestSearchSorted):
+    def setUp(self):
+        self.python_api = paddle.searchsorted
+        self.op_type = "searchsorted"
+        self.dtype = np.float16
+        self.init_test_case()
+
+        self.inputs = {
+            'SortedSequence': self.sorted_sequence.astype(self.dtype),
+            'Values': self.values.astype(self.dtype),
+        }
+        self.attrs = {"out_int32": False, "right": False}
+        self.attrs["right"] = True if self.side == 'right' else False
+        self.outputs = {
+            'Out': np.searchsorted(
+                self.sorted_sequence, self.values, side=self.side
+            )
+        }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_pir=True)
+
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array([[3, 6, 9], [3, 6, 9]])
+        self.side = "left"
+
+
+class TestSearchSortedFP16OP_2(TestSearchSortedFP16OP):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9])
+        self.values = np.array([[3, 6, 9], [3, 6, 9]])
+        self.side = "right"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestSearchSortedBF16(TestSearchSorted):
+    def setUp(self):
+        self.python_api = paddle.searchsorted
+        self.public_python_api = paddle.searchsorted
+        self.op_type = "searchsorted"
+        self.python_out_sig = ["Out"]
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+        self.init_test_case()
+
+        self.inputs = {
+            'SortedSequence': convert_float_to_uint16(self.sorted_sequence),
+            'Values': convert_float_to_uint16(self.values),
+        }
+        self.attrs = {"out_int32": False, "right": False}
+        self.attrs["right"] = True if self.side == 'right' else False
+        self.outputs = {
+            'Out': np.searchsorted(
+                self.sorted_sequence, self.values, side=self.side
+            )
+        }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_pir=True)
+
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.np_dtype)
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.np_dtype)
+        self.side = "left"
+
+
+class TestSearchSortedBF16_2(TestSearchSortedBF16):
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(self.np_dtype)
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(self.np_dtype)
+        self.side = "right"
+
+
 class TestSearchSortedAPI(unittest.TestCase):
     def init_test_case(self):
         self.sorted_sequence = np.array([2, 4, 6, 8, 10]).astype("float64")
@@ -99,11 +184,16 @@ class TestSearchSortedAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_test_case()
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
@@ -156,7 +246,7 @@ class TestSearchSortedAPI(unittest.TestCase):
 
 
 class TestSearchSortedError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_error_api(self):
         paddle.enable_static()
 
@@ -204,7 +294,6 @@ class TestSearchSortedError(unittest.TestCase):
             RuntimeError, test_searchsorted_sortedsequence_size_error
         )
 
-    @test_with_pir_api
     def test_check_type_error(self):
         def test_sortedsequence_values_type_error():
             with paddle.static.program_guard(paddle.static.Program()):

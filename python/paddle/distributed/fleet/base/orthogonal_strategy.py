@@ -143,9 +143,7 @@ class OrthogonalStrategy:
 
         assert num_of_ranks == len(
             self._strategy_rank_list
-        ), "There are total {} ranks, but need {} ranks in this strategy.".format(
-            len(self._strategy_rank_list), num_of_ranks
-        )
+        ), f"There are total {len(self._strategy_rank_list)} ranks, but need {num_of_ranks} ranks in this strategy."
 
         for fused_strategy in self._fused_strategy_dict.values():
             for strategy in fused_strategy:

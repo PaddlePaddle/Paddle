@@ -230,6 +230,7 @@ void ArgsortKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    int axis,
                    bool descending,
+                   bool stable,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
@@ -251,14 +252,35 @@ void ArgsortKernel(const Context& dev_ctx,
   // Compared to the following 'Special case for full sort', ascending sort is
   // 34 times faster and descending sort is 31 times faster.
   if (size == in_dims[axis]) {
-    thrust::sequence(thrust::device, ids_data, ids_data + size);
-    thrust::copy(thrust::device, in_data, in_data + size, out_data);
-    thrust::sort_by_key(thrust::device, out_data, out_data + size, ids_data);
-    if (descending) {
-      thrust::reverse(thrust::device, out_data, out_data + size);
-      thrust::reverse(thrust::device, ids_data, ids_data + size);
+#ifdef PADDLE_WITH_CUDA
+    const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+#else
+    const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
+#endif
+    if (stable) {
+      thrust::sequence(exec_policy, ids_data, ids_data + size);
+      thrust::copy(exec_policy, in_data, in_data + size, out_data);
+      if (descending) {
+        thrust::stable_sort_by_key(exec_policy,
+                                   out_data,
+                                   out_data + size,
+                                   ids_data,
+                                   thrust::greater<T>());
+      } else {
+        thrust::stable_sort_by_key(
+            exec_policy, out_data, out_data + size, ids_data);
+      }
+      return;
+    } else {
+      thrust::sequence(exec_policy, ids_data, ids_data + size);
+      thrust::copy(exec_policy, in_data, in_data + size, out_data);
+      thrust::sort_by_key(exec_policy, out_data, out_data + size, ids_data);
+      if (descending) {
+        thrust::reverse(exec_policy, out_data, out_data + size);
+        thrust::reverse(exec_policy, ids_data, ids_data + size);
+      }
+      return;
     }
-    return;
   }
 
   // Special case for full sort, speedup ~190x.

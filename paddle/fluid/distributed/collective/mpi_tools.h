@@ -16,9 +16,7 @@
 #include <error.h>
 #include <iostream>
 #include <string>
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/distributed/collective/types.h"
 
@@ -32,14 +30,16 @@ namespace paddle {
 namespace distributed {
 namespace mpi {
 
-#define MPI_CHECK(cmd)                                                     \
-  do {                                                                     \
-    int r = cmd;                                                           \
-    if (r != MPI_SUCCESS) {                                                \
-      LOG(FATAL) << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
-                 << "with error code: " << std::to_string(r) << std::endl; \
-      exit(EXIT_FAILURE);                                                  \
-    }                                                                      \
+#define MPI_CHECK(cmd)                                             \
+  do {                                                             \
+    int r = cmd;                                                   \
+    if (r != MPI_SUCCESS) {                                        \
+      std::stringstream ss;                                        \
+      ss << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
+         << "with error code: " << std::to_string(r) << std::endl; \
+      PADDLE_THROW(common::errors::Fatal(ss.str()));               \
+      exit(EXIT_FAILURE);                                          \
+    }                                                              \
   } while (0)
 
 MPI_Op ToMPIType(ReduceOp reduction);

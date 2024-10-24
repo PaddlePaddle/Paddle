@@ -11,19 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
-
-SEED = 2020
-np.random.seed(SEED)
 
 
 class A:
@@ -35,13 +32,25 @@ def function(x: A) -> A:
     return 2 * x
 
 
-class TestTypeHint(Dy2StTestBase):
+def fn_annotation_assign_with_value(x: paddle.Tensor):
+    if x:
+        y: list[paddle.Tensor] = [x + 1]
+    else:
+        y: list[paddle.Tensor] = [x - 1]
+    return y
+
+
+def fn_annotation_assign_without_value(x: paddle.Tensor):
+    if x:
+        y: list[paddle.Tensor]
+        y = [x + 1]
+    else:
+        y = [x - 1]
+    return y
+
+
+class TestTypeHints(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
 
@@ -66,12 +75,29 @@ class TestTypeHint(Dy2StTestBase):
         else:
             return ret
 
-    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
-        print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
+
+
+class TestAnnAssign(Dy2StTestBase):
+    def assert_fn_dygraph_and_static_unified(self, dygraph_fn, x):
+        static_fn = paddle.jit.to_static(dygraph_fn)
+        dygraph_fn = dygraph_fn
+        static_res = static_fn(x)
+        dygraph_res = dygraph_fn(x)
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+
+    def test_ann_assign_with_value(self):
+        self.assert_fn_dygraph_and_static_unified(
+            fn_annotation_assign_with_value, paddle.to_tensor(1)
+        )
+
+    def test_ann_assign_without_value(self):
+        self.assert_fn_dygraph_and_static_unified(
+            fn_annotation_assign_without_value, paddle.to_tensor(1)
+        )
 
 
 if __name__ == '__main__':

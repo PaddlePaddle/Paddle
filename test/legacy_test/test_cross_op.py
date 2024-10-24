@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestCrossOp(OpTest):
@@ -32,6 +31,17 @@ class TestCrossOp(OpTest):
             'X': np.random.random(self.shape).astype(self.dtype),
             'Y': np.random.random(self.shape).astype(self.dtype),
         }
+        if self.dtype is np.complex64 or self.dtype is np.complex128:
+            self.inputs = {
+                'X': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype),
+                'Y': (
+                    np.random.random(self.shape)
+                    + 1j * np.random.random(self.shape)
+                ).astype(self.dtype),
+            }
         self.init_output()
 
     def initTestCase(self):
@@ -73,6 +83,30 @@ class TestCrossFP16Op(TestCrossOp):
     def initTestCase(self):
         self.shape = (2048, 3)
         self.dtype = np.float16
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossComplex64Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.complex64
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossComplex128Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.complex128
 
     def init_output(self):
         z_list = []
@@ -137,7 +171,6 @@ class TestCrossAPI(unittest.TestCase):
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
         ).astype('float32')
 
-    @test_with_pir_api
     def test_cross_api(self):
         self.input_data()
 
@@ -180,18 +213,19 @@ class TestCrossAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_cross_api1(self):
-        self.input_data()
+        with paddle.pir_utils.OldIrGuard():
+            self.input_data()
 
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
 
-        # case 1:
-        with paddle.static.program_guard(main, startup):
-            x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
+            # case 1:
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
+                y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
 
-            y_1 = paddle.cross(x, y, name='result')
-            self.assertEqual(('result' in y_1.name), True)
+                y_1 = paddle.cross(x, y, name='result')
+                self.assertEqual(('result' in y_1.name), True)
 
     def test_dygraph_api(self):
         self.input_data()

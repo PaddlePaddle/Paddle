@@ -13,53 +13,82 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/layout.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
 void Layout::Verify() {
   {
-    CHECK(!name_.empty());
-    CHECK(!axes_.empty());
+    PADDLE_ENFORCE_NE(
+        name_.empty(),
+        true,
+        ::common::errors::InvalidArgument("The name should not be empty."));
+    PADDLE_ENFORCE_NE(
+        axes_.empty(),
+        true,
+        ::common::errors::InvalidArgument("The axes should not be empty."));
     axis_names_ = "";
     for (auto& axis : axes_) {
-      CHECK_EQ(axis->name.size(), 1U);
+      PADDLE_ENFORCE_EQ(
+          axis->name.size(),
+          1U,
+          ::common::errors::InvalidArgument("axis name size must be 1"));
       auto axis_name = axis->name[0];
-      CHECK((axis_name >= 'A' && axis_name <= 'Z') ||
-            (axis_name >= 'a' && axis_name <= 'z'));
-      CHECK(axis_names_.find(axis_name) == axis_names_.npos)
-          << axis_name << " has already exsit.";
+      PADDLE_ENFORCE_EQ(
+          (axis_name >= 'A' && axis_name <= 'Z') ||
+              (axis_name >= 'a' && axis_name <= 'z'),
+          true,
+          ::common::errors::InvalidArgument("Axis name must be a letter."));
+      PADDLE_ENFORCE_EQ(axis_names_.find(axis_name) == axis_names_.npos,
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "{} has already existed.", axis_name));
       axis_names_ += axis_name;
     }
     int offset = 'A' - 'a';
     for (auto& axis : axes_) {
-      CHECK_EQ(axis->name.size(), 1U);
+      PADDLE_ENFORCE_EQ(
+          axis->name.size(),
+          1U,
+          ::common::errors::InvalidArgument("axis name size must be 1"));
       auto axis_name = axis->name[0];
       if (axis_name >= 'a' && axis_name <= 'z') {
-        CHECK(axis_names_.find(axis_name + offset) != axis_names_.npos)
-            << "sub-axis " << axis_name << " finds no primal axis";
+        PADDLE_ENFORCE_NE(
+            axis_names_.find(axis_name + offset) == axis_names_.npos,
+            true,
+            ::common::errors::InvalidArgument(
+                "sub-axis {} finds no primal axis", axis_name));
       }
     }
   }
 }
 Layout::Layout(const std::string& name) {
-  CHECK(!name.empty());
+  PADDLE_ENFORCE_NE(
+      name.empty(),
+      true,
+      ::common::errors::InvalidArgument("The name should not be empty."));
   int factor = 0;
   std::vector<Var> axes;
   for (char c : name) {
     if (c >= 'A' && c <= 'Z') {
-      CHECK_EQ(factor, 0) << "Invalid factor " << factor
-                          << " before primal axis " << c;
+      PADDLE_ENFORCE_EQ(factor,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The factor should be equal to 0."));
       axes.push_back(ir::Var(std::string(1, c)));
     } else if (c >= '0' && c <= '9') {
       factor = 10 * factor + c - '0';
     } else if (c >= 'a' && c <= 'z') {
-      CHECK_GT(factor, 0) << "Invalid factor " << factor << " for sub-axis "
-                          << c;
+      PADDLE_ENFORCE_GT(factor,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The factor should be greater than 0."));
       axes.push_back(ir::Var(factor, std::string(1, c)));
       factor = 0;
     } else {
-      LOG(FATAL) << "Invalid layout: " << name;
+      std::stringstream ss;
+      ss << "Invalid layout: " << name;
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
   }
   name_ = name;

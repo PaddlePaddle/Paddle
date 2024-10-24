@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
-from paddle.pir_utils import test_with_pir_api
 
 
 def call_TripletMarginDistanceLoss_layer(
@@ -193,7 +193,7 @@ def calc_triplet_margin_distance_loss(
 
 
 class TestTripletMarginWithDistanceLossnew(unittest.TestCase):
-    @test_with_pir_api
+
     def test_TripletMarginDistanceLoss(self):
         shape = (5, 5)
         np.random.seed(1234)
@@ -201,7 +201,13 @@ class TestTripletMarginWithDistanceLossnew(unittest.TestCase):
         positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
         negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
@@ -288,7 +294,7 @@ class TestTripletMarginWithDistanceLossError(unittest.TestCase):
 
 
 class TestTripletMarginWithDistanceLossDF(unittest.TestCase):
-    @test_with_pir_api
+
     def test_TripletMarginDistanceLoss_distance_function(self):
         def distance_function_1(x1, x2):
             return 1.0 - paddle.nn.functional.cosine_similarity(x1, x2)
@@ -402,7 +408,7 @@ class TestTripletMarginWithDistanceLossDim(unittest.TestCase):
 
 
 class TestTripletMarginWithDistanceLossSwap(unittest.TestCase):
-    @test_with_pir_api
+
     def test_TripletMarginWithDistanceLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()

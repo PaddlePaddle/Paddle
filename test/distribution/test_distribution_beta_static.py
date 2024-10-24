@@ -142,3 +142,7 @@ class TestBeta(unittest.TestCase):
                 data.shape
                 == np.broadcast_arrays(self.alpha, self.beta)[0].shape
             )
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -58,28 +58,26 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
         engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     nvinfer1::ILayer* layernorm_layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin::PrelnLnormShiftPartitionPluginDynamic* plugin =
-          new plugin::PrelnLnormShiftPartitionPluginDynamic(
-              static_cast<const float*>(scale_weight.get().values),
-              static_cast<const float*>(bias_weight.get().values),
-              bias_weight.get().count,
-              shift_size,
-              window_size,
-              input_resolution,
-              eps,
-              with_fp16);
-      layernorm_layer =
-          engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
-    }
+    plugin::PrelnLnormShiftPartitionPluginDynamic* plugin =
+        new plugin::PrelnLnormShiftPartitionPluginDynamic(
+            static_cast<const float*>(scale_weight.get().values),
+            static_cast<const float*>(bias_weight.get().values),
+            bias_weight.get().count,
+            shift_size,
+            window_size,
+            input_resolution,
+            eps,
+            with_fp16);
+    layernorm_layer =
+        engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
 
     std::vector<std::string> output_names;
     output_names.emplace_back(op_desc.Output("Out_0").front());
     output_names.emplace_back(op_desc.Output("Out_1").front());
-    RreplenishLayerAndOutput(layernorm_layer,
-                             "preln_layernorm_shift_partition",
-                             output_names,
-                             test_mode);
+    ReplenishLayerAndOutput(layernorm_layer,
+                            "preln_layernorm_shift_partition",
+                            output_names,
+                            test_mode);
   }
 };
 

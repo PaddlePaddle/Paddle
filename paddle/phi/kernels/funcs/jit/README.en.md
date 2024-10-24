@@ -100,4 +100,4 @@ Add more implementations of `your_key` for performance enhancement.
 
 1. Add functions based on generated code in `gen`. It should be derived from `JitCode` and should have corresponding creator from `JitCodeCreator` which will be registered on the `your_key`.
 2. If new attribute type is added, you should specialize `JitCodeKey` of this type.
-3. Add more functions in `more`，you can use any third party you wish, like mkl, mkldnn or intrinsic code to reach the best performance.
+3. Add more functions in `more`，you can use any third party you wish, like mkl, onednn or intrinsic code to reach the best performance.

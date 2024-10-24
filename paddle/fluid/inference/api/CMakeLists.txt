@@ -4,18 +4,6 @@ endif()
 
 add_subdirectory(details)
 
-if(WITH_MKLDNN)
-  set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
-  set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/mkldnn_quantizer.cc)
-  cc_library(
-    ${mkldnn_quantizer_cfg}
-    SRCS mkldnn_quantizer_config.cc
-    DEPS lod_tensor paddle_pass_builder)
-  set(mkldnn_quantizer_cfg
-      ${mkldnn_quantizer_cfg}
-      PARENT_SCOPE)
-endif()
-
 cc_library(
   paddle_infer_contrib
   SRCS paddle_infer_contrib.cc
@@ -33,7 +21,8 @@ set(paddle_inference_api_deps
     trainer_desc_proto
     custom_operator
     lod_tensor
-    scope)
+    scope
+    drr)
 
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps framework_io)
@@ -57,8 +46,7 @@ endif()
 cc_library(
   analysis_config
   SRCS analysis_config.cc
-  DEPS ${mkldnn_quantizer_cfg} paddle_inference_api paddle_pass_builder
-       table_printer utf8proc)
+  DEPS paddle_inference_api paddle_pass_builder table_printer utf8proc)
 
 if(WIN32)
   target_link_libraries(paddle_inference_api phi common)
@@ -77,33 +65,29 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
+set(ANALYSIS_PREDICTOR_SRCS analysis_predictor.cc resource_manager.cc
+                            infer_context.cc)
+set(ANALYSIS_PREDICTOR_DEPS
+    ${inference_deps}
+    zero_copy_tensor
+    ir_pass_manager
+    op_compatible_info
+    infer_io_utils
+    model_utils
+    fleet_executor)
+
 if(WITH_ONNXRUNTIME)
-  cc_library(
-    analysis_predictor
-    SRCS analysis_predictor.cc onnxruntime_predictor.cc resource_manager.cc
-         infer_context.cc ${mkldnn_quantizer_src}
-    DEPS ${inference_deps}
-         zero_copy_tensor
-         ir_pass_manager
-         op_compatible_info
-         infer_io_utils
-         model_utils
-         onnxruntime
-         paddle2onnx
-         fleet_executor)
-else()
-  cc_library(
-    analysis_predictor
-    SRCS analysis_predictor.cc resource_manager.cc infer_context.cc
-         ${mkldnn_quantizer_src}
-    DEPS ${inference_deps}
-         zero_copy_tensor
-         ir_pass_manager
-         op_compatible_info
-         infer_io_utils
-         model_utils
-         fleet_executor)
+  set(ANALYSIS_PREDICTOR_SRCS ${ANALYSIS_PREDICTOR_SRCS}
+                              onnxruntime_predictor.cc)
+  set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} onnxruntime
+                              paddle2onnx)
+elseif(WITH_CINN)
+  set(ANALYSIS_PREDICTOR_DEPS ${ANALYSIS_PREDICTOR_DEPS} add_cinn_pass)
 endif()
+cc_library(
+  analysis_predictor
+  SRCS ${ANALYSIS_PREDICTOR_SRCS}
+  DEPS ${ANALYSIS_PREDICTOR_DEPS})
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

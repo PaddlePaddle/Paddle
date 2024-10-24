@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/framework/io/fs.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 // AfsClient impl
 int AfsClient::initialize(const FsClientParameter& fs_client_param) {
   // temporarily implemented with hdfs-client
@@ -96,5 +95,4 @@ std::vector<std::string> AfsClient::list(const std::string& path) {
 bool AfsClient::exist(const std::string& dir) {
   return paddle::framework::fs_exists(dir);
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

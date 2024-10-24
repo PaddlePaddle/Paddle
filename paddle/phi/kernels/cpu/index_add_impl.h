@@ -56,20 +56,22 @@ void IndexAddInner(const Context& ctx,
   for (int i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_GE(
         index_data[i],
-        0,
-        phi::errors::InvalidArgument(
+        -input_dim[axis],
+        common::errors::InvalidArgument(
             "Variable value (index) of OP(index_add) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[axis],
             input_dim[axis],
             index_data[i]));
     PADDLE_ENFORCE_LT(
         index_data[i],
         input_dim[axis],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Variable value (index) of OP(index_add) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
             "value.",
+            -input_dim[axis],
             input_dim[axis],
             index_data[i]));
   }
@@ -88,6 +90,9 @@ void IndexAddInner(const Context& ctx,
   auto& place = *ctx.eigen_device();
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
+    if (index_value < 0) {
+      index_value += input_dim[axis];
+    }
     auto output_t = output_tensor.chip(index_value, 1);
     output_t.device(place) = output_t + add_value_tensor.chip(j, 1);
   }

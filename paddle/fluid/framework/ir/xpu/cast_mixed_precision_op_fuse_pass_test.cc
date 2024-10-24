@@ -37,7 +37,7 @@ TEST(CastMixedPrecisionOpFusePass, cast_before) {
   PADDLE_ENFORCE_EQ(
       num,
       0,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "cast op should be removed from graph, but graph still has %d ops.",
           num));
 }
@@ -59,7 +59,7 @@ TEST(CastMixedPrecisionOpFusePass, cast_after) {
   PADDLE_ENFORCE_EQ(
       num,
       0,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "cast op should be removed from graph, but graph still has %d ops.",
           num));
 }

@@ -62,7 +62,7 @@ class BatchNormActFusePattern : public paddle::drr::DrrPatternBase {
         &pat.Tensor("reserve_space")});
     pat.Tensor("relu_out") = relu(pat.Tensor("bn_out"));
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       float epsilon = match_ctx.Attr<float>("epsilon");
       if (epsilon < 0.0 || epsilon > 0.001 ||
           match_ctx.Attr<bool>("trainable_statistics") == true ||

@@ -19,7 +19,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
@@ -30,7 +30,7 @@
                                     /  |  \  \  \
                                   /    |   \   \    \
              full               /      |    |    \     \           full_tmp
-            /  |        transpose1      | trans2 trans3    \         /   |
+            /  |        transpose1      | trans2 trans3    \        /   |
            /   |         /    |        |    |      |        \      /    |
     softmax1   |        /     |        |    |      |          \   /     |
          \     |      /    softmax2    |    |      |          add1      |
@@ -314,6 +314,8 @@ TEST(DrrTest, drr_demo) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 13u);
 }

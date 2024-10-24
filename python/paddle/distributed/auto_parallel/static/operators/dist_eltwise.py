@@ -49,15 +49,11 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         op_desc = dist_op.serial_op.desc
         assert (
             len(op_desc.input_arg_names()) >= 1
-        ), "elementwise op [{}] has [{}] inputs".format(
-            op_desc.type, len(op_desc.input_arg_names())
-        )
+        ), f"elementwise op [{op_desc.type}] has [{len(op_desc.input_arg_names())}] inputs"
         input_arg_names = op_desc.input_arg_names()
         assert (
             len(op_desc.output_arg_names()) == 1
-        ), "elementwise op [{}] has [{}] outputs".format(
-            str(dist_op.serial_op), len(op_desc.output_arg_names())
-        )
+        ), f"elementwise op [{dist_op.serial_op}] has [{len(op_desc.output_arg_names())}] outputs"
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
 
@@ -70,7 +66,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         output_spec = get_dist_tensor_spec(dist_op, output_arg_name, False)
 
         # step2: infer spmd
-        # TODO reivse me
+        # TODO revise me
         op_type = op_desc.type()
         rule = get_phi_spmd_rule(op_type)
         fw_results = rule.infer_forward(*input_specs)

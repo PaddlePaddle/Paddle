@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(2021)
 
@@ -77,7 +77,13 @@ class TestTensordotAPI(unittest.TestCase):
         self.set_test_axes()
 
     def set_place(self):
-        self.places = [core.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(core.CUDAPlace(0))
 
@@ -206,7 +212,6 @@ class TestTensordotAPI(unittest.TestCase):
                 np_res = tensordot_np(self.x, self.y, axes)
                 np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for axes in self.all_axes:
@@ -228,7 +233,6 @@ class TestTensordotAPI(unittest.TestCase):
                     np_res = tensordot_np(self.x, self.y, axes)
                     np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
 
-    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():

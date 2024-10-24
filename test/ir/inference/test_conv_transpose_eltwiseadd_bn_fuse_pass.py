@@ -219,7 +219,7 @@ class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # for mkldnn
+        # for onednn
         if program_config.ops[2].attrs['use_mkldnn']:
             config = self.create_inference_config(use_mkldnn=True)
             yield config, ['conv2d_transpose', 'elementwise_add'], (1e-5, 1e-5)

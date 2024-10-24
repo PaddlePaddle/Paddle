@@ -27,17 +27,17 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
   if (bias_dims_rank != 2) {
     PADDLE_ENFORCE_EQ(bias_dims_rank,
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of attn_bias should be 2 or 4."));
   }
   PADDLE_ENFORCE_EQ(
       bias_dims[bias_dims_rank - 1],
       k_dims[1],
-      phi::errors::InvalidArgument("The last dim of attn_bias should be "
-                                   "equal to the sequence length of key."));
+      common::errors::InvalidArgument("The last dim of attn_bias should be "
+                                      "equal to the sequence length of key."));
   PADDLE_ENFORCE_EQ(bias_dims[bias_dims_rank - 2],
                     q_dims[1],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The 2nd last dim of attn_bias should be equal to "
                         "the sequence length of query."));
 
@@ -52,12 +52,12 @@ inline int64_t GetMemoryEfficientBiasStrideB(const phi::DDim &bias_dims,
   PADDLE_ENFORCE_EQ(
       bias_dims[0],
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The first dim of attn_bias should be 1 or batch size."));
   PADDLE_ENFORCE_EQ(
       bias_dims[1],
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The second dim of attn_bias should be 1 or num_heads."));
   return 0;
 }
@@ -71,13 +71,13 @@ inline int64_t GetMemoryEfficientBiasStrideH(const phi::DDim &bias_dims,
   } else {
     PADDLE_ENFORCE_EQ(bias_dims_rank,
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The rank of attn_bias should be 2 or 4."));
     if (bias_dims[1] != q_dims[2]) {
       PADDLE_ENFORCE_EQ(
           bias_dims[1],
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The second dim of attn_bias should be 1 or num_heads."));
       return 0;
     } else {
@@ -86,16 +86,16 @@ inline int64_t GetMemoryEfficientBiasStrideH(const phi::DDim &bias_dims,
   }
 }
 
-#define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                    \
-  do {                                                                       \
-    auto __src = (__VA_ARGS__);                                              \
-    using __SrcType = decltype(&__src);                                      \
-    using __DstType = typename std::remove_reference<decltype(__dst)>::type; \
-    if (__src > std::numeric_limits<__DstType>::max()) {                     \
-      PADDLE_THROW(                                                          \
-          phi::errors::InvalidArgument(#__dst " exceeds maximum value."));   \
-    }                                                                        \
-    __dst = __src;                                                           \
+#define PD_MEA_CHECK_OVERFLOW(__dst, ...)                                     \
+  do {                                                                        \
+    auto __src = (__VA_ARGS__);                                               \
+    using __SrcType = decltype(&__src);                                       \
+    using __DstType = typename std::remove_reference<decltype(__dst)>::type;  \
+    if (__src > std::numeric_limits<__DstType>::max()) {                      \
+      PADDLE_THROW(                                                           \
+          common::errors::InvalidArgument(#__dst " exceeds maximum value.")); \
+    }                                                                         \
+    __dst = __src;                                                            \
   } while (0)
 
 }  // namespace cutlass_internal

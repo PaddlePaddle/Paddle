@@ -54,7 +54,7 @@ class GatherOpConverter : public OpConverter {
         engine_, Gather, *input_tensor, *reshape_layer->getOutput(0), axis);
     layer->setNbElementWiseDims(0);
 
-    RreplenishLayerAndOutput(layer, "gather", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "gather", {output_name}, test_mode);
   }
 };
 

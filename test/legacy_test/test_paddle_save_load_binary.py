@@ -24,6 +24,7 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import framework
+from paddle.framework.io_utils import get_value, is_pir_fetch_var, set_value
 
 IMAGE_SIZE = 784
 
@@ -42,6 +43,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             scope = base.global_scope()
         for var in prog.list_vars():
             if isinstance(var, framework.Parameter) or var.persistable:
+                if is_pir_fetch_var(var):
+                    continue
                 ten = scope.find_var(var.name).get_tensor()
                 if ten is not None:
                     ten.set(np.zeros_like(np.array(ten)), place)
@@ -55,7 +58,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         vars = filter(predicate, program.list_vars())
         for var in vars:
             paddle.save(
-                var.get_value(),
+                get_value(var),
                 os.path.join(dirname, var.name),
                 use_binary_format=True,
             )
@@ -68,7 +71,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         for var in var_list:
             var_load = paddle.load(os.path.join(dirname, var.name))
             # set var_load to scope
-            var.set_value(var_load)
+            set_value(var, var_load)
 
     def test_replace_save_load_vars(self):
         paddle.enable_static()
@@ -91,6 +94,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             base_map = {}
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
+                    if is_pir_fetch_var(var):
+                        continue
                     t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -112,7 +117,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             )
 
             for var in prog.list_vars():
-                if var.persistable:
+                if var.persistable and not is_pir_fetch_var(var):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -129,7 +134,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             self.set_zero(prog, place)
             self.replace_load_vars(prog, path_vars2)
             for var in prog.list_vars():
-                if var.persistable:
+                if var.persistable and not is_pir_fetch_var(var):
                     new_t = np.array(
                         base.global_scope().find_var(var.name).get_tensor()
                     )
@@ -149,7 +154,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                 OUTPUT_NUM,
                 name='fc_vars',
             )
-            prog = base.default_main_program()
+            prog = paddle.static.default_main_program()
             place = (
                 base.CPUPlace()
                 if not paddle.base.core.is_compiled_with_cuda()
@@ -167,15 +172,15 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                     IMAGE_SIZE,
                     OUTPUT_NUM,
                 ]:
-                    tensor = var.get_value()
+                    tensor = get_value(var)
                     paddle.save(
                         tensor, dirname + 'fc_vars.w_0', use_binary_format=True
                     )
                     break
 
-            origin = np.array(var.get_value())
-            var.set_value(np.zeros_like(origin))
-            is_zeros = np.array(var.get_value())
+            origin = np.array(get_value(var))
+            set_value(var, np.zeros_like(origin))
+            is_zeros = np.array(get_value(var))
 
             loaded_tensor = paddle.load(dirname + 'fc_vars.w_0')
             self.assertTrue(isinstance(loaded_tensor, base.core.LoDTensor))
@@ -299,3 +304,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             paddle.framework.io._save_selected_rows(selected_rows, 1)
         with self.assertRaises(NotImplementedError):
             paddle.framework.io._load_selected_rows(1)
+
+
+if __name__ == '__main__':
+    unittest.main()

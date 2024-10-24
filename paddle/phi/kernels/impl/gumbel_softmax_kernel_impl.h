@@ -56,7 +56,7 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
 
   PADDLE_ENFORCE_GT(temperature,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The temperature must be greater than 0. But "
                         "received temperature = %f",
                         temperature));

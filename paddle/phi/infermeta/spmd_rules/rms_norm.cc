@@ -101,10 +101,8 @@ SpmdInfo RmsNormInferSpmdReverse(const DistMetaTensor& x,
   std::string scale_axes(1, x_axes[x_ndim - 1]);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(
-      std::make_pair(out_axes, out_dims_mapping_src));
-  axes_sharding_info.emplace_back(
-      std::make_pair(variance_axes, invvar_dims_mapping_src));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping_src);
+  axes_sharding_info.emplace_back(variance_axes, invvar_dims_mapping_src);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -154,10 +152,10 @@ SpmdInfo RmsNormGradInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       out_grad_shape.size(),
-      phi::errors::InvalidArgument("The Tensor x's rank [%d] and Tensor "
-                                   "out_grad's rank [%d] are not matched.",
-                                   x_shape.size(),
-                                   out_grad_shape.size()));
+      common::errors::InvalidArgument("The Tensor x's rank [%d] and Tensor "
+                                      "out_grad's rank [%d] are not matched.",
+                                      x_shape.size(),
+                                      out_grad_shape.size()));
 
   // 2、align sharding
   std::vector<TensorDistAttr> dist_attrs;
@@ -172,9 +170,9 @@ SpmdInfo RmsNormGradInferSpmd(const DistMetaTensor& x,
       BuildRmsNormGradEinsum(x_shape.size());
   AlignDimsSharding(
       &dist_attrs, shapes, annotations, {}, align_annotation, false);
-  auto x_dist_attr_dst = std::move(dist_attrs[0]);
-  auto invvar_dist_attr_dst = std::move(dist_attrs[1]);
-  auto out_grad_dist_attr_dst = std::move(dist_attrs[2]);
+  auto x_dist_attr_dst = dist_attrs[0];
+  auto invvar_dist_attr_dst = dist_attrs[1];
+  auto out_grad_dist_attr_dst = dist_attrs[2];
 
   // TODO(liuzhenhai): support sharded scale and bias
   auto scale_dist_attr_dst = GetReplicatedDistAttr(scale_dist_attr_src);

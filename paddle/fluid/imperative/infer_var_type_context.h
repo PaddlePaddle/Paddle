@@ -50,8 +50,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     if (it == attrs_.end()) {
       it = default_attrs_.find(name);
       if (it == default_attrs_.end()) {
-        PADDLE_THROW(platform::errors::NotFound(
-            "Can not find [%s] in attributes.", name));
+        PADDLE_THROW(
+            common::errors::NotFound("Can not find [%s] in attributes.", name));
       }
     }
 
@@ -156,79 +156,79 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
  protected:
   bool HasVar(const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "HasVar is not supported in runtime InferVarType"));
   }
 
   const std::vector<std::string>& InputVars(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "InputVars is not supported in runtime InferVarType"));
   }
 
   const std::vector<std::string>& OutputVars(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "OutputVars is not supported in runtime InferVarType"));
   }
 
   framework::proto::VarType::Type GetVarType(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   void SetVarType(const std::string& name UNUSED,
                   framework::proto::VarType::Type type UNUSED) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   framework::proto::VarType::Type GetVarDataType(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   void SetVarDataType(const std::string& name UNUSED,
                       framework::proto::VarType::Type type UNUSED) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   std::vector<framework::proto::VarType::Type> GetVarDataTypes(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "GetVarDataTypes is not supported in runtime InferVarType"));
   }
 
   void SetVarDataTypes(const std::string& name UNUSED,
                        const std::vector<framework::proto::VarType::Type>&
                            multiple_data_type UNUSED) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "SetVarDataTypes is not supported in runtime InferVarType"));
   }
 
   std::vector<int64_t> GetVarShape(
       const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
   void SetVarShape(const std::string& name UNUSED,
                    const std::vector<int64_t>& dims UNUSED) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
   int32_t GetVarLoDLevel(const std::string& name UNUSED) const override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
 
   void SetVarLoDLevel(const std::string& name UNUSED,
                       int32_t lod_level UNUSED) override {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
 

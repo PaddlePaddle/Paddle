@@ -24,14 +24,14 @@ template <typename T, typename Context>
 void InverseKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto out_data = dev_ctx.template Alloc<T>(out);
 
   int64_t x_dims_len = x.dims().size();
   PADDLE_ENFORCE_GT(
       x_dims_len,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Dimensions of input should be greater than 1, but got %d.",
           x_dims_len));
 
@@ -39,19 +39,19 @@ void InverseKernel(const Context& dev_ctx,
   int64_t batch = x_dims_len > 2 ? x.numel() / (n * n) : 1;
   PADDLE_ENFORCE_LE(n * n * sizeof(T),
                     8192,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of a single matrix (%d bytes) exceeds the "
-                        "maxinum numbers of bytes xpu supports (8192).",
+                        "maximum numbers of bytes xpu supports (8192).",
                         n * n * sizeof(T)));
   auto RAII_GUARD = xpu::ctx_guard(dev_ctx.x_context());
   auto* info_xpu = RAII_GUARD.alloc_l3_or_gm<int>(batch);
   // Xpu inverse api has check for singularity itself.
-  int r = xpu::inverse<XPUT>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUT*>(x.data<T>()),
-                             reinterpret_cast<XPUT*>(out_data),
-                             info_xpu,
-                             batch,
-                             n);
+  int r = xpu::inverse<XPUType>(dev_ctx.x_context(),
+                                reinterpret_cast<const XPUType*>(x.data<T>()),
+                                reinterpret_cast<XPUType*>(out_data),
+                                info_xpu,
+                                batch,
+                                n);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "inverse");
 }
 

@@ -28,8 +28,10 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/phi/kernels/funcs/blas/blaslt_gemm_search.h"
 
 COMMON_DECLARE_int64(cublaslt_exhaustive_search_times);
+COMMON_DECLARE_bool(enable_blaslt_global_search);
 #endif
 
 namespace phi {
@@ -197,6 +199,14 @@ struct MatmulDescriptor {
   cublasLtMatrixLayout_t out_desc{nullptr};
   cublasLtMatmulAlgo_t* algo{nullptr};
   bool is_cached{false};
+  int64_t M_{-1};
+  int64_t N_{-1};
+  int64_t K_{-1};
+  cublasComputeType_t compute_type_;
+  cudaDataType_t scale_type_;
+  cudaDataType_t x_type_;
+  cudaDataType_t y_type_;
+  cudaDataType_t out_type_;
 
   MatmulDescriptor() {}
   MatmulDescriptor(const MatmulDescriptor& obj) {
@@ -276,6 +286,15 @@ struct MatmulDescriptor {
       SetBatchAndStride(y_desc, batch_size, stride_y);
       SetBatchAndStride(out_desc, batch_size, stride_out);
     }
+
+    M_ = M;
+    N_ = N;
+    K_ = K;
+    compute_type_ = compute_type;
+    scale_type_ = scale_type;
+    x_type_ = mat_type;
+    y_type_ = mat_type;
+    out_type_ = out_mat_type;
   }
 
   cublasLtMatmulAlgo_t* SetAlgo() {
@@ -302,35 +321,6 @@ struct MatmulDescriptor {
           &(planner->aux_data),
           sizeof(planner->aux_data)));
     }
-  }
-
-  std::string GetDescResultString(std::string prefix,
-                                  bool has_algo = true) const {
-    std::ostringstream out;
-    out << prefix << " \n";
-#define GET_DESC_DATA_STRING(src)                    \
-  do {                                               \
-    out << "  " << #src << " = [";                   \
-    int num = sizeof((*src)) / sizeof(src->data[0]); \
-    for (int i = 0; i < num; ++i) {                  \
-      if (i == 0) {                                  \
-        out << src->data[i];                         \
-      } else {                                       \
-        out << ", " << src->data[i];                 \
-      }                                              \
-    }                                                \
-    out << "]\n";                                    \
-  } while (0);
-
-    if (has_algo) {
-      GET_DESC_DATA_STRING(algo);
-    }
-    GET_DESC_DATA_STRING(x_desc);
-    GET_DESC_DATA_STRING(y_desc);
-    GET_DESC_DATA_STRING(out_desc);
-    GET_DESC_DATA_STRING(op_desc);
-#undef GET_DESC_DATA_STRING
-    return out.str();
   }
 
   void ExchangeXYDesc(bool no_exchange) {}
@@ -493,15 +483,14 @@ struct CublasLtBase {
                        workspace->ptr(),
                        workspace_size);
         MatmulDescT* best_desc = new MatmulDescT(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched CublasltDescriptor] ");
+        VLOG(6) << "[Searched CublasltDescriptor] ";
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
 
-    VLOG(7) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
+    VLOG(7) << "[Impl CublasltDescriptor] ";
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmul(cublaslt_handle,
                                 desc->op_desc,
@@ -555,9 +544,10 @@ struct CublasLtBase {
                                                 requested_algo_count,
                                                 heuristic_results.data(),
                                                 &returned_results));
-    PADDLE_ENFORCE_GT(returned_results,
-                      0,
-                      phi::errors::Unavailable("No GEMM algorithm available."));
+    PADDLE_ENFORCE_GT(
+        returned_results,
+        0,
+        common::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -668,9 +658,30 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
     cublasLtHandle_t cublaslt_handle = ctx.cublaslt_handle();
 
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
-    phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
+    phi::Allocator::AllocationPtr workspace = nullptr;
 
-    if (planner != nullptr) {
+    PADDLE_ENFORCE_NOT_NULL(planner,
+                            common::errors::InvalidArgument(
+                                "matmul planner should be initialized!"));
+
+    if (FLAGS_enable_blaslt_global_search && !desc->is_cached) {
+      SearchBestAlgoGlobal(ctx,
+                           cublaslt_handle,
+                           desc,
+                           static_cast<void*>(&alpha),
+                           static_cast<void*>(&beta),
+                           y_ptr,
+                           x_ptr,
+                           out_ptr,
+                           workspace /*output parameter*/,
+                           workspace_size /*output parameter*/);
+      MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
+      VLOG(6) << "[Searched CublasltDescriptor] ";
+
+      auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+      cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
+    } else {
+      workspace = GetWorkspace(ctx, workspace_size);
       if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune() &&
           (!desc->is_cached)) {
         SearchBestAlgo(ctx,
@@ -684,15 +695,14 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                        workspace->ptr(),
                        workspace_size);
         MatmulDescriptor* best_desc = new MatmulDescriptor(*desc);
-        VLOG(6) << best_desc->GetDescResultString(
-            "[Searched CublasltDescriptor] ");
+        VLOG(6) << "[Searched CublasltDescriptor] ";
 
         auto& cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
         cache.SetSubKey(sub_key, reinterpret_cast<void*>(best_desc));
       }
     }
 
-    VLOG(7) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
+    VLOG(7) << "[Impl CublasltDescriptor] ";
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmul(cublaslt_handle,
                                 desc->op_desc,
@@ -710,6 +720,76 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                 workspace->ptr(),
                                 workspace_size,
                                 ctx.stream()));
+  }
+
+  static void SearchBestAlgoGlobal(
+      const phi::GPUContext& ctx,
+      const cublasLtHandle_t& lt_handle,
+      MatmulDescriptor* desc,
+      const void* alpha,
+      const void* beta,
+      const void* y_data,
+      const void* x_data,
+      void* out_data,
+      phi::Allocator::AllocationPtr& workspace,  // NOLINT
+      size_t& workspace_size) {                  // NOLINT
+    void* bias_ptr = nullptr;
+    cublasLtMatmulAlgo_t* algo =
+        cublaslt_internal::CublasLtAlgoCache::Instance().CublasLtAlgoSelect(
+            lt_handle,
+            desc->M_,
+            desc->N_,
+            desc->K_,
+            1,
+            y_data,
+            x_data,
+            bias_ptr,
+            out_data,
+            const_cast<void*>(alpha),
+            const_cast<void*>(beta),
+            desc->op_desc,
+            desc->y_desc,
+            desc->x_desc,
+            desc->out_desc,
+            desc->out_desc,
+            desc->compute_type_,
+            desc->scale_type_,
+            desc->y_type_,
+            desc->x_type_,
+            desc->out_type_,
+            desc->out_type_,
+            ctx.stream());
+    if (algo == nullptr) {
+      LOG(WARNING) << "CublasLtAlgoSelect failed, result is empty! We attempt "
+                      "to use Heuristic search.";
+      workspace_size = static_cast<size_t>(64) * 1024 * 1024;
+      workspace = GetWorkspace(ctx, workspace_size);
+      SearchBestAlgo(ctx,
+                     lt_handle,
+                     desc,
+                     static_cast<void*>(&alpha),
+                     static_cast<void*>(&beta),
+                     y_data,
+                     x_data,
+                     out_data,
+                     workspace->ptr(),
+                     workspace_size);
+    } else {
+      cublasLtMatmulHeuristicResult_t heurResult;
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          dynload::cublasLtMatmulAlgoCheck(ctx.cublaslt_handle(),
+                                           desc->op_desc,
+                                           desc->y_desc,
+                                           desc->x_desc,
+                                           desc->out_desc,
+                                           desc->out_desc,
+                                           algo,
+                                           &heurResult));
+      cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
+      *best_algo = *algo;
+      workspace_size = heurResult.workspaceSize;
+      workspace = GetWorkspace(ctx, workspace_size);
+    }
   }
 
   static void SearchBestAlgo(const phi::GPUContext& ctx,
@@ -746,9 +826,10 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                                 requested_algo_count,
                                                 heuristic_results.data(),
                                                 &returned_results));
-    PADDLE_ENFORCE_GT(returned_results,
-                      0,
-                      phi::errors::Unavailable("No GEMM algorithm available."));
+    PADDLE_ENFORCE_GT(
+        returned_results,
+        0,
+        common::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -864,7 +945,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (N % 4 == 0 || N == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size N used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -872,7 +953,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (K % 4 == 0),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size K used in int8 matmul must be a multiple "
                 "of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -881,7 +962,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (K % 4 == 0),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size K used in int8 matmul must be a multiple "
                 "of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -890,7 +971,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (M % 4 == 0 || M == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size M used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -898,7 +979,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (N % 4 == 0 || N == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size N used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -907,7 +988,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (M % 4 == 0 || M == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size M used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -915,7 +996,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (K % 4 == 0),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size K used in int8 matmul must be a multiple "
                 "of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -927,11 +1008,16 @@ struct DescriptorSetter {
       sub_key = planner->GenSubKey();
     }
 
-    auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
-    if (matmul_cache.FindSubKey(sub_key)) {
+    bool has_cache = false;
+    if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()) {
+      auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
+      has_cache = matmul_cache.FindSubKey(sub_key);
+    }
+    if (has_cache) {
+      auto& matmul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
       desc = *(reinterpret_cast<DescT*>(matmul_cache.GetSubKey(sub_key)));
       desc.template SetFusedEpiloguePtr<DYT>(planner);
-      VLOG(7) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
+      VLOG(7) << "[Heap CublasltDescriptor] ";
     } else {
       desc.template Create<T, DXT, DYT, TransX, TransY>(M,
                                                         N,
@@ -948,7 +1034,7 @@ struct DescriptorSetter {
       if (planner != nullptr) {
         desc.template SetFusedEpiloguePtr<DYT>(planner);
       }
-      VLOG(7) << desc.GetDescResultString("[Stack CublasltDescriptor] ", false);
+      VLOG(7) << "[Stack CublasltDescriptor] ";
     }
   }
 };
@@ -1128,8 +1214,10 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
   }
 };
 #else
+#ifndef PADDLE_WITH_HIP
 // A void structure just for successfully compile.
 struct MatmulPlanner {};
+#endif
 #endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
 }  // namespace funcs

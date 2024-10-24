@@ -174,9 +174,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
         ]
         assert (
             qkv_w_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            qkv_w_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{qkv_w_col_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -213,9 +211,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
         out_w_col_dim_mapping = op_dist_attr.get_input_dims_mapping(out_w)[-1]
         assert (
             out_w_col_dim_mapping >= 0
-        ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
-            out_w_col_dim_mapping
-        )
+        ), f"col_parallel_matmul's row should be divided by a specific mesh axis, but got [{out_w_col_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 

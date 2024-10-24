@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -23,11 +24,10 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSigmoidTripleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -44,7 +44,13 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -55,7 +61,6 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
     def sigmoid_wrapper(self, x):
         return F.sigmoid(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -75,7 +80,13 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -86,7 +97,6 @@ class TestTanhTripleGradCheck(unittest.TestCase):
     def tanh_wrapper(self, x):
         return paddle.tanh(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -110,7 +120,13 @@ class TestTanhTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -121,7 +137,6 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
     def tanh_wrapper(self, x):
         return paddle.tanh(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -145,7 +160,13 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -156,7 +177,6 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
     def abs_wrapper(self, x):
         return paddle.abs(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -176,7 +196,13 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -184,7 +210,7 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
 
 
 class TestReluDoubleGradCheck(unittest.TestCase):
-    @test_with_pir_api
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -203,7 +229,13 @@ class TestReluDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -214,7 +246,6 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
     def leaky_relu_wrapper(self, x):
         return paddle.nn.functional.leaky_relu(x[0], negative_slope=0.2)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -238,7 +269,13 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places = [base.CUDAPlace(0)]
         for p in places:
@@ -249,7 +286,6 @@ class TestELUDoubleGradCheck(unittest.TestCase):
     def elu_wrapper(self, x):
         return paddle.nn.functional.elu(x[0], alpha=0.2)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -273,7 +309,13 @@ class TestELUDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -284,7 +326,6 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
     def celu_wrapper(self, x):
         return paddle.nn.functional.celu(x[0], alpha=0.2)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -308,7 +349,13 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -319,7 +366,6 @@ class TestSoftplusDoubleGradCheck(unittest.TestCase):
     def softplus_wrapper(self, x):
         return F.softplus(x[0], beta=1, threshold=20)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 4, 4]
@@ -344,7 +390,13 @@ class TestSoftplusDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -355,7 +407,6 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
     def sqrt_wrapper(self, x):
         return paddle.sqrt(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -377,7 +428,13 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places = [base.CUDAPlace(0)]
         for p in places:
@@ -388,7 +445,6 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
     def rsqrt_wrapper(self, x):
         return paddle.rsqrt(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -410,7 +466,13 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places = [base.CUDAPlace(0)]
         for p in places:
@@ -421,7 +483,6 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
     def square_wrapper(self, x):
         return paddle.square(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -443,7 +504,13 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -454,7 +521,6 @@ class TestLogDoubleGradCheck(unittest.TestCase):
     def log_wrapper(self, x):
         return paddle.log(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -467,16 +533,24 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
+        core._set_prim_all_enabled(True)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.log_wrapper, [x], y, x_init=x_arr, place=place
         )
+        core._set_prim_all_enabled(False)
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -487,7 +561,6 @@ class TestSinDoubleGradCheck(unittest.TestCase):
     def sin_wrapper(self, x):
         return paddle.sin(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -507,7 +580,13 @@ class TestSinDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -518,7 +597,6 @@ class TestCosDoubleGradCheck(unittest.TestCase):
     def cos_wrapper(self, x):
         return paddle.cos(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -538,7 +616,13 @@ class TestCosDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -546,7 +630,7 @@ class TestCosDoubleGradCheck(unittest.TestCase):
 
 
 class TestCosDoubleGradCheck2(unittest.TestCase):
-    @test_with_pir_api
+
     def _check_cos_double_dynamic(self, place):
         with dygraph_guard():
             x = paddle.randn([64, 64])
@@ -562,7 +646,6 @@ class TestCosDoubleGradCheck2(unittest.TestCase):
                 1e-6,
             )
 
-    @test_with_pir_api
     def _check_cos_double_static(self, place):
         x_data = np.random.randn(64, 64).astype("float32")
         with static_guard():
@@ -582,7 +665,13 @@ class TestCosDoubleGradCheck2(unittest.TestCase):
             np.testing.assert_allclose(dxx_result, dxx_expected, 1e-6, 1e-6)
 
     def test_cos_double_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
@@ -595,7 +684,6 @@ class TestPowDoubleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -614,7 +702,13 @@ class TestPowDoubleGradCheck1(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -625,7 +719,6 @@ class TestPowDoubleGradCheck2(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 1)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -644,7 +737,13 @@ class TestPowDoubleGradCheck2(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -655,7 +754,6 @@ class TestSinTripleGradCheck(unittest.TestCase):
     def sin_wrapper(self, x):
         return paddle.sin(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -675,7 +773,13 @@ class TestSinTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -686,7 +790,6 @@ class TestPowTripleGradCheck1(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 1)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -705,7 +808,13 @@ class TestPowTripleGradCheck1(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -716,7 +825,6 @@ class TestPowTripleGradCheck2(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 2)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -735,7 +843,13 @@ class TestPowTripleGradCheck2(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -746,7 +860,6 @@ class TestPowTripleGradCheck3(unittest.TestCase):
     def pow_wrapper(self, x):
         return paddle.pow(x[0], 4)
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -765,7 +878,13 @@ class TestPowTripleGradCheck3(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -776,7 +895,6 @@ class TestCosTripleGradCheck(unittest.TestCase):
     def cos_wrapper(self, x):
         return paddle.cos(x[0])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
@@ -796,7 +914,13 @@ class TestCosTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

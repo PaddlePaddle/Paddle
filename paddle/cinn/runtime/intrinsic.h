@@ -104,8 +104,15 @@ static const char* print_debug_args_repr = "cinn_print_debug_args";
 
 static const char* call_cuda_kernel = "cinn_call_cuda_kernel";
 
+static const char* call_hip_kernel = "cinn_call_hip_kernel";
+
+static const char* call_cuda_memset = "cinn_call_cuda_memset";
+
 static const char* get_value_in_cuda_kernel_args =
     "cinn_get_value_in_cuda_kernel_args";
+
+static const char* get_item_in_cuda_kernel_args =
+    "cinn_get_item_in_cuda_kernel_args";
 
 static const char* infer_shape_set_value = "infer_shape_set_value";
 
@@ -127,7 +134,7 @@ static const char* parallel_launch = "cinn_backend_parallel_launch";
 }  // namespace intrinsic
 
 /**
- * Call an intrnsic function.
+ * Call an intrinsic function.
  * @param type Return type of the function.
  * @param fn_name Name of the function.
  * @param args The arguments for the function.

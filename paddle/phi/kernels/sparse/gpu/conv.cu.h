@@ -320,7 +320,7 @@ __global__ void GroupIndexs(const int* out_index_table,
  * non_zero_num: the number of input features
  * rulebook: the rulebook to save the kernel index, input index and output index
  * counter: save the number of times each location in the kernel participates in
- *the caculation
+ * the calculation
  **/
 template <typename T>
 __global__ void ProductRuleBookKernel(const T* x_indices,
@@ -766,9 +766,10 @@ int ProductRuleBook(const Context& dev_ctx,
     while (cache_size >= MAX_CACHE_SIZE) {
       config.thread_per_block.x /= 2;
       config.block_per_grid.x *= 2;
-      PADDLE_ENFORCE_GE(config.thread_per_block.x,
-                        32,
-                        phi::errors::Fatal("the shared memory is not enough"));
+      PADDLE_ENFORCE_GE(
+          config.thread_per_block.x,
+          32,
+          common::errors::Fatal("the shared memory is not enough"));
       cache_size = kernel_size * 2 * sizeof(int) +
                    kernel_size * config.thread_per_block.x * 2 * sizeof(int);
     }

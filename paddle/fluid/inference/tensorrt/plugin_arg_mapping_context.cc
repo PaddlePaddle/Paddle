@@ -14,9 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 bool PluginArgumentMappingContext::HasInput(const std::string& name) const {
   auto inputs = op_desc_->Inputs();
@@ -76,7 +74,7 @@ paddle::any PluginArgumentMappingContext::Attr(
       break;
     };
     default: {
-      LOG(ERROR) << "Can't conver op's attribute [" << attr_name
+      LOG(ERROR) << "Can't cover op's attribute [" << attr_name
                  << "] to paddle any.";
     }
   }
@@ -103,7 +101,7 @@ bool PluginArgumentMappingContext::IsDenseTensorInputs(
 
 bool PluginArgumentMappingContext::IsDenseTensorVectorInput(
     const std::string& name) const {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported for input vector of DenseTensor."));
   return false;
 }
@@ -115,51 +113,49 @@ bool PluginArgumentMappingContext::IsDenseTensorOutput(
 
 bool PluginArgumentMappingContext::IsSelectedRowsInput(
     const std::string& name) const {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Not supported for input of SelectedRows."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not supported for input of SelectedRows."));
   return false;
 }
 
 bool PluginArgumentMappingContext::IsSelectedRowsInputs(
     const std::string& name) const {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Not supported for inputs of SelectedRows."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not supported for inputs of SelectedRows."));
   return false;
 }
 
 bool PluginArgumentMappingContext::IsSelectedRowsOutput(
     const std::string& name) const {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Not supported for output of SelectedRows."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not supported for output of SelectedRows."));
   return false;
 }
 
 bool PluginArgumentMappingContext::IsSparseCooTensorInput(
     const std::string& name) const {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported for input of SparseCooTensor."));
   return false;
 }
 
 bool PluginArgumentMappingContext::IsSparseCooTensorOutput(
     const std::string& name) const {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported for output of SparseCooTensor."));
   return false;
 }
 
 bool PluginArgumentMappingContext::IsSparseCsrTensorInput(
     const std::string& name) const {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported for input of SparseCsrTensor."));
   return false;
 }
 
 bool PluginArgumentMappingContext::IsForInferShape() const {
-  PADDLE_THROW(phi::errors::Unimplemented("Not supported for InferShape."));
+  PADDLE_THROW(common::errors::Unimplemented("Not supported for InferShape."));
   return false;
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

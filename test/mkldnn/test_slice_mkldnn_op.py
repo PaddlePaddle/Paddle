@@ -55,10 +55,10 @@ class TestSliceOneDNNOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir_onednn=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(['Input'], 'Out', check_pir_onednn=True)
 
 
 class TestSliceOneDNNOp1(TestSliceOneDNNOp):
@@ -217,7 +217,7 @@ def create_bf16_test_class(parent):
             ] = self.dout
 
         def test_check_output(self):
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
         def test_check_grad(self):
             self.calculate_grads()
@@ -227,6 +227,7 @@ def create_bf16_test_class(parent):
                 "Out",
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                check_pir_onednn=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")

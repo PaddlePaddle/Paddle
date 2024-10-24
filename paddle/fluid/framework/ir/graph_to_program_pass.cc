@@ -19,15 +19,11 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class ProgramDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
   auto& program = Get<ProgramDesc>("program");
@@ -39,8 +35,6 @@ void GraphToProgramPass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(graph_to_program_pass, paddle::framework::ir::GraphToProgramPass);

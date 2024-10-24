@@ -11,14 +11,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 from functools import partial
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Literal
+
+from typing_extensions import TypeAlias
 
 import paddle
-from paddle import Tensor, nn
+from paddle import nn
 
 from ..functional import compute_fbank_matrix, create_dct, power_to_db
 from ..functional.window import get_window
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+_WindowLiteral: TypeAlias = Literal[
+    'hamming',
+    'hann',
+    'kaiser',
+    'bartlett',
+    'nuttall',
+    'gaussian',
+    'exponential',
+    'triang',
+    'bohman',
+    'blackman',
+    'cosine',
+    'tukey',
+    'taylor',
+]
 
 
 class Spectrogram(nn.Layer):
@@ -29,7 +52,7 @@ class Spectrogram(nn.Layer):
         n_fft (int, optional): The number of frequency components of the discrete Fourier transform. Defaults to 512.
         hop_length (Optional[int], optional): The hop length of the short time FFT. If `None`, it is set to `win_length//4`. Defaults to None.
         win_length (Optional[int], optional): The window length of the short time FFT. If `None`, it is set to same as `n_fft`. Defaults to None.
-        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'. Defaults to 'hann'.
+        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor', 'bartlett', 'kaiser', 'nuttall'. Defaults to 'hann'.
         power (float, optional): Exponent for the magnitude spectrogram. Defaults to 2.0.
         center (bool, optional): Whether to pad `x` to make that the :math:`t \times hop\\_length` at the center of `t`-th frame. Defaults to True.
         pad_mode (str, optional): Choose padding pattern when `center` is `True`. Defaults to 'reflect'.
@@ -50,22 +73,25 @@ class Spectrogram(nn.Layer):
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
 
             >>> feature_extractor = Spectrogram(n_fft=512, window = 'hann', power = 1.0)
             >>> feats = feature_extractor(waveform)
     """
 
+    power: float
+    fft_window: Tensor
+
     def __init__(
         self,
         n_fft: int = 512,
-        hop_length: Optional[int] = 512,
-        win_length: Optional[int] = None,
-        window: str = 'hann',
+        hop_length: int | None = 512,
+        win_length: int | None = None,
+        window: _WindowLiteral = 'hann',
         power: float = 1.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -111,7 +137,7 @@ class MelSpectrogram(nn.Layer):
         n_fft (int, optional): The number of frequency components of the discrete Fourier transform. Defaults to 512.
         hop_length (Optional[int], optional): The hop length of the short time FFT. If `None`, it is set to `win_length//4`. Defaults to None.
         win_length (Optional[int], optional): The window length of the short time FFT. If `None`, it is set to same as `n_fft`. Defaults to None.
-        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'. Defaults to 'hann'.
+        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor', 'bartlett', 'kaiser', 'nuttall'. Defaults to 'hann'.
         power (float, optional): Exponent for the magnitude spectrogram. Defaults to 2.0.
         center (bool, optional): Whether to pad `x` to make that the :math:`t \times hop\\_length` at the center of `t`-th frame. Defaults to True.
         pad_mode (str, optional): Choose padding pattern when `center` is `True`. Defaults to 'reflect'.
@@ -135,28 +161,35 @@ class MelSpectrogram(nn.Layer):
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
 
             >>> feature_extractor = MelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
             >>> feats = feature_extractor(waveform)
     """
 
+    n_mels: int
+    f_min: float
+    f_max: float
+    htk: bool
+    norm: Literal['slaney'] | float
+    fbank_matrix: Tensor
+
     def __init__(
         self,
         sr: int = 22050,
         n_fft: int = 2048,
-        hop_length: Optional[int] = 512,
-        win_length: Optional[int] = None,
-        window: str = 'hann',
+        hop_length: int | None = 512,
+        win_length: int | None = None,
+        window: _WindowLiteral = 'hann',
         power: float = 2.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
-        f_max: Optional[float] = None,
+        f_max: float | None = None,
         htk: bool = False,
-        norm: Union[str, float] = 'slaney',
+        norm: Literal['slaney'] | float = 'slaney',
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -211,7 +244,7 @@ class LogMelSpectrogram(nn.Layer):
         n_fft (int, optional): The number of frequency components of the discrete Fourier transform. Defaults to 512.
         hop_length (Optional[int], optional): The hop length of the short time FFT. If `None`, it is set to `win_length//4`. Defaults to None.
         win_length (Optional[int], optional): The window length of the short time FFT. If `None`, it is set to same as `n_fft`. Defaults to None.
-        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'. Defaults to 'hann'.
+        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor', 'bartlett', 'kaiser', 'nuttall'. Defaults to 'hann'.
         power (float, optional): Exponent for the magnitude spectrogram. Defaults to 2.0.
         center (bool, optional): Whether to pad `x` to make that the :math:`t \times hop\\_length` at the center of `t`-th frame. Defaults to True.
         pad_mode (str, optional): Choose padding pattern when `center` is `True`. Defaults to 'reflect'.
@@ -238,31 +271,35 @@ class LogMelSpectrogram(nn.Layer):
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
 
             >>> feature_extractor = LogMelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
             >>> feats = feature_extractor(waveform)
     """
 
+    ref_value: float
+    amin: float
+    top_db: float | None
+
     def __init__(
         self,
         sr: int = 22050,
         n_fft: int = 512,
-        hop_length: Optional[int] = None,
-        win_length: Optional[int] = None,
-        window: str = 'hann',
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: _WindowLiteral = 'hann',
         power: float = 2.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
-        f_max: Optional[float] = None,
+        f_max: float | None = None,
         htk: bool = False,
-        norm: Union[str, float] = 'slaney',
+        norm: Literal['slaney'] | float = 'slaney',
         ref_value: float = 1.0,
         amin: float = 1e-10,
-        top_db: Optional[float] = None,
+        top_db: float | None = None,
         dtype: str = 'float32',
     ) -> None:
         super().__init__()
@@ -315,7 +352,7 @@ class MFCC(nn.Layer):
         n_fft (int, optional): The number of frequency components of the discrete Fourier transform. Defaults to 512.
         hop_length (Optional[int], optional): The hop length of the short time FFT. If `None`, it is set to `win_length//4`. Defaults to None.
         win_length (Optional[int], optional): The window length of the short time FFT. If `None`, it is set to same as `n_fft`. Defaults to None.
-        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'kaiser', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor'. Defaults to 'hann'.
+        window (str, optional): The window function applied to the signal before the Fourier transform. Supported window functions: 'hamming', 'hann', 'gaussian', 'exponential', 'triang', 'bohman', 'blackman', 'cosine', 'tukey', 'taylor', 'bartlett', 'kaiser', 'nuttall'. Defaults to 'hann'.
         power (float, optional): Exponent for the magnitude spectrogram. Defaults to 2.0.
         center (bool, optional): Whether to pad `x` to make that the :math:`t \times hop\\_length` at the center of `t`-th frame. Defaults to True.
         pad_mode (str, optional): Choose padding pattern when `center` is `True`. Defaults to 'reflect'.
@@ -342,32 +379,34 @@ class MFCC(nn.Layer):
             >>> wav_duration = 0.5
             >>> num_channels = 1
             >>> num_frames = sample_rate * wav_duration
-            >>> wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            >>> wav_data = paddle.linspace(-1.0, 1.0, int(num_frames)) * 0.1
             >>> waveform = wav_data.tile([num_channels, 1])
 
             >>> feature_extractor = MFCC(sr=sample_rate, n_fft=512, window = 'hann')
             >>> feats = feature_extractor(waveform)
     """
 
+    dct_matrix: Tensor
+
     def __init__(
         self,
         sr: int = 22050,
         n_mfcc: int = 40,
         n_fft: int = 512,
-        hop_length: Optional[int] = None,
-        win_length: Optional[int] = None,
-        window: str = 'hann',
+        hop_length: int | None = None,
+        win_length: int | None = None,
+        window: _WindowLiteral = 'hann',
         power: float = 2.0,
         center: bool = True,
-        pad_mode: str = 'reflect',
+        pad_mode: Literal['reflect'] = 'reflect',
         n_mels: int = 64,
         f_min: float = 50.0,
-        f_max: Optional[float] = None,
+        f_max: float | None = None,
         htk: bool = False,
-        norm: Union[str, float] = 'slaney',
+        norm: Literal['slaney'] | float = 'slaney',
         ref_value: float = 1.0,
         amin: float = 1e-10,
-        top_db: Optional[float] = None,
+        top_db: float | None = None,
         dtype: str = 'float32',
     ) -> None:
         super().__init__()

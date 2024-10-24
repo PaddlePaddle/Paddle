@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -41,9 +43,9 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def compute_output_size(
-            input_size: List[int],
-            kernel_sizes: List[int],
-            attrs: List[Dict[str, Any]],
+            input_size: list[int],
+            kernel_sizes: list[int],
+            attrs: list[dict[str, Any]],
         ):
             strides = attrs[0]['strides']
             paddings = attrs[0]['paddings']
@@ -58,41 +60,41 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
 
         def generate_input1(
             batch: int,
-            input_size: List[int],
-            kernel_sizes: List[int],
-            attrs: List[Dict[str, Any]],
+            input_size: list[int],
+            kernel_sizes: list[int],
+            attrs: list[dict[str, Any]],
         ):
-            return np.random.random([batch, 3] + input_size).astype(np.float32)
+            return np.random.random([batch, 3, *input_size]).astype(np.float32)
 
         def generate_offset1(
             batch: int,
-            input_size: List[int],
-            kernel_sizes: List[int],
-            attrs: List[Dict[str, Any]],
+            input_size: list[int],
+            kernel_sizes: list[int],
+            attrs: list[dict[str, Any]],
         ):
             output_size = compute_output_size(input_size, kernel_sizes, attrs)
             return np.random.random(
-                [batch, 2 * np.prod(kernel_sizes)] + output_size
+                [batch, 2 * np.prod(kernel_sizes), *output_size]
             ).astype(np.float32)
 
         def generate_mask1(
             batch: int,
-            input_size: List[int],
-            kernel_sizes: List[int],
-            attrs: List[Dict[str, Any]],
+            input_size: list[int],
+            kernel_sizes: list[int],
+            attrs: list[dict[str, Any]],
         ):
             output_size = compute_output_size(input_size, kernel_sizes, attrs)
             return np.random.random(
-                [batch, np.prod(kernel_sizes)] + output_size
+                [batch, np.prod(kernel_sizes), *output_size]
             ).astype(np.float32)
 
         def generate_filter1(
             batch: int,
-            input_size: List[int],
-            kernel_sizes: List[int],
-            attrs: List[Dict[str, Any]],
+            input_size: list[int],
+            kernel_sizes: list[int],
+            attrs: list[dict[str, Any]],
         ):
-            filter = np.random.random([6, 3] + kernel_sizes)
+            filter = np.random.random([6, 3, *kernel_sizes])
             filter[0][0][0][0] = 8.8978638e-08
             return filter.astype(np.float32)
 
@@ -184,7 +186,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 3, 32, 32],

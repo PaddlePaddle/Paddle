@@ -69,10 +69,10 @@ void AddNKernel(const Context& dev_ctx,
       auto& in_t = *(static_cast<const SelectedRows*>(x[i]));
       functor(dev_ctx, in_t, out);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Expected type of Input(X) of %d-th must be Tensor, "
           "SelectedRows. But got "
-          "unsupport type: %s.",
+          "unsupported type: %s.",
           x[i]->type_info().name()));
     }
   }

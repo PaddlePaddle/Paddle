@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +20,12 @@
 #include "paddle/pir/include/core/value.h"
 
 namespace paddle {
+
 namespace pybind {
 using pir::Value;
 void BindPir(pybind11::module *m);
 const phi::DDim &GetValueDims(Value value);
 bool GetValueBoolAttr(Value value, const std::string &attr_name);
+
 }  // namespace pybind
 }  // namespace paddle

@@ -36,7 +36,7 @@ cc_test(
 cc_test(
   test_layer
   SRCS test_layer.cc
-  DEPS layer proto_desc operator op_registry variable_helper mul_op)
+  DEPS layer proto_desc operator op_registry variable_helper generated_op)
 cc_test(
   test_prepare_op
   SRCS test_prepare_op.cc
@@ -44,9 +44,9 @@ cc_test(
        op_info
        split_op
        layer
-       concat_and_split
        activation_op
-       place)
+       phi
+       common)
 cc_test(
   test_tracer
   SRCS test_tracer.cc
@@ -56,7 +56,7 @@ cc_test(
        operator
        op_registry
        variable_helper
-       mul_op
+       generated_op
        generated_static_op
        elementwise_add_op)
 cc_test(
@@ -69,17 +69,17 @@ cc_test(
        operator
        op_registry
        variable_helper
-       mul_op
+       generated_op
        elementwise_add_op)
 cc_test(
   test_eager
   SRCS test_eager.cc
-  DEPS tracer layer prepared_operator mul_op)
+  DEPS tracer layer prepared_operator generated_op)
 if(WITH_NCCL
    OR WITH_RCCL
    OR WITH_XPU_BKCL)
   cc_test(
     test_group
     SRCS test_group.cc
-    DEPS reducer concat_and_split)
+    DEPS reducer phi common)
 endif()

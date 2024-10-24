@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -71,7 +72,7 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input1_data": [10, 64, 350, 75],
@@ -155,7 +156,7 @@ class TrtConvertMatmulTest_dynamic2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input1_data": [60, 40],
@@ -267,7 +268,7 @@ class TrtConvertMatmulTest_dynamic3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.case == 0:
                 self.dynamic_shape.min_input_shape = {

@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,7 @@ else
 fi
 
 if [ "$1" == "gcc82" ]; then
-  wget -q https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
+  wget -q https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
@@ -39,12 +39,12 @@ if [ "$1" == "gcc82" ]; then
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} && 
+  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
   ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5} && \
   ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
 elif [ "$1" == "gcc54" ]; then
-  wget -q http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-5.4.0/gcc-5.4.0.tar.bz2 
+  wget -q http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-5.4.0/gcc-5.4.0.tar.bz2
   tar -xvf gcc-5.4.0.tar.bz2 && \
   cd gcc-5.4.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
@@ -53,7 +53,7 @@ elif [ "$1" == "gcc54" ]; then
   ../gcc-5.4.0/configure --prefix=/usr/local/gcc-5.4 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc54
-  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} && 
+  cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
   ln -s /usr/local/gcc-5.4/lib64/libgfortran.so.5 ${lib_so_5} && \
   ln -s /usr/local/gcc-5.4/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-5.4/lib64/libstdc++.so.6.0.21 ${lib_path}

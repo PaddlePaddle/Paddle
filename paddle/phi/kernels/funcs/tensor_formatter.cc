@@ -111,6 +111,10 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
     FormatData<phi::dtype::float16>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::BFLOAT16) {
     FormatData<phi::dtype::bfloat16>(print_tensor, log_stream);
+  } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
+    FormatData<phi::dtype::float8_e4m3fn>(print_tensor, log_stream);
+  } else if (dtype == phi::DataType::FLOAT8_E5M2) {
+    FormatData<phi::dtype::float8_e5m2>(print_tensor, log_stream);
   } else {
     log_stream << "  - data: unprintable type: " << dtype << std::endl;
   }
@@ -141,7 +145,7 @@ void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
   if (print_size > 0) {
     log_stream << data[0];
     for (int64_t i = 1; i < print_size; ++i) {
-      log_stream << " " << data[i];
+      log_stream << " " << static_cast<float>(data[i]);
     }
   }
   log_stream << "]" << std::endl;

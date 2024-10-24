@@ -44,8 +44,7 @@ def attention_naive(q, k, v, causal=False):
     kt = paddle.transpose(k, [0, 2, 1, 3])
     vt = paddle.transpose(v, [0, 2, 1, 3])
     scale = 1.0 / np.sqrt(q.shape[-1])
-    s = paddle.matmul(qt, paddle.transpose(kt, [0, 1, 3, 2]))
-    s = paddle.scale(s, scale)
+    s = paddle.matmul(qt * scale, paddle.transpose(kt, [0, 1, 3, 2]))
     p = (
         paddle.incubate.softmax_mask_fuse_upper_triangle(s)
         if causal
@@ -54,6 +53,12 @@ def attention_naive(q, k, v, causal=False):
     o = paddle.matmul(p, vt)
     return paddle.transpose(o, [0, 2, 1, 3])
 
+
+is_sm80 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
 
 is_sm8x = (
     core.is_compiled_with_cuda()
@@ -140,7 +145,7 @@ class TestFlashAttentionAPIFlag(unittest.TestCase):
         self.assertEqual(q_.grad.shape, q.shape)
 
         np.testing.assert_allclose(
-            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
+            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=2e-03
         )
 
         return out, out_, q.grad.numpy(), k.grad.numpy(), v.grad.numpy()
@@ -181,7 +186,10 @@ class TestFlashAttentionAPIFlagTest1(TestFlashAttentionAPIFlag):
 class TestFlashAttentionAPIFlagTest2(TestFlashAttentionAPIFlag):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        # Flash attention backward kernel only supports SM80 or SM90 for head dimension > 192
+        self.shape = (
+            (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
+        )
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False

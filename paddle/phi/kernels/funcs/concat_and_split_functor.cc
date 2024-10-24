@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 /*
  * All tensors' dimension should be the same and the values of
@@ -40,7 +39,7 @@ struct ConcatFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_NE(
         rows,
         0,
-        phi::errors::InvalidArgument("The input size should not be 0."));
+        common::errors::InvalidArgument("The input size should not be 0."));
 
     std::vector<int64_t> input_cols(input.size());
     for (size_t i = 0; i < num; ++i) {
@@ -132,5 +131,4 @@ struct SplitFunctor<phi::CPUContext, T> {
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import contextlib
 import logging
 
@@ -44,7 +46,7 @@ def enable_auto_rand_ctrl():
     _enable_random_control = True
 
 
-def parallel_manual_seed(seed, name=""):
+def parallel_manual_seed(seed: int, name: str = "") -> None:
     """Enable auto parallel random control.
     Random control maintain the randomness when tensor is distributed across devices on a Mesh(any order).
         * Independency: If tensor is **Sharded** on a Mesh dimension, Devices along that Mesh dimension should have Different randomness.
@@ -88,9 +90,7 @@ def determinate_rng(
     # instead of using offsets to coordinate seed across devices.
     if len(process_mesh.shape) > 4:
         raise NotImplementedError(
-            "Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {}".format(
-                str(process_mesh)
-            )
+            f"Auto Parallel Random Control for Mesh's rank > 4 is NOT supported! Got {process_mesh}"
         )
     global _basic_seed
     seed_ = _basic_seed
@@ -131,9 +131,7 @@ def determinate_rng(
     else:
         assert (
             seed_ not in _rng_name_to_seed.values()
-        ), "Seed Conflict! current seed: {}, current sharding expr: {}, generated seed: {}".format(
-            seed_, sharding_expr, _rng_name_to_seed
-        )
+        ), f"Seed Conflict! current seed: {seed_}, current sharding expr: {sharding_expr}, generated seed: {_rng_name_to_seed}"
         _rng_name_to_seed[sharding_expr] = seed_
         if paddle.in_dynamic_mode():
             # for dygraph, just init the seed when meeting a new seed

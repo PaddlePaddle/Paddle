@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/merge_layernorm_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 class MergeLayernormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -38,16 +36,16 @@ class MergeLayernormOpConverter : public OpConverter {
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
     PADDLE_ENFORCE_EQ(
         begin_norm_axis,
         2,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The begin_norm_axis of LayernormShiftPartition should be %d",
             begin_norm_axis));
     auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
@@ -59,30 +57,22 @@ class MergeLayernormOpConverter : public OpConverter {
         engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     nvinfer1::ILayer* merge_layernorm_layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin::MergeLayernormPluginDynamic* plugin =
-          new plugin::MergeLayernormPluginDynamic(
-              static_cast<const float*>(bias_weight.get().values),
-              bias_weight.get().count,
-              static_cast<const float*>(scale_weight.get().values),
-              scale_weight.get().count,
-              eps,
-              begin_norm_axis,
-              with_fp16);
-      merge_layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Currently, MergeLayernorm TRT Plugin only support dynamic shape "
-          "mode."));
-    }
+    plugin::MergeLayernormPluginDynamic* plugin =
+        new plugin::MergeLayernormPluginDynamic(
+            static_cast<const float*>(bias_weight.get().values),
+            bias_weight.get().count,
+            static_cast<const float*>(scale_weight.get().values),
+            scale_weight.get().count,
+            eps,
+            begin_norm_axis,
+            with_fp16);
+    merge_layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         merge_layernorm_layer, "merge_layernorm", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(merge_layernorm, MergeLayernormOpConverter);

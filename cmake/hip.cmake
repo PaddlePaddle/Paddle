@@ -24,6 +24,7 @@ else()
       CACHE PATH "Path to which clang has been installed")
 endif()
 set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+set(CMAKE_PREFIX_PATH "${ROCM_PATH}" ${CMAKE_PREFIX_PATH})
 
 find_package(HIP REQUIRED)
 include_directories(${ROCM_PATH}/include)
@@ -74,6 +75,7 @@ endmacro()
 
 find_package_and_include(miopen)
 find_package_and_include(rocblas)
+find_package_and_include(hipblaslt)
 find_package_and_include(hiprand)
 find_package_and_include(rocrand)
 find_package_and_include(rccl)
@@ -84,11 +86,16 @@ find_package_and_include(hipsparse)
 find_package_and_include(rocsparse)
 find_package_and_include(rocfft)
 
+if(CCACHE_PATH)
+  set(HIP_HIPCC_EXECUTABLE ${CCACHE_PATH} ${HIP_HIPCC_EXECUTABLE})
+endif()
+
 # set CXX flags for HIP
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING")
+    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+)
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -D__HIP_PLATFORM_AMD__ -DROCM_NO_WRAPPER_HEADER_WARNING"
 )
 set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
@@ -97,6 +104,7 @@ set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
 # define HIP_CXX_FLAGS
 list(APPEND HIP_CXX_FLAGS -fPIC)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
+list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_AMD__=1)
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
 list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
@@ -123,12 +131,20 @@ list(APPEND HIP_CXX_FLAGS -Wno-switch)
 list(APPEND HIP_CXX_FLAGS -Wno-literal-conversion)
 list(APPEND HIP_CXX_FLAGS -Wno-constant-conversion)
 list(APPEND HIP_CXX_FLAGS -Wno-defaulted-function-deleted)
-
-if(WITH_CINN)
-  list(APPEND HIP_CXX_FLAGS -std=c++14)
-else()
-  list(APPEND HIP_CXX_FLAGS -std=c++17)
-endif()
+list(APPEND HIP_CXX_FLAGS -Wno-sign-compare)
+list(APPEND HIP_CXX_FLAGS -Wno-bitwise-instead-of-logical)
+list(APPEND HIP_CXX_FLAGS -Wno-unknown-warning-option)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-lambda-capture)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-variable)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-but-set-variable)
+list(APPEND HIP_CXX_FLAGS -Wno-reorder-ctor)
+list(APPEND HIP_CXX_FLAGS -Wno-deprecated-copy-with-user-provided-copy)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-local-typedef)
+list(APPEND HIP_CXX_FLAGS -Wno-missing-braces)
+list(APPEND HIP_CXX_FLAGS -Wno-sometimes-uninitialized)
+list(APPEND HIP_CXX_FLAGS -Wno-deprecated-copy)
+list(APPEND HIP_CXX_FLAGS -Wno-pessimizing-move)
+list(APPEND HIP_CXX_FLAGS -std=c++17)
 list(APPEND HIP_CXX_FLAGS --gpu-max-threads-per-block=1024)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
@@ -142,11 +158,13 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # Ask hcc to generate device code during compilation so we can use
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906)
-list(APPEND HIP_HCC_FLAGS --offload-arch=gfx908)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx926) # K100 (KONGING)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906)
-list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx908)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906) # Z100 (ZIFANG)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx926) # K100 (KONGING)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx928) # K100_AI (KONGING_AI)
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)

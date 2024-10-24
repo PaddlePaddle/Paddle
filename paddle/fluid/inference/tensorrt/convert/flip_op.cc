@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class FlipOpConverter : public OpConverter {
  public:
@@ -72,12 +70,10 @@ class FlipOpConverter : public OpConverter {
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "flip", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "flip", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(flip, FlipOpConverter);

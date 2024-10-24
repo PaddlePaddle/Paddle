@@ -21,8 +21,8 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/pretty_log.h"
+#include "paddle/utils/string/printf.h"
 
 namespace paddle {
 namespace framework {
@@ -216,14 +216,14 @@ LayerNormFusePass::LayerNormFusePass() {
 
 void LayerNormFusePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The input graph of "
                               "LayerNormFusePass should not be nullptr."));
   FusePassBase::Init(scope_name_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::LayerNorm layer_norm_pattern(gpd.mutable_pattern(), scope_name_);
@@ -350,8 +350,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     auto* new_gamma_tensor =
         scope->Var(new_gamma_node->Name())->GetMutable<phi::DenseTensor>();
     new_gamma_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
-    memcpy(new_gamma_tensor->mutable_data<float>(platform::CPUPlace()),
-           gamma_tensor->mutable_data<float>(platform::CPUPlace()),
+    memcpy(new_gamma_tensor->mutable_data<float>(phi::CPUPlace()),
+           gamma_tensor->mutable_data<float>(phi::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
 
     auto* beta_tensor =
@@ -367,8 +367,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
         scope->Var(new_beta_node->Name())->GetMutable<phi::DenseTensor>();
 
     new_beta_tensor->Resize(common::make_ddim({layer_norm_x_mat_dims[1]}));
-    memcpy(new_beta_tensor->mutable_data<float>(platform::CPUPlace()),
-           beta_tensor->mutable_data<float>(platform::CPUPlace()),
+    memcpy(new_beta_tensor->mutable_data<float>(phi::CPUPlace()),
+           beta_tensor->mutable_data<float>(phi::CPUPlace()),
            layer_norm_x_mat_dims[1] * sizeof(float));
 
     // ------------------ op creation and placement ---------------------------

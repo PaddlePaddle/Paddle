@@ -23,7 +23,4 @@ KernelSignature CastOpArgumentMapping(
 
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(transfer_dtype, cast);
-
 PD_REGISTER_ARG_MAPPING_FN(cast, phi::CastOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(transfer_dtype, phi::CastOpArgumentMapping);

@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(FCElementwiseLayerNormFusePass, basic) {
   // inputs                           operator            output
@@ -59,21 +57,19 @@ TEST(FCElementwiseLayerNormFusePass, basic) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
       num_nodes_after + 6,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After pass, the number of nodes should be reduced by 6, but the "
           "number before pass is %d, after pass is %d.",
           num_nodes_before,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After pass, the number of nodes of type "
                         "'fused_fc_elementwise_layernorm' should be 1, not %d.",
                         num_fused_nodes_after));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(fc_elementwise_layernorm_fuse_pass);

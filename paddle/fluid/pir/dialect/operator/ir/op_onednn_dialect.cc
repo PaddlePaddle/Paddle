@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -30,8 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OneDNNOperatorDialect::OneDNNOperatorDialect(pir::IrContext *ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OneDNNOperatorDialect>()) {
@@ -68,15 +68,7 @@ void OneDNNOperatorDialect::initialize() {
 void OneDNNOperatorDialect::PrintType(pir::Type type, std::ostream &os) const {
   os << type.dialect().name();
   os << '.';
-  if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
-    os << "tensor<";
-    for (auto d : common::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
+  if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
     os << "selectedrows<";
     for (auto d : common::vectorize(selected_rows_type.dims())) {
       os << d;
@@ -117,35 +109,6 @@ void OneDNNOperatorDialect::PrintAttribute(pir::Attribute attr,
   }
 }
 
-pir::Type OneDNNOperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
-  parser.ConsumeAToken("pd_op.tensor");
-  parser.ConsumeAToken("<");
-  std::vector<int> dim{};
-  Token dim_token = parser.PeekToken();
-  while (dim_token.token_type_ == DIGIT) {
-    dim_token = parser.ConsumeToken();
-    dim.push_back(atoi(dim_token.val_.c_str()));
-    std::string peek_token_val = parser.PeekToken().val_;
-    if (peek_token_val[0] != 'x') {
-      break;
-    }
-    parser.ConsumeToken();
-    parser.lexer->Unget(static_cast<int>(peek_token_val.size() - 1));
-    if (parser.PeekToken().token_type_ != DIGIT) {
-      break;
-    }
-  }
-  phi::DDim ddim = common::make_ddim(dim);
-  pir::Type dtype = parser.ParseType();
-  std::vector<std::vector<size_t>> lod;
-  std::vector<size_t> lodv;
-  lodv.push_back(0);
-  lod.push_back(lodv);
-  parser.ConsumeAToken(">");
-  return DenseTensorType::get(
-      parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
-}
-
 pir::Attribute OneDNNOperatorDialect::ParseAttribute(
     pir::IrParser &parser) {  // NOLINT
   std::string type_name = parser.ConsumeToken().val_;
@@ -166,27 +129,27 @@ pir::Attribute OneDNNOperatorDialect::ParseAttribute(
   }
 }
 
-pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
-  if (auto if_op = op->dyn_cast<IfOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto if_op = op->dyn_cast<IfOp>();
+pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(
+    const pir::Operation &op) const {
+  if (auto if_op = op.dyn_cast<IfOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto if_op = op.dyn_cast<IfOp>();
       if_op.Print(printer);
     };
-  } else if (auto pylayer_op = op->dyn_cast<PyLayerOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto pylayer_op = op->dyn_cast<PyLayerOp>();
+  } else if (auto pylayer_op = op.dyn_cast<PyLayerOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto pylayer_op = op.dyn_cast<PyLayerOp>();
       pylayer_op.Print(printer);
     };
-  } else if (auto while_op = op->dyn_cast<WhileOp>()) {
-    return [](pir::Operation *op, pir::IrPrinter &printer) {
-      auto while_op = op->dyn_cast<WhileOp>();
+  } else if (auto while_op = op.dyn_cast<WhileOp>()) {
+    return [](const pir::Operation &op, pir::IrPrinter &printer) {
+      auto while_op = op.dyn_cast<WhileOp>();
       while_op.Print(printer);
     };
   }
   return nullptr;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOperatorDialect)

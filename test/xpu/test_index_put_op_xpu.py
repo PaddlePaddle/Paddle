@@ -87,7 +87,7 @@ class XPUTestIndexPut(XPUOpTestWrapper):
     class TestXPUIndexPutOp(XPUOpTest):
         def setUp(self):
             self.op_type = "index_put"
-            self.x_dtype = self.in_type
+            self.dtype = self.in_type
             self.mixed_indices = False
             self.is_all_false = False
             self.place = paddle.XPUPlace(0)
@@ -104,11 +104,11 @@ class XPUTestIndexPut(XPUOpTestWrapper):
 
         def init_data(self):
             x_np = ((np.random.random(self.x_shape) - 0.5) * 10.0).astype(
-                self.x_dtype
+                self.dtype
             )
             value_np = (
                 (np.random.random(self.value_shape) - 0.5) * 10.0
-            ).astype(self.x_dtype)
+            ).astype(self.dtype)
 
             if self.mixed_indices:
                 tmp_indices_np1 = gen_indices_np(

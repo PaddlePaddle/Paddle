@@ -23,7 +23,7 @@ from paddle.base import backward, core, framework, program_guard
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import _apply_pass, get_flags
+from paddle.base.framework import get_flags
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -81,11 +81,9 @@ class NestSequence:
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
-                    "Output of traced function contains non-tensor type values: {}. "
+                    f"Output of traced function contains non-tensor type values: {list(warning_types)}. "
                     "Currently, We don't support to update them while training and will return "
-                    "what we first saw. Please try to return them as tensor.".format(
-                        list(warning_types)
-                    )
+                    "what we first saw. Please try to return them as tensor."
                 )
 
     @property
@@ -138,14 +136,11 @@ class ProgramInfo:
 
 
 class PartialProgramLayerHook:
-    def before_append_backward(self, forward_program):
-        ...
+    def before_append_backward(self, forward_program): ...
 
-    def after_append_backward(self, whole_program, backward_start_idx):
-        ...
+    def after_append_backward(self, whole_program, backward_start_idx): ...
 
-    def after_infer(self, infer_program):
-        ...
+    def after_infer(self, infer_program): ...
 
 
 class PartialProgramLayer:
@@ -241,7 +236,7 @@ class PartialProgramLayer:
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
 
         restored_nest_out = self._restore_out(out_vars)
@@ -268,7 +263,7 @@ class PartialProgramLayer:
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
 
         return out_vars
@@ -444,9 +439,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -456,9 +448,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -469,9 +458,6 @@ class PartialProgramLayer:
     def _train_pure_fp16_program_id(self):
         program_id = paddle.utils._hash_with_id(
             self._train_pure_fp16_program, self
-        )
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
         )
         return program_id
 
@@ -907,28 +893,28 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
-                _apply_pass(
-                    forward_program,
-                    empty_startup_program,
-                    "buffer_shared_inplace_pass",
-                    attrs,
-                    attr_types,
-                )
+            # if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
+            #     _apply_pass(
+            #         forward_program,
+            #         empty_startup_program,
+            #         "buffer_shared_inplace_pass",
+            #         attrs,
+            #         attr_types,
+            #     )
         if backward_program:
             attrs = {
                 "use_cuda": use_cuda,
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
-                _apply_pass(
-                    backward_program,
-                    empty_startup_program,
-                    "buffer_shared_inplace_pass",
-                    attrs,
-                    attr_types,
-                )
+            # if not (self._in_pir_pt_mode or self._enable_pir_in_executor):
+            #     _apply_pass(
+            #         backward_program,
+            #         empty_startup_program,
+            #         "buffer_shared_inplace_pass",
+            #         attrs,
+            #         attr_types,
+            #     )
 
     @LazyInitialized
     def _inout_var_names(self):
@@ -1110,8 +1096,7 @@ class PartialProgramLayer:
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
-                % type(self._params)
+                f"Type of self._params in PartialProgramLayer should be list or tuple, but received {type(self._params)}."
             )
 
         param_and_buffer_names_set = set()
@@ -1119,9 +1104,7 @@ class PartialProgramLayer:
             # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
-                        i, type(var)
-                    )
+                    f'Type of self._params[{i}] in PartialProgramLayer should be Parameter or Variable, but received {type(var)}.'
                 )
             param_and_buffer_names_set.add(var.name)
 
@@ -1131,12 +1114,11 @@ class PartialProgramLayer:
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
                             "\n\tWe don't support to define layer with parameters in the function decorated by `@to_static`."
-                            "\n\tBut we found parameter(%s) was created in the decorated function."
+                            f"\n\tBut we found parameter({name}) was created in the decorated function."
                             "\n"
                             "\n\tRevise suggestion: "
                             "\n\t\t1. Please ensure all your sublayers are inherited from nn.Layer."
                             "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
-                            % name
                         )
 
     def _valid_vars(self, vars):
@@ -1155,7 +1137,7 @@ def partial_program_from(concrete_program, from_method=False):
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
-        **concrete_program.kwargs
+        **concrete_program.kwargs,
     )
 
 

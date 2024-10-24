@@ -56,6 +56,19 @@ SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
                                    const std::vector<int64_t>& infer_flags,
                                    const std::vector<int64_t>& decrease_axis);
 
+SpmdInfo StridedSliceInferSpmd(const DistMetaTensor& input,
+                               const std::vector<int>& axes,
+                               const std::vector<int>& starts,
+                               const std::vector<int>& ends,
+                               const std::vector<int>& strides);
+
+SpmdInfo StridedSliceGradInferSpmd(const DistMetaTensor& input,
+                                   const DistMetaTensor& out_grad,
+                                   const std::vector<int>& axes,
+                                   const std::vector<int>& starts,
+                                   const std::vector<int>& ends,
+                                   const std::vector<int>& strides);
+
 SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
                                       const std::vector<int>& axes,
                                       const IntArray& starts,

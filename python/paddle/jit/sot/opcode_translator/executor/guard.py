@@ -16,10 +16,13 @@ from __future__ import annotations
 
 import types
 import weakref
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
+import paddle
+
 from ...profiler import EventGuard
-from ...utils import InnerError, current_tmp_name_records, log, log_do
+from ...utils import current_symbol_registry, log, log_do
 
 Guard = Callable[[types.FrameType], bool]
 
@@ -28,7 +31,7 @@ if TYPE_CHECKING:
 
     CheckGuardInputT = TypeVar("CheckGuardInputT", bound=VariableBase)
 
-# NOTE(SigureMo): [How to write Stringify Guard?]
+# NOTE(SigureMo): [How to write Stringified Guard?]
 # 1. we should capture free variables manually, the string cannot capture free
 #    variables automatically.
 # 2. Be aware that the comparison logic before and after stringify may be different.
@@ -37,91 +40,86 @@ if TYPE_CHECKING:
 #    runtime overhead.
 
 
-class StringifyExpression:
+class StringifiedExpression:
     """
     Used to store string based expressions for generating Guard.
     """
 
-    def __init__(self, str_expr, sub_exprs, free_vars):
-        expr = str_expr.format(*[arg.expr for arg in sub_exprs])
-        self.expr = current_tmp_name_records().add_tmp_var(expr)
-        self.debug_expr = str_expr.format(
-            *[arg.debug_expr for arg in sub_exprs]
+    def __init__(
+        self,
+        expr_template: str,
+        sub_exprs: list[StringifiedExpression],
+        free_vars: dict[str, Any],
+    ):
+        self.expr_template = expr_template
+        expr = self.expr_template.format(
+            *[sub_expr.symbol for sub_expr in sub_exprs]
         )
+        self.registered_expr = expr
+        self.symbol = current_symbol_registry().request_symbol(expr)
+        self.sub_exprs = sub_exprs
         self.free_vars = free_vars
 
-    def __post_init__(self):
-        self.check_expr(self.expr)
+    @cached_property
+    def inlined_expr(self):
+        return self.expr_template.format(
+            *[sub_expr.inlined_expr for sub_expr in self.sub_exprs]
+        )
 
-    def check_expr(self, expr: str):
-        try:
-            pass
-            # ast.parse(expr) # TODO(xiongkun): too slow
-        except SyntaxError as e:
-            raise InnerError(f"Invalid expression: {expr}") from e
+    def gen_expr(self):
+        def gen_expr_fn():
+            return self.expr_template.format(
+                *[sub_expr.gen_expr() for sub_expr in self.sub_exprs]
+            )
+
+        return current_symbol_registry().gen_expr(
+            self.registered_expr, gen_expr_fn
+        )
 
     def __hash__(self):
         if self.free_vars:
-            return hash((self.debug_expr, id(self)))
+            return hash((self.inlined_expr, id(self)))
         else:
-            return hash(self.debug_expr)
+            return hash(self.inlined_expr)
 
 
 def union_free_vars(*free_vars: dict[str, Any]):
     return {k: v for d in free_vars for k, v in d.items()}
 
 
-def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
+def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
     """
-    Make a guard from a list of StringifyExpression.
+    Make a guard from a list of StringifiedExpression.
 
-    For more design ideas, refer to the `Stringify guard <https://github.com/PaddlePaddle/PaddleSOT/blob/develop/docs/design/stringify-guard.md>`_ for details.
+    For more design ideas, refer to the `Stringified guard <https://github.com/PaddlePaddle/PaddleSOT/blob/develop/docs/design/stringify-guard.md>`_ for details.
 
     Args:
-        stringify_guards: a list of StringifyExpression.
+        stringified_guards: a list of StringifiedExpression.
     """
     with EventGuard("make_guard"):
-        num_guards = len(stringify_guards)
+        num_guards = len(stringified_guards)
         if not num_guards:
             guard = lambda frame: True
             guard.expr = "lambda frame: True"
+            guard.original_guard = guard
             return guard
 
-        def analyse_expressions(stringify_exprs, tmp_names):
-            func_string = "def built_guard_fn(frame):\n"
-            lambda_string = "lambda frame: "
-            free_vars = {}
-
-            for k, v in tmp_names.items():
-                func_string += f"    {v} = {k}\n"
-
-            func_result = ""
-            for str_expr in stringify_exprs:
-                func_result += str_expr.expr + " and "
-                lambda_string += str_expr.debug_expr + " and "
-                free_vars = union_free_vars(free_vars, str_expr.free_vars)
-
-            func_string += f"    return {func_result[:-5]}"
-
-            return func_string, free_vars, lambda_string[:-5]
-
-        (
-            func_string,
-            free_vars,
-            lambda_string,
-        ) = analyse_expressions(
-            stringify_guards, current_tmp_name_records().tmp_names_record
+        free_vars = union_free_vars(
+            *(expr.free_vars for expr in stringified_guards)
+        )
+        inlined_guard_expr = "lambda frame: " + " and ".join(
+            [expr.inlined_expr for expr in stringified_guards]
+        )
+        guard_expr: str = "lambda frame: " + " and ".join(
+            [expr.gen_expr() for expr in stringified_guards]
         )
 
-        exec(
-            func_string,
-            free_vars,
-        )
+        guard = eval(guard_expr, free_vars)
 
-        guard = free_vars['built_guard_fn']
-        log(3, f"[Guard]: {lambda_string}\n")
-        guard.lambda_expr = lambda_string
-        guard.expr = func_string
+        log(3, f"[Guard]: {inlined_guard_expr}\n")
+        guard.inlined_expr = inlined_guard_expr
+        guard.expr = guard_expr
+
         assert callable(guard), "guard must be callable."
 
         return guard
@@ -134,9 +132,9 @@ def support_weak_ref(obj):
 
 
 def check_guard(
-    fn: Callable[[CheckGuardInputT], list[StringifyExpression]]
-) -> Callable[[CheckGuardInputT], list[StringifyExpression]]:
-    def wrapper(self: CheckGuardInputT) -> list[StringifyExpression]:
+    fn: Callable[[CheckGuardInputT], list[StringifiedExpression]]
+) -> Callable[[CheckGuardInputT], list[StringifiedExpression]]:
+    def wrapper(self: CheckGuardInputT) -> list[StringifiedExpression]:
         assert (
             self.tracker.is_traceable()
         ), "Cannot make guard from a non-tracable guard variable."
@@ -144,7 +142,7 @@ def check_guard(
         def guard_log():
             frame_value_tracer = self.tracker.trace_value_from_frame()
             print(
-                f"[Guard]: guard_fn for {self}, tracker={self.tracker.__class__.__name__}, value={frame_value_tracer.expr}"
+                f"[Guard]: guard_fn for {self}, tracker={self.tracker.__class__.__name__}, value={frame_value_tracer.registered_expr}"
             )
 
         log_do(4, guard_log)
@@ -154,7 +152,7 @@ def check_guard(
 
 
 @check_guard
-def object_equal_stringify_guard(self) -> list[StringifyExpression]:
+def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     frame_value_tracer = self.tracker.trace_value_from_frame()
 
     obj_free_var_name = f"__{self.id}"
@@ -162,7 +160,7 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
     if support_weak_ref(weak_ref_obj):
         weak_ref_obj = weakref.ref(self.get_py_value())
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"{obj_free_var_name}() is not None and {{}} == {obj_free_var_name}()",
                 [frame_value_tracer],
                 union_free_vars(
@@ -172,7 +170,7 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
             )
         ]
     return [
-        StringifyExpression(
+        StringifiedExpression(
             f"{{}} == {obj_free_var_name}",
             [frame_value_tracer],
             union_free_vars(
@@ -181,3 +179,12 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
             ),
         )
     ]
+
+
+def stringify_pyobject(obj: object) -> tuple[str, dict[str, Any]]:
+    if isinstance(obj, paddle.core.VarDesc.VarType):
+        return f"paddle.core.VarDesc.VarType({obj.value})", {"paddle": paddle}
+    elif isinstance(obj, paddle.core.DataType):
+        return f"paddle.core.DataType({obj.value})", {"paddle": paddle}
+    # For builtin values
+    return f"{obj!r}", {}

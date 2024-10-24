@@ -4,50 +4,49 @@ if(WIN32)
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context
-         paddle_inference_api)
+    DEPS ${GLOB_OPERATOR_DEPS} phi paddle_inference_api)
 else()
   nv_library(
     tensorrt_engine
     SRCS engine.cc trt_int8_calibrator.cc
-    DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
+    DEPS ${GLOB_OPERATOR_DEPS} phi)
 endif()
 nv_library(
   tensorrt_dynamic_shape_infermeta_factory
   SRCS dynamic_shape_infermeta.cc
-  DEPS framework_proto)
+  DEPS phi)
 nv_library(
   tensorrt_plugin_arg_mapping_context
   SRCS plugin_arg_mapping_context.cc
-  DEPS framework_proto)
+  DEPS phi)
 nv_library(
   tensorrt_op_teller
   SRCS op_teller.cc
-  DEPS framework_proto device_context tensorrt_dynamic_shape_infermeta_factory)
+  DEPS phi tensorrt_dynamic_shape_infermeta_factory)
 nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
-  DEPS dynload_cuda device_context dynamic_loader)
+  DEPS phi common)
 if(WIN32)
   nv_test(
     test_tensorrt_engine
     SRCS test_engine.cc test_dynamic_engine.cc
-    DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
+    DEPS phi common tensorrt_engine tensorrt_plugin)
 elseif(WITH_CINN)
   nv_test(
     test_tensorrt_engine
     SRCS test_engine.cc test_dynamic_engine.cc
-    DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
+    DEPS fleet_executor phi common tensorrt_engine tensorrt_plugin python)
 else()
   nv_test(
     test_tensorrt_engine
     SRCS test_engine.cc test_dynamic_engine.cc
-    DEPS fleet_executor dynload_cuda tensorrt_engine tensorrt_plugin python)
+    DEPS fleet_executor phi common tensorrt_engine tensorrt_plugin python)
 endif()
 nv_test(
   test_arg_mapping_context
   SRCS test_arg_mapping_context.cc
-  DEPS framework_proto tensorrt_plugin_arg_mapping_context)
+  DEPS phi tensorrt_plugin_arg_mapping_context)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
@@ -57,3 +56,4 @@ endif()
 
 add_subdirectory(plugin)
 add_subdirectory(convert)
+add_subdirectory(pir)

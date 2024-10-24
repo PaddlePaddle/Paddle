@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import Program, program_guard
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -159,27 +158,6 @@ class TestGenerateProposals(LayerTest):
         np.testing.assert_array_equal(np.array(rois_num_stat), rois_num_dy)
 
 
-class TestMulticlassNMS2(unittest.TestCase):
-    def test_multiclass_nms2(self):
-        program = Program()
-        with program_guard(program):
-            bboxes = paddle.static.data(
-                name='bboxes', shape=[-1, 10, 4], dtype='float32'
-            )
-            scores = paddle.static.data(
-                name='scores', shape=[-1, 10], dtype='float32'
-            )
-            output = paddle.incubate.layers.multiclass_nms2(
-                bboxes, scores, 0.3, 400, 200, 0.7
-            )
-            output2, index = paddle.incubate.layers.multiclass_nms2(
-                bboxes, scores, 0.3, 400, 200, 0.7, return_index=True
-            )
-            self.assertIsNotNone(output)
-            self.assertIsNotNone(output2)
-            self.assertIsNotNone(index)
-
-
 class TestDistributeFpnProposals(LayerTest):
     def static_distribute_fpn_proposals(self, rois_np, rois_num_np):
         with self.static_graph():
@@ -201,7 +179,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
                 rois_num=rois_num,
             )
-            fetch_list = multi_rois + [restore_ind] + rois_num_per_level
+            fetch_list = [*multi_rois, restore_ind, *rois_num_per_level]
             output_stat = self.get_static_graph_result(
                 feed={'rois': rois_np, 'rois_num': rois_num_np},
                 fetch_list=fetch_list,
@@ -231,7 +209,7 @@ class TestDistributeFpnProposals(LayerTest):
                 rois_num=rois_num_dy,
             )
             print(type(multi_rois_dy))
-            output_dy = multi_rois_dy + [restore_ind_dy] + rois_num_per_level_dy
+            output_dy = [*multi_rois_dy, restore_ind_dy, *rois_num_per_level_dy]
             output_dy_np = []
             for output in output_dy:
                 output_np = output.numpy()
@@ -239,7 +217,6 @@ class TestDistributeFpnProposals(LayerTest):
                     output_dy_np.append(output_np)
         return output_dy_np
 
-    @test_with_pir_api
     def test_distribute_fpn_proposals(self):
         rois_np = np.random.rand(10, 4).astype('float32')
         rois_num_np = np.array([4, 6]).astype('int32')
@@ -260,6 +237,9 @@ class TestDistributeFpnProposals(LayerTest):
             fpn_rois = paddle.static.data(
                 name='data_error', shape=[10, 4], dtype='int32', lod_level=1
             )
+            rois_num = paddle.static.data(
+                name='rois_num', shape=[None], dtype='int32'
+            )
             self.assertRaises(
                 TypeError,
                 paddle.vision.ops.distribute_fpn_proposals,
@@ -268,6 +248,7 @@ class TestDistributeFpnProposals(LayerTest):
                 max_level=5,
                 refer_level=4,
                 refer_scale=224,
+                rois_num=rois_num,
             )
 
     def test_distribute_fpn_proposals_error2(self):

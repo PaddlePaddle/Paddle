@@ -25,8 +25,7 @@
 #include <string>
 #include <vector>
 
-namespace paddle {
-namespace flags {
+namespace paddle::flags {
 
 std::stringstream& ErrorStream() {
   static std::stringstream err_ss;
@@ -299,9 +298,13 @@ void Flag::SetValueFromString(const std::string& value) {
 void FlagRegistry::RegisterFlag(Flag* flag) {
   auto iter = flags_.find(flag->name_);
   if (iter != flags_.end()) {
-    LOG_FLAG_FATAL_ERROR("flag multiple definition, flag \"" + flag->name_ +
-                         "\" was defined both in " + iter->second->file_ +
-                         " and " + flag->file_);
+    std::string error_msg = "flag multiple definition, flag \"";
+    error_msg += flag->name_;
+    error_msg += "\" was defined both in ";
+    error_msg += iter->second->file_;
+    error_msg += " and ";
+    error_msg += flag->file_;
+    LOG_FLAG_FATAL_ERROR(error_msg);
   } else {
     std::lock_guard<std::mutex> lock(mutex_);
     flags_[flag->name_] = flag;
@@ -362,6 +365,18 @@ bool GetValueFromEnv(const std::string& name, std::string* value) {
   return true;
 }
 
+/**
+ * @brief Set flags from environment variables.
+ *
+ * It recieves a list of flags name, and will find the corresponding environment
+ * variables named "FLAGS_name", if found, it will set the environment variable
+ * values to the flags. If error_fatal is true, the program will exit when the
+ * environment variable is not set or the flag is not defined, that is the same
+ * effect as using commandline argument "--fromenv=var_name1,var_name2,...".
+ * Otherwise, the errors above will be ignored, that is the same effect as using
+ * commandline argument "--tryfromenv=var_name1,var_name2,...".
+ */
+
 void SetFlagsFromEnv(const std::vector<std::string>& flags, bool error_fatal) {
   bool success = true;
   for (const std::string& flag_name : flags) {
@@ -413,8 +428,11 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
       // the argv format is "--name" or "--name value"
       name = argv.substr(hyphen_num);
       if (name.empty()) {
-        LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv +
-                             "\", " + arg_format_help);
+        std::string error_msg = "invalid commandline argument: \"";
+        error_msg += argv;
+        error_msg += "\", ";
+        error_msg += arg_format_help;
+        LOG_FLAG_FATAL_ERROR(error_msg);
       }
 
       // print help message
@@ -425,16 +443,21 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
 
       // get the value from next argv.
       if (++i == argv_num) {
-        LOG_FLAG_FATAL_ERROR("expected value of flag \"" + name +
-                             "\" but found none.");
+        std::string error_msg = "expected value of flag \"";
+        error_msg += name;
+        error_msg += "\" but found none.";
+        LOG_FLAG_FATAL_ERROR(error_msg);
       } else {
         value = argvs[i];
       }
     } else {
       // the argv format is "--name=value"
       if (split_pos == hyphen_num || split_pos == argv.size() - 1) {
-        LOG_FLAG_FATAL_ERROR("invalid commandline argument: \"" + argv +
-                             "\", " + arg_format_help);
+        std::string error_msg = "invalid commandline argument: \"";
+        error_msg += argv;
+        error_msg += "\", ";
+        error_msg += arg_format_help;
+        LOG_FLAG_FATAL_ERROR(error_msg);
       }
       name = argv.substr(hyphen_num, split_pos - hyphen_num);
       value = argv.substr(split_pos + 1);
@@ -456,8 +479,10 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
         if (value.back() == '"') {
           value.pop_back();
         } else {
-          LOG_FLAG_FATAL_ERROR("unexperted end of flag \"" + name +
-                               "\" value while looking for matching `\"'");
+          std::string error_msg = "unexperted end of flag \"";
+          error_msg += name;
+          error_msg += "\" value while looking for matching `\"'";
+          LOG_FLAG_FATAL_ERROR(error_msg);
         }
       }
     }
@@ -497,13 +522,16 @@ T GetFromEnv(const std::string& name, const T& default_val) {
     flag.SetValueFromString(value_str);
     if (!ErrorStream().str().empty()) {
       ErrorStream().str("");
-      LOG_FLAG_FATAL_ERROR("value \"" + value_str +
-                           "\" of environment"
-                           "variable \"" +
-                           name +
-                           "\" is invalid when "
-                           "using GetFromEnv with " +
-                           FlagType2String(type) + " type.");
+      std::string error_msg = "value \"";
+      error_msg += value_str;
+      error_msg += "\" of environment";
+      error_msg += "variable \"";
+      error_msg += name;
+      error_msg += "\" is invalid when ";
+      error_msg += "using GetFromEnv with ";
+      error_msg += FlagType2String(type);
+      error_msg += " type.";
+      LOG_FLAG_FATAL_ERROR(error_msg);
     }
     return value;
   } else {
@@ -525,5 +553,4 @@ INSTANTIATE_GET_FROM_ENV(std::string);
 
 #undef INSTANTIATE_GET_FROM_ENV
 
-}  // namespace flags
-}  // namespace paddle
+}  // namespace paddle::flags

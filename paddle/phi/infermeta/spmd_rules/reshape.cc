@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -38,19 +37,19 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
       PADDLE_ENFORCE_EQ(
           infer_idx,
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "There can't be more than one -1 dimension in target shape."));
       infer_idx = i;
     }
   }
 
-  int64_t product = std::accumulate(
-      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+  int64_t product =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
         len,
-        phi::errors::InvalidArgument("The total size are not matched."));
+        common::errors::InvalidArgument("The total size are not matched."));
     return std::vector<int64_t>(shape);
   } else {
     std::vector<int64_t> new_shape(shape);
@@ -58,7 +57,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     int64_t infer_size = len / product;
     PADDLE_ENFORCE_EQ(len % infer_size,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The total is not divisible by infer_size."));
     new_shape[infer_idx] = infer_size;
     return new_shape;
@@ -72,7 +71,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& tgt_shape) {
   std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
+      src_shape.begin(), src_shape.end(), 1, std::multiplies<>());
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
@@ -120,11 +119,21 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       }
     }
 
-    if (tgt_splitted_shape.size() > 0) {
+    if (!tgt_splitted_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
-      for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
-        int64_t in_dim = src_dims[i];
+      for (auto in_dim : src_dims) {
         if (src_shape[in_dim] > 1) {
+          input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
+        } else if (src_shape[in_dim] == 1 && s == 1 && t == 1) {
+          // NOTE: for the case like:
+          //    shape: [1, 512, 4096] --> [1, 2, 256, 4096],
+          //    input dims_mapping: [0, 1, -1]
+          //    expected output dims_mapping: [0, 1, -1, -1] (not [-1, 1, -1,
+          //    -1])
+          // In this case, the dim0 in target shape is 1 and it is from
+          // dim0 in source shape. make the dim0's transformation be InputDim
+          // rather than Singleton so that the sharding status can be
+          // propagated.
           input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
         }
       }
@@ -144,10 +153,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape) {
   // Step0: Verify input args based on reshape logic
   auto x_shape = phi::vectorize(x.dims());
-  // For dynamic mode, deal with extra xshape dim.
-  if (x_shape[0] == 0) {
-    x_shape.erase(x_shape.begin());
-  }
 
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(shape.size());
@@ -156,10 +161,10 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
   VLOG(4) << "ReshapeInferSpmd: X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Out shape: [" << str_join(shape) << "]";
 
@@ -234,10 +239,10 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
   VLOG(4) << "ReshapeInferSpmdReverse: Out shape: [" << str_join(out_shape)
           << "], X shape: [" << str_join(x_shape) << "]";
 
@@ -268,8 +273,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // The out_shape may contain '-1', which will cause error
   // when inferring the transformation from out_shape to
   // x_shape, so infer the '-1' value before inferring DimTrans
-  int64_t nelm = std::accumulate(
-      x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>());
+  int64_t nelm =
+      std::accumulate(x_shape.begin(), x_shape.end(), 1, std::multiplies<>());
   out_shape = InferTargetShape(out_shape, nelm);
   std::vector<std::shared_ptr<DimTrans>> trans =
       MakeReshapeDimTrans(out_shape, x_shape);
@@ -308,30 +313,33 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
+// FIXME(dev): XShape will be decprecated in the future, so we
+// need unify inferSpmd into ReshapeInferSpmd function.
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape) {
   auto spmd_info = ReshapeInferSpmd(x, shape);
-  spmd_info.second.emplace_back(spmd_info.first[0]);
+  auto xshape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, spmd_info.first[0]);
+  auto xshape_dims_mapping = xshape_dist_dst.dims_mapping();
+  xshape_dims_mapping.insert(xshape_dims_mapping.begin(), -1);
+  xshape_dist_dst.set_dims_mapping(xshape_dims_mapping);
+  spmd_info.second.emplace_back(xshape_dist_dst);
   return spmd_info;
 }
 
-SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
-  const auto& x_shape_dist_src = x_shape.dist_attr();
-  auto tmp = ReshapeInferSpmdDynamic(x_shape, out_grad_shape);
+  auto x_dist_tmp = x.dist_attr();
+  auto tmp =
+      ReshapeInferSpmd(DistMetaTensor(x.dims(), x_dist_tmp), out_grad_shape);
   // check no shard is needed
-  const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
+  const auto& x_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
-  PADDLE_ENFORCE_EQ(x_shape_dist_src,
-                    x_shape_dist_dst,
-                    phi::errors::InvalidArgument(
-                        "x_shape should not be re shared: [%s] => [%s]",
-                        x_shape_dist_src.to_string(),
-                        x_shape_dist_dst.to_string()));
-  return {{out_grad_dist_dst}, {x_shape_dist_dst}};
+  if (x_dist_dst.dims_mapping() != x_dist_tmp.dims_mapping()) {
+    x_dist_tmp.set_dims_mapping(x_dist_dst.dims_mapping());
+  }
+  return {{x_dist_tmp, out_grad_dist_dst}, {x_dist_dst}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -34,8 +34,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
-namespace paddle {
-namespace prim {
+namespace paddle::prim {
 
 template <>
 Tensor full<DescTensor>(const IntArray& shape,
@@ -90,7 +89,7 @@ Tensor full<DescTensor>(const IntArray& shape,
       op->SetAttr("str_value", std::to_string(value.to<uint64_t>()));
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "We support "
           "bool/float16/bfloat16/float32/float64/int8/int16/int32/int64/uint8/"
           "uint16/"
@@ -152,5 +151,4 @@ Tensor slice<DescTensor>(const Tensor& input,
   return out;
 }
 
-}  // namespace prim
-}  // namespace paddle
+}  // namespace paddle::prim

@@ -62,13 +62,16 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         self.channel_last = self.data_format == "NHWC"
         if self.channel_last:
             input_shape = (
-                (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+                self.batch_size,
+                *self.spartial_shape,
+                self.num_channels,
             )
         else:
             input_shape = (
                 self.batch_size,
                 self.num_channels,
-            ) + self.spartial_shape
+                *self.spartial_shape,
+            )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -78,7 +81,8 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.num_channels,
             self.num_filters // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
@@ -89,45 +93,8 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         else:
             self.bias = None
 
-    def base_layer(self, place):
-        main = base.Program()
-        start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                input_shape = (
-                    (-1, -1, -1, self.num_channels)
-                    if self.channel_last
-                    else (-1, self.num_channels, -1, -1)
-                )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                weight_attr = paddle.nn.initializer.Assign(self.weight)
-                if self.bias is None:
-                    bias_attr = False
-                else:
-                    bias_attr = paddle.nn.initializer.Assign(self.bias)
-
-                y_var = paddle.static.nn.conv2d_transpose(
-                    x_var,
-                    self.num_filters,
-                    filter_size=self.filter_size,
-                    output_size=self.output_size,
-                    padding=self.padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr,
-                    data_format=self.data_format,
-                )
-        feed_dict = {"input": self.input}
-        exe = base.Executor(place)
-        exe.run(start)
-        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
-        return y_np
-
     def functional(self, place):
+        paddle.enable_static()
         main = base.Program()
         start = base.Program()
         with base.unique_name.guard():
@@ -201,16 +168,6 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    def _test_equivalence(self, place):
-        result1 = self.base_layer(place)
-        result2 = self.functional(place)
-
-        with dg.guard(place):
-            result3 = self.paddle_nn_layer()
-
-        np.testing.assert_array_almost_equal(result1, result2)
-        np.testing.assert_array_almost_equal(result2, result3)
-
     def _test_pir_equivalence(self, place):
         with paddle.pir_utils.IrGuard():
             result1 = self.functional(place)
@@ -221,7 +178,6 @@ class Conv2DTransposeTestCase(unittest.TestCase):
 
     def runTest(self):
         place = base.CPUPlace()
-        self._test_equivalence(place)
         self._test_pir_equivalence(place)
 
 

@@ -57,7 +57,9 @@ class TestFused3EmbeddingEltwiseLayernormPattern(PassTest):
                 layer_norm = paddle.nn.LayerNorm(add_out2.shape[-1:])
                 out = layer_norm(add_out2)
                 out = paddle.assign(out)
-                self.pass_list = ['embedding_eltwise_layernorm_fuse_pass']
+                self.pass_attr_list = [
+                    {'embedding_eltwise_layernorm_fuse_pass': {}}
+                ]
                 self.feeds = {
                     "x1": np.random.random((1, 30)).astype("int64"),
                     "x2": np.random.random((1, 30)).astype("int64"),
@@ -109,7 +111,9 @@ class TestFused2EmbeddingEltwiseLayernormPattern(PassTest):
                 layer_norm = paddle.nn.LayerNorm(add_out1.shape[-1:])
                 out = layer_norm(add_out1)
                 out = paddle.assign(out)
-                self.pass_list = ['embedding_eltwise_layernorm_fuse_pass']
+                self.pass_attr_list = [
+                    {'embedding_eltwise_layernorm_fuse_pass': {}}
+                ]
                 self.feeds = {
                     "x1": np.random.random((1, 30)).astype("int64"),
                 }

@@ -80,14 +80,14 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
-        phi::errors::InvalidArgument("index.dims()[1] should be 1 when "
-                                     "index.dims().size() =2 in scatter_op."
-                                     "But received value is [%d]",
-                                     index.dims()[1]));
+        common::errors::InvalidArgument("index.dims()[1] should be 1 when "
+                                        "index.dims().size() =2 in scatter_op."
+                                        "But received value is [%d]",
+                                        index.dims()[1]));
   } else {
     PADDLE_ENFORCE_EQ(index.dims().size() == 1 || index.dims().size() == 0,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "index.dims().size() should be 0, 1 or 2 in "
                           "scatter_op. But received value is [%d]",
                           index.dims().size()));
@@ -109,7 +109,7 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
       PADDLE_ENFORCE_EQ(
           src_dims[i],
           dst_dims[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimensions of the source tensor and target tensor should"
               " match, but received source tensor's %d-th dimension is %d,"
               "target tensor's %d-th dimension is %d.",
@@ -131,26 +131,29 @@ void ScatterAssign(const phi::CPUContext& ctx UNUSED,
 
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
-
     PADDLE_ENFORCE_GE(index_,
-                      0,
-                      phi::errors::OutOfRange(
+                      -dst_dims[0],
+                      common::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
-                          "be greater than or equal to 0, but received [%d]",
+                          "be greater than or equal to [%d], but received [%d]",
+                          -dst_dims[0],
                           index_));
 
     PADDLE_ENFORCE_LT(
         index_,
         dst_dims[0],
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "The index is out of bounds, "
             "please check whether the values of index and "
             "dimensions of input meet the requirements. each index should "
             "be less than 1st-dim size (%d) of input, but received [%d]",
             dst_dims[0],
             index_));
+    if (index_ < 0) {
+      index_ += dst_dims[0];
+    }
 
     memcpy(p_output + index_ * slice_size, p_src + i * slice_size, slice_bytes);
   }
@@ -165,7 +168,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
       index.dims().size() == 1 || index.dims().size() == 0 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "index's shape is error, "
           "expect index'dims shape is 0, 1, 2 (index.dims[1] should "
           "be 1), but got index'dims shape is %d",
@@ -186,7 +189,7 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
       PADDLE_ENFORCE_EQ(
           src_dims[i],
           dst_dims[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimensions of the source tensor and target tensor should"
               " match, but received source tensor's %d-th dimension is %d,"
               "target tensor's %d-th dimension is %d.",
@@ -209,30 +212,33 @@ void ScatterAssignAdd(const phi::CPUContext& ctx,
   // if not in overwrite mode, need to init output data
   auto max_index = dst_dims[0];
   for (int64_t i = 0; i < index_size; ++i) {
-    const IndexT& index_val = p_index[i];
-    PADDLE_ENFORCE_GE(index_val,
-                      0,
-                      phi::errors::OutOfRange(
+    PADDLE_ENFORCE_GE(p_index[i],
+                      -max_index,
+                      common::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
-                          "be greater than or equal to 0, but received [%d]",
-                          index_val));
-    PADDLE_ENFORCE_LT(index_val,
+                          "be greater than or equal to [%d], but received [%d]",
+                          -max_index,
+                          p_index[i]));
+    PADDLE_ENFORCE_LT(p_index[i],
                       max_index,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The index is out of bounds, "
                           "please check whether the dimensions of index and "
                           "input meet the requirements. It should "
-                          "be less than %d, but received %d",
+                          "be less than [%d], but received [%d]",
                           max_index,
-                          index_val));
+                          p_index[i]));
+    const IndexT& index_val =
+        (p_index[i] < 0 ? p_index[i] + max_index : p_index[i]);
     memset(p_output + slice_size * index_val, 0, slice_bytes);
   }
 
   // if not in overwrite mode, need to init output data
   for (int64_t i = 0; i < index_size; ++i) {
-    const IndexT& index_val = p_index[i];
+    const IndexT& index_val =
+        (p_index[i] < 0 ? p_index[i] + max_index : p_index[i]);
     elementwise_inner_add<T, IndexT>(
         ctx, p_src, p_output, i, index_val, slice_size);
   }
@@ -251,8 +257,10 @@ void CPUScatterGradForX(const phi::CPUContext& ctx UNUSED,
   size_t slice_size = 1;
   for (int i = 1; i < dst_dims.size(); ++i) slice_size *= dst_dims[i];
   const size_t slice_bytes = slice_size * sizeof(T);
+  auto dim_size = dst_dims[0];
   for (int64_t i = 0; i < index_size; ++i) {
-    const IndexT& index_ = p_index[i];
+    const IndexT& index_ =
+        (p_index[i] < 0 ? p_index[i] + dim_size : p_index[i]);
     memset(p_output + slice_size * index_, 0, slice_bytes);
   }
 }
@@ -290,15 +298,20 @@ void ScatterNdAdd(const phi::CPUContext& ctx,
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = p_index[i * end_size + j];
       PADDLE_ENFORCE_EQ(
-          (index_value >= 0 && index_value < output_dims[j]),
+          (index_value >= -output_dims[j] && index_value < output_dims[j]),
           true,
-          phi::errors::OutOfRange(
+          common::errors::OutOfRange(
               "The index is out of bounds, "
               "please check whether the dimensions of index and "
               "input meet the requirements. It should "
-              "be less than [%d] and greater or equal to 0, but received [%d]",
+              "be less than [%d] and greater or equal to [%d], "
+              "but received [%d]",
               output_dims[j],
+              -output_dims[j],
               index_value));
+      if (index_value < 0) {
+        index_value += output_dims[j];
+      }
 
       index_val += (index_value * temp);
       temp *= output_dims[j];

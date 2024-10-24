@@ -31,20 +31,19 @@ namespace egr {
 
 TEST(Forward, SingleNode) {
   // Prepare Device Contexts
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        false /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -66,8 +65,16 @@ TEST(Forward, SingleNode) {
     GradNodeScale* scale_node = dynamic_cast<GradNodeScale*>(grad_node);
 
     CHECK_NOTNULL(scale_node);
-    CHECK_EQ(static_cast<int>(meta->OutRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(meta->OutRankInfo().second), 0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta->OutRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta->OutRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta->OutRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta->OutRankInfo().second) is not 0"));
   }
 }
 
@@ -81,20 +88,19 @@ Node1
  out
 */
 TEST(Forward, LinearNodes) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        false /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -129,8 +135,16 @@ TEST(Forward, LinearNodes) {
     GradNodeScale* scale_node0 = dynamic_cast<GradNodeScale*>(grad_node0);
 
     CHECK_NOTNULL(scale_node0);
-    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().second), 0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta0->OutRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta0->OutRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta0->OutRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta0->OutRankInfo().second) is not 0"));
 
     // Node 1
     AutogradMeta* meta1 = EagerUtils::autograd_meta(&out1);
@@ -138,8 +152,16 @@ TEST(Forward, LinearNodes) {
     GradNodeScale* scale_node1 = dynamic_cast<GradNodeScale*>(grad_node1);
 
     CHECK_NOTNULL(scale_node1);
-    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().second), 0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta1->OutRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta1->OutRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta1->OutRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta1->OutRankInfo().second) is not 0"));
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges: Node 1 -> Node 0
@@ -148,11 +170,27 @@ TEST(Forward, LinearNodes) {
         grad_node1->OutputMeta();
     const auto& node1_meta = node1_metas[0];
 
-    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
-             0);
-    CHECK_EQ(static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second),
-             0);
-    CHECK_EQ(node1_meta[0].GetEdge().GetGradNode(), grad_node0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first)"
+            "is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second)"
+            "is not 0"));
+    PADDLE_ENFORCE_EQ(node1_meta[0].GetEdge().GetGradNode(),
+                      grad_node0,
+                      common::errors::InvalidArgument(
+                          "node1_meta[0].GetEdge().GetGradNode()"
+                          "is not equal with grad_node0"
+                          "the value of grad_node0 is %d"
+                          "and node1_meta[0].GetEdge().GetGradNode() is %d",
+                          grad_node0,
+                          node1_meta[0].GetEdge().GetGradNode()));
   }
 }
 
@@ -167,20 +205,19 @@ TEST(Forward, LinearNodes) {
    out1    out2
 */
 TEST(Forward, BranchedNodes) {
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
 
   // Prepare Inputs
   std::vector<paddle::Tensor> target_tensors;
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
 
   // Create Target Tensor
-  paddle::Tensor t =
-      eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
-                                        phi::DataType::FLOAT32,
-                                        phi::DataLayout::NCHW,
-                                        5.0 /*value*/,
-                                        false /*is_leaf*/);
+  paddle::Tensor t = eager_test::CreateTensorWithValue(ddim,
+                                                       phi::CPUPlace(),
+                                                       phi::DataType::FLOAT32,
+                                                       phi::DataLayout::NCHW,
+                                                       5.0 /*value*/,
+                                                       false /*is_leaf*/);
   target_tensors.emplace_back(std::move(t));
   paddle::Tensor& tensor = target_tensors[0];
   EagerUtils::autograd_meta(&tensor)->SetStopGradient(false);
@@ -224,8 +261,16 @@ TEST(Forward, BranchedNodes) {
     GradNodeScale* scale_node0 = dynamic_cast<GradNodeScale*>(grad_node0);
 
     CHECK_NOTNULL(scale_node0);
-    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(meta0->OutRankInfo().second), 0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta0->OutRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta0->OutRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta0->OutRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta0->OutRankInfo().second) is not 0"));
 
     // Node 1
     AutogradMeta* meta1 = EagerUtils::autograd_meta(&out1);
@@ -233,8 +278,16 @@ TEST(Forward, BranchedNodes) {
     GradNodeScale* scale_node1 = dynamic_cast<GradNodeScale*>(grad_node1);
 
     CHECK_NOTNULL(scale_node1);
-    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(meta1->OutRankInfo().second), 0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta1->OutRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta1->OutRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta1->OutRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta1->OutRankInfo().second) is not 0"));
 
     // Node 2
     AutogradMeta* meta2 = EagerUtils::autograd_meta(&out2);
@@ -242,8 +295,16 @@ TEST(Forward, BranchedNodes) {
     GradNodeScale* scale_node2 = dynamic_cast<GradNodeScale*>(grad_node2);
 
     CHECK_NOTNULL(scale_node2);
-    CHECK_EQ(static_cast<int>(meta2->OutRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(meta2->OutRankInfo().second), 0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta2->OutRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta2->OutRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(meta2->OutRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(meta2->OutRankInfo().second) is not 0"));
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
     // 3. NextEdges
@@ -252,9 +313,24 @@ TEST(Forward, BranchedNodes) {
         node1_metas = grad_node1->OutputMeta();
     const Edge& node1_edge = node1_metas[0][0].GetEdge();
 
-    CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(node1_edge.GetEdgeRankInfo().second), 0);
-    CHECK_EQ(node1_edge.GetGradNode(), grad_node0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(node1_edge.GetEdgeRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(node1_edge.GetEdgeRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(node1_edge.GetEdgeRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(node1_edge.GetEdgeRankInfo().second) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        node1_edge.GetGradNode(),
+        grad_node0,
+        common::errors::InvalidArgument(
+            "node1_edge.GetGradNode() is not equal with grad_node0"
+            "the value of node1_edge.GetGradNode() is %d and grad_node0 is %d",
+            node1_edge.GetGradNode(),
+            grad_node0));
 
     // Node 2 -> Node 0
     const paddle::small_vector<std::vector<egr::GradSlotMeta>,
@@ -262,9 +338,24 @@ TEST(Forward, BranchedNodes) {
         grad_node2->OutputMeta();
     const Edge& node2_edge = node2_metas[0][0].GetEdge();
 
-    CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().first), 0);
-    CHECK_EQ(static_cast<int>(node2_edge.GetEdgeRankInfo().second), 0);
-    CHECK_EQ(node2_edge.GetGradNode(), grad_node0);
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(node2_edge.GetEdgeRankInfo().first),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(node2_edge.GetEdgeRankInfo().first) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        static_cast<int>(node2_edge.GetEdgeRankInfo().second),
+        0,
+        common::errors::InvalidArgument(
+            "static_cast<int>(node2_edge.GetEdgeRankInfo().second) is not 0"));
+    PADDLE_ENFORCE_EQ(
+        node2_edge.GetGradNode(),
+        grad_node0,
+        common::errors::InvalidArgument(
+            "node2_edge.GetGradNode() is not equal with grad_node0"
+            "the value of node2_edge.GetGradNode() is %d and grad_node0 is %d",
+            node2_edge.GetGradNode(),
+            grad_node0));
   }
 }
 

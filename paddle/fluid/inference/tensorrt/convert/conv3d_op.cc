@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 template <typename RegistFunc, typename SetDilationFunc>
 void ConvertConv3d(TensorRTEngine* engine,
@@ -35,8 +33,8 @@ void ConvertConv3d(TensorRTEngine* engine,
   auto* Y_v = scope.FindVar(filter_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       Y_v,
-      platform::errors::NotFound("Can not find %s presistale var in scope.",
-                                 filter_var_name));
+      common::errors::NotFound("Can not find %s presistable var in scope.",
+                               filter_var_name));
   auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -47,7 +45,7 @@ void ConvertConv3d(TensorRTEngine* engine,
 
   PADDLE_ENFORCE_EQ(Y_t->dims().size(),
                     5UL,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The conv3d filter's dims size should be 5, but got %d",
                         Y_t->dims().size()));
 
@@ -93,8 +91,8 @@ void ConvertConv3d(TensorRTEngine* engine,
 
   PADDLE_ENFORCE_NOT_NULL(
       layer,
-      platform::errors::Fatal("TensorRT create conv3d/conv3d_transpose"
-                              " layer failed."));
+      common::errors::Fatal("TensorRT create conv3d/conv3d_transpose"
+                            " layer failed."));
   layer->setStrideNd(nv_strides);
   layer->setPrePadding(nv_pre_paddings);
   nvinfer1::Dims3 nv_post_paddings = nv_pre_paddings;
@@ -107,7 +105,7 @@ void ConvertConv3d(TensorRTEngine* engine,
 
     if (nv_post_paddings.d[0] < 0 || nv_post_paddings.d[1] < 0 ||
         nv_post_paddings.d[2] < 0) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The value in conv3d_transpose's PostPadding should be >= 0."));
     }
 
@@ -192,9 +190,7 @@ class Deconv3dOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(conv3d, Conv3dOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv3d_transpose, Deconv3dOpConverter);

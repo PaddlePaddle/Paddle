@@ -16,8 +16,7 @@
 
 #include "Eigen/Dense"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int CommMergeAccessor::Initialize() {
   InitAccessorInfo();
@@ -75,5 +74,4 @@ int CommMergeAccessor::SetWeight(float **values,
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

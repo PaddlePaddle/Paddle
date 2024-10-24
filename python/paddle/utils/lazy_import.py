@@ -13,12 +13,19 @@
 # limitations under the License.
 """Lazy imports for heavy dependencies."""
 
+from __future__ import annotations
+
 import importlib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
 
 __all__ = []
 
 
-def try_import(module_name, err_msg=None):
+def try_import(module_name: str, err_msg: str | None = None) -> ModuleType:
     """Try importing a module, with an informative error message on failure."""
     install_name = module_name
 
@@ -34,8 +41,8 @@ def try_import(module_name, err_msg=None):
     except ImportError:
         if err_msg is None:
             err_msg = (
-                "Failed importing {}. This likely means that some paddle modules "
+                f"Failed importing {module_name}. This likely means that some paddle modules "
                 "require additional dependencies that have to be "
-                "manually installed (usually with `pip install {}`). "
-            ).format(module_name, install_name)
+                f"manually installed (usually with `pip install {install_name}`). "
+            )
         raise ImportError(err_msg)

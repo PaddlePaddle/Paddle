@@ -16,10 +16,10 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -65,9 +65,10 @@ class GpuTimer {
     cudaEventCreate(&stop_);
 #endif
     PADDLE_ENFORCE_NOT_NULL(
-        start_, phi::errors::PreconditionNotMet("Start Event is not ready."));
+        start_,
+        common::errors::PreconditionNotMet("Start Event is not ready."));
     PADDLE_ENFORCE_NOT_NULL(
-        stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
+        stop_, common::errors::PreconditionNotMet("Stop Event is not ready."));
   }
 
   ~GpuTimer() {

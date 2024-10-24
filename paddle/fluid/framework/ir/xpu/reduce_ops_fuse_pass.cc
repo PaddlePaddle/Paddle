@@ -317,7 +317,7 @@ void ReduceOpsFusePass::FuseReduceMean(ir::Graph* graph) const {
 
 void ReduceOpsFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   FuseReduceMax(graph);

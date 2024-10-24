@@ -52,19 +52,35 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        conv1 = paddle.static.nn.conv2d(
-            x, num_filters=3, filter_size=3, bias_attr=False
+        conv1 = paddle.nn.Conv2D(
+            in_channels=x.shape[1],
+            out_channels=3,
+            kernel_size=3,
+            bias_attr=False,
         )
-        conv2 = paddle.static.nn.conv2d(
-            conv1, num_filters=3, filter_size=3, bias_attr=False
-        )
-        conv3 = paddle.static.nn.conv2d(
-            conv2, num_filters=3, filter_size=3, bias_attr=False
-        )
-        conv4 = paddle.static.nn.conv2d(
-            conv3, num_filters=3, filter_size=3, bias_attr=False
-        )
-        self.fetch_list = [conv4.name]
+
+        conv2 = paddle.nn.Conv2D(
+            in_channels=conv1.shape[1],
+            out_channels=3,
+            kernel_size=3,
+            bias_attr=False,
+        )(conv1)
+
+        conv3 = paddle.nn.Conv2D(
+            in_channels=conv2.shape[1],
+            out_channels=3,
+            kernel_size=3,
+            bias_attr=False,
+        )(conv2)
+
+        conv4 = paddle.nn.Conv2D(
+            in_channels=conv3.shape[1],
+            out_channels=3,
+            kernel_size=3,
+            bias_attr=False,
+        )(conv3)
+
+        self.fetch_list = [conv4]
 
     def run_model(self, exec_mode):
         ipu_strategy = paddle.static.IpuStrategy()

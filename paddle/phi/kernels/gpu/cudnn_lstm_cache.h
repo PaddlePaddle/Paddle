@@ -67,7 +67,30 @@ class ScopedRNNBase {
       y_descs_.emplace_back(y_desc_.descriptor<T>(dims_y, strides_y));
     }
 
-#if CUDNN_VERSION >= 7201
+#if CUDNN_VERSION >= 90000
+    auto seqlen_is_empty = sequence_length.empty();
+    if (seqlen_is_empty) {
+      std::vector<int> seqlen_array(batch_size_);
+      for (int i = 0; i < batch_size_; ++i) {
+        seqlen_array[i] = seq_length_;
+      }
+      x_seq_desc_.descriptor<T>(
+          seq_length_, batch_size_, input_size_, true, seqlen_array);
+      y_seq_desc_.descriptor<T>(seq_length_,
+                                batch_size_,
+                                hidden_size_ * numDirections,
+                                true,
+                                seqlen_array);
+    } else {
+      x_seq_desc_.descriptor<T>(
+          seq_length_, batch_size_, input_size_, true, sequence_length);
+      y_seq_desc_.descriptor<T>(seq_length_,
+                                batch_size_,
+                                hidden_size_ * numDirections,
+                                true,
+                                sequence_length);
+    }
+#elif CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
       x_seq_desc_.descriptor<T>(
           seq_length_, batch_size_, input_size_, true, sequence_length);
@@ -107,6 +130,25 @@ class ScopedRNNBase {
                              state_size);
 
     // ------------------- cudnn rnn descriptors ---------------------
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v8(
+        rnn_desc_.desc(),
+        CUDNN_RNN_ALGO_STANDARD,
+        CUDNN_LSTM,
+        CUDNN_RNN_DOUBLE_BIAS,
+        is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL,
+        CUDNN_LINEAR_INPUT,
+        cudnn_type,
+        cudnn_type,
+        CUDNN_DEFAULT_MATH,
+        input_size_,
+        hidden_size_,
+        hidden_size_,
+        num_layers_,
+        dropout_desc_.desc(),
+        seqlen_is_empty ? CUDNN_RNN_PADDED_IO_DISABLED
+                        : CUDNN_RNN_PADDED_IO_ENABLED));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v6(
         handle,
         rnn_desc_.desc(),
@@ -118,8 +160,9 @@ class ScopedRNNBase {
         CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD,
         cudnn_type));
+#endif
 
-#if CUDNN_VERSION >= 7201
+#if CUDNN_VERSION < 90000 && CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
@@ -127,13 +170,18 @@ class ScopedRNNBase {
 #endif
 
     // ------------------- cudnn weights_size ---------------------
-    size_t weights_size_;
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNWeightSpaceSize(
+        handle, rnn_desc_.desc(), &weights_size_));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
+#endif
+
     PADDLE_ENFORCE_EQ(
         weights_size_,
         sizeof(T) * weight_numel_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
     // ------------------- cudnn weight descriptors ---------------------
     phi::backends::gpu::DataLayout layout =
@@ -142,6 +190,15 @@ class ScopedRNNBase {
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- cudnn workspace, reserve size ---------------------
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnGetRNNTempSpaceSizes(handle,
+                                                rnn_desc_.desc(),
+                                                CUDNN_FWD_MODE_TRAINING,
+                                                x_seq_desc_.desc(),
+                                                workspace_size,
+                                                reserve_size));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetRNNWorkspaceSize(handle,
                                                rnn_desc_.desc(),
@@ -150,6 +207,7 @@ class ScopedRNNBase {
                                                workspace_size));
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNTrainingReserveSize(
         handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
+#endif
   }
   cudnnTensorDescriptor_t* x_descs() { return x_descs_.data(); }
   cudnnTensorDescriptor_t* y_descs() { return y_descs_.data(); }
@@ -164,6 +222,7 @@ class ScopedRNNBase {
   cudnnRNNDescriptor_t rnn_desc() { return rnn_desc_.desc(); }
   cudnnDropoutDescriptor_t dropout_desc() { return dropout_desc_.desc(); }
   cudnnFilterDescriptor_t weight_desc() { return weight_desc_.desc(); }
+  size_t weights_size() { return weights_size_; }
 
  private:
   int seq_length_;
@@ -176,6 +235,7 @@ class ScopedRNNBase {
   int weight_numel_;
   bool initialized_;
   bool is_bidirec_;
+  size_t weights_size_;
   std::vector<cudnnTensorDescriptor_t> x_descs_;
   std::vector<cudnnTensorDescriptor_t> y_descs_;
 

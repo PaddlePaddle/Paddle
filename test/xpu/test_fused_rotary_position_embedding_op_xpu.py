@@ -56,38 +56,21 @@ def mult_qkv_rotate_half(value, cos_tensor, sin_tensor):
     return query
 
 
-def get_sin_cos_tensor(seq_len, head_dim, sign=1, dtype="float32"):
+def get_sin_cos_tensor(seq_len, head_dim, dtype="float32"):
     pos_seq = paddle.arange(0, seq_len, 1).astype("float32")
     indices = paddle.arange(0, head_dim, 2).astype("float32")
 
-    indices = 1 / 10000 ** (indices / head_dim)
+    indices = 1 / (10000 ** (indices / head_dim))
     sinusoid_inp = pos_seq.unsqueeze(1) * indices.unsqueeze(0)
-
-    sin_sin = paddle.empty([seq_len * head_dim], dtype=dtype)
-    cos_cos = paddle.empty([seq_len * head_dim], dtype=dtype)
-
-    i = 0
-
-    for value in sinusoid_inp.flatten():
-        sin_sin[i * 2] = sign * paddle.sin(value)
-        cos_cos[i * 2 + 0] = paddle.cos(value)
-        sin_sin[i * 2 + 1] = paddle.sin(value)
-        cos_cos[i * 2 + 1] = paddle.cos(value)
-        i += 1
-
-    tensor_sin = paddle.reshape(
-        sin_sin,
-        [1, seq_len, 1, head_dim],
-    )
-    tensor_cos = paddle.reshape(
-        cos_cos,
-        [1, seq_len, 1, head_dim],
-    )
-
-    return tensor_sin.astype(dtype), tensor_cos.astype(dtype)
+    sinusoid_inp = paddle.stack([sinusoid_inp, sinusoid_inp], axis=-1)
+    sin = paddle.sin(sinusoid_inp)
+    cos = paddle.cos(sinusoid_inp)
+    sin = sin.astype(dtype).reshape([1, seq_len, 1, head_dim])
+    cos = cos.astype(dtype).reshape([1, seq_len, 1, head_dim])
+    return sin, cos
 
 
-def paddle_fused_rotary_position_embedding(
+def ref_rotary_position_embedding(
     init_q,
     init_k=None,
     init_v=None,
@@ -135,11 +118,16 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         self.init_threshold()
 
     def init_case(self):
-        self.shape = [2, 8, 2, 16]
+        self.shape_q = [2, 8, 2, 128]
+        self.shape_k = [2, 8, 2, 128]
+        self.shape_v = [2, 8, 2, 128]
         self.dtype = 'float32'
 
-    def get_paddle_tensor(self):
-        tmp = paddle.randn(self.shape, self.dtype)
+    def get_paddle_tensor(self, shape):
+        if shape is None:
+            return None
+
+        tmp = paddle.uniform(shape, self.dtype, -1.0, 1.0)
         tmp.stop_gradient = False
         return tmp
 
@@ -157,12 +145,12 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
     def get_inputs(self, seed, with_sin_cos, dtype="float32"):
         paddle.disable_static()
         paddle.seed(seed)
-        tensor_q = self.get_paddle_tensor()
-        tensor_k = self.get_paddle_tensor()
-        tensor_v = self.get_paddle_tensor()
+        tensor_q = self.get_paddle_tensor(self.shape_q)
+        tensor_k = self.get_paddle_tensor(self.shape_k)
+        tensor_v = self.get_paddle_tensor(self.shape_v)
 
         tensor_sin, tensor_cos = (
-            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], 1, dtype)
+            get_sin_cos_tensor(tensor_q.shape[1], tensor_q.shape[3], dtype)
             if with_sin_cos
             else (None, None)
         )
@@ -197,9 +185,9 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
         fw.append(out_k)
         fw.append(out_v)
         paddle.seed(seed + 1)
-        out_gq = paddle.randn(out_q.shape, self.dtype)
-        out_gk = paddle.randn(out_q.shape, self.dtype)
-        out_gv = paddle.randn(out_q.shape, self.dtype)
+        out_gq = paddle.uniform(out_q.shape, self.dtype, -1.0, 1.0)
+        out_gk = paddle.uniform(out_k.shape, self.dtype, -1.0, 1.0)
+        out_gv = paddle.uniform(out_v.shape, self.dtype, -1.0, 1.0)
 
         paddle.autograd.backward(
             [out_q, out_k, out_v], [out_gq, out_gk, out_gv], True
@@ -210,52 +198,63 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
 
         return fw, bw
 
+    def check_forward_backward(
+        self, ref_fwd, fused_fwd, ref_bwd=None, fused_bwd=None
+    ):
+        for i in range(len(ref_fwd)):
+            ref_fwd_np = ref_fwd[i].numpy()
+            fused_fwd_np = fused_fwd[i].numpy()
+            if ref_bwd is not None:
+                ref_bwd_np = ref_bwd[i].numpy()
+                fused_bwd_np = fused_bwd[i].numpy()
+            if self.dtype == "bfloat16":
+                ref_fwd_np = convert_uint16_to_float(ref_fwd_np)
+                fused_fwd_np = convert_uint16_to_float(fused_fwd_np)
+                if ref_bwd is not None:
+                    ref_bwd_np = convert_uint16_to_float(ref_bwd_np)
+                    fused_bwd_np = convert_uint16_to_float(fused_bwd_np)
+            np.testing.assert_allclose(
+                ref_fwd_np, fused_fwd_np, rtol=self.rtol, atol=self.atol
+            )
+            if ref_bwd is not None:
+                np.testing.assert_allclose(
+                    ref_bwd_np, fused_bwd_np, rtol=self.rtol, atol=self.atol
+                )
+
     def test_fused_rope(self):
         paddle.set_device('xpu')
         p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
+            ref_rotary_position_embedding,
             seed=self.seed,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
-    def test_fused_rope_with_sin_cos(self):
+    def test_fused_rope_without_sin_cos(self):
         paddle.set_device('xpu')
         p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
+            ref_rotary_position_embedding,
             seed=self.seed,
             with_sin_cos=True,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
         f_fw, f_bw = self.get_forward_backward(
             fused_rotary_position_embedding,
             seed=self.seed,
-            with_sin_cos=True,
-            use_neox_rotary_style=False,
+            with_sin_cos=False,
+            use_neox_rotary_style=True,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_fused_rope_rotate_half(self):
         paddle.set_device('xpu')
         p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
+            ref_rotary_position_embedding,
             seed=self.seed,
             use_neox_rotary_style=False,
         )
@@ -264,13 +263,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             seed=self.seed,
             use_neox_rotary_style=False,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_fused_rope_position_ids(self):
         paddle.set_device('xpu')
@@ -278,7 +271,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             [[7, 5, 4, 6, 3, 1, 2, 0], [3, 1, 4, 0, 7, 6, 5, 2]]
         )
         p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
+            ref_rotary_position_embedding,
             seed=self.seed,
             position_ids=position_ids,
             use_neox_rotary_style=False,
@@ -289,13 +282,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             position_ids=position_ids,
             use_neox_rotary_style=False,
         )
-        for i in range(len(p_fw)):
-            np.testing.assert_allclose(
-                p_fw[i].numpy(), f_fw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
-            np.testing.assert_allclose(
-                p_bw[i].numpy(), f_bw[i].numpy(), rtol=self.rtol, atol=self.atol
-            )
+        self.check_forward_backward(p_fw, f_fw, p_bw, f_bw)
 
     def test_static(self):
         paddle.set_device('xpu')
@@ -303,16 +290,22 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
             self.seed, True, self.dtype
         )
         p_fw, p_bw = self.get_forward_backward(
-            paddle_fused_rotary_position_embedding,
+            ref_rotary_position_embedding,
             seed=self.seed,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
 
         paddle.enable_static()
         with base.program_guard(base.Program(), base.Program()):
-            q = paddle.static.data(name="q", shape=self.shape, dtype=self.dtype)
-            k = paddle.static.data(name="k", shape=self.shape, dtype=self.dtype)
-            v = paddle.static.data(name="v", shape=self.shape, dtype=self.dtype)
+            q = paddle.static.data(
+                name="q", shape=self.shape_q, dtype=self.dtype
+            )
+            k = paddle.static.data(
+                name="k", shape=self.shape_k, dtype=self.dtype
+            )
+            v = paddle.static.data(
+                name="v", shape=self.shape_v, dtype=self.dtype
+            )
             sin = paddle.static.data(
                 name="sin",
                 shape=(1, tensor_q.shape[1], 1, tensor_q.shape[3]),
@@ -331,7 +324,7 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
                 sin,
                 cos,
                 position_ids=None,
-                use_neox_rotary_style=False,
+                use_neox_rotary_style=True,
             )
 
             exe = paddle.static.Executor()
@@ -348,11 +341,16 @@ class XPUTestFusedRotaryPositionEmbedding(unittest.TestCase):
                 feed=feed,
                 fetch_list=[out_q, out_k, out_v],
             )
-
             for i in range(3):
+                ref_fwd_np = p_fw[i].numpy()
+                fused_fwd_np = outs[i]
+                if self.dtype == "bfloat16":
+                    ref_fwd_np = convert_uint16_to_float(ref_fwd_np)
+                    fused_fwd_np = convert_uint16_to_float(fused_fwd_np)
                 np.testing.assert_allclose(
-                    p_fw[i].numpy(), outs[i], rtol=self.rtol, atol=self.atol
+                    ref_fwd_np, fused_fwd_np, rtol=self.rtol, atol=self.atol
                 )
+
         paddle.disable_static()
 
 
@@ -360,24 +358,38 @@ class XPUTestFusedRotaryPositionEmbeddingFp16_1(
     XPUTestFusedRotaryPositionEmbedding
 ):
     def init_case(self):
-        self.shape = [2, 8, 2, 16]
+        self.shape_q = [2, 8, 2, 16]
+        self.shape_k = [2, 8, 2, 16]
+        self.shape_v = [2, 8, 2, 16]
         self.dtype = "float16"
 
 
-class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
+class XPUTestFusedRotaryPositionEmbeddingBf16_1(
+    XPUTestFusedRotaryPositionEmbedding
+):
+    def init_case(self):
+        self.shape_q = [2, 8, 2, 16]
+        self.shape_k = [2, 8, 2, 16]
+        self.shape_v = [2, 8, 2, 16]
+        self.dtype = "bfloat16"
+
+
+class XPUTestFusedRotaryPositionEmbeddingBf16_2(unittest.TestCase):
     def setUp(self):
-        self.shape = [2, 8, 2, 16]
+        self.shape_q = [2, 2048, 16, 128]
+        self.shape_k = [2, 2048, 16, 128]
+        self.shape_v = [2, 2048, 16, 128]
 
     def test_api(self):
         paddle.disable_static()
-        q_bf16 = paddle.randn(self.shape, dtype="bfloat16")
-        k_bf16 = paddle.randn(self.shape, dtype="bfloat16")
-        v_bf16 = paddle.randn(self.shape, dtype="bfloat16")
-        sin_bf16 = paddle.randn(
-            [1, self.shape[1], 1, self.shape[3]], dtype="bfloat16"
+        q_bf16 = paddle.uniform(self.shape_q, "bfloat16", -1.0, 1.0)
+        k_bf16 = paddle.uniform(self.shape_k, "bfloat16", -1.0, 1.0)
+        v_bf16 = paddle.uniform(self.shape_v, "bfloat16", -1.0, 1.0)
+        sin_bf16 = paddle.uniform(
+            [1, self.shape_q[1], 1, self.shape_q[3]], "bfloat16", -1.0, 1.0
         )
-        cos_bf16 = paddle.randn(
-            [1, self.shape[1], 1, self.shape[3]], dtype="bfloat16"
+        cos_bf16 = paddle.uniform(
+            [1, self.shape_q[1], 1, self.shape_q[3]], "bfloat16", -1.0, 1.0
         )
         q_bf16.stop_gradient = False
         k_bf16.stop_gradient = False
@@ -388,9 +400,9 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
         sin_fp32 = paddle.to_tensor(sin_bf16, dtype="float32")
         cos_fp32 = paddle.to_tensor(cos_bf16, dtype="float32")
 
-        position_ids = paddle.arange(0, self.shape[1], dtype="int64")
+        position_ids = paddle.arange(0, self.shape_q[1], dtype="int64")
         position_ids = paddle.stack(
-            [position_ids for _ in range(self.shape[0])], axis=0
+            [position_ids for _ in range(self.shape_q[0])], axis=0
         )
         out_bf16 = fused_rotary_position_embedding(
             q_bf16,
@@ -399,26 +411,26 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             sin_bf16,
             cos_bf16,
             position_ids=position_ids,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
 
-        grad_out_q_bf16 = paddle.randn(self.shape, dtype="bfloat16")
-        grad_out_k_bf16 = paddle.randn(self.shape, dtype="bfloat16")
-        grad_out_v_bf16 = paddle.randn(self.shape, dtype="bfloat16")
+        grad_out_q_bf16 = paddle.uniform(self.shape_q, "bfloat16", -1.0, 1.0)
+        grad_out_k_bf16 = paddle.uniform(self.shape_k, "bfloat16", -1.0, 1.0)
+        grad_out_v_bf16 = paddle.uniform(self.shape_v, "bfloat16", -1.0, 1.0)
 
         paddle.autograd.backward(
             out_bf16, [grad_out_q_bf16, grad_out_k_bf16, grad_out_v_bf16], True
         )
         grad_bf16 = [q_bf16.grad, k_bf16.grad, v_bf16.grad]
 
-        out_fp32 = paddle_fused_rotary_position_embedding(
+        out_fp32 = ref_rotary_position_embedding(
             q_fp32,
             k_fp32,
             v_fp32,
             sin_fp32,
             cos_fp32,
             position_ids=position_ids,
-            use_neox_rotary_style=False,
+            use_neox_rotary_style=True,
         )
 
         grad_out_q_fp32 = paddle.to_tensor(grad_out_q_bf16, dtype="float32")
@@ -441,11 +453,14 @@ class XPUTestFusedRotaryPositionEmbeddingBf16_1(unittest.TestCase):
             )
 
 
-class XPUTestFusedRotaryPositionEmbeddingBf16_2(
-    XPUTestFusedRotaryPositionEmbeddingBf16_1
+class XPUTestFusedRotaryPositionEmbeddingGQA(
+    XPUTestFusedRotaryPositionEmbedding
 ):
-    def setUp(self):
-        self.shape = [2, 2048, 16, 128]
+    def init_case(self):
+        self.shape_q = [2, 8, 2, 16]
+        self.shape_k = [2, 8, 1, 16]
+        self.shape_v = [2, 8, 1, 16]
+        self.dtype = "float32"
 
 
 # too long for CI

@@ -30,7 +30,7 @@ static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
   auto embedding_size_vec = ctx.Attr<std::vector<int>>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
-  // GpuPSPS only supports float now
+  // GpuPS only supports float now
   std::vector<float *> all_values(slot_size);
   std::vector<int64_t> slot_lengths(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
@@ -78,9 +78,9 @@ static void PushGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
     } else {
       PADDLE_ENFORCE_EQ(batch_size,
                         cur_batch_size,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same, "
-                            "please cheack"));
+                            "please check"));
     }
     const float *grad_value = d_output[i]->data<float>();
     all_grad_values[i] = grad_value;

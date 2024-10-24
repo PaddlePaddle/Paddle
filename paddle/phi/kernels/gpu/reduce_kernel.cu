@@ -237,10 +237,10 @@ void ReduceKernel(const Context& dev_ctx,
                   int root,
                   int reduce_type,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
-      x.numel(),
-      0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
+  PADDLE_ENFORCE_GT(x.numel(),
+                    0,
+                    common::errors::InvalidArgument(
+                        "Tensor need be reduced must not empty."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -270,6 +270,11 @@ void ReduceKernel(const Context& dev_ctx,
     case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
+#if NCCL_VERSION_CODE >= 21000
+    case ReduceType::kRedAvg:
+      red_type = ncclAvg;
+      break;
+#endif
   }
   comm_ctx->Reduce(out, x, red_type, root, stream);
 #else

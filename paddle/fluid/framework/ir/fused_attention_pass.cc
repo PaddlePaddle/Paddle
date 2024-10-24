@@ -15,10 +15,7 @@
 #include "paddle/fluid/framework/ir/fused_attention_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 PDNode* FusedAttentionPattern::operator()(PDNode* x,
                                           bool pre_layer_norm,
@@ -836,7 +833,8 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   return grad_accumulation_sum_out_node;
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 void FusedAttentionsPass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
@@ -1687,8 +1685,6 @@ ir::Graph* FusedAttentionsPass::BackwardHandlerHelper(
   return graph;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fused_attention_pass, paddle::framework::ir::FusedAttentionsPass);

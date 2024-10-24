@@ -26,27 +26,23 @@
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
-#include "paddle/fluid/platform/denormal.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/platform/denormal.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
+#include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
+#include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
-COMMON_DECLARE_string(tracer_mkldnn_ops_on);
-COMMON_DECLARE_string(tracer_mkldnn_ops_off);
+COMMON_DECLARE_string(tracer_onednn_ops_on);
+COMMON_DECLARE_string(tracer_onednn_ops_off);
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace imperative {
 thread_local std::string Tracer::python_stack_ = "";
-
-thread_local bool Tracer::enable_program_desc_tracing_ = false;
-
-thread_local bool Tracer::has_grad_ = true;
 
 thread_local bool Tracer::use_layout_autotune_ = false;
 
@@ -54,6 +50,8 @@ static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 static thread_local std::shared_ptr<AmpAttrs> g_current_amp_attrs =
     std::make_shared<AmpAttrs>();
+
+static thread_local bool g_has_grad = true;
 
 TEST_API void Tracer::DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 TEST_API void Tracer::EnableLayoutAutoTune() {
@@ -113,11 +111,10 @@ void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 }
 
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
-    const std::shared_ptr<imperative::VarBase>& var,
-    const platform::Place& place) {
+    const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place) {
   // Note(zhiqiu): Follow the logic of TensorCopy to determine the place that we
   // need to add callback, see tensor_utils.cc:245
-  auto place_ = platform::is_gpu_place(place) ? place : var->Place();
+  auto place_ = phi::is_gpu_place(place) ? place : var->Place();
 
   auto tracer = imperative::GetCurrentTracer();
   auto gc = tracer->MutableGarbageCollectorIfNotExists(place_);
@@ -133,53 +130,53 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
 }
 
 paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
-    const platform::Place& place) {
+    const phi::Place& place) {
   // if not exists, create a new GarbageCollector at given place
   if (gcs_.count(place) == 0) {
     std::unique_ptr<framework::GarbageCollector> gc;
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc = std::make_unique<framework::DefaultStreamGarbageCollector>(place, 0);
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CUDA device since it's not compiled with CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
-    } else if (platform::is_cuda_pinned_place(place)) {
+    } else if (phi::is_cuda_pinned_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       gc = std::make_unique<framework::CUDAPinnedGarbageCollector>(place, 0);
 
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CUDAPinned device since it's not compiled with "
           "CUDA,"
           "Please recompile or reinstall Paddle with GPU support."));
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (phi::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
       gc = std::make_unique<framework::XPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
-    } else if (platform::is_cpu_place(place)) {
+    } else if (phi::is_cpu_place(place)) {
       gc = std::make_unique<framework::CPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
-    } else if (platform::is_ipu_place(place)) {
+    } else if (phi::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
       gc = std::make_unique<framework::IPUGarbageCollector>(place, 0);
       VLOG(10) << "Created GarbageCollector at " << place;
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (framework::IsFastEagerDeletionModeEnabled()) {
         gc =
@@ -192,14 +189,14 @@ paddle::framework::GarbageCollector* Tracer::MutableGarbageCollectorIfNotExists(
         VLOG(10) << "Created GarbageCollector at " << place;
       }
 #else
-      PADDLE_THROW(platform::errors::PermissionDenied(
+      PADDLE_THROW(common::errors::PermissionDenied(
           "Paddle can't use CustomDevice since it's not compiled with "
           "CustomDevice,"
           "Please recompile or reinstall Paddle with CustomDevice "
           "support."));
 #endif
     } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "Unsupported place for garbage collection"));
     }
     gcs_.emplace(place, std::move(gc));
@@ -213,7 +210,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameVarMap<VarType>& ins,
                      const NameVarMap<VarType>& outs,
                      framework::AttributeMap attrs,
-                     const platform::Place& place,
+                     const phi::Place& place,
                      bool trace_backward,
                      const std::map<std::string, std::string>& inplace_map,
                      paddle::framework::AttributeMap* passed_default_attrs_,
@@ -234,25 +231,25 @@ void Tracer::TraceOpImpl(const std::string& type,
                          const NameVarMap<VarType>& ins,
                          const NameVarMap<VarType>& outs,
                          framework::AttributeMap& attrs,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          bool trace_backward,
                          const std::map<std::string, std::string>& inplace_map,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
-  platform::RecordEvent op_type_record_event(
-      type, platform::TracerEventType::Operator, 1);
+  phi::RecordEvent op_type_record_event(
+      type, phi::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(4) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
     // FLAGS_use_mkldnn=1)
     // if ops_on list is not empty only ops from that list are enabled
-    if (!FLAGS_tracer_mkldnn_ops_on.empty()) {
-      auto is_on = FLAGS_tracer_mkldnn_ops_on.find(type) != std::string::npos;
+    if (!FLAGS_tracer_onednn_ops_on.empty()) {
+      auto is_on = FLAGS_tracer_onednn_ops_on.find(type) != std::string::npos;
       attrs["use_mkldnn"] = is_on;
     } else {
       // if ops_on list is empty all ops are enabled except types from off_list
-      auto is_off = FLAGS_tracer_mkldnn_ops_off.find(type) != std::string::npos;
+      auto is_off = FLAGS_tracer_onednn_ops_off.find(type) != std::string::npos;
       attrs["use_mkldnn"] = !is_off;
     }
   }
@@ -300,7 +297,7 @@ void Tracer::TraceOpImpl(const std::string& type,
     }
   }
 
-  if (platform::is_gpu_place(place)) {
+  if (phi::is_gpu_place(place)) {
     const auto& new_tmp = ins_amp == nullptr ? ins : *ins_amp;
     const auto& tracer = imperative::GetCurrentTracer();
     ins_amp = std::make_unique<NameVarMap<VarType>>(
@@ -311,25 +308,25 @@ void Tracer::TraceOpImpl(const std::string& type,
   const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
 
   try {
-    if (platform::is_gpu_place(place)) {
+    if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::SetDeviceId(place.device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
-    } else if (platform::is_xpu_place(place)) {
+    } else if (phi::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
       platform::SetXPUDeviceId(place.device);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
-    } else if (platform::is_custom_place(place)) {
+    } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       phi::DeviceManager::SetDevice(place);
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "PaddlePaddle should compile with CustomDevice if use "
           "CustomPlace."));
 #endif
@@ -337,7 +334,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 
     if (!use_default_attr_map) {
       PADDLE_ENFORCE_NOT_NULL(passed_default_attrs_,
-                              paddle::platform::errors::PermissionDenied(
+                              common::errors::PermissionDenied(
                                   "Detected default_attrs = nullptr."));
       VLOG(6) << "Use passed in default attrs";
       OpBase::Run(*op, new_ins, outs, attrs, (*passed_default_attrs_), place);
@@ -354,33 +351,28 @@ void Tracer::TraceOpImpl(const std::string& type,
     throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(
-        platform::errors::Fatal("Operator %s raises an %s exception.\n"
-                                "The exception content is\n:%s.",
-                                type,
-                                platform::demangle(typeid(ex).name()),
-                                ex.what()));
+        common::errors::Fatal("Operator %s raises an %s exception.\n"
+                              "The exception content is\n:%s.",
+                              type,
+                              common::demangle(typeid(ex).name()),
+                              ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with
     // low probability of occurrence, and we can't get its
     // exception content here.
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Operator %s raises an unknown exception.", type));
   }
 
-  if (enable_program_desc_tracing_) {
-    VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
-  }
-
   {
-    platform::RecordEvent node_creation_record_event(
-        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
+    phi::RecordEvent node_creation_record_event(
+        "grad_node_creation", phi::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(
           passed_default_attrs_,
           nullptr,
-          paddle::platform::errors::PermissionDenied(
+          common::errors::PermissionDenied(
               "We expect passed_default_attrs_ is nullptr while "
               "use_default_attr_map is true, however we got not null "
               "passed_default_attrs_. Please check your usage of trace_op. "));
@@ -398,7 +390,7 @@ template TEST_API void Tracer::TraceOp<VarBase>(
     const NameVarMap<VarBase>& ins,
     const NameVarMap<VarBase>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map,
     paddle::framework::AttributeMap* default_attrs,
@@ -409,7 +401,7 @@ template void Tracer::TraceOp<egr::EagerVariable>(
     const NameVarMap<egr::EagerVariable>& ins,
     const NameVarMap<egr::EagerVariable>& outs,
     framework::AttributeMap attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     bool trace_backward,
     const std::map<std::string, std::string>& inplace_map_,
     paddle::framework::AttributeMap* default_attrs,
@@ -425,7 +417,7 @@ void Tracer::TraceOp(const std::string& type,
                    outs,
                    std::move(attrs),
                    expected_place_,
-                   has_grad_,
+                   g_has_grad,
                    inplace_map);
 }
 
@@ -433,7 +425,7 @@ void Tracer::TraceOp(const std::string& type,
                      const NameTensorMap& ins,
                      const NameTensorMap& outs,
                      paddle::framework::AttributeMap& attrs,
-                     const paddle::platform::Place& place,
+                     const phi::Place& place,
                      paddle::framework::AttributeMap* default_attrs,
                      bool use_default_attr_map,
                      const std::map<std::string, std::string>& inplace_map) {
@@ -477,7 +469,7 @@ void Tracer::TraceOp(const std::string& type,
                                     default_attrs,
                                     use_default_attr_map);
 
-    auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     for (auto& iter : need_backup_inputs2outputs) {
       iter.first->ResetHolder(need_backup_inputs2holder[iter.first]);
       iter.first->set_strides(need_backup_inputs2strides[iter.first]);
@@ -551,12 +543,12 @@ void Tracer::TraceOp(const std::string& type,
   }
 }
 
-TEST_API void Tracer::SetExpectedPlace(platform::Place place) {
+TEST_API void Tracer::SetExpectedPlace(phi::Place place) {
   expected_place_ = place;
 }
-TEST_API bool Tracer::HasGrad() const { return has_grad_; }
+TEST_API bool Tracer::HasGrad() const { return g_has_grad; }
 
-TEST_API void Tracer::SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
+TEST_API void Tracer::SetHasGrad(bool has_grad) { g_has_grad = has_grad; }
 
 TEST_API void Tracer::SetUsePromote(bool use_promote) {
   VLOG(4) << "set use_promote to " << use_promote;
@@ -594,14 +586,6 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
   return false;
 }
 
-void Tracer::SetEnableProgramDescTracing(bool enabled) {
-  enable_program_desc_tracing_ = enabled;
-}
-
-bool Tracer::IsProgramDescTracingEnabled() const {
-  return enable_program_desc_tracing_;
-}
-
 void Tracer::SetAmpDtype(std::string amp_dtype) {
   VLOG(4) << "set amp_dtype to " << amp_dtype;
   g_current_amp_attrs->SetAmpDtype(amp_dtype);
@@ -628,7 +612,7 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
     framework::AttributeMap attrs) const {
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   framework::RuntimeContext ctx({}, {});
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(phi::CPUPlace());
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
@@ -653,15 +637,15 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
       dynamic_cast<framework::OperatorWithKernel*>(op.get());
   PADDLE_ENFORCE_NE(opbase_with_kernel,
                     nullptr,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "This op type:`%s` is not a OperatorWithKernel, only "
                         "OperatorWithKernel can get KernelSignature",
                         type));
   if (phi::KernelFactory::Instance().HasStructuredKernel(type)) {
     return phi::KernelSignature(op->Type().c_str());
   } else {
-    return phi::KernelSignature(std::move(
-        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx)));
+    return phi::KernelSignature(
+        opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx));
   }
 }
 

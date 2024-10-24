@@ -158,7 +158,7 @@ class BaseAPI:
             'Scalar(int)': 'const Scalar&',
             'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',
-            'Scalar(dobule)': 'const Scalar&',
+            'Scalar(double)': 'const Scalar&',
             'Scalar[]': 'const std::vector<phi::Scalar>&',
             'int': 'int',
             'int32_t': 'int32_t',
@@ -282,10 +282,7 @@ template <typename T>
         input_args = []
         for name in self.inputs['names']:
             name = name.split('@')[0]
-            if inplace_flag and name in self.inplace_map.values():
-                input_args.append(name)
-            else:
-                input_args.append(name)
+            input_args.append(name)
         return input_args
 
     def get_ad_func_args(self, inplace_flag=False):
@@ -422,7 +419,7 @@ def main():
         '--api_yaml_path',
         help='path to api yaml file',
         nargs='+',
-        default=['paddle/phi/api/yaml/ops.yaml'],
+        default=['paddle/phi/ops/yaml/ops.yaml'],
     )
 
     parser.add_argument(

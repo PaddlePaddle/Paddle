@@ -19,7 +19,10 @@
 #include "paddle/common/enforce.h"
 
 #define CHECK_OPRESULT_NULL_IMPL(func_name) \
-  IR_ENFORCE(impl_, "impl_ pointer is null when call OpResult::" #func_name)
+  PADDLE_ENFORCE_NOT_NULL(                  \
+      impl_,                                \
+      common::errors::InvalidArgument(      \
+          "impl_ pointer is null when call OpResult::" #func_name))
 #define IMPL_ static_cast<detail::OpResultImpl *>(impl_)
 
 namespace pir {
@@ -55,6 +58,14 @@ Attribute OpResult::attribute(const std::string &key) const {
 void OpResult::set_attribute(const std::string &key, Attribute value) {
   CHECK_OPRESULT_NULL_IMPL(set_attribute);
   return IMPL_->set_attribute(key, value);
+}
+
+void *OpResult::property(const std::string &key) const {
+  return impl_ ? IMPL_->property(key) : nullptr;
+}
+void OpResult::set_property(const std::string &key, const Property &value) {
+  CHECK_OPRESULT_NULL_IMPL(set_property);
+  return IMPL_->set_property(key, value);
 }
 
 OpResult::OpResult(detail::OpResultImpl *impl) : Value(impl) {}

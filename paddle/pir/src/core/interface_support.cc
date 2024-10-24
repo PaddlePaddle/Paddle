@@ -15,14 +15,9 @@
 #include "paddle/pir/include/core/interface_support.h"
 
 namespace pir {
-InterfaceValue::~InterfaceValue() {
-  if (model_) free(model_);
-}
-
 InterfaceValue::InterfaceValue(InterfaceValue&& val) noexcept {
   type_id_ = val.type_id_;
-  model_ = val.model_;
-  val.model_ = nullptr;
+  model_ = std::move(val.model_);
 }
 
 InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) noexcept {

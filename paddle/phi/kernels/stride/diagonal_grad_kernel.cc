@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/diagonal_kernel.h"
-#include "paddle/phi/kernels/fill_kernel.h"
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -29,11 +31,15 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
                                int axis1,
                                int axis2,
                                DenseTensor* in_grad) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
   dev_ctx.Alloc(in_grad, in_grad->dtype());
   in_grad->set_strides(DenseTensorMeta::calc_strides(in_grad->dims()));
   PD_VISIT_ALL_TYPES(in_grad->dtype(), "DiagonalGradStridedKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(
-                           dev_ctx, *in_grad, 0, in_grad);
+                       phi::StridedTensorFill<data_t>(*in_grad, 0, in_grad);
                      }));
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
@@ -43,8 +49,7 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
 
   DiagonalStridedKernel<Context>(dev_ctx, *in_grad, offset, axis1, axis2, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "DiagonalGradStridedKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            out_grad,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -54,5 +59,7 @@ void DiagonalGradStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    diagonal_grad, STRIDED, phi::DiagonalGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(diagonal_grad,
+                                         STRIDED,
+                                         phi::DiagonalGradStridedKernel) {}

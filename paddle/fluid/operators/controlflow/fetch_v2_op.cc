@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -48,14 +48,13 @@ static void DeepCopy(const phi::DenseTensor &src_item,
               : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
-          platform::CPUPlace());
-      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
+          phi::CPUPlace());
+      paddle::framework::TensorCopySync(out, phi::CPUPlace(), dst_item);
     } else {
-      paddle::framework::TensorCopySync(
-          src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
     }
 #else
-    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
 #endif
   } else {
     VLOG(4) << "No copy";
@@ -87,32 +86,28 @@ class FetchV2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto *fetch_var = ctx.InputVar("X");
     if (fetch_var == nullptr) {
-      return phi::KernelKey(framework::proto::VarType::FP32,
-                            platform::CPUPlace());
+      return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
     }
 
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
       if (!src_item.IsInitialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       if (!src_item.initialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     } else {
-      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
+      auto &src_item = fetch_var->Get<phi::TensorArray>();
       if (src_item.empty() || !src_item[0].IsInitialized()) {
-        return phi::KernelKey(framework::proto::VarType::FP32,
-                              platform::CPUPlace());
+        return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     }
 
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          platform::CPUPlace());
+                          phi::CPUPlace());
   }
 };
 
@@ -128,14 +123,14 @@ class FetchV2Kernel {
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"),
         true,
-        platform::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
+        common::errors::NotFound("Output(Out) of fetch_v2_op is not found."));
     auto *out_var = ctx.OutputVar("Out");
 
     int col = ctx.Attr<int>("col");
     PADDLE_ENFORCE_GE(
         col,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected the column index (the attribute 'col' of "
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
@@ -157,14 +152,15 @@ class FetchV2Kernel {
         return;
       }
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
-      bool check_place = platform::is_cpu_place(src_item.place()) ||
-                         platform::is_cuda_pinned_place(src_item.place()) ||
-                         platform::is_custom_place(src_item.place());
+      bool check_place =
+          src_item.place().GetType() == phi::AllocationType::CPU ||
+          src_item.place().GetType() == phi::AllocationType::GPUPINNED ||
+          src_item.place().GetType() == phi::AllocationType::CUSTOM;
       PADDLE_ENFORCE_EQ(
           check_place,
           true,
-          platform::errors::InvalidArgument("Tensor's place of input(X) must "
-                                            "be CPUPlace or CUDAPinnedPlace."));
+          common::errors::InvalidArgument("Tensor's place of input(X) must "
+                                          "be CPUPlace or CUDAPinnedPlace."));
       if (deepcopy) {
         DeepCopy(src_item, fetch_var_name, dst_item);
       } else {
@@ -178,16 +174,16 @@ class FetchV2Kernel {
       }
       fetch_list->at(col) = src_item;
     } else {
-      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
-      framework::LoDTensorArray tmp(src_item.size());
+      auto &src_item = fetch_var->Get<phi::TensorArray>();
+      phi::TensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
-      auto &dst_item =
-          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
+      auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
-        PADDLE_ENFORCE_EQ(platform::is_cpu_place(src_item[i].place()),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Tensor's place of input(X) must be CPUPlace."));
+        PADDLE_ENFORCE_EQ(
+            src_item[i].place().GetType() == phi::AllocationType::CPU,
+            true,
+            common::errors::InvalidArgument(
+                "Tensor's place of input(X) must be CPUPlace."));
         if (deepcopy) {
           DeepCopy(src_item[i], fetch_var_name, &dst_item[i]);
         } else {
@@ -224,7 +220,6 @@ It should not be configured by users directly.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     fetch_v2,
     ops::FetchV2Op,
@@ -244,7 +239,7 @@ PD_REGISTER_STRUCT_KERNEL(fetch_v2,
                           int64_t,
                           uint8_t,
                           bool,
-                          plat::float16,
-                          plat::bfloat16,
-                          plat::complex<float>,
-                          plat::complex<double>) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16,
+                          phi::dtype::complex<float>,
+                          phi::dtype::complex<double>) {}

@@ -25,11 +25,10 @@ TEST(TensorWrapper, Basic) {
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta);
-  auto* dt_ptr = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr[0] = 5.0f;
   dt_ptr[1] = 10.0f;
   et1.set_impl(dt);
@@ -43,22 +42,32 @@ TEST(TensorWrapper, Basic) {
   auto tw0 = egr::TensorWrapper(et1);
   auto recover_et1 = tw0.recover();
   if (VLOG_IS_ON(7)) {
-    CHECK_EQ(recover_et1.name(), std::string("et1@saved"));
+    PADDLE_ENFORCE_EQ(
+        recover_et1.name(),
+        std::string("et1@saved"),
+        common::errors::InvalidArgument(
+            "Recovered tensor name should be 'et1@saved', but received %s.",
+            recover_et1.name().c_str()));
   }
-  CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).first,
-           egr::EagerUtils::OutRankInfo(et1).first);
-  CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
-           egr::EagerUtils::OutRankInfo(et1).second);
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et1).first,
+                    egr::EagerUtils::OutRankInfo(et1).first,
+                    common::errors::InvalidArgument(
+                        "The OutRankInfo first element of the recovered tensor "
+                        "does not match the original tensor."));
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
+                    egr::EagerUtils::OutRankInfo(et1).second,
+                    common::errors::InvalidArgument(
+                        "The OutRankInfo second element of the recovered "
+                        "tensor does not match the original tensor."));
   VLOG(6) << "Test reconstruct";
   paddle::Tensor et2;
   phi::DenseTensorMeta meta2 =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt2 = std::make_shared<phi::DenseTensor>(
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace())
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace())
           .get(),
       meta2);
-  auto* dt_ptr2 = dt->mutable_data<float>(paddle::platform::CPUPlace());
+  auto* dt_ptr2 = dt->mutable_data<float>(phi::CPUPlace());
   dt_ptr2[0] = 6.0f;
   dt_ptr2[1] = 11.0f;
   et2.set_impl(dt2);
@@ -71,14 +80,29 @@ TEST(TensorWrapper, Basic) {
   auto tw1 = egr::TensorWrapper(et2, false);
   auto recover_et2 = tw1.recover();
   if (VLOG_IS_ON(7)) {
-    CHECK_EQ(recover_et2.name(), std::string("et2@Saved"));
+    PADDLE_ENFORCE_EQ(
+        recover_et2.name(),
+        std::string("et2@Saved"),
+        common::errors::InvalidArgument(
+            "Recovered tensor name should be 'et2@Saved', but received %s.",
+            recover_et2.name().c_str()));
   }
-  CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).first,
-           egr::EagerUtils::OutRankInfo(et2).first);
-  CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
-           egr::EagerUtils::OutRankInfo(et2).second);
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et2).first,
+                    egr::EagerUtils::OutRankInfo(et2).first,
+                    common::errors::InvalidArgument(
+                        "The OutRankInfo first element of the recovered tensor "
+                        "does not match the original tensor."));
+  PADDLE_ENFORCE_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
+                    egr::EagerUtils::OutRankInfo(et2).second,
+                    common::errors::InvalidArgument(
+                        "The OutRankInfo second element of the recovered "
+                        "tensor does not match the original tensor."));
   // Test Raw recover
   paddle::Tensor et3;
   auto tw2 = egr::TensorWrapper(et3);
-  CHECK(tw2.recover().initialized() == false);
+  PADDLE_ENFORCE_EQ(
+      tw2.recover().initialized(),
+      false,
+      common::errors::Fatal(
+          "Variable `tw2` should not be initialized after recover"));
 }

@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 paddle.enable_static()
@@ -41,122 +40,6 @@ class TestTensorArrayToTensorError(unittest.TestCase):
                 tensor_array_to_tensor(input=[input_data])
 
             self.assertRaises(TypeError, test_list_Variable)
-
-
-class TestLoDTensorArrayConcat(unittest.TestCase):
-    """Test case for concat mode of tensor_array_to_tensor."""
-
-    def setUp(self):
-        self.op_type = "tensor_array_to_tensor"
-        self.attrs = {"axis": 0}
-        self.outputs = ["Out"]
-
-    def test_get_set(self):
-        scope = core.Scope()
-        program = base.Program()
-        block = program.global_block()
-
-        input_arr = block.create_var(
-            name="tmp_lod_tensor_array",
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        )
-        input_arr.persistable = True
-        input_arr_var = scope.var('tmp_lod_tensor_array')
-        input_tensor_array = input_arr_var.get_lod_tensor_array()
-        self.assertEqual(0, len(input_tensor_array))
-
-        cpu = core.CPUPlace()
-        for i in range(10):
-            t = core.LoDTensor()
-            if i == 0:
-                t.set(np.array([[i], [i]], dtype='float32'), cpu)
-            else:
-                t.set(np.array([[i]], dtype='float32'), cpu)
-            input_tensor_array.append(t)
-
-        self.assertEqual(10, len(input_tensor_array))
-
-        random_grad = np.random.random_sample([11]).astype(np.float32)
-
-        y_out = block.create_var(name="Out")
-        y_out.persistable = True
-        y_out_index = block.create_var(name="OutIndex")
-        y_out_index.persistable = True
-
-        y_grad_arr = block.create_var(
-            name='Out@GRAD', dtype='float32', shape=[11]
-        )
-        y_grad_arr.persistable = True
-        y_grad = scope.var('Out@GRAD')
-        y_grad_tensor = y_grad.get_tensor()
-        y_grad_tensor.set(random_grad, cpu)
-
-        op = block.append_op(
-            type=self.op_type,
-            inputs={"X": input_arr},
-            outputs={"Out": y_out, "OutIndex": y_out_index},
-            attrs=self.attrs,
-        )
-
-        out_grad = block.create_var(
-            name="tmp_lod_tensor_array@GRAD",
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-        )
-        out_grad.persistable = True
-
-        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, set(), []
-        )
-        grad_op_desc = grad_op_desc_list[0]
-        new_op_desc = block.desc.append_op()
-        new_op_desc.copy_from(grad_op_desc)
-        for var_name in grad_op_desc.output_arg_names():
-            block.desc.var(var_name.encode("ascii"))
-
-        grad_op_desc.infer_var_type(block.desc)
-        grad_op_desc.infer_shape(block.desc)
-        for arg in grad_op_desc.output_arg_names():
-            grad_var = block.desc.find_var(arg.encode("ascii"))
-            grad_var.set_dtype(core.VarDesc.VarType.FP32)
-
-        fetch_list = []
-        fetch_list.append(block.var('Out'))
-        fetch_list.append(block.var('OutIndex'))
-
-        exe = base.Executor(base.CPUPlace())
-        out = exe.run(program, fetch_list=fetch_list, scope=scope)
-        # print ("index: ", np.array(out[1]))
-
-        # test forward
-        tensor_res = np.array(out[0])
-        tensor_gt = np.array(
-            [0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float32'
-        )
-
-        self.assertEqual(len(tensor_res), len(tensor_gt))
-
-        for i in range(len(tensor_res)):
-            self.assertEqual(tensor_res[i], tensor_gt[i])
-
-        # test backward
-        grad_tensor = scope.var('tmp_lod_tensor_array@GRAD')
-        grad_tensor_array = grad_tensor.get_lod_tensor_array()
-
-        self.assertEqual(10, len(grad_tensor_array))
-
-        for i in range(len(grad_tensor_array)):
-            if i == 0:
-                self.assertEqual(
-                    np.array(grad_tensor_array[i])[0], np.array(random_grad[i])
-                )
-                self.assertEqual(
-                    np.array(grad_tensor_array[i])[1],
-                    np.array(random_grad[i + 1]),
-                )
-            if i == 1:
-                self.assertEqual(
-                    np.array(grad_tensor_array[i]), np.array(random_grad[i + 1])
-                )
 
 
 class TestLoDTensorArrayStack(unittest.TestCase):
@@ -195,16 +78,17 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         self.output_vars = [output]
 
     def run_check(self, executor, scope):
-        executor.run(self.program, scope=scope)
+        result = executor.run(
+            self.program, fetch_list=self.output_vars, scope=scope
+        )
         for i, output in enumerate(self.outputs):
-            np.allclose(
-                np.array(scope.var(self.output_vars[i].name).get_tensor()),
-                output,
-                atol=0,
-            )
-        tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
-        for i, input_grad in enumerate(self.input_grads):
-            np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
+            np.allclose(result[i], output, atol=0)
+        if not paddle.framework.use_pir_api():
+            tensor_array_grad = scope.var(
+                self.array.name
+            ).get_lod_tensor_array()
+            for i, input_grad in enumerate(self.input_grads):
+                np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
 
     def test_cpu(self):
         scope = core.Scope()
@@ -257,7 +141,6 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         for s, d in zip(outs_static, outs_dynamic):
             np.testing.assert_array_equal(s, d.numpy())
 
-    @test_with_pir_api
     def test_while_loop_case(self):
         with base.dygraph.guard():
             zero = paddle.tensor.fill_constant(
@@ -329,7 +212,6 @@ class TestPirArrayOp(unittest.TestCase):
             fetched_out1, np.array([3, 3], dtype="int32")
         )
 
-    @test_with_pir_api
     def test_array_concat_backward(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -378,7 +260,6 @@ class TestPirArrayOp(unittest.TestCase):
             np.array([[0.125, 0.125, 0.125, 0.125]], dtype="float32"),
         )
 
-    @test_with_pir_api
     def test_array_stack_backward(self):
         paddle.enable_static()
         main_program = paddle.static.Program()

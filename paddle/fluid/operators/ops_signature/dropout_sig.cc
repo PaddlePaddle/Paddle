@@ -33,32 +33,7 @@ KernelSignature DropoutGradOpArgumentMapping(
                          {"X@GRAD"});
 }
 
-KernelSignature DropoutNdOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("dropout_nd",
-                         {"X", "Seed"},
-                         {"dropout_prob",
-                          "is_test",
-                          "dropout_implementation",
-                          "seed",
-                          "fix_seed",
-                          "axis"},
-                         {"Out", "Mask"});
-}
-
-KernelSignature DropoutNdGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "dropout_nd_grad",
-      {"Mask", "Out@GRAD"},
-      {"dropout_prob", "is_test", "dropout_implementation", "axis"},
-      {"X@GRAD"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(dropout, phi::DropoutOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(dropout_grad, phi::DropoutGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(dropout_nd, phi::DropoutNdOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(dropout_nd_grad,
-                           phi::DropoutNdGradOpArgumentMapping);

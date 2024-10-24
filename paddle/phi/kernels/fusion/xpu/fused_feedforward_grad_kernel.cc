@@ -231,7 +231,7 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
 
   std::tie(info_d_dropout1, info_dw2, a_1, b_1, a_2, b_2) = fc_info;
 
-  // if l3_total_size >= dim_feedforward * bsz_seq * sizeof(T), first transpos
+  // if l3_total_size >= dim_feedforward * bsz_seq * sizeof(T), first transpose
   if (l3_total_size >= dim_feedforward * bsz_seq * sizeof(T) &&
       info_dw2.trans_x) {
     r = xpu::transpose<XPUTypeT>(xpu_ctx,
@@ -246,10 +246,10 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
   }
 
   phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_1, b_1, c_1, info_d_dropout1, 1.0f, true);
+      xpu_ctx, a_1, b_1, c_1, info_d_dropout1, 1.0f, 0.f, true);
 
   phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_2, b_2, c_2, info_dw2, 1.0f, true);
+      xpu_ctx, a_2, b_2, c_2, info_dw2, 1.0f, 0.f, true);
 
   // dropout_grad1
   DropoutGrad(xpu_ctx,
@@ -277,7 +277,7 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
                        bsz_seq * dim_feedforward);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently only supports gelu or relu activation functions!"));
   }
 
@@ -335,10 +335,11 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
 
   std::tie(info_dx, info_dw1, a_1, b_1, a_2, b_2) = fc_info;
 
-  phi::MatMulXPUFunction<XPUTypeT>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, true);
+  phi::MatMulXPUFunction<XPUTypeT>(
+      xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f, 0.f, true);
 
   phi::MatMulXPUFunction<XPUTypeT>(
-      xpu_ctx, a_2, b_2, c_2, info_dw1, 1.0f, true);
+      xpu_ctx, a_2, b_2, c_2, info_dw1, 1.0f, 0.f, true);
 
   if (pre_layer_norm) {
     r = xpu::layer_norm_grad(xpu_ctx,
@@ -399,14 +400,14 @@ void FusedFeedForwardGradKernel(
     bool add_residual,
     int ring_id,
     DenseTensor* x_grad,
-    DenseTensor* ln1_scale_grad,
-    DenseTensor* ln1_bias_grad,
-    DenseTensor* ln2_scale_grad,
-    DenseTensor* ln2_bias_grad,
     DenseTensor* linear1_weight_grad,
     DenseTensor* linear1_bias_grad,
     DenseTensor* linear2_weight_grad,
-    DenseTensor* linear2_bias_grad) {
+    DenseTensor* linear2_bias_grad,
+    DenseTensor* ln1_scale_grad,
+    DenseTensor* ln1_bias_grad,
+    DenseTensor* ln2_scale_grad,
+    DenseTensor* ln2_bias_grad) {
   // inputs
   auto* d_out = &out_grad;
   auto* x_ptr = &x;
@@ -535,8 +536,8 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    phi::fusion::FusedFeedForwardGradKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(8).SetDataType(phi::DataType::FLOAT32);
 }

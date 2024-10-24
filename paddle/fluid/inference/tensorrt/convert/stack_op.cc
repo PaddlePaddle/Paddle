@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/stack_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * Stack converter from fluid to tensorRT.
@@ -76,12 +74,10 @@ class StackOpConverter : public OpConverter {
         engine_, Concatenation, inputs.data(), inputs.size());
     layer->setAxis(axis);
 
-    RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(stack, StackOpConverter);

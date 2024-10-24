@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../deprecated/legacy_test")
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
     max_pool3D_forward_naive,
@@ -25,17 +29,21 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional import avg_pool3d, max_pool3d
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestPool3D_API(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
-    @test_with_pir_api
     def check_avg_static_results(self, place):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -142,7 +150,6 @@ class TestPool3D_API(unittest.TestCase):
             result = avg_pool3d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-    @test_with_pir_api
     def check_max_static_results(self, place):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -356,6 +363,28 @@ class TestPool3D_API(unittest.TestCase):
             )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    def check_max_pool_return_mask_ceil(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([1, 2, 6, 33, 33]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            result, _ = max_pool3d(
+                input,
+                kernel_size=5,
+                stride=5,
+                padding=0,
+                ceil_mode=True,
+                return_mask=True,
+            )
+            result_np = pool3D_forward_naive(
+                input_np,
+                ksize=[5, 5, 5],
+                strides=[5, 5, 5],
+                paddings=[0, 0, 0],
+                ceil_mode=True,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+            self.assertEqual(result.shape, list(result_np.shape))
+
     def test_pool3d(self):
         paddle.enable_static()
         for place in self.places:
@@ -368,8 +397,8 @@ class TestPool3D_API(unittest.TestCase):
             self.check_avg_divisor(place)
             self.check_max_dygraph_ndhwc_results(place)
             self.check_max_dygraph_ceilmode_results(place)
+            self.check_max_pool_return_mask_ceil(place)
 
-    @test_with_pir_api
     def test_static_fp16_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -396,7 +425,6 @@ class TestPool3D_API(unittest.TestCase):
 
                 np.testing.assert_array_equal(res[0].shape, [1, 2, 1, 16, 16])
 
-    @test_with_pir_api
     def test_static_bf16_gpu(self):
         paddle.enable_static()
         if (

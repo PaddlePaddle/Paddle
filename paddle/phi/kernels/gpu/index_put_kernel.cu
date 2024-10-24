@@ -89,8 +89,9 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
   const int64_t numel = indices[0]->numel();
+  phi::Allocator::AllocationPtr holder;
   auto pd_indices =
-      funcs::GetDevicePointerArray<int64_t, Context>(dev_ctx, indices);
+      funcs::GetDevicePointerArray<int64_t, Context>(dev_ctx, indices, &holder);
 
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   IndexPutCudaKernel<T>
@@ -117,12 +118,13 @@ void IndexPutKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data type of tensor value must be same to the data type "
           "of tensor x."));
-  PADDLE_ENFORCE_EQ(indices.empty(),
-                    false,
-                    phi::errors::InvalidArgument("Indices cannot be empty."));
+  PADDLE_ENFORCE_EQ(
+      indices.empty(),
+      false,
+      common::errors::InvalidArgument("Indices cannot be empty."));
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);

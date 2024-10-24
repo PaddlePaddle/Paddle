@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base.backward import calc_gradient
+from paddle.base.backward import gradients
 
 paddle.enable_static()
 
@@ -32,8 +32,8 @@ class TestCalcGradient(unittest.TestCase):
             y = paddle.create_parameter(dtype="float32", shape=[10, 8])
             mul_out = paddle.matmul(x=x, y=y)
             mean_out = paddle.mean(mul_out)
-            a = calc_gradient(mean_out, mul_out)
-            b = calc_gradient(mean_out, x)
+            a = gradients(mean_out, mul_out)
+            b = gradients(mean_out, x)
         place = base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup)
@@ -59,7 +59,7 @@ class TestDoubleGrad(unittest.TestCase):
         place = base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup)
-        out = exe.run(main, fetch_list=[grad1.name, grad2.name])
+        out = exe.run(main, fetch_list=[grad1, grad2])
         self.assertEqual(6, out[0][0])
         self.assertEqual(6, out[1][0])
 
@@ -85,11 +85,8 @@ class TestDoubleGrad(unittest.TestCase):
         self.assertEqual(12, out[0])
 
 
-from paddle.pir_utils import test_with_pir_api
-
-
 class TestGradientWithPrune(unittest.TestCase):
-    @test_with_pir_api
+
     def test_prune(self):
         with paddle.base.scope_guard(paddle.static.Scope()):
             x = paddle.static.data(name='x', shape=[3], dtype='float32')

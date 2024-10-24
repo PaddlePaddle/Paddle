@@ -38,8 +38,3 @@ limitations under the License. */
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/ext/tensor_compat.h"
-
-// common headers
-#include "paddle/common/ddim.h"
-#include "paddle/common/exception.h"
-#include "paddle/common/layout.h"

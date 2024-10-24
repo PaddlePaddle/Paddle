@@ -22,14 +22,14 @@
 namespace paddle {
 namespace framework {
 TuplePopInstruction::TuplePopInstruction(size_t id,
-                                         const platform::Place& place,
+                                         const phi::Place& place,
                                          ::pir::Operation* op,
                                          ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
   tuple_pop_op_ = op->dyn_cast<pir::TuplePopOp>();
   VLOG(6) << "construct tuple_pop instruction for: " << tuple_pop_op_->name();
-  auto stack_value = tuple_pop_op_.container();
-  auto var_array = value_exe_info_->GetVarByValue(stack_value);
+  auto outlet_value = tuple_pop_op_.outlet();
+  auto var_array = value_exe_info_->GetVarByValue(outlet_value);
   stack_element_var_array_ = var_array->GetMutable<VariableRefArray>();
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
@@ -113,7 +113,7 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
       ShareVarData(src_var_array.at(i), copy_var);
     }
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
         "or SelectedRowsType or TensorArrayType"));
   }

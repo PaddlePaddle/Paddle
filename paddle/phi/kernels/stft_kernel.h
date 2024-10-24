@@ -24,4 +24,15 @@ void StftKernel(const Context& ctx,
                 bool onesided,
                 DenseTensor* out);
 
+template <typename T, typename Context>
+void StftGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& window,
+                    const DenseTensor& out_grad,
+                    int n_fft,
+                    int hop_length,
+                    bool normalized,
+                    bool onesided,
+                    DenseTensor* x_grad);
+
 }  // namespace phi

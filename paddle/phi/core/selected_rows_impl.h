@@ -80,7 +80,7 @@ class SelectedRowsImpl {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      PADDLE_THROW(phi::errors::NotFound(
+      PADDLE_THROW(common::errors::NotFound(
           "Input id (%lld) is not in current rows table.", key));
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
@@ -178,6 +178,10 @@ class SelectedRowsImpl {
   /// \brief Test whether the metadata is valid.
   /// \return Whether the metadata is valid.
   bool valid() const noexcept { return value_->valid(); }
+
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const { return value_->has_allocation(); }
 
   /// \brief Test whether the storage is allocated.
   /// return Whether the storage is allocated.

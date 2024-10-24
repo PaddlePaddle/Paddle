@@ -14,9 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/pool3d_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 inline void DealCeilMode(const nvinfer1::Dims &input_shape,
                          std::vector<int> ksize,
@@ -69,8 +67,6 @@ class Pool3dOpConverter : public OpConverter {
     VLOG(3) << "convert a pool3d op to tensorrt pool3d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
-    nvinfer1::Dims input_shape = input1->getDimensions();
-    int input_dims = input_shape.nbDims;
 
     bool global_pooling =
         PADDLE_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
@@ -100,137 +96,62 @@ class Pool3dOpConverter : public OpConverter {
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
         nvinfer1::ReduceOperation::kMAX;
-    plugin::Pool3DPlugin::Pool3DType plugin_pool_type =
-        plugin::Pool3DPlugin::Pool3DType::max;
     if (pool_type == "max") {
       nv_pool_type = nvinfer1::PoolingType::kMAX;
       reduce_operation = nvinfer1::ReduceOperation::kMAX;
-      plugin_pool_type = plugin::Pool3DPlugin::Pool3DType::max;
     } else if (pool_type == "avg") {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       reduce_operation = nvinfer1::ReduceOperation::kAVG;
-      plugin_pool_type = plugin::Pool3DPlugin::Pool3DType::avg;
     }
     nvinfer1::Dims3 nv_ksize(ksize[0], ksize[1], ksize[2]);
     nvinfer1::Dims3 nv_strides(strides[0], strides[1], strides[2]);
     nvinfer1::Dims3 nv_paddings(paddings[0], paddings[1], paddings[2]);
     nvinfer1::ILayer *layer = nullptr;
     if (op_desc.HasAttr("enable_int8")) {
-      CHECK(op_desc.HasAttr("Input_scale"));
+      PADDLE_ENFORCE_EQ(op_desc.HasAttr("Input_scale"),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected attribute 'Input_scale' to be "
+                            "present when 'enable_int8' is set."));
+
       float input_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
     }
 
-    if (engine_->with_dynamic_shape()) {
-      if (!adaptive && !global_pooling && !ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-        pool_layer->setStrideNd(nv_strides);
-        pool_layer->setPaddingNd(nv_paddings);
-        pool_layer->setAverageCountExcludesPadding(exclusive);
-        layer = pool_layer;
-      } else if (global_pooling) {
-        auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Reduce, *input1, reduce_operation, 28, true);
-        layer = reduce_layer;
-      } else {
-        plugin::Pool3DPluginDynamic *plugin =
-            new plugin::Pool3DPluginDynamic(ceil_mode,
-                                            pool_type,
-                                            adaptive,
-                                            ksize,
-                                            strides,
-                                            paddings,
-                                            global_pooling);
-        layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
-      }
-      auto output_name = op_desc.Output("Out")[0];
-      layer->setName(("pool3d (Output: " + output_name + ")").c_str());
-      layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(0));
-      if (test_mode) {
-        engine_->DeclareOutput(output_name);
-      }
-      return;
-    }
-
-    if (global_pooling == true) {
-      auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Reduce, *input1, reduce_operation, 14, true);
-      layer = reduce_layer;
-      auto output_name = op_desc.Output("Out")[0];
-      layer->setName(("pool3d (Output: " + output_name + ")").c_str());
-      layer->getOutput(0)->setName(output_name.c_str());
-      engine_->SetITensor(output_name, layer->getOutput(0));
-      if (test_mode) {
-        engine_->DeclareOutput(output_name);
-      }
-      return;
-    }
-
-    if (!adaptive) {
-      if (!ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
-        PADDLE_ENFORCE_NOT_NULL(
-            pool_layer,
-            platform::errors::Fatal(
-                "trt pool layer in converter could not be created."));
-        pool_layer->setStrideNd(nv_strides);
-        pool_layer->setPaddingNd(nv_paddings);
-        pool_layer->setAverageCountExcludesPadding(exclusive);
-        layer = pool_layer;
-      } else {
-        std::vector<int> input_shape_v;
-        for (int i = 0; i < input_dims; i++) {
-          input_shape_v.push_back(input_shape.d[i]);
-        }
-        plugin::Pool3DPlugin *plugin =
-            new plugin::Pool3DPlugin(ceil_mode,
-                                     plugin_pool_type,
-                                     adaptive,
-                                     ksize,
-                                     strides,
-                                     paddings,
-                                     input_shape_v);
-        auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
-        PADDLE_ENFORCE_NOT_NULL(
-            pool_layer,
-            platform::errors::Fatal(
-                "trt pool3d plugin layer in converter could not be created."));
-        layer = pool_layer;
-      }
-    } else {
-      // Average pooling needs to exclude the padding pixels from the average
-      // mean.
-      // It is not supported well by TRT, we use a plugin here.
-      std::vector<int> input_shape_v;
-      for (int i = 0; i < input_dims; i++) {
-        input_shape_v.push_back(input_shape.d[i]);
-      }
-      plugin::Pool3DPlugin *plugin = new plugin::Pool3DPlugin(ceil_mode,
-                                                              plugin_pool_type,
-                                                              adaptive,
-                                                              ksize,
-                                                              strides,
-                                                              paddings,
-                                                              input_shape_v);
-      auto *pool_layer = engine_->AddPluginV2Ext(&input1, 1, plugin);
-      PADDLE_ENFORCE_NOT_NULL(
-          pool_layer,
-          platform::errors::Fatal(
-              "trt pool3d plugin layer in converter could not be created."));
+    if (!adaptive && !global_pooling && !ceil_mode) {
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, PoolingNd, *input1, nv_pool_type, nv_ksize);
+      pool_layer->setStrideNd(nv_strides);
+      pool_layer->setPaddingNd(nv_paddings);
+      pool_layer->setAverageCountExcludesPadding(exclusive);
       layer = pool_layer;
+    } else if (global_pooling) {
+      auto *reduce_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *input1, reduce_operation, 28, true);
+      layer = reduce_layer;
+    } else {
+      plugin::Pool3DPluginDynamic *plugin =
+          new plugin::Pool3DPluginDynamic(ceil_mode,
+                                          pool_type,
+                                          adaptive,
+                                          ksize,
+                                          strides,
+                                          paddings,
+                                          global_pooling);
+      layer = engine_->AddDynamicPlugin(&input1, 1, plugin);
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pool3d", {output_name}, test_mode);
+    layer->setName(("pool3d (Output: " + output_name + ")").c_str());
+    layer->getOutput(0)->setName(output_name.c_str());
+    engine_->SetITensor(output_name, layer->getOutput(0));
+    if (test_mode) {
+      engine_->DeclareOutput(output_name);
+    }
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 USE_OP_ITSELF(pool3d);
 REGISTER_TRT_OP_CONVERTER(pool3d, Pool3dOpConverter);

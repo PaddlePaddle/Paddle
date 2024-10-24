@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 // TODO(zhouwei25): implement CPU backward kernel of " CSR @ DENSE -> DENSE"
 template <typename T, typename Context>
@@ -28,7 +27,7 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx UNUSED,
                               const DenseTensor& dout UNUSED,
                               SparseCsrTensor* dx UNUSED,
                               DenseTensor* dy UNUSED) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.matmul' now."));
 }
 
@@ -40,12 +39,11 @@ void MaskedMatmulCsrGradKernel(const Context& dev_ctx UNUSED,
                                const SparseCsrTensor& dout UNUSED,
                                DenseTensor* dx UNUSED,
                                DenseTensor* dy UNUSED) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.masked_matmul' now."));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(matmul_csr_dense_grad,
                    CPU,

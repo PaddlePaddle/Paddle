@@ -10,8 +10,7 @@ if(WITH_XPU)
   cc_library(
     prepared_operator
     SRCS prepared_operator.cc
-    DEPS xpu_op_list
-         proto_desc
+    DEPS proto_desc
          operator
          device_context
          lod_tensor
@@ -21,10 +20,8 @@ if(WITH_XPU)
          data_transform
          phi
          common
-         var_helper
-         profiler
-         place)
-else()
+         var_helper)
+elseif((WITH_GPU OR WITH_ROCM) AND NOT WIN32)
   cc_library(
     prepared_operator
     SRCS prepared_operator.cc
@@ -39,8 +36,22 @@ else()
          phi
          common
          var_helper
-         profiler
-         place)
+         process_group_nccl)
+else()
+  cc_library(
+    prepared_operator
+    SRCS prepared_operator.cc
+    DEPS proto_desc
+         operator
+         device_context
+         lod_tensor
+         selected_rows_utils
+         var_type_traits
+         op_kernel_type
+         data_transform
+         phi
+         common
+         var_helper)
 endif()
 cc_library(
   layer
@@ -52,7 +63,6 @@ cc_library(
        variable_helper
        op_registry
        var_helper)
-add_subdirectory(jit)
 if(WITH_GPU)
   cc_library(
     layout_autotune
@@ -73,15 +83,14 @@ cc_library(
   SRCS tracer.cc
   DEPS layer
        engine
-       program_desc_tracer
        amp
-       denormal
        garbage_collector
        var_helper
        layout_autotune
        ops_extra_info
        phi
-       common)
+       common
+       global_utils)
 cc_library(
   basic_engine
   SRCS basic_engine.cc
@@ -99,12 +108,11 @@ if(NOT WIN32)
     cc_library(
       imperative_all_reduce
       SRCS all_reduce.cc
-      DEPS collective_helper device_context selected_rows_utils tensor)
+      DEPS phi selected_rows_utils tensor)
     cc_library(
       nccl_context
       SRCS nccl_context.cc
-      DEPS collective_helper device_context imperative_all_reduce
-           var_type_traits)
+      DEPS phi imperative_all_reduce var_type_traits)
     if(WITH_NCCL)
       nv_library(
         reducer
@@ -122,7 +130,7 @@ if(NOT WIN32)
     cc_library(
       bkcl_context
       SRCS bkcl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
+      DEPS phi tensor var_type_traits)
     cc_library(
       reducer
       SRCS reducer.cc
@@ -132,7 +140,7 @@ if(NOT WIN32)
     cc_library(
       xccl_context
       SRCS xccl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
+      DEPS phi tensor var_type_traits)
     if(NOT
        (WITH_NCCL
         OR WITH_RCCL
@@ -151,18 +159,18 @@ if(NOT WIN32)
     cc_library(
       heter_ccl_context
       SRCS heter_ccl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
+      DEPS phi tensor var_type_traits)
   endif()
   cc_library(
     data_loader
     SRCS data_loader.cc
-    DEPS enforce common)
+    DEPS phi common)
 endif()
 if(WITH_GLOO)
   cc_library(
     imperative_gloo_context
     SRCS gloo_context.cc
-    DEPS collective_helper device_context tensor var_type_traits)
+    DEPS phi tensor var_type_traits)
   if(WIN32
      OR (NOT
          (WITH_NCCL

@@ -39,7 +39,7 @@ void CreateCUDATensor(framework::Scope* scope,
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   auto dims = common::make_ddim(shape);
   tensor->Resize(dims);
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
@@ -157,7 +157,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   LOG(INFO) << "engine_op " << engine_op.get();
 
   framework::Scope scope;
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
@@ -182,7 +182,7 @@ TEST(TensorRTEngineOp, manual) { DynamicShapeTest(false); }
 void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())

@@ -61,17 +61,17 @@ def get_data_transform_check_str(op_data_transform_map):
             if args is not None:
                 if_cond_args = []
                 for skip_arg in args:
-                    if_cond_args.append("var_name == \"" + skip_arg + "\"")
+                    if_cond_args.append(f'var_name == "{skip_arg}"')
                 skip_trans_str = OP_SKIP_TRANSFORM_CHECK_TEMPLATE.format(
                     skip_transform_check=' || '.join(if_cond_args)
                 )
         if "support_trans_dtype" in op_data_transform_map:
             args = op_data_transform_map["support_trans_dtype"]
-            # TODO:(chenxi67) comlete SUPPORT logic
+            # TODO:(chenxi67) complete SUPPORT logic
             if args is not None:
                 if_cond_args = []
                 for support_arg in args:
-                    if_cond_args.append("var_name == \"" + support_arg + "\"")
+                    if_cond_args.append(f'var_name == "{support_arg}"')
             if args is not None:
                 support_trans_str = OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE.format(
                     support_transform_check=' || '.join(if_cond_args)

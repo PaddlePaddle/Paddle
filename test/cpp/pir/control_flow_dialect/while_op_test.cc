@@ -184,9 +184,9 @@ TEST(while_op_test, network_with_backward) {
 
   LOG(INFO) << program;
 
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
 #ifdef PADDLE_WITH_CUDA
-  place = paddle::platform::CUDAPlace(0);
+  place = phi::GPUPlace(0);
 #endif
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program, place);
   paddle::framework::Scope scope;

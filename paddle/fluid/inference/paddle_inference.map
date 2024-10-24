@@ -20,7 +20,6 @@
 			*paddle::Tensor*;
 			*paddle::internal*;
 			*paddle::get_version*;
-			*paddle::LiteNNAdapterConfig*;
 			*paddle::XpuConfig*;
 			*paddle::AnalysisConfig::*;
 			*paddle::PaddlePredictor::*;
@@ -72,7 +71,7 @@
 			/* *paddle::framework*; */
 			*paddle::framework::InitDevices*;
 			*paddle::framework::InitMemoryMethod*;
-                        
+
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
 			*paddle::framework::proto*;
@@ -82,6 +81,8 @@
 		*Pass*;
 		*profile*;
 		*phi*;
+		*pir*;
+		*drr*;
 		PD_*;
 		*cinn*;
 	local:

@@ -27,7 +27,9 @@ if((NOT DEFINED DIRENT_NAME) OR (NOT DEFINED DIRENT_URL))
   set(DIRENT_URL
       "${GIT_URL}/tronkko/dirent/archive/refs/tags/1.23.2.tar.gz"
       CACHE STRING "" FORCE)
-  set(DIRENT_CACHE_FILENAME "1.23.2.tar.gz")
+  set(DIRENT_CACHE_FILENAME
+      "1.23.2.tar.gz"
+      CACHE STRING "" FORCE)
 endif()
 
 message(STATUS "DIRENT_NAME: ${DIRENT_NAME}, DIRENT_URL: ${DIRENT_URL}")

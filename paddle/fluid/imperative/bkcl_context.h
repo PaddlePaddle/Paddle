@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_resource_pool.h"
 #include "xpu/bkcl.h"
 
 namespace paddle {
@@ -28,7 +28,7 @@ namespace imperative {
 class BKCLParallelContext : public ParallelContext {
  public:
   explicit BKCLParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
+                               const phi::Place& place)
       : ParallelContext(strategy, place) {}
 
   ~BKCLParallelContext() override = default;
@@ -46,7 +46,7 @@ class BKCLParallelContext : public ParallelContext {
 
   void Broadcast(framework::Variable* src, int ring_id) override;
 
-  paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
+  phi::DeviceContext* GetDeviceContext(int ring_id) override;
 
   void WaitCompute(int ring_id) override;
 

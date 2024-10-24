@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 
@@ -61,7 +62,9 @@ class TestSparseSum(unittest.TestCase):
                     mask = paddle.randint(0, 2, x_shape)
             # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
             # or the backward checks may fail.
-            origin_x = (paddle.rand(x_shape, dtype='float64') + 1) * mask
+            origin_x = (
+                paddle.rand(x_shape, dtype='float64') + 1
+            ) * mask.astype('float64')
             dense_x = origin_x.detach()
             dense_x.stop_gradient = False
             dense_out = paddle.sum(dense_x, dims, keepdim=keepdim, dtype=dtype)
@@ -75,7 +78,7 @@ class TestSparseSum(unittest.TestCase):
             sp_out.backward()
             np.testing.assert_allclose(
                 sp_x.grad.to_dense().numpy(),
-                (dense_x.grad * mask).numpy(),
+                (dense_x.grad * mask.astype(dense_x.grad.dtype)).numpy(),
                 rtol=1e-05,
             )
 
@@ -122,7 +125,9 @@ class TestSparseSumStatic(unittest.TestCase):
             mask = paddle.randint(0, 2, x_shape)
             while paddle.sum(mask) == 0:
                 mask = paddle.randint(0, 2, x_shape)
-            origin_data = (paddle.rand(x_shape, dtype='float32') + 1) * mask
+            origin_data = (
+                paddle.rand(x_shape, dtype='float32') + 1
+            ) * mask.astype('float32')
             sparse_data = origin_data.detach().to_sparse_coo(
                 sparse_dim=len(x_shape)
             )
@@ -172,6 +177,7 @@ class TestSparseSumStatic(unittest.TestCase):
                 )
             paddle.disable_static()
 
+    @compare_legacy_with_pt
     def test_sum(self):
         # 1d
         self.check_result_coo([5], None, False)

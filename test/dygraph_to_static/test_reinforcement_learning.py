@@ -16,12 +16,11 @@ import itertools
 import math
 import unittest
 
-import gym
+import gymnasium as gym
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
@@ -190,9 +189,7 @@ def train(args, to_static: bool):
             running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
             if i_episode % args.log_interval == 0:
                 print(
-                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
-                        i_episode, ep_reward, running_reward, float(loss)
-                    )
+                    f'Episode {i_episode}\tLast reward: {ep_reward:.2f}\tAverage reward: {running_reward:.2f}\t loss_probs: {float(loss)}'
                 )
 
             if i_episode > args.train_step:
@@ -205,7 +202,6 @@ class TestDeclarative(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
-    @test_legacy_and_pt_and_pir
     def test_train(self):
         st_out = train(self.args, to_static=True)
         dy_out = train(self.args, to_static=False)

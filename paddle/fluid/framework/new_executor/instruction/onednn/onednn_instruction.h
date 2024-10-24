@@ -28,7 +28,7 @@ class ValueExecutionInfo;
 class OneDNNPhiKernelInstruction : public InstructionBase {
  public:
   OneDNNPhiKernelInstruction(size_t id,
-                             const platform::Place& place,
+                             const phi::Place& place,
                              ::pir::Operation* op,
                              const ValueExecutionInfo* value_exec_info);
 
@@ -75,6 +75,8 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
   std::map<std::string, phi::Attribute> ctx_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};
   std::map<std::string, std::vector<std::string>> outputs_{};
+  std::string kernel_name_;
+  phi::KernelKey kernel_key_;
 };
 }  // namespace framework
 }  // namespace paddle

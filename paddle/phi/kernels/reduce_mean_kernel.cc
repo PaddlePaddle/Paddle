@@ -67,7 +67,7 @@ PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
 #if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
     mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {
-  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceMeanCheckIfOneDNNSupport;
 }
 #endif
 

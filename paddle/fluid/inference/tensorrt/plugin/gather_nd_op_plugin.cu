@@ -22,8 +22,8 @@
 
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/gather_nd_op_plugin.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace inference {
@@ -48,13 +48,17 @@ __global__ void GatherNdCUDAKernel(const T* input,
     for (int32_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
       PADDLE_ENFORCE(
-          index_value >= 0 && index_value < input_dims[j],
+          index_value >= -input_dims[j] && index_value < input_dims[j],
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
-          "be less than [%d] and greater or equal to 0, but received [%d]",
+          "be less than [%d] and greater or equal to [%d], but received [%d]",
           input_dims[j],
+          -input_dims[j],
           index_value);
+      if (index_value < 0) {
+        index_value += input_dims[j];
+      }
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -81,13 +85,13 @@ nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The gather_nd plugin should have 2 input, but got %d.", nb_inputs));
-  PADDLE_ENFORCE_EQ(output_index,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "When GetOutputDimensions in gather_nd "
-                        "plugin, the output_index should be 0."));
+  PADDLE_ENFORCE_EQ(
+      output_index,
+      0,
+      common::errors::InvalidArgument("When GetOutputDimensions in gather_nd "
+                                      "plugin, the output_index should be 0."));
 
   nvinfer1::DimsExprs x_dims = inputs[0];
   nvinfer1::DimsExprs index_dims = inputs[1];
@@ -114,16 +118,16 @@ bool GatherNdPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of gather_nd plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];

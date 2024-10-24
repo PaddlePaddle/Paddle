@@ -20,13 +20,10 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_without_stream.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
-
-#ifdef PADDLE_WITH_GLOO
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
 
 namespace paddle {
 namespace distributed {
@@ -58,33 +55,13 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
     ~GlooStore() = default;
 
-    std::vector<char> get(const std::string& key) override {
-      VLOG(3) << "GlooStore::get";
-      auto value = _store->get(key);
-      return std::vector<char>(value.begin(), value.end());
-    }
+    std::vector<char> get(const std::string& key) override;
+    void wait(const std::vector<std::string>& keys) override;
 
-    void wait(const std::vector<std::string>& keys) override {
-      VLOG(3) << "GlooStore::wait";
-      for (auto& key : keys) {
-        _store->wait(key);
-      }
-    }
-
-    void set(const std::string& key, const std::vector<char>& value) override {
-      VLOG(3) << "GlooStore::set";
-      std::vector<uint8_t> tmp(value.begin(), value.end());
-      _store->set(key, tmp);
-    }
+    void set(const std::string& key, const std::vector<char>& value) override;
 
     void wait(const std::vector<std::string>& keys,
-              const std::chrono::milliseconds& timeout) override {
-      VLOG(3) << "GlooStore::wait";
-      for (auto& key : keys) {
-        _store->wait(key);
-      }
-      // wait(keys);
-    }
+              const std::chrono::milliseconds& timeout) override;
 
    protected:
     std::shared_ptr<phi::distributed::Store> _store;
@@ -214,7 +191,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
   std::string GetBackendName() const override { return "GLOO"; }
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override {
-    return platform::DeviceContextPool::Instance().Get(place);
+    return phi::DeviceContextPool::Instance().Get(place);
   }
 
   phi::DeviceContext* GetDeviceContext(const Place& place,
@@ -222,7 +199,7 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
     PADDLE_ENFORCE_NE(
         use_calc_stream,
         true,
-        platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+        common::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
     return GetDeviceContext(place);
   }
 

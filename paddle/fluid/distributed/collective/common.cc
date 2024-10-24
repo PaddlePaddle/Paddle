@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors) {
   std::vector<Place> places;
@@ -45,7 +44,7 @@ std::string GetKeyFromPlace(const Place& place) { return place.DebugString(); }
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors) {
   return std::all_of(
       tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
-        return platform::is_gpu_place(t.place());
+        return phi::is_gpu_place(t.place());
       });
 }
 
@@ -53,17 +52,16 @@ bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
                                const std::string& dev_type) {
   return std::all_of(
       tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
-        return platform::places_are_same_class(
-            t.place(), paddle::platform::CustomPlace(dev_type));
+        return phi::places_are_same_class(t.place(),
+                                          phi::CustomPlace(dev_type));
       });
 }
 
 bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors) {
   return std::all_of(
       tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
-        return platform::is_xpu_place(t.place());
+        return phi::is_xpu_place(t.place());
       });
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace paddle::distributed

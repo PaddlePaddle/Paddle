@@ -28,7 +28,7 @@
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/timer.h"
 
 namespace paddle {
 namespace distributed {
@@ -357,6 +357,14 @@ class PSClient {
       const uint16_t &dim_id UNUSED) {
     VLOG(0) << "Did not implement";
     return nullptr;
+  }
+
+  virtual ::std::future<int32_t> SetDayId(size_t table_id, int day_id) {
+    VLOG(0) << "SetDayId Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
   }
 
  protected:

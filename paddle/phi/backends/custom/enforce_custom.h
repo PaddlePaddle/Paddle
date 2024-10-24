@@ -45,7 +45,7 @@ inline std::string build_custom_device_error_msg(C_Status stat) {
     constexpr auto __success_type__ = ::phi::CustomDeviceStatusType< \
         __CUSTOM_DEVICE_STATUS_TYPE__>::kSuccess;                    \
     if (UNLIKELY(__cond__ != __success_type__)) {                    \
-      auto __summary__ = ::phi::errors::External(                    \
+      auto __summary__ = ::common::errors::External(                 \
           ::phi::build_custom_device_error_msg(__cond__));           \
       __THROW_ERROR_INTERNAL__(__summary__);                         \
     }                                                                \

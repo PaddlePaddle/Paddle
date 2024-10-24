@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
-from typing import Iterable, Union
+from typing import TYPE_CHECKING
 
-import numpy as np
-
-import paddle
 from paddle.nn import Linear
 from paddle.quantization.base_quanter import BaseQuanter
 from paddle.quantization.factory import quanter
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    import numpy as np
+
+    import paddle
 
 linear_quant_axis = 1
 
@@ -33,16 +39,16 @@ class CustomizedQuanterLayer(BaseQuanter):
         self._bit_length = bit_length
         self._kwargs1 = kwargs1
 
-    def scales(self) -> Union[paddle.Tensor, np.ndarray]:
+    def scales(self) -> paddle.Tensor | np.ndarray:
         return None
 
     def bit_length(self):
         return self._bit_length
 
-    def quant_axis(self) -> Union[int, Iterable]:
+    def quant_axis(self) -> int | Iterable:
         return linear_quant_axis if isinstance(self._layer, Linear) else None
 
-    def zero_points(self) -> Union[paddle.Tensor, np.ndarray]:
+    def zero_points(self) -> paddle.Tensor | np.ndarray:
         return None
 
     def forward(self, input):

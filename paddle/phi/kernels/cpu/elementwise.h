@@ -126,7 +126,7 @@ struct SameDimsDivideFunctor<
                   const DenseTensor& x UNUSED,
                   const DenseTensor& y UNUSED,
                   DenseTensor* z UNUSED) {
-    phi::errors::InvalidArgument(
+    common::errors::InvalidArgument(
         "If use SameDimsDivideFunctor, template args(T) must be floating "
         "point. ");
   }

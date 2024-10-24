@@ -99,7 +99,6 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
-    VLOG(8) << "Get BackendSet from tensor";
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
     if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {

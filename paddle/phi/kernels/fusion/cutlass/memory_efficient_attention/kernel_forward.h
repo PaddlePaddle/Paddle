@@ -544,43 +544,43 @@ struct AttentionKernel {
     CHECK_ALIGNED_PTR(p.value_ptr, kAlignmentV);
     if (kSupportsBias) {
       CHECK_ALIGNED_PTR(p.attn_bias_ptr, kAlignmentQ);
-      PADDLE_ENFORCE_EQ(
-          p.bias_strideB % kAlignmentQ,
-          0,
-          phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
-      PADDLE_ENFORCE_EQ(
-          p.bias_strideH % kAlignmentQ,
-          0,
-          phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
-      PADDLE_ENFORCE_EQ(
-          p.bias_strideM % kAlignmentQ,
-          0,
-          phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+      PADDLE_ENFORCE_EQ(p.bias_strideB % kAlignmentQ,
+                        0,
+                        common::errors::InvalidArgument(
+                            "attn_bias is not correctly aligned"));
+      PADDLE_ENFORCE_EQ(p.bias_strideH % kAlignmentQ,
+                        0,
+                        common::errors::InvalidArgument(
+                            "attn_bias is not correctly aligned"));
+      PADDLE_ENFORCE_EQ(p.bias_strideM % kAlignmentQ,
+                        0,
+                        common::errors::InvalidArgument(
+                            "attn_bias is not correctly aligned"));
     }
     PADDLE_ENFORCE_EQ(
         p.q_strideM % kAlignmentQ,
         0,
-        phi::errors::InvalidArgument("query is not correctly aligned"));
+        common::errors::InvalidArgument("query is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.k_strideM % kAlignmentK,
         0,
-        phi::errors::InvalidArgument("key is not correctly aligned"));
+        common::errors::InvalidArgument("key is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.v_strideM % kAlignmentV,
         0,
-        phi::errors::InvalidArgument("value is not correctly aligned"));
+        common::errors::InvalidArgument("value is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.q_strideH % kAlignmentQ,
         0,
-        phi::errors::InvalidArgument("query is not correctly aligned"));
+        common::errors::InvalidArgument("query is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.k_strideH % kAlignmentK,
         0,
-        phi::errors::InvalidArgument("key is not correctly aligned"));
+        common::errors::InvalidArgument("key is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.v_strideH % kAlignmentV,
         0,
-        phi::errors::InvalidArgument("value is not correctly aligned"));
+        common::errors::InvalidArgument("value is not correctly aligned"));
     return true;
   }
 

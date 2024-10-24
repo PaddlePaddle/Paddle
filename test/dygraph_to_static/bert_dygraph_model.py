@@ -405,18 +405,20 @@ class PretrainModelLayer(Layer):
         else:
             fc_out = self.out_fc(mask_trans_feat)
 
-        mask_lm_loss = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=fc_out, label=mask_label
+        mask_lm_loss = paddle.nn.functional.cross_entropy(
+            input=fc_out,
+            label=mask_label,
+            reduction="none",
         )
         mean_mask_lm_loss = paddle.mean(mask_lm_loss)
 
         next_sent_fc_out = self.next_sent_fc(next_sent_feat)
 
-        (
-            next_sent_loss,
-            next_sent_softmax,
-        ) = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=next_sent_fc_out, label=labels, return_softmax=True
+        next_sent_softmax = paddle.nn.functional.softmax(next_sent_fc_out)
+        next_sent_loss = paddle.nn.functional.cross_entropy(
+            input=next_sent_fc_out,
+            label=labels,
+            reduction="none",
         )
 
         next_sent_acc = paddle.static.accuracy(

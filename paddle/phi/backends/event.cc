@@ -22,8 +22,7 @@
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/stream.h"
 
-namespace phi {
-namespace event {
+namespace phi::event {
 
 std::list<Event*> g_events;
 std::mutex g_events_mutex;
@@ -84,7 +83,7 @@ void Event::Destroy() {
 
 void Event::Record(const stream::Stream* stream) {
   if (device_) {
-    is_recorded_ = true;  // synchronize the event during detroy
+    is_recorded_ = true;  // synchronize the event during destroy
     stream->RecordEvent(this);
   }
 }
@@ -110,5 +109,4 @@ void Event::Synchronize() const {
 
 const Place& Event::GetPlace() const { return place_; }
 
-}  // namespace event
-}  // namespace phi
+}  // namespace phi::event

@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/sparse/cpu/conv.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 // rulebook:
 //[
@@ -28,7 +27,7 @@ namespace sparse {
 //  [in_i],
 //  [out_i],
 //]
-// x_grad = out_grad * transpose(kenrel)
+// x_grad = out_grad * transpose(kernel)
 // kernel_grad = transpose(x) * out_grad
 template <typename T, typename IntT = int>
 void Conv3dCooGradCPUKernel(const CPUContext& dev_ctx,
@@ -215,8 +214,7 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                                           kernel_grad);
       }));
 }
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(conv3d_coo_grad,
                    CPU,

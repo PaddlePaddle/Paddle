@@ -83,9 +83,9 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
         A1 = u.matmul(paddle.nn.functional.diag_embed(s)).matmul(
             self.transpose(v)
         )
-        ones_m1 = paddle.ones(batches + (rows, 1), dtype=a.dtype)
+        ones_m1 = paddle.ones((*batches, rows, 1), dtype=a.dtype)
         c = a.sum(axis=-2) / rows
-        c = c.reshape(batches + (1, columns))
+        c = c.reshape((*batches, 1, columns))
         A2 = a - ones_m1.matmul(c)
         np.testing.assert_allclose(A1.numpy(), A2.numpy(), atol=1e-5)
 

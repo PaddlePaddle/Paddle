@@ -53,6 +53,14 @@ class TestHybridPipeParallel(TestMultipleAccelerators):
             },
         )
 
+    def test_hybrid_parallel_pp_return_micro_batch_loss(self):
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_pp_return_micro_batch_loss.py',
+            need_envs={
+                "PADDLE_P2P_SYNC_SEND": "1",
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

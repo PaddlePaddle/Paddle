@@ -120,7 +120,12 @@ class TestCallbacks(unittest.TestCase):
                 save_dir=self.save_dir,
                 epochs=10,
                 verbose=0,
-                callbacks=[callbacks_0, callbacks_1, callbacks_2, callbacks_3],
+                callbacks=[
+                    callbacks_0,
+                    callbacks_1,
+                    callbacks_2,
+                    callbacks_3,
+                ],
             )
             # Test for no val_loader
             model.fit(

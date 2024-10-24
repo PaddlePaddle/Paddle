@@ -49,14 +49,6 @@ class LLVMIRVisitor : public ir::IRVisitorRequireReImpl<llvm::Value *> {
 #undef __m
 };
 
-/**
- * Tell whether a variable called \p \var_name will lowered to a pointer type in
- * LLVM.
- * @param var_name name of the variable.
- * @return a boolean.
- */
-bool LLVM_WillVarLowerAsPointer(const std::string &var_name);
-
 class SymbolTable {
  public:
   SymbolTable() = default;
@@ -72,17 +64,26 @@ class SymbolTable {
   }
 
   void Insert(const std::string &id, llvm::Value *value) {
-    CHECK(!scopes_.empty());
+    PADDLE_ENFORCE_EQ(
+        !scopes_.empty(),
+        true,
+        ::common::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.back().emplace(id, value);
   }
 
   void Erase(const std::string &id) {
-    CHECK(!scopes_.empty());
+    PADDLE_ENFORCE_EQ(
+        !scopes_.empty(),
+        true,
+        ::common::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.back().erase(id);
   }
 
   void PopScope() {
-    CHECK(!scopes_.empty());
+    PADDLE_ENFORCE_EQ(
+        !scopes_.empty(),
+        true,
+        ::common::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.pop_back();
   }
 

@@ -23,7 +23,7 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/utils/dot_lang.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -32,7 +32,7 @@ namespace {
 void DFSSortUtil(const GraphNode *node, std::vector<GraphNode *> *order) {}
 
 std::vector<GraphNode *> DFSSort(const std::vector<GraphNode *> &nodes) {
-  LOG(FATAL) << "not implemented";
+  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
   return {};
 }
 
@@ -98,7 +98,10 @@ Graph::topological_order() const {
     queue.pop_front();
 
     for (auto &edge : top_node->outlinks()) {
-      CHECK_EQ(edge->source(), top_node);
+      PADDLE_ENFORCE_EQ(edge->source(),
+                        top_node,
+                        ::common::errors::InvalidArgument(
+                            "The edge's source is not equal to the top node."));
       edge_order.push_back(edge.get());
       auto *sink = edge->sink();
       if ((--indegree[sink->id()]) == 0) {
@@ -107,9 +110,10 @@ Graph::topological_order() const {
     }
   }
 
-  CHECK_EQ(node_order.size(), nodes().size())
-      << "circle detected in the schedule graph:\n\n"
-      << Visualize();
+  PADDLE_ENFORCE_EQ(node_order.size(),
+                    nodes().size(),
+                    ::common::errors::InvalidArgument(
+                        "The node_order size is not equal to the nodes size."));
 
   return std::make_tuple(node_order, edge_order);
 }
@@ -175,9 +179,18 @@ void Graph::ClearUnlinkedNodes(
     absl::flat_hash_map<std::string, std::vector<int>> *shape_dict,
     absl::flat_hash_map<std::string, Type> *type_dict,
     absl::flat_hash_map<std::string, std::string> *layout_dict) {
-  CHECK(shape_dict);
-  CHECK(type_dict);
-  CHECK(layout_dict);
+  PADDLE_ENFORCE_NOT_NULL(
+      shape_dict,
+      ::common::errors::InvalidArgument(
+          "The shpe_dict %s is null,please change", shape_dict));
+  PADDLE_ENFORCE_NOT_NULL(
+      type_dict,
+      ::common::errors::InvalidArgument(
+          "The type_dict %s is null,please change ", type_dict));
+  PADDLE_ENFORCE_NOT_NULL(
+      layout_dict,
+      ::common::errors::InvalidArgument(
+          "The layout_dict%s is null,please change", layout_dict));
   for (auto it = nodes_.begin(); it < nodes_.end(); ++it) {
     auto node = *it;
     if (node->inlinks().empty() && node->outlinks().empty()) {

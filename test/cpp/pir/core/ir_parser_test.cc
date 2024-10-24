@@ -17,10 +17,10 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/attribute_base.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -118,7 +118,6 @@ TestTask* ParserTest::GetTestTask() {
 bool ParserTest::ConsumeTestTask(TestTask* test_task, pir::IrContext* ctx) {
   std::string test_info = test_task->test_info;
   TestType test_type = test_task->test_type;
-  std::unique_ptr<pir::IrPrinter> printer;
   std::unique_ptr<pir::IrParser> parser;
   std::stringstream is(test_info);
   parser.reset(new pir::IrParser(ctx, is));

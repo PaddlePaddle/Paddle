@@ -17,10 +17,10 @@
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 namespace egr {
 
@@ -49,7 +49,7 @@ static void ConstructFwdAndBwdMap(
   PADDLE_ENFORCE_LE(
       grad_outputs_names.size(),
       inputs_names.size(),
-      paddle::platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Grad outputs num should be less equal than forward inputs num."));
   for (size_t i = 0; i < grad_outputs_names.size(); i++) {
     auto end = grad_outputs_names[i].find("@GRAD@GRAD");
@@ -89,7 +89,7 @@ static void ConstructFwdAndBwdMap(
             }
           }
         } else {
-          PADDLE_THROW(paddle::platform::errors::NotFound(
+          PADDLE_THROW(common::errors::NotFound(
               "All Grad outputs should be end of @GRAD@GRAD or @GRAD@NEW or "
               "@GRAD and we got %s is not one of them, "
               "please check your op and change to fit the rule.",
@@ -144,7 +144,7 @@ static void ConstructFwdAndBwdMap(
         std::find(attrs_names.begin(), attrs_names.end(), grad_attrs_names[i]);
     PADDLE_ENFORCE_NE(end,
                       attrs_names.end(),
-                      paddle::platform::errors::NotFound(
+                      common::errors::NotFound(
                           "All Grad attrs should be one of forward attrs and "
                           "we got %s is not one of them, please check your "
                           "op and change to fit the rule.",
@@ -209,8 +209,8 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                ->meta()
                .is_contiguous()) {
         tensor.set_impl(std::make_shared<phi::DenseTensor>(
-            std::move(paddle::experimental::Trans2Contiguous(*(
-                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+            paddle::experimental::Trans2Contiguous(*(
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())))));
       }
     }
 
@@ -267,7 +267,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
             paddle::framework::detail::IsOptionalVar(
                 grad_outputs_names.at(i)) ||
                 out_tensor->is_dist_tensor(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom grad operator's %d-th output is not initialized. "
                 "Please check your implementation again. If you are "
                 "using inplace optional outputs, then you must use "
@@ -298,9 +298,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
 
   if (require_any_grad && (vec_map.size() > 2)) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "Custom Op " + op_type_ + " double_grad node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
     VLOG(6) << " Construct Grad for Custom Op: " << op_type_;
     ConstructFwdAndBwdMap(vec_map, op_type_);
@@ -436,7 +436,7 @@ RunCustomOpDoubleGradNode::operator()(
               << " to tmp_outputs: " << grad_output_idx;
       for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
         outs[grad_output_idx]
-            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+            .emplace_back(/* init it in case of copy nullptr of shared_ptr */
                           std::make_shared<phi::DenseTensor>(
                               phi::DataType::UNDEFINED),
                           egr::Controller::Instance().GenerateUniqueName(

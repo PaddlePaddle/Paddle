@@ -1,0 +1,132 @@
+# Docker Image for PaddlePaddle Kunlun XPU
+
+FROM ubuntu:20.04
+LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
+
+RUN apt-get update && apt-get install -y apt-utils
+RUN ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && add-apt-repository ppa:ubuntu-toolchain-r/test
+RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar ntp xz-utils libssl-dev bzip2 gzip make automake \
+    coreutils language-pack-zh-hans libsm6 libxext6 libxrender-dev libgl1-mesa-glx libsqlite3-dev libopenblas-dev liblapack3 \
+    bison libjpeg-dev zlib1g zlib1g-dev swig locales net-tools libtool numactl libnuma-dev liblzma-dev libbz2-dev libblas-dev \
+    openssl openssh-server libffi-dev pciutils libblas3 liblapack-dev libzstd-dev default-jre libgcc-s1 gcc g++ gfortran gdb
+
+# workdir
+WORKDIR /opt
+
+# GCC 8.4
+RUN apt-get install -y gcc-8 g++-8 gfortran-8
+RUN update-alternatives --install /usr/bin/g++  g++  /usr/bin/g++-8  90 && \
+    update-alternatives --install /usr/bin/gcc  gcc  /usr/bin/gcc-8  90 && \
+    update-alternatives --install /usr/bin/gfortran  gfortran  /usr/bin/gfortran-8  90
+
+# cmake 3.27.7
+RUN wget -q https://cmake.org/files/v3.27/cmake-3.27.7-linux-x86_64.sh && \
+    chmod +x cmake-3.27.7-linux-x86_64.sh && mkdir -p /opt/cmake-3.27.7 && \
+    ./cmake-3.27.7-linux-x86_64.sh --prefix=/opt/cmake-3.27.7 --skip-license && \
+    rm -rf cmake-3.27.7-linux-x86_64.sh
+ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
+
+# default python version
+ARG PY_VERSION=3.10
+RUN apt-get install -y python3-distutils python3.8 python3.8-dev python3.9 python3.9-dev python3.10 python3.10-dev
+
+# install pip
+RUN curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.8 && \
+    curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.9 && \
+    curl -s -q https://bootstrap.pypa.io/get-pip.py | /usr/bin/python3.10
+
+# set default python
+RUN rm -rf /usr/bin/python3 && ln -s /usr/bin/python${PY_VERSION} /usr/bin/python3 && \
+    rm -rf /usr/bin/python  && ln -s /usr/bin/python${PY_VERSION} /usr/bin/python
+
+# install pylint and pre-commit
+RUN pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
+    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
+    pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
+RUN pip3.8 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
+    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 && \
+    pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0
+
+# add more libs
+RUN apt-get update && apt-get install libprotobuf-dev protobuf-compiler libprotoc-dev lsof libgeos-dev \
+    pkg-config libhdf5-103 libhdf5-dev lrzsz libsndfile1 tree ninja-build -y
+
+# install Paddle requirement
+RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
+    pip3.8 install -r requirements.txt -i https://pip.baidu-int.com/simple --trusted-host pip.baidu-int.com && \
+    pip3.9 install -r requirements.txt -i https://pip.baidu-int.com/simple --trusted-host pip.baidu-int.com && \
+    pip3.10 install -r requirements.txt -i https://pip.baidu-int.com/simple --trusted-host pip.baidu-int.com && rm -rf requirements.txt
+
+RUN wget --no-check-certificate https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
+    pip3.8 install -r requirements.txt -i https://pip.baidu-int.com/simple --trusted-host pip.baidu-int.com && \
+    pip3.9 install -r requirements.txt -i https://pip.baidu-int.com/simple --trusted-host pip.baidu-int.com && \
+    pip3.10 install -r requirements.txt -i https://pip.baidu-int.com/simple --trusted-host pip.baidu-int.com && rm -rf requirements.txt
+
+# git credential to skip password typing
+RUN git config --global credential.helper store
+
+# Fix locales to en_US.UTF-8
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+# patchelf 0.14.5 - https://github.com/NixOS/patchelf/pull/216
+RUN wget -q --no-check-certificate https://github.com/NixOS/patchelf/archive/refs/tags/0.14.5.tar.gz && \
+    tar xzf 0.14.5.tar.gz && cd patchelf-0.14.5 && \
+    ./bootstrap.sh  > /dev/null && ./configure > /dev/null && \
+    make -j16 > /dev/null && make install > /dev/null && \
+    cd .. && rm -rf patchelf-0.14.5 && rm -rf 0.14.5.tar.gz
+
+# ccache 4.6.3
+RUN wget -q https://github.com/ccache/ccache/releases/download/v4.6.3/ccache-4.6.3.tar.gz && \
+    tar xf ccache-4.6.3.tar.gz && mkdir /usr/local/ccache-4.6.3 && cd ccache-4.6.3 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DREDIS_STORAGE_BACKEND=OFF \
+    -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.6.3 ..  > /dev/null && \
+    make -j16 > /dev/null && make install > /dev/null && \
+    cd ../../ && rm -rf ccache-4.6.3.tar.gz && rm -rf ccache-4.6.3 && \
+    ln -s /usr/local/ccache-4.6.3/bin/ccache /usr/local/bin/ccache
+ENV CCACHE_MAXSIZE=80G \
+    CCACHE_LIMIT_MULTIPLE=0.8 \
+    CCACHE_SLOPPINESS=clang_index_store,time_macros,include_file_mtime
+
+# Install XRE 4.31.0
+ARG XRE_VERSION=4.31.0
+ARG XRE_INSTALL=/usr/local/xpu-${XRE_VERSION}
+RUN wget -q https://klx-sdk-release-public.su.bcebos.com/xre/release/${XRE_VERSION}.1/xre-ubuntu_2004_x86_64.tar.gz && \
+    tar -zxf xre-ubuntu_2004_x86_64.tar.gz && \
+    mkdir -p ${XRE_INSTALL} && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/bin/ ${XRE_INSTALL}/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/include/ ${XRE_INSTALL}/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/tools/ ${XRE_INSTALL}/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/version.txt ${XRE_INSTALL}/ && \
+    mkdir -p ${XRE_INSTALL}/lib64 && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/lib/* ${XRE_INSTALL}/lib64/ && \
+    cp -af /opt/xre-ubuntu_2004_x86_64/so/* ${XRE_INSTALL}/lib64/ && \
+    ln -sf ${XRE_INSTALL} /usr/local/xpu && \
+    ln -sf ${XRE_INSTALL}/bin/xpu_smi /usr/local/bin/xpu_smi && \
+    rm -rf xre-ubuntu_2004_x86_64.tar.gz && rm -rf xre-ubuntu_2004_x86_64/
+ENV PATH=${XRE_INSTALL}/bin:$PATH
+
+# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && \
+    sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+CMD source ~/.bashrc
+
+# /proc/sys/kernel/core_pattern
+RUN mkdir -p /var/core
+
+# Update rc
+RUN wget -q https://paddle-ascend.bj.bcebos.com/cvmodel/ascend-materials/Ascend-cann-kernels-910b_8.0.RC2_linux.run && \
+    wget -q https://paddle-ascend.bj.bcebos.com/cvmodel/ascend-materials/Ascend-cann-toolkit_8.0.RC2_linux-x86_64.run && \
+    wget -q https://paddle-ascend.bj.bcebos.com/cvmodel/ascend-materials/Ascend-cann-nnal_8.0.RC2_linux-x86_64.run && \
+    chmod +x Ascend-cann-* && ./Ascend-cann-toolkit_8.0.RC2_linux-x86_64.run --full --install-for-all --quiet && \
+    ./Ascend-cann-nnal_8.0.RC2_linux-x86_64.run --quiet --install && ./Ascend-cann-kernels-910b_8.0.RC2_linux.run --quiet --install && \
+    rm -rf ./Ascend-cann-nnal_8.0.RC2_linux-x86_64.run ./Ascend-cann-kernels-910b_8.0.RC2_linux.run ./Ascend-cann-toolkit_8.0.RC2_linux-x86_64.run
+
+# Clean
+RUN apt-get clean -y
+RUN pip cache purge
+
+EXPOSE 22

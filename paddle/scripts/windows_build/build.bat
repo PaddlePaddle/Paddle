@@ -1,5 +1,5 @@
 @ECHO OFF
-SETLOCAL 
+SETLOCAL
 set source_path=%1
 set PYTHON_DIR=%2
 set WITH_GPU=%3

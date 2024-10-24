@@ -18,15 +18,8 @@ from . import Program
 
 _already_patch_program = False
 
-global_prog_seed = 0
-
 
 def monkey_patch_program():
-    def global_seed(self, seed=0):
-        global global_prog_seed
-        global_prog_seed = seed
-        self._seed = global_prog_seed
-
     @signature_safe_contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
         # TODO(dev): Currently there has not equivalent of op_role in PIR
@@ -34,10 +27,7 @@ def monkey_patch_program():
         # be fixed in the future.
         yield
 
-    global global_prog_seed
     program_attrs = {
-        "global_seed": global_seed,
-        "_seed": global_prog_seed,
         "_lr_schedule_guard": _lr_schedule_guard,
     }
 

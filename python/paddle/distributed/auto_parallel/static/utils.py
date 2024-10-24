@@ -22,7 +22,10 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.base.framework import use_pir_api
+from paddle.base.wrapped_decorator import (
+    wrap_decorator,
+)
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
@@ -364,18 +367,14 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
 
     assert len(mesh_shape) == len(
         coordinate
-    ), "coordinate should have the same size as mesh shape, but got shape: {}, coordinate: {}".format(
-        mesh_shape, coordinate
-    )
+    ), f"coordinate should have the same size as mesh shape, but got shape: {mesh_shape}, coordinate: {coordinate}"
     for i in range(len(mesh_shape)):
         assert (
             coordinate[i] >= 0
         ), f"index in dimension [{i}] is least than zero. coordinate: {coordinate}"
         assert (
             coordinate[i] < mesh_shape[i]
-        ), "index beyond extent in dimension [{}]. shape: {}, coordinate: {}".format(
-            i, mesh_shape, coordinate
-        )
+        ), f"index beyond extent in dimension [{i}]. shape: {mesh_shape}, coordinate: {coordinate}"
 
     base = mesh_shape[-1]
     linear_idx = coordinate[-1]
@@ -410,9 +409,7 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
     assert linear_idx >= 0, f"linear index [{linear_idx}] is least than zero"
     assert linear_idx < np.prod(
         mesh_shape
-    ), "linear index beyond the extent of mesh shape. shape: {}, linear index: {}".format(
-        mesh_shape, linear_idx
-    )
+    ), f"linear index beyond the extent of mesh shape. shape: {mesh_shape}, linear index: {linear_idx}"
 
     base = 1
     coordinate = [-1] * len(mesh_shape)
@@ -493,19 +490,19 @@ def _update_addition_info(addition_info):
     elif not isinstance(addition_info, dict):
         raise TypeError(
             "The type of 'addition_info' should be 'dict', "
-            f"but got '{str(type(addition_info))}'."
+            f"but got '{type(addition_info)}'."
         )
     else:
         for item, value in addition_info.items():
             if item not in ["epoch", "batch", "batch_size"]:
                 raise ValueError(
                     "The key of 'addition_info' should be one of the "
-                    f"['epoch', 'batch', 'batch_size'], but got '{str(item)}'."
+                    f"['epoch', 'batch', 'batch_size'], but got '{item}'."
                 )
             if not isinstance(value, int):
                 raise ValueError(
                     "The value of 'addition_info' should be 'int', "
-                    f"but got '{str(type(value))}'."
+                    f"but got '{type(value)}'."
                 )
             add_info[item] = value
         return add_info
@@ -520,7 +517,7 @@ def _check_valid_path(file_path):
             if not isinstance(file, str):
                 raise TypeError(
                     "The type of file path should be 'str', "
-                    f"but got '{str(type(file))}'."
+                    f"but got '{type(file)}'."
                 )
             if not os.path.exists(file):
                 raise ValueError(f"The file path '{file}' does not exist.")
@@ -528,7 +525,7 @@ def _check_valid_path(file_path):
     else:
         raise TypeError(
             "The type of file path should be 'list', "
-            f"but got '{str(type(file_path))}'."
+            f"but got '{type(file_path)}'."
         )
 
 
@@ -538,19 +535,19 @@ def _check_param_dict(param_dict):
     elif not isinstance(param_dict, dict):
         raise TypeError(
             "The type of 'param_dict' should be 'dict', "
-            f"but got '{str(type(param_dict))}'."
+            f"but got '{type(param_dict)}'."
         )
     else:
         for name, value in param_dict.items():
             if not isinstance(name, str):
                 raise TypeError(
                     "The type of key of 'param_dict' should be 'str', "
-                    f"but got '{str(type(name))}'."
+                    f"but got '{type(name)}'."
                 )
             if not isinstance(value, paddle.base.LoDTensor):
                 raise TypeError(
                     "The type of value of 'param_dict' should be 'LoDTensor', "
-                    f"but got '{str(type(value))}'."
+                    f"but got '{type(value)}'."
                 )
         return param_dict
 
@@ -561,26 +558,26 @@ def _check_dist_attr(dist_attr):
     elif not isinstance(dist_attr, dict):
         raise TypeError(
             "The type of 'dist_attr' should be 'dict', "
-            f"but got '{str(type(dist_attr))}'."
+            f"but got '{type(dist_attr)}'."
         )
     else:
         for name, value in dist_attr.items():
             if not isinstance(name, str):
                 raise TypeError(
                     "The type of param name of 'dist_attr' should be 'str', "
-                    f"but got '{str(type(name))}'."
+                    f"but got '{type(name)}'."
                 )
             if not isinstance(value, dict):
                 raise TypeError(
                     "The type of distributed attribute should be 'dict', "
-                    f"but got '{str(type(value))}'"
+                    f"but got '{type(value)}'"
                 )
             attr = ['process_shape', 'process_group', 'dims_mapping']
             if list(value.keys()) != attr:
                 raise ValueError(
                     "The key of distributed attribute should be "
                     "'['process_shape', 'process_group', 'dims_mapping']', "
-                    f"but got {str(value.keys())}."
+                    f"but got {value.keys()}."
                 )
         return dist_attr
 
@@ -836,24 +833,46 @@ def get_dist_attr(program, dist_context=None):
     Args:
         program(Program): main program for training
     """
-    from .dist_context import get_default_distributed_context
-
-    assert isinstance(program, paddle.static.Program)
-    if dist_context is None:
-        dist_context = get_default_distributed_context()
     dist_attr = {}
-    for var in program.list_vars():
-        if is_parameter(var) or is_belong_to_optimizer(var):
-            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                var
-            )
-            process_mesh = tensor_dist_attr.process_mesh
-            dims_mapping = tensor_dist_attr.dims_mapping
-            dist_attr[var.name] = {
-                "process_shape": process_mesh.shape,
-                "process_group": process_mesh.process_ids,
-                "dims_mapping": dims_mapping,
-            }
+    if use_pir_api():
+        ops = program.global_block().ops
+        for op in ops:
+            if op.name() == "builtin.parameter" or (
+                op.name() == "pd_op.data"
+                and op.has_attr("persistable")
+                and op.attrs()["persistable"]
+            ):
+                op_dist_attr = op.dist_attr
+                var_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
+                var_name = (
+                    op.str_attr("parameter_name")
+                    if op.name() == "builtin.parameter"
+                    else op.str_attr("name")
+                )
+                process_mesh = var_dist_attr.process_mesh
+                dist_attr[var_name] = {
+                    "process_shape": process_mesh.shape,
+                    "process_group": process_mesh.process_ids,
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                }
+    else:
+        from .dist_context import get_default_distributed_context
+
+        assert isinstance(program, paddle.static.Program)
+        if dist_context is None:
+            dist_context = get_default_distributed_context()
+        for var in program.list_vars():
+            if is_parameter(var) or is_belong_to_optimizer(var):
+                tensor_dist_attr = (
+                    dist_context.get_tensor_dist_attr_for_program(var)
+                )
+                process_mesh = tensor_dist_attr.process_mesh
+                dims_mapping = tensor_dist_attr.dims_mapping
+                dist_attr[var.name] = {
+                    "process_shape": process_mesh.shape,
+                    "process_group": process_mesh.process_ids,
+                    "dims_mapping": dims_mapping,
+                }
     return dist_attr
 
 
@@ -872,14 +891,12 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     assert _check_dist_attr(pre_dist_attr), "'pre_dist_attr' cannot be None."
     assert isinstance(
         dist_param_dict, dict
-    ), "The type of 'dist_param_dict' should be 'dict', but got {}.".format(
-        str(type(dist_param_dict))
-    )
+    ), f"The type of 'dist_param_dict' should be 'dict', but got {type(dist_param_dict)}."
     for name, value in dist_param_dict.items():
         if not isinstance(name, str):
             raise TypeError(
                 "The key of 'dist_param_dict' is parameter's name, "
-                f"and its type should be 'str', but got {str(type(name))}."
+                f"and its type should be 'str', but got {type(name)}."
             )
         if not isinstance(value, list) or not all(
             isinstance(v, np.ndarray) for v in value
@@ -935,15 +952,11 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
     if param_not_in_pre:
         warnings.warn(
-            "Parameters '{}' are not found in last training process.".format(
-                str(param_not_in_pre)
-            )
+            f"Parameters '{param_not_in_pre}' are not found in last training process."
         )
     if param_not_in_cur:
         warnings.warn(
-            "Parameters '{}' are not found in current training process.".format(
-                str(param_not_in_cur)
-            )
+            f"Parameters '{param_not_in_cur}' are not found in current training process."
         )
 
     return dist_param_dict
@@ -1295,14 +1308,12 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
         tensor_dist_attr.process_mesh = process_mesh
     else:
         raise ValueError(
-            "{} must be a instance of ProcessMesh or list, but receive {}".format(
-                process_mesh, type(process_mesh)
-            )
+            f"{process_mesh} must be a instance of ProcessMesh or list, but receive {type(process_mesh)}"
         )
-    if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
+    if kwargs.get("mark_annotated"):
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
-    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+    if kwargs.get("chunk_id"):
         tensor_dist_attr.chunk_id = kwargs["chunk_id"]
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
@@ -1322,7 +1333,7 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
-    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+    if kwargs.get("chunk_id"):
         new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
@@ -1372,9 +1383,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
             for idx, mapping in enumerate(dims_mapping[1:]):
                 assert (
                     mapping == -1
-                ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
-                    op_desc.type(), idx, mapping
-                )
+                ), f"{op_desc.type()} only the batch dimension (0-dim) can be sharded, but the dimension {idx} is sharded by {mapping} part."
         if len(dims_mapping) >= 1:
             batch_dim_mappings.append(dims_mapping[0])
     for arg_name in op_desc.output_arg_names():
@@ -1387,24 +1396,18 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                 for idx, mapping in enumerate(dims_mapping[1:]):
                     assert (
                         mapping == -1
-                    ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
-                        op_desc.type(), idx, mapping
-                    )
+                    ), f"{op_desc.type()} only the batch dimension (0-dim) can be sharded, but the dimension {idx} is sharded by {mapping} part."
             if len(dims_mapping) >= 1:
                 batch_dim_mappings.append(dims_mapping[0])
         else:
             assert (
                 dims_mapping[0] == -1
-            ), "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {} part.".format(
-                op_desc.type(), mapping
-            )
+            ), f"{op_desc.type()} only the batch dimension (1-dim) of XShape can be sharded, but the dimension 0 is sharded by {mapping} part."
             if len(dims_mapping) > 2:
                 for idx, mapping in enumerate(dims_mapping[2:]):
                     assert (
                         mapping == -1
-                    ), "{} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {} is sharded by {} part.".format(
-                        op_desc.type(), idx, mapping
-                    )
+                    ), f"{op_desc.type()} only the batch dimension (1-dim) of XShape can be sharded, but the dimension {idx} is sharded by {mapping} part."
             batch_dim_mappings.append(dims_mapping[1])
 
     compatible_dim_mapping = compute_compatible_dim_mapping(batch_dim_mappings)
@@ -1810,15 +1813,11 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                 rank = int(rank)
                 if rank != recv_rank:
                     raise ValueError(
-                        "Please check comm pair, the recv rank should be {} but got {}.".format(
-                            recv_rank, rank
-                        )
+                        f"Please check comm pair, the recv rank should be {recv_rank} but got {rank}."
                     )
                 else:
                     print(
-                        "It is able to instantiate {} as sender now.".format(
-                            process_group.ranks
-                        )
+                        f"It is able to instantiate {process_group.ranks} as sender now."
                     )
                 client_socket.close()
             else:
@@ -1835,9 +1834,7 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                         )
                         client_sockets[send_rank].close()
                         print(
-                            "It is able to instantiate {} as receiver now.".format(
-                                process_group.ranks
-                            )
+                            f"It is able to instantiate {process_group.ranks} as receiver now."
                         )
                         break
         process_group.instantiate()
@@ -2134,10 +2131,10 @@ def insert_dependencies_for_two_ops(
 
     assert (
         len(prior_op.output_arg_names) >= 1
-    ), f"first op of dependency should at least have one output. [{str(prior_op)}]"
+    ), f"first op of dependency should at least have one output. [{prior_op}]"
     assert (
         len(posterior_op.input_arg_names) >= 1
-    ), f"second op of dependency should at least have one input. [{str(posterior_op)}]"
+    ), f"second op of dependency should at least have one input. [{posterior_op}]"
     prior_op_mesh = dist_context.get_op_dist_attr_for_program(
         prior_op
     ).process_mesh
@@ -2146,9 +2143,7 @@ def insert_dependencies_for_two_ops(
     ).process_mesh
     assert (
         prior_op_mesh == posterior_mesh
-    ), "two ops of dependency should have same mesh but got [{}] and [{}]".format(
-        str(prior_op_mesh), str(posterior_mesh)
-    )
+    ), f"two ops of dependency should have same mesh but got [{prior_op_mesh}] and [{posterior_mesh}]"
 
     def _select_best_depend_var(vars):
         # parameter should not be dep var since it maybe partition in sharding pass
@@ -2193,12 +2188,13 @@ def insert_dependencies_for_vars(
     sync=False,
     op_namescope=None,
     use_nop=False,
+    skip_insert_when_sequential_run=True,
 ):
     """
     dependency: op that generates prior_vars should be run before op that generates post_vars
     """
 
-    if is_sequential_run():
+    if skip_insert_when_sequential_run and is_sequential_run():
         return
 
     if isinstance(prior_vars, Variable):
@@ -2315,17 +2311,40 @@ def is_sequential_run():
 
 def get_pp_degree(dist_context):
     if len(dist_context.process_meshes) < 2:
-        return 0
+        return 0, []
 
+    sub_process_meshes = get_sub_process_mesh(dist_context.process_meshes)
+    return len(sub_process_meshes), sub_process_meshes
+
+
+def get_sub_process_mesh_by_program(dist_program):
+    all_ops = dist_program.global_block().ops
+    process_meshes = []
+
+    for op in all_ops:
+        if "pd_op" in op.name():
+            process_mesh = op.dist_attr.process_mesh
+            if process_mesh not in process_meshes:
+                process_meshes.append(process_mesh)
+
+    sub_process_meshes = get_sub_process_mesh(process_meshes)
+    sub_process_meshes = sorted(
+        sub_process_meshes, key=lambda x: x.process_ids[0]
+    )
+
+    return sub_process_meshes
+
+
+def get_sub_process_mesh(process_meshes):
     process_ids = set()
-    process_meshes = copy.deepcopy(dist_context.process_meshes)
+    sub_process_meshes = copy.deepcopy(process_meshes)
 
-    for pm in process_meshes:
+    for pm in sub_process_meshes:
         process_ids |= set(pm.process_ids)
 
     global_pm_idx = []
     has_sub_pm = False
-    for idx, pm in enumerate(process_meshes):
+    for idx, pm in enumerate(sub_process_meshes):
         if len(set(pm.process_ids)) == len(process_ids):
             global_pm_idx.append(idx)
         elif set(pm.process_ids) < process_ids:
@@ -2333,9 +2352,9 @@ def get_pp_degree(dist_context):
 
     if has_sub_pm:
         for idx in reversed(global_pm_idx):
-            process_meshes.pop(idx)
+            sub_process_meshes.pop(idx)
 
-    return len(process_meshes), process_meshes
+    return sub_process_meshes
 
 
 def get_pp_stage(dist_context, rank):
@@ -2345,6 +2364,33 @@ def get_pp_stage(dist_context, rank):
             pp_idx = idx
             break
     return pp_idx
+
+
+def get_pp_stage_by_pp_degree(pp_degree):
+    cur_rank = paddle.distributed.get_rank()
+    return get_pp_stage_by_rank(cur_rank, pp_degree)
+
+
+def get_pp_stage_by_process_mesh(process_mesh, pp_degree):
+    pp_stage_for_process_mesh = None
+    for rank in process_mesh.process_ids:
+        pp_stage = get_pp_stage_by_rank(rank, pp_degree)
+        if pp_stage_for_process_mesh is not None:
+            if pp_stage != pp_stage_for_process_mesh:
+                return None
+            assert (
+                pp_stage == pp_stage_for_process_mesh
+            ), f"Can't get pp_stage by process_mesh with different pp_stage {pp_stage} and {pp_stage_for_process_mesh}"
+        pp_stage_for_process_mesh = pp_stage
+
+    return pp_stage_for_process_mesh
+
+
+def get_pp_stage_by_rank(rank, pp_degree):
+    word_size = paddle.distributed.get_world_size()
+    pp_group_size = word_size // pp_degree
+    pp_stage = rank // pp_group_size
+    return pp_stage
 
 
 def wrap_data_for_completion(
@@ -2457,19 +2503,32 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                 "cast",
                 "c_concat",
                 "concat",
-                "c_allgather",
                 "slice",
+                "all_gather",
             ]
             if op.desc.type() in reshard_op_types:
                 input_names = op.desc.input_names()
-                if "X" in input_names or "Input" in input_names:
+                if (
+                    "X" in input_names
+                    or "Input" in input_names
+                    or "x" in input_names
+                ):
                     inputs = (
                         op.desc.input("X")
                         if "X" in input_names
-                        else op.desc.input("Input")
+                        else (
+                            op.desc.input("Input")
+                            if "Input" in input_names
+                            else op.desc.input("x")
+                        )
                     )
-                if "Out" in op.desc.output_names():
-                    outputs = op.desc.output("Out")
+                output_names = op.desc.output_names()
+                if "Out" in output_names or "out" in output_names:
+                    outputs = (
+                        op.desc.output("Out")
+                        if "Out" in output_names
+                        else op.desc.output("out")
+                    )
                 if inputs[0] in grad_var_to_var.keys():
                     for output in outputs:
                         grad_var_to_var[output] = grad_var_to_var[inputs[0]]
@@ -2491,3 +2550,154 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
         scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
         if scale_loss_grad_var_name not in grad_var_to_var.keys():
             grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
+
+
+def set_all_ops_op_role(block, op_role):
+    all_ops = block.ops
+    for op in all_ops:
+        if op.op_role == -1:
+            op.op_role = op_role
+        for sub_block in op.blocks():
+            set_all_ops_op_role(sub_block, op_role)
+
+
+def fuse_param_func(
+    fuse_params, is_qkv=False, num_heads=None, num_key_value_heads=None
+):
+    """fuse function for fusing weights
+
+    (1) fuse_attention_qkv
+        q => [q1,q2,q3,q4]
+        k => [k1,k2,k3,k4] or [k1,k2] for GQA
+        v => [v1,v2,v3,v4] or [v1,v2] for GQA
+        fused weight => [q1,k1,v1,q2,k2,v2,q3,k3,v3,q4,k4,v4]
+                or for GQA [q1,q2,k1,v1,q3,q4,k2,v2]
+    (2) fuse_attention_ffn
+        directly fuse weights to 1 parts
+        [gate_weight], [up_weight] => [gate_weight, up_weight]
+
+    Args:
+        fuse_params (_type_): to be fused weights
+        is_qkv (bool, optional): for attention qkv weights. Defaults to False.
+        num_heads (_type_, optional): query heads. Defaults to None.
+        num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
+
+    Returns:
+        _type_: fused weights
+    """
+    concat_fn = paddle.concat
+    split_fn = paddle.split
+
+    if is_qkv:
+        # fuse_attention_qkv
+        assert (
+            num_heads
+        ), f"num_heads should be number of heads for Q, but got {num_heads}"
+        assert (
+            num_key_value_heads
+        ), f"num_key_value_heads should be number of key_value_heads for K and V, but got {num_key_value_heads}"
+        assert (
+            len(fuse_params) == 3
+        ), f"fuse_params length is not equal 3, it should be Q K V list. but got length {len(fuse_params)}"
+        num_query_groups = num_heads // num_key_value_heads
+        q_list = split_fn(fuse_params[0], num_heads, axis=-1)
+        k_list = split_fn(fuse_params[1], num_key_value_heads, axis=-1)
+        v_list = split_fn(fuse_params[2], num_key_value_heads, axis=-1)
+
+        qkv_pairs = []
+        for i in range(num_key_value_heads):
+            qkv_pairs += q_list[
+                i * num_query_groups : (i + 1) * num_query_groups
+            ]
+            qkv_pairs.append(k_list[i])
+            qkv_pairs.append(v_list[i])
+        return concat_fn(qkv_pairs, axis=-1)
+    else:
+        # fuse_attention_ffn
+        return concat_fn(fuse_params, axis=-1)
+
+
+def split_param_func(
+    fused_param,
+    split_nums=2,
+    is_qkv=False,
+    num_heads=None,
+    num_key_value_heads=None,
+):
+    """split function for splitting weights
+
+    (1) fuse_attention_qkv
+        fused weight => [q1,k1,v1,q2,k2,v2,q3,k3,v3,q4,k4,v4]
+                or for GQA [q1,q2,k1,v1,q3,q4,k2,v2]
+        after split
+        q => [q1,q2,q3,q4]
+        k => [k1,k2,k3,k4] or [k1,k2] for GQA
+        v => [v1,v2,v3,v4] or [v1,v2] for GQA
+    (2) fuse_attention_ffn
+        directly split weight to 2 parts
+        [gate_weight, up_weight] => [gate_weight], [up_weight]
+
+    Args:
+        fused_param (_type_): len(fused_param)=1, only one weight to be splitted
+        split_nums (int, optional): split_nums. Defaults to 2.
+        is_qkv (bool, optional): for attention qkv weights. Defaults to False.
+        num_heads (_type_, optional): query heads. Defaults to None.
+        num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
+
+    Returns:
+        _type_: splitted weights
+    """
+    concat_fn = paddle.concat
+    split_fn = paddle.split
+
+    if is_qkv:
+        # fuse_attention_qkv
+        assert (
+            num_heads
+        ), f"num_heads should be number of heads for Q, but got {num_heads}"
+        assert (
+            num_key_value_heads
+        ), f"num_key_value_heads should be number of key_value_heads for K and V, but got {num_key_value_heads}"
+        num_query_groups = num_heads // num_key_value_heads
+        q_list, k_list, v_list = [], [], []
+        split_heads = split_fn(
+            fused_param, num_heads + 2 * num_key_value_heads, axis=-1
+        )
+        for i in range(num_key_value_heads):
+            q_list += split_heads[
+                i * (num_query_groups + 2) : (i + 1) * (num_query_groups + 2)
+                - 2
+            ]
+            k_list.append(split_heads[(i + 1) * (num_query_groups + 2) - 2])
+            v_list.append(split_heads[(i + 1) * (num_query_groups + 2) - 1])
+        return (
+            concat_fn(q_list, axis=-1),
+            concat_fn(k_list, axis=-1),
+            concat_fn(v_list, axis=-1),
+        )
+    else:
+        # fuse_attention_ffn
+        return split_fn(fused_param, split_nums, axis=-1)
+
+
+def split_mesh(global_mesh: ProcessMesh, sub_mesh_dim: int):
+    mesh_shape = global_mesh.shape
+    mesh_ndim = len(mesh_shape)
+    if sub_mesh_dim >= mesh_ndim or (
+        sub_mesh_dim < 0 and -sub_mesh_dim > mesh_ndim
+    ):
+        raise ValueError(
+            f"The sub_mesh_dim should between (-{mesh_ndim}, {mesh_ndim}]"
+        )
+    if sub_mesh_dim < 0:
+        sub_mesh_dim += mesh_ndim
+
+    process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
+    splitted_process_ids = np.split(
+        process_ids, mesh_shape[sub_mesh_dim], axis=sub_mesh_dim
+    )
+    sub_mesh_list = []
+    for sub_process_ids in splitted_process_ids:
+        sub_mesh_list.append(ProcessMesh(sub_process_ids))
+
+    return sub_mesh_list

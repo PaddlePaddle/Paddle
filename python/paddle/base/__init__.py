@@ -58,7 +58,6 @@ from .backward import (  # noqa: F401
 from .compiler import (  # noqa: F401
     BuildStrategy,
     CompiledProgram,
-    ExecutionStrategy,
     IpuCompiledProgram,
     IpuStrategy,
 )
@@ -74,6 +73,7 @@ from .core import (  # noqa: F401
     XPUPlace,
     _cuda_synchronize,
     _Scope,
+    _set_warmup,
 )
 from .data_feed_desc import DataFeedDesc  # noqa: F401
 from .data_feeder import DataFeeder  # noqa: F401
@@ -178,9 +178,6 @@ def __bootstrap__():
     if 'Darwin' in sysstr:
         remove_flag_if_exists('use_pinned_memory')
 
-    if os.name == 'nt':
-        remove_flag_if_exists('cpu_deterministic')
-
     if core.is_compiled_with_ipu():
         # Currently we request all ipu available for training and testing
         #   finer control of pod of IPUs will be added later
@@ -209,7 +206,7 @@ monkey_patch_tensor()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)
-atexit.register(core.pir.clear_pir_compiler_manager)
+atexit.register(core.pir.clear_cinn_compilation_cache)
 
 # NOTE(Aganlengzi): clean up KernelFactory in advance manually.
 # NOTE(wangran16): clean up DeviceManager in advance manually.

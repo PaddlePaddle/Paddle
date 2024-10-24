@@ -13,9 +13,12 @@
 # limitations under the license.
 
 import os
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../quantization")
 from imperative_test_utils import (
     ImperativeLenetWithSkipQuant,
     fix_model_dict,
@@ -78,17 +81,17 @@ class TestImperativeOutSclae(unittest.TestCase):
         else:
             place = core.CPUPlace()
         exe = paddle.static.Executor(place)
-
-        [
-            inference_program,
-            feed_target_names,
-            fetch_targets,
-        ] = paddle.static.load_inference_model(
-            save_dir,
-            executor=exe,
-            model_filename="lenet" + INFER_MODEL_SUFFIX,
-            params_filename="lenet" + INFER_PARAMS_SUFFIX,
-        )
+        with paddle.pir_utils.OldIrGuard():
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.load_inference_model(
+                save_dir,
+                executor=exe,
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX,
+            )
         model_ops = inference_program.global_block().ops
 
         conv2d_count, matmul_count = 0, 0

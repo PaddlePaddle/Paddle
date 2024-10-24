@@ -319,7 +319,7 @@ void SliceCsrGradCompute(const Context& dev_ctx,
         dev_ctx, x, out_grad, new_axes, new_starts, new_ends, x_grad);
   } else {
     // throw exception
-    phi::errors::InvalidArgument(
+    common::errors::InvalidArgument(
         "Slice grad for Sparse CSR Tensor only support 2-D or 3-D, but got "
         "%d-D.",
         x_dims.size());

@@ -18,7 +18,10 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, enable_to_static_guard
+from dygraph_to_static_utils import (
+    Dy2StTestBase,
+    enable_to_static_guard,
+)
 
 import paddle
 from paddle.jit.dy2static.transformers.logical_transformer import (

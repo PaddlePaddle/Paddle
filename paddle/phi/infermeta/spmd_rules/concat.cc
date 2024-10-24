@@ -22,20 +22,19 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
   PADDLE_ENFORCE_GT(
       n_axis,
       concat_axis,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "n_axis [%d] and concat_axis[%d] not match", n_axis, concat_axis));
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
   PADDLE_ENFORCE_GT(alphabet.size(),
                     static_cast<size_t>(n_axis),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "alphabet.size() [%d]; n_axis [%d] is too large",
                         alphabet.size(),
                         n_axis));
@@ -159,5 +158,4 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
   return {{input_attrs, output_grad_attr}, {inputs_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

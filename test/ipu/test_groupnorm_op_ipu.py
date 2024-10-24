@@ -46,7 +46,7 @@ class TestBase(IPUOpTest):
 
     def set_op_attrs(self):
         self.attrs = {
-            "groups": 8,
+            "num_groups": 8,
             "epsilon": 1e-05,
             "data_layout": 'NCHW',
         }
@@ -56,25 +56,35 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+        if "data_layout" in self.attrs and self.attrs["data_layout"] == "NHWC":
+            index = 3
+        else:
+            index = 1
         if self.is_training:
             ch = self.feed_shape[0][1]
-            conv1 = paddle.static.nn.conv2d(
-                x, num_filters=ch, filter_size=3, bias_attr=False
-            )
+            conv1 = paddle.nn.Conv2D(
+                in_channels=x.shape[1],
+                out_channels=ch,
+                kernel_size=3,
+                bias_attr=False,
+            )(x)
             scale = paddle.ParamAttr(trainable=True)
             bias = paddle.ParamAttr(trainable=True)
-            out = paddle.static.nn.group_norm(
-                conv1, param_attr=scale, bias_attr=bias, **self.attrs
-            )
+            out = paddle.nn.GroupNorm(
+                num_channels=conv1.shape[index],
+                weight_attr=scale,
+                bias_attr=bias,
+                **self.attrs,
+            )(conv1)
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
             adam.minimize(loss)
-            self.fetch_list = [loss.name]
+            self.fetch_list = [loss]
         else:
-            out = paddle.static.nn.group_norm(
-                x, param_attr=True, bias_attr=True, **self.attrs
-            )
-            self.fetch_list = [out.name]
+            out = paddle.nn.GroupNorm(
+                x.shape[index], weight_attr=True, bias_attr=True, **self.attrs
+            )(x)
+            self.fetch_list = [out]
 
     def run_model(self, exec_mode):
         self.run_op_test(exec_mode)
@@ -90,7 +100,7 @@ class TestBase(IPUOpTest):
 class TestCase1(TestBase):
     def set_op_attrs(self):
         self.attrs = {
-            "groups": 4,
+            "num_groups": 4,
             "epsilon": 1e-05,
             "data_layout": 'NCHW',
         }
@@ -112,7 +122,7 @@ class TestTrainCase2(TestBase):
 
     def set_op_attrs(self):
         self.attrs = {
-            "groups": 4,
+            "num_groups": 4,
             "epsilon": 1e-05,
             "data_layout": 'NCHW',
         }

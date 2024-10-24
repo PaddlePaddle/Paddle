@@ -17,8 +17,7 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 AmplifierInterceptor::AmplifierInterceptor(int64_t interceptor_id,
                                            TaskNode* node)
@@ -56,5 +55,4 @@ void AmplifierInterceptor::ReplyCompletedToUpStream() {
 
 REGISTER_INTERCEPTOR(Amplifier, AmplifierInterceptor);
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

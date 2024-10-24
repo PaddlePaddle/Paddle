@@ -17,19 +17,21 @@
 
 #include <random>
 #include <vector>
-
 #include "paddle/cinn/common/bfloat16.h"
 #include "paddle/cinn/common/float16.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
 
-#define CUDA_CALL(func)                                            \
-  {                                                                \
-    auto status = func;                                            \
-    if (status != cudaSuccess) {                                   \
-      LOG(FATAL) << "CUDA Error : " << cudaGetErrorString(status); \
-    }                                                              \
+#define CUDA_CALL(func)                                    \
+  {                                                        \
+    auto status = func;                                    \
+    if (status != cudaSuccess) {                           \
+      std::stringstream ss;                                \
+      ss << "CUDA Error : " << cudaGetErrorString(status); \
+      PADDLE_THROW(::common::errors::Fatal(ss.str()));     \
+    }                                                      \
   }
 
 class CudaMem {
@@ -37,9 +39,15 @@ class CudaMem {
   CudaMem() = default;
 
   void* mutable_data(size_t bytes) {
-    CHECK_GT(bytes, 0) << "Cannot allocate empty memory!";
+    PADDLE_ENFORCE_GT(
+        bytes,
+        0,
+        ::common::errors::InvalidArgument("Cannot allocate empty memory!"));
     if (ptr) {
-      CHECK_EQ(bytes, bytes_) << "Try allocate memory twice!";
+      PADDLE_ENFORCE_EQ(
+          bytes,
+          bytes_,
+          ::common::errors::InvalidArgument("Try allocate memory twice!"));
       return ptr;
     }
     CUDA_CALL(cudaMalloc(&ptr, bytes));
@@ -53,7 +61,10 @@ class CudaMem {
   }
 
   void* data() const {
-    CHECK(ptr) << "Try get nullptr!";
+    PADDLE_ENFORCE_NOT_NULL(ptr,
+                            ::common::errors::InvalidArgument(
+                                "Pointer is null; please ensure it is properly "
+                                "initialized before use."));
     return ptr;
   }
 
@@ -65,12 +76,18 @@ class CudaMem {
   void MemcpyFromHost(const void* src,
                       size_t bytes,
                       cudaStream_t stream = nullptr) {
-    CHECK_LE(bytes, bytes_) << "Too many data need copy";
+    PADDLE_ENFORCE_LE(
+        bytes,
+        bytes_,
+        ::common::errors::InvalidArgument("Too many data need copy"));
     CUDA_CALL(cudaMemcpyAsync(ptr, src, bytes, cudaMemcpyHostToDevice, stream));
   }
 
   void MemcpyToHost(void* dst, size_t bytes, cudaStream_t stream = nullptr) {
-    CHECK_LE(bytes, bytes_) << "Too many data need copy";
+    PADDLE_ENFORCE_LE(
+        bytes,
+        bytes_,
+        ::common::errors::InvalidArgument("Too many data need copy"));
     CUDA_CALL(cudaMemcpyAsync(dst, ptr, bytes, cudaMemcpyDeviceToHost, stream));
   }
 

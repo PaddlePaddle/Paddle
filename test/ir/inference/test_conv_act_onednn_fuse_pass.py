@@ -159,7 +159,7 @@ class TestConvActOneDNNFusePass(PassAutoScanTest):
 
         # 12. Generate legal attr of act
         act_op = None
-        self.passes = ['conv_activation_mkldnn_fuse_pass']
+        self.passes = ['conv_activation_onednn_fuse_pass']
         if act_type == 'relu6':
             act_op = OpConfig(
                 'relu6',

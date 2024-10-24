@@ -127,6 +127,10 @@ UniqueFlattendCUDATensor(const Context& context,
   DenseTensor in_hat;
   phi::Copy(context, in, context.GetPlace(), false, &in_hat);
   auto* in_data_hat = context.template Alloc<InT>(&in_hat);
+  DenseTensor tmp;
+  if (!indices) {
+    indices = &tmp;
+  }
 
   indices->Resize(common::make_ddim({num_input}));
   auto* indices_data = context.template Alloc<IndexT>(indices);
@@ -173,8 +177,11 @@ UniqueFlattendCUDATensor(const Context& context,
 #ifdef PADDLE_WITH_HIP
     hipMemset(inv_loc_data_ptr, 0, sizeof(IndexT));
 #else
-    cudaMemsetAsync(inv_loc_data_ptr, 0, sizeof(IndexT), context.stream());
+    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
+    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
 #endif
+
+#ifdef PADDLE_WITH_HIP
     size_t temp_storage_bytes = 0;
     cub::DeviceScan::InclusiveSum(NULL,
                                   temp_storage_bytes,
@@ -190,6 +197,12 @@ UniqueFlattendCUDATensor(const Context& context,
                                   inv_loc_data_ptr,
                                   num_input,
                                   context.stream());
+#else
+    thrust::inclusive_scan(exec_policy,
+                           inv_loc_data_ptr,
+                           inv_loc_data_ptr + num_input,
+                           inv_loc_data_ptr);
+#endif
     thrust::scatter(exec_policy,
                     inv_loc_data_ptr,
                     inv_loc_data_ptr + num_input,
@@ -251,6 +264,11 @@ UniqueFlattendCUDATensor(const Context& context,
   const InT* in_data = in_resize.data<InT>();
   auto equal = BinaryEqual<InT>(1, in_data);
   auto not_equal = BinaryNotEqual<InT>(1, in_data);
+
+  DenseTensor tmp;
+  if (!indices) {
+    indices = &tmp;
+  }
 
   indices->Resize(common::make_ddim({num_input}));
   auto* indices_data = context.template Alloc<IndexT>(indices);
@@ -391,13 +409,15 @@ static void ComputeUniqueDims(const Context& context,
   sorted_indices->Resize(common::make_ddim({num_out}));
 
   // 3. counts: 'counts'
-  counts->Resize(common::make_ddim({num_out}));
-  auto* count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(exec_policy, count_data, count_data + num_out, 0);
-  thrust::adjacent_difference(exec_policy,
-                              range_data_ptr + 1,
-                              range_data_ptr + num_out + 1,
-                              count_data);
+  if (return_counts) {
+    counts->Resize(common::make_ddim({num_out}));
+    auto* count_data = context.template Alloc<IndexT>(counts);
+    thrust::fill(exec_policy, count_data, count_data + num_out, 0);
+    thrust::adjacent_difference(exec_policy,
+                                range_data_ptr + 1,
+                                range_data_ptr + num_out + 1,
+                                count_data);
+  }
 }
 
 // Calculate unique when 'axis' is set
@@ -445,6 +465,11 @@ static void UniqueDimsCUDATensor(const Context& context,
   int64_t col = in_trans.dims()[1];
   int64_t row = in_trans.dims()[0];
   const InT* in_trans_data = in_trans.data<InT>();
+
+  DenseTensor tmp;
+  if (!indices) {
+    indices = &tmp;
+  }
 
   indices->Resize(common::make_ddim({row}));
   auto* sorted_indices_data = context.template Alloc<IndexT>(indices);
@@ -615,7 +640,7 @@ void UniqueRawKernel(const Context& context,
     PADDLE_ENFORCE_LE(
         x.numel() + 1,
         INT_MAX,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of elements in Input(X) should be less than or "
             "equal to INT_MAX, but received num is %d. Please set `dtype` to "
             "int64.",

@@ -10,7 +10,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
 #pragma once
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/framework/archive.h"
@@ -81,7 +82,7 @@ class PsGraphClient : public PsLocalClient {
   void *_partition_key_service = nullptr;
   int _rank_id = 0;
   int _rank_num = 0;
-  std::vector<std::shared_ptr<framework::ThreadPool>> _thread_pools;
+  std::vector<std::shared_ptr<phi::ThreadPool>> _thread_pools;
   std::vector<std::vector<uint64_t>> _local_shard_keys;
   std::vector<std::vector<paddle::framework::BinaryArchive>> _shard_ars;
 };

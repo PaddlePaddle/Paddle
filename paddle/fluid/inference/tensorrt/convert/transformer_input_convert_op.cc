@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * Convert Transformer Input(pos_id, max_seqlen).
@@ -30,7 +28,7 @@ class TransformerInputConvert : public OpConverter {
     VLOG(3) << "Convert Transformer Input(pos_id, max_seqlen), use "
                "transformer_input_convert_plugin";
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "transformer_input_convert_op: If you want to use transformer, must "
           "be with dynamic shape"));
     }
@@ -51,15 +49,13 @@ class TransformerInputConvert : public OpConverter {
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(&input, input_num, plugin);
 
-    RreplenishLayerAndOutput(layer,
-                             "transformer_input_convert",
-                             {pos_id_name, max_seqlen_name},
-                             test_mode);
+    ReplenishLayerAndOutput(layer,
+                            "transformer_input_convert",
+                            {pos_id_name, max_seqlen_name},
+                            test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(transformer_input_convert, TransformerInputConvert);

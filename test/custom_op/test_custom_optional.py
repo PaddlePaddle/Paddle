@@ -92,14 +92,20 @@ def optional_static_add(custom_func, device, dtype, np_x, np_y):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
-            x_v, out_v, x_grad_v = exe.run(
-                static.default_main_program(),
-                feed=feed_dict,
-                fetch_list=[
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [x, out, ops[-1].result(0)]
+            else:
+                fetch_list = [
                     x.name,
                     out.name,
                     x.name + "@GRAD",
-                ],
+                ]
+
+            x_v, out_v, x_grad_v = exe.run(
+                static.default_main_program(),
+                feed=feed_dict,
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return x_v, out_v, x_grad_v
@@ -195,29 +201,52 @@ def optional_inplace_static_add(custom_func, device, dtype, np_x, np_y):
 
             exe = static.Executor()
             exe.run(static.default_startup_program())
-
             if np_y is not None:
-                x_v, out_v, x_grad_v, y_grad_v = exe.run(
-                    static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[
+                if paddle.framework.in_pir_mode():
+                    ops = static.default_main_program().global_block().ops
+                    if custom_func:
+                        fetch_list = [
+                            x,
+                            out,
+                            ops[-1].result(0),  # x_grad
+                            ops[-1].result(1),
+                        ]  # y_grad
+                    else:
+                        fetch_list = [
+                            x,
+                            out,
+                            ops[-1].result(0),  # x_grad
+                            ops[-3].result(0),
+                        ]  # y_grad
+                else:
+                    fetch_list = [
                         x.name,
                         out.name,
                         x.name + "@GRAD",
                         y.name + "@GRAD",
-                    ],
+                    ]
+                x_v, out_v, x_grad_v, y_grad_v = exe.run(
+                    static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
                 )
                 paddle.disable_static()
                 return [x_v, out_v, x_grad_v, y_grad_v]
             else:
-                x_v, out_v, x_grad_v = exe.run(
-                    static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[
+                if paddle.framework.in_pir_mode():
+                    ops = static.default_main_program().global_block().ops
+                    fetch_list = [x, out, ops[-1].result(0)]
+
+                else:
+                    fetch_list = [
                         x.name,
                         out.name,
                         x.name + "@GRAD",
-                    ],
+                    ]
+                x_v, out_v, x_grad_v = exe.run(
+                    static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
                 )
                 paddle.disable_static()
                 return [x_v, out_v, x_grad_v]
@@ -288,14 +317,21 @@ def optional_vector_static_add(custom_func, device, dtype, np_x, np_inputs):
             exe = static.Executor()
             exe.run(static.default_startup_program())
 
-            x_v, out_v, x_grad_v = exe.run(
-                static.default_main_program(),
-                feed=feed_dict,
-                fetch_list=[
+            if paddle.framework.in_pir_mode():
+                ops = static.default_main_program().global_block().ops
+                fetch_list = [x, out, ops[-1].result(0)]
+
+            else:
+                fetch_list = [
                     x.name,
                     out.name,
                     x.name + "@GRAD",
-                ],
+                ]
+
+            x_v, out_v, x_grad_v = exe.run(
+                static.default_main_program(),
+                feed=feed_dict,
+                fetch_list=fetch_list,
             )
     paddle.disable_static()
     return x_v, out_v, x_grad_v
@@ -363,9 +399,11 @@ def optional_inplace_vector_dynamic_add(
         [t.numpy() for t in outy] if outy is not None else None,
         out.numpy(),
         x.grad.numpy(),
-        [y.grad.numpy() for y in inputs]
-        if np_inputs is not None and inputs[0].grad is not None
-        else None,
+        (
+            [y.grad.numpy() for y in inputs]
+            if np_inputs is not None and inputs[0].grad is not None
+            else None
+        ),
     )
 
 
@@ -427,28 +465,53 @@ def optional_inplace_vector_static_add(
             exe.run(static.default_startup_program())
 
             if np_inputs is not None:
-                x_v, out_v, x_grad_v, y1_grad_v, y2_grad_v = exe.run(
-                    static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[
+                if paddle.framework.in_pir_mode():
+                    ops = static.default_main_program().global_block().ops
+                    if custom_func:
+                        fetch_list = [
+                            x,
+                            out,
+                            ops[-2].result(0),  # x_grad
+                            ops[-1].result(0),  # y1_grad
+                            ops[-1].result(1),
+                        ]  # y2_grad
+                    else:
+                        fetch_list = [
+                            x,
+                            out,
+                            ops[-1].result(0),  # x_grad
+                            ops[-3].result(0),  # y1_grad
+                            ops[-6].result(0),
+                        ]  # y2_grad
+                else:
+                    fetch_list = [
                         x.name,
                         out.name,
                         x.name + "@GRAD",
                         y1.name + "@GRAD",
                         y2.name + "@GRAD",
-                    ],
+                    ]
+                x_v, out_v, x_grad_v, y1_grad_v, y2_grad_v = exe.run(
+                    static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
                 )
                 paddle.disable_static()
                 return [x_v, out_v, x_grad_v, y1_grad_v, y2_grad_v]
             else:
-                x_v, out_v, x_grad_v = exe.run(
-                    static.default_main_program(),
-                    feed=feed_dict,
-                    fetch_list=[
+                if paddle.framework.in_pir_mode():
+                    ops = static.default_main_program().global_block().ops
+                    fetch_list = [x, out, ops[-1].result(0)]  # y_grad
+                else:
+                    fetch_list = [
                         x.name,
                         out.name,
                         x.name + "@GRAD",
-                    ],
+                    ]
+                x_v, out_v, x_grad_v = exe.run(
+                    static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
                 )
                 paddle.disable_static()
                 return [x_v, out_v, x_grad_v]

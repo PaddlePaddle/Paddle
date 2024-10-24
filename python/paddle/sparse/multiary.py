@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops
-from paddle.base.framework import dygraph_only
+from paddle.base.framework import in_dynamic_or_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
 
-@dygraph_only
-def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
+def addmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    name: str | None = None,
+) -> Tensor:
     """
     Note:
         This API is only supported from ``CUDA 11.0`` .
@@ -80,4 +93,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             >>> out = paddle.sparse.addmm(input, x, y, 3.0, 2.0)
 
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_addmm(input, x, y, beta, alpha)

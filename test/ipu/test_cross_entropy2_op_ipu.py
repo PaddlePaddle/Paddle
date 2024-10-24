@@ -68,7 +68,7 @@ class TestBase(IPUOpTest):
             label=label,
             reduction='none',
             use_softmax=False,
-            **self.attrs
+            **self.attrs,
         )
         self.fetch_list = [out.name]
 

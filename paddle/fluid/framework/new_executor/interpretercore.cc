@@ -19,40 +19,41 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     new_executor_static_build,
     false,
     "Build the interpreterCore statically without running kernels.");
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
-                            false,
-                            "Use inplace in new executor");
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
-                            true,
-                            "Use local_scope in new executor(especially used "
-                            "in UT), can turn off for better performance");
+PHI_DEFINE_EXPORTED_bool(new_executor_use_inplace,
+                         false,
+                         "Use inplace in new executor");
+PHI_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
+                         true,
+                         "Use local_scope in new executor(especially used "
+                         "in UT), can turn off for better performance");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
-InterpreterCore::InterpreterCore(const platform::Place& place,
+InterpreterCore::InterpreterCore(const phi::Place& place,
                                  const BlockDesc& block,
                                  framework::Scope* scope,
-                                 const ExecutionConfig& execution_config) {
+                                 const ExecutionConfig& execution_config)
+    : impl_(nullptr), fetch_var_names_() {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
   impl_ = std::make_unique<ProgramInterpreter>(
       place, block, scope, execution_config);
 }
 
 InterpreterCore::InterpreterCore(
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::string>& fetch_var_names,
     const ::pir::Block* ir_block,
     framework::Scope* scope,
-    const ExecutionConfig& execution_config) {
+    const ExecutionConfig& execution_config)
+    : impl_(nullptr), fetch_var_names_() {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
   impl_ = std::make_unique<PirInterpreter>(
       place, fetch_var_names, ir_block, scope, execution_config);
@@ -127,7 +128,7 @@ const Scope* InterpreterCore::local_scope() const {
   return impl_->local_scope();
 }
 
-const platform::Place& InterpreterCore::GetPlace() const {
+const phi::Place& InterpreterCore::GetPlace() const {
   return impl_->GetPlace();
 }
 
@@ -136,6 +137,15 @@ void InterpreterCore::SetInputHooks(const std::vector<HookFunc>& hookfuncs) {
 }
 
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
+  impl_->SetOutputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  impl_->SetInputHooks(hookfuncs);
+}
+
+void InterpreterCore::SetOutputHooks(
+    const std::vector<PirHookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
 
@@ -159,5 +169,4 @@ Variable* InterpreterCore::DebugVar(const std::string& name) const {
   return impl_->DebugVar(name);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

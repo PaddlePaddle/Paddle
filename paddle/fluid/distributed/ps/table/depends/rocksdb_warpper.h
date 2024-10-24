@@ -237,7 +237,7 @@ class RocksDBHandler {
 
   Uint64Comparator* get_comparator() { return &_comparator; }
 
-  int ingest_externel_file(int id,
+  int ingest_external_file(int id,
                            const std::vector<std::string>& sst_filelist) {
     rocksdb::IngestExternalFileOptions ifo;
     ifo.move_files = true;

@@ -19,8 +19,8 @@ import numpy as np
 from test_attribute_var import UnittestBase
 
 import paddle
-from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
+from paddle.base import core
+from paddle.framework import in_pir_mode
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -113,7 +113,6 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3], pool_type="avg"
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -240,7 +239,6 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
             x=self.x_np, output_size=[None, 3], pool_type="avg"
         )
 
-    @test_with_pir_api
     def test_static_graph(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -352,9 +350,9 @@ class TestOutputSizeTensor(UnittestBase):
 
     def test_static(self):
         paddle.enable_static()
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(6, 6)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -364,7 +362,8 @@ class TestOutputSizeTensor(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out1 + out2))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)

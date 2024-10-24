@@ -161,7 +161,7 @@ class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
         self.trans_y = False
 
 
-class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
+class TestMatMulV2MatrixXMatrixTransposeXOneDNNOp2(
     TestMatMulV2VectorXVectorOneDNNOp
 ):
     def config(self):
@@ -171,7 +171,7 @@ class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
         self.trans_y = False
 
 
-class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
+class TestMatMulV2MatrixXMatrixTransposeX2OneDNNOp3(
     TestMatMulV2VectorXVectorOneDNNOp
 ):
     def config(self):
@@ -235,7 +235,7 @@ class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
         self.trans_y = True
 
 
-class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
+class TestMatMulV2MatrixXMatrix5DTransposeYOneDNNOp(
     TestMatMulV2VectorXVectorOneDNNOp
 ):
     def config(self):
@@ -448,15 +448,15 @@ create_bf16_test_class(TestMatMulV2MatrixXMatrixOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeYOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix2OneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix3OneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2)
-create_bf16_test_class(TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeXOneDNNOp2)
+create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeX2OneDNNOp3)
 create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix4OneDNNOp)
 create_bf16_test_class(TestMatMulV2VectorXMatrix5DOneDNNOp)
 create_bf16_test_class(TestMatMulV2Matrix3DXVectorOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp)
-create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp)
+create_bf16_test_class(TestMatMulV2MatrixXMatrix5DTransposeYOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp)
 create_bf16_test_class(TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp)
 

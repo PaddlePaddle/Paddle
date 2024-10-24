@@ -1,10 +1,7 @@
 if(WITH_GPU OR WITH_ROCM)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
-    cc_test(
-      test_fusion_group_op
-      SRCS fusion_group_op_test.cc
-      DEPS fusion_group_op)
+    paddle_test(test_fusion_group_op SRCS fusion_group_op_test.cc)
   endif()
   if(NOT WITH_ROCM)
     nv_test(
@@ -42,25 +39,10 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   # resnet_unit needs cudnn 8.0 above
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))
-    cc_test(
+    nv_test(
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc
-      DEPS generated_op
-           depthwise_conv
-           tensor
-           op_registry
-           device_context
-           phi
-           common)
-    cc_test(
-      test_cudnn_bn_add_relu
-      SRCS cudnn_bn_add_relu_test.cc
-      DEPS batch_norm_op
-           fused_bn_add_activation_op
-           tensor
-           op_registry
-           device_context
-           phi
-           common)
+      DEPS generated_op tensor op_registry device_context phi common)
+    paddle_test(test_cudnn_bn_add_relu SRCS cudnn_bn_add_relu_test.cc)
   endif()
 endif()

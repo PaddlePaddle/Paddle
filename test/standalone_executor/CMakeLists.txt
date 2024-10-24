@@ -31,9 +31,9 @@ py_test_modules(
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_standalone_controlflow test_standalone_cuda_graph_multi_stream
-    test_standalone_custom_stream test_standalone_custom_event
-    test_standalone_executor test_standalone_multiply_write)
+    test_standalone_controlflow test_standalone_custom_stream
+    test_standalone_custom_event test_standalone_multiply_write
+    test_standalone_executor)
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
@@ -42,5 +42,3 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
 endforeach()
 
 set_tests_properties(test_standalone_cross_step_overlap PROPERTIES TIMEOUT 30)
-set_tests_properties(test_standalone_executor_aot_choose_kernel
-                     PROPERTIES TIMEOUT 60)

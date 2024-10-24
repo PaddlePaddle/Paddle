@@ -23,7 +23,6 @@ namespace hlir {
 namespace op {
 std::vector<ir::Tensor> Argmax(const ir::Tensor &in_tensor,
                                const cinn::common::Target &target,
-                               poly::StageMap stages,
                                const int &axis,
                                const bool &keep_dims = false,
                                const std::string &name = "T_Argmax_out");

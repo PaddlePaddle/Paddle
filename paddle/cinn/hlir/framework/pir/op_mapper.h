@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
+
+#include <glog/logging.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/include/core/operation.h"
 
@@ -52,8 +55,11 @@ class OpMapper {
 
   std::vector<::pir::Value> RealOperandSources(
       const ::pir::Operation& op) const {
-    CHECK(has(op, MapperType::OPERAND))
-        << "Not register OperandIndexsFunction for " << op.name();
+    PADDLE_ENFORCE_EQ(
+        has(op, MapperType::OPERAND),
+        true,
+        ::common::errors::PreconditionNotMet(
+            "Not register OperandIndexsFunction for %s", op.name().c_str()));
     std::vector<::pir::Value> inputs;
     for (auto idx : operand_funcs_.at(op.name())()) {
       inputs.push_back(op.operand_source(idx));
@@ -63,8 +69,11 @@ class OpMapper {
 
   void AppendVariantAttrs(const ::pir::Operation& op,
                           utils::AttributeMap& attrs) const {  // NOLINT
-    CHECK(has(op, MapperType::ATTRIBUTE))
-        << "Not register AppendAttrFunction for " << op.name();
+    PADDLE_ENFORCE_EQ(
+        has(op, MapperType::ATTRIBUTE),
+        true,
+        ::common::errors::PreconditionNotMet(
+            "Not register AppendAttrFunction for %s", op.name().c_str()));
     attr_funcs_.at(op.name())(op, attrs);
   }
 

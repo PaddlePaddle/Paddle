@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace operators {
@@ -41,14 +41,13 @@ static void DataCopy(const phi::DenseTensor &src_item,
               : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
-          platform::CPUPlace());
-      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
+          phi::CPUPlace());
+      paddle::framework::TensorCopySync(out, phi::CPUPlace(), dst_item);
     } else {
-      paddle::framework::TensorCopySync(
-          src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
     }
 #else
-    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
 #endif
   } else {
     // Not copy, if the src tensor is empty.
@@ -68,7 +67,7 @@ class FetchOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     OP_INOUT_CHECK(HasInputs("X"), "Input", "X", "Fetch");
     OP_INOUT_CHECK(HasOutputs("Out"), "Output", "Out", "Fetch");
 
@@ -76,7 +75,7 @@ class FetchOp : public framework::OperatorBase {
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE_NOT_NULL(
         fetch_var,
-        platform::errors::NotFound(
+        common::errors::NotFound(
             "Input variable(%s) cannot be found in scope for operator 'Fetch'."
             "Confirm that you have used the fetch `Variable` format "
             "instead of the string literal('%s') in `fetch_list` "
@@ -91,15 +90,15 @@ class FetchOp : public framework::OperatorBase {
     auto *out_var = scope.FindVar(out_name);
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        platform::errors::NotFound("Output variable(%s) cannot be found "
-                                   "in scope for operator 'Fetch'.",
-                                   out_name));
+        common::errors::NotFound("Output variable(%s) cannot be found "
+                                 "in scope for operator 'Fetch'.",
+                                 out_name));
 
     int col = Attr<int>("col");
     PADDLE_ENFORCE_GE(
         col,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Expected the column index (the attribute 'col' of "
             "operator 'Fetch') of current fetching variable to be "
             "no less than 0. But received column index = %d.",
@@ -126,11 +125,10 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       fetch_list->at(col) = src_item;
     } else {
-      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
-      framework::LoDTensorArray tmp(src_item.size());
+      auto &src_item = fetch_var->Get<phi::TensorArray>();
+      phi::TensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
-      auto &dst_item =
-          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
+      auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
         DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
       }

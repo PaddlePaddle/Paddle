@@ -17,7 +17,16 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle.framework import core
+
+
+def api_wrapper(
+    attn, x, mask, new_mask, keep_first_token=True, keep_order=False
+):
+    return paddle._C_ops.fused_token_prune(
+        attn, x, mask, new_mask, keep_first_token, keep_order
+    )
 
 
 @unittest.skipIf(
@@ -56,6 +65,8 @@ class TestFusedTokenPruneOp(OpTest):
 
     def setUp(self):
         self.op_type = 'fused_token_prune'
+        self.python_api = api_wrapper
+        self.python_out_sig = ["SlimmedX", "CLSInds"]
         self.setDtype()
         self.setInouts()
         self.inputs = {

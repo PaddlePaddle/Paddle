@@ -38,13 +38,14 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/graph/class_macro.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#include "paddle/utils/string/string_helper.h"
 
 #ifdef PADDLE_WITH_HETERPS
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
@@ -591,10 +592,10 @@ class GraphTable : public Table {
       std::string graph_data_local_path,
       std::vector<std::string> &res_type,                            // NOLINT
       std::unordered_map<std::string, std::string> &res_type2path);  // NOLINT
-  int32_t load_edges(const std::string &path,
-                     bool reverse,
-                     const std::string &edge_type,
-                     bool use_weight = false);
+  std::pair<uint64_t, uint64_t> load_edges(const std::string &path,
+                                           bool reverse,
+                                           const std::string &edge_type,
+                                           bool use_weight = false);
   int get_all_id(GraphTableType table_type,
                  int slice_num,
                  std::vector<std::vector<uint64_t>> *output);
@@ -654,7 +655,7 @@ class GraphTable : public Table {
                        const std::string &converter UNUSED) {
     return 0;
   }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   virtual int32_t Save_v2(const std::string &path,
                           const std::string &converter) {
     return 0;

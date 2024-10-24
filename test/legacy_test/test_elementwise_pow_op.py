@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -44,7 +45,7 @@ class TestElementwisePowOp(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_pir=True)
+            self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -204,7 +205,7 @@ class TestElementwisePowOpInt(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_pir=True)
+            self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -225,7 +226,13 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         ).astype("int")
 
     def test_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if base.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
@@ -260,7 +267,7 @@ class TestElementwisePowOpFP16(OpTest):
         if hasattr(self, 'attrs'):
             self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_pir=True)
+            self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -297,7 +304,7 @@ class TestElementwisePowBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')

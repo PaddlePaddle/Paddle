@@ -21,12 +21,14 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
+#include "paddle/phi/core/framework/feed_fetch_type.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/core/tensor_array.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 namespace phi {
 
@@ -117,8 +119,8 @@ namespace phi {
       static_assert(out_idx == 0,                                            \
                     "Kernel's Input should appear before Outputs.");         \
       const std::pair<int, int>& range = ctx->InputRangeAt(in_idx);          \
-      std::vector<const tensor_type*> arg = std::move(                       \
-          ctx->InputsBetween<tensor_type>(range.first, range.second));       \
+      std::vector<const tensor_type*> arg =                                  \
+          ctx->InputsBetween<tensor_type>(range.first, range.second);        \
       KernelCallHelper<Tail...>::                                            \
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
@@ -202,22 +204,22 @@ namespace phi {
     }                                                                    \
   }
 
-#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)          \
-  template <typename... Tail>                                                 \
-  struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {               \
-    template <int dev_ctx_idx,                                                \
-              int in_idx,                                                     \
-              int attr_idx,                                                   \
-              int out_idx,                                                    \
-              typename... PreviousArgs>                                       \
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {         \
-      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);         \
-      std::vector<tensor_type*> arg = std::move(                              \
-          ctx->MutableOutputBetween<tensor_type>(range.first, range.second)); \
-      KernelCallHelper<Tail...>::                                             \
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(       \
-              ctx, pargs..., arg);                                            \
-    }                                                                         \
+#define PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(tensor_type)         \
+  template <typename... Tail>                                                \
+  struct KernelCallHelper<std::vector<tensor_type*>, Tail...> {              \
+    template <int dev_ctx_idx,                                               \
+              int in_idx,                                                    \
+              int attr_idx,                                                  \
+              int out_idx,                                                   \
+              typename... PreviousArgs>                                      \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {        \
+      const std::pair<int, int>& range = ctx->OutputRangeAt(out_idx);        \
+      std::vector<tensor_type*> arg =                                        \
+          ctx->MutableOutputBetween<tensor_type>(range.first, range.second); \
+      KernelCallHelper<Tail...>::                                            \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(      \
+              ctx, pargs..., arg);                                           \
+    }                                                                        \
   }
 
 #define PD_SPECIALIZE_KernelCallHelper_FOR_TENSOR_SCALAR(attr_type)       \
@@ -319,6 +321,7 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(SelectedRows);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(DenseTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(ExtendedTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(ExtendedTensor);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorBase);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(SelectedRows);
@@ -339,6 +342,10 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(TensorArray);
   PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_INPUT(TensorArray);
+
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(phi::Strings);
+  PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(phi::Strings);
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(phi::FeedList);
 
   /* Attribute Helpers */
 
@@ -380,6 +387,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
 
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(TensorArray);
   PD_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(ExtendedTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(ExtendedTensor);
+  PD_SPECIALIZE_KernelCallHelper_FOR_MULTI_OUTPUT(Vocab);
 
   /* End case */
   template <typename T>

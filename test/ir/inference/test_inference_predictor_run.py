@@ -39,6 +39,7 @@ class TestNet(paddle.nn.Layer):
 )
 class TestPredictorRunWithTensor(unittest.TestCase):
     def setUp(self):
+
         self.temp_dir = tempfile.TemporaryDirectory()
         net = TestNet()
         model = paddle.jit.to_static(
@@ -51,36 +52,38 @@ class TestPredictorRunWithTensor(unittest.TestCase):
                     shape=[None, 4], dtype='float32', name='input1'
                 ),
             ],
+            full_graph=True,
         )
-        paddle.jit.save(
-            model,
-            os.path.join(
-                self.temp_dir.name, 'test_predictor_run_model/inference'
-            ),
-        )
+        with paddle.pir_utils.OldIrGuard():
+            paddle.jit.save(
+                model,
+                os.path.join(
+                    self.temp_dir.name, 'test_predictor_run_model/inference'
+                ),
+            )
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def enable_pir(self, flag: bool):
-        paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})
-
-    def init_predictor(self):
-        config = Config(
-            os.path.join(
-                self.temp_dir.name,
-                'test_predictor_run_model/inference.pdmodel',
-            ),
-            os.path.join(
-                self.temp_dir.name,
-                'test_predictor_run_model/inference.pdiparams',
-            ),
-        )
-        config.enable_use_gpu(256, 0)
-        config.switch_ir_optim(False)
-        # config.enable_memory_optim()
-        config.enable_new_executor()
-        predictor = create_predictor(config)
+    def init_predictor(self, use_pir: bool):
+        with paddle.pir_utils.OldIrGuard():
+            config = Config(
+                os.path.join(
+                    self.temp_dir.name,
+                    'test_predictor_run_model/inference.pdmodel',
+                ),
+                os.path.join(
+                    self.temp_dir.name,
+                    'test_predictor_run_model/inference.pdiparams',
+                ),
+            )
+            config.enable_use_gpu(256, 0)
+            config.switch_ir_optim(False)
+            # config.enable_memory_optim()
+            config.enable_new_executor()
+            if use_pir:
+                config.enable_new_ir()
+            predictor = create_predictor(config)
         return predictor
 
     def get_inputs(self):
@@ -117,11 +120,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         return outputs[0]
 
     def test_output(self):
-        self.enable_pir(False)
-        predictor = self.init_predictor()
+        predictor = self.init_predictor(False)
         output = self.get_inorder_output(predictor)
-        self.enable_pir(True)
-        pir_predictor = self.init_predictor()
+        pir_predictor = self.init_predictor(True)
         pir_output = self.get_disorder_output(pir_predictor)
 
         np.testing.assert_allclose(

@@ -20,9 +20,7 @@
 #include "paddle/phi/kernels/funcs/jit/macro.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void GRUJitCode::genCode() {
   reg64_t reg_ptr_gates = rax;
@@ -39,7 +37,7 @@ void GRUJitCode::genCode() {
     vmovaps(ymm_one, ptr[reg_ptr_tmp + OFFSET_EXP_ONE]);
   }
   int offset = 0;
-  int d = num_ * sizeof(float);
+  int d = num_ * sizeof(float);  // NOLINT
   for (int i = 0; i < num_ / YMM_FLOAT_BLOCK; ++i) {
     ymm_t ymm_u = ymm_t(1);
     ymm_t ymm_r = ymm_t(2);
@@ -107,9 +105,7 @@ DECLARE_GRU_CREATOR(GRUHtPart2);
 
 #undef DECLARE_GRU_CREATOR
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -131,7 +132,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                               const Functor& functor) {
   PADDLE_ENFORCE_EQ(x.dims(),
                     y.dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Currently only support same shape elementwise "
                         "compute. The input tensor X's shape "
                         "should be identical with Y's shape. But received X's "
@@ -329,6 +330,9 @@ DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 }  // namespace sparse
 }  // namespace phi
 
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
+
 PD_REGISTER_KERNEL(add_csr_csr,
                    CPU,
                    ALL_LAYOUT,
@@ -337,7 +341,9 @@ PD_REGISTER_KERNEL(add_csr_csr,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
@@ -350,7 +356,9 @@ PD_REGISTER_KERNEL(add_coo_coo,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -363,7 +371,9 @@ PD_REGISTER_KERNEL(subtract_csr_csr,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
@@ -376,7 +386,9 @@ PD_REGISTER_KERNEL(subtract_coo_coo,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -389,7 +401,9 @@ PD_REGISTER_KERNEL(multiply_csr_csr,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
@@ -402,7 +416,9 @@ PD_REGISTER_KERNEL(multiply_coo_coo,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -415,7 +431,9 @@ PD_REGISTER_KERNEL(divide_csr_csr,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
@@ -428,7 +446,9 @@ PD_REGISTER_KERNEL(divide_coo_coo,
                    double,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
@@ -440,6 +460,8 @@ PD_REGISTER_KERNEL(add_coo_dense,
                    float,
                    double,
                    int,
-                   int64_t) {
+                   int64_t,
+                   complex64,
+                   complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

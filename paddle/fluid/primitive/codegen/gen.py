@@ -34,15 +34,23 @@ sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
+from decomp_interface_gen_op_list import (
+    decomp_vjp_interface_implementation_gen_op_list,
+)
+from gen_utils import attr_types_map, to_pascal_case
+from type_mapping import output_type_map
+
 # fmt: on
 
 
 VJPS_BLACK_LIST = [
     'reshape_grad',
     'add_n_grad',
+    'fused_attention_grad',
 ]
 
 BACKENDS_BLACK_LIST = [
+    'accuracy_check',
     'copy_to',
     'add_n_grad',
     "allclose",
@@ -53,6 +61,8 @@ BACKENDS_BLACK_LIST = [
     "embedding_grad",
     "full",
     "partial_send",
+    "push_dense",
+    "comm_init_all",
 ]
 
 # prim op with one input and one output, with no attribute
@@ -62,24 +72,35 @@ UNARY_PRIM_VJP_OPS = [
     'exp_grad',
     'floor_grad',
     'log_grad',
+    'rsqrt_grad',
     'sin_grad',
     'cos_grad',
     'tanh_grad',
+    'trunc_grad',
+    'square_grad',
 ]
 
 # prim op with two inputs and one output, with no attribute
 BINARY_PRIM_VJP_OPS = [
+    'matmul_grad',
     'add_grad',
     'divide_grad',
     'subtract_grad',
     'multiply_grad',
     'elementwise_pow_grad',
     'maximum_grad',
+    'reduce_as_grad',
+    'fmax_grad',
+    'fmin_grad',
+    'dot_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
     'assign_grad',
+    'atan_grad',
+    'atan2_grad',
     'cumsum_grad',
+    'cumprod_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
@@ -88,22 +109,32 @@ OTHER_PRIM_VJP_OPS = [
     'transpose_grad',
     'concat_grad',
     'expand_grad',
+    'expm1_grad',
     'gather_grad',
     'gather_nd_grad',
     'pad_grad',
     'prod_grad',
+    'put_along_axis_grad',
     'max_grad',
+    'masked_select_grad',
+    'scale_grad',
     'scatter_grad',
     'scatter_nd_add_grad',
     'slice_grad',
+    'squeeze_grad',
     'tile_grad',
     'topk_grad',
+    'unsqueeze_grad',
+    'where_grad',
+    'logcumsumexp_grad',
+    'logsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'bce_loss_grad',
     'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',
@@ -112,12 +143,18 @@ CUSTOM_VJP = [
     'instance_norm_grad',
     'layer_norm_grad',
     'leaky_relu_grad',
+    'mean_grad',
     'minimum_grad',
+    'pow_grad',
     'relu_grad',
     'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
+    'softsign_grad',
     'sqrt_grad',
+    'stack_grad',
+    'swiglu',
+    'swish_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
@@ -184,6 +221,54 @@ def render(src_dir: pathlib.Path, dst_dir: pathlib.Path, *args, **kwargs):
         )
 
 
+def render_decomp_vjp(
+    src_dir: pathlib.Path, dst_dir: pathlib.Path, *args, **kwargs
+):
+    """Render and save Jinja2 templates to the destination directory.
+
+    Args:
+        src_dir (pathlib.Path): The source directory containing Jinja2 templates.
+        dst_dir (pathlib.Path): The destination directory to save rendered files.
+        *args: Additional positional arguments passed to the `render` function.
+        **kwargs: Additional keyword arguments passed to the `render` function.
+
+    Returns:
+        None
+    """
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(src_dir),
+        keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        undefined=jinja2.StrictUndefined,
+        extensions=['jinja2.ext.do'],
+    )
+    env.filters.update(
+        {
+            'to_paddle_attr_type': op_gen_filters.to_paddle_attr_type,
+            'to_paddle_input_type': op_gen_filters.to_paddle_input_type,
+            'to_paddle_output_type': op_gen_filters.to_paddle_output_type,
+            'trip_intermediate': op_gen_filters.filter_intermediate,
+        }
+    )
+    env.tests.update(
+        {
+            'scalar': op_gen_tests.is_scalar,
+            'intarray': op_gen_tests.is_intarray,
+            'datatype': op_gen_tests.is_datatype,
+            'exist_mutable_attribute': op_gen_tests.exist_mutable_attribute,
+            'mutable_attribute': op_gen_tests.is_mutable_attribute,
+            'only_composite_op': op_gen_tests.is_only_composite_op,
+        }
+    )
+
+    decomp_temp = "decomp/generated_decomp_vjp.j2"
+    save(
+        env.get_template(decomp_temp).render(*args, **kwargs),
+        pathlib.Path(dst_dir),
+    )
+
+
 def save(content: str, path: pathlib.Path):
     """Saves the given string contents to a file in the specified path.
 
@@ -241,6 +326,8 @@ def filter_compat_info(items):
 
 def extend_compat_info(apis, compats):
     for api in apis:
+        if api['name'].endswith('sp') or api['name'].endswith('sp_'):
+            continue
         attrs = api["attrs"]
         for attr in attrs:
             if op_gen_tests.is_scalar(
@@ -285,12 +372,12 @@ def extend_compat_info(apis, compats):
                 ):
                     support_tensor_attrs_names.append(attr_name)
         if len(support_tensor_attrs_names) > 0:
-            for api in [fwd_api] + backward_apis:
+            for api in [fwd_api, *backward_apis]:
                 attrs = api["attrs"]
                 for attr in attrs:
                     if attr['name'] in support_tensor_attrs_names:
                         attr['support_tensor'] = True
-        for api in [fwd_api] + backward_apis:
+        for api in [fwd_api, *backward_apis]:
             attrs = api["attrs"]
             for attr in attrs:
                 if attr['name'] in compat_attrs_data_type:
@@ -323,12 +410,12 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
-def process_optional_output_info(apis):
+def process_optional_inplace_output_info(apis):
     for api in apis:
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
             if not api['is_fwd']:
-                output['optional'] = False
+                return
             else:
                 if (
                     api.get("inplace", None)
@@ -360,8 +447,11 @@ def gen(
     rev_pd_op_path: pathlib.Path,
     fused_op_path: pathlib.Path,
     fused_rev_path: pathlib.Path,
+    sparse_op_path: pathlib.Path,
+    sparse_rev_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
+    decomp_vjp_destination_dir: pathlib.Path,
 ):
     """The `gen` load jinja2 templates and relative config info, use jinja2
     templating engine to generate c++ code, and save the code into destination.
@@ -376,6 +466,8 @@ def gen(
         rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
         fused_op_path (pathlib.Path): The YAML file path of the fused API.
         fused_rev_path (pathlib.Path): The YAML file path of the fused backward API.
+        sparse_op_path (pathlib.Path): The YAML file path of the sparse API.
+        sparse_rev_op_path (pathlib.Path): The YAML file path of the sparse backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
 
@@ -392,6 +484,8 @@ def gen(
         ir_update_fwds,
         fused_fwds,
         fused_revs,
+        sparse_fwds,
+        sparse_revs,
     ) = (
         load(prim_path),
         load(fwd_path),
@@ -402,25 +496,73 @@ def gen(
         load(update_fwd_pd_op_path),
         load(fused_op_path),
         load(fused_rev_path),
+        load(sparse_op_path),
+        load(sparse_rev_op_path),
     )
     filter_compat_info(compats)
+    for sparse_op in sparse_fwds:
+        if sparse_op['name'].endswith("_"):
+            sparse_op['name'] += 'sp_'
+            if sparse_op['backward'] is not None:
+                sparse_op['backward'] += '_sp'
+        else:
+            sparse_op['name'] += '_sp'
+            if sparse_op['backward'] is not None:
+                sparse_op['backward'] += '_sp'
+    fwd_apis = fwds + ir_fwds + ir_update_fwds + fused_fwds + sparse_fwds
 
-    fwd_apis = fwds + ir_fwds + ir_update_fwds + fused_fwds
-
+    for sparse_op in sparse_revs:
+        sparse_op['name'] += '_sp'
+        if sparse_op['forward']['name'].endswith("_"):
+            sparse_op['forward']['name'] += 'sp_'
+            if sparse_op.get('invoke') is not None:
+                sparse_op['invoke']['func'] += 'sp_'
+        else:
+            sparse_op['forward']['name'] += '_sp'
+            if sparse_op.get('invoke') is not None:
+                sparse_op['invoke']['func'] += '_sp'
     apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
     apis = apis + [
-        {**api, **{'is_fwd': False}} for api in revs + ir_revs + fused_revs
+        {**api, **{'is_fwd': False}}
+        for api in revs + ir_revs + fused_revs + sparse_revs
     ]
     apis = [
-        {**api, **{'is_prim': True}}
-        if api['name'] in prims
-        else {**api, **{'is_prim': False}}
+        (
+            {**api, **{'is_prim': True}}
+            if api['name'] in prims
+            else {**api, **{'is_prim': False}}
+        )
         for api in apis
     ]
+
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
-    process_optional_output_info(apis)
+    process_optional_inplace_output_info(apis)
+
+    apis = [
+        {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}
+        for api in apis
+    ]
+
+    for item in apis:
+        for attr_item in item["attrs"]:
+            if attr_item["typename"] not in attr_types_map.keys():
+                raise TypeError
+            attr_item["mapped_type"] = attr_types_map[attr_item["typename"]]
+        for out_item in item["outputs"]:
+            if out_item["typename"] not in output_type_map.keys():
+                name = out_item["typename"]
+                raise TypeError(f"err type {name}")
+            if out_item["optional"]:
+                out_item["mapped_type"] = (
+                    "paddle::optional<"
+                    + output_type_map[out_item["typename"]]
+                    + ">"
+                )
+            else:
+                out_item["mapped_type"] = output_type_map[out_item["typename"]]
+
     render(
         templates_dir,
         destination_dir,
@@ -428,6 +570,15 @@ def gen(
         backend_black_list=BACKENDS_BLACK_LIST,
         vjp_black_list=VJPS_BLACK_LIST,
         vjp_comp_white_list=VJP_COMPS,
+    )
+    render_decomp_vjp(
+        templates_dir,
+        decomp_vjp_destination_dir,
+        apis=apis,
+        backend_black_list=BACKENDS_BLACK_LIST,
+        vjp_black_list=VJPS_BLACK_LIST,
+        vjp_comp_white_list=VJP_COMPS,
+        decomp_vjp_white_list=decomp_vjp_interface_implementation_gen_op_list,
     )
 
 
@@ -477,12 +628,27 @@ if __name__ == "__main__":
         help='The parsed fused backward ops yaml file.',
     )
     parser.add_argument(
+        '--sparse_op_path',
+        type=str,
+        help='The parsed sparse forward ops yaml file.',
+    )
+    parser.add_argument(
+        '--sparse_rev_op_path',
+        type=str,
+        help='The parsed sparse backward ops yaml file.',
+    )
+    parser.add_argument(
         '--templates_dir',
         type=str,
         help='JinJa2 templates base directory.',
     )
     parser.add_argument(
         '--destination_dir',
+        type=str,
+        help='Destination base directory for generated file.',
+    )
+    parser.add_argument(
+        '--decomp_vjp_destination_dir',
         type=str,
         help='Destination base directory for generated file.',
     )
@@ -498,6 +664,9 @@ if __name__ == "__main__":
         pathlib.Path(args.rev_pd_op_path),
         pathlib.Path(args.fused_op_path),
         pathlib.Path(args.fused_rev_op_path),
+        pathlib.Path(args.sparse_op_path),
+        pathlib.Path(args.sparse_rev_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
+        pathlib.Path(args.decomp_vjp_destination_dir),
     )

@@ -25,7 +25,7 @@ bool ReshapeStride(const DDim& old_dims,
                    DDim& new_stride) {  // NOLINT
   int64_t numel = product(old_dims);
   if (numel < 0) {
-    std::array<int64_t, 2> tmp;
+    std::array<int64_t, 2> tmp = {};
     tmp[0] = 1;
     tmp[1] = new_dims.size();
     new_stride = DDim(tmp.data(), 2);

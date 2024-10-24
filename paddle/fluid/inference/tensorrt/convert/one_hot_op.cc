@@ -57,7 +57,7 @@ class OneHotOpConverter : public OpConverter {
         VLOG(3) << "trt not support float64, so it is converted to float32.";
       }
     } else {
-      PADDLE_THROW(platform::errors::Fatal("one_hot is not supported"));
+      PADDLE_THROW(common::errors::Fatal("one_hot is not supported"));
     }
 
     auto depth_name = op_desc.Input("depth_tensor");
@@ -79,7 +79,7 @@ class OneHotOpConverter : public OpConverter {
         engine_, OneHot, *indices_tensor, *values_tensor, *depth_tensor, -1);
 
     auto output_name = op_desc.Output("Out").front();
-    RreplenishLayerAndOutput(layer, "one_hot", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "one_hot", {output_name}, test_mode);
 #else
     VLOG(3) << "one_hot is not supported when TensorRT < 8.5.1";
 #endif

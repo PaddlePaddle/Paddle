@@ -21,6 +21,7 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -108,10 +109,15 @@ class _Buffer_ : public ExprNode<_Buffer_> {
 
   static Buffer Make(const std::string& name,
                      const std::vector<Expr>& shape = {});
-
   static Buffer Make(const std::string& name, Type type) {
-    CHECK(!type.is_void());
-    CHECK(!type.is_unk());
+    PADDLE_ENFORCE_EQ(!type.is_void(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Input argument `type` should not be void"));
+    PADDLE_ENFORCE_EQ(!type.is_unk(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Invalid input argument `type` type"));
     auto n = make_shared<_Buffer_>();
     n->name = name;
     n->dtype = type;

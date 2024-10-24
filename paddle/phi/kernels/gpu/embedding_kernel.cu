@@ -121,8 +121,8 @@ void EmbeddingKernel(const Context &ctx,
   } else if (input.dtype() == phi::DataType::INT16) {
     functor.template apply<int16_t>();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int16, int32 and int64"));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "embedding input only support int16, int32 and int64"));
   }
 }
 
@@ -136,4 +136,6 @@ PD_REGISTER_KERNEL(embedding,
                    double,
                    int8_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

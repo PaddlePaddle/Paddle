@@ -361,7 +361,7 @@ class CompileTimeStrategy:
             pass
         else:
             raise ValueError(
-                "Not supported optimizer for distributed training: %s" % op_type
+                f"Not supported optimizer for distributed training: {op_type}"
             )
         return related_var_names
 
@@ -1219,9 +1219,9 @@ class CompileTimeStrategy:
 
         for merged in self.merged_variables_pairs:
             m_param, m_grad = merged
-            self.merged_variable_map[
-                m_param.merged_var.name
-            ] = m_param.merged_var
+            self.merged_variable_map[m_param.merged_var.name] = (
+                m_param.merged_var
+            )
             self.merged_variable_map[m_grad.merged_var.name] = m_grad.merged_var
 
         param_merges = []
@@ -1478,9 +1478,7 @@ def _get_lr_scheduler_program(lr_scheduler, lr_param_dict, lr_decay_steps):
             )
     else:
         raise ValueError(
-            "Not supported current LearningRate strategy, please use follow decay strategy: {}".format(
-                scheduler_decay
-            )
+            f"Not supported current LearningRate strategy, please use follow decay strategy: {scheduler_decay}"
         )
 
     return decay_main_program, decay_startup_program, lr_name

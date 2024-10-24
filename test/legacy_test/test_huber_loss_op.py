@@ -29,7 +29,7 @@ def huber_loss_forward(val, delta):
         return delta * (abs_val - 0.5 * delta)
 
 
-def huber_loss_wraper(x, y, delta):
+def huber_loss_wrapper(x, y, delta):
     a = paddle._C_ops.huber_loss(x, y, delta)
     return a
 
@@ -37,8 +37,10 @@ def huber_loss_wraper(x, y, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
+        self.prim_op_type = "comp"
         self.python_out_sig = ["Out"]
-        self.python_api = huber_loss_wraper
+        self.python_api = huber_loss_wrapper
+        self.public_python_api = huber_loss_wrapper
 
         self.delta = 1.0
         self.init_dtype()
@@ -65,7 +67,7 @@ class TestHuberLossOp(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
@@ -105,8 +107,10 @@ class TestHuberLossFP16Op(TestHuberLossOp):
 class TestHuberLossBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
+        self.prim_op_type = "comp"
         self.python_out_sig = ["Out"]
-        self.python_api = huber_loss_wraper
+        self.python_api = huber_loss_wrapper
+        self.public_python_api = huber_loss_wrapper
 
         self.delta = 1.0
         self.init_dtype()
@@ -142,7 +146,7 @@ class TestHuberLossBF16Op(OpTest):
         return (100, 1)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')

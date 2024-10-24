@@ -17,6 +17,7 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/global_and_sub_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
@@ -40,7 +41,7 @@ ReshardFunction* ChooseProperReshardFunction(
       return func.get();
     }
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Can not reshard from in_dist_attr=%s to out_dist_attr=%s.",
       in.dist_attr().to_string(),
       out_dist_attr.to_string()));
@@ -75,6 +76,8 @@ REGISTER_RESHARD_FUNC(RToXExpandReshardFunction);
 REGISTER_RESHARD_FUNC(SameStatusReshardFunction);
 REGISTER_RESHARD_FUNC(SameNdMeshReshardFunction);
 REGISTER_RESHARD_FUNC(CrossNdMeshReshardFunction);
+REGISTER_RESHARD_FUNC(GlobalToSubMeshReshardFunction);
+REGISTER_RESHARD_FUNC(SubMeshToGlobalReshardFunction);
 
 }  // namespace distributed
 }  // namespace phi

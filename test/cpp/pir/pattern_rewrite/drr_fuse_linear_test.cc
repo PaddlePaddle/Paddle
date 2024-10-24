@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
@@ -139,6 +139,8 @@ TEST(DrrTest, FusedLinear) {
   pm.EnablePassTiming();
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 22u);
 }

@@ -24,12 +24,12 @@ limitations under the License. */
 #include <vector>
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace framework {
@@ -95,12 +95,12 @@ class HeterWrapper {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void DeSerializeToTensor(Scope* scope,
                            const VariableMessage& req_var,
-                           platform::Place place,
+                           phi::Place place,
                            gpuStream_t stream);
 #endif
   void DeSerializeToTensor(Scope* scope,
                            const VariableMessage& req_var,
-                           platform::Place place);
+                           phi::Place place);
   // HeterWrapper singleton
   static std::shared_ptr<HeterWrapper> GetInstance() {
     if (NULL == s_instance_) {

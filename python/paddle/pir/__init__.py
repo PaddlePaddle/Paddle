@@ -14,6 +14,8 @@
 
 from paddle.base.libpaddle.pir import (  # noqa: F401
     Block,
+    CloneOptions,
+    IrMapping,
     Operation,
     OpOperand,
     PassManager,
@@ -24,19 +26,36 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     create_shaped_type,
     fake_value,
     get_current_insertion_point,
+    get_op_role,
     is_fake_value,
     parse_program,
+    register_dist_dialect,
     register_paddle_dialect,
     reset_insertion_point_to_end,
     reset_insertion_point_to_start,
     set_insertion_point,
+    set_insertion_point_after,
     set_insertion_point_to_block_end,
+    set_op_role,
     translate_to_pir,
     translate_to_pir_with_param_map,
 )
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from . import core  # noqa: F401
+from .dtype_patch import monkey_patch_dtype  # noqa: F401
 from .math_op_patch import monkey_patch_value  # noqa: F401
 from .program_patch import monkey_patch_program  # noqa: F401
+
+
+@signature_safe_contextmanager
+def _optimized_guard(self, param_and_grads):
+    try:
+        yield
+    finally:
+        pass
+
+
+Program._optimized_guard = _optimized_guard
 
 __all__ = []

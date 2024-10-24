@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
@@ -66,6 +67,7 @@ INSTANTIATION(EigenPad, int16_t);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);
 INSTANTIATION(EigenPad, double);
+INSTANTIATION(EigenPad, dtype::float8_e4m3fn);
 INSTANTIATION(EigenPad, dtype::float16);
 INSTANTIATION(EigenPad, dtype::bfloat16);
 INSTANTIATION(EigenPad, dtype::complex<float>);

@@ -13,15 +13,9 @@
 // limitations under the License.
 
 #pragma once
-
-#include <absl/container/flat_hash_map.h>
-
 #include <memory>
-#include <string>
-#include <tuple>
-#include <vector>
 
-#include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/cinn/backends/codegen_invoke_module.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
@@ -30,38 +24,50 @@ namespace cinn {
 namespace backends {
 
 /**
- * CodeGenCUDA takes a CINN Module with host functions and output a LLVM module.
+ * CodeGenGpuHost takes a CINN Module with CUDA/HIP host functions and output a
+ * LLVM module.
  */
-class CodeGenCUDA_Host : public CodeGenLLVM {
+class CodeGenGpuHost : public CodeGenHost {
  public:
-  explicit CodeGenCUDA_Host(llvm::Module *m,
-                            llvm::IRBuilder<> *b,
-                            const std::shared_ptr<SymbolTable> &vars = nullptr)
-      : CodeGenLLVM(m, b, vars) {}
+  explicit CodeGenGpuHost(llvm::Module *m,
+                          llvm::IRBuilder<> *b,
+                          const std::shared_ptr<SymbolTable> &vars = nullptr)
+      : CodeGenHost(m, b, vars) {}
 
-  using CodeGenLLVM::Visit;
+  // TODO(Hongqing-work): remove this after we clear some old codes.
   llvm::Value *Visit(const ir::_LoweredFunc_ *func) override {
     if (FLAGS_cinn_bucket_compile) {
-      return LowerHostFunc(func);
+      return CodeGenHost::Visit(func);
     }
     return LowerGPUKernelLauncher(func);
   }
 
   llvm::Value *Visit(const ir::Call *op) override {
-    if (op->name == runtime::intrinsic::get_value_in_cuda_kernel_args) {
-      return LowerParseArgsValueCall(op);
-    } else if (op->name == runtime::intrinsic::call_cuda_kernel) {
-      return LowerCUDAKernelCall(op);
-    } else {
-      return CodeGenLLVM::Visit(op);
-    }
+    return common::DefaultDeviceTarget().arch.Match(
+        [&](common::UnknownArch) { return CodeGenHost::Visit(op); },
+        [&](common::X86Arch) { return CodeGenHost::Visit(op); },
+        [&](common::ARMArch) { return CodeGenHost::Visit(op); },
+        [&](common::NVGPUArch) {
+          if (op->name == runtime::intrinsic::call_cuda_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
+        },
+        [&](common::HygonDCUArchHIP) {
+          if (op->name == runtime::intrinsic::call_hip_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
+        });
   }
 
  private:
   /**
-   * Lower a CUDA kernel launcher.
+   * Lower a CUDA/HIP kernel launcher.
    *
-   * We launch a CUDA kernel in the following way:
+   * We launch a CUDA/HIP kernel in the following way:
    *
    * 1. a GPU function (called fn) will compiled to PTX and lower by CUDA driver
    * to a function pointer, which we store as a `void*` type global variable
@@ -73,11 +79,7 @@ class CodeGenCUDA_Host : public CodeGenLLVM {
    */
   llvm::Value *LowerGPUKernelLauncher(const ir::_LoweredFunc_ *func);
 
-  llvm::Value *LowerHostFunc(const ir::_LoweredFunc_ *func);
-
-  llvm::Value *LowerParseArgsValueCall(const ir::Call *call_ir);
-
-  llvm::Value *LowerCUDAKernelCall(const ir::Call *op);
+  llvm::Value *LowerGPUKernelCall(const ir::Call *op);
 };
 
 }  // namespace backends

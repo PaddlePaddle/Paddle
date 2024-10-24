@@ -25,8 +25,8 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
@@ -49,9 +49,8 @@ class CostData {
 
   // Support Time Event only
   // TODO(zhhsplendid): add memory
-  bool SetCostData(
-      const ProgramDesc& program,
-      const std::vector<std::vector<platform::Event>>& time_events);
+  bool SetCostData(const ProgramDesc& program,
+                   const std::vector<std::vector<phi::Event>>& time_events);
 
   static const double NOT_MEASURED;
 

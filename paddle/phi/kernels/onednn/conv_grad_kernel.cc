@@ -53,7 +53,7 @@ void ConvGradKernel(const Context& dev_ctx,
                     DenseTensor* filter_grad) {
   PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
                     AllocationType::CPU,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Operator oneDNN ConvGrad must use CPUPlace"));
   const auto& onednn_engine = dev_ctx.GetEngine();
 
@@ -86,7 +86,7 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          input_grad,
                                                          unique_name);
 
-        // create mkldnn memory from input tensors (data/weights)
+        // create onednn memory from input tensors (data/weights)
         auto& astream = OneDNNContext::tls().get_stream();
 
         if (filter_grad) {

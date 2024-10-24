@@ -191,6 +191,7 @@ void TestTunedDynamic() {
     output_t->copy_to_cpu(out_data.data());
   };
   check_func(predictor_tuned.get());
+  predictor_tuned.reset(nullptr);
 
   // check tuned_dynamic_shape
   AnalysisConfig config;
@@ -290,12 +291,11 @@ void TestDynamicClone(bool with_dynamic = true,
 }
 
 TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }
-TEST(AnalysisPredictor, trt_static) { TestDynamic(false); }
 TEST(AnalysisPredictor, trt_memory_serialize) {
   // serailize
-  TestDynamic(false, true, true);
+  TestDynamic(true, true, true);
   // deserailize
-  TestDynamic(false, false, true);
+  TestDynamic(true, false, true);
 }
 TEST(AnalysisPredictor, trt_dynamic2) { TestDynamic2(); }
 

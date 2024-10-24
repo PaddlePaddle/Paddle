@@ -53,12 +53,12 @@ class IR_API Region {
   ReverseIterator rend() { return blocks_.rend(); }
   ConstReverseIterator rbegin() const { return blocks_.rbegin(); }
   ConstReverseIterator rend() const { return blocks_.rend(); }
+  const std::list<Block *> &blocks() const { return blocks_; }
 
   Block &front() { return *blocks_.front(); }
   Block &back() { return *blocks_.back(); }
   const Block &front() const { return *blocks_.front(); }
   const Block &back() const { return *blocks_.back(); }
-
   void push_back(Block *block);
   Block &emplace_back();
   void push_front(Block *block);

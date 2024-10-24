@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
@@ -23,6 +26,13 @@ from paddle.distributed.communication.group import (
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def _scatter_tensor_in_dygraph(
@@ -131,13 +141,13 @@ def _scatter_in_static_mode(
 
 
 def scatter(
-    tensor,
-    tensor_or_tensor_list=None,
-    src=0,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    tensor: Tensor,
+    tensor_or_tensor_list: Tensor | Sequence[Tensor] | None = None,
+    src: int = 0,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Scatter a tensor (or a tensor list) across devices.
@@ -148,7 +158,7 @@ def scatter(
         tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter (default is `None`, must be specified on the source rank).
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors.
         src (int, optional): Rank of the source device. If none is given, use `0` as default.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.

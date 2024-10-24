@@ -405,12 +405,11 @@ def adjust_hue(img, hue_factor):
     img = img.astype(np.uint8)
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV_FULL)
     h, s, v = cv2.split(hsv_img)
-
-    alpha = np.random.uniform(hue_factor, hue_factor)
-    h = h.astype(np.uint8)
-    # uint8 addition take cares of rotation across boundaries
-    with np.errstate(over="ignore"):
-        h += np.uint8(alpha * 255)
+    alpha = hue_factor
+    h = h.astype(np.int32)  # Convert to int32 to prevent overflow
+    # uint8 addition takes care of rotation across boundaries
+    h = (h + int(alpha * 255)) % 256  # Ensure values are within [0, 255]
+    h = h.astype(np.uint8)  # Convert back to uint8
     hsv_img = cv2.merge([h, s, v])
     return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
 

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -46,7 +48,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(dtype, attrs: List[Dict[str, Any]]):
+        def generate_input1(dtype, attrs: list[dict[str, Any]]):
             if dtype == -1 or dtype == 5:
                 return np.random.random([1, 3, 64, 64]).astype(np.float32)
             elif dtype == 2:
@@ -134,7 +136,7 @@ class TrtConvertReduceTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}

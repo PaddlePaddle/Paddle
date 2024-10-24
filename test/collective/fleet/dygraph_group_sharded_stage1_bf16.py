@@ -37,6 +37,7 @@ def train_mlp(
     acc_steps=1,
     use_main_grad=False,
     test_scaler=False,
+    broadcast_overlap=False,
 ):
     logging.info(
         f"-- Train Info: use_pure_bf16={use_pure_bf16}, use_main_grad={use_main_grad}, acc_steps={acc_steps}"
@@ -86,6 +87,10 @@ def train_mlp(
 
     if sharding_stage == 1:
         optimizer = fleet.distributed_optimizer(optimizer)
+        if broadcast_overlap:
+            optimizer._set_broadcast_overlap(
+                broadcast_overlap=broadcast_overlap, layers=model
+            )
 
     if sharding_stage == 1:
         model.to(device="gpu")
@@ -191,6 +196,7 @@ def test_stage1_bf16():
             train_loader=train_loader,
             use_pure_bf16=False,
             acc_steps=acc_steps,
+            broadcast_overlap=False,
         )
         o2_losses, model_param_dict_o2, optimizer_state_dict_o2 = train_mlp(
             mlp2,
@@ -199,16 +205,56 @@ def test_stage1_bf16():
             use_pure_bf16=True,
             use_main_grad=True,
             acc_steps=acc_steps,
+            broadcast_overlap=False,
         )
         np.testing.assert_array_equal(o2_losses, o1_losses)
         compare_state_dict(
             model_param_dict_o1, model_param_dict_o2, optimizer_state_dict_o2
         )
 
+    def _compare_bf16_broadcast_overlap(acc_steps=1):
+        mlp1 = MLP()
+        mlp2 = MLP()
+        mlp1.set_state_dict(state_dict)
+        mlp2.set_state_dict(state_dict)
+        (
+            o1_losses_overlap,
+            model_param_dict_o1_overlap,
+            optimizer_state_dict_o1_overlap,
+        ) = train_mlp(
+            mlp1,
+            sharding_stage=1,
+            train_loader=train_loader,
+            use_pure_bf16=False,
+            acc_steps=acc_steps,
+            broadcast_overlap=True,
+        )
+        mlp1.set_state_dict(state_dict)
+        (
+            o1_losses_no_overlap,
+            model_param_dict_o1_no_overlap,
+            optimizer_state_dict_o1_no_overlap,
+        ) = train_mlp(
+            mlp1,
+            sharding_stage=1,
+            train_loader=train_loader,
+            use_pure_bf16=False,
+            acc_steps=acc_steps,
+            broadcast_overlap=False,
+        )
+
+        np.testing.assert_array_equal(o1_losses_overlap, o1_losses_no_overlap)
+        np.testing.assert_array_equal(
+            model_param_dict_o1_overlap, model_param_dict_o1_no_overlap
+        )
+
     # no gradient accumulation
     _compare_bf16_o1_vs_o2(acc_steps=1)
     # gradient accumulation
     _compare_bf16_o1_vs_o2(acc_steps=2)
+
+    _compare_bf16_broadcast_overlap(acc_steps=1)
+    _compare_bf16_broadcast_overlap(acc_steps=2)
 
     # stage1 scaler test with main_grad
     mlp3 = MLP()

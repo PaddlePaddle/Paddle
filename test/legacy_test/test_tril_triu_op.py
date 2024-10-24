@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base, tensor
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TrilTriuOpDefaultTest(OpTest):
@@ -39,13 +38,15 @@ class TrilTriuOpDefaultTest(OpTest):
             'lower': True if self.real_op_type == 'tril' else False,
         }
         self.outputs = {
-            'Out': self.real_np_op(self.X, self.diagonal)
-            if self.diagonal
-            else self.real_np_op(self.X)
+            'Out': (
+                self.real_np_op(self.X, self.diagonal)
+                if self.diagonal
+                else self.real_np_op(self.X)
+            )
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -241,7 +242,6 @@ for dtype in ["float64", "float16", "bfloat16", "complex64", "complex128"]:
 class TestTrilTriuOpAPI(unittest.TestCase):
     """test case by using API and has -1 dimension"""
 
-    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
 
@@ -295,7 +295,6 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 np.testing.assert_allclose(tril_out, np.tril(data), rtol=1e-05)
                 np.testing.assert_allclose(triu_out, np.triu(data), rtol=1e-05)
 
-    @test_with_pir_api
     def test_base_api(self):
         paddle.enable_static()
 

@@ -77,7 +77,6 @@ class ReduceOpConverter : public OpConverter {
           if (x < 0) {
             res |= 1 << (x + input_dims);
           } else {
-            if (!engine_->with_dynamic_shape()) x = x - 1;
             res |= 1 << x;
           }
         }
@@ -94,7 +93,7 @@ class ReduceOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     // Ensure that the output type and input type are consistent.
     layer->getOutput(0)->setType(layer->getInput(0)->getType());
-    RreplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
   }
 
  protected:
@@ -193,7 +192,6 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
           if (x < 0) {
             res |= 1 << (x + input_dims);
           } else {
-            if (!engine_->with_dynamic_shape()) x = x - 1;
             res |= 1 << x;
           }
         }
@@ -216,7 +214,7 @@ class ReduceAnyOpConverter : public ReduceOpConverter {
     // Ensure that the output type and input type are consistent.
     layer->getOutput(0)->setType(cast_layer->getInput(0)->getType());
 
-    RreplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, op_type, {output_name}, test_mode);
   };
 };
 

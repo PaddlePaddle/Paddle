@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -38,6 +37,7 @@ namespace sparse {
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
     out->SetIndicesDict(x.GetIndicesDict());                               \
+    out->SetKmaps(x.GetKmaps());                                           \
   }                                                                        \
                                                                            \
   template <typename T, typename Context>                                  \
@@ -74,23 +74,52 @@ namespace sparse {
                                     out->mutable_non_zero_elements()); \
   }
 
-DEFINE_SPARSE_UNARY_KERNEL(Sin)
-DEFINE_SPARSE_UNARY_KERNEL(Tan)
-DEFINE_SPARSE_UNARY_KERNEL(Asin)
-DEFINE_SPARSE_UNARY_KERNEL(Atan)
-DEFINE_SPARSE_UNARY_KERNEL(Sinh)
-DEFINE_SPARSE_UNARY_KERNEL(Tanh)
-DEFINE_SPARSE_UNARY_KERNEL(Asinh)
-DEFINE_SPARSE_UNARY_KERNEL(Atanh)
+#define DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(prefix)                    \
+  template <typename T, typename Context>                                  \
+  void prefix##CooKernel(const Context& dev_ctx,                           \
+                         const SparseCooTensor& x,                         \
+                         SparseCooTensor* out) {                           \
+    *(out->mutable_indices()) = x.indices();                               \
+    DenseTensor* out_values = out->mutable_values();                       \
+    const DenseTensor& x_values = x.values();                              \
+    out_values->Resize(x_values.dims());                                   \
+    dev_ctx.template Alloc<T>(out_values);                                 \
+    phi::prefix##Kernel<T, Context>(                                       \
+        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+    out->SetIndicesDict(x.GetIndicesDict());                               \
+  }                                                                        \
+                                                                           \
+  template <typename T, typename Context>                                  \
+  void prefix##CsrKernel(const Context& dev_ctx,                           \
+                         const SparseCsrTensor& x,                         \
+                         SparseCsrTensor* out) {                           \
+    *(out->mutable_crows()) = x.crows();                                   \
+    *(out->mutable_cols()) = x.cols();                                     \
+    DenseTensor* out_values = out->mutable_values();                       \
+    const DenseTensor& x_values = x.values();                              \
+    out_values->Resize(x_values.dims());                                   \
+    dev_ctx.template Alloc<T>(out_values);                                 \
+    phi::prefix##Kernel<T, Context>(                                       \
+        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+  }
+
 DEFINE_SPARSE_UNARY_KERNEL(Sqrt)
-DEFINE_SPARSE_UNARY_KERNEL(Square)
-DEFINE_SPARSE_UNARY_KERNEL(Log1p)
 DEFINE_SPARSE_UNARY_KERNEL(Relu)
-DEFINE_SPARSE_UNARY_KERNEL(Abs)
-DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL(Relu6)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Abs)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Sin)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Tan)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Sinh)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Asin)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Asinh)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Atan)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Atanh)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Expm1)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Log1p)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Square)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(Tanh)
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
@@ -107,6 +136,7 @@ void ScaleCooKernel(const Context& dev_ctx,
                                bias_after_scale,
                                out->mutable_non_zero_elements());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -157,6 +187,7 @@ void CastCooKernel(const Context& dev_ctx,
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>
@@ -218,6 +249,7 @@ void IsnanCooKernel(const Context& dev_ctx,
   phi::IsnanKernel<T, Context>(
       dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>

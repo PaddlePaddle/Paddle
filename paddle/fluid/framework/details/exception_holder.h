@@ -20,8 +20,8 @@
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace framework {
@@ -41,7 +41,7 @@ class ExceptionHolder {
     } catch (std::exception& ex) {
       Catch(ex);
     } catch (...) {
-      LOG(FATAL) << "Unknown exception caught.";
+      PADDLE_THROW(common::errors::Fatal("Unknown exception caught."));
     }
   }
 

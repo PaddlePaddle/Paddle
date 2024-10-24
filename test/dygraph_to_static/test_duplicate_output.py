@@ -17,17 +17,11 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
 )
 
 import paddle
 
 np.random.seed(1)
-
-if paddle.base.is_compiled_with_cuda():
-    place = paddle.base.CUDAPlace(0)
-else:
-    place = paddle.base.CPUPlace()
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -39,6 +33,17 @@ class SimpleNet(paddle.nn.Layer):
         """forward with duplicate outputs."""
         x = self._linear(x)
         return x, x
+
+
+class DuplicateOutputInPaddleLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        # In GRUCell, the output is a tuple (h, h)
+        self.layer = paddle.nn.GRUCell(10, 20)
+
+    def forward(self, x):
+        x = self.layer(x)
+        return x
 
 
 class TestDuplicateOutput(Dy2StTestBase):
@@ -53,9 +58,21 @@ class TestDuplicateOutput(Dy2StTestBase):
 
         self.assertEqual(param[0].grad.numpy(), 1.0)
 
-    @test_legacy_and_pt_and_pir
     def test_ast_to_func(self):
         self._run_static()
+
+
+class TestDuplicateOutputInPaddleLayer(Dy2StTestBase):
+    def check_dygraph_and_static_result(self, net, x):
+        static_net = paddle.jit.to_static(net)
+        dy_out = net(x)
+        st_out = static_net(x)
+        np.testing.assert_allclose(dy_out, st_out)
+
+    def test_ast_to_func(self):
+        net = DuplicateOutputInPaddleLayer()
+        x = paddle.randn([10, 10])
+        self.check_dygraph_and_static_result(net, x)
 
 
 if __name__ == '__main__':

@@ -15,8 +15,8 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/init_default_kernel_signature_map.h"
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 COMMON_DECLARE_bool(enable_gpu_memory_usage_log);
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   if (paddle::flags::FindFlag("max_body_size")) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
-    envs.push_back("max_body_size");
+    envs.emplace_back("max_body_size");
   }
 #endif
 

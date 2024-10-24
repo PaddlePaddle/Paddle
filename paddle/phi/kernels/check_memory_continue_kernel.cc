@@ -20,7 +20,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_alignment.h"
 
 namespace phi {
 
@@ -45,8 +45,8 @@ void CheckMemoryContinueKernel(const Context &dev_ctx,
     const void *cur_address = input.at(i - 1)->data();
     int64_t len = input.at(i - 1)->numel();
     auto offset = phi::Alignment(len * size_of_dtype, dev_ctx.GetPlace());
-    void *infer_next_address = reinterpret_cast<void *>(
-        reinterpret_cast<uintptr_t>(cur_address) + offset);
+    uintptr_t ptr = reinterpret_cast<uintptr_t>(cur_address) + offset;
+    void *infer_next_address = reinterpret_cast<void *>(ptr);
     const void *next_address = input.at(i)->data();
     numel += offset;
 
@@ -64,8 +64,8 @@ void CheckMemoryContinueKernel(const Context &dev_ctx,
         infer_next_address,
         next_address,
         errors::InvalidArgument(
-            "The infered address of the next tensor should be equal to the "
-            "real address of the next tensor. But got infered address is %p "
+            "The inferred address of the next tensor should be equal to the "
+            "real address of the next tensor. But got inferred address is %p "
             "and real address is %p.",
             infer_next_address,
             next_address));

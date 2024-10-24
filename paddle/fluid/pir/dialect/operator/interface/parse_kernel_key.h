@@ -43,7 +43,7 @@ class ParseKernelKeyInterface
   };
 
   /// Constructor
-  ParseKernelKeyInterface(pir::Operation *op, Concept *impl)
+  ParseKernelKeyInterface(const pir::Operation *op, Concept *impl)
       : pir::OpInterfaceBase<ParseKernelKeyInterface>(op), impl_(impl) {}
 
   KernelKeyTuple ParseKernelKey(pir::Operation *op) {
@@ -56,6 +56,14 @@ class ParseKernelKeyInterface
 
 // Register the ParseKernelKeyInterface for unique op.
 KernelKeyTuple UniqueOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple SaveCombineOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple NopOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple Nop_OpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple PullGpupsSparseKernelKey(pir::Operation *op);
 
 }  // namespace dialect
 }  // namespace paddle

@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import base
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -210,7 +209,9 @@ class TestReshapeOpWithInputShape(OpTest):
         self.actual_shape = (2, 3, 20)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -255,7 +256,9 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.shape = (-1, -1)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -309,7 +312,9 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.infered_shape = (10, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -417,7 +422,6 @@ class TestReshapeAPI(unittest.TestCase):
     def _executed_api(self):
         self.reshape = paddle.reshape
 
-    @test_with_pir_api
     def _test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
@@ -453,7 +457,6 @@ class TestReshapeAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
         np.testing.assert_array_equal(res_4, input.reshape(shape))
 
-    @test_with_pir_api
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
             [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
@@ -560,7 +563,6 @@ class TestReshapeOpError(unittest.TestCase):
         self.data = paddle.static.data
         self.reshape = paddle.reshape
 
-    @test_with_pir_api
     def _test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -608,7 +610,6 @@ class TestReshapeOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_shape_3)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_paddle_api_error(self):
         self._set_paddle_api()
         self._test_errors()
@@ -699,7 +700,6 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_static(self):
         main_prog = base.Program()
         with base.program_guard(main_prog, base.Program()):
@@ -737,13 +737,19 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 class TestReshapePirValueListShape(unittest.TestCase):
     def test_value_list_shape(self):
         with paddle.pir_utils.IrGuard():
-            x = paddle.static.data(
-                'x',
-                [3],
-            )
+            x = paddle.static.data('x', [3])
             shape = [1, paddle.full([], 3)]
             out = paddle.reshape(x, shape)
             self.assertEqual(out.shape, [1, -1])
+
+
+class TestReshapePirTensorWithZeroShape(unittest.TestCase):
+    def test_tensor_with_zero_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', [10, -1])
+            shape = [0, paddle.shape(x)[1]]
+            out = paddle.reshape(x, shape)
+            self.assertEqual(out.shape, [10, -1])
 
 
 if __name__ == "__main__":

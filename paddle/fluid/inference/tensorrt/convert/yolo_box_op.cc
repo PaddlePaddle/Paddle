@@ -75,7 +75,7 @@ class YoloBoxOpConverter : public OpConverter {
     output_names.push_back(op_desc.Output("Boxes").front());
     output_names.push_back(op_desc.Output("Scores").front());
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         yolo_box_layer, "yolo_box", output_names, test_mode);
   }
 };

@@ -15,16 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import (
-    Dy2StTestBase,
-    test_legacy_and_pt_and_pir,
-)
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 
 
 class TestCpuCuda(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_cpu_cuda(self):
         def func(x):
             x = paddle.to_tensor([1, 2, 3, 4])
@@ -40,7 +36,6 @@ class TestCpuCuda(Dy2StTestBase):
 
 
 class TestToTensor(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor(1)
@@ -58,7 +53,6 @@ class TestToTensor(Dy2StTestBase):
 
 
 class TestToTensor1(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             ones = paddle.to_tensor([1])
@@ -72,31 +66,12 @@ class TestToTensor1(Dy2StTestBase):
         x = paddle.to_tensor([3])
         np.testing.assert_allclose(
             paddle.jit.to_static(func)(x).numpy(),
-            np.array([[1], [2], [3], [4]]),
-            rtol=1e-05,
-        )
-
-    @test_legacy_and_pt_and_pir
-    def test_to_tensor_with_variable_list_sot(self):
-        def func(x):
-            ones = paddle.to_tensor([1])
-            twos = paddle.to_tensor([2])
-            """ we ignore the [3] and [4], they will be assign to a variable, and is regard as scalar.
-                TODO: deal with this case after 0-dim tensor is developed.
-            """
-            x = paddle.to_tensor([ones, twos, [3], [4]])
-            return x
-
-        x = paddle.to_tensor([3])
-        np.testing.assert_allclose(
-            paddle.jit.to_static(func)(x),
             np.array([[1], [2], [3], [4]]),
             rtol=1e-05,
         )
 
 
 class TestToTensor2(Dy2StTestBase):
-    @test_legacy_and_pt_and_pir
     def test_to_tensor_with_variable_list(self):
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])
@@ -105,19 +80,6 @@ class TestToTensor2(Dy2StTestBase):
         x = paddle.to_tensor([3])
         np.testing.assert_allclose(
             paddle.jit.to_static(func)(x).numpy(),
-            np.array([[1], [2], [3], [4]]),
-            rtol=1e-05,
-        )
-
-    @test_legacy_and_pt_and_pir
-    def test_to_tensor_with_variable_list_sot(self):
-        def func(x):
-            x = paddle.to_tensor([[1], [2], [3], [4]])
-            return x
-
-        x = paddle.to_tensor([3])
-        np.testing.assert_allclose(
-            paddle.jit.to_static(func)(x),
             np.array([[1], [2], [3], [4]]),
             rtol=1e-05,
         )

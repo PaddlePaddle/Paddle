@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # flags for instructions
+from enum import Enum
 
 
 class FORMAT_VALUE_FLAG:
@@ -34,3 +35,19 @@ class MAKE_FUNCTION_FLAG:
 
 class CALL_FUNCTION_EX_FLAG:
     CFE_HAS_KWARGS = 0x01
+
+
+# see https://github.com/python/cpython/blob/3.12/Python/intrinsics.c#L211-L225
+class IntrinsicsUnaryFunctions(Enum):
+    INTRINSIC_1_INVALID = 0
+    INTRINSIC_PRINT = 1  # no support, only non-interactive mode
+    INTRINSIC_IMPORT_STAR = 2  # no support, `from module import *`
+    INTRINSIC_STOPITERATION_ERROR = 3  # no support, generator or coroutine
+    INTRINSIC_ASYNC_GEN_WRAP = 4  # no support, async
+    INTRINSIC_UNARY_POSITIVE = 5
+    INTRINSIC_LIST_TO_TUPLE = 6
+    INTRINSIC_TYPEVAR = 7  # no support, PEP 695
+    INTRINSIC_PARAMSPEC = 8  # no support, PEP 695
+    INTRINSIC_TYPEVARTUPLE = 9  # no support, PEP 695
+    INTRINSIC_SUBSCRIPT_GENERIC = 10  # no support, PEP 695
+    INTRINSIC_TYPEALIAS = 11  # no support, PEP 695

@@ -150,9 +150,7 @@ def _insert_cast_post_op(
 
     assert (
         target_var.dtype == src_dtype
-    ), "The real dtype({}) is not equal to the src dtype({})".format(
-        _dtype_to_str(target_var.dtype), _dtype_to_str(src_dtype)
-    )
+    ), f"The real dtype({_dtype_to_str(target_var.dtype)}) is not equal to the src dtype({_dtype_to_str(src_dtype)})"
 
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
@@ -355,9 +353,7 @@ def cast_model_to_bf16(
                         to_bf16_var_names.add(in_var_name)
 
                     _logger.debug(
-                        "-- op type: {}, in var name: {}, in var dtype: {} --".format(
-                            op.type, in_var_name, in_var.dtype
-                        )
+                        f"-- op type: {op.type}, in var name: {in_var_name}, in var dtype: {in_var.dtype} --"
                     )
 
             for out_name in op.output_names:
@@ -388,9 +384,7 @@ def cast_model_to_bf16(
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
 
                     _logger.debug(
-                        "-- op type: {}, out var name: {}, out var dtype: {} --".format(
-                            op.type, out_var_name, out_var.dtype
-                        )
+                        f"-- op type: {op.type}, out var name: {out_var_name}, out var dtype: {out_var.dtype} --"
                     )
             for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
                 if (

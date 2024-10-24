@@ -21,15 +21,31 @@ from paddle.autograd import ir_backward
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.base.core import (
     call_decomp,
+    call_decomp_vjp,
     decomp_ops_contain_unused_output,
     has_decomp,
+    has_decomp_vjp,
 )
 from paddle.base.libpaddle.pir import Block, Operation
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
+from paddle.decomposition.recompute import DebugPrint, auto_recompute
 from paddle.framework import core
 
 from . import register
 
 logger = logging.getLogger(__name__)
+
+
+@signature_safe_contextmanager
+def prim_guard():
+    prim_state = core._is_all_prim_enabled()
+    try:
+        if not prim_state:
+            core._set_prim_all_enabled(True)
+        yield
+    finally:
+        if not prim_state:
+            core._set_prim_all_enabled(False)
 
 
 def _build_tensor_tuple(xs):
@@ -179,6 +195,8 @@ def decompose(
     src_vars,
     blacklist=frozenset(),
     whitelist=frozenset(),
+    start_index=0,
+    end_index=-1,
 ):
     """
     Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
@@ -197,12 +215,18 @@ def decompose(
         src_vars (list[Value]): In program, once some operator is decomposed, its vars will be replaced by new ones. This argument means some vars will be used later and corresponding vars will be returned for later usage.
         blacklist (frozenset): The Operators that will be exclude when decomposed into primitives.
         whitelist (frozenset): Only the operators in whitelist will be decomposed into primitives.
+        start_index (int): The start index of decomposed operator in global block, default 0;
+        end_index (int): The end index of decomposed operator in global block, default -1 means all ops will be composed. start_index and end_index follow the principle of left closed and right open, that is [start_index, end_index).
 
     Returns:
         dst_vars (list): A list contains all vars which replace origin ones in src_vars.
     """
     blacklist = core.prim_config["forward_blacklist"] | blacklist
-    return core.sinking_decomp(program, src_vars, blacklist, whitelist)
+    assert isinstance(start_index, int)
+    assert isinstance(end_index, int)
+    return core.sinking_decomp(
+        program, src_vars, blacklist, whitelist, start_index, end_index
+    )
 
 
 def _check_combine_inputs(input1, input2):
@@ -819,6 +843,73 @@ def _decomp_fwd_program(pir_program, pir_grad_var_to_var):
     )
 
 
+def decompose_dist_program(pir_program):
+    '''
+    Decompose all non-primitive ops into primitive ops in a pir program. It may contain forward ops and backward ops.
+    '''
+    # decomp forward composite ops
+    decompose(pir_program, [])
+
+    # decomp backward ops
+    blacklist = core.prim_config["backward_blacklist"]
+
+    block = pir_program.global_block()
+    pre_combine_op = None
+    with paddle.pir.core.program_guard(pir_program):
+        ops = pir_program.global_block().ops
+        for op in ops:
+            bwd_op_name = op.name()
+            if bwd_op_name.split(".")[-1] in blacklist:
+                continue
+            skip_decomp = False
+            if has_decomp_vjp(op):
+                if (
+                    not core._enable_prim_dynamic_shape()
+                ) and _check_prim_dynamic(op):
+                    skip_decomp = True
+                if not skip_decomp:
+                    pir.set_insertion_point(op)
+                    orig_outs = op.results()
+
+                    is_next_split = False
+                    decomp_outs = call_decomp_vjp(op)
+                    for i in range(len(orig_outs)):
+                        if orig_outs[i].has_one_use():
+                            next_op = orig_outs[i].first_use().owner()
+                            if next_op.name() == "builtin.split":
+                                is_next_split = True
+                                _check_op_results(
+                                    next_op.name(),
+                                    next_op.results(),
+                                    decomp_outs[i],
+                                )
+                                next_op.replace_all_uses_with(decomp_outs[i])
+                                block.remove_op(next_op)
+
+                    if not is_next_split:
+                        new_outs = _analyse_decomp_results(
+                            orig_outs, decomp_outs, op
+                        )
+                        _check_op_results(op.name(), orig_outs, new_outs)
+                        op.replace_all_uses_with(new_outs)
+
+                    block.remove_op(op)
+
+                if op.name() == "builtin.combine":
+                    pre_combine_op = op
+
+                if pre_combine_op is not None:
+                    remove_op = True
+                    for item in pre_combine_op.results():
+                        if item.has_one_use():
+                            remove_op = False
+                            break
+                    if remove_op:
+                        block.remove_op(pre_combine_op)
+                    pre_combine_op = None
+    paddle.pir.set_insertion_point_to_block_end(block)
+
+
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     '''
     Decompose all PHI ops into prim ops in a pir program.
@@ -839,3 +930,70 @@ def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):
     _decomp_fwd_program(pir_program, pir_grad_var_to_var)
     # reset prim flags and pir_api flags
     _reset_prim_state(state)
+    return pir_grad_var_to_var
+
+
+def get_inputs_from_data_and_parameter(pir_program):
+    results = []
+    for op in pir_program.global_block().ops:
+        if op.name() == "pd_op.data":
+            results.append(op.results()[0])
+        if op.name() == "builtin.parameter":
+            results.append(op.results()[0])
+    return results
+
+
+def get_outputs_from_fetch_op(pir_program):
+    results = []
+    for op in pir_program.global_block().ops:
+        if op.name() == "pd_op.fetch":
+            results.append(op.operand(0).source())
+    return results
+
+
+def get_grad_var_for_list(outputs, pir_grad_var_to_var):
+    results = []
+    var2grad_var = ValueDict()
+    for k, v in pir_grad_var_to_var.items():
+        var2grad_var[v] = k
+    for output in outputs:
+        results.append(var2grad_var[output])
+    return results
+
+
+def get_defining_op_indices(program, output_values):
+    def getIdx(op):
+        for idx, op_iter in enumerate(program.global_block().ops):
+            if op == op_iter:
+                return idx
+        raise RuntimeError("op not found in program")
+
+    results = []
+    for output in output_values:
+        results.append(getIdx(output.get_defining_op()))
+    return results
+
+
+def auto_recompute_pir_program(pir_program, outputs=None):
+    DebugPrint("Start Recompute Pir Program:")
+    DebugPrint("Before Recompute: ", pir_program)
+    # prepare essential inputs for auto_recompute
+    inputs = get_inputs_from_data_and_parameter(pir_program)
+    if outputs is None:
+        outputs = get_outputs_from_fetch_op(pir_program)
+    if not len(outputs):
+        print("Skip Recompute!")
+        return pir_program
+    fwd_op_end_idx = max(get_defining_op_indices(pir_program, outputs))
+    backward_op_start_idx = fwd_op_end_idx + 1
+
+    program, _ = auto_recompute(
+        pir_program,
+        inputs,
+        outputs,
+        [],
+        fwd_op_end_idx,
+        backward_op_start_idx,
+    )
+
+    return program

@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -38,11 +39,20 @@ class XPUTestRangeOp(XPUOpTestWrapper):
             self.op_type = "range"
             self.init_dtype()
             self.init_config()
-            self.inputs = {
-                'Start': np.array([self.case[0]]).astype(self.dtype),
-                'End': np.array([self.case[1]]).astype(self.dtype),
-                'Step': np.array([self.case[2]]).astype(self.dtype),
-            }
+            start = np.array([self.case[0]]).astype(
+                self.dtype if self.dtype != np.uint16 else np.float32
+            )
+            end = np.array([self.case[1]]).astype(
+                self.dtype if self.dtype != np.uint16 else np.float32
+            )
+            step = np.array([self.case[2]]).astype(
+                self.dtype if self.dtype != np.uint16 else np.float32
+            )
+            if self.dtype == np.uint16:
+                start = convert_float_to_uint16(start)
+                end = convert_float_to_uint16(end)
+                step = convert_float_to_uint16(step)
+            self.inputs = {'Start': start, 'End': end, 'Step': step}
 
             self.outputs = {
                 'Out': np.arange(
@@ -82,6 +92,10 @@ class XPUTestRangeOp(XPUOpTestWrapper):
     class TestRangeOpCase4(TestRangeOp):
         def init_config(self):
             self.case = (10, -10, -11)
+
+    class TestRangeOpCase5(TestRangeOp):
+        def init_config(self):
+            self.case = (0, 1, 1)
 
 
 support_types = get_xpu_op_support_types("range")

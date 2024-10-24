@@ -42,6 +42,7 @@ struct PdOpSig {
 bool HaveOpToMultiKernelsMap(std::string op_name);
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
+const std::vector<PdOpSig>& SparseOpToPdOpsMapping(std::string op_name);
 
 #ifdef PADDLE_WITH_DNNL
 bool IsOneDNNOnlyOp(std::string op_name);
@@ -98,7 +99,7 @@ inline DataType VarTypeToDataType(
     case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
       return DataType::PSTRING;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported proto::VarType_Type `%s` when casting it into DataType.",
           var_type));
   }

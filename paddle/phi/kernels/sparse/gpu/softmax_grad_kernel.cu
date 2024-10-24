@@ -86,7 +86,7 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
                           SparseCsrTensor* dx) {
   PADDLE_ENFORCE_EQ(axis,
                     -1,
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "SparseCsrTensor only support axis=-1 for softmax, "
                         "which is faster when reading data by row (axis=-1)"));
   EmptyLikeCsrKernel<T, Context>(dev_ctx, dout, dx);
@@ -229,7 +229,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         is_same_offset,
         true,
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "SparseCooTensor only support same offsets for softmax."));
     SoftmaxGradKernel<T, Context>(
         dev_ctx, out_values, grad_values, dim - sparse_dim + 1, values);

@@ -31,6 +31,9 @@ void GatherGradKernel(const Context& dev_ctx,
                       DenseTensor* x_grad) {
   const auto& index_type = index.dtype();
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) {
+    axis_v += static_cast<int>(x.dims().size());
+  }
 
   if (axis_v != 0) {
     if (index_type == phi::DataType::INT32) {
@@ -55,7 +58,7 @@ void GatherGradKernel(const Context& dev_ctx,
   } else if (index_type == phi::DataType::INT64) {
     phi::funcs::ScatterAssignAdd<T, int64_t>(dev_ctx, out_grad, index, x_grad);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The data type of Input(Index) of gather_grad must be int32 or int64 "
         "on CPU."));
   }
@@ -72,4 +75,6 @@ PD_REGISTER_KERNEL(gather_grad,
                    int,
                    uint8_t,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

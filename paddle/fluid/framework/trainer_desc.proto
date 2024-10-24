@@ -71,6 +71,7 @@ message TrainerDesc {
   optional bool is_dump_in_simple_mode = 38 [ default = false ];
   optional string dump_fields_mode = 39 [ default = "w" ];
   optional int32 dump_num_decimals = 40 [ default = 9 ];
+  optional bool use_gpu_graph = 41 [ default = false ];
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;

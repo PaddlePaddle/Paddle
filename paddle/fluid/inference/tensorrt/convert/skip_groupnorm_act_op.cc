@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class SkipGroupnormActOpConverter : public OpConverter {
  public:
@@ -42,7 +40,7 @@ class SkipGroupnormActOpConverter : public OpConverter {
 
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
-                         framework::DDim* dims) -> TensorRTEngine::Weight {
+                         phi::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
@@ -51,33 +49,29 @@ class SkipGroupnormActOpConverter : public OpConverter {
       return weight;
     };
 
-    framework::DDim scale_dims;
-    framework::DDim bias_dims;
+    phi::DDim scale_dims;
+    phi::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-    if (engine_->with_dynamic_shape()) {
-      plugin::SkipGroupnormActPluginDynamic* plugin =
-          new plugin::SkipGroupnormActPluginDynamic(
-              static_cast<const float*>(scale_weights.get().values),
-              scale_weights.get().count,
-              static_cast<const float*>(bias_weights.get().values),
-              bias_weights.get().count,
-              epsilon,
-              groups,
-              with_fp16);
-      nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
-      auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(
-          groupnorm_layer, "skip_groupnorm_act", {output_name}, test_mode);
-    }
+    plugin::SkipGroupnormActPluginDynamic* plugin =
+        new plugin::SkipGroupnormActPluginDynamic(
+            static_cast<const float*>(scale_weights.get().values),
+            scale_weights.get().count,
+            static_cast<const float*>(bias_weights.get().values),
+            bias_weights.get().count,
+            epsilon,
+            groups,
+            with_fp16);
+    nvinfer1::ILayer* groupnorm_layer =
+        engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
+    auto output_name = op_desc.Output("Out")[0];
+    ReplenishLayerAndOutput(
+        groupnorm_layer, "skip_groupnorm_act", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(skip_groupnorm_act, SkipGroupnormActOpConverter);

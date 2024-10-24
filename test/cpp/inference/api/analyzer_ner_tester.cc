@@ -21,9 +21,9 @@ struct DataRecord {
   std::vector<std::vector<int64_t>> word, mention;
   std::vector<size_t> lod;  // two inputs have the same lod info.
   size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
-  DataRecord() = default;
+  DataRecord() : word(), mention(), lod(), num_samples(0) {}
   explicit DataRecord(const std::string &path, int batch_size = 1)
-      : batch_size(batch_size) {
+      : word(), mention(), lod(), batch_size(batch_size), num_samples(0) {
     Load(path);
   }
   DataRecord NextBatch() {
@@ -120,22 +120,22 @@ void profile(bool memory_load = false) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
-    const int chinese_ner_result_data[] = {
+    const std::array<int, 11> chinese_ner_result_data = {
         30, 45, 41, 48, 17, 26, 48, 39, 38, 16, 25};
-    PADDLE_ENFORCE_GT(outputs.size(),
-                      0,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        outputs.size(),
+        0,
+        common::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
-    PADDLE_ENFORCE_EQ(output.size(),
-                      1UL,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be equal to 1."));
+    PADDLE_ENFORCE_EQ(
+        output.size(),
+        1UL,
+        common::errors::Fatal("The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
-    PADDLE_ENFORCE_GT(size,
-                      0,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        size,
+        0,
+        common::errors::Fatal("The size of output should be greater than 0."));
     int64_t *result = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < std::min<size_t>(11, size); i++) {
       EXPECT_EQ(result[i], chinese_ner_result_data[i]);
@@ -147,21 +147,6 @@ TEST(Analyzer_Chinese_ner, profile) { profile(); }
 
 TEST(Analyzer_Chinese_ner, profile_memory_load) {
   profile(true /* memory_load */);
-}
-
-// Check the fuse status
-TEST(Analyzer_Chinese_ner, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-  EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

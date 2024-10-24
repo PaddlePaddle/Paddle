@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/amp_auto_cast.h"
-#include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/api/manual/fluid_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 std::tuple<paddle::Tensor,
            paddle::Tensor,
@@ -43,10 +43,8 @@ fused_feedforward_dygraph_function(
     const paddle::Tensor& Ln2Scale,
     const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "fused_feedforward dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "fused_feedforward dygraph", phi::TracerEventType::Operator, 1);
   VLOG(3) << "Running Eager Forward Op: fused_feedforward";
   // Dygraph Forward Pass
 
@@ -67,8 +65,8 @@ fused_feedforward_dygraph_function(
     if (Ln2Scale.initialized()) amp_tensors_vector.push_back({Ln2Scale});
     if (Ln2Bias.initialized()) amp_tensors_vector.push_back({Ln2Bias});
 
-    auto amp_dst_dtype =
-        egr::GetAmpDestDtype("fused_feedforward", amp_tensors_vector);
+    auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
+        "fused_feedforward", amp_tensors_vector);
 
     auto NEW_X = egr::AmpAutoCast("X", X, amp_dst_dtype, "fused_feedforward");
     auto NEW_Linear1Weight = egr::AmpAutoCast(
@@ -270,10 +268,8 @@ fused_feedforward_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Dropout2Out"][0], &Dropout2Out);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "fused_feedforward node_creation",
-        paddle::platform::TracerEventType::Operator,
-        1);
+    phi::RecordEvent node_creation_record_event(
+        "fused_feedforward node_creation", phi::TracerEventType::Operator, 1);
     egr::AutogradMeta* p_autograd_Out = egr::EagerUtils::autograd_meta(&Out);
     egr::AutogradMeta* p_autograd_Dropout1Mask =
         egr::EagerUtils::autograd_meta(&Dropout1Mask);

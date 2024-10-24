@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "flashattn/include/flash_attn.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 namespace dynload {
@@ -43,14 +43,24 @@ extern void* flashattn_dso_handle;
 #define DECLARE_DYNAMIC_LOAD_FLASHATTN_WRAP(__name) \
   DYNAMIC_LOAD_FLASHATTN_WRAP(__name)
 
+#ifdef PADDLE_WITH_HIP
+#define FLASHATTN_ROUTINE_EACH(__macro) \
+  __macro(flash_attn_fwd);              \
+  __macro(flash_attn_varlen_fwd);       \
+  __macro(flash_attn_bwd);              \
+  __macro(flash_attn_varlen_bwd);       \
+  __macro(flash_attn_error);
+#else
 #define FLASHATTN_ROUTINE_EACH(__macro)       \
   __macro(flash_attn_fwd);                    \
   __macro(flash_attn_varlen_fwd);             \
   __macro(flash_attn_bwd);                    \
   __macro(flash_attn_varlen_bwd);             \
+  __macro(calc_reduced_attn_scores);          \
   __macro(flash_attn_fwd_with_bias_and_mask); \
   __macro(flash_attn_bwd_with_bias_and_mask); \
   __macro(flash_attn_error);
+#endif
 
 FLASHATTN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_FLASHATTN_WRAP);
 

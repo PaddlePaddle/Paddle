@@ -22,7 +22,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle_infer {
@@ -33,8 +33,7 @@ class InferApiTesterUtils {
       const std::string &name, PlaceType place, void *p_scope) {
     auto var = static_cast<paddle::framework::Scope *>(p_scope)->Var(name);
     var->GetMutable<phi::DenseTensor>();
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     const auto &dev_ctxs = pool.device_contexts();
     std::unique_ptr<Tensor> res(new Tensor(p_scope, &dev_ctxs));
     res->input_or_output_ = true;
@@ -382,7 +381,7 @@ TEST(CopyTensor, float16_cpu_to_cpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
 
-  using paddle::platform::float16;
+  using phi::dtype::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
@@ -412,7 +411,7 @@ TEST(CopyTensor, float16_gpu_to_gpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
-  using paddle::platform::float16;
+  using phi::dtype::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
@@ -442,7 +441,7 @@ TEST(CopyTensor, float16_cpu_to_gpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kGPU, static_cast<void *>(&scope));
 
-  using paddle::platform::float16;
+  using phi::dtype::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());
@@ -472,7 +471,7 @@ TEST(CopyTensor, float16_gpu_to_cpu) {
   auto tensor_dst = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_dst", PlaceType::kCPU, static_cast<void *>(&scope));
 
-  using paddle::platform::float16;
+  using phi::dtype::float16;
   std::vector<float16> data_src(6, float16(1.0));
   tensor_src->Reshape({2, 3});
   tensor_src->CopyFromCpu(data_src.data());

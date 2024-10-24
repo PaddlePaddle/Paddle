@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -20,7 +21,6 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def reference_unique_consecutive(
@@ -100,7 +100,7 @@ class TestUniqueConsecutiveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
@@ -200,7 +200,13 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
 
 class TestUniqueConsecutiveAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -224,7 +230,6 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
                 fetch_list=[result],
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -239,7 +244,13 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -265,7 +276,6 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 fetch_list=[result],
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -282,7 +292,13 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
 
 class TestUniqueConsecutiveCase3API(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -308,7 +324,6 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
                 fetch_list=[result],
             )
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -354,7 +369,7 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 if __name__ == "__main__":

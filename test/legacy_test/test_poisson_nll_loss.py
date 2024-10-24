@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(100)
 
@@ -34,14 +33,13 @@ def ref_poisson_nll_loss(
 ):
     if epsilon <= 0:
         raise ValueError(
-            "The value of `epsilon` in PoissonNLLLoss should be positive, but received %f, which is not allowed"
-            % epsilon
+            f"The value of `epsilon` in PoissonNLLLoss should be positive, but received {epsilon:f}, which is not allowed"
         )
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "The value of 'reduction' in SoftMarginLoss should be 'sum', 'mean' or 'none', but "
-            "received %s, which is not allowed." % reduction
+            f"received {reduction}, which is not allowed."
         )
     loss_out = 0
     if log_input:
@@ -76,7 +74,6 @@ class TestPoissonNLLLossBasicCase(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_case(
         self,
         dtype="float32",

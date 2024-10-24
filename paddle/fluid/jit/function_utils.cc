@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace jit {
-namespace utils {
+namespace paddle::jit::utils {
 
 std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors) {
   std::vector<DenseTensor> ret;
@@ -59,7 +57,7 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
   PADDLE_ENFORCE_EQ(
       tensors.size(),
       ordered_input_names.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "tensors.size() should be equal to ordered_input_names.size()."));
   for (size_t i = 0; i < tensors.size(); ++i) {
     VLOG(3) << "share into scope: " << ordered_input_names[i];
@@ -75,7 +73,7 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
   for (auto name : param_names) {
     PADDLE_ENFORCE_EQ(params_dict->count(name),
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Parameter named %s is not existed in params_dict. "
                           "Please check that your model was saved correctly",
                           name));
@@ -111,6 +109,4 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
   }
 }
 
-}  // namespace utils
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit::utils

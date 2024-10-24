@@ -114,7 +114,9 @@ class TestDygraphGNN(unittest.TestCase):
 
         with base.dygraph.guard():
             paddle.seed(90)
-            paddle.framework.random._manual_program_seed(90)
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(90)
 
             features = np.ones([1, 100, 50], dtype=np.float32)
             # Use selected rows when it's supported.
@@ -140,7 +142,9 @@ class TestDygraphGNN(unittest.TestCase):
 
         with base.dygraph.guard():
             paddle.seed(90)
-            paddle.framework.random._manual_program_seed(90)
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(90)
 
             features2 = np.ones([1, 100, 50], dtype=np.float32)
             # Use selected rows when it's supported.

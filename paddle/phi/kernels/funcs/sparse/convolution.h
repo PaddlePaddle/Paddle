@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/core/kmap_cache.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -103,13 +105,13 @@ inline void GetOutShape(const DDim& x_dims,
                         DDim* out_dims) {
   const bool is2D = out_dims->size() == 4 ? true : false;
   if (is2D) {
-    PADDLE_ENFORCE_EQ(
-        x_dims.size(),
-        4,
-        phi::errors::InvalidArgument("the shape of x should be (N, H, W, C)"));
+    PADDLE_ENFORCE_EQ(x_dims.size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "the shape of x should be (N, H, W, C)"));
     PADDLE_ENFORCE_EQ(kernel_sizes.size(),
                       4,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "the shape of kernel should be (H, W, C, OC)"));
 
     // infer out shape
@@ -124,11 +126,11 @@ inline void GetOutShape(const DDim& x_dims,
   } else {
     PADDLE_ENFORCE_EQ(x_dims.size(),
                       5,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "the shape of x should be (N, D, H, W, C)"));
     PADDLE_ENFORCE_EQ(kernel_sizes.size(),
                       5,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "the shape of kernel should be (D, H, W, C, OC)"));
 
     // infer out shape

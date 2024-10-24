@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import ref_softmax
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSoftmax2DAPI(unittest.TestCase):
@@ -33,7 +35,6 @@ class TestSoftmax2DAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -110,7 +111,6 @@ class TestSoftmax2DError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    @test_with_pir_api
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

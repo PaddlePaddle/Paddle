@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -92,8 +90,6 @@ TEST(IsTestPass, basic) {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(sync_batch_norm_pass);

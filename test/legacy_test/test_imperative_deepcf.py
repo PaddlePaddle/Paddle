@@ -188,12 +188,12 @@ class TestDygraphDeepCF(unittest.TestCase):
         )
 
     def load_data(self):
-        sys.stderr.write('loading from %s\n' % self.data_path)
+        sys.stderr.write(f'loading from {self.data_path}\n')
         likes = {}
         num_users = -1
         num_items = -1
         with open(self.data_path, 'r') as f:
-            for l in f.readlines():
+            for l in f:
                 uid, iid, rating = (int(v) for v in l.split('\t'))
                 num_users = max(num_users, uid + 1)
                 num_items = max(num_items, iid + 1)
@@ -299,7 +299,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                         },
                         fetch_list=[loss],
                     )[0]
-                    sys.stderr.write('static loss %s\n' % static_loss)
+                    sys.stderr.write(f'static loss {static_loss}\n')
 
         with base.dygraph.guard():
             paddle.seed(seed)

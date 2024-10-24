@@ -34,11 +34,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_KERNEL(c_allreduce_sum,
                    KP,
-                   plat::XPUPlace,
+                   phi::XPUPlace,
                    ops::CAllReduceOpXPUKernel<ops::kRedSum, float>);
 
 #endif

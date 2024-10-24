@@ -25,20 +25,20 @@ void ReverseArrayKernel(const Context& dev_ctx,
                         const TensorArray& x,
                         const IntArray& axis UNUSED,
                         TensorArray* out) {
-  PADDLE_ENFORCE_EQ(
-      x.size(),
-      out->size(),
-      phi::errors::InvalidArgument("The input size(%d) and output size(%d) of "
-                                   "ReverseArrayKernel is different.",
-                                   x.size(),
-                                   out->size()));
+  PADDLE_ENFORCE_EQ(x.size(),
+                    out->size(),
+                    common::errors::InvalidArgument(
+                        "The input size(%d) and output size(%d) of "
+                        "ReverseArrayKernel is different.",
+                        x.size(),
+                        out->size()));
   for (size_t offset = 0; offset < x.size(); ++offset) {
     auto& x_tensor = x.at(offset);
     PADDLE_ENFORCE_GT(
         x_tensor.memory_size(),
         0,
-        phi::errors::PreconditionNotMet(
-            "The input LoDTensorArray X[%d] holds no memory.", offset));
+        common::errors::PreconditionNotMet(
+            "The input phi::TensorArray X[%d] holds no memory.", offset));
     auto out_offset = x.size() - offset - 1;
     auto& out_tensor = out->at(out_offset);
 

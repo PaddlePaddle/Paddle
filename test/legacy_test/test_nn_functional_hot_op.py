@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn import functional
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestOneHotOp(OpTest):
@@ -119,7 +118,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -146,7 +145,6 @@ class TestOneHotOpApi(unittest.TestCase):
                 return_numpy=False,
             )
 
-    @test_with_pir_api
     def test_api_with_depthTensor(self):
         main = paddle.static.Program()
         startup = paddle.static.Program()
@@ -194,7 +192,9 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[4],
                     dtype="float32",
                 )
-                label.desc.set_need_check_feed(False)
+
+                if not paddle.framework.use_pir_api():
+                    label.desc.set_need_check_feed(False)
                 one_hot_label = functional.one_hot(x=label, num_classes=4)
 
             self.assertRaises(TypeError, test_bad_x)

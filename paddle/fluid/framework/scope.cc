@@ -17,8 +17,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/threadpool.h"
-PD_DECLARE_bool(benchmark);
 
+COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(eager_delete_scope);
 
 #define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
@@ -26,9 +26,8 @@ COMMON_DECLARE_bool(eager_delete_scope);
 #define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
 
-namespace paddle {
-namespace framework {
-Scope::Scope() = default;
+namespace paddle::framework {
+Scope::Scope() : vars_(), kids_() {}
 Scope::~Scope() { DropKids(); }  // NOLINT
 
 Scope& Scope::NewScope() const {
@@ -78,7 +77,7 @@ Variable* Scope::FindVar(const std::string& name) const {
 Variable* Scope::GetVar(const std::string& name) const {
   auto* var = FindVar(name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("Cannot find %s in scope.", name));
+      var, common::errors::NotFound("Cannot find %s in scope.", name));
   return var;
 }
 
@@ -152,7 +151,7 @@ void Scope::DeleteScope(Scope* scope) const {
     auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
     PADDLE_ENFORCE_NE(it,
                       this->kids_.end(),
-                      platform::errors::NotFound(
+                      common::errors::NotFound(
                           "%p is not found in %p as kid scope", scope, this));
     this->kids_.erase(it);
     // When making memory benchmark on Fluid, we have to delete scope sync.
@@ -226,14 +225,14 @@ void Scope::RenameInternal(const std::string& origin_name,
   PADDLE_ENFORCE_NE(
       origin_it,
       vars_.end(),
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Original variable with name %s is not found in the scope.",
           origin_name));
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE_EQ(
       new_it,
       vars_.end(),
-      platform::errors::AlreadyExists(
+      common::errors::AlreadyExists(
           "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
@@ -307,5 +306,4 @@ std::string GenScopeTreeDebugInfo(Scope* root) {
   return os.str();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

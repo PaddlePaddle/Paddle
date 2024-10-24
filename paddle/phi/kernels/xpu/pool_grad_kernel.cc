@@ -45,17 +45,17 @@ void Pool2dGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCHW",
-      phi::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
-                                   "data_format is 'NCHW', but received %s",
-                                   data_format));
+      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
+                                      "data_format is 'NCHW', but received %s",
+                                      data_format));
 
   PADDLE_ENFORCE_EQ(
       kernel_size.size(),
       2,
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
-                                   "dimension pooling!, but received "
-                                   "%d-dimension pool kernel size",
-                                   kernel_size.size()));
+      common::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
+                                      "dimension pooling!, but received "
+                                      "%d-dimension pool kernel size",
+                                      kernel_size.size()));
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
       paddings[i] = 0;
@@ -124,7 +124,7 @@ void Pool2dGradKernel(const Context& ctx,
           out_w,
           true);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
 
@@ -170,7 +170,7 @@ void Pool2dGradKernel(const Context& ctx,
           !exclusive,
           true);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool2dgrad");
@@ -204,9 +204,9 @@ void Pool3dGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCDHW",
-      phi::errors::InvalidArgument("The Pool3d_grad XPU OP only support"
-                                   "data_format is 'NCDHW', but received %s",
-                                   data_format));
+      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support"
+                                      "data_format is 'NCDHW', but received %s",
+                                      data_format));
   if (!dx) {
     return;
   }
@@ -311,7 +311,7 @@ void Pool3dGradKernel(const Context& ctx,
           out_w,
           !channel_last);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
 
@@ -369,7 +369,7 @@ void Pool3dGradKernel(const Context& ctx,
           !exclusive,
           !channel_last);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun ", pooling_type));
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "pool3dgrad");
@@ -386,6 +386,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings_t,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -401,10 +402,10 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       ksize.size(),
       2,
-      phi::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
-                                   "dimension pooling!, but received "
-                                   "%d-dimension pool kernel size",
-                                   ksize.size()));
+      common::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
+                                      "dimension pooling!, but received "
+                                      "%d-dimension pool kernel size",
+                                      ksize.size()));
   global_pooling = global_pooling || (adaptive && (ksize[0] * ksize[1] == 1));
   if (global_pooling) {
     for (size_t i = 0; i < ksize.size(); ++i) {

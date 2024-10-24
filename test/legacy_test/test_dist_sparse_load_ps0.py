@@ -34,25 +34,24 @@ class SparseLoadOp(unittest.TestCase):
                 'input', shape=[None, 1], dtype="int64"
             )
 
-            emb = paddle.static.nn.embedding(
-                input=dense_input,
-                is_sparse=True,
-                size=[10, 10],
-                param_attr=base.ParamAttr(
+            emb = paddle.nn.Embedding(
+                num_embeddings=10,
+                embedding_dim=10,
+                sparse=True,
+                weight_attr=base.ParamAttr(
                     name="embedding",
                     initializer=paddle.nn.initializer.Assign(emb_array),
                 ),
-            )
-
-            fc1 = paddle.static.nn.fc(
-                x=emb,
-                size=10,
-                activation="relu",
+            )(dense_input)
+            linear = paddle.nn.Linear(
+                in_features=emb.shape[-1],
+                out_features=10,
                 weight_attr=base.ParamAttr(
                     name='fc',
                     initializer=paddle.nn.initializer.Assign(fc_array),
                 ),
-            )
+            )(emb)
+            fc1 = paddle.nn.ReLU()(linear)
             loss = paddle.mean(fc1)
         return loss
 

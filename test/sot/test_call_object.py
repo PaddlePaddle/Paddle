@@ -67,7 +67,7 @@ def foo_5(b, x):
     return b.self_call(x, "multi")
 
 
-class TestExecutor(TestCaseBase):
+class TestCallObject(TestCaseBase):
     def test_simple(self):
         c = B(13)
         c.a.multi = patched2

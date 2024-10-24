@@ -35,19 +35,16 @@ class TestChunkEvalOp(OpTest):
     batch_size = 50
 
     def parse_scheme(self):
-        if self.scheme == 'IOB':
-            self.num_tag_types = 2
-        elif self.scheme == 'IOE':
+        if self.scheme in ['IOB', 'IOE']:
             self.num_tag_types = 2
 
     def fill_with_chunks(self, data, chunks):
         for chunk in chunks:
             if self.scheme == 'IOB':
                 data[chunk.start_idx] = chunk.chunk_type * self.num_tag_types
-                data[
-                    chunk.start_idx + 1 : chunk.end_idx
-                ] = chunk.chunk_type * self.num_tag_types + (
-                    self.num_tag_types - 1
+                data[chunk.start_idx + 1 : chunk.end_idx] = (
+                    chunk.chunk_type * self.num_tag_types
+                    + (self.num_tag_types - 1)
                 )
                 data[chunk.end_idx] = (
                     chunk.chunk_type * self.num_tag_types

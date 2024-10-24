@@ -46,7 +46,7 @@ class ElementwiseMulOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output(
             check_dygraph=(not self.use_mkldnn),
             check_pir=(not self.use_mkldnn),
@@ -54,7 +54,7 @@ class ElementwiseMulOp(OpTest):
         )
 
     def test_check_grad_normal(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -66,7 +66,7 @@ class ElementwiseMulOp(OpTest):
         )
 
     def test_check_grad_ignore_x(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
             ['Y'],
             'Out',
@@ -79,7 +79,7 @@ class ElementwiseMulOp(OpTest):
         )
 
     def test_check_grad_ignore_y(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
             ['X'],
             'Out',
@@ -451,14 +451,14 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         pass
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output(
             check_dygraph=(not self.use_mkldnn),
             check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad_normal(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
             ['X', 'Y'],
             'Out',
@@ -470,7 +470,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         )
 
     def test_check_grad_ignore_x(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
             ['Y'],
             'Out',
@@ -483,7 +483,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         )
 
     def test_check_grad_ignore_y(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad(
             ['X'],
             'Out',

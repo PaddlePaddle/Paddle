@@ -27,8 +27,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -38,6 +36,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/optional.h"
+
+#ifdef PADDLE_WITH_CUDA
 
 #if CUDA_VERSION < 11000
 // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
@@ -63,7 +63,6 @@ class CUDAGraphContextManager {
 
   DeviceContext *Get(int64_t pool_id, const Place &place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
-    VLOG(6) << "Get cuda graph device context for " << place;
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
@@ -95,9 +94,9 @@ class CUDAGraphContextManager {
   std::set<DeviceContext *> capturing_ctxs_;
 };
 
-class CUDAKernelParams {
+class gpuKernelParams {
  public:
-  explicit CUDAKernelParams(void **params) : kernelParams(params) {}
+  explicit gpuKernelParams(void **params) : kernelParams(params) {}
 
   template <typename T>
   T &As(size_t idx) const {
@@ -132,20 +131,20 @@ class CUDAGraphNodeLauncher {
   //  Sets the kernel's parameters BEFORE activating the CUDA graph. It enables
   //  dynamic determination and setup of kernel arguments.
   //
-  //  parameterSetter_t parameterSetter = [saved_state](CUDAKernelParams
+  //  parameterSetter_t parameterSetter = [saved_state](gpuKernelParams
   //  &param){
   //      // Code to compute and the parameter values from the saved_state
   //      // ...
   //      param.As<type>(idx) = calculated_value;
   //  };
-  using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
+  using parameterSetter_t = std::function<void(gpuKernelParams &)>;
 
   //  [CUDA Kernel Callback]
   //  Acts as the launcher for the kernel. It accepts an `unsigned int`
   //  identifier and uses it for the kernel launch.
   //  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
   //  reference of the kernel from the kernel pointer.
-  //  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
+  //  gpuKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
   //      // cudaFunction_t is REQUIRED to get here
   //      cudaFunction_t cudaFunc;
   //      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
@@ -153,18 +152,18 @@ class CUDAGraphNodeLauncher {
   //      kernel<<<>>>(id, ...);  // Launching the kernel with id
   //      return cudaFunc;
   //  };
-  using cudaKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
+  using gpuKernelCallback_t = std::function<cudaFunction_t(unsigned int)>;
 
   //  [Kernel Launch]
   //  With the callbacks defined and the CUDA function obtained, the kernel can
   //  be launched using the `KernelNodeLaunch` method.
   void KernelNodeLaunch(parameterSetter_t parameterSetter,
-                        cudaKernelCallback_t cudakernelCallback);
+                        gpuKernelCallback_t cudakernelCallback);
 
   std::vector<cudaGraphExecuterSetter_t> GetParameterSettersForExecGraph(
       cudaGraph_t graph);
 
-  parameterSetter_t GetParameterSetter(const CUDAKernelParams &params);
+  parameterSetter_t GetParameterSetter(const gpuKernelParams &params);
 
   static CUDAGraphNodeLauncher &Instance() {
     static CUDAGraphNodeLauncher *launcher = new CUDAGraphNodeLauncher;
@@ -185,13 +184,13 @@ class CUDAGraphNodeLauncher {
 #if CUDA_VERSION >= 10010
 static void ThrowErrorIfNotSupportCUDAGraph() {}
 #else
-enum cudaStreamCaptureMode {
+enum gpuStreamCaptureMode {
   cudaStreamCaptureModeGlobal = 0,
   cudaStreamCaptureModeThreadLocal = 1,
   cudaStreamCaptureModeRelaxed = 2
 };
 static void ThrowErrorIfNotSupportCUDAGraph() {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CUDA Graph is only supported when CUDA version >= 10.1"));
 }
 #endif
@@ -222,19 +221,19 @@ class CUDAGraph {
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
     auto &pool_id_ = capturing_graph_->pool_id_;
-    PADDLE_ENFORCE_EQ(
-        pool_id_,
-        kInvalidPoolID,
-        phi::errors::InvalidArgument("Cannot reset memory pool id twice, the "
-                                     "former memory pool id is %d.",
-                                     pool_id_));
+    PADDLE_ENFORCE_EQ(pool_id_,
+                      kInvalidPoolID,
+                      common::errors::InvalidArgument(
+                          "Cannot reset memory pool id twice, the "
+                          "former memory pool id is %d.",
+                          pool_id_));
     if (pool_id <= kInvalidPoolID) {
       pool_id_ = UniqueMemoryPoolID();
     } else {
-      PADDLE_ENFORCE_GE(
-          pool_id,
-          kDefaultPoolID,
-          phi::errors::InvalidArgument("Invalid memory pool id %d.", pool_id));
+      PADDLE_ENFORCE_GE(pool_id,
+                        kDefaultPoolID,
+                        common::errors::InvalidArgument(
+                            "Invalid memory pool id %d.", pool_id));
       pool_id_ = pool_id;
     }
     return pool_id_;
@@ -248,9 +247,14 @@ class CUDAGraph {
 
   void Reset();
 
-  void AddPostResetCallback(std::function<void()> callback) {
+  void AddPostResetCallback(
+      std::function<void(paddle::optional<const CUDAGraph &>)> callback) {
     std::lock_guard<std::mutex> guard(mtx_);
     cudagraph_post_reset_callbacks_.push_back(std::move(callback));
+  }
+
+  static void AddPreCaptureCallback(std::function<void()> callback) {
+    cudagraph_pre_capture_callbacks_.push_back(std::move(callback));
   }
 
   void AddPostCaptureCallback(std::function<void()> callback) {
@@ -258,18 +262,28 @@ class CUDAGraph {
     cudagraph_post_capture_callbacks_.push_back(std::move(callback));
   }
 
+  void AddJoiningStream(cudaStream_t stream) {
+    streams_to_join_.insert(stream);
+  }
+
   void PrintToDotFiles(const std::string &dirname, unsigned int flags);
+
+  bool IsReplayed() const { return is_replayed_; }
 
   static void BeginCapture(phi::GPUPlace place,
                            cudaStream_t stream,
-                           cudaStreamCaptureMode mode);
+                           gpuStreamCaptureMode mode);
   static std::unique_ptr<CUDAGraph> EndCapture();
 
   static void BeginSegmentCapture();
   static void EndSegmentCapture();
 
+  static void AddJoiningStreamDuringCapturing(cudaStream_t stream) {
+    capturing_graph_->AddJoiningStream(stream);
+  }
+
   static void AddPostResetCallbackDuringCapturing(
-      std::function<void()> callback) {
+      std::function<void(paddle::optional<const CUDAGraph &>)> callback) {
     capturing_graph_->AddPostResetCallback(std::move(callback));
   }
 
@@ -309,7 +323,7 @@ class CUDAGraph {
     }
   }
 
-  using SetSeedFunc = std::function<bool(CUDAKernelParams *, bool)>;
+  using SetSeedFunc = std::function<bool(gpuKernelParams *, bool)>;
   static void RecordRandomKernelInfo(SetSeedFunc set_seed_func) {
     std::lock_guard<std::mutex> guard(capturing_graph_->func_mtx_);
     capturing_graph_->set_seed_funcs_.emplace_back(std::move(set_seed_func));
@@ -324,21 +338,27 @@ class CUDAGraph {
 #if CUDA_VERSION >= 10010
   std::vector<cudaGraph_t> graphs_;
   std::vector<cudaGraphExec_t> exec_graphs_;
-  cudaStreamCaptureMode capture_mode_;
+  gpuStreamCaptureMode capture_mode_;
 #endif
   cudaStream_t stream_{nullptr};
   phi::GPUPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
   bool is_reset_{false};
+  bool is_replayed_{false};
   std::mutex mtx_;
 
   std::vector<SetSeedFunc> set_seed_funcs_;
 
+  std::unordered_set<cudaStream_t> streams_to_join_;
+
   // Holds callbacks that are triggered after the CUDA graph is reset. These
   // callbacks are used for operations that need to be performed following the
   // reset of a CUDA graph.
-  std::vector<std::function<void()>> cudagraph_post_reset_callbacks_;
+  std::vector<std::function<void(paddle::optional<const CUDAGraph &>)>>
+      cudagraph_post_reset_callbacks_;
+
+  static std::vector<std::function<void()>> cudagraph_pre_capture_callbacks_;
 
   // Contains callbacks that are invoked after the CUDA graph has been captured.
   // These callbacks are crucial for managing memory allocations related to the
@@ -368,7 +388,7 @@ class CUDAGraphCaptureModeGuard {
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
+      gpuStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
       // After cudaThreadExchangeStreamCaptureMode is called,
@@ -385,7 +405,7 @@ class CUDAGraphCaptureModeGuard {
   }
 
  private:
-  cudaStreamCaptureMode old_mode_;
+  gpuStreamCaptureMode old_mode_;
 };
 #else
 class CUDAGraphCaptureModeGuard {
@@ -393,10 +413,12 @@ class CUDAGraphCaptureModeGuard {
 
  public:
   explicit CUDAGraphCaptureModeGuard(
-      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
+      gpuStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
 };
 #endif
 
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

@@ -23,7 +23,7 @@ static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
       axis >= -rank && axis < rank,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis is expected to be in range of [%d, %d), but got %d",
           -rank,
           rank,
@@ -45,14 +45,14 @@ static inline phi::DDim ComputeAndCheckShape(
     PADDLE_ENFORCE_EQ(
         inputs_dims[i].size(),
         out_dims.size(),
-        phi::errors::InvalidArgument("The shape of input[0] and input[%d] "
-                                     "is expected to be equal."
-                                     "But received input[0]'s shape = "
-                                     "[%s], input[%d]'s shape = [%s].",
-                                     i,
-                                     inputs_dims[0],
-                                     i,
-                                     inputs_dims[i]));
+        common::errors::InvalidArgument("The shape of input[0] and input[%d] "
+                                        "is expected to be equal."
+                                        "But received input[0]'s shape = "
+                                        "[%s], input[%d]'s shape = [%s].",
+                                        i,
+                                        inputs_dims[0],
+                                        i,
+                                        inputs_dims[i]));
     for (size_t j = 0; j < in_zero_dims_size; j++) {
       if (j == axis) {
         if (is_runtime) {
@@ -71,7 +71,7 @@ static inline phi::DDim ComputeAndCheckShape(
           // check all shape in run time
           PADDLE_ENFORCE_EQ(inputs_dims[0][j],
                             inputs_dims[i][j],
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The %d-th dimension of input[0] and input[%d] "
                                 "is expected to be equal."
                                 "But received input[0]'s shape = "

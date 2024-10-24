@@ -24,8 +24,8 @@ enum VarType {
 
 // VariableMessage is serialized paddle variable message.
 // NOTICE(gongwb):don't modify this proto if you are not
-//   not familar with how we serialize in sendrecvop_utils.h
-//   and deserilize it in  variable_response.h.
+//   not familiar with how we serialize in sendrecvop_utils.h
+//   and deserialize it in  variable_response.h.
 message VariableMessage {
   enum Type {
     // Pod Types

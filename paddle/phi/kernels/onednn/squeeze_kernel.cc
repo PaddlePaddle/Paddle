@@ -54,15 +54,15 @@ void ExecuteSqueeze(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SqueezeInferKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const IntArray& axes,
-                        DenseTensor* out) {
+void SqueezeKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const IntArray& axes,
+                   DenseTensor* out) {
   auto x_dims = x.dims();
   auto x_dims_tz = x_dims.size();
   std::vector<int32_t> tmp(axes.GetData().begin(), axes.GetData().end());
 
-  // Currently there is only tranformation for tensors, while attr axes still
+  // Currently there is only transformation for tensors, while attr axes still
   // follows default dtype instead of oneDNN dtype, so here manually change it
   if ((x_dims_tz >= 3) &&
       (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -87,13 +87,13 @@ void SqueezeInferKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SqueezeKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const IntArray& axes,
-                   DenseTensor* out,
-                   DenseTensor* xshape) {
+void SqueezeWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const IntArray& axes,
+                             DenseTensor* out,
+                             DenseTensor* xshape) {
   if (xshape == nullptr) {
-    SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+    SqueezeKernel<T, Context>(dev_ctx, x, axes, out);
   } else {
     auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
     auto out_dims = out->dims();
@@ -102,12 +102,12 @@ void SqueezeKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(squeeze_infer,
-                   OneDNN,
-                   ONEDNN,
-                   phi::SqueezeInferKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
-
 PD_REGISTER_KERNEL(
     squeeze, OneDNN, ONEDNN, phi::SqueezeKernel, float, phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(squeeze_with_xshape,
+                   OneDNN,
+                   ONEDNN,
+                   phi::SqueezeWithXShapeKernel,
+                   float,
+                   phi::dtype::bfloat16) {}

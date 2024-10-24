@@ -79,7 +79,7 @@ class DistTensor final
              const Placements& placements);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
-  /// \param dims The global dimension of the currnet Tensor.
+  /// \param dims The global dimension of the current Tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const DDim& dims, const TensorDistAttr& dist_attr);
 
@@ -130,6 +130,10 @@ class DistTensor final
   /// \return The DenseTensor value's const reference
   const DenseTensor& value() const { return *value_; }
 
+  /// \brief Returns the shared_ptr of dense tensor value's in dist tensor.
+  /// \return The shared_ptr of dense tensor value
+  std::shared_ptr<DenseTensor> shared_value() { return value_; }
+
   /// \brief Returns the mutable dense tensor value in dist tensor.
   /// \note If DenseTensor value is modified externally, the corresponding
   /// relationship between it and the current tensor's global dims and
@@ -142,6 +146,10 @@ class DistTensor final
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.
   const DDim& local_dims() const;
+
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override;
 
   /// \brief Returns the global number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
@@ -177,6 +185,17 @@ class DistTensor final
                      DataType dtype,
                      size_t requested_size = 0,
                      bool fake_alloc = false) override;
+
+  /// \brief Set the flag indicating whether to skip checking the process mesh.
+  /// \note Currently only used for the MoE apis,
+  /// it receives the inputs with different process meshes and outputs the dist
+  /// tensor with global process mesh.
+  /// \return void
+  void unsafe_set_skip_check_mesh(bool skip);
+
+  bool skip_check_mesh() const { return dist_attr_.skip_check_mesh(); }
+
+  void clear();
 
  private:
   friend class ReshardFunction;

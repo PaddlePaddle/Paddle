@@ -128,6 +128,10 @@ class TEST_API DenseTensor : public TensorBase,
   /// return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override { return holder_ != nullptr; }
+
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
@@ -203,7 +207,7 @@ class TEST_API DenseTensor : public TensorBase,
    *
    * 1. Some hardware or third-party libraries add some additional storage
    * properties on top of the description of the basic DenseTensor, such as
-   * memory desc of MKLDNN, storage_format and storage_layout of NPU,
+   * memory desc of OneDNN, storage_format and storage_layout of NPU,
    * these members are necessary for optimal performance, but if the properties
    * of each device are added to the DenseTensor with different macro isolation,
    * the memory layout of the DenseTensor will become more fragmented.

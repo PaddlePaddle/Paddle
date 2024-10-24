@@ -27,6 +27,10 @@ void GatherGradKernel(const Context& dev_ctx,
                       const Scalar& axis,
                       DenseTensor* x_grad) {
   auto axis_v = axis.to<int>();
+  if (axis_v < 0) {
+    axis_v += static_cast<int>(x.dims().size());
+  }
+
   const auto& index_type = index.dtype();
 
   if (out_grad.numel() == 0) {
@@ -38,14 +42,14 @@ void GatherGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         index_dims[1],
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The last dim of index should be 1 when it is 2D, but we get %d",
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
         index_dims.size() == 1 || index_dims.size() == 0,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }

@@ -64,6 +64,13 @@ void MatmulGradKernel(const Context& dev_ctx,
     c_1 = new_c_1;
   }
 
+  if (info_forward.is_y_need_broadcast) {
+    XPUType* new_c_2 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+        info_forward.bs * info_forward.k * info_forward.n);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(new_c_2);
+    c_2 = new_c_2;
+  }
+
   XpuFcInfo info_dx;
   XpuFcInfo info_dy;
   std::tuple<XpuFcInfo,
@@ -95,6 +102,15 @@ void MatmulGradKernel(const Context& dev_ctx,
   }
   if (dy) {
     MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+    if (info_forward.is_y_need_broadcast) {
+      int r = xpu::reduce_sum<XPUType>(
+          xpu_ctx,
+          c_2,
+          reinterpret_cast<XPUType*>(dy->data<T>()),
+          {info_forward.bs, info_forward.k, info_forward.n},
+          {0});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+    }
   }
 }
 
@@ -172,6 +188,19 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void LegacyMatmulGradKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            const DenseTensor& dout,
+                            bool transpose_x,
+                            bool transpose_y,
+                            float alpha UNUSED,
+                            DenseTensor* dx,
+                            DenseTensor* dy) {
+  MatmulGradKernel<T, Context>(
+      dev_ctx, x, y, dout, transpose_x, transpose_y, dx, dy);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matmul_grad,
@@ -186,6 +215,14 @@ PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MatmulWithFlattenGradKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(legacy_matmul_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LegacyMatmulGradKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}

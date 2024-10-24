@@ -582,8 +582,13 @@ void HardSwishKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(relu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReluKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(silu,
                    XPU,
                    ALL_LAYOUT,
@@ -639,8 +644,13 @@ PD_REGISTER_KERNEL(square,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(log,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LogKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(
     relu6, XPU, ALL_LAYOUT, phi::Relu6Kernel, float, phi::dtype::float16) {}
@@ -660,15 +670,34 @@ PD_REGISTER_KERNEL(cos,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    pow, XPU, ALL_LAYOUT, phi::PowKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(pow,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::PowKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(rsqrt,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RsqrtKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(exp,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ExpKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
 
-PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
-PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)

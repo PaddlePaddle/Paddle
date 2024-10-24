@@ -111,6 +111,35 @@ int64_t PD_TensorGetDim(const PD_Tensor* tensor,
   return cc_tensor->dims()[index];
 }
 
+int64_t PD_TensorGetNumStrides(const PD_Tensor* tensor, PD_Status* status) {
+  if (status) {
+    if (!tensor) {
+      *status = C_FAILED;
+      return 0;
+    }
+    *status = C_SUCCESS;
+  }
+
+  auto cc_tensor = reinterpret_cast<const phi::DenseTensor*>(tensor);
+  return cc_tensor->strides().size();
+}
+
+int64_t PD_TensorGetStride(const PD_Tensor* tensor,
+                           size_t index,
+                           PD_Status* status) {
+  auto cc_tensor = reinterpret_cast<const phi::DenseTensor*>(tensor);
+
+  if (status) {
+    if (!tensor || index >= static_cast<size_t>(cc_tensor->strides().size())) {
+      *status = C_FAILED;
+      return 0;
+    }
+    *status = C_SUCCESS;
+  }
+
+  return cc_tensor->strides()[index];
+}
+
 void PD_TensorGetLoD(const PD_Tensor* tensor,
                      PD_List* data,
                      PD_List* offset,
@@ -185,6 +214,19 @@ void* PD_TensorGetHolder(const PD_Tensor* tensor, PD_Status* status) {
   return cc_tensor->Holder().get();
 }
 
+size_t PD_TensorGetOffset(const PD_Tensor* tensor, PD_Status* status) {
+  if (status) {
+    if (!tensor) {
+      *status = C_FAILED;
+      return 0;
+    }
+    *status = C_SUCCESS;
+  }
+
+  auto cc_tensor = reinterpret_cast<const phi::DenseTensor*>(tensor);
+  return cc_tensor->offset();
+}
+
 void PD_TensorSetDims(PD_Tensor* tensor,
                       int64_t ndims,
                       const int64_t* dims,
@@ -199,6 +241,36 @@ void PD_TensorSetDims(PD_Tensor* tensor,
   auto cc_tensor = reinterpret_cast<phi::DenseTensor*>(tensor);
   std::vector<int> shape(dims, dims + ndims);
   cc_tensor->Resize(common::make_ddim(shape));
+}
+
+void PD_TensorSetOffset(PD_Tensor* tensor,
+                        const int64_t offset,
+                        PD_Status* status) {
+  if (status) {
+    if (!tensor) {
+      *status = C_FAILED;
+      return;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_tensor = reinterpret_cast<phi::DenseTensor*>(tensor);
+  cc_tensor->set_offset(offset);
+}
+
+void PD_TensorSetStrides(PD_Tensor* tensor,
+                         int64_t nstrides,
+                         const int64_t* strides,
+                         PD_Status* status) {
+  if (status) {
+    if (!tensor) {
+      *status = C_FAILED;
+      return;
+    }
+    *status = C_SUCCESS;
+  }
+  auto cc_tensor = reinterpret_cast<phi::DenseTensor*>(tensor);
+  std::vector<int> shape(strides, strides + nstrides);
+  cc_tensor->set_strides(common::make_ddim(shape));
 }
 
 void PD_TensorSetDataType(PD_Tensor* tensor,

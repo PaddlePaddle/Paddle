@@ -19,7 +19,13 @@ import hypothesis.strategies as st
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+from paddle.base import core
 
+
+@unittest.skipIf(
+    core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "only supported on XPU3",
+)
 class TestDecoderAttentionXPUFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_xpu=True)

@@ -52,7 +52,11 @@ std::shared_ptr<IndexExprInferContext> InitIndexExprInferContext(
     const List<Iterator>& input_iterators) {
   std::unordered_map<Variable, const Value> init_var2value;
   for (const auto& iterator : *input_iterators) {
-    CHECK(init_var2value.emplace(iterator, iterator).second);
+    PADDLE_ENFORCE_EQ(
+        init_var2value.emplace(iterator, iterator).second,
+        true,
+        ::common::errors::InvalidArgument(
+            "Insertion failed in init_var2value map. The key already exists."));
   }
 
   return std::make_shared<IndexExprInferContext>(init_var2value);
@@ -188,7 +192,7 @@ List<int> GetReduceAxis(const List<ScheduleDim>& loop_sizes) {
     } else if (sched_dim.Has<tInjective<LoopSize>>()) {
       // do nothing
     } else {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(::common::errors::Fatal("Dead code"));
     }
   }
   return reduce_axis;
@@ -203,7 +207,7 @@ List<int> GetInjectiveAxis(const List<ScheduleDim>& loop_sizes) {
     } else if (sched_dim.Has<tInjective<LoopSize>>()) {
       injective_axis->emplace_back(i);
     } else {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(::common::errors::Fatal("Dead code"));
     }
   }
   return injective_axis;

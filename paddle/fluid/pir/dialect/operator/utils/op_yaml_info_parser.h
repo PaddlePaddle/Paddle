@@ -23,7 +23,7 @@ class OpYamlInfoParser {
  public:
   OpYamlInfoParser() = delete;
 
-  TEST_API explicit OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
+  TEST_API explicit OpYamlInfoParser(OpInfoTuple op_info_tuple,
                                      bool is_legacy_op = false);
 
   TEST_API bool IsTensorAttribute(size_t index) const;

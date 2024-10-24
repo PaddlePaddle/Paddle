@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class CeluOpConverter : public OpConverter {
  public:
@@ -30,7 +28,7 @@ class CeluOpConverter : public OpConverter {
     int input_num = op_desc.Input("X").size();
     PADDLE_ENFORCE_EQ(input_num,
                       1,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The input X's size must equal to 1 in TRT celu op."
                           " But received X's size %d.",
                           input_num));
@@ -40,7 +38,7 @@ class CeluOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num,
         1UL,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT celu op. "
             "But received Out's size %u.",
             output_num));
@@ -78,12 +76,10 @@ class CeluOpConverter : public OpConverter {
                                  nvinfer1::ElementWiseOperation::kSUM);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "celu", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "celu", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(celu, CeluOpConverter);

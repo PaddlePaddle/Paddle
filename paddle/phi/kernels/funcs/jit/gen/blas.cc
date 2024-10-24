@@ -18,9 +18,7 @@
 #include "paddle/phi/kernels/funcs/jit/macro.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void VXXJitCode::genCode() {
   // do not need push stack, and do not need save avx512reg if do not use avx512
@@ -104,7 +102,7 @@ void VXXJitCode::genCode() {
     } else {
       vmovss(ptr[param3 + offset], xmm_dst);
     }
-    offset += sizeof(float) * block;
+    offset += sizeof(float) * block;  // NOLINT
     rest -= block;
   }
   ret();
@@ -134,9 +132,7 @@ DECLARE_BLAS_CREATOR(VAddBias);
 
 #undef DECLARE_BLAS_CREATOR
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

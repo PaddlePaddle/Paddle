@@ -45,7 +45,7 @@ class Tracer;
 // Singleton implementation with C++ 11
 class AmpOperators {
  public:
-  ~AmpOperators();
+  ~AmpOperators() = default;
   AmpOperators(const AmpOperators& o) = delete;
   const AmpOperators& operator=(const AmpOperators& o) = delete;
 
@@ -87,7 +87,7 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 class AmpAttrs {
  public:
   AmpAttrs();
-  ~AmpAttrs();
+  ~AmpAttrs() = default;
   bool GetUsePromote() const;
   void SetUsePromote(bool use_promote);
   AmpLevel GetAmpLevel() const;

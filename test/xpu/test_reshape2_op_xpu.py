@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -172,6 +173,41 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
             self.new_shape = (10, 0, 3, -1)
             self.infered_shape = (10, 2, 3, -1)
             self.shape = (10, 0, 3, -1)
+
+    @check_run_big_shape_test()
+    class TestReshapeOpLargeShape1(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (5120, 32)
+            self.new_shape = (32, 5120)
+            self.infered_shape = (32, 5120)
+
+    @check_run_big_shape_test()
+    class TestReshapeOpLargeShape2(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (1, 8192, 5120)
+            self.new_shape = (8192, 5120)
+            self.infered_shape = (8192, 5120)
+
+    @check_run_big_shape_test()
+    class TestReshapeOpLargeShape3(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (1, 8192)
+            self.new_shape = (8192,)
+            self.infered_shape = (8192,)
+
+    @check_run_big_shape_test()
+    class TestReshapeOpLargeShape4(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (1, 8192, 5, 64, 2)
+            self.new_shape = (1, 8192, 5, 128)
+            self.infered_shape = (1, 8192, 5, 128)
+
+    @check_run_big_shape_test()
+    class TestReshapeOpLargeShape5(TestReshapeOp):
+        def init_data(self):
+            self.ori_shape = (1, 8192, 5, 128)
+            self.new_shape = (1, 8192, 640)
+            self.infered_shape = (1, 8192, 640)
 
 
 support_types = get_xpu_op_support_types("reshape2")

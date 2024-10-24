@@ -49,7 +49,7 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
                                  DenseTensor* out) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
@@ -63,8 +63,8 @@ void FusedScaleBiasAddReluKernel(const Context& dev_ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
-                        "Cann't set exhaustive_search True and "
+                    common::errors::InvalidArgument(
+                        "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
   // alloc output variables

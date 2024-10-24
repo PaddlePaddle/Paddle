@@ -22,20 +22,21 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #ifdef PADDLE_WITH_RCCL
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #else
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace platform {
 constexpr int kInvalidGPUId = -1;
 
-struct Communicator {
+class Communicator {
+ public:
   Communicator() {}
 
   int GetCommId(int device_id) const;

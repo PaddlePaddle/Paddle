@@ -16,7 +16,7 @@
 :: Build Paddle compile environment
 :: ===============================
 :: Description:
-::   
+::
 ::   Install compile environment for xly CI.
 ::
 ::   Include:
@@ -55,7 +55,7 @@ if %errorlevel% == 0 (
 ) else (
   echo Error***** Download wget tool failed, please download it before rerun.
   exit /b 1
-) 
+)
 goto :eof
 :: ===== end step 0: wget tool =====
 
@@ -296,7 +296,7 @@ goto tensorrt
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 wget -O sccache.exe "https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe"
-copy sccache.exe C:\Python38 /Y 
+copy sccache.exe C:\Python38 /Y
 goto :eof
 :: ===== end step 7: sccache on windows =====
 

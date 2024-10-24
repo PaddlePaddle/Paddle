@@ -67,7 +67,7 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   memset(scores_data, 0, scores->numel() * sizeof(T));
 
-  std::array<T, 4> box;
+  std::array<T, 4> box = {};
   for (int i = 0; i < n; i++) {
     int img_height = imgsize_data[2 * i];
     int img_width = imgsize_data[2 * i + 1];

@@ -31,7 +31,7 @@ static inline void TransCompute2DTo5D(const Context& dev_ctx,
                                       const std::vector<int>& perm,
                                       DenseTensor* out) {
   if (rank <= 1 || rank > 5) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Weight rank of SpectralNorm should be in range [2, 5], but got %d.",
         rank));
   }

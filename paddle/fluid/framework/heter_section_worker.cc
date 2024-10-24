@@ -16,16 +16,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
-                platform::DeviceContext* dev_ctx,
-                const platform::Place& place,
+                phi::DeviceContext* dev_ctx,
+                const phi::Place& place,
                 int micro_id) {
   // create microbatch_id variable
   // and set micro id value
@@ -35,14 +35,14 @@ void SetMicroId(paddle::framework::Scope* scope,
   PADDLE_ENFORCE_EQ(
       var->IsType<phi::DenseTensor>(),
       1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the type of microbatch_id  should be phi::DenseTensor"));
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> dims{1};
   tensor->Resize(common::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPhiDataType(framework::proto::VarType::FP32));
-  if (platform::is_gpu_place(place)) {
+      place, phi::TransToPhiDataType(framework::proto::VarType::FP32));
+  if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
     temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
@@ -53,7 +53,7 @@ void SetMicroId(paddle::framework::Scope* scope,
     memory::Copy(
         place,
         tensor_data,
-        platform::CPUPlace(),
+        phi::CPUPlace(),
         reinterpret_cast<void*>(temp_ptr),
         tensor->numel() * framework::SizeOfType(
                               framework::TransToProtoVarType(tensor->dtype())),
@@ -73,7 +73,7 @@ uint64_t HeterSectionWorker::batch_id_(0);
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
   fetch_config_ = desc.fetch_config();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -118,7 +118,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
 void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   trainer_desc_ = desc;
   fetch_config_ = desc.fetch_config();
-  dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  dev_ctx_ = phi::DeviceContextPool::Instance().Get(place_);
   program_.reset(new ProgramDesc(
       desc.heter_section_param().section_config().program_desc()));
   thread_queue_.reset(
@@ -126,9 +126,9 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   bool is_first_stage = (pipeline_stage_ == 0);
   bool is_last_stage = (pipeline_stage_ + 1 == num_pipeline_stages_);
 
-  if (is_first_stage) {
+  if (is_first_stage) {  // NOLINT
     for (auto& op_desc : program_->Block(0).AllOps()) {
-      auto op = std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = OpRegistry::CreateOp(*op_desc);
       auto op_type = op->Type();
       if (listen_op_ == nullptr && op_type == "heter_listen_and_serv") {
         listen_op_ = std::move(op);
@@ -142,11 +142,11 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   } else if (is_last_stage) {
     for (auto& op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-        listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
+        listen_op_ = OpRegistry::CreateOp(*op_desc);
       }
     }
     for (auto& op_desc : program_->Block(1).AllOps()) {
-      auto op = std::move(OpRegistry::CreateOp(*op_desc));
+      auto op = OpRegistry::CreateOp(*op_desc);
       int op_role = op->Attr<int>(std::string("op_role"));
       bool is_forward_op = (op_role == static_cast<int>(OpRole::kForward)) ||
                            (op_role == (static_cast<int>(OpRole::kForward) |
@@ -161,7 +161,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc& desc) {
   } else {
     for (auto& op_desc : program_->Block(0).AllOps()) {
       if (listen_op_ == nullptr) {
-        listen_op_ = std::move(OpRegistry::CreateOp(*op_desc));
+        listen_op_ = OpRegistry::CreateOp(*op_desc);
       }
     }
     for (auto& op_desc : program_->Block(1).AllOps()) {
@@ -207,13 +207,13 @@ void HeterSectionWorker::MiniBatchBarrier() {
     auto micro_id = task.second;
     PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos,
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "cpu trainers only receive backward data"));
     PADDLE_ENFORCE_EQ(
         micro_ids.find(micro_id) == micro_ids.end(),
         true,
-        platform::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
-                                          "when create MicroBatch Scope"));
+        common::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
+                                        "when create MicroBatch Scope"));
     micro_ids.insert(micro_id);
     // backward data has been deserialized to micro scope
     // now run backward computation
@@ -302,7 +302,7 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
 void HeterSectionWorker::CreateMicrobatchScopes() {
   PADDLE_ENFORCE_NOT_NULL(
       minibatch_scope_,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
   if (microbatch_scopes_.get() == nullptr) {
     microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
@@ -324,7 +324,7 @@ void HeterSectionWorker::CreateMicrobatchScopes() {
 
 void HeterSectionWorker::CopyParameters(int microbatch_id,
                                         const ProgramDesc& program,
-                                        const platform::Place& place) {
+                                        const phi::Place& place) {
   auto& global_block = program.Block(0);
   auto var_list = global_block.AllVars();
   if (program.Size() > 1) {
@@ -412,7 +412,7 @@ void HeterSectionWorker::Run() {
       if (is_last_stage) {
         PADDLE_ENFORCE_EQ(message_name.find("forward") != std::string::npos,
                           1,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "last stage only receive forward data"));
         RunForward(micro_id);
         RunBackward(micro_id);
@@ -507,7 +507,7 @@ void HeterSectionWorker::PrintFetchVars() {
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
     time_t curtime;
     time(&curtime);
-    char mbstr[80];
+    char mbstr[80];  // NOLINT
     std::strftime(
         mbstr, sizeof(mbstr), "%Y-%m-%d %H:%M:%S", std::localtime(&curtime));
     std::stringstream ss;

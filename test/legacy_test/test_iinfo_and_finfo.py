@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-from distutils.version import StrictVersion
 
 import numpy as np
 
@@ -38,6 +37,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             'complex128',
             'bool',
         ]:
+            if isinstance(dtype, paddle.base.core.DataType):
+                dtype = paddle.pir.core.datatype_to_vartype[dtype]
             with self.assertRaises(ValueError):
                 _ = paddle.iinfo(dtype)
 
@@ -54,6 +55,8 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             ('int8', np.int8),
             ('uint8', np.uint8),
         ]:
+            if isinstance(paddle_dtype, paddle.base.core.DataType):
+                paddle_dtype = paddle.pir.core.datatype_to_vartype[paddle_dtype]
             xinfo = paddle.iinfo(paddle_dtype)
             xninfo = np.iinfo(np_dtype)
             self.assertEqual(xinfo.bits, xninfo.bits)
@@ -77,7 +80,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertAlmostEqual(xinfo.eps, xninfo.eps)
             self.assertAlmostEqual(xinfo.tiny, xninfo.tiny)
             self.assertAlmostEqual(xinfo.resolution, xninfo.resolution)
-            if StrictVersion(np.__version__) >= StrictVersion('1.22.0'):
+            if np.lib.NumpyVersion(np.__version__) >= "1.22.0":
                 self.assertAlmostEqual(
                     xinfo.smallest_normal, xninfo.smallest_normal
                 )
@@ -97,7 +100,7 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertAlmostEqual(xinfo.eps, xninfo.eps, places=16)
             self.assertAlmostEqual(xinfo.tiny, xninfo.tiny, places=16)
             self.assertAlmostEqual(xinfo.resolution, xninfo.resolution)
-            if StrictVersion(np.__version__) >= StrictVersion('1.22.0'):
+            if np.lib.NumpyVersion(np.__version__) >= "1.22.0":
                 self.assertAlmostEqual(
                     xinfo.smallest_normal, xninfo.smallest_normal, places=16
                 )

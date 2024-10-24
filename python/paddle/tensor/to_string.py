@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import os
+
 import numpy as np
 
 import paddle
@@ -34,20 +38,20 @@ DEFAULT_PRINT_OPTIONS = PrintOptions()
 
 
 def set_printoptions(
-    precision=None,
-    threshold=None,
-    edgeitems=None,
-    sci_mode=None,
-    linewidth=None,
-):
+    precision: int | None = None,
+    threshold: int | None = None,
+    edgeitems: int | None = None,
+    sci_mode: bool | None = None,
+    linewidth: int | None = None,
+) -> None:
     """Set the printing options for Tensor.
 
     Args:
-        precision (int, optional): Number of digits of the floating number, default 8.
-        threshold (int, optional): Total number of elements printed, default 1000.
-        edgeitems (int, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
-        sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
-        linewidth (int, optional): Number of characters each line, default 80.
+        precision (int|None, optional): Number of digits of the floating number, default 8.
+        threshold (int|None, optional): Total number of elements printed, default 1000.
+        edgeitems (int|None, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
+        sci_mode (bool|None, optional): Format the floating number with scientific notation or not, default False.
+        linewidth (int|None, optional): Number of characters each line, default 80.
 
 
     Returns:
@@ -280,12 +284,30 @@ def to_string(var, prefix='Tensor'):
     )
 
 
+def mask_xpu_bf16_tensor(np_tensor):
+    # For XPU, we mask out the 0x8000 added to the tail when converting bf16 to fp32.
+    mask = np.array(0xFFFF0000, dtype='uint32')
+    return (np_tensor.view('uint32') & mask).view('float32')
+
+
 def _format_dense_tensor(tensor, indent):
-    if tensor.dtype == paddle.bfloat16:
+    dtype = tensor.dtype
+    if (
+        dtype == paddle.bfloat16
+        or dtype == core.VarDesc.VarType.BF16
+        or dtype == core.VarDesc.VarType.FP8_E4M3FN
+        or dtype == core.VarDesc.VarType.FP8_E5M2
+    ):
         tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
     np_tensor = tensor.numpy(False)
+    if (
+        paddle.is_compiled_with_xpu()
+        and os.getenv("XPU_PADDLE_MASK_BF16_PRINT") is not None
+        and (dtype == paddle.bfloat16 or dtype == core.VarDesc.VarType.BF16)
+    ):
+        np_tensor = mask_xpu_bf16_tensor(np_tensor)
 
     if len(tensor.shape) == 0:
         size = 0
@@ -377,7 +399,15 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
         )
     else:
         indent = len(prefix) + 1
-        data = _format_dense_tensor(tensor, indent)
+
+        # If we print a dist_tensor with bf16 dtype and Partial placement, it is essential to ensure that the AllReduce communication
+        # is performed in bf16. After completing the communication, convert it to fp32, and then convert it into a numpy array.
+        from paddle.distributed import Replicate, reshard
+
+        placements = [Replicate() for _ in range(tensor.process_mesh.ndim)]
+        global_tensor = reshard(tensor, tensor.process_mesh, placements)
+
+        data = _format_dense_tensor(global_tensor, indent)
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor=\n{indent}{data})"
         return _template.format(
             prefix=prefix,

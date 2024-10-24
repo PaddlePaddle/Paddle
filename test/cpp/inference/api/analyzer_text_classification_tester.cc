@@ -22,10 +22,10 @@ struct DataReader {
       : file(new std::ifstream(path)) {}
 
   bool NextBatch(std::vector<PaddleTensor> *input, int batch_size) {
-    PADDLE_ENFORCE_EQ(batch_size,
-                      1,
-                      paddle::platform::errors::Fatal(
-                          "The size of batch should be equal to 1."));
+    PADDLE_ENFORCE_EQ(
+        batch_size,
+        1,
+        common::errors::Fatal("The size of batch should be equal to 1."));
     std::string line;
     PaddleTensor tensor;
     tensor.dtype = PaddleDType::INT64;
@@ -39,8 +39,14 @@ struct DataReader {
     tensor.lod.front().push_back(data.size());
 
     tensor.data.Resize(data.size() * sizeof(int64_t));
-    CHECK(tensor.data.data() != nullptr);
-    CHECK(data.data() != nullptr);
+    PADDLE_ENFORCE_NE(
+        tensor.data.data(),
+        nullptr,
+        common::errors::Fatal("Variable `tensor.data.data()` is nullptr"));
+    PADDLE_ENFORCE_NE(
+        data.data(),
+        nullptr,
+        common::errors::Fatal("Variable `data.data()` is nullptr"));
     memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
     tensor.shape.push_back(data.size());
     tensor.shape.push_back(1);
@@ -48,7 +54,7 @@ struct DataReader {
     return true;
   }
 
-  std::unique_ptr<std::ifstream> file;
+  std::unique_ptr<std::ifstream> file = nullptr;
 };
 
 void SetConfig(AnalysisConfig *cfg) {
@@ -86,15 +92,20 @@ TEST(Analyzer_Text_Classification, profile) {
 
   if (FLAGS_num_threads == 1) {
     // Get output
-    PADDLE_ENFORCE_GT(outputs.size(),
-                      0,
-                      paddle::platform::errors::Fatal(
-                          "The size of output should be greater than 0."));
+    PADDLE_ENFORCE_GT(
+        outputs.size(),
+        0,
+        common::errors::Fatal("The size of output should be greater than 0."));
     LOG(INFO) << "get outputs " << outputs.back().size();
     for (auto &output : outputs.back()) {
       LOG(INFO) << "output.shape: " << to_string(output.shape);
       // no lod ?
-      CHECK_EQ(output.lod.size(), 0UL);
+      PADDLE_ENFORCE_EQ(
+          output.lod.size(),
+          0UL,
+          common::errors::InvalidArgument(
+              "The 'lod' size of 'output' should be 0, but received size %d.",
+              output.lod.size()));
       LOG(INFO) << "output.dtype: " << output.dtype;
       std::stringstream ss;
       int num_data = 1;

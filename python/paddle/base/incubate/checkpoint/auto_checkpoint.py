@@ -147,18 +147,9 @@ class AutoCheckpointChecker:
         )
 
     def __str__(self):
-        return "run_env:{} platform:{} job_id:{} \
-            hdfs_home:{} hdfs_name:{} hdfs_ugi:{} \
-            hdfs_checkpoint_path:{} trainer_id:{} ce_test".format(
-            self._run_env,
-            self._platform,
-            self._hdfs_home,
-            self._hdfs_name,
-            self._hdfs_ugi,
-            self._hdfs_checkpoint_path,
-            self._trainer_id,
-            self._ce_test,
-        )
+        return f"run_env:{self._run_env} platform:{self._platform} job_id:{self._hdfs_home} \
+            hdfs_home:{self._hdfs_name} hdfs_name:{self._hdfs_ugi} hdfs_ugi:{self._hdfs_checkpoint_path} \
+            hdfs_checkpoint_path:{self._trainer_id} trainer_id:{self._ce_test} ce_test"
 
     @property
     def trainer_id(self):
@@ -293,7 +284,7 @@ class TrainEpochRange(SerializableBase):
             self._save_checkpoint_inter = self._checker.save_checkpoint_inter
         assert (
             self._save_checkpoint_inter >= 0
-        ), f"checkpointer:{self._save_checkpoint_inter} must >=0"
+        ), f"checkpoint inter:{self._save_checkpoint_inter} must >=0"
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
@@ -419,7 +410,7 @@ class TrainEpochRange(SerializableBase):
         for k in pop_keys:
             d.pop(k, None)
 
-        # registerd exes
+        # registered exes
         d["exe_status"] = {}
         e = d["exe_status"]
         for k, t in self._exe_status.items():
@@ -625,7 +616,7 @@ def train_epoch_range(max_epoch_num, save_checkpoint_inter=None):
     global g_acp_type
     if not _get_checker().valid():
         logger.warning(
-            "auto checkpoint will take effect  automaticly on PaddleCloud"
+            "auto checkpoint will take effect automatically on PaddleCloud"
         )
         for i in _normal_yield(max_epoch_num):
             yield i

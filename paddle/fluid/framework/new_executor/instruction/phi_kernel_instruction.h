@@ -28,7 +28,7 @@ class ValueExecutionInfo;
 class PhiKernelInstruction : public InstructionBase {
  public:
   PhiKernelInstruction(size_t id,
-                       const platform::Place& place,
+                       const phi::Place& place,
                        ::pir::Operation* op,
                        const ValueExecutionInfo* value_exec_info);
 
@@ -63,6 +63,8 @@ class PhiKernelInstruction : public InstructionBase {
   phi::Kernel* phi_kernel_{nullptr};  // not owned
 
   std::string phi_op_name_;
+
+  std::string kernel_name_;
 
   ::pir::Operation* op_{nullptr};  // not owned
 

@@ -16,8 +16,8 @@
 
 import unittest
 
-from cinn.ir import Expr, Var
-from cinn.optim import simplify
+from paddle.cinn.ir import Expr, Var
+from paddle.cinn.optim import simplify
 
 
 class TestIR(unittest.TestCase):

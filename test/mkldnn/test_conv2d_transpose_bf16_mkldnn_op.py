@@ -35,7 +35,7 @@ def conv2d_bias_naive(out, bias):
 )
 class TestConv2DTransposeBF16MKLDNNOp(OpTest):
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     def test_check_grad(self):
         pass
