@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.data_feeder import check_type
 from paddle.base.framework import Variable
 from paddle.distribution import Gamma, distribution
 from paddle.framework import in_dynamic_mode
@@ -135,18 +135,7 @@ class StudentT(distribution.Distribution):
             )
 
         self.name = name if name is not None else 'StudentT'
-        self.dtype = paddle.get_default_dtype()
-
-        if self._validate_args(df, loc, scale):
-            self.df = df
-            self.loc = loc
-            self.scale = scale
-            self.df, self.loc, self.scale = paddle.broadcast_tensors(
-                [self.df, self.loc, self.scale]
-            )
-            self.dtype = convert_dtype(df.dtype)
-        else:
-            self.df, self.loc, self.scale = self._to_tensor(df, loc, scale)
+        self.df, self.loc, self.scale = self._broadcast_all(df, loc, scale)
 
         if not self._check_nonnegative(self.df):
             raise ValueError(
@@ -157,10 +146,6 @@ class StudentT(distribution.Distribution):
                 'Every element of input parameter `scale` should be nonnegative.'
             )
 
-        if self.df.shape == []:
-            self.df = self.df.reshape([1])
-            self.loc = self.loc.reshape([1])
-            self.scale = self.scale.reshape([1])
         batch_shape = self.df.shape
         super().__init__(batch_shape)
         self._chi2 = Gamma(0.5 * self.df, paddle.full_like(self.df, 0.5))
@@ -222,7 +207,7 @@ class StudentT(distribution.Distribution):
             raise TypeError('sample shape must be Sequence object.')
 
         output_shape = self._extend_shape(shape)
-        z = paddle.cast(paddle.normal(shape=output_shape), self.dtype)
+        z = paddle.normal(shape=output_shape)
         chi2 = self._chi2.sample(shape)
         x = z * paddle.rsqrt(chi2 / self.df)
         return self.loc + self.scale * x

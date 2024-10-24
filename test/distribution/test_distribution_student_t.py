@@ -189,6 +189,47 @@ class TestStudentT(unittest.TestCase):
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'df', 'loc', 'scale'),
+    [
+        (
+            'float-tensor',
+            10.0,
+            paddle.to_tensor(1.0),
+            2.0,
+        ),
+        (
+            'float-tensor1',
+            10.0,
+            parameterize.xrand((2, 3), dtype='float32', min=1, max=10),
+            2.0,
+        ),
+        (
+            'float-tensor2',
+            parameterize.xrand((2, 1), dtype='float64', min=4, max=30),
+            parameterize.xrand((2, 3), dtype='float64', min=1, max=10),
+            2.0,
+        ),
+        (
+            'float-tensor3',
+            parameterize.xrand((2, 1), dtype='float64', min=4, max=30),
+            1.0,
+            parameterize.xrand((2, 1), dtype='float64', min=0.1, max=3),
+        ),
+        (
+            'float-tensor4',
+            5.0,
+            parameterize.xrand((2, 1), dtype='float32', min=-1, max=-10),
+            parameterize.xrand((2, 3), dtype='float32', min=0.1, max=3),
+        ),
+    ],
+)
+class TestStudentT2(TestStudentT):
+    def setUp(self):
+        self._dist = StudentT(self.df, self.loc, self.scale)
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'df', 'loc', 'scale', 'value'),
     [
         (
@@ -245,6 +286,31 @@ class TestStudentTProbs(unittest.TestCase):
             rtol=config.RTOL.get(str(target_dtype)),
             atol=config.ATOL.get(str(target_dtype)),
         )
+
+
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'df', 'loc', 'scale', 'value'),
+    [
+        (
+            'float-tensor1',
+            10.0,
+            parameterize.xrand((2, 1), dtype='float32', min=-10, max=10),
+            1.0,
+            np.array(3.3).astype("float32"),
+        ),
+        (
+            'float-tensor2',
+            parameterize.xrand((2, 1), dtype='float64', min=4, max=30),
+            1.0,
+            parameterize.xrand((2, 1), dtype='float64', min=0.1, max=5),
+            parameterize.xrand((2, 4), dtype='float64', min=-10, max=10),
+        ),
+    ],
+)
+class TestStudentTProbs2(TestStudentTProbs):
+    def setUp(self):
+        self._dist = StudentT(self.df, self.loc, self.scale)
 
 
 @parameterize.place(config.DEVICES)
