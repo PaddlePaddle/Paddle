@@ -113,6 +113,22 @@ struct MergeReduceTreeAndTrivialOperation {
     merged_node->set_fusion_iters(
         graph->iters_fusion_policy()->SingleDownstreamItersFusion(node,
                                                                   downstream));
+    // TODO(huangjiyi): Support relationship analysis for defferent iters, for
+    // example the input iters and output iters of reshape op.
+    auto sig = merged_node->fusion_iters();
+    const auto upstream_iters = node->fusion_iters();
+    const auto reduce_iters = SliceVector(upstream_iters.loop_iters,
+                                          -upstream_iters.reduce_iter_nums,
+                                          upstream_iters.loop_iters.size());
+    auto trivial_iters = downstream->fusion_iters().loop_iters;
+    if (!fake_reduce_iter_idx.empty()) {
+      trivial_iters = GatherVector(
+          trivial_iters,
+          ExcludeIndex(trivial_iters.size(), fake_reduce_iter_idx));
+    }
+    sig.loop_iters = ConcatVector(trivial_iters, reduce_iters);
+    merged_node->set_fusion_iters(sig);
+
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "

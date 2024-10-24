@@ -44,10 +44,10 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
-                type="c_broadcast",
-                inputs={'X': tindata},
+                type="broadcast",
+                inputs={'x': tindata},
                 attrs={'ring_id': ring_id, 'root': rootid},
-                outputs={'Out': toutdata},
+                outputs={'out': toutdata},
             )
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",

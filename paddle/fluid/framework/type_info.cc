@@ -38,7 +38,6 @@ bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
   return obj->type_info() == kType;
 }
 
-template class TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>;
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::primitive::LazyTensor>;

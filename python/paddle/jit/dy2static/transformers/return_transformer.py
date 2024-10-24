@@ -251,6 +251,7 @@ class SingleReturnTransformer(BaseTransformer):
                     )
                 ],
                 value=gast.Constant(kind=None, value=None),
+                type_comment=None,
             )
             node.body.insert(0, assign_return_value_node)
 
@@ -368,6 +369,7 @@ class SingleReturnTransformer(BaseTransformer):
                         )
                     ],
                     value=return_node.value,
+                    type_comment=None,
                 )
             )
             return_origin_info = getattr(return_node, ORIGIN_INFO, None)

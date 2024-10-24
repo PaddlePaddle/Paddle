@@ -83,8 +83,7 @@ void InferenceDtypeTransferPass::ApplyImpl(ir::Graph* graph) const {
             memcpy(reinterpret_cast<void*>(data_ptr),
                    fp16_data.data(),
                    num_elem * sizeof(float16));
-            tensor->set_type(
-                framework::TransToPhiDataType(proto::VarType::FP16));
+            tensor->set_type(phi::TransToPhiDataType(proto::VarType::FP16));
           }
         }
         used_var_names.insert(var_desc->Name());

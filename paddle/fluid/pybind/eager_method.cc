@@ -693,11 +693,11 @@ static PyObject* tensor_method_copy_(TensorObject* self,
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
-    if (src_tensor.initialized()) {
+    if (src_tensor.has_allocation()) {
       self->tensor.copy_(src_tensor, src_tensor.place(), blocking);
     }
   } else {
-    if (src_tensor.initialized()) {
+    if (src_tensor.has_allocation()) {
       eager_gil_scoped_release guard;
       self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }

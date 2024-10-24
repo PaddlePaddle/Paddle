@@ -52,6 +52,10 @@ class TensorBase {
   /// \return Whether the metadata is valid.
   virtual bool valid() const = 0;
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  virtual bool has_allocation() const = 0;
+
   /// \brief Test whether the storage is allocated.
   /// \return Whether the storage is allocated.
   virtual bool initialized() const = 0;

@@ -144,7 +144,7 @@ class AllgatherOpCost(CommOpCost):
 
 @register_op_cost
 class BroadcastOpCost(CommOpCost):
-    OP_TYPE = "c_broadcast"
+    OP_TYPE = "broadcast"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
         super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
