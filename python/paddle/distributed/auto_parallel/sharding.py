@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from collections import OrderedDict
+from itertools import product
 
 import numpy as np
 
@@ -33,6 +34,25 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 from paddle.optimizer import Optimizer
 
 
+def get_mesh_comm_list(mesh, axis_name):
+    assert axis_name in mesh.dim_names
+    axis_index = mesh.dim_names.index(axis_name)
+
+    ranges = []
+    for dim_num in mesh._shape:
+        ranges.append(range(dim_num))
+    ranges[axis_index] = [0]
+
+    all_result = []
+    for x in product(*ranges):
+        result = []
+        for i in range(0, mesh.get_dim_size(axis_name)):
+            coord = x[0:axis_index] + (i,) + x[axis_index + 1 :]
+            result.append(mesh.mesh[coord])
+        all_result.append(result)
+    return all_result
+
+
 class ShardingOptimizerStage1(Optimizer):
     """
     .. ZeRO: https://arxiv.org/abs/1910.02054
@@ -50,42 +70,51 @@ class ShardingOptimizerStage1(Optimizer):
         self.__dict__["_inner_opt"] = optimizer
 
         self._shard_fn = shard_fn
-        self._sharding_mesh_axis = None
-        self._sharding_degree = None
-        # self._set_and_check_sharding_prop_from_param()
 
         mesh = dist.auto_parallel.get_mesh()
+
+        paddle.enable_static()
+        dp_groups = get_mesh_comm_list(mesh, "dp")
+        for group in dp_groups:
+            comm_group = new_process_group(sorted(group))
+            if dist.get_rank() in group:
+                self._sharding_group = comm_group
+
+        self._mp_group = None
+        if "mp" in mesh._dim_names:
+            mp_groups = get_mesh_comm_list(mesh, "mp")
+            for group in mp_groups:
+                comm_group = new_process_group(sorted(group))
+                if dist.get_rank() in group:
+                    self._mp_group = comm_group
+
+        self.pp_meshes = set()
         if "pp" in mesh.dim_names:
             pp_rank = mesh.get_rank_by_dim_and_process_id("pp", dist.get_rank())
+            for idx in range(0, mesh.get_dim_size("pp")):
+                self.pp_meshes.add(mesh.get_mesh_with_dim("pp", index=idx))
             mesh = mesh.get_mesh_with_dim("pp", index=pp_rank)
+        else:
+            self.pp_meshes.add(mesh)
 
         self._sharding_mesh_axis = mesh._dim_names.index("dp")
         self._sharding_degree = mesh._shape[self._sharding_mesh_axis]
-        sub_mesh = get_1D_sub_process_mesh(mesh, self._sharding_mesh_axis)
-        self._sharding_group = new_process_group(sorted(sub_mesh.process_ids))
-        assert (
-            self._sharding_degree == self._sharding_group.nranks
-        ), "The sharding degree must be equal to sharding_group size. but received {self._sharding_degree} and self._sharding_group.nranks()"
+        self._mp_mesh_axis = -1
+        self._mp_degree = 1
         if "mp" in mesh._dim_names:
             self._mp_mesh_axis = mesh._dim_names.index("mp")
             self._mp_degree = mesh._shape[self._mp_mesh_axis]
-        else:
-            self._mp_mesh_axis = -1
-            self._mp_degree = 1
-        if self._mp_degree > 1:
-            sub_mesh = get_1D_sub_process_mesh(mesh, self._mp_mesh_axis)
-            self._mp_group = new_process_group(sorted(sub_mesh.process_ids))
-        else:
-            self._mp_group = None
+        paddle.disable_static()
 
     def apply_gradients(self, params_grads):
         strategy = fleet.fleet._user_defined_strategy
         sharding_config = strategy.hybrid_configs['sharding_configs']
         comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
-        parameters = []
-        grads = []
+        parameters_dict = {}
+        grads_dict = {}
         has_dist_param = False
         has_not_dist_param = False
+
         for param, grad in params_grads:
             param_dist_attr = param.dist_attr()
             grad_dist_attr = grad.dist_attr()
@@ -101,20 +130,26 @@ class ShardingOptimizerStage1(Optimizer):
             assert (
                 self._sharding_mesh_axis in grad_dist_attr.partial_dims
             ), f"gradient should partial in sharding mesh axis. but received parameter name:{param.name}, sharding_mesh_axis:{self._sharding_mesh_axis}, grad: {grad}."
-            sub_mesh = get_1D_sub_process_mesh(
-                param_dist_attr.process_mesh, self._sharding_mesh_axis
-            )
-            assert (
-                sorted(sub_mesh.process_ids) == self._sharding_group.ranks
-            ), f" all parameter must have the same sharding group. but received {param.name} sharding group is : {sub_mesh.process_ids}, global sharding group is: {self._sharding_group.ranks}"
 
-            if self._mp_group is not None:
+            assert (
+                param_dist_attr.process_mesh in self.pp_meshes
+            ), f"parameter mesh mush be in pp_meshes. but received parameter name:{param.name}, mesh:{param_dist_attr.process_mesh}, pp_meshes: {self.pp_meshes}."
+
+            if dist.get_rank() in param_dist_attr.process_mesh.process_ids:
                 sub_mesh = get_1D_sub_process_mesh(
-                    param_dist_attr.process_mesh, self._mp_mesh_axis
+                    param_dist_attr.process_mesh, self._sharding_mesh_axis
                 )
                 assert (
-                    sorted(sub_mesh.process_ids) == self._mp_group.ranks
-                ), f" all parameter must have the same mp group. but received {param.name} mp group is : {sub_mesh.process_ids}, global mp group is: {self._mp_group.ranks}"
+                    sorted(sub_mesh.process_ids) == self._sharding_group.ranks
+                ), f" all parameter must have the same sharding group. but received {param.name} sharding group is : {sub_mesh.process_ids}, global sharding group is: {self._sharding_group.ranks}"
+
+                if self._mp_group is not None:
+                    sub_mesh = get_1D_sub_process_mesh(
+                        param_dist_attr.process_mesh, self._mp_mesh_axis
+                    )
+                    assert (
+                        sorted(sub_mesh.process_ids) == self._mp_group.ranks
+                    ), f" all parameter must have the same mp group. but received {param.name} mp group is : {sub_mesh.process_ids}, global mp group is: {self._mp_group.ranks}"
 
             assert (
                 param_dist_attr.partial_dims == set()
@@ -139,100 +174,108 @@ class ShardingOptimizerStage1(Optimizer):
             else:
                 param.is_distributed = False
                 has_not_dist_param = True
-            parameters.append(param)
-            grads.append(grad)
+            # parameters.append(param)
+            # grads.append(grad)
+            parameters_dict.setdefault(param_dist_attr.process_mesh, []).append(
+                param
+            )
+            grads_dict.setdefault(param_dist_attr.process_mesh, []).append(grad)
 
         main_program = paddle.static.default_main_program()
         target_block = main_program.global_block()
         last_op = target_block.ops[-1]
 
         group_size = comm_buffer_size_MB * 1024 * 1024
-        group_indices = pir.assign_value_group_by_size(
-            parameters, [group_size, group_size]
-        )
-        var_groups = OrderedDict()
         new_params_grads = []
-        all_gather_param_info_list = []
-        for group_idx, indices in enumerate(group_indices):
-            group_param_list = []
-            group_grad_list = []
-            for index in indices:
-                var_groups.setdefault(group_idx, []).append(
-                    parameters[index].name
-                )
-                group_param_list.append(parameters[index])
-                group_grad_list.append(grads[index])
-                grads[index].persistable = True
+        for mesh, parameters in parameters_dict.items():
+            grads = grads_dict[mesh]
+            var_groups = OrderedDict()
+            group_indices = pir.assign_value_group_by_size(
+                parameters, [group_size, group_size]
+            )
+            all_gather_param_info_list = []
+            for group_idx, indices in enumerate(group_indices):
+                group_param_list = []
+                group_grad_list = []
+                for index in indices:
+                    var_groups.setdefault(group_idx, []).append(
+                        parameters[index].name
+                    )
+                    group_param_list.append(parameters[index])
+                    group_grad_list.append(grads[index])
+                    grads[index].persistable = True
 
-            slice_param_dict, main_shard_fused_param, main_fused_param = (
-                self._fuse_group_param(group_param_list)
-            )
-            dtype = grads[0].dtype
-            align_size = (
-                fleet.utils.tensor_fusion_helper.alignment[
-                    get_current_device_type()
-                ]
-                // align[dtype]
-            )
-            align_size = align_size * self._sharding_degree
-            _, fused_grad = paddle._C_ops.coalesce_tensor_(
-                group_grad_list,
-                dtype,
-                True,
-                False,
-                False,
-                0.0,
-                True,
-                align_size,
-                -1,
-                [],
-                [],
-            )
-            fused_grad.persistable = True
-            fused_type = paddle.pir.create_shaped_type(
-                fused_grad.type(), main_fused_param._local_shape
-            )
-            fused_grad.set_type(
-                pir.cvt_to_dist_type(fused_type, fused_grad.dist_attr())
-            )
-            shard_size = fused_grad._local_shape[0] // self._sharding_degree
-            rank = self._sharding_group.ranks.index(dist.get_rank())
-            rank_begin = rank * shard_size
-            rank_end = rank_begin + shard_size
-            view_shard_fused_grad = paddle._C_ops.tensor_slice(
-                fused_grad, rank_begin, rank_end
-            )
+                slice_param_dict, main_shard_fused_param, main_fused_param = (
+                    self._fuse_group_param(group_param_list)
+                )
+                dtype = grads[0].dtype
+                align_size = (
+                    fleet.utils.tensor_fusion_helper.alignment[
+                        get_current_device_type()
+                    ]
+                    // align[dtype]
+                )
+                align_size = align_size * self._sharding_degree
+                _, fused_grad = paddle._C_ops.coalesce_tensor_(
+                    group_grad_list,
+                    dtype,
+                    True,
+                    False,
+                    False,
+                    0.0,
+                    True,
+                    align_size,
+                    -1,
+                    [],
+                    [],
+                )
+                fused_grad.persistable = True
+                fused_type = paddle.pir.create_shaped_type(
+                    fused_grad.type(), main_fused_param._local_shape
+                )
+                fused_grad.set_type(
+                    pir.cvt_to_dist_type(fused_type, fused_grad.dist_attr())
+                )
+                shard_size = fused_grad._local_shape[0] // self._sharding_degree
+                rank = self._sharding_group.ranks.index(dist.get_rank())
+                rank_begin = rank * shard_size
+                rank_end = rank_begin + shard_size
+                view_shard_fused_grad = paddle._C_ops.tensor_slice(
+                    fused_grad, rank_begin, rank_end
+                )
 
-            shard_fused_grad = paddle._C_ops.reduce_scatter(
-                fused_grad, self._sharding_group.id, self._sharding_degree
-            )
+                shard_fused_grad = paddle._C_ops.reduce_scatter(
+                    fused_grad, self._sharding_group.id, self._sharding_degree
+                )
 
-            paddle._C_ops.share_var([view_shard_fused_grad, shard_fused_grad])
-            all_gather_param_info_list.append(
-                (
-                    main_shard_fused_param,
-                    main_fused_param,
+                paddle._C_ops.share_var(
+                    [view_shard_fused_grad, shard_fused_grad]
                 )
-            )
-
-            for slice_param, param_info in slice_param_dict.items():
-                index, param_begin, param_end = param_info
-                slice_grad = paddle._C_ops.tensor_slice(
-                    shard_fused_grad, param_begin, param_end
-                )
-                partail_status = (
-                    group_grad_list[index].dist_attr().partial_status
-                )
-                partail_status.pop(self._sharding_mesh_axis)
-                slice_grad_dist_attr = pir.create_tensor_dist_attribute(
-                    slice_grad.process_mesh, [-1], partail_status
-                )
-                slice_grad.set_type(
-                    pir.cvt_to_dist_type(
-                        slice_grad.type(), slice_grad_dist_attr
+                all_gather_param_info_list.append(
+                    (
+                        main_shard_fused_param,
+                        main_fused_param,
                     )
                 )
-                new_params_grads.append((slice_param, slice_grad))
+
+                for slice_param, param_info in slice_param_dict.items():
+                    index, param_begin, param_end = param_info
+                    slice_grad = paddle._C_ops.tensor_slice(
+                        shard_fused_grad, param_begin, param_end
+                    )
+                    partail_status = (
+                        group_grad_list[index].dist_attr().partial_status
+                    )
+                    partail_status.pop(self._sharding_mesh_axis)
+                    slice_grad_dist_attr = pir.create_tensor_dist_attribute(
+                        slice_grad.process_mesh, [-1], partail_status
+                    )
+                    slice_grad.set_type(
+                        pir.cvt_to_dist_type(
+                            slice_grad.type(), slice_grad_dist_attr
+                        )
+                    )
+                    new_params_grads.append((slice_param, slice_grad))
 
         if self._inner_opt._grad_clip is not None:
             self._inner_opt._grad_clip.should_comm_on_shard_dim = True
