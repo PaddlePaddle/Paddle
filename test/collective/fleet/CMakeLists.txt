@@ -61,8 +61,8 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21204;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if(WITH_NCCL)
-  if((WITH_GPU) AND LOCAL_ALL_PLAT)
+if(WITH_NCCL OR WITH_RCCL)
+  if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     bash_test_modules(
       test_parallel_dygraph_mp_layers
       START_BASH
@@ -77,6 +77,17 @@ if(WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_mp_layers PROPERTIES TIMEOUT
                                                                     "120")
   endif()
+endif()
+if((WITH_ROCM) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_mp_model
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21205;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
 endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
   bash_test_modules(
@@ -99,7 +110,7 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    "PADDLE_DIST_UT_PORT=21214;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;ROCBLAS_ATOMICS_MOD=0"
   )
   set_tests_properties(test_dygraph_sharding_stage3_for_eager PROPERTIES TIMEOUT
                                                                          "350")
@@ -601,6 +612,9 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_dygraph_recompute_for_eager MODULES test_dygraph_recompute_for_eager
     ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  py_test_modules(
+    test_dygraph_recompute MODULES test_dygraph_recompute ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if(WITH_NCCL OR WITH_RCCL)

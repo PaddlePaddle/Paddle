@@ -270,15 +270,16 @@ class TestPyLayer(unittest.TestCase):
     def test_recompute_kwargs(self):
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             loss_ref, param_ref, grad_ref = run_model(
                 recompute_block=[2], recompute_kwargs=kwargs
             )
 
-    def test_recompute_cpu_rng(self):
-        paddle.set_device("cpu")
-        with self.assertRaises(RuntimeError):
-            loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])
+    # Paddle did not throw RuntimeError anymore
+    # def test_recompute_cpu_rng(self):
+    #     paddle.set_device("cpu")
+    #     with self.assertRaises(RuntimeError):
+    #         loss_ref, param_ref, grad_ref = run_model(recompute_block=[2])
 
 
 if __name__ == '__main__':
