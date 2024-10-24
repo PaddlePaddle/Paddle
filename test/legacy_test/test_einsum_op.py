@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.distributed as dist
 from paddle.base import core
+from paddle.distributed.fleet import auto
 
 
 def einsum_wrapper(a, b):
@@ -291,14 +292,15 @@ class TestEinsumWithDiagonal8(TestEinsumBinary):
 
 class TestEinsumWithDiagonalAutoParallel_1(TestEinsumBinary):
     def set_mandatory(self):
-        self.shapes = [(2, 3, 2), (2, 2, 3)]
+        self.shapes = [(16), (4)]
         self.types = [np.float64, np.float64]
-        self.equation = "ijk,ikl->ijl"
+        self.equation = "i,j -> ij"
         self.check_auto_parallel = True
+        self.process_mesh = auto.ProcessMesh(mesh=[[0, 1], [2, 3]])
         self.placements = {
             'Operands': [
-                ("x0", [dist.Shard(1), dist.Shard(2)]),
-                ("x1", [dist.Shard(2), dist.Shard(1)]),
+                ("x0", [dist.Shard(0)]),
+                ("x1", [dist.Replicate()]),
             ]
         }
 
