@@ -99,12 +99,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
-        phi::CPUPlace cpu_place;
-        phi::DenseTensor temp_tensor;
-        temp_tensor.Resize(t->dims());
-        paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
-        t->clear();
-        paddle::framework::TensorCopySync(temp_tensor, place, t);
+        paddle::framework::TensorCopySync(*t, place, t);
       }
     }
   }
@@ -153,14 +148,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
 
     if (var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<phi::DenseTensor>();
-
-      phi::CPUPlace cpu_place;
-      phi::DenseTensor temp_tensor;
-      temp_tensor.Resize(t->dims());
-
-      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
-      t->clear();
-      paddle::framework::TensorCopySync(temp_tensor, place, t);
+      paddle::framework::TensorCopySync(*t, place, t);
     }
   }
 }
@@ -178,7 +166,6 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
   LOG(INFO) << "Sync params from CPU to XPU: "
             << "xpu_device_id - " << argument->xpu_device_id();
 
-  phi::CPUPlace cpu_place;
   phi::Place xpu_place = phi::XPUPlace(argument->xpu_device_id());
   auto *scope = argument->scope_ptr();
   framework::ir::Graph &main_graph = argument->main_graph();
@@ -192,12 +179,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
       if (!var->IsType<phi::DenseTensor>()) continue;
       auto *tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor->place().GetType() == phi::AllocationType::XPU) continue;
-
-      phi::DenseTensor temp_tensor;
-      temp_tensor.Resize(tensor->dims());
-      paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
-      tensor->clear();
-      paddle::framework::TensorCopySync(temp_tensor, xpu_place, tensor);
+      paddle::framework::TensorCopySync(*tensor, xpu_place, tensor);
     }
   }
 }
