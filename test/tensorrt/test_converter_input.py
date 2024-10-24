@@ -24,8 +24,14 @@ class TestOneHotCase1TRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.nn.functional.one_hot
         self.api_args = {
-            "x": np.random.randn(3, 1).astype("int32"),
+            "x": np.random.randint(0, 2, size=(3, 1)).astype("int32"),
             "num_classes": np.array([2], dtype="int32"),
+        }
+        self.dynamic_shape_data = {
+            "x": lambda shape: np.random.randint(0, 2, size=shape).astype(
+                "int32"
+            ),
+            "num_classes": lambda shape: np.array([2], dtype="int32"),
         }
         self.program_config = {"feed_list": ["x", "num_classes"]}
         self.min_shape = {"x": [1, 1]}
@@ -41,7 +47,7 @@ class TestOneHotCase2TRTPattern(TensorRTBaseTest):
         self.num_classes = 2
         self.api_args = {
             "x": np.random.randint(0, 2, size=(3, 1)).astype(
-                "int64"
+                "int32"
             ),  # Random integers between 0 and num_classes
             "num_classes": self.num_classes,
         }
