@@ -57,3 +57,11 @@ def transpose_converter(network, paddle_op, inputs):
     transposed_tensor = network.add_shuffle(inputs[0])
     transposed_tensor.second_transpose = perm
     return transposed_tensor.get_output(0)
+
+
+@converter_registry.register("pd_op.bmm", trt_version="8.x")
+def bmm_converter(network, paddle_op, inputs):
+    out = network.add_matrix_multiply(
+        inputs[0], trt.MatrixOperation.NONE, inputs[1], trt.MatrixOperation.NONE
+    )
+    return out.get_output(0)
