@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/merge_reduce_compute.h"
+#include "paddle/cinn/optim/fuse_performance_interface.h"
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
