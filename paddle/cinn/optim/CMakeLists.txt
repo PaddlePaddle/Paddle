@@ -35,6 +35,7 @@ gather_srcs(
   if_fusion.cc
   merge_block_utils.cc
   eliminate_common_global_memory_read.cc
+  merge_reduce_compute.cc
   rearrange_load_instruction.cc
   check_tensor_buffer_map.cc)
 
