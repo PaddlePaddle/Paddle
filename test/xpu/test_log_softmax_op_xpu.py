@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -50,25 +51,17 @@ def ref_log_softmax_grad(x, axis):
 class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'log_softmax'
-        self.use_dynamic_create_class = True
-
-    def dynamic_create_class(self):
-        base_class = self.TestXPULogSoftmaxOp
-        classes = []
-        axis_arr = [-1, 1]
-        shape_arr = [[2, 3, 4, 5], [12, 10], [2, 5], [7, 7], [3, 5, 7]]
-        for axis in axis_arr:
-            for shape in shape_arr:
-                class_name = 'XPUTestLogSoftmax_' + str(axis) + "_" + str(shape)
-                attr_dict = {'axis': axis, 'shape': shape}
-                classes.append([class_name, attr_dict])
-        return base_class, classes
+        self.use_dynamic_create_class = False
 
     class TestXPULogSoftmaxOp(XPUOpTest):
         def setUp(self):
             self.op_type = 'log_softmax'
             self.python_api = F.log_softmax
-            self.dtype = 'float32'
+            self.init_shape()
+            if self.in_type == np.uint16:
+                self.dtype = np.float32
+            else:
+                self.dtype = self.in_type
             self.set_attrs()
             self.use_xpu = True
             if not hasattr(self, 'axis'):
@@ -79,11 +72,19 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
             out = np.apply_along_axis(ref_log_softmax, self.axis, x)
             self.x_grad = ref_log_softmax_grad(x, self.axis)
 
+            if self.in_type == np.uint16:
+                x = convert_float_to_uint16(x)
+                out = convert_float_to_uint16(out)
+                self.dtype = self.in_type
+
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
             self.attrs = {'axis': self.axis}
 
         def set_attrs(self):
+            pass
+
+        def init_shape(self):
             pass
 
         def test_check_output(self):
@@ -96,6 +97,37 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
                 user_defined_grads=[self.x_grad],
                 check_dygraph=True,
             )
+
+    class TestXPULogSoftmaxOpShape1(TestXPULogSoftmaxOp):
+        def init_shape(self):
+            self.shape = [2, 3, 4, 5]
+            self.axis = 3
+
+    class TestXPULogSoftmaxOpShape2(TestXPULogSoftmaxOp):
+        def init_shape(self):
+            self.shape = [12, 10]
+            self.axis = -1
+
+    class TestXPULogSoftmaxOpShape3(TestXPULogSoftmaxOp):
+        def init_shape(self):
+            self.shape = [3, 5, 7]
+            self.axis = 2
+
+    @skip_check_grad_ci(
+        reason="[skip shape check] test log softmax grad when number of input elements less than 100."
+    )
+    class TestXPULogSoftmaxOp_SmallShape1(TestXPULogSoftmaxOp):
+        def init_shape(self):
+            self.shape = [2, 5]
+            self.axis = 1
+
+    @skip_check_grad_ci(
+        reason="[skip shape check] test log softmax grad when number of input elements less than 100."
+    )
+    class TestXPULogSoftmaxOp_SmallShape2(TestXPULogSoftmaxOp):
+        def init_shape(self):
+            self.shape = [7, 7]
+            self.axis = -1
 
 
 support_types = get_xpu_op_support_types('log_softmax')
