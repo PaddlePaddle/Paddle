@@ -2336,8 +2336,8 @@ struct FusedFeedForwardFwd : public PatternBase {
   // Mode parallelism
   PATTERN_DECL_NODE(c_identity_op);
   PATTERN_DECL_NODE(c_identity_out);
-  PATTERN_DECL_NODE(c_allreduce_sum_op);
-  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(all_reduce_op);
+  PATTERN_DECL_NODE(all_reduce_out);
   // Linear 1 and Dropout 1: matmul_v2 + elementwise_add + dropout
   FEEDFORWARD_LINEAR_DROPOUT_NODE(1);
   // Activation Grad: gelu or relu
@@ -2399,8 +2399,8 @@ struct FusedFeedForwardBwd : public PatternBase {
   // Mode parallelism
   PATTERN_DECL_NODE(c_identity_op);
   PATTERN_DECL_NODE(c_identity_out);
-  PATTERN_DECL_NODE(c_allreduce_sum_op);
-  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(all_reduce_op);
+  PATTERN_DECL_NODE(all_reduce_out);
   // Linear 1 and Dropout 1: matmul_v2_grad + elementwise_add_grad +
   // dropout_grad
   FEEDFORWARD_LINEAR_DROPOUT_GRAD_NODE(1);

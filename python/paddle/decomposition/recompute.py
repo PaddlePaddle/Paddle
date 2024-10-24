@@ -145,7 +145,7 @@ COMPUTE_INTENSIVE_OPS: list[str] = [
     "pd_op.layer_norm",
     "pd_op.batchnorm",
     "pd_op.softmax",
-    "pd_op.c_allreduce_sum_",
+    "pd_op.all_reduce_",
     "pd_op.c_broadcast_",
     "pd_op.reduce_",
 ]

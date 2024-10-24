@@ -211,10 +211,9 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                     global_grad_to_comm_op[op_input_names[0]] = [op]
                     remove_op_ids.append(idx)
 
-                if op.type == "c_allreduce_sum" or (
-                    op.type == "reduce"
-                    and op.desc.attr('reduce_type') == dist.ReduceOp.SUM
-                ):
+                if (
+                    op.type == "reduce" or op.type == "all_reduce"
+                ) and op.desc.attr('reduce_type') == dist.ReduceOp.SUM:
                     scale_index = idx + 1
                     if scale_index < len(len(ops)):
                         if is_data_parallel_scale_op(ops[scale_index]):

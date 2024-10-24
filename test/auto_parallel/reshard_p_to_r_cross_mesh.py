@@ -99,7 +99,7 @@ class TestReshardPToRCrossMesh:
                 'dist_op.shard_tensor',
                 'pd_op.send_v2',
                 'dist_op.reshard',
-                'pd_op.c_allreduce_sum',
+                'pd_op.all_reduce',
             ]
         else:
             np.testing.assert_equal(main_program.num_ops(), 5)
@@ -108,7 +108,7 @@ class TestReshardPToRCrossMesh:
                 'pd_op.data',
                 'dist_op.shard_tensor',
                 'pd_op.recv_v2',
-                'pd_op.c_allreduce_sum',
+                'pd_op.all_reduce',
             ]
         np.testing.assert_equal(
             ops,
@@ -143,7 +143,10 @@ class TestReshardPToRCrossMesh:
                 assert op_result_dist_attr.partial_status == {
                     0: paddle.distributed.ReduceType.kRedSum
                 }
-            elif op.name() == 'pd_op.c_allreduce_sum':
+            elif (
+                op.name() == 'pd_op.all_reduce'
+                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+            ):
                 continue
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1

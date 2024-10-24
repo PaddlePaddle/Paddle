@@ -57,6 +57,11 @@ void AllReduceKernel(const Context& dev_ctx,
     case ReduceType::kRedProd:
       red_type = ncclProd;
       break;
+#if NCCL_VERSION_CODE >= 21000
+    case ReduceType::kRedAvg:
+      red_type = ncclAvg;
+      break;
+#endif
     case ReduceType::kRedAll:
       // NOTE(zhonghui): There is no reduce_all type of ncclRedOp_t, just use
       // min to replace

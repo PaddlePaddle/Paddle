@@ -17,6 +17,7 @@ import unittest
 import test_op_translator
 
 import paddle
+import paddle.distributed as dist
 from paddle.base.layer_helper import LayerHelper
 
 paddle.pir_utils._switch_to_old_ir_()
@@ -24,19 +25,19 @@ paddle.pir_utils._switch_to_old_ir_()
 
 class TestCAllReduceProdOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
-        self.op_type = "c_allreduce_prod"
+        self.op_type = "all_reduce"
         x = paddle.ones(shape=(100, 2, 3), dtype='float32')
         y = paddle.ones(shape=(100, 2, 3), dtype='float32')
         attrs = {
             'ring_id': 0,
-            'use_calc_stream': False,
             'use_model_parallel': False,
+            'reduce_type': dist.ReduceOp.PROD,
         }
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            inputs={"X": x},
-            outputs={"Out": y},
+            inputs={"x": x},
+            outputs={"out": y},
             attrs=attrs,
         )
 

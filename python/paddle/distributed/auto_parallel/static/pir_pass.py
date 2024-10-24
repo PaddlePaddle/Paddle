@@ -522,9 +522,8 @@ def replace_moe_global_mesh_tensor(op):
 
 # Note: this is the pass in the dense program
 comm_ops = [
-    "pd_op.c_allreduce_sum",
     "pd_op.all_gather",
-    "pd_op.c_allreduce_max",
+    "pd_op.all_reduce",
     "pd_op.reduce_scatter",
 ]
 

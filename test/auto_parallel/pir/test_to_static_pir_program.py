@@ -135,7 +135,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
             "pd_op.sgd_",
             "pd_op.sgd_",
             "pd_op.relu_grad",
-            "pd_op.c_allreduce_sum",
+            "pd_op.all_reduce",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",

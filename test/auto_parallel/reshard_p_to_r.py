@@ -100,12 +100,12 @@ class TestReshardPToR:
                 'builtin.parameter',
                 'pd_op.data',
                 'dist_op.shard_tensor',
-                'pd_op.c_allreduce_sum',
+                'pd_op.all_reduce',
             ],
         )
 
         for op in ops:
-            if op.name() == 'pd_op.c_allreduce_sum':
+            if op.name() == 'pd_op.all_reduce':
                 # check op dist_attr
                 assert op.dist_attr.num_operands() == 1
                 assert op.dist_attr.num_results() == 1
@@ -170,7 +170,7 @@ class TestReshardPToR:
             "pd_op.sgd_",
             "pd_op.sgd_",
             "pd_op.relu_grad",
-            "pd_op.c_allreduce_sum",
+            "pd_op.all_reduce",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",

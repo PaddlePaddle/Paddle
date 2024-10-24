@@ -301,8 +301,8 @@ struct MultiDevicesFusedMultiTransformerEncoderPattern : public PatternBase {
   PATTERN_DECL_NODE(matmul_linear);
   PATTERN_DECL_NODE(matmul_linear_w);
   PATTERN_DECL_NODE(matmul_linear_out);
-  PATTERN_DECL_NODE(c_allreduce_sum);
-  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(all_reduce);
+  PATTERN_DECL_NODE(all_reduce_out);
   PATTERN_DECL_NODE(eltadd_linear);
   PATTERN_DECL_NODE(eltadd_linear_b);
   PATTERN_DECL_NODE(eltadd_linear_out);
@@ -335,8 +335,8 @@ struct MultiDevicesFusedMultiTransformerEncoderPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_matmul1);
   PATTERN_DECL_NODE(ffn_matmul1_w);
   PATTERN_DECL_NODE(ffn_matmul1_out);
-  PATTERN_DECL_NODE(ffn_c_allreduce_sum);
-  PATTERN_DECL_NODE(ffn_c_allreduce_sum_out);
+  PATTERN_DECL_NODE(ffn_all_reduce);
+  PATTERN_DECL_NODE(ffn_all_reduce_out);
   PATTERN_DECL_NODE(ffn_eltadd1);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_out);
@@ -415,8 +415,8 @@ struct MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern
   PATTERN_DECL_NODE(matmul_linear);
   PATTERN_DECL_NODE(matmul_linear_w);
   PATTERN_DECL_NODE(matmul_linear_out);
-  PATTERN_DECL_NODE(c_allreduce_sum);
-  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(all_reduce);
+  PATTERN_DECL_NODE(all_reduce_out);
   PATTERN_DECL_NODE(eltadd_linear);
   PATTERN_DECL_NODE(eltadd_linear_b);
   PATTERN_DECL_NODE(eltadd_linear_out);
@@ -445,8 +445,8 @@ struct MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern
   PATTERN_DECL_NODE(ffn_matmul1);
   PATTERN_DECL_NODE(ffn_matmul1_w);
   PATTERN_DECL_NODE(ffn_matmul1_out);
-  PATTERN_DECL_NODE(ffn_c_allreduce_sum);
-  PATTERN_DECL_NODE(ffn_c_allreduce_sum_out);
+  PATTERN_DECL_NODE(ffn_all_reduce);
+  PATTERN_DECL_NODE(ffn_all_reduce_out);
   PATTERN_DECL_NODE(ffn_eltadd1);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd1_out);

@@ -4570,14 +4570,13 @@ PDNode *patterns::FusedFeedForwardFwd::operator()(
 
   // Model parallel, do nothing in forward.
   if (use_mp) {
-    out_var->assert_is_op_input("c_allreduce_sum", "X");
-    auto *c_allreduce_sum_op = pattern->NewNode(c_allreduce_sum_op_repr())
-                                   ->assert_is_op("c_allreduce_sum");
-    auto *c_allreduce_sum_out_var =
-        pattern->NewNode(c_allreduce_sum_out_repr())
-            ->assert_is_op_output("c_allreduce_sum", "Out");
-    c_allreduce_sum_op->LinksFrom({out_var}).LinksTo({c_allreduce_sum_out_var});
-    out_var = c_allreduce_sum_out_var;
+    out_var->assert_is_op_input("all_reduce", "x");
+    auto *all_reduce_op =
+        pattern->NewNode(all_reduce_op_repr())->assert_is_op("all_reduce");
+    auto *all_reduce_out_var = pattern->NewNode(all_reduce_out_repr())
+                                   ->assert_is_op_output("all_reduce", "out");
+    all_reduce_op->LinksFrom({out_var}).LinksTo({all_reduce_out_var});
+    out_var = all_reduce_out_var;
   }
 
   out_var->assert_is_op_input("elementwise_add", "X");
@@ -4854,15 +4853,13 @@ PDNode *patterns::FusedFeedForwardBwd::operator()(
 
   // Model parallel, all_reduce in backward.
   if (use_mp) {
-    out_grad->assert_is_op_input("c_allreduce_sum", "X");
-    auto *c_allreduce_sum_op = pattern->NewNode(c_allreduce_sum_op_repr())
-                                   ->assert_is_op("c_allreduce_sum");
-    auto *c_allreduce_sum_out_grad =
-        pattern->NewNode(c_allreduce_sum_out_repr())
-            ->assert_is_op_output("c_allreduce_sum", "Out");
-    c_allreduce_sum_op->LinksFrom({out_grad})
-        .LinksTo({c_allreduce_sum_out_grad});
-    out_grad = c_allreduce_sum_out_grad;
+    out_grad->assert_is_op_input("all_reduce", "x");
+    auto *all_reduce_op =
+        pattern->NewNode(all_reduce_op_repr())->assert_is_op("all_reduce");
+    auto *all_reduce_out_grad = pattern->NewNode(all_reduce_out_repr())
+                                    ->assert_is_op_output("all_reduce", "out");
+    all_reduce_op->LinksFrom({out_grad}).LinksTo({all_reduce_out_grad});
+    out_grad = all_reduce_out_grad;
   }
 
   // pre LayerNorm

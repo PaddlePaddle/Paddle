@@ -322,9 +322,9 @@ TEST(MultiDevicesFusedMultiTransformerEncoderPass, basic) {
   auto* bias_l = layers.data("bias_l", {1024}, true);
   auto* linear_matmut_out =
       layers.matmul_v2(reshape_qkv_out, weights_l, nullptr, false, false);
-  auto* c_allreduce_out = layers.c_allreduce_sum(linear_matmut_out);
+  auto* all_reduce_out = layers.all_reduce(linear_matmut_out);
   auto* linear_eltadd_out =
-      layers.elementwise_add(c_allreduce_out, bias_l, nullptr, 2);
+      layers.elementwise_add(all_reduce_out, bias_l, nullptr, 2);
 
   auto* attention_out = layers.elementwise_add(x, linear_eltadd_out);
 
@@ -346,7 +346,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderPass, basic) {
   auto* ffn_gelu_out = layers.gelu(ffn_eltadd0_out);
   auto* ffn_matmul1_out =
       layers.matmul_v2(ffn_gelu_out, ffn_weights1, nullptr, false, false);
-  auto* ffn_allreduce_out = layers.c_allreduce_sum(ffn_matmul1_out);
+  auto* ffn_allreduce_out = layers.all_reduce(ffn_matmul1_out);
   auto* ffn_eltadd1_out =
       layers.elementwise_add(ffn_allreduce_out, ffn_bias1, nullptr, 2);
 
@@ -635,9 +635,9 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* bias_l = layers.data("weightsl", {1024, 1024}, true);
   auto* linear_matmut_out =
       layers.matmul_v2(reshape_qkv_out, weights_l, nullptr, false, true);
-  auto* c_allreduce_out = layers.c_allreduce_sum(linear_matmut_out);
+  auto* all_reduce_out = layers.all_reduce(linear_matmut_out);
   auto* linear_eltadd_out =
-      layers.elementwise_add(c_allreduce_out, bias_l, nullptr, 2);
+      layers.elementwise_add(all_reduce_out, bias_l, nullptr, 2);
 
   auto* attention_out = layers.elementwise_add(x, linear_eltadd_out);
 
@@ -660,7 +660,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   auto* ffn_gelu_out = layers.gelu(ffn_eltadd0_out);
   auto* ffn_matmul1_out =
       layers.matmul_v2(ffn_gelu_out, ffn_weights1, nullptr, false, true);
-  auto* ffn_allreduce_out = layers.c_allreduce_sum(ffn_matmul1_out);
+  auto* ffn_allreduce_out = layers.all_reduce(ffn_matmul1_out);
   auto* ffn_eltadd1_out =
       layers.elementwise_add(ffn_allreduce_out, ffn_bias1, nullptr, 2);
 

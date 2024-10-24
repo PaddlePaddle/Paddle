@@ -39,12 +39,6 @@ class PToRReshardFunction(ReshardFunction):
         return True
 
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
-        reduce_ops = {
-            paddle.base.core.ReduceType.kRedSum: paddle._C_ops.c_allreduce_sum,
-            paddle.base.core.ReduceType.kRedAvg: paddle._C_ops.c_allreduce_avg,
-            paddle.base.core.ReduceType.kRedMax: paddle._C_ops.c_allreduce_max,
-        }
-
         src_mesh = src_dist_attr.process_mesh
         src_reduce_type = src_dist_attr.partial_status[0]
         # reduce_mean = False
@@ -53,15 +47,9 @@ class PToRReshardFunction(ReshardFunction):
         #     reduce_mean = True
 
         group = new_process_group(sorted(src_mesh.process_ids))
-        reduce_op = reduce_ops[src_reduce_type]
-
-        if src_value.dtype == paddle.bool:
-            src_value = paddle.cast(src_value, 'int32')
-            reduced_value = reduce_op(src_value, group.id, True, False)
-            reduced_value = paddle.cast(reduced_value, 'bool')
-        else:
-            reduced_value = reduce_op(src_value, group.id, True, False)
-
+        reduced_value = paddle._C_ops.all_reduce(
+            src_value, group.id, int(src_reduce_type)
+        )
         # set dist type and dist attr
         reduced_value.set_type(dst_type)
         chunk_id = -1

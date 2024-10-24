@@ -184,12 +184,11 @@ struct Layers {
     return unary_op("c_identity", x, out, &attrs);
   }
 
-  VarDesc* c_allreduce_sum(VarDesc* x,
-                           VarDesc* out = nullptr,
-                           int ring_id = -1) {
+  VarDesc* all_reduce(VarDesc* x, VarDesc* out = nullptr, int ring_id = -1) {
     AttributeMap attrs;
     attrs["ring_id"] = ring_id;
-    return unary_op("c_allreduce_sum", x, out, &attrs);
+    attrs["reduce_type"] = static_cast<int>(phi::ReduceType::kRedSum);
+    return unary_op("all_reduce", x, out, &attrs);
   }
 
   VarDesc* fc(VarDesc* input,
