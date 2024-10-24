@@ -164,7 +164,7 @@ class TestMultipleAccelerators(unittest.TestCase):
         target_file_name,
         allocator_strategy="auto_growth",
         need_envs={},
-        accelerator_type="gpu",
+        accelerator_type="xpu" if base.core.is_compiled_with_xpu() else "gpu",
     ):
         if accelerator_type == "gpu":
             if (
@@ -198,6 +198,7 @@ class TestMultipleAccelerators(unittest.TestCase):
             training_script=target_file_name,
             training_script_args=[],
             need_envs=need_envs,
+            accelerator_type=accelerator_type,
         )
 
         while True:

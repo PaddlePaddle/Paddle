@@ -365,34 +365,36 @@ def test_stage2_stage3():
             stage3_params[i].numpy(), stage3_params_re[i].numpy(), rtol=1e-6
         )
 
-    # bfp16
-    nccl_version = core.nccl_version()
+    # XPU temporarily disabled
+    if paddle.is_compiled_with_cuda():
+        # bfp16
+        nccl_version = core.nccl_version()
 
-    if (
-        nccl_version >= 21000
-        and paddle.device.cuda.get_device_properties().major >= 8
-    ):
-        stage2_params = train_mlp(
-            mlp11,
-            sharding_stage=2,
-            use_pure_fp16=True,
-            opt_group=False,
-            use_bfp16=True,
-        )
-        stage3_params = train_mlp(
-            mlp12,
-            sharding_stage=3,
-            use_pure_fp16=True,
-            opt_group=False,
-            use_bfp16=True,
-        )
-        for i in range(len(stage2_params)):
-            np.testing.assert_allclose(
-                stage2_params[i].astype("float32").numpy(),
-                stage3_params[i].astype("float32").numpy(),
-                rtol=1e-4,
-                atol=1e-3,
+        if (
+            nccl_version >= 21000
+            and paddle.device.cuda.get_device_properties().major >= 8
+        ):
+            stage2_params = train_mlp(
+                mlp11,
+                sharding_stage=2,
+                use_pure_fp16=True,
+                opt_group=False,
+                use_bfp16=True,
             )
+            stage3_params = train_mlp(
+                mlp12,
+                sharding_stage=3,
+                use_pure_fp16=True,
+                opt_group=False,
+                use_bfp16=True,
+            )
+            for i in range(len(stage2_params)):
+                np.testing.assert_allclose(
+                    stage2_params[i].astype("float32").numpy(),
+                    stage3_params[i].astype("float32").numpy(),
+                    rtol=1e-4,
+                    atol=1e-3,
+                )
 
     # test for share layer parameters and exclude_layer function.
     sm1, sm2, sm3, sm4 = (
