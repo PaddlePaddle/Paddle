@@ -234,17 +234,24 @@ def get_layer_pp_info(mesh, num_hidden_layers, layer_index):
 def to_distributed(model, dataloader, mesh, config):
     paddle.distributed.init_parallel_env()
 
-    # # shard dataloader
-    first_stage_mesh = mesh.get_mesh_with_dim("pp", 0)
-    last_stage_mesh = mesh.get_mesh_with_dim("pp", 1)
-    loader = dist.shard_dataloader(
-        dataloader, meshes=[first_stage_mesh, last_stage_mesh], shard_dims="dp"
-    )
+    with_pp = True if "pp" in mesh.dim_names else False
+    with_sp = True if config.sequence_parallel else False
+    # print(f"pp: {with_pp}, sp: {with_sp}")
+    # breakpoint()
 
-    leaf_layers = []
-    for layer in model.sublayers():
-        if not layer.sublayers():
-            leaf_layers.append(layer)
+    # # shard dataloader
+    if with_pp:
+        first_stage_mesh = mesh.get_mesh_with_dim("pp", 0)
+        last_stage_mesh = mesh.get_mesh_with_dim("pp", 1)
+        loader = dist.shard_dataloader(
+            dataloader,
+            meshes=[first_stage_mesh, last_stage_mesh],
+            shard_dims="dp",
+        )
+    else:
+        loader = dist.shard_dataloader(
+            dataloader, meshes=[mesh], shard_dims="dp"
+        )
 
     # # # step1: register pre-hooks and post-hooks, thus recording corresponding static ops in following paddle.jit.to_static
     for layer in model.sublayers():
@@ -329,30 +336,17 @@ def to_distributed(model, dataloader, mesh, config):
     num_hidden_layers = len(matched_programs[DECODER_LAYER_NAME])
     print(f"num_hidden_layers by pattern matching is {num_hidden_layers}")
 
-    GLOBAL_MESH = []
-    if "pp" in mesh.dim_names:
-        pp_degree = mesh.get_dim_size("pp")
-        for i in range(pp_degree):
-            local_mesh = mesh.get_mesh_with_dim("pp", i)
-            GLOBAL_MESH.append(local_mesh)
-    else:
-        GLOBAL_MESH.append(mesh)
-
-    # # # # step6-0: SHARD PATRAMETERS, get dynamic layer dist infos
+    # # # # step6: tensor parallel
     for pattern_name, processed_patterns in matched_programs.items():
         assert (
             len(processed_patterns) == num_hidden_layers
         ), "transformer patterns matched are incomplete"
         for idx, processed_pattern in enumerate(processed_patterns):
-            pp_stage_id = get_layer_pp_info(mesh, num_hidden_layers, idx)
             local_mesh = mesh
-            if pp_stage_id is None:
-                print("pp_stage_id is None")
-                local_mesh = mesh
-            else:
-                print(f"pp_stage_id is {pp_stage_id}")
+            if with_pp:
+                pp_stage_id = get_layer_pp_info(mesh, num_hidden_layers, idx)
                 local_mesh = mesh.get_mesh_with_dim("pp", pp_stage_id)
-            print(f"local_mesh is {local_mesh}")
+
             for program_ops_id, dist_infos in processed_pattern.items():
                 if program_ops_id not in ops_id_to_layer.keys():
                     print(
@@ -373,39 +367,40 @@ def to_distributed(model, dataloader, mesh, config):
                             dynamic_layer.bias, local_mesh, sharding_info[1]
                         )
 
-    # # # # step6-0: SHARD INPUTS
-    decoder_layers = []
-    for pattern_name, matched_all_patterns in results.items():
-        if pattern_name == DECODER_LAYER_NAME:
-            for matched_pattern in matched_all_patterns:
-                program_ops_id = []
-                for a, b in matched_pattern.items():
-                    program_ops_id.append(b)
-                if tuple(sorted(program_ops_id)) in ops_id_to_layer.keys():
-                    decoder_layers.append(
-                        ops_id_to_layer[tuple(sorted(program_ops_id))]
-                    )
-    print(f"matched decoder layers are: {decoder_layers}")
+    # # # # step6: pipeline parallel
+    if with_pp:
+        decoder_layers = []
+        for pattern_name, matched_all_patterns in results.items():
+            if pattern_name == DECODER_LAYER_NAME:
+                for matched_pattern in matched_all_patterns:
+                    program_ops_id = []
+                    for a, b in matched_pattern.items():
+                        program_ops_id.append(b)
+                    if tuple(sorted(program_ops_id)) in ops_id_to_layer.keys():
+                        decoder_layers.append(
+                            ops_id_to_layer[tuple(sorted(program_ops_id))]
+                        )
+        print(f"matched decoder layers are: {decoder_layers}")
 
-    if "pp" in mesh.dim_names and decoder_layers is not None:
-        num_decoder_blocks = len(decoder_layers)
-        assert (
-            num_decoder_blocks == num_hidden_layers
-        ), "decoder pattern layers matched are incomplete"
+        if decoder_layers is not None:
+            num_decoder_blocks = len(decoder_layers)
+            assert (
+                num_decoder_blocks == num_hidden_layers
+            ), "decoder pattern layers matched are incomplete"
 
-        pp_degree = mesh.get_dim_size("pp")
-        num_blocks_per_stage = num_decoder_blocks // pp_degree
-        for i in range(num_decoder_blocks):
-            pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
-            current_mesh = GLOBAL_MESH[pp_stage_id]
-            decoder_layer = decoder_layers[i]
-            decoder_layer.__setattr__("current_mesh", current_mesh)
-            pre_hook_helper = decoder_layer.register_forward_pre_hook(
-                reshard_all_inputs
-            )
+            pp_degree = mesh.get_dim_size("pp")
+            num_blocks_per_stage = num_decoder_blocks // pp_degree
+            for i in range(num_decoder_blocks):
+                pp_stage_id = get_layer_pp_info(mesh, num_decoder_blocks, i)
+                current_mesh = mesh.get_mesh_with_dim("pp", pp_stage_id)
+                decoder_layer = decoder_layers[i]
+                decoder_layer.__setattr__("current_mesh", current_mesh)
+                pre_hook_helper = decoder_layer.register_forward_pre_hook(
+                    reshard_all_inputs
+                )
 
-    # # # # step7: support sequence parallel
-    if config.sequence_parallel:
+    # # # # step7: sequence parallel
+    if with_sp:
         clear_used_patterns()
         EMBEDDING_LAYER_NAME = "embedding"
         ATTENTION_LAYER_NAME = "attention"
@@ -439,6 +434,16 @@ def to_distributed(model, dataloader, mesh, config):
                             ]
         print(f"matched layers are: {matched_layers}")
 
+        # init mesh
+        GLOBAL_MESH = []
+        if with_pp:
+            pp_degree = mesh.get_dim_size("pp")
+            for i in range(pp_degree):
+                local_mesh = mesh.get_mesh_with_dim("pp", i)
+                GLOBAL_MESH.append(local_mesh)
+        else:
+            GLOBAL_MESH.append(mesh)
+
         # embedding: from [b/dp_degree, s, h] reshard+transpose to [s/mp_degree, b/dp_degree, h]
         embedding_layer = matched_layers[EMBEDDING_LAYER_NAME][0]
         embedding_layer_mesh = GLOBAL_MESH[0]
@@ -446,62 +451,56 @@ def to_distributed(model, dataloader, mesh, config):
         post_hook_helper = embedding_layer.register_forward_post_hook(
             transpose_reshard_embedding_layer_output
         )
-        # breakpoint()
 
         # attention: input from [s/mp_degree, b/dp_degree, h] to [b/dp_degree, s, h], output from [b/dp_degree, s, h] to [s/mp_degree, b/dp_degree, h]
         attention_layers = matched_layers[ATTENTION_LAYER_NAME]
+        num_attention_layers = len(attention_layers)
         if attention_layers is not None:
-            if "pp" in mesh.dim_names:
-                num_attention_layers = len(attention_layers)
-                pp_degree = mesh.get_dim_size("pp")
-                num_blocks_per_stage = num_attention_layers // pp_degree
-                for i in range(num_attention_layers):
+            for i in range(num_attention_layers):
+                current_mesh = GLOBAL_MESH[0]
+                if with_pp:
                     pp_stage_id = get_layer_pp_info(
                         mesh, num_attention_layers, i
                     )
                     current_mesh = GLOBAL_MESH[pp_stage_id]
-                    attention_layer = attention_layers[i]
-                    attention_layer.__setattr__("current_mesh", current_mesh)
-                    pre_hook_helper = attention_layer.register_forward_pre_hook(
-                        reshard_transpose_attention_layer_input
-                    )
-                    post_hook_helper = (
-                        attention_layer.register_forward_post_hook(
-                            transpose_reshard_attention_layer_output
-                        )
-                    )
+                attention_layer = attention_layers[i]
+                attention_layer.__setattr__("current_mesh", current_mesh)
+                pre_hook_helper = attention_layer.register_forward_pre_hook(
+                    reshard_transpose_attention_layer_input
+                )
+                post_hook_helper = attention_layer.register_forward_post_hook(
+                    transpose_reshard_attention_layer_output
+                )
 
         # mlp: input from [s/mp_degree, b/dp_degree, h] to [s, b/dp_degree, h], output from [s, b/dp_degree, h] to [s/mp_degree, b/dp_degree, h]
         mlp_layers = matched_layers[MLP_LAYER_NAME]
+        num_mlp_layers = len(mlp_layers)
         if mlp_layers is not None:
-            if "pp" in mesh.dim_names:
-                num_mlp_layers = len(mlp_layers)
-                pp_degree = mesh.get_dim_size("pp")
-                num_blocks_per_stage = num_mlp_layers // pp_degree
-                for i in range(num_mlp_layers):
-                    pp_stage_id = get_layer_pp_info(mesh, num_mlp_layers, i)
+            for i in range(num_mlp_layers):
+                current_mesh = GLOBAL_MESH[0]
+                if with_pp:
+                    pp_stage_id = get_layer_pp_info(
+                        mesh, num_attention_layers, i
+                    )
                     current_mesh = GLOBAL_MESH[pp_stage_id]
-                    mlp_layer = mlp_layers[i]
-                    mlp_layer.__setattr__("current_mesh", current_mesh)
-                    pre_hook_helper = mlp_layer.register_forward_pre_hook(
-                        reshard_transpose_mlp_layer_input
-                    )
-                    post_hook_helper = mlp_layer.register_forward_post_hook(
-                        transpose_reshard_mlp_layer_output
-                    )
+                mlp_layer = mlp_layers[i]
+                mlp_layer.__setattr__("current_mesh", current_mesh)
+                pre_hook_helper = mlp_layer.register_forward_pre_hook(
+                    reshard_transpose_mlp_layer_input
+                )
+                post_hook_helper = mlp_layer.register_forward_post_hook(
+                    transpose_reshard_mlp_layer_output
+                )
 
         # rms norm: for the last rms norm (after decoder blocks), input from [s/mp_degree, b/dp_degree, h] to [b, s, h]
         rms_norm_layers = matched_layers[RMS_NORM_LAYER_NAME]
         if rms_norm_layers is not None:
-            if "pp" in mesh.dim_names:
-                last_rms_norm_layer = rms_norm_layers[-1]
-                current_mesh = GLOBAL_MESH[-1]
-                last_rms_norm_layer.__setattr__("current_mesh", current_mesh)
-                post_hook_helper = (
-                    last_rms_norm_layer.register_forward_post_hook(
-                        reshard_transpose_rms_norm_layer_output
-                    )
-                )
+            last_rms_norm_layer = rms_norm_layers[-1]
+            current_mesh = GLOBAL_MESH[-1]
+            last_rms_norm_layer.__setattr__("current_mesh", current_mesh)
+            post_hook_helper = last_rms_norm_layer.register_forward_post_hook(
+                reshard_transpose_rms_norm_layer_output
+            )
 
     # # # # step8: clean layer_op recorder hooks
     for layer in model.sublayers():
