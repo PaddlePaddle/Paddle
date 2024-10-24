@@ -348,5 +348,5 @@ class FleetWrapper {
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

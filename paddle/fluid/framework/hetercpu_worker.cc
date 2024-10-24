@@ -27,8 +27,7 @@ limitations under the License. */
 #define _LINUX
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void HeterTask::PackTask(Scope* thread_scope,
                          int taskid,
@@ -1233,6 +1232,5 @@ void HeterCpuWorker::TrainFiles() {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

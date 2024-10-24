@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/framework/data_feed.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 std::vector<std::vector<uint64_t>> LayerWiseSampler::sample(
     const std::vector<std::vector<uint64_t>>& user_inputs,
@@ -134,5 +133,4 @@ std::vector<uint64_t> float2int(std::vector<double> tmp) {
   return tmp_int;
 }
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace paddle::distributed

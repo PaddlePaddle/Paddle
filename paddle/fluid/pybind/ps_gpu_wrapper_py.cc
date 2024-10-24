@@ -29,8 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 #ifdef PADDLE_WITH_HETERPS
 void BindPSGPUWrapper(py::module* m) {
   py::class_<framework::PSGPUWrapper, std::shared_ptr<framework::PSGPUWrapper>>(
@@ -158,5 +157,4 @@ void BindAfsWrapper(py::module* m) {
 }
 #endif
 #endif
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle::pybind

@@ -750,7 +750,7 @@ struct aligned_storage {
   };
 };
 
-} // end namespace internal
+} // namespace internal
 
 namespace numext {
 
@@ -799,8 +799,8 @@ template<> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool not_equal_strict(const double& x,const double& y) { return std::not_equal_to<double>()(x,y); }
 #endif
 
-} // end namespace numext
+} // namespace numext
 
-} // end namespace Eigen
+} // namespace Eigen
 
 #endif // EIGEN_META_H

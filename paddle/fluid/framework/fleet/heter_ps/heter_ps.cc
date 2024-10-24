@@ -17,8 +17,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HETERPS
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 HeterPsBase* HeterPsBase::get_instance(
     size_t capacity,
@@ -109,6 +108,5 @@ void HeterPs<GPUAccessor, GPUOptimizer>::push_sparse(int num,
   comm_->push_sparse(num, d_keys, d_grads, len);
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

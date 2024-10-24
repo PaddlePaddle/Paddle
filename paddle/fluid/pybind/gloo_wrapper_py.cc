@@ -28,8 +28,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindGlooWrapper(py::module* m) {
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   py::class_<framework::GlooWrapper, std::shared_ptr<framework::GlooWrapper>>(
@@ -59,5 +58,4 @@ void BindGlooWrapper(py::module* m) {
       .def("all_gather", &framework::GlooWrapper::AllGather<float>)
       .def("all_gather", &framework::GlooWrapper::AllGather<double>);
 }  // end BindGlooWrapper
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle::pybind

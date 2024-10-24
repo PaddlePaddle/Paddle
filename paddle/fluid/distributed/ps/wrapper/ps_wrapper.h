@@ -79,5 +79,5 @@ class PSWrapper {
   virtual void Save(WrapperContext& context) = 0;  // NOLINT
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

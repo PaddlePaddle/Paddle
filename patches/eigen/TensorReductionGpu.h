@@ -989,8 +989,8 @@ struct OuterReducer<Self, Op, GpuDevice> {
 
 #endif // defined(EIGEN_USE_GPU) && defined(EIGEN_GPUCC)
 
-} // end namespace internal
-} // end namespace Eigen
+} // namespace internal
+} // namespace Eigen
 
 #endif // EIGEN_CXX11_TENSOR_TENSOR_REDUCTION_GPU_H
 // clang-format on

@@ -21,8 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 static void fs_add_read_converter_internal(std::string& path,  // NOLINT
                                            bool& is_pipe,      // NOLINT
@@ -600,5 +599,4 @@ void fs_mv(const std::string& src, const std::string& dest) {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

@@ -17,8 +17,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/platform/profiler.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 PD_DEFINE_int32(heter_world_size, 100, "group size");  // group max size
 PD_DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 
@@ -422,5 +421,4 @@ int HeterClient::Recv(int group_id,
   VLOG(4) << "Recv done";
   return 0;
 }
-}  // namespace distributed
-}  // end namespace paddle
+}  // namespace paddle::distributed

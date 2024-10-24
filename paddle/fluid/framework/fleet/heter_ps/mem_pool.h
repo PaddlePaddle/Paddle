@@ -140,7 +140,7 @@ class HBMMemoryPoolFix : public managed {
   size_t max_byte_capacity_;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif
 #endif

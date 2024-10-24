@@ -49,8 +49,7 @@ COMMON_DECLARE_int32(gpugraph_storage_mode);
 COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
 COMMON_DECLARE_string(graph_edges_split_mode);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 #ifdef PADDLE_WITH_PSLIB
 void AfsWrapper::init(const std::string& fs_name,
@@ -2915,6 +2914,5 @@ void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
   VLOG(3) << "End PushSparseGrad";
 }
 
-}  // namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

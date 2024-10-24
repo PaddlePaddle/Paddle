@@ -814,8 +814,8 @@ class HeterComm {
   bool is_infer_mode_ = false;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_inl.h"
 

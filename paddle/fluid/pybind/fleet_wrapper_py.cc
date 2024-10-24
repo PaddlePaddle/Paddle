@@ -37,8 +37,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindFleetWrapper(py::module* m) {
   py::class_<framework::FleetWrapper, std::shared_ptr<framework::FleetWrapper>>(
       *m, "Fleet")
@@ -99,5 +98,4 @@ void BindFleetWrapper(py::module* m) {
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);
 }  // end FleetWrapper
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle::pybind

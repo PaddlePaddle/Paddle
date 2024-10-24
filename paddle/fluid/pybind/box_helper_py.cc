@@ -35,8 +35,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindBoxHelper(py::module* m) {
   py::class_<framework::BoxHelper, std::shared_ptr<framework::BoxHelper>>(
       *m, "BoxPS")
@@ -113,5 +112,4 @@ void BindBoxWrapper(py::module* m) {
 }  // end BoxWrapper
 #endif
 
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle::pybind

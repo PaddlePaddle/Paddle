@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "io/fs.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
 
@@ -95,5 +94,4 @@ void TrainerBase::FinalizeDumpEnv() {
   queue_.reset();
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

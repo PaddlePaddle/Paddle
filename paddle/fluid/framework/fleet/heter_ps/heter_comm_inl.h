@@ -4223,6 +4223,6 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   }
   return total_send_recv;
 }
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif
