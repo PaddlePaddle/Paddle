@@ -30,12 +30,16 @@ limitations under the License. */
 #include "paddle/phi/kernels/scale_kernel.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/kernels/funcs/cublaslt.h"
+#include "paddle/phi/kernels/gpu/cuda_gemm_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/hipblaslt.h"
 #endif
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #endif
+
+COMMON_DECLARE_bool(cuda_core_gemm);
 
 namespace phi {
 
@@ -1847,6 +1851,23 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                        DenseTensor* out,
                        bool transpose_x,
                        bool transpose_y) {
+#if defined(PADDLE_WITH_CUDA)
+  if (std::is_same<Context, phi::GPUContext>::value &&
+      std::is_same<T, int8_t>::value) {
+    if (x.dtype() == phi::DataType::INT8 && x_dims[0] <= 4 && FLAGS_cuda_core_gemm) {
+      if (!transpose_y) {
+        DenseTensor delta;
+        phi::EmptyKernel<float, Context>(
+            ctx, {y.dims()[1], y.dims()[0]}, DataType::INT8, &delta);
+        phi::TransposeKernel<int8_t, Context>(ctx, y, {1, 0}, &delta);
+        phi::CudaGemm<T, Context>(ctx, x, delta, out);
+      } else {
+        phi::CudaGemm<T, Context>(ctx, x, y, out);
+      }
+      return;
+    }
+  }
+#endif
   bool try_matmul_int8 = MatMulInt8Function<Context>(
       ctx, x, y, x_dims, y_dims, out, transpose_x, transpose_y);
   if (try_matmul_int8) {
