@@ -1458,6 +1458,7 @@ XPUOpMap& get_kl3_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"yolo_box_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"yolo_box", XPUKernelSet({phi::DataType::FLOAT32})},
 
       // AddMore
       {"sequence_unpad", XPUKernelSet({phi::DataType::FLOAT32})},
