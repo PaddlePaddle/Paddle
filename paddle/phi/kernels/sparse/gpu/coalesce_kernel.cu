@@ -196,6 +196,8 @@ PD_REGISTER_KERNEL(coalesce_coo,
                    uint8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

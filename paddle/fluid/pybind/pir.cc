@@ -1400,6 +1400,15 @@ void BindValue(py::module *m) {
            [](Value &self, TensorDistAttribute dist_attr) {
              self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
            })
+      .def("is_coalesced",
+           [](Value self) {
+             auto sparse_coo_tensor_type =
+                 self.type().dyn_cast<SparseCooTensorType>();
+             if (sparse_coo_tensor_type) {
+               return sparse_coo_tensor_type.coalesced();
+             }
+             return false;
+           })
       .def_property_readonly("process_mesh", [](Value &self) -> py::object {
         auto type = self.type();
         if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
