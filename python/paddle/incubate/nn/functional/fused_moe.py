@@ -14,9 +14,7 @@
 
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import (
-    in_dynamic_or_pir_mode,
-)
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def fused_moe(
