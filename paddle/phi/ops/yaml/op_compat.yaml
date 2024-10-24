@@ -4481,17 +4481,6 @@
   outputs :
     out : Out
 
-- op: moe
-  inputs:
-    x: X
-    gate: Gate
-    bmm0: Bmm0
-    bias0: Bias0
-    bmm1: Bmm1
-    bias1: Bias1
-  outputs:
-    out: Out
-
 - op: mp_allreduce_sum
   inputs :
     x : X
