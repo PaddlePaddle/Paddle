@@ -64,7 +64,7 @@ class RNGStatesTracker:
             # switch index to name
             paddle.incubate.set_rng_state(self.states_[name], use_index=True)
             # export the saved state
-            states[name] = paddle.get_cuda_rng_state()
+            states[name] = paddle.get_rng_state()
         paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
         return states
 
@@ -76,7 +76,7 @@ class RNGStatesTracker:
             # switch index to name
             paddle.incubate.set_rng_state(self.states_[name], use_index=True)
             # set the state to saved state
-            paddle.set_cuda_rng_state(states[name])
+            paddle.set_rng_state(states[name])
 
         paddle.incubate.set_rng_state(orig_rng_state_index, use_index=True)
 
