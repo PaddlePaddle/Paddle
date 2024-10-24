@@ -341,9 +341,7 @@ class LKJCholesky(distribution.Distribution):
         if sample_shape != (1,):
             output_shape = list(sample_shape)
 
-        if tuple(self.concentration.shape) != () and tuple(
-            self.concentration.shape
-        ) != (1,):
+        if tuple(self.concentration.shape) != ():
             output_shape.extend(self.concentration.shape)
 
         output_shape.extend([self.dim, self.dim])
