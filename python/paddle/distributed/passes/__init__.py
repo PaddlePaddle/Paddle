@@ -20,6 +20,9 @@ from .auto_parallel_amp import (  # noqa: F401
     AMPPass,
     AMPState,
 )
+from .auto_parallel_c_embedding import (  # noqa: F401
+    AutoParallelCEmbeddingPass,
+)
 from .auto_parallel_data_parallel_optimization import (  # noqa: F401
     DataParallelOptimizationPass,
     GradientsGroup,
@@ -52,6 +55,9 @@ from .auto_parallel_recompute import (  # noqa: F401
     RecomputePass,
     RecomputeState,
 )
+from .auto_parallel_replace_with_parallel_cross_entropy import (  # noqa: F401
+    AutoParallelReplaceWithParallelCrossEntropyPass,
+)
 from .auto_parallel_sequence_parallel_optimization import (  # noqa: F401
     SequenceParallelOptimizationPass,
 )
@@ -82,8 +88,9 @@ from .cpp_pass import (  # noqa: F401
     FuseOptimizerPass,
     FuseReluDepthwiseConvPass,
     FuseResUnitPass,
-    InplaceAddtoOpPass,
 )
+
+# InplaceAddtoOpPass,
 from .fuse_all_reduce import (  # noqa: F401
     FuseAllReducePass,
     filter_all_collective_op_indices,

@@ -11,34 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-import os
-import sys
 
 import numpy as np
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
 import tensorrt as trt
 
-from paddle.base.log_helper import get_logger
-from paddle.tensorrt.register import converter_registry
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
-)
 from paddle.tensorrt.converter_utils import (
     get_trt_plugin,
 )
+from paddle.tensorrt.register import converter_registry
+
+activation_type_map = {
+    "pd_op.tanh": trt.ActivationType.TANH,
+    "pd_op.relu": trt.ActivationType.RELU,
+    "pd_op.sigmoid": trt.ActivationType.SIGMOID,
+}
 
 
 @converter_registry.register("pd_op.relu", trt_version="8.x")
-def relu_converter(network, paddle_op, inputs):
-    relu_layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
-    return relu_layer.get_output(0)
+@converter_registry.register("pd_op.tanh", trt_version="8.x")
+@converter_registry.register("pd_op.sigmoid", trt_version="8.x")
+def activation_converter(network, paddle_op, inputs):
+    layer = network.add_activation(
+        inputs[0], activation_type_map[paddle_op.name()]
+    )
+    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.softmax", trt_version="8.x")
@@ -73,3 +69,33 @@ def gelu_converter(network, paddle_op, inputs):
 
     layer = network.add_plugin_v2([input_val], plugin)
     return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.hardsigmoid", trt_version="8.x")
+def hardsigmoid_converter(network, paddle_op, inputs):
+    x = inputs[0]
+    slope = paddle_op.attrs()["slope"]
+    offset = paddle_op.attrs()["offset"]
+    hardsigmoid_layer = network.add_activation(
+        x, trt.ActivationType.HARD_SIGMOID
+    )
+    hardsigmoid_layer.alpha = slope
+    hardsigmoid_layer.beta = offset
+    return hardsigmoid_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.hardswish", trt_version="8.x")
+def hardswish_converter(network, paddle_op, inputs):
+    x = inputs[0]
+    threshold = 6.0
+    scale = 6.0
+    offset = 3.0
+    hardsigmoid_layer = network.add_activation(
+        x, trt.ActivationType.HARD_SIGMOID
+    )
+    hardsigmoid_layer.alpha = 1.0 / scale
+    hardsigmoid_layer.beta = offset / scale
+    hardswish_layer = network.add_elementwise(
+        x, hardsigmoid_layer.get_output(0), trt.ElementWiseOperation.PROD
+    )
+    return hardswish_layer.get_output(0)

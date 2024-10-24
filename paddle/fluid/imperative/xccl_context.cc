@@ -15,7 +15,7 @@
 #include "paddle/fluid/imperative/xccl_context.h"
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/gen_comm_id_helper.h"
 #endif
 

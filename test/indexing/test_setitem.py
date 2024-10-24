@@ -20,7 +20,6 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle.base import core
 from paddle.base.variable_index import _setitem_static
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSetitemInDygraph(unittest.TestCase):
@@ -187,6 +186,31 @@ class TestSetitemInDygraph(unittest.TestCase):
             x = paddle.cast(x, dtype='float32')
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    def test_indexing_with_negative_list2(self):
+        # test list indexing contains negative values
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6)).astype(self.ndtype)
+        )
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+
+        np_data[
+            :,
+            [-1, -2, 2],
+        ] = 8
+
+        x[
+            :,
+            [-1, -2, 2],
+        ] = 8
+
+        if self.dtype == 'bfloat16':
+            x = paddle.cast(x, dtype='float32')
+        np.testing.assert_allclose(x.numpy(), np_data)
+
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = (
@@ -317,7 +341,8 @@ class TestSetitemInDygraph(unittest.TestCase):
             x = paddle.cast(x, dtype='float32')
         np.testing.assert_allclose(x.numpy(), np_data)
 
-    def test_inplace_with_stride(self):
+    def test_inplace_with_stride_bwd_1(self):
+        # combined-setitem case for X with stop_graident=False
         np_v = np.random.randn(3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -337,6 +362,166 @@ class TestSetitemInDygraph(unittest.TestCase):
         loss.backward()
 
         expected_v_grad = np.ones((3, 1)) * 5.0
+        if self.dtype == 'bfloat16':
+            np.testing.assert_allclose(
+                v.grad.cast('float32').numpy(), expected_v_grad
+            )
+        elif self.dtype == 'bool':
+            np.testing.assert_equal(
+                v.grad.numpy(), expected_v_grad.astype('bool')
+            )
+        else:
+            np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
+    def test_inplace_with_stride_bwd_2(self):
+        # combined-setitem case for X with stop_graident=True
+        np_v = np.random.randn(3, 1).astype(self.ndtype)
+        if self.dtype == 'bfloat16':
+            np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_v = np_v + 1j * np_v
+        v = paddle.to_tensor(np_v, dtype=self.dtype)
+        v.stop_gradient = False
+        vv = v
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = paddle.zeros_like(zero)
+        zero1[1, paddle.to_tensor([2, 0, 1])] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((3, 1)) * 5.0
+        if self.dtype == 'bfloat16':
+            np.testing.assert_allclose(
+                v.grad.cast('float32').numpy(), expected_v_grad
+            )
+        elif self.dtype == 'bool':
+            np.testing.assert_equal(
+                v.grad.numpy(), expected_v_grad.astype('bool')
+            )
+        else:
+            np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
+    def test_inplace_with_stride_bwd_3(self):
+        # advanced-setitem case for X with stop_graident=False
+        np_v = np.random.randn(3, 3, 1).astype(self.ndtype)
+        if self.dtype == 'bfloat16':
+            np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_v = np_v + 1j * np_v
+        v = paddle.to_tensor(np_v, dtype=self.dtype)
+        v.stop_gradient = False
+        vv = v
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = zero * 1
+        zero1[paddle.to_tensor([2, 0, 1])] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((3, 3, 1)) * 5.0
+        if self.dtype == 'bfloat16':
+            np.testing.assert_allclose(
+                v.grad.cast('float32').numpy(), expected_v_grad
+            )
+        elif self.dtype == 'bool':
+            np.testing.assert_equal(
+                v.grad.numpy(), expected_v_grad.astype('bool')
+            )
+        else:
+            np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
+    def test_inplace_with_stride_bwd_4(self):
+        # advanced-setitem case for X with stop_graident=True
+        np_v = np.random.randn(3, 3, 1).astype(self.ndtype)
+        if self.dtype == 'bfloat16':
+            np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_v = np_v + 1j * np_v
+        v = paddle.to_tensor(np_v, dtype=self.dtype)
+        v.stop_gradient = False
+        vv = v
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = paddle.zeros_like(zero)
+        zero1[paddle.to_tensor([2, 0, 1])] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((3, 3, 1)) * 5.0
+        if self.dtype == 'bfloat16':
+            np.testing.assert_allclose(
+                v.grad.cast('float32').numpy(), expected_v_grad
+            )
+        elif self.dtype == 'bool':
+            np.testing.assert_equal(
+                v.grad.numpy(), expected_v_grad.astype('bool')
+            )
+        else:
+            np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
+    def test_basic_setitem_bwd_1(self):
+        # basic-setitem case for X with stop_graident=False
+        np_v = np.random.randn(5).astype(self.ndtype)
+        if self.dtype == 'bfloat16':
+            np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_v = np_v + 1j * np_v
+        v = paddle.to_tensor(np_v, dtype=self.dtype)
+        v.stop_gradient = False
+        vv = v
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = zero * 1
+        zero1[2, 1:3, :] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((5,)) * 2.0
+        if self.dtype == 'bfloat16':
+            np.testing.assert_allclose(
+                v.grad.cast('float32').numpy(), expected_v_grad
+            )
+        elif self.dtype == 'bool':
+            np.testing.assert_equal(
+                v.grad.numpy(), expected_v_grad.astype('bool')
+            )
+        else:
+            np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
+    def test_basic_setitem_bwd_2(self):
+        # basic-setitem case for X with stop_graident=True
+        np_v = np.random.randn(5).astype(self.ndtype)
+        if self.dtype == 'bfloat16':
+            np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_v = np_v + 1j * np_v
+        v = paddle.to_tensor(np_v, dtype=self.dtype)
+        v.stop_gradient = False
+        vv = v
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = paddle.zeros_like(zero)
+        zero1[2, 1:3, :] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((5,)) * 2.0
         if self.dtype == 'bfloat16':
             np.testing.assert_allclose(
                 v.grad.cast('float32').numpy(), expected_v_grad
@@ -441,7 +626,6 @@ class TestSetitemInStatic(unittest.TestCase):
         paddle.enable_static()
         self.exe = paddle.static.Executor()
 
-    @test_with_pir_api
     def test_advanced_index(self):
         # multi-int tensor
         np_data = np.zeros((3, 4, 5, 6), dtype='float32')
@@ -455,7 +639,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_index_1(self):
         # int tensor + slice (without decreasing axes)
         np_data = np.zeros((3, 4, 5, 6), dtype='float32')
@@ -471,7 +654,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_index_2(self):
         # int tensor + slice (with decreasing axes)
         np_data = np.ones((3, 4, 5, 6), dtype='float32')
@@ -487,7 +669,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_index_3(self):
         # int tensor + bool tensor + slice (without decreasing axes)
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
@@ -505,7 +686,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_index_4(self):
         # int tensor (with ranks > 1) + bool tensor + slice (with decreasing axes)
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
@@ -523,7 +703,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_index_5(self):
         # int tensor + slice + Ellipsis
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
@@ -541,7 +720,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_index_has_range(self):
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
         np_data[:, range(3), [1, 2, 4]] = 10
@@ -558,7 +736,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_src_value_with_different_dtype_1(self):
         # basic-indexing, with set_value op
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
@@ -579,7 +756,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_src_value_with_different_dtype_2(self):
         # combined-indexing, with index_put op
         np_data = np.ones((3, 4, 5, 6), dtype='float32')
@@ -600,7 +776,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_indexing_with_bool_list1(self):
         # test bool-list indexing when axes num less than x.rank
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -617,7 +792,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_indexing_with_bool_list2(self):
         # test bool-list indexing when axes num less than x.rank
         np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
@@ -643,7 +817,23 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
+    def test_indexing_with_negative_list2(self):
+        # test list indexing contains negative values
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_data[[1, -2, -3]] = 8
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+            y = _setitem_static(
+                x,
+                ([1, -2, -3],),
+                8,
+            )
+            res = self.exe.run(fetch_list=[y])
+
+        np.testing.assert_allclose(res[0], np_data)
+
     def test_indexing_is_multi_dim_list(self):
         # indexing is multi-dim int list, should be treat as one index, like numpy>=1.23
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -658,7 +848,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_indexing_is_boolean_true(self):
         # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -674,7 +863,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_indexing_is_boolean_false(self):
         # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
         np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
@@ -690,7 +878,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_1(self):
         # value is tensor with same shape to getitem and index will be adjusted
         np_data = np.ones((3, 3), dtype='int32')
@@ -710,7 +897,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_2(self):
         # value is tensor needed to broadcast and index will be adjusted
         np_data = np.ones((3, 4, 5, 6), dtype='int32')
@@ -733,7 +919,6 @@ class TestSetitemInStatic(unittest.TestCase):
 
         np.testing.assert_allclose(res[0], np_data)
 
-    @test_with_pir_api
     def test_combined_indexing_and_value_is_tensor_3(self):
         # value is tensor and index will be adjusted
         # and the value rank is less than original tensor

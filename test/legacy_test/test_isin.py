@@ -20,7 +20,6 @@ from op_test import convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 DATA_CASES = [
     {'x_data': np.array(1.0), 'test_x_data': np.array(-1.0)},
@@ -141,7 +140,6 @@ def test(
             )
             np.testing.assert_equal(dygraph_result, np_result)
 
-            @test_with_pir_api
             def test_static():
                 (static_result,) = run_static(
                     x_data,
@@ -222,7 +220,6 @@ def test_bf16(data_cases, assume_unique=False, invert=False, use_gpu=False):
         )
         np.testing.assert_equal(dygraph_result, np_result)
 
-        @test_with_pir_api
         def test_static():
             (static_result,) = run_static_bf16(
                 x_data,

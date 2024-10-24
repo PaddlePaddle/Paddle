@@ -43,8 +43,6 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
@@ -98,6 +96,50 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         return false;
       }
     }
+    if (op->name() == "onednn_op.scale" || op->name() == "onednn_op.scale_") {
+      bool bias_after_scale =
+          op_attr.at("bias_after_scale").dyn_cast<pir::BoolAttribute>().data();
+      if (bias_after_scale) {
+        // If bias after scale, add quant/dequant for sacle will cause some
+        // error
+        return false;
+      }
+    }
+
+    const std::vector<std::string> permitted_input_names = {
+        "x", "y", "input", "residual_param", "residual_data"};
+    auto op_name = op->name();
+    auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op_name);
+    if (!op_info) return false;
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_(op_name),
+        paddle::dialect::IsLegacyOp(op_name));
+    auto input_names = yaml_parser.InputNames();
+
+    for (size_t i = 0; i < op->num_operands(); i++) {
+      pir::Value value = op->operand_source(i);
+      if (!value) continue;
+      std::string input_name = input_names[i];
+      auto iter = std::find(permitted_input_names.begin(),
+                            permitted_input_names.end(),
+                            input_name);
+      if (iter == permitted_input_names.end()) {
+        continue;
+      }
+      pir::Type type = op->operand_type(i);
+      if (!type) continue;
+      if (!type.isa<paddle::dialect::DenseTensorType>()) {
+        // We skip pir::VectorType
+        // TODO(Lirong, Xinyi): Support pir::VectorType in bf16
+        return false;
+      }
+      pir::Type op_dtype = pir::GetDataTypeFromValue(value);
+      // Only float input can be converted to bfloat16
+      if (!op_dtype.isa<pir::Float32Type>()) {
+        return false;
+      }
+    }
     return true;
   }
 
@@ -142,8 +184,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
   // revert mkldnn_data_type attr to float32
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
@@ -179,6 +219,15 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::FusedConv2dOp>() &&
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
+    }
+    auto op_attr = op->attributes();
+    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
+      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16") {
+        return false;
+      }
     }
 
     bool prev_fp32 = false;
@@ -290,8 +339,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
 
   bool Match(pir::Operation* op) const override {  // NOLINT
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
-        !op->isa<paddle::onednn::dialect::CastOp>() &&
-        !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
@@ -328,6 +375,15 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::FusedMatmulOp>()) {
       return false;
     }
+    auto op_attr = op->attributes();
+    if (op_attr.find("mkldnn_data_type") != op_attr.end()) {
+      auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16") {
+        return false;
+      }
+    }
 
     uint32_t num_operands = op->num_operands();
     for (uint32_t i = 0; i < num_operands; i++) {
@@ -337,18 +393,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
       }
     }
 
-    bool unsupported_op = false;
-    for (auto& value : op->operands_source()) {
-      pir::Type op_dtype = pir::GetDataTypeFromValue(value);
-      // Only float input can be converted to bfloat16
-      if (!op_dtype.isa<pir::Float32Type>()) {
-        unsupported_op = true;
-        break;
-      }
-    }
-    if (!unsupported_op) {
-      return false;
-    }
     return true;
   }
 

@@ -479,6 +479,26 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = -a
             np.testing.assert_array_equal(res.numpy(), -a_np)
 
+    def test_abs(self):
+        # test for real number
+        a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            res = abs(a)
+            np.testing.assert_array_equal(res.numpy(), np.abs(a_np))
+
+    def test_abs_complex(self):
+        # test for complex number
+        a_np = np.random.uniform(-1, 1, self.shape).astype(
+            self.dtype
+        ) + 1j * np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with base.dygraph.guard():
+            a = paddle.to_tensor(a_np)
+            res = abs(a)
+            np.testing.assert_allclose(
+                res.numpy(), np.abs(a_np), rtol=2e-7, atol=0.0
+            )
+
     def test_float_int_long(self):
         with base.dygraph.guard():
             a = paddle.to_tensor(np.array([100.1]))
@@ -804,6 +824,18 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         x_T = x.T
         self.assertTrue(x_T.shape, [7, 9, 6, 3])
         np.testing.assert_array_equal(x_T.numpy(), x_np.T)
+
+        x_np = np.random.randn(3, 6, 9, 7)
+        x = paddle.to_tensor(x_np)
+        x_mT = x.mT
+        self.assertTrue(x_mT.shape, [3, 6, 7, 9])
+        np.testing.assert_array_equal(
+            x_mT.numpy(), x_np.transpose([0, 1, 3, 2])
+        )
+
+        x_np = np.random.randn(3)
+        x = paddle.to_tensor(x_np)
+        self.assertRaises(ValueError, getattr, x, "mT")
 
         self.assertTrue(inspect.ismethod(a.dot))
         self.assertTrue(inspect.ismethod(a.logsumexp))

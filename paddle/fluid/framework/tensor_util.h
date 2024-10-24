@@ -22,10 +22,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
-#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/vocab/string_array.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/memory.h"
@@ -106,11 +106,16 @@ template <typename T>
 void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 // convert dlpack's DLTensor to tensor
-
 TEST_API void TensorFromDLPack(const ::DLTensor& dl_tensor,
                                phi::DenseTensor* dst);
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
 
+TEST_API phi::DenseTensor TensorFromDLPack(DLManagedTensor* src);
+inline phi::DenseTensor TensorFromDLPack(const DLManagedTensor* src) {
+  return TensorFromDLPack(const_cast<DLManagedTensor*>(src));
+}
+
+phi::DenseTensor TensorFromDLPack(DLManagedTensor* src,
+                                  std::function<void(void*)> deleter);
 //
 // The implementation of template functions.
 //

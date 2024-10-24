@@ -516,6 +516,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "group_norm_silu_xpu_fuse_pass",
+      "layer_norm_relu_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "qk_qkv_attention_xpu_fuse_pass",
       "block_multihead_attention_xpu_pass",
@@ -581,6 +582,7 @@ IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
 
 const std::vector<std::string> kPirGpuPasses{
     // Functional pass
+    "add_shadow_output_after_dead_parameter_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
     "map_op_to_another_pass",
@@ -609,6 +611,7 @@ const std::vector<std::string> kPirGpuPasses{
 
 const std::vector<std::string> kPirXpuPasses{
     // Functional pass
+    "add_shadow_output_after_dead_parameter_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
     "map_op_to_another_pass",
@@ -622,7 +625,8 @@ const std::vector<std::string> kPirXpuPasses{
     "fc_xpu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses {
-  "delete_quant_dequant_linear_op_pass",          //
+  "add_shadow_output_after_dead_parameter_pass",
+      "delete_quant_dequant_linear_op_pass",      //
       "delete_weight_dequant_linear_op_pass",     //
       "depthwise_conv_onednn_pass",               //
       "squeeze_transpose_onednn_fuse_pass",       //
@@ -663,6 +667,7 @@ const std::vector<std::string> kPirMkldnnPasses {
 };
 
 const std::vector<std::string> kPirMkldnnBf16Passes{
+    "add_shadow_output_after_dead_parameter_pass",
     "cpu_bfloat16_placement_pass",
     "cpu_bfloat16_pass",
     "cpu_bfloat16_type_placement_pass",
@@ -670,6 +675,7 @@ const std::vector<std::string> kPirMkldnnBf16Passes{
 };
 
 const std::vector<std::string> kPirCpuPasses{
+    "add_shadow_output_after_dead_parameter_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass"};
 

@@ -133,14 +133,21 @@ class Dim;
 //! Define IrNodeTy
 // @{
 #define __m(x__) x__,
-enum class IrNodeTy { kUnk = -1, NODETY_FORALL(__m) };
+enum class IrNodeTy {
+  kUnk = -1,
+  IterMark,
+  IterSum,
+  IterSplit,
+  NODETY_FORALL(__m)
+};
 #undef __m
 // @}
 
 //! String representations for IrNodeTy.
 // @{
 #define __m(x__) #x__,
-const std::vector<std::string> kIrNodeTyReprs({NODETY_FORALL(__m) "None"});
+const std::vector<std::string> kIrNodeTyReprs(
+    {NODETY_FORALL(__m) "IterSplit", "IterSum", "IterMark", "None"});
 #undef __m
 // @}
 
@@ -340,6 +347,7 @@ struct StringImm : public ExprNode<StringImm> {
 };
 
 class Var;
+class IndexExpr;
 /**
  * An expression that represents some value or the result of some operations.
  */
@@ -425,6 +433,11 @@ struct Expr : public IrNodeRef {
   bool is_cmp() const;
 
   bool is_var() const;
+
+  bool is_index() const;
+
+  IndexExpr as_index();
+  const IndexExpr as_index() const;
 
   operator Var();
 
@@ -584,7 +597,7 @@ namespace std {
 
 template <>
 struct hash<cinn::ir::Expr> {
-  size_t operator()(const cinn::ir::Expr& x) {
+  size_t operator()(const cinn::ir::Expr& x) const {
     return reinterpret_cast<size_t>(x.get());
   }
 };

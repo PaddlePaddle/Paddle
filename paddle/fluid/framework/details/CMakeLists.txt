@@ -1,18 +1,11 @@
-set(op_handle_srcs
-    nan_inf_utils_detail.cc
-    var_handle.cc
-    op_handle_base.cc
-    share_tensor_buffer_functor.cc
-    computation_op_handle.cc
-    share_tensor_buffer_op_handle.cc
-    eager_deletion_op_handle.cc)
+set(op_handle_srcs nan_inf_utils_detail.cc var_handle.cc op_handle_base.cc
+                   computation_op_handle.cc eager_deletion_op_handle.cc)
 
 set(op_handle_deps
     pass
     operator
     phi
     common
-    framework_proto
     node
     device_context
     op_registry
@@ -45,7 +38,7 @@ else()
     DEPS ${op_handle_deps})
 endif()
 
-add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
+add_dependencies(detail_op_handle auto_parallel_proto xxhash)
 
 set(IR_PASS_DEPS
     graph_viz_pass

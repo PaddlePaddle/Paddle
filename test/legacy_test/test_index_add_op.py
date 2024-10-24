@@ -20,7 +20,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_add_ref(
@@ -67,7 +66,9 @@ class TestIndexAddOp(OpTest):
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.axis], size=self.index_size
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(
@@ -124,7 +125,9 @@ class TestIndexAddBF16Op(OpTest):
         self.op_type = "index_add"
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=self.x_shape[self.axis], size=self.index_size
+            low=-self.x_shape[self.axis],
+            high=self.x_shape[self.axis],
+            size=self.index_size,
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(
@@ -213,7 +216,9 @@ class TestIndexAddAPI(unittest.TestCase):
             self.x_type
         )
         self.index_np = np.random.randint(
-            low=0, high=self.x_shape[axis], size=self.index_size
+            low=-self.x_shape[axis],
+            high=self.x_shape[axis],
+            size=self.index_size,
         ).astype(self.index_type)
         if self.check_backward:
             self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
@@ -306,7 +311,6 @@ class TestIndexAddAPI(unittest.TestCase):
         )
         return res
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for device in self.place:

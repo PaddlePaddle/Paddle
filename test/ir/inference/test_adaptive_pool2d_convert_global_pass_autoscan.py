@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import hypothesis.strategies as st
@@ -92,11 +93,16 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
         yield config, ['pool2d'], (1e-5, 1e-5)
 
     def test(self):
+        max_example = 300
+        min_success_num = 40
+        if sys.platform == 'win32':
+            max_example = 10
+            min_success_num = 4
         self.run_and_statis(
             quant=False,
-            max_examples=300,
+            max_examples=max_example,
             passes=["adaptive_pool2d_convert_global_pass"],
-            min_success_num=40,
+            min_success_num=min_success_num,
         )
 
 

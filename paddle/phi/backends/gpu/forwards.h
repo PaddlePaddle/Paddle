@@ -103,6 +103,9 @@ using miopenAllocatorFunction = void *(*)(void *context, size_t sizeBytes);
 // Forward declaration of rocBLAS types.
 using rocblas_handle = struct _rocblas_handle *;
 
+// Forward declaration of hipblaslt types.
+using hipblasLtHandle_t = void *;
+
 // Forward declaration of hipfft types.
 using hipfftHandle = struct hipfftHandle_t *;
 

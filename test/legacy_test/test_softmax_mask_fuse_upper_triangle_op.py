@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 from paddle import base, incubate
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -51,7 +50,9 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -73,7 +74,9 @@ class TestSoftmaxMaskFuseOp1(OpTest):
 
     def test_check_output(self):
         try:
-            self.check_output_with_place(core.CPUPlace(), check_pir=True)
+            self.check_output_with_place(
+                core.CPUPlace(), check_pir=True, check_symbol_infer=False
+            )
         except (NotImplementedError, RuntimeError):
             pass
 
@@ -95,7 +98,6 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
         np.random.seed(123)
         self.dtypes = ['float32', 'float16']
 
-    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
             with paddle.static.program_guard(

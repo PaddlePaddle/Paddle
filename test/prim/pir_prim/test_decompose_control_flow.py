@@ -321,8 +321,8 @@ class TestPrimControlFlowWhileBackward(unittest.TestCase):
             out_grad_baseline, out_grad, rtol=1e-6, atol=0
         )
         assert len(
-            program_origin.global_block().ops[-2].as_while_op().body().ops
-        ) != len(program_prim.global_block().ops[-2].as_while_op().body().ops)
+            program_origin.global_block().ops[-1].as_while_op().body().ops
+        ) != len(program_prim.global_block().ops[-1].as_while_op().body().ops)
 
     @classmethod
     def tearDownClass(cls):

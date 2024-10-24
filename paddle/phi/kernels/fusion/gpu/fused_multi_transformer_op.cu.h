@@ -789,7 +789,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   */
   __shared__ float qk_current_smem[1];
 
-  // logits_smem is used to store the resut of exp(q*k^T).
+  // logits_smem is used to store the result of exp(q*k^T).
   char *logits_smem_ = smem_;
 
   T *out_smem = reinterpret_cast<T *>(smem_);
@@ -1462,7 +1462,7 @@ void dispatch_mbmmha_impl_headsize(
       break;
     default:
       PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+          errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
   }
 }
 

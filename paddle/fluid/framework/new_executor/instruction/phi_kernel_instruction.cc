@@ -22,17 +22,22 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
+
+PHI_DEFINE_EXPORTED_bool(print_kernel_run_info,
+                         false,
+                         "Whether print kernel run info.");
+
 namespace paddle {
 namespace framework {
 
@@ -180,6 +185,32 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
+  if (FLAGS_print_kernel_run_info) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto place =
+        kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
+    if (phi::is_gpu_place(place)) {
+      std::string use_cudnn =
+          op_->attributes()
+                      .at("kernel_key")
+                      .dyn_cast<paddle::dialect::KernelAttribute>()
+                      .data()
+                      .backend() == phi::Backend::GPUDNN
+              ? "true"
+              : "false";
+      std::cout << "run " << phi_op_name_
+                << ": thread_id=" << std::this_thread::get_id()
+                << ", backend=" << place << ", use_cudnn=" << use_cudnn
+                << ", stream="
+                << kernel_context_.GetDeviceContext<phi::GPUContext>().stream()
+                << std::endl;
+    } else {
+      std::cout << "run " << phi_op_name_
+                << ": thread_id=" << std::this_thread::get_id()
+                << ", backend=" << place << std::endl;
+    }
+#endif
+  }
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     phi::RecordEvent record_event("PhiKernelInstruction::infermeta",

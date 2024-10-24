@@ -66,11 +66,7 @@ class PassTest(unittest.TestCase):
     def run_program(self, executor, startup_program, main_program):
         with paddle.pir_utils.IrGuard():
             with paddle.static.program_guard(startup_program, main_program):
-                fetches = executor.run(
-                    main_program,
-                    feed=self.feeds,
-                    fetch_list=main_program.list_vars()[-1],
-                )
+                fetches = executor.run(main_program, feed=self.feeds)
                 return fetches
 
     def compare_accuracy(
@@ -103,6 +99,11 @@ class PassTest(unittest.TestCase):
                     ):
                         executor = paddle.static.Executor(place)
                         executor.run(startup_program)
+                    with paddle.static.program_guard(main_program):
+                        out = paddle._pir_ops.fetch(
+                            main_program.list_vars()[-1], "fetch0", 0
+                        )
+                        out.persistable = True
                 baseline_fetch = self.run_program(
                     executor, startup_program, main_program
                 )

@@ -222,7 +222,7 @@ void GetConnectedSubgraph(pir::Operation* op,
   }
 }
 
-// convert a singe value type to dist type.
+// convert a single value type to dist type.
 pir::Type CvtTypeToDist(pir::Type type, ProcessMeshAttribute mesh_attr) {
   if (!type) return nullptr;
   auto ctx = pir::IrContext::Instance();
@@ -305,7 +305,7 @@ void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
       if (auto vec_type = type.dyn_cast<pir::VectorType>()) {
         for (size_t idx = 0; idx < vec_type.size(); ++idx) {
           auto inner_type = vec_type[idx];
-          if (!inner_type && !vec_type[idx].isa<DistTypeInterface>()) {
+          if (inner_type && !inner_type.isa<DistTypeInterface>()) {
             CvtValueToDist(value, mesh_attr);
             break;
           }

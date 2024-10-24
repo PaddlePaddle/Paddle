@@ -21,4 +21,3 @@ from .softmax_mask_fuse import softmax_mask_fuse  # noqa: F401
 from .softmax_mask_fuse_upper_triangle import (  # noqa: F401
     softmax_mask_fuse_upper_triangle,
 )
-from .unzip import unzip  # noqa: F401

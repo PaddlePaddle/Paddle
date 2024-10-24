@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/int_array.h"
@@ -27,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/framework/framework.pb.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -137,6 +137,15 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
                        var_types.end(),
                        [](const proto::VarType::Type& type) {
                          return type == proto::VarType::LOD_TENSOR;
+                       });
+  }
+
+  bool IsVocabOutput(const std::string& name) const override {
+    auto var_types = ctx_.GetOutputsVarType(name);
+    return std::all_of(var_types.begin(),
+                       var_types.end(),
+                       [](const proto::VarType::Type& type) {
+                         return type == proto::VarType::VOCAB;
                        });
   }
 
@@ -253,7 +262,7 @@ phi::DataType CompatMetaTensor::dtype() const {
     }
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return paddle::framework::TransToPhiDataType(var->GetDataType());
+    return phi::TransToPhiDataType(var->GetDataType());
   }
 }
 
@@ -804,7 +813,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                   PADDLE_GET_CONST(std::vector<int>, attr));
               break;
             case phi::AttributeType::DATA_TYPE: {
-              auto data_type = paddle::framework::TransToPhiDataType(
+              auto data_type = phi::TransToPhiDataType(
                   static_cast<framework::proto::VarType::Type>(
                       PADDLE_GET_CONST(int, attr)));
               infer_meta_context.EmplaceBackAttr(data_type);

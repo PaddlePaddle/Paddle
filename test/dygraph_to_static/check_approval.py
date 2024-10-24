@@ -27,7 +27,7 @@ Usage:
 python test/dygraph_to_static/check_approval.py test/dygraph_to_static/test_return.py
 
 # check multiple files
-python test/dygraph_to_static/check_approval.py test/dygraph_to_static/test_return.py test/dygraph_to_static/test_local_cast.py
+python test/dygraph_to_static/check_approval.py test/dygraph_to_static/test_return.py test/dygraph_to_static/test_break_continue.py
 
 # check whole directory
 python test/dygraph_to_static/check_approval.py test/dygraph_to_static
@@ -105,33 +105,13 @@ class TestClassInheritFromTestCaseDiagnostic(Diagnostic):
         )
 
 
-class TestCaseWithoutDecoratorDiagnostic(Diagnostic):
-    def __init__(self, start: Location, end: Location):
-        super().__init__(
-            start,
-            end,
-            'Test case should use @test_legacy_and_pt_and_pir instead of no decorator',
-        )
-
-
-class TestCaseWithPirApiDecoratorDiagnostic(Diagnostic):
-    def __init__(self, start: Location, end: Location):
-        super().__init__(
-            start,
-            end,
-            'Test case should use @test_legacy_and_pt_and_pir instead of @test_with_pir_api',
-        )
-
-
 ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
     UseToStaticAsDecoratorDiagnostic: [
         "test_rollback.py",
-        "test_legacy_error.py",
         "test_error.py",
         "test_op_attr.py",
         "test_se_resnet.py",
         "test_convert_call.py",
-        "test_local_cast.py",
         "test_origin_info.py",
         "test_full_name_usage.py",
         "test_pylayer.py",
@@ -141,30 +121,15 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_setter_helper.py",
         "test_eval_frame.py",
         "test_ignore_module.py",
-        "test_legacy_error.py",
         "test_error.py",
-        "test_local_cast.py",
         "test_ordered_set.py",
         "test_origin_info.py",
         "test_logging_utils.py",
         "test_move_cuda_pinned_tensor.py",
         "test_pylayer.py",
         "test_tensor_attr_consistency.py",
+        "test_partial_program_hook.py",
     ],
-    TestCaseWithoutDecoratorDiagnostic: [
-        "test_logical.py",
-        "test_inplace_assign.py",
-        # TODO: Remove these files from the allow list after it's support PIR mode
-        "test_tensor_hook.py",
-        "test_to_tensor.py",
-        "test_warning.py",
-        "test_typing.py",
-        "test_gradname_parse.py",
-        "test_for_enumerate.py",
-        "test_save_load.py",
-        "test_declarative.py",
-    ],
-    TestCaseWithPirApiDecoratorDiagnostic: [],
 }
 
 
@@ -185,8 +150,6 @@ class Checker(ast.NodeVisitor):
 
 
 class TestBaseChecker(Checker):
-    REGEX_TEST_WITH_PIR_API = re.compile(r".*test_with_pir_api")
-
     def visit_ClassDef(self, node: ast.ClassDef):
         if not is_test_class(node):
             return
@@ -206,38 +169,7 @@ class TestBaseChecker(Checker):
                 )
                 return
 
-            if (
-                isinstance(base, ast.Attribute)
-                and isinstance(base.value, ast.Name)
-                and base.value.id == 'dygraph_to_static'
-                and base.attr == 'Dy2StTestBase'
-            ) or (isinstance(base, ast.Name) and base.id == 'Dy2StTestBase'):
-                for sub_node in node.body:
-                    if isinstance(sub_node, ast.FunctionDef) and is_test_case(
-                        sub_node
-                    ):
-                        self.check_test_case(sub_node)
-                return
-
         self.generic_visit(node)
-
-    def check_test_case(self, node: ast.FunctionDef):
-        # Check if the test case has not any decorator
-        if not node.decorator_list:
-            start = Location(node.lineno, node.col_offset)
-            end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
-            self.diagnostics.append(
-                TestCaseWithoutDecoratorDiagnostic(start, end)
-            )
-        # Check if the test case use @test_with_pir_api
-        for decorator in node.decorator_list:
-            decorator_str = ast_to_source_code(decorator).strip()
-            if TestBaseChecker.REGEX_TEST_WITH_PIR_API.match(decorator_str):
-                start = Location(node.lineno, node.col_offset)
-                end = Location(node.end_lineno, node.end_col_offset)  # type: ignore
-                self.diagnostics.append(
-                    TestCaseWithPirApiDecoratorDiagnostic(start, end)
-                )
 
 
 class FunctionTostaticChecker(Checker):
@@ -347,8 +279,6 @@ def main():
         (
             UseToStaticAsDecoratorDiagnostic,
             TestClassInheritFromTestCaseDiagnostic,
-            TestCaseWithoutDecoratorDiagnostic,
-            TestCaseWithPirApiDecoratorDiagnostic,
         ),
     )
     if diagnostics:

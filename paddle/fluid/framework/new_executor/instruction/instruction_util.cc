@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -36,9 +37,9 @@
 #include "paddle/pir/include/core/block_argument.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -232,6 +233,19 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const phi::Place& place) {
 
     if (op_name.compare(paddle::dialect::ShapeOp::name()) == 0) {
       return OpFuncType::kGpuSync;
+    }
+  }
+
+  if (auto combine_op = op->dyn_cast<pir::CombineOp>()) {
+    for (size_t i = 0; i < combine_op.num_operands(); ++i) {
+      if (auto combine_operand_type =
+              combine_op.operand_source(i)
+                  .type()
+                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()) {
+        if (phi::is_cpu_place(combine_operand_type.place())) {
+          return OpFuncType::kCpuSync;
+        }
+      }
     }
   }
 

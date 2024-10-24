@@ -51,7 +51,7 @@ def _reduce_in_dygraph(
 
 
 def _reduce_in_static_mode(
-    tensor, dst_rank_in_group, op, group, sync_op, use_calc_stream
+    tensor, dst_rank_in_group, reduce_type, group, sync_op, use_calc_stream
 ):
     data_feeder.check_variable_and_dtype(
         tensor,
@@ -69,18 +69,18 @@ def _reduce_in_static_mode(
         'reduce',
     )
 
-    op_type = _get_reduce_op(op, "reduce")
+    op_type = "reduce"
     ring_id = 0 if group is None else group.id
 
     helper = framework.LayerHelper(op_type, **locals())
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'ring_id': ring_id,
-            'use_calc_stream': sync_op,
             'root_id': dst_rank_in_group,
+            'reduce_type': int(reduce_type),
         },
     )
 

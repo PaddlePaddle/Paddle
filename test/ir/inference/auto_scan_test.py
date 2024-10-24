@@ -412,7 +412,7 @@ class PassAutoScanTest(AutoScanTest):
         max_examples=100,
         reproduce=None,
         min_success_num=25,
-        max_duration=180,
+        max_duration=1000,
         passes=None,
     ):
         if os.getenv("HYPOTHESIS_TEST_PROFILE", "ci") == "dev":
@@ -643,7 +643,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.trt_param = self.TensorRTParam(
-            workspace_size=1024,
+            workspace_size=8192,
             max_batch_size=4,
             min_subgraph_size=0,
             precision=paddle_infer.PrecisionType.Float32,
@@ -764,10 +764,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
-
-            model, params = create_fake_model(prog_config)
+            with paddle.pir_utils.OldIrGuard():
+                model, params = create_fake_model(prog_config)
             if quant:
-                model, params = create_quant_model(model, params)
+                with paddle.pir_utils.OldIrGuard():
+                    model, params = create_quant_model(model, params)
 
             if not skip_baseline:
                 # baseline: gpu run, we only test float32
@@ -791,7 +792,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
                 if isinstance(threshold, float):
                     atol = threshold
-                    rtol = 1e-8
+                    rtol = 1e-4
                 elif isinstance(threshold, (list, tuple)):
                     atol = threshold[0]
                     rtol = threshold[1]

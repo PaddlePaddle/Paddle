@@ -444,7 +444,8 @@ def get_cinn_version() -> str:
 def get_cuda_archs() -> list[int]:
     compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
     if isinstance(compiled_cuda_archs, str):
-        return [int(arch) for arch in compiled_cuda_archs.split()]
+        compiled_cuda_archs = re.findall(r'\d+', compiled_cuda_archs)
+        return [int(arch) for arch in compiled_cuda_archs]
     else:
         return []
 
@@ -1074,7 +1075,7 @@ def get_paddle_extra_install_requirements():
                 "V11": (
                     "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu11==8.9.6.50; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1196,7 +1197,29 @@ def get_cinn_config_jsons():
     return json_path_list
 
 
-def extend_type_hints_package_data(package_data):
+def get_typing_libs_packages(paddle_binary_dir):
+    """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
+    e.g.
+        'paddle._typing.libs.libpaddle.cinn'
+        'paddle._typing.libs.libpaddle.pir'
+        'paddle._typing.libs.libpaddle.eager'
+        'paddle._typing.libs.libpaddle.eager.ops'
+    """
+    base_dir = Path(paddle_binary_dir) / 'python'
+    libs_dir = base_dir / 'paddle' / '_typing' / 'libs' / 'libpaddle'
+    return [
+        '.'.join(str(Path(root).relative_to(base_dir)).split(os.sep))
+        for root, _, _ in os.walk(libs_dir)
+    ]
+
+
+def extend_type_hints_package_data(packages, package_data, paddle_binary_dir):
+    typing_libs_packages = get_typing_libs_packages(paddle_binary_dir)
+
+    # update packages
+    packages += typing_libs_packages
+
+    # update package_data
     type_hints_files = {
         'paddle': ['py.typed', '*.pyi'],
         'paddle.framework': ['*.pyi'],
@@ -1204,17 +1227,17 @@ def extend_type_hints_package_data(package_data):
         'paddle.tensor': ['tensor.pyi'],
         'paddle._typing': ['*.pyi'],
         'paddle._typing.libs': ['*.pyi', '*.md'],
-        'paddle._typing.libs.libpaddle': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.pir': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.eager': ['*.pyi'],
-        'paddle._typing.libs.libpaddle.eager.ops': ['*.pyi'],
     }
+
+    for libpaddle_module in typing_libs_packages:
+        type_hints_files[libpaddle_module] = ['*.pyi']
+
     for pkg, files in type_hints_files.items():
         if pkg not in package_data:
             package_data[pkg] = []
         package_data[pkg] += files
 
-    return package_data
+    return packages, package_data
 
 
 def get_package_data_and_package_dir():
@@ -1450,6 +1473,8 @@ def get_package_data_and_package_dir():
         package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
         shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XPUDNN_LIB_NAME")]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -1587,9 +1612,6 @@ def get_package_data_and_package_dir():
     elif sys.platform == 'darwin':
         ext_modules = []
 
-    # type hints
-    package_data = extend_type_hints_package_data(package_data)
-
     return package_data, package_dir, ext_modules
 
 
@@ -1684,6 +1706,14 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape',
+                recursive=True,
+            )
+        )
         + list(  # operator init headers
             find_files(
                 '*.h',
@@ -1720,6 +1750,50 @@ def get_headers():
             find_files(
                 'op_yaml_info_util.h',
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # op yaml parser interface headers
+            find_files(
+                'op_yaml_info_parser.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # pir op utils interface headers
+            find_files(
+                'utils.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # ir translator interface headers
+            find_files(
+                'op_compat_info.h',
+                paddle_source_dir + '/paddle/fluid/ir_adaptor/translator/',
+            )
+        )
+        + list(
+            find_files(
+                'infer_symbolic_shape.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape',
+            )
+        )
+        + list(
+            find_files(
+                'vjp.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(
+            find_files(
+                'lexer.h',
+                paddle_source_dir + '/paddle/pir/src/core/parser',
+            )
+        )
+        + list(
+            find_files(
+                'token.h',
+                paddle_source_dir + '/paddle/pir/src/core/parser',
             )
         )
     )
@@ -1951,10 +2025,6 @@ def get_setup_parameters():
         'paddle.decomposition',
         'paddle._typing',
         'paddle._typing.libs',
-        'paddle._typing.libs.libpaddle',
-        'paddle._typing.libs.libpaddle.pir',
-        'paddle._typing.libs.libpaddle.eager',
-        'paddle._typing.libs.libpaddle.eager.ops',
     ]
 
     paddle_bins = ''
@@ -2228,6 +2298,10 @@ def main():
         '1',
     ]:
         generate_stub_files(paddle_binary_dir, paddle_source_dir)
+    # package stub files
+    packages, package_data = extend_type_hints_package_data(
+        packages, package_data, paddle_binary_dir
+    )
 
     setup(
         name=package_name,

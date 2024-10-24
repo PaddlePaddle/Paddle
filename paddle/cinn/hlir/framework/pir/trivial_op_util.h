@@ -77,6 +77,8 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   void Visit(const ir::Store* store, Expr* op) override;
   void Visit(const ir::Reduce* reduce, Expr* op) override;
   void Visit(const ir::For* for_node, Expr* op) override;
+  void Visit(const ir::Block* block_node, Expr* op) override;
+  void Visit(const ir::ScheduleBlockRealize* realize, Expr* op) override;
 
  private:
   ir::Expr source_;
@@ -155,9 +157,13 @@ extern ExprSetFinder Store2Value;
 
 extern ExprSetFinder Realizer2ScheduleBlock;
 
+extern ExprSetFinder Realizer2IterValues;
+
 extern ExprSetFinder ScheduleBlock2Body;
 
 extern ExprSetFinder ScheduleBlockRealizeNotRoot;
+
+extern ExprSetFinder ScheduleBlockRealizeIsRoot;
 
 extern ExprSetFinder ScheduleBlockRealizeIsNotInit;
 
@@ -220,6 +226,8 @@ ExprTransformer ChangeTensorLoadTransformer(const ir::Tensor& tensor,
 
 void ReplaceTarget(ir::Expr* e, const ir::Expr& t, const ir::Expr dst);
 
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs);
+
 ExprTransformer WrapStoreTransformer(const ir::Tensor& tensor,
                                      const std::vector<ir::Expr>& indices);
 
@@ -245,6 +253,15 @@ ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
 
 ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name);
+
+ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
+ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones);
+ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
+                                      const std::vector<ir::Var>& vars);
+ExprTransformer InsertIfForAppendVarsTransformer();
+int InplaceMutateSingleExpr(ir::Expr* root,
+                            const ExprSetFinderUtils::ExprSetFinder& finder,
+                            const ExprTransformer& transformer);
 }  // namespace ExprTransformerUtils
 
 std::vector<OpPatternKind> GetOpPatternKindVector(
@@ -269,6 +286,15 @@ static bool IsReduceBody(const ir::Expr& expr_body) {
            ExprSetFinderUtils::ScheduleBlockRealizeIsInit)(expr_body)
               .empty();
 }
+
+std::vector<ir::Var> AppendBound(const std::vector<ir::Var> vars,
+                                 const ir::Expr& root);
+
+std::vector<ir::Var> GetNonReduceLoopVars(const ir::Expr& root);
+std::vector<ir::Var> GetAllLoopVars(const ir::Expr& root);
+
+ir::Expr GetBodyBlock(const ir::Expr& root);
+
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework

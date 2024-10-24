@@ -11,40 +11,88 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-import os
-import sys
 
 import numpy as np
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
-if parent_dir not in sys.path:
-    sys.path.append(parent_dir)
-
 import tensorrt as trt
 
-from paddle.base.log_helper import get_logger
-from paddle.tensorrt.register import converter_registry
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+import paddle
+from paddle.tensorrt.converter_utils import (
+    add_1D_constant_layer,
+    cast_tensor,
+    trt_floor_div,
+    trt_max,
+    trt_reduce_to_scalar,
+    trt_reshape,
+    trt_sub,
 )
+from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.full_int_array", trt_version="8.x")
 def full_int_array_converter(network, paddle_op, inputs):
-    shape = paddle_op.attrs()["value"]
-    shape_weight = trt.Weights(np.array(shape, dtype=np.int32))
-    full_int_array_layer = network.add_constant([len(shape)], shape_weight)
+    value = paddle_op.attrs()["value"]
+    if len(value) == 0:
+        return ()
+    value_weight = trt.Weights(np.array(value, dtype=np.int32))
+    full_int_array_layer = network.add_constant([len(value)], value_weight)
     return full_int_array_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.full", trt_version="8.x")
 def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
-    value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0
+    value = paddle_op.attrs().get("value", 1.0)
     full_layer = network.add_constant(
         shape, np.full(shape, value, dtype=np.float32)
     )
     return full_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign", trt_version="8.x")
+@converter_registry.register("pd_op.assign_out_", trt_version="8.x")
+def assign_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    identity_layer = network.add_identity(input_tensor)
+    return identity_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.assign_value_", trt_version="8.x")
+def assign_value_converter(network, paddle_op, inputs):
+    attrs = paddle_op.attrs()
+    shape = attrs['shape']
+    dtype = attrs['dtype']
+    values = attrs['values']
+
+    if dtype == paddle.float32:
+        dtype = np.float32
+
+    constant_layer = network.add_constant(shape, np.array(values, dtype=dtype))
+    return constant_layer.get_output(0)
+
+
+@converter_registry.register("pd_op.arange", trt_version="8.x")
+def arange_converter(network, paddle_op, inputs):
+    start, end, step = inputs
+    zero_tensor = add_1D_constant_layer(network, 0, np.int32)
+
+    delta = trt_sub(network, end, start)
+
+    f_quotient_tensor = trt_floor_div(network, delta, step)
+
+    if start.dtype == trt.DataType.FLOAT:
+        quotient_tensor = cast_tensor(network, f_quotient_tensor, trt.int32)
+    else:
+        quotient_tensor = f_quotient_tensor
+
+    number_tensor = trt_max(network, quotient_tensor, zero_tensor)
+
+    reshape_start_layer = trt_reshape(network, start, (1,))
+
+    start_tensor = trt_reduce_to_scalar(network, reshape_start_layer)
+
+    fill_layer = network.add_fill(shape=(), op=trt.FillOperation.LINSPACE)
+    fill_layer.set_input(0, number_tensor)
+    fill_layer.set_input(1, start_tensor)
+    fill_layer.set_input(2, step)
+
+    return fill_layer.get_output(0)

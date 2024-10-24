@@ -528,7 +528,24 @@ class TensorVariable(VariableBase):
 
         perm = list(range(len(self.meta.shape) - 1, -1, -1))
         perm_var = ListVariable(perm, self.graph, tracker=ConstTracker(perm))
-        assert perm_var is not None
+        out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
+        return out
+
+    @tensor_property
+    def mT(self):
+        """
+        Return a new TensorVariable object that wraps the result of calling the mT method on the wrapped value of this TensorVariable.
+        """
+        from .container import ListVariable
+
+        if len(self.meta.shape) < 2:
+            raise ValueError(
+                f"Variable.ndim({self.ndim}) is required to be greater than or equal to 2."
+            )
+
+        perm = list(range(len(self.meta.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        perm_var = ListVariable(perm, self.graph, tracker=DummyTracker([self]))
         out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
         return out
 
@@ -747,7 +764,13 @@ class SymbolicVariable(VariableBase):
             self.graph.pycode_gen._origin_code
         )
 
+        disabled_vars = set()
+
         def disable_symbolic(var: VariableBase):
+            if var in disabled_vars:
+                return
+
+            disabled_vars.add(var)
             if var.tracker.is_traceable():
                 tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
                 symbolic_inputs[tracker_expr] = None

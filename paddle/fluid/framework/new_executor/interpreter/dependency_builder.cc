@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/phi/common/reduce_type.h"
 
 PHI_DEFINE_EXPORTED_bool(
     add_dependency_for_communication_op,
@@ -607,7 +608,7 @@ void PirDependencyBuilder::AddDependencyForCommunicationOp() {
   // c_allreduce_sum(b)
   // c_allreduce_sum(c)
   // c_sync_comm_stream(a)
-  const std::string kSyncComm = dialect::CSyncCommStreamOp::name();
+  const std::string kSyncComm = dialect::SyncCommStreamOp::name();
   dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_.at(op_idx)->Name() == kSyncComm) {
@@ -1259,7 +1260,8 @@ void DependencyBuilderSimplify::SetSameStream() {
   // for sharing
   for (size_t i = start_index_; i < op_num_; i++) {
     std::string op_name = _ops_ptr->at(i)->Type();
-    if (op_name == "c_reduce_sum") {
+    if (op_name == "reduce" && _ops_ptr->at(i)->Attr<int>("reduce_type") ==
+                                   static_cast<int>(phi::ReduceType::kRedSum)) {
       _ops_ptr->at(i)->SetAttr(use_calc_stream, true);
       for (auto it : _ops_ptr->at(i)->Inputs()) {
         for (auto var : it.second) {

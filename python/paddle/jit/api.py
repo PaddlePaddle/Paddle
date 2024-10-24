@@ -133,7 +133,8 @@ def copy_decorator_attrs(original_func, decorated_obj):
 
     decorated_obj.__name__ = original_func.__name__
     decorated_obj._decorator_name = decorator_name
-    decorated_obj.__wrapped__ = original_func
+    if not inspect.ismethod(original_func):
+        decorated_obj.__wrapped__ = original_func
     decorated_obj.__doc__ = original_func.__doc__
     if hasattr(original_func, "__module__"):
         decorated_obj.__module__ = original_func.__module__
@@ -660,7 +661,9 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         from paddle.autograd.backward_utils import ValueSet
 
         for var in paddle.utils.flatten(outputs):
-            if isinstance(var, paddle.pir.Value):
+            if isinstance(var, paddle.pir.Value) and var not in ValueSet(
+                result_list
+            ):
                 result_list.append(var)
 
         if output_spec is not None:
@@ -1269,7 +1272,7 @@ def save(
                 )
                 concrete_program = static_function.concrete_program
 
-                if static_function._class_instance is None:
+                if static_function.class_instance is None:
                     warnings.warn(
                         f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
@@ -1279,9 +1282,9 @@ def save(
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
-            if static_func._class_instance:
+            if static_func.class_instance:
                 dygraph_state_dict = (
-                    static_func._class_instance.to_static_state_dict()
+                    static_func.class_instance.to_static_state_dict()
                 )
 
         if dygraph_state_dict:
@@ -1411,7 +1414,6 @@ def save(
                 clone_program = concrete_program.main_program.clone()
                 clone_input_vars = input_vars
                 clone_output_vars = output_vars
-
             save_inference_model(
                 path_prefix=file_path,
                 feed_vars=clone_input_vars,
@@ -1510,6 +1512,7 @@ def save(
             extra_var_info_path = path + INFER_PARAMS_INFO_SUFFIX
             with open(extra_var_info_path, 'wb') as f:
                 pickle.dump(extra_var_info, f, protocol=2)
+    scope.erase(scope.local_var_names())
 
 
 @dygraph_only
@@ -1776,9 +1779,9 @@ def set_dynamic_shape(variable, shape_list):
 
 def get_ast_static_function(function):
     if isinstance(function, SymbolicStaticFunction):
-        if function._class_instance:
+        if function.class_instance:
             dygraph_function = types.MethodType(
-                function._dygraph_function, function._class_instance
+                function._dygraph_function, function.class_instance
             )
         else:
             dygraph_function = function._dygraph_function

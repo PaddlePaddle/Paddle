@@ -31,8 +31,8 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -331,10 +331,10 @@ static void FillConstantLike(const VariableWrapper &ref_var,
   if (ref_var.ForwardDataType() !=
       static_cast<framework::proto::VarType::Type>(-1)) {
     dst_tensor->mutable_data(
-        place, framework::TransToPhiDataType(ref_var.ForwardDataType()));
+        place, phi::TransToPhiDataType(ref_var.ForwardDataType()));
   } else {
     dst_tensor->mutable_data(place,
-                             framework::TransToPhiDataType(ref_var.DataType()));
+                             phi::TransToPhiDataType(ref_var.DataType()));
   }
   phi::funcs::set_constant(*dev_ctx, dst_tensor, value);
 }

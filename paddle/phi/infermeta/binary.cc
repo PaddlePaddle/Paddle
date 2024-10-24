@@ -150,17 +150,21 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          const MetaTensor& x,
                          MetaTensor* out,
                          MetaConfig config) {
-  if (array.dtype() != phi::DataType::UNDEFINED &&
-      x.dtype() != phi::DataType::UNDEFINED) {
-    PADDLE_ENFORCE_EQ(array.dtype(),
-                      x.dtype(),
-                      common::errors::InvalidArgument(
-                          "The dtype (%s) of input x shall be same as "
-                          "dtype (%d) of array.",
-                          x.dtype(),
-                          array.dtype()));
+  phi::DataType out_dtype = array.dtype();
+  if (x.dtype() != phi::DataType::UNDEFINED) {
+    if (array.dtype() == phi::DataType::UNDEFINED) {
+      out_dtype = x.dtype();
+    } else {
+      PADDLE_ENFORCE_EQ(array.dtype(),
+                        x.dtype(),
+                        common::errors::InvalidArgument(
+                            "The dtype (%s) of input x shall be same as "
+                            "dtype (%d) of array.",
+                            x.dtype(),
+                            array.dtype()));
+    }
   }
-  out->set_dtype(array.dtype());
+  out->set_dtype(out_dtype);
   out->set_layout(array.layout());
 }
 
@@ -2020,7 +2024,7 @@ void GatherInferMeta(const MetaTensor& x,
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  if (axis_v < 0) axis_v += input_dim.size();
+  if (axis_v < 0) axis_v += static_cast<int>(input_dim.size());
 
   PADDLE_ENFORCE_GE(
       axis_v,
@@ -2146,6 +2150,7 @@ void GatherTreeMeta(const MetaTensor& ids,
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
   out->set_dims(ids_dims);
+  out->set_dtype(ids.dtype());
 }
 
 void GridSampleBaseInferMeta(const MetaTensor& x,
@@ -2607,6 +2612,32 @@ void LimitByCapacityInferMeta(const MetaTensor& expert_count,
   out->set_dtype(expert_count.dtype());
 }
 
+void LodResetInferMeta(const MetaTensor& x,
+                       const MetaTensor& y,
+                       const std::vector<int>& target_lod,
+                       bool append,
+                       MetaTensor* out,
+                       MetaConfig config) {
+  if (y.initialized()) {
+    auto level0 = target_lod;
+    PADDLE_ENFORCE_GT(
+        static_cast<int64_t>(level0.size()),
+        0,
+        common::errors::InvalidArgument(
+            "If Input(Y) is not provided, the output's LoD should be "
+            "specified by attribute 'target_lod'. But the size of "
+            "'target_lod' is 0."));
+  } else if (config.is_runtime) {
+    out->share_lod(y);
+  }
+  if (append) {
+    out->share_lod(x);
+  }
+
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
                       float epsilon,
@@ -2761,6 +2792,39 @@ void LUUnpackInferMeta(const MetaTensor& x,
     pmat->set_dims(pdims);
     pmat->set_dtype(x.dtype());
   }
+}
+
+void LookupTableInferMeta(const MetaTensor& w,
+                          const MetaTensor& ids,
+                          MetaTensor* out) {
+  const auto& table_dims = w.dims();
+  const auto& ids_dims = ids.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
+  PADDLE_ENFORCE_EQ(
+      table_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'lookup table' must be 2. "
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
+  PADDLE_ENFORCE_EQ(
+      ids_dims[ids_rank - 1],
+      1,
+      common::errors::InvalidArgument(
+          "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
+          "But received Ids's last dimensions = %d, Ids's shape = [%s].",
+          ids_dims[ids_rank - 1],
+          ids_dims));
+
+  auto output_dims =
+      common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
+  output_dims.push_back(table_dims[1]);
+  out->set_dims(common::make_ddim(output_dims));
+  out->set_dtype(w.dtype());
+  out->share_lod(ids);
 }
 
 void MarginCrossEntropyInferMeta(const MetaTensor& logits,

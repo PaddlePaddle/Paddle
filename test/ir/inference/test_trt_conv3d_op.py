@@ -27,27 +27,28 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
     def setUp(self):
         self.init_params()
         self.set_params()
-        with base.program_guard(self.main_program, self.startup_program):
-            data = paddle.static.data(
-                name="data", shape=[-1, 3, 6, 32, 32], dtype="float32"
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                data = paddle.static.data(
+                    name="data", shape=[-1, 3, 6, 32, 32], dtype="float32"
+                )
+                conv_out = paddle.nn.Conv3D(
+                    in_channels=3,
+                    out_channels=self.conv_num_filters,
+                    kernel_size=self.conv_filter_size,
+                    groups=self.conv_groups,
+                    stride=self.stride,
+                    padding=self.conv_padding,
+                    bias_attr=False,
+                    data_format="NCDHW",
+                )(data)
+            self.feeds = {
+                "data": np.random.random([1, 3, 6, 32, 32]).astype("float32"),
+            }
+            self.enable_trt = True
+            self.trt_parameters = TensorRTSubgraphPassConv3dTest.TensorRTParam(
+                1 << 30, 32, 1, self.precision, self.use_static, False
             )
-            conv_out = paddle.nn.Conv3D(
-                in_channels=3,
-                out_channels=self.conv_num_filters,
-                kernel_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                stride=self.stride,
-                padding=self.conv_padding,
-                bias_attr=False,
-                data_format="NCDHW",
-            )(data)
-        self.feeds = {
-            "data": np.random.random([1, 3, 6, 32, 32]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassConv3dTest.TensorRTParam(
-            1 << 30, 32, 1, self.precision, self.use_static, False
-        )
         self.fetch_list = [conv_out]
 
     def init_params(self):
@@ -110,46 +111,52 @@ class TensorRTSubgraphPassConv3dStrideTest(TensorRTSubgraphPassConv3dTest):
 class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with base.program_guard(self.main_program, self.startup_program):
-            data = paddle.static.data(
-                name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                data = paddle.static.data(
+                    name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
+                )
+                conv_out = paddle.nn.Conv3D(
+                    in_channels=6,
+                    out_channels=self.conv_num_filters,
+                    kernel_size=self.conv_filter_size,
+                    groups=self.conv_groups,
+                    stride=self.stride,
+                    padding=self.conv_padding,
+                    bias_attr=False,
+                    data_format="NCDHW",
+                )(data)
+            self.feeds = {
+                "data": np.random.random([1, 6, 32, 32, 8]).astype("float32"),
+            }
+            self.enable_trt = True
+            self.trt_parameters = (
+                DynamicShapeTensorRTSubgraphPassConv3dTest.TensorRTParam(
+                    1 << 30,
+                    32,
+                    0,
+                    AnalysisConfig.Precision.Float32,
+                    False,
+                    False,
+                )
             )
-            conv_out = paddle.nn.Conv3D(
-                in_channels=6,
-                out_channels=self.conv_num_filters,
-                kernel_size=self.conv_filter_size,
-                groups=self.conv_groups,
-                stride=self.stride,
-                padding=self.conv_padding,
-                bias_attr=False,
-                data_format="NCDHW",
-            )(data)
-        self.feeds = {
-            "data": np.random.random([1, 6, 32, 32, 8]).astype("float32"),
-        }
-        self.enable_trt = True
-        self.trt_parameters = (
-            DynamicShapeTensorRTSubgraphPassConv3dTest.TensorRTParam(
-                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+            self.dynamic_shape_params = (
+                DynamicShapeTensorRTSubgraphPassConv3dTest.DynamicShapeParam(
+                    {
+                        "data": [1, 6, 8, 8, 8],
+                        "conv3d_0.tmp_0": [1, 6, 8, 8, 4],
+                    },
+                    {
+                        "data": [32, 6, 32, 32, 8],
+                        "conv3d_0.tmp_0": [32, 6, 32, 32, 8],
+                    },
+                    {
+                        "data": [16, 6, 16, 16, 8],
+                        "conv3d_0.tmp_0": [16, 6, 16, 16, 8],
+                    },
+                    False,
+                )
             )
-        )
-        self.dynamic_shape_params = (
-            DynamicShapeTensorRTSubgraphPassConv3dTest.DynamicShapeParam(
-                {
-                    "data": [1, 6, 8, 8, 8],
-                    "conv3d_0.tmp_0": [1, 6, 8, 8, 4],
-                },
-                {
-                    "data": [32, 6, 32, 32, 8],
-                    "conv3d_0.tmp_0": [32, 6, 32, 32, 8],
-                },
-                {
-                    "data": [16, 6, 16, 16, 8],
-                    "conv3d_0.tmp_0": [16, 6, 16, 16, 8],
-                },
-                False,
-            )
-        )
         self.fetch_list = [conv_out]
 
     def set_params(self):

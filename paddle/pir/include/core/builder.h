@@ -23,6 +23,7 @@
 
 namespace pir {
 class Type;
+class UndefinedType;
 class UInt8Type;
 class Int8Type;
 class Int16Type;
@@ -114,7 +115,9 @@ class Builder {
         common::errors::PreconditionNotMet("argument of block is nullptr"));
     set_insertion_point(block, block->end());
   }
-
+  /// Set/Get the op_role
+  void set_op_role(int op_role) { op_role_ = op_role; }
+  int op_role() const { return op_role_; }
   IrContext *ir_context() const { return context_; }
 
   Block *block() const { return insertion_point_.first; }
@@ -136,6 +139,7 @@ class Builder {
   template <typename OpTy, typename... Args>
   OpTy Build(Args &&...args);
 
+  IR_API UndefinedType undefined_type();
   IR_API BoolType bool_type();
   IR_API UInt8Type uint8_type();
   IR_API Int8Type int8_type();
@@ -170,6 +174,10 @@ class Builder {
   InsertionPoint insertion_point_;
 
   bool forbid_insert_without_position_;
+
+  // by now the op_role is used by autoparallel for distinguish the op in fw,
+  // bw, opt region.
+  int op_role_ = -1;
 };
 
 template <typename OpTy, typename... Args>

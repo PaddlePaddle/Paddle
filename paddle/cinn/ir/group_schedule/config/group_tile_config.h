@@ -21,8 +21,10 @@
 namespace cinn {
 
 namespace hlir::framework::pir {
-struct GroupInfo;
+struct FusionGroupInfo;
 }  // namespace hlir::framework::pir
+
+using hlir::framework::pir::FusionGroupInfo;
 
 namespace ir {
 
@@ -38,12 +40,8 @@ struct ScheduleConfig {
     bool has_dynamic_spatial{false};
     bool has_dynamic_reduce{false};
     bool is_reduce_all{false};
+    bool can_apply_grid_reduce{false};
     IterSpaceType iter_space_type;
-
-    std::set<std::string> reduce_tensor_names;
-    std::set<std::string> temp_var_names;
-    std::set<std::string> shared_var_names;
-    std::set<std::string> direct_output_var_names;
   };
 
   struct TileConfig {
@@ -51,6 +49,7 @@ struct ScheduleConfig {
     int64_t tree_reduce_num{1};
     int64_t spatial_inner_num{1};
     ReduceMethod reduce_method{NoneReduceMethod()};
+    int64_t grid_reduce_num{1};
   };
 
   std::shared_ptr<BaseInfo> base_info;
@@ -117,7 +116,7 @@ struct BucketInfoHash {
 };
 
 std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
-    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info);
+    const std::shared_ptr<FusionGroupInfo>& group_info);
 
 std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
 CombineBaseInfoAndConfig(
@@ -127,9 +126,8 @@ CombineBaseInfoAndConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info);
 
 std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
-BuildScheduleConfig(
-    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info,
-    const common::Target& target);
+BuildScheduleConfig(const std::shared_ptr<FusionGroupInfo>& group_info,
+                    const common::Target& target);
 
 }  // namespace ir
 }  // namespace cinn

@@ -36,6 +36,8 @@ paddle::dialect::PyLayerOp
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
+COMMON_DECLARE_bool(pir_debug);
+
 namespace paddle {
 namespace dialect {
 
@@ -116,16 +118,21 @@ pir::Block &PyLayerOp::forward_block() {
 void PyLayerOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
-  printer.PrintOpResult(op);
+  printer.PrintOpResult(*op);
   os << " = pd_op.pylayer";
-  printer.PrintOpOperands(op);
-  printer.PrintAttributeMap(op);
+
+  if (VLOG_IS_ON(1) || FLAGS_pir_debug) {
+    os << " [id:" << op->id() << "]";
+  }
+
+  printer.PrintOpOperands(*op);
+  printer.PrintAttributeMap(*op);
   os << " -> ";
-  printer.PrintOpReturnType(op);
+  printer.PrintOpReturnType(*op);
   os << "{";
   for (auto &item : forward_block()) {
     os << "\n  ";
-    printer.PrintOperation(&item);
+    printer.PrintOperation(item);
   }
   os << "\n }";
 }

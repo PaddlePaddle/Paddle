@@ -20,16 +20,15 @@
 #include "paddle/common/flags.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/os_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -109,6 +108,15 @@ void RecordLowPrecisionOp(const InstructionBase* instr_node) {
           op_name, kernel_key.dtype());
     }
   }
+}
+
+bool UseTraceRun(const ExecutionConfig& execution_config,
+                 size_t onednn_op_num,
+                 size_t sync_op_num) {
+  return FLAGS_enable_pir_in_executor_trace_run || onednn_op_num ||
+         execution_config.used_for_inference || execution_config.used_for_sot ||
+         ((execution_config.used_for_jit || execution_config.used_for_cinn) &&
+          (sync_op_num == 0));
 }
 
 PirInterpreter::PirInterpreter(const phi::Place& place,
@@ -543,7 +551,7 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.send_v2",
       "pd_op.mp_allreduce_sum",
       "pd_op.barrier",
-      "pd_op.alltoall",
+      "pd_op.all_to_all",
       "pd_op.global_gather",
       "pd_op.distributed_fused_lamb",
       "pd_op.margin_cross_entropy",
@@ -763,6 +771,33 @@ void PirInterpreter::AnalyseExecuteOrderForTrace(
                  "========================"
               << std::endl;
     std::cout << ss.str() << std::endl;
+  }
+}
+
+void PirInterpreter::AnalyzeForceSyncOps() {
+  for (auto& ins : vec_instruction_base_) {
+    ins->SetSyncAfterLaunch(FLAGS_benchmark);
+
+    // Analyze force sync op set by FLAGS_force_sync_op
+    int op_id = ins->Id();
+    std::string op_name = ins->Name();
+    std::string unused_prefix = "pd_op.";
+    auto pos = op_name.find(unused_prefix);
+    if (pos != std::string::npos) {
+      op_name.erase(pos, unused_prefix.size());
+    }
+
+    for (auto& pair : execution_config_.force_sync_ops) {
+      int sync_op_id = pair.first;
+      std::string sync_op_name = pair.second;
+      if ((sync_op_id == op_id || sync_op_id == -1) &&
+          (sync_op_name == op_name || sync_op_name == "")) {
+        VLOG(8) << "Force sync op: "
+                << "sync_op_id=" << sync_op_id << ", op_id=" << op_id
+                << ", sync_op_name=" << sync_op_name << ", op_name=" << op_name;
+        ins->SetSyncAfterLaunch(true);
+      }
+    }
   }
 }
 
@@ -1304,7 +1339,8 @@ void PirInterpreter::CalculateLastLiveOps() {
         // skip no_need_buffer input vars
         if ((ins.count(item.first) &&
              instr->NoNeedBuffer().count(item.first)) ||
-            instr->Name() == "builtin_combine_instruction") {
+            instr->Name() == "builtin_combine_instruction" ||
+            instr->Name() == "pd_op.shadow_feed_tensors") {
           continue;
         }
         gc_check_vars.insert(var_id);
@@ -1317,8 +1353,10 @@ void PirInterpreter::CalculateLastLiveOps() {
           value_exe_info_->GetNameById(static_cast<int>(var_id)));
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          common::errors::NotFound("Var(id=%d) should not be nullptr.",
-                                   static_cast<int>(var_id)));
+          common::errors::NotFound(
+              "Var(id=%d,%s) should not be nullptr.",
+              static_cast<int>(var_id),
+              value_exe_info_->GetNameById(static_cast<int>(var_id))));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
@@ -1470,10 +1508,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     PreAnalysis();
     VLOG(4) << "Done PreAnalysis";
 
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
@@ -1485,10 +1520,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       TraceRunImpl();
     } else {
       MultiThreadRunImpl();
@@ -1555,10 +1587,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       LOG_FIRST_N(INFO, 1) << "pir interpreter is running by trace mode ...";
       TraceRunImpl();
     } else {
@@ -1570,10 +1599,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_pir_in_executor_trace_run || onednn_op_num_ ||
-        execution_config_.used_for_inference ||
-        ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-         (sync_op_num_ == 0))) {
+    if (UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_)) {
       TraceRunImpl();
     } else {
       MultiThreadRunImpl();
@@ -1901,7 +1927,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         instr_node->Run();
       }
 
-      if (FLAGS_benchmark) {
+      if (instr_node->IsSyncAfterLaunch()) {
         instr_node->DeviceContext().Wait();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
@@ -1950,9 +1976,20 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     const std::vector<std::string> op_callstack_attr =
         interpreter::GetInstructionCallStack(op->name(), op->attributes());
     framework::InsertCallStackInfo(op->name(), op_callstack_attr, &ex);
-    LOG(WARNING) << " OP id:" << instr_node->Id() << " " << instr_node->Name()
-                 << " raises an EnforceNotMet exception "
-                 << common::demangle(typeid(ex).name());
+    if (op->HasAttribute("origin_id")) {
+      LOG(WARNING)
+          << "Instruction OP id: " << instr_node->Id() << ", Ir OP id: "
+          << op->attribute("origin_id").dyn_cast<pir::Int64Attribute>().data()
+          << ", " << instr_node->Name() << " raises an EnforceNotMet exception "
+          << common::demangle(typeid(ex).name());
+    } else {
+      LOG(WARNING) << "Instruction OP id: " << instr_node->Id()
+                   << ", Ir OP id is null"
+                   << ", " << instr_node->Name()
+                   << " raises an EnforceNotMet exception "
+                   << common::demangle(typeid(ex).name());
+    }
+
     exception_holder_.Catch(std::make_exception_ptr(std::move(ex)));
   } catch (platform::EOFException&) {
     exception_holder_.Catch(std::current_exception());
@@ -1992,6 +2029,9 @@ void PirInterpreter::PreAnalysis() {
   AnalyseExecuteOrderForTrace(ir_dependency_builder_.OpDownstreamMap(),
                               ir_instruction_scheduling_priority_less);
   VLOG(4) << "Done AnalyseExecuteOrderForTrace";
+
+  AnalyzeForceSyncOps();
+  VLOG(4) << "Done AnalyzeForceSyncOps";
 
   UpdateSyncOpNum();
   VLOG(4) << "Done UpdateSyncOpNum";

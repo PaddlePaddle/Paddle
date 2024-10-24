@@ -34,6 +34,7 @@ class XPUTestClipOp(XPUOpTestWrapper):
 
     class TestClipOp(XPUOpTest):
         def setUp(self):
+            self.python_api = paddle.clip
             self.init_dtype()
             self.set_xpu()
             self.op_type = "clip"
