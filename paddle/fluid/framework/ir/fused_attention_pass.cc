@@ -747,11 +747,10 @@ PDNode* FusedAttentionGradPattern::operator()(PDNode* x,
   PDNode* mp_allreduce_out_node{nullptr};
   if (use_mp) {
     mp_allreduce_out_node = pattern->NewNode(c_identity_grad_out_repr())
-                                ->assert_is_op_output("c_allreduce_sum", "Out");
-    auto* mp_allreduce_node = pattern->NewNode(c_identity_grad_op_repr())
-                                  ->assert_is_op("c_allreduce_sum");
-    fuse_qkv_matmul_grad_x_grad_node->assert_is_op_input("c_allreduce_sum",
-                                                         "X");
+                                ->assert_is_op_output("all_reduce", "out");
+    auto* mp_allreduce_node =
+        pattern->NewNode(c_identity_grad_op_repr())->assert_is_op("all_reduce");
+    fuse_qkv_matmul_grad_x_grad_node->assert_is_op_input("all_reduce", "x");
     mp_allreduce_node->LinksFrom({fuse_qkv_matmul_grad_x_grad_node})
         .LinksTo({mp_allreduce_out_node});
   }
