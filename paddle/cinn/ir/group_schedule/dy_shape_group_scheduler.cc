@@ -90,9 +90,9 @@ void DynamicShapeGroupScheduler::InitBuckets() {
               << "].lower_bound= " << bucket_info.space[i].lower_bound;
       VLOG(4) << "bucket_info.space[" << i
               << "].upper_bound= " << bucket_info.space[i].upper_bound;
-      ir::Expr extent =
+      ir::Expr extent = common::AutoSimplify(
           iter_space_info.memory_consistent_order_homogeneous_merged_space[i]
-              .second;
+              .second);
       VLOG(4) << "extent = " << extent;
       if (OutOfRange(extent,
                      bucket_info.space[i].lower_bound,
