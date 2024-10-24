@@ -163,6 +163,7 @@ PyObject* ToPyObject(const phi::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
 PyObject* ToPyObject(const pir::Value& value);
+PyObject* ToPyObject(pir::Operation* op);
 PyObject* ToPyObject(const std::vector<pir::Value>& value);
 
 class PyTensorHook : public egr::TensorHook {

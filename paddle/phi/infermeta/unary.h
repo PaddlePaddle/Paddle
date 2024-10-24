@@ -715,6 +715,11 @@ void SliceRawInferMeta(const MetaTensor& input,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
 
+void TensorSliceInferMeta(const MetaTensor& input,
+                          int64_t begin_idx,
+                          int64_t end_idx,
+                          MetaTensor* out);
+
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out);
 
 int GetSplitAxisValue(const MetaTensor& x,

@@ -392,6 +392,8 @@ class RemovePasses:
     def remove_no_need_in_startup(startup_program, main_program):
         # 1. vars used in main_program
         main_program_var_names = []
+        for key in main_program.global_block().kwargs():
+            main_program_var_names.append(key)
         for op in main_program.global_block().ops:
             for var in op.operands_source():
                 if var.has_name:

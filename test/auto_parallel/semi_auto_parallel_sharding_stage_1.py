@@ -26,7 +26,8 @@ class TestSemiAutoParallelShardingStage1:
     def __init__(self):
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
-        self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._mesh = dist.ProcessMesh([0, 1], dim_names=["dp"])
+        dist.auto_parallel.set_mesh(self._mesh)
 
     def check_tensor_eq(self, a, b, rtol=1e-05, atol=0, verbose=True):
         np.testing.assert_allclose(a, b, rtol=rtol, atol=atol, verbose=verbose)

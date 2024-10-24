@@ -4902,6 +4902,16 @@
   backward : temporal_shift_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : tensor_slice
+  args : (Tensor input, int64_t begin_idx, int64_t end_idx)
+  output : Tensor
+  infer_meta :
+    func : TensorSliceInferMeta
+    spmd_rule : TensorSliceInferSpmd
+  kernel :
+    func : tensor_slice
+  interfaces : paddle::dialect::InplaceTrait
+
 - op : tensor_unfold
   args : (Tensor input, int64_t axis, int64_t size, int64_t step)
   output : Tensor

@@ -40,8 +40,22 @@ def verify_dist_block(block):
                 if op.result(0).use_empty():
                     op.erase()
                     continue
-            raise RuntimeError(
-                f"The op {op} does not have OperatorDistAttr after Mix2Dist Pass."
+            mesh = None
+            operand_attrs = []
+            result_attrs = []
+            for operand in op.operands_source():
+                operand_attrs.append(operand.dist_attr())
+                if mesh is None:
+                    mesh = operand.dist_attr().process_mesh
+            for result in op.results():
+                result_attrs.append(result.dist_attr())
+                if mesh is None:
+                    mesh = result.dist_attr().process_mesh
+
+            op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+                mesh,
+                operand_attrs,
+                result_attrs,
             )
         for result in op.results():
             if not result.initialized():

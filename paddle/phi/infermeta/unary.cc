@@ -4198,6 +4198,37 @@ void SliceRawInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void TensorSliceInferMeta(const MetaTensor& input,
+                          int64_t begin_idx,
+                          int64_t end_idx,
+                          MetaTensor* out) {
+  const auto& in_dims = input.dims();
+  PADDLE_ENFORCE_GE(
+      begin_idx,
+      0,
+      common::errors::OutOfRange("The start row index must be greater than 0."
+                                 "But received the start index is d%.",
+                                 begin_idx));
+  PADDLE_ENFORCE_LE(
+      end_idx,
+      in_dims[0],
+      common::errors::OutOfRange("The end row index is out of bound."));
+
+  PADDLE_ENFORCE_LT(
+      begin_idx,
+      end_idx,
+      common::errors::InvalidArgument(
+          "The start row index must be less than the end row index."
+          "But received the start index = %d, the end index = %d.",
+          begin_idx,
+          end_idx));
+
+  DDim out_dims(in_dims);
+  out_dims[0] = end_idx - begin_idx;
+  out->set_dims(out_dims);
+  out->set_dtype(input.dtype());
+}
+
 void SoftmaxInferMeta(const MetaTensor& x, int axis, MetaTensor* out) {
   auto dim_x = x.dims();
   auto rank_x = dim_x.size();
