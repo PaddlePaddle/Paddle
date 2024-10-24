@@ -153,19 +153,7 @@ def _c_concat(tensor, group=None):
     nranks = group.nranks
 
     if in_dynamic_mode():
-        return _legacy_C_ops.c_concat(
-            tensor,
-            'ring_id',
-            ring_id,
-            'use_calc_stream',
-            True,
-            'rank',
-            rank,
-            'nranks',
-            nranks,
-            'use_model_parallel',
-            True,
-        )
+        return _C_ops.c_concat(tensor, rank, nranks, ring_id, True, True)
     else:
         op_type = 'c_concat'
         helper = LayerHelper(op_type, **locals())
