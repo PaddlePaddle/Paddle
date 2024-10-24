@@ -24,6 +24,22 @@ import paddle.inference as paddle_infer
 
 class TrtConvertSetValue(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        if (
+            compile_version[0] * 1000
+            + compile_version[1] * 100
+            + compile_version[2] * 10
+            < 8200
+        ):
+            return False
+        if (
+            runtime_version[0] * 1000
+            + runtime_version[1] * 100
+            + runtime_version[2] * 10
+            < 8200
+        ):
+            return False
         return True
 
     def sample_program_configs(self):
@@ -152,6 +168,159 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-5, 1e-4)
+
+    def test(self):
+        self.run_test()
+
+
+class TrtConvertSetValue2(TrtLayerAutoScanTest):
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        if (
+            compile_version[0] * 1000
+            + compile_version[1] * 100
+            + compile_version[2] * 10
+            < 8200
+        ):
+            return False
+        if (
+            runtime_version[0] * 1000
+            + runtime_version[1] * 100
+            + runtime_version[2] * 10
+            < 8200
+        ):
+            return False
+        return True
+
+    def sample_program_configs(self):
+        def generate_input():
+            return np.ones([1, 3, 10]).astype(np.float32)
+
+        def generate_value_tensor(end):
+            return np.random.random([1, 1, end]).astype(np.float32)
+
+        def fake_shape_inptu1():
+            return np.zeros([1]).astype(np.float32)
+
+        def fake_shape_inptu2():
+            return np.zeros([3]).astype(np.float32)
+
+        def fake_shape_inptu3(end):
+            return np.zeros([end]).astype(np.float32)
+
+        for end in [3, 10]:
+            ops_config = [
+                {
+                    "op_type": "shape",
+                    "op_inputs": {"Input": ["fake_shape_inptu1"]},
+                    "op_outputs": {"Out": ["fake_shape_output1"]},
+                    "op_attrs": {},
+                },
+                {
+                    "op_type": "shape",
+                    "op_inputs": {"Input": ["fake_shape_inptu2"]},
+                    "op_outputs": {"Out": ["fake_shape_output2"]},
+                    "op_attrs": {},
+                },
+                {
+                    "op_type": "shape",
+                    "op_inputs": {"Input": ["fake_shape_inptu3"]},
+                    "op_outputs": {"Out": ["fake_shape_output3"]},
+                    "op_attrs": {},
+                },
+                {
+                    "op_type": "set_value",
+                    "op_inputs": {
+                        "Input": ["input_data"],
+                        "ValueTensor": ["update_data"],
+                        "EndsTensorList": [
+                            "fake_shape_output1",
+                            "fake_shape_output2",
+                            "fake_shape_output3",
+                        ],
+                    },
+                    "op_outputs": {"Out": ["input_data"]},
+                    "op_attrs": {
+                        "axes": [0, 1, 2],
+                        "starts": [0, 2, 0],
+                        "ends": [],
+                        "steps": [1, 1, 1],
+                        "decrease_axes": [],
+                    },
+                },
+                {
+                    "op_type": "relu",
+                    "op_inputs": {
+                        "X": ["input_data"],
+                    },
+                    "op_outputs": {"Out": ["output_data"]},
+                    "op_attrs": {},
+                },
+            ]
+
+            ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input)
+                    ),
+                    "update_data": TensorConfig(
+                        data_gen=partial(generate_value_tensor, end)
+                    ),
+                    "fake_shape_inptu1": TensorConfig(
+                        data_gen=partial(fake_shape_inptu1)
+                    ),
+                    "fake_shape_inptu2": TensorConfig(
+                        data_gen=partial(fake_shape_inptu2)
+                    ),
+                    "fake_shape_inptu3": TensorConfig(
+                        data_gen=partial(fake_shape_inptu3, end)
+                    ),
+                },
+                outputs=["output_data"],
+            )
+
+            yield program_config
+
+    def sample_predictor_configs(self, program_config):
+        def generate_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, 3, 10],
+                "update_data": [1, 1, 3],
+                "fake_shape_inptu1": [1],
+                "fake_shape_inptu2": [1],
+                "fake_shape_inptu3": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [1, 3, 10],
+                "update_data": [1, 1, 10],
+                "fake_shape_inptu1": [1],
+                "fake_shape_inptu2": [3],
+                "fake_shape_inptu3": [10],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, 3, 10],
+                "update_data": [1, 1, 10],
+                "fake_shape_inptu1": [1],
+                "fake_shape_inptu2": [3],
+                "fake_shape_inptu3": [10],
+            }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        clear_dynamic_shape()
+        generate_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
+        self.trt_param.workspace_size = 2013265920
+        yield self.create_inference_config(), (1, 6), (1e-5, 1e-4)
 
     def test(self):
         self.run_test()
