@@ -53,7 +53,8 @@ ir::Expr MakeForLoops(const std::vector<int> extents, int index) {
                                           std::vector<Expr>(),
                                           "block",
                                           ir::Expr(0));
-    return sb;
+    ir::Expr sbr = ir::ScheduleBlockRealize::Make({}, sb);
+    return sbr;
   }
 
   ir::Expr extent = ir::Expr(extents.at(index));
@@ -137,6 +138,17 @@ TEST(ForInfo, ForInfoNotEqual) {
   TestHelper2({{10, 5}, {4, 7}}, {{10, 5}, {4, 3}}, false);
   TestHelper2(
       {{10, 5, 3}, {4, 7, 9}, {2, 8}}, {{10, 5, 3}, {4, 7, 9}, {2, 7}}, false);
+}
+
+TEST(ForInfo, ForMerge) {
+  ir::Expr for_loop1 = MakeForLoops({2, 3, 4}, 0);
+  ir::Expr for_loop2 = MakeForLoops({2, 3, 4}, 0);
+  ir::Expr fuse_loop =
+      LoopFusion(for_loop1.As<ir::For>(), for_loop2.As<ir::For>());
+  EXPECT_TRUE(CanMergeBlocks(
+      for_loop1.As<ir::For>(), fuse_loop.As<ir::For>(), IsBlockForAllEqual));
+  EXPECT_TRUE(CanMergeBlocks(
+      for_loop2.As<ir::For>(), fuse_loop.As<ir::For>(), IsBlockForAllEqual));
 }
 
 }  // namespace
