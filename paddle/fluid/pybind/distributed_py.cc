@@ -135,6 +135,12 @@ void BindDistributed(py::module *m) {
                &distributed::ProcessGroup::EndCoalescing,
                py::arg("tasks") = std::nullopt,
                py::call_guard<py::gil_scoped_release>())
+          .def("eager_connect",
+               &distributed::ProcessGroup::EagerConnect,
+               py::call_guard<py::gil_scoped_release>())
+          .def("eager_connect_ring_exchange",
+               &distributed::ProcessGroup::EagerConnectRingExchange,
+               py::call_guard<py::gil_scoped_release>())
           .def(
               "all_reduce",
               [](distributed::ProcessGroup &self,

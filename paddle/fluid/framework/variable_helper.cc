@@ -18,10 +18,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/vocab/string_array.h"
 
 namespace paddle::framework {

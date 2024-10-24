@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any
 
 import paddle
+import paddle.distributed as dist
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
@@ -320,11 +321,12 @@ def _pir_append_gradient_merge_backward_op(
         new_gradient_merge_var_add = paddle._C_ops.add_(
             new_gradient_merge_var, grad
         )
-        new_gradient_merge_var_add.get_defining_op().op_role = (
-            grad_defining_op.op_role
+        new_gradient_merge_var_add_op = (
+            new_gradient_merge_var_add.get_defining_op()
         )
+        new_gradient_merge_var_add_op.op_role = grad_defining_op.op_role
 
-        new_gradient_merge_var_add.get_defining_op().dist_attr = (
+        new_gradient_merge_var_add_op.dist_attr = (
             paddle.base.libpaddle.pir.create_op_dist_attribute(
                 grad_defining_op.dist_attr.process_mesh,
                 grad_defining_op.dist_attr.operands(),
@@ -332,6 +334,8 @@ def _pir_append_gradient_merge_backward_op(
                 grad_defining_op.dist_attr.chunk_id,
             )
         )
+        new_gradient_merge_var_add_op.set_bool_attr("grad_merge_add", True)
+
         # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
         for used_grad_op in grad.all_used_ops():
             if used_grad_op.num_operands() == 1:
@@ -397,7 +401,10 @@ def _move_reduce_to_optimizer_ops_block(
             reduce_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
             removed_op_idx.append(idx)
 
-            if op.type in ["c_allreduce_sum", "c_reduce_sum"]:
+            if op.type == "c_allreduce_sum" or (
+                op.type == "reduce"
+                and op.attr("reduce_type") == dist.ReduceOp.SUM
+            ):
                 scale_index = idx + 1
                 while scale_index < len(main_block.ops):
                     if is_data_parallel_scale_op(main_block.ops[scale_index]):

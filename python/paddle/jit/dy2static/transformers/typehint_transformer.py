@@ -45,5 +45,9 @@ class TypeHintTransformer(BaseTransformer):
     def visit_AnnAssign(self, node):
         if node.value is None:
             return None
-        assign_node = gast.Assign(targets=[node.target], value=node.value)
+        assign_node = gast.Assign(
+            targets=[node.target],
+            value=node.value,
+            type_comment=None,
+        )
         return assign_node

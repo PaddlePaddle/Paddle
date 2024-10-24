@@ -693,11 +693,11 @@ static PyObject* tensor_method_copy_(TensorObject* self,
     egr::EagerUtils::autograd_meta(&(self->tensor))
         ->SetPersistable(
             egr::EagerUtils::autograd_meta(&(src_tensor))->Persistable());
-    if (src_tensor.initialized()) {
+    if (src_tensor.has_allocation()) {
       self->tensor.copy_(src_tensor, src_tensor.place(), blocking);
     }
   } else {
-    if (src_tensor.initialized()) {
+    if (src_tensor.has_allocation()) {
       eager_gil_scoped_release guard;
       self->tensor.copy_(src_tensor, self->tensor.place(), blocking);
     }
@@ -1899,6 +1899,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
         if (require_any_grad) {
           paddle::Tensor transback_sub_tensor =
               transpose_ad_func(transed_sub_tensor, trans_back_dim);
+
           const auto& values_tmp =
               (require_any_grad && transback_sub_tensor.is_dense_tensor() &&
                !std::dynamic_pointer_cast<phi::DenseTensor>(
@@ -1913,7 +1914,10 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                         transback_sub_tensor.mutable_autograd_meta(),
                         transback_sub_tensor.name())
                   : transback_sub_tensor;
-
+          if (!x_autograd_meta) {
+            VLOG(3) << "x_autograd_meta is null and requires_any_grad is true";
+            x_autograd_meta = egr::EagerUtils::autograd_meta(&self->tensor);
+          }
           grad_node = std::shared_ptr<SetValueWithTensorGradNode>(
               new SetValueWithTensorGradNode(1, 2));  // NOLINT
           grad_node->SetAttribute_starts(slice_starts);
@@ -1933,11 +1937,10 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           // SetGradOutMeta & SetEdges
           grad_node->SetGradOutMeta(self->tensor, 0);
           grad_node->SetGradOutMeta(transback_sub_tensor, 1);
-          if (x_autograd_meta) {
-            egr::EagerUtils::SetOutRankWithSlot(x_autograd_meta, 0);
-            egr::EagerUtils::SetHistory(x_autograd_meta, grad_node);
-          }
           grad_node->SetGradInMeta(self->tensor, 0);
+
+          egr::EagerUtils::SetOutRankWithSlot(x_autograd_meta, 0);
+          egr::EagerUtils::SetHistory(x_autograd_meta, grad_node);
         }
       } else {
         self->tensor.set_autograd_meta(

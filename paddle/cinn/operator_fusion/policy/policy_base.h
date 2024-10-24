@@ -18,12 +18,7 @@
 
 namespace cinn::fusion {
 
-enum PolicyKind {
-  GeneralTopo = 1,
-  RelativeJudge = 2,
-  AnchorSearch = 3,
-  ItersFusion = 4
-};
+enum PolicyKind { GeneralTopo = 1, RelativeJudge = 2, ItersFusion = 3 };
 
 struct PolicyKindHash {
   std::size_t operator()(const PolicyKind& t) const {

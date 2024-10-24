@@ -485,14 +485,13 @@ def _init_param_sync(Weight_var, dist_op_context, startup_block, ctx, rank_id):
             )
             sync_group = new_process_group(group_ranks)
 
-            startup_block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
+            broadcast_op = startup_block.append_op(
+                type='broadcast',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={
                     'ring_id': sync_group.id,
                     'root': 0,
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )

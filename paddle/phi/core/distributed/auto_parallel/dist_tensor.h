@@ -147,6 +147,10 @@ class DistTensor final
   /// \return The global dims of the dist tensor.
   const DDim& local_dims() const;
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  bool has_allocation() const override;
+
   /// \brief Returns the global number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
   int64_t numel() const override;

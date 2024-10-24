@@ -39,6 +39,13 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
     act = xpu::Activation_t::RELU;
   } else if (activation == "gelu") {
     act = xpu::Activation_t::GELU;
+  } else if (activation == "none") {
+    // pass
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "activation of fused_gemm_epilogue should be one of {none, relu, "
+        "gelu}, but received %s",
+        activation));
   }
 
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());

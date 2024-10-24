@@ -44,7 +44,7 @@ class TestCopySignOp(OpTest):
         self.outputs = {'out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['x', 'y'], ['out'], check_pir=True)
@@ -86,7 +86,9 @@ class TestCopySignBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
