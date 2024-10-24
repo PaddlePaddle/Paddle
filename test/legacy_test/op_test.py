@@ -2651,7 +2651,7 @@ class OpTest(unittest.TestCase):
                 """infer symbol and compare it with actualy shape and data"""
                 self.is_python_api_test = True
                 self.op_test._infer_and_compare_symbol(
-                    place, not_check_set=no_check_set
+                    place, no_check_set=no_check_set
                 )
 
         # set some flags by the combination of arguments.

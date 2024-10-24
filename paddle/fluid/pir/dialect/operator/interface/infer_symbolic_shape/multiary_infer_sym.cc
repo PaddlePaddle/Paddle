@@ -3295,25 +3295,14 @@ bool RnnOpInferSymbolicShape(pir::Operation *op,
                         "The rank of PreState in RNN  must be 3. But "
                         "the received rank is %d.",
                         pre_state_shape_or_data_list[0].shape().size()));
+  for (size_t i = 0; i < 3; ++i) {
+    details::BuildCstrEqForTensorListAlongAxis(
+        infer_context, pre_state_shape_or_data_list, i);
+  }
   size_t i = 0;
   for (; i < pre_state_shape_or_data_list.size(); ++i) {
-    PADDLE_ENFORCE_EQ(
-        x_shape[1],
-        pre_state_shape_or_data_list[i].shape()[1],
-        common::errors::InvalidArgument(
-            "The second dimension size (representing for batch size) of "
-            "Input and PreState should be equal. But received %d and %d.",
-            x_shape[1],
-            pre_state_shape_or_data_list[i].shape()[1]));
-    PADDLE_ENFORCE_EQ(
-        pre_state_shape_or_data_list[0].shape(),
-        pre_state_shape_or_data_list[i].shape(),
-        common::errors::InvalidArgument(
-            "The dims of all tensors in PreState should be same. But "
-            "received PreState[0] is %s and PreState[%d] is %s.",
-            pre_state_shape_or_data_list[0].shape(),
-            i,
-            pre_state_shape_or_data_list[i].shape()));
+    infer_context->AddEqualCstr(x_shape[1],
+                                pre_state_shape_or_data_list[i].shape()[1]);
   }
   size_t num_state = mode == "LSTM" ? 2 : 1;
   PADDLE_ENFORCE_EQ(i,
@@ -3336,7 +3325,8 @@ bool RnnOpInferSymbolicShape(pir::Operation *op,
   int state_num = static_cast<int>(pre_state_shape_or_data_list.size());
   symbol::TensorListShapeOrDataDimExprs state_shape_or_data_list;
   for (int i = 0; i < state_num; ++i) {
-    state_shape_or_data_list.emplace_back(pre_state_shape_or_data_list[i]);
+    state_shape_or_data_list.emplace_back(
+        pre_state_shape_or_data_list[i].shape());
   }
   infer_context->SetShapeOrDataForValue(
       op->result(2), symbol::ShapeOrDataDimExprs{state_shape_or_data_list});
@@ -3368,12 +3358,7 @@ bool RnnOpInferSymbolicShape(pir::Operation *op,
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(reserve_shape)});
 
-  symbol::DimExpr dropout_state_shape;
-  if (num_layers > 1) {
-    dropout_state_shape = block_size / symbol::DimExpr(num_layers - 1);
-  } else {
-    dropout_state_shape = infer_context->GetNextSymName();
-  }
+  symbol::DimExpr dropout_state_shape = infer_context->GetNextSymName();
 
   infer_context->SetShapeOrDataForValue(
       op->result(1),
