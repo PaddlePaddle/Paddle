@@ -14,21 +14,25 @@
 
 from __future__ import annotations
 
+import errno
 import os
 import shutil
 import sys
+import warnings
 import zipfile
 from typing import TYPE_CHECKING, Literal
+from urllib.parse import urlparse
 
 from typing_extensions import TypeAlias
 
-from paddle.utils.download import get_path_from_url
+import paddle
+from paddle.utils.download import _download, get_path_from_url
 
 if TYPE_CHECKING:
     import builtins
     from typing import Any
 
-    import paddle
+    # import paddle
 
 __all__ = []
 
@@ -329,3 +333,103 @@ def load(
     entry = _load_entry_from_hubconf(hub_module, model)
 
     return entry(**kwargs)
+
+
+def load_state_dict_from_url(
+    url,
+    model_dir=None,
+    check_hash=False,
+    file_name=None,
+    map_location=None,
+    weights_only=False,
+) -> str:
+    """Download Paddle's model weights (i.e., state_dict)
+    from the specified URL and extract the downloaded file if necessary
+
+    Args:
+            url (str) – URL of the object to download
+            model_dir (str, optional) – directory in which to save the object
+            check_hash (bool, optional) – If True, the filename part of the URL should follow the naming convention filename-<sha256>.ext where <sha256> is the first eight or more digits of the SHA256 hash of the contents of the file. The hash is used to ensure unique names and to verify the contents of the file. Default: False
+            file_name (str, optional) – name for the downloaded file. Filename from url will be used if not set.
+            map_location (optional) - A function or dictionary that specifies how to remap storage locations.
+            weights_only (bool, optional) - If True, only the weights will be loaded, not the complex serialized objects. Recommended for untrusted sources
+    Returns:
+        Object, an instance of an object that can be used in a paddle
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.hub.load_state_dict_from_url(url='https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams', model_dir="/paddle/test_load_from_url")
+            >>> paddle.hub.load_state_dict_from_url(url='http://127.0.0.1:9100/download/resnet18.zip', model_dir="/paddle/test_file_is_zip")
+    """
+    if model_dir is None:
+        hub_dir = get_dir()
+        model_dir = os.path.join(hub_dir, 'checkpoints')
+
+    try:
+        os.makedirs(model_dir)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            # Directory already exists, ignore.
+            pass
+        else:
+            # Unexpected OSError, re-raise.
+            raise
+
+    parts = urlparse(url)
+    filename = os.path.basename(parts.path)
+    if file_name is not None:
+        filename = file_name
+    cached_file = os.path.join(model_dir, filename)
+    if not os.path.exists(cached_file):
+        sys.stderr.write(f'Downloading: "{url}" to {cached_file}\n')
+        hash_prefix = None
+        if check_hash:
+            hash_prefix = check_hash  # It is None or the value of md5sum for the incoming download file
+        _download(url, model_dir, hash_prefix)
+
+    if _is_legacy_zip_format(cached_file):
+        return _legacy_zip_load(cached_file, model_dir)
+    return paddle.load(cached_file)
+
+
+def _is_legacy_zip_format(filename):
+    # This function determines whether it is a ZIP file
+    if zipfile.is_zipfile(filename):
+        infolist = zipfile.ZipFile(filename).infolist()
+        return len(infolist) == 1 and not infolist[0].is_dir()
+    return False
+
+
+def _legacy_zip_load(filename, model_dir):
+    # Unzip the ZIP file and load the file with the load function
+    with zipfile.ZipFile(filename) as f:
+        members = f.infolist()
+        if len(members) != 1:
+            raise RuntimeError(
+                'Only one file(not dir) is allowed in the zipfile'
+            )
+        f.extractall(model_dir)
+        extraced_name = members[0].filename
+        extracted_file = os.path.join(model_dir, extraced_name)
+    return paddle.load(extracted_file)
+
+
+def get_dir():
+    # Get the path to the 'Paddle Hub' cache directory
+    if os.getenv('PADDLE_HUB'):
+        warnings.warn(
+            'PADDLE_HUB is deprecated, please use env PADDLE_HOME instead'
+        )
+    return os.path.join(_get_paddle_home(), 'hub')
+
+
+def _get_paddle_home():
+    # Get the Paddle home directory from the environment variable or default to a standard location
+    paddle_home = os.path.expanduser(
+        os.getenv(
+            'PADDLE_HOME',
+            os.path.join(os.getenv('XDG_CACHE_HOME', '~/.cache'), 'paddle'),
+        )
+    )
+    return paddle_home
