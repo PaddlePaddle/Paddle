@@ -15,7 +15,7 @@
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/reader/blocking_queue.h"
+#include "paddle/phi/core/operators/reader/blocking_queue.h"
 
 using paddle::operators::reader::BlockingQueue;
 

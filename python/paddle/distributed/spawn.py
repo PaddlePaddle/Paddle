@@ -530,7 +530,7 @@ def spawn(
             ...     process_group = group.process_group if group else None
             ...     # 2. create data parallel layer & optimizer
             ...     layer = LinearNet()
-            ...     dp_layer = paddle.DataParallel(layer, group = process_group)
+            ...     dp_layer = paddle.DataParallel(layer, group = process_group)  # type: ignore[arg-type]
             ...     loss_fn = nn.MSELoss()
             ...     adam = opt.Adam(
             ...         learning_rate=0.001, parameters=dp_layer.parameters())

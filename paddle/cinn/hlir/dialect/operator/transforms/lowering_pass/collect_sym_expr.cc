@@ -154,14 +154,11 @@ symbol::ShapeOrDataDimExprs TrySubstitute(
 }
 
 void InferSymbolicShapeForOperation(
-    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-  auto infer_symbolic_shape_interface =
-      op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-  if (infer_symbolic_shape_interface) {
-    infer_symbolic_shape_interface.InferSymbolicShape(infer_context);
-  } else {
-    PADDLE_THROW(::common::errors::Unimplemented(
-        op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
+    pir::Operation* op, pir::ShapeConstraintIRAnalysis* local_shape_analysis) {
+  // use lazy get to infer
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    auto result = op->result(i);
+    local_shape_analysis->GetShapeOrDataForValue(result);
   }
 }
 
@@ -206,6 +203,7 @@ CreateGroupShapeOrDataExprs(
   }
 
   pir::ShapeConstraintIRAnalysis local_shape_analysis({});
+  local_shape_analysis.InitInferContext();
 
   // process input values.
   VisitEachInputValue(group, [&](::pir::Value value) {
@@ -215,6 +213,12 @@ CreateGroupShapeOrDataExprs(
     value2shape.insert({value, new_shape_expr});
     VLOG(6) << "Add value_to_shape_or_data_exprs for " << value.impl();
   });
+
+  // infer first to use local dim constraints
+  // TODO(Hongqing-work): try to get global constraints
+  for (auto* op : group->ops()) {
+    InferSymbolicShapeForOperation(op, &local_shape_analysis);
+  }
 
   // process the result values of each op.
   for (auto* op : group->ops()) {

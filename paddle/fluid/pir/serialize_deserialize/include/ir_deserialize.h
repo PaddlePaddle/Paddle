@@ -34,9 +34,9 @@ class ProgramReader {
 
   // static void staticInit()
 
-  void RecoverProgram(Json* program_json,
-                      pir::Program* recover_program,
-                      pir::PatchBuilder* builder);
+  void IR_API RecoverProgram(Json* program_json,
+                             pir::Program* recover_program,
+                             pir::PatchBuilder* builder);
   pir::Type RecoverType(Json* type_json);
   pir::AttributeMap RecoverOpAttributesMap(Json* attrs_json);
   ~ProgramReader() = default;

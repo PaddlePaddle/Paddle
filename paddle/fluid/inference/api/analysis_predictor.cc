@@ -52,7 +52,6 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
@@ -62,6 +61,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -79,10 +79,6 @@
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/phi/backends/dynload/mklml.h"
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/inference/api/onednn_quantizer.h"
 #endif
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -104,7 +100,7 @@
 #endif
 
 #ifdef PADDLE_WITH_NVTX
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
 #ifdef PADDLE_WITH_CINN
@@ -119,6 +115,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/transforms/general/auto_mixed_precision_pass.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -362,7 +359,7 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
         "now."));
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
-  framework::LoD lod;
+  phi::LoD lod;
   for (auto &level : pt.lod) {
     lod.emplace_back(level);
   }
@@ -838,6 +835,24 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       return pass_manager;
     };
 
+    if (config_.use_gpu() && config_.cinn_enabled()) {
+      if (!config_.custom_pass_only_) {
+        ::pir::PassManager fused_op_pm(::pir::IrContext::Instance(),
+                                       config_.pm_opt_level_);
+        const std::vector<std::string> FusedOpPasses{// Operator fusion pass
+                                                     "conv2d_bn_fuse_pass",
+                                                     "conv2d_add_act_fuse_pass",
+                                                     "conv2d_add_fuse_pass",
+                                                     "transfer_layout_pass"};
+
+        for (const auto &fused_op : FusedOpPasses) {
+          fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
+        }
+
+        fused_op_pm.Run(pir_program_.get());
+      }
+    }
+
     if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
       VLOG(4) << "[Prim] Decomp program in predictor begin.";
       DecompProgram decomp_object(pir_program_.get());
@@ -926,6 +941,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     // set attr
     for (const auto &pass : pass_pm.passes()) {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+      pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
       if (pass->name() == "matmul_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_act_fuse_pass" ||
           pass->name() == "conv2d_add_fuse_pass") {
@@ -964,6 +980,28 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       config_.deleted_passes_.end()) {
     basic_pass_pm.AddPass(std::move(common_subexpression_elimination_pass));
   }
+  if (config_.enable_gpu_mixed_) {
+    auto auto_mixed_precision_pass = ::pir::CreateAutoMixedPrecisionPass();
+    if (std::find(config_.deleted_passes_.begin(),
+                  config_.deleted_passes_.end(),
+                  auto_mixed_precision_pass->name()) ==
+        config_.deleted_passes_.end()) {
+      auto_mixed_precision_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+      auto_mixed_precision_pass->Set("__mixed_precision_mode__",
+                                     new phi::DataType(paddle::ConvertPrecision(
+                                         config_.mixed_precision_mode_)));
+      auto_mixed_precision_pass->Set(
+          "__enable_low_precision_io__",
+          new bool(config_.enable_low_precision_io_));
+      auto_mixed_precision_pass->Set(
+          "__mixed_black_list__",
+          new std::unordered_set<std::string>(config_.mixed_black_list_));
+      auto_mixed_precision_pass->Set(
+          "__mixed_white_list__",
+          new std::unordered_set<std::string>(config_.mixed_white_list_));
+      basic_pass_pm.AddPass(std::move(auto_mixed_precision_pass));
+    }
+  }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   if (std::find(config_.deleted_passes_.begin(),
@@ -993,7 +1031,14 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                                             sub_scope_);
     basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
   }
-  basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+  auto replace_fetch_with_shadow_output_pass =
+      ::pir::CreateReplaceFetchWithShadowOutputPass();
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                replace_fetch_with_shadow_output_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    basic_pass_pm.AddPass(std::move(replace_fetch_with_shadow_output_pass));
+  }
   if (!config_.glog_info_disabled()) {
     basic_pass_pm.EnablePrintStatistics();
   }
@@ -1010,10 +1055,20 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
   auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
-  remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
-  lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
+  if (std::find(config_.deleted_passes_.begin(),
+                config_.deleted_passes_.end(),
+                remove_shadow_feed_pass->name()) ==
+      config_.deleted_passes_.end()) {
+    remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+    lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
+  }
   if (FLAGS_pir_apply_inplace_pass) {
-    lowered_pm.AddPass(::pir::CreateInplacePass());
+    auto inplace_pass = ::pir::CreateInplacePass();
+    if (std::find(config_.deleted_passes_.begin(),
+                  config_.deleted_passes_.end(),
+                  inplace_pass->name()) == config_.deleted_passes_.end()) {
+      lowered_pm.AddPass(std::move(inplace_pass));
+    }
   }
   if (!config_.glog_info_disabled()) {
     lowered_pm.EnablePrintStatistics();
@@ -1042,6 +1097,8 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
         idx2fetches_[idx] = fetch_name;
+        fetch_name2shapes_[fetch_name] =
+            pir::GetShapeFromValue(op->operand_source(0));
       }
     } else if (op->isa<paddle::dialect::DataOp>() ||
                op->isa<paddle::dialect::FeedOp>()) {
@@ -1054,6 +1111,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
+      feed_name2shapes_[data_name] = pir::GetShapeFromValue(op->result(0));
     }
 
     if (op->isa<::pir::ParameterOp>()) {
@@ -1091,7 +1149,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
+        dev_ctx = pool.Get(phi::CPUPlace());
         pir::Type type_ = pir::GetDataTypeFromValue(value);
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
@@ -2134,13 +2192,6 @@ void AnalysisPredictor::PrepareArgument() {
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (config_.mkldnn_quantizer_enabled()) {
-    LOG(INFO) << "Quantization is enabled";
-    argument_->SetQuantizeEnabledOpTypes(
-        config_.mkldnn_quantizer_config()->enabled_op_types());
-    argument_->SetQuantizeExcludedOpIds(
-        config_.mkldnn_quantizer_config()->excluded_op_ids());
-  }
   if (config_.mkldnn_bfloat16_enabled()) {
     LOG(INFO) << "Bfloat16 is enabled";
     argument_->SetBfloat16EnabledOpTypes(config_.bfloat16_enabled_op_types_);
@@ -2238,9 +2289,7 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->AppendPass("simplify_with_basic_ops_pass");
         pass_builder->AppendPass("is_test_pass");
         pass_builder->AppendPass("constant_folding_pass");
-      }
-      pass_builder->AppendPass("auto_mixed_precision_pass");
-      if (!config_.new_ir_enabled()) {
+        pass_builder->AppendPass("auto_mixed_precision_pass");
         pass_builder->AppendPass("inplace_op_var_pass");
       }
       LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
@@ -2455,23 +2504,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     return nullptr;
   }
 
-  if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
-    return nullptr;
-  }
-
   return predictor;
-}
-
-bool AnalysisPredictor::MkldnnQuantize() {
-#if PADDLE_WITH_DNNL
-  if (!mkldnn_quantizer_)
-    mkldnn_quantizer_ = new AnalysisPredictor::MkldnnQuantizer(
-        *this, config_.mkldnn_quantizer_config());
-  return mkldnn_quantizer_->Quantize();
-#else
-  LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnQuantizer";
-  return false;
-#endif
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
@@ -2522,6 +2555,9 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
 
 std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetInputTensorShape() {
+  if (load_pir_model_) {
+    return feed_name2shapes_;
+  }
   std::map<std::string, std::vector<int64_t>> input_shapes;
   std::vector<std::string> names = GetInputNames();
   for (std::string const &name : names) {
@@ -2581,6 +2617,9 @@ std::vector<std::string> AnalysisPredictor::GetOutputNames() {
 
 std::map<std::string, std::vector<int64_t>>
 AnalysisPredictor::GetOutputTensorShape() {
+  if (load_pir_model_) {
+    return fetch_name2shapes_;
+  }
   std::map<std::string, std::vector<int64_t>> output_shapes;
   std::vector<std::string> names = GetOutputNames();
   for (std::string const &name : names) {
@@ -3270,13 +3309,6 @@ AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
     scope_->DeleteScope(sub_scope_);
   }
 
-#if PADDLE_WITH_DNNL
-  if (mkldnn_quantizer_) {
-    delete mkldnn_quantizer_;
-    mkldnn_quantizer_ = nullptr;
-  }
-#endif
-
   if (config_.shape_range_info_collected()) {
     StatisticShapeRangeInfo();
   }
@@ -3325,45 +3357,6 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
-}
-
-// Add SaveOptimModel
-void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
-  // save model
-  std::string model_name = dir + "/model";
-  std::ofstream outfile;
-  outfile.open(model_name, std::ios::out | std::ios::binary);
-  std::string inference_prog_desc = GetSerializedProgram();
-  outfile << inference_prog_desc;
-  // save params
-  framework::ProgramDesc save_program;
-  auto *save_block = save_program.MutableBlock(0);
-
-  const framework::ProgramDesc &main_program = program();
-  const framework::BlockDesc &global_block = main_program.Block(0);
-  std::vector<std::string> save_var_list;
-  for (framework::VarDesc *var : global_block.AllVars()) {
-    if (IsPersistable(var)) {
-      framework::VarDesc *new_var = save_block->Var(var->Name());
-      new_var->SetShape(var->GetShape());
-      new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
-      new_var->SetLoDLevel(var->GetLoDLevel());
-      new_var->SetPersistable(true);
-
-      save_var_list.push_back(new_var->Name());
-    }
-  }
-  std::sort(save_var_list.begin(), save_var_list.end());
-  auto *op = save_block->AppendOp();
-  op->SetType("save_combine");
-  op->SetInput("X", save_var_list);
-  op->SetAttr("file_path", dir + "/params");
-  op->CheckAttrs();
-
-  phi::CPUPlace place;
-  framework::Executor exe(place);
-  exe.Run(save_program, scope(), 0, true, true);
 }
 
 void AnalysisPredictor::RegisterOutputHook(

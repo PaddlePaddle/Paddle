@@ -32,7 +32,6 @@ from paddle.nn.functional.flash_attention import (
     flashmask_attention,
     scaled_dot_product_attention,
 )
-from paddle.pir_utils import test_with_pir_api
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -75,6 +74,12 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     o = paddle.matmul(p, vt)
     return paddle.transpose(o, [0, 2, 1, 3])
 
+
+is_sm80 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
 
 is_sm8x = (
     core.is_compiled_with_cuda()
@@ -208,7 +213,6 @@ class TestFlashAttentionAPI(unittest.TestCase):
 
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_all(self):
         print(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
@@ -431,7 +435,9 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        self.shape = (
+            (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
+        )
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
@@ -469,7 +475,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
-class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
+class TestFlashAttentionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
@@ -861,7 +867,6 @@ def generate_mask_matrix_from_mask_indices(start_rows):
             for j in range(seq_len):
                 start_row = start_rows[bz_idx, head_idx, j]
                 matrix[bz_idx, head_idx, start_row:, j] = -np.inf
-                matrix[bz_idx, head_idx, j, j] = 0.0
     return matrix
 
 
@@ -937,7 +942,7 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
-class TestFlashAttenionWithSparseMaskAPITest(
+class TestFlashAttentionWithSparseMaskAPITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
@@ -948,7 +953,7 @@ class TestFlashAttenionWithSparseMaskAPITest(
         self.causal = True
 
 
-class TestFlashAttenionWithSparseMaskBF16APITest(
+class TestFlashAttentionWithSparseMaskBF16APITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):

@@ -50,14 +50,8 @@ pir::Type CastToLocalType(pir::Type type) {
       local_types.push_back(CastToLocalType(vec_type[i]));
     }
     return pir::VectorType::get(vec_type.ir_context(), local_types);
-  } else if (!type || type.isa<pir::StackType>() ||
-             type.isa<pir::InletType>() || type.isa<pir::OutletType>()) {
-    // skip if <<NULL TYPE>>
-    return type;
   } else {
-    // TODO(2024-Q2) not all value are dist type
-    PADDLE_THROW(common::errors::PreconditionNotMet(
-        "The type[%s] is not Dist type.", type));
+    return type;
   }
 }
 
@@ -73,6 +67,14 @@ void ProcessDistBlock(pir::Block* block) {
       auto result = op_item->result(i);
       result.set_type(CastToLocalType(result.type()));
     }
+
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto input = op_item->operand_source(i);
+      if (IsDistType(input.type())) {
+        input.set_type(CastToLocalType(input.type()));
+      }
+    }
+
     if (op_item->isa<DataOp>()) {
       auto dense_tensor_type =
           op_item->result(0).type().dyn_cast<pir::DenseTensorType>();
@@ -103,6 +105,35 @@ void ProcessDistBlock(pir::Block* block) {
         new_dims.push_back(pir::Int64Attribute::get(ctx, local_dims[index]));
       }
       prev_op->set_attribute("value", pir::ArrayAttribute::get(ctx, new_dims));
+    } else if (op_item->isa<RandintOp>() || op_item->isa<GaussianOp>() ||
+               op_item->isa<UniformOp>()) {
+      auto local_dims =
+          op_item->result_type(0).dyn_cast<pir::DenseTensorType>().dims();
+      auto shape_value = op_item->operand_source(0);
+      auto prev_op = shape_value.defining_op();
+      PADDLE_ENFORCE((prev_op != nullptr),
+                     common::errors::PreconditionNotMet(
+                         "The shape of randint, gaussian and uniform mush be "
+                         "the result of "
+                         "FullIntArrayOp, not null"));
+      PADDLE_ENFORCE_EQ(
+          prev_op->isa<FullIntArrayOp>(),
+          true,
+          common::errors::PreconditionNotMet(
+              "The shape of randint, gaussian and uniform mush be the result "
+              "of FullIntArrayOp."));
+      auto array_attr = prev_op->attribute<pir::ArrayAttribute>("value");
+      PADDLE_ENFORCE_EQ(
+          array_attr.size(),
+          local_dims.size(),
+          common::errors::PreconditionNotMet(
+              "The shape of randint, gaussian and uniform element's size must "
+              "equal to result's dim size."));
+      std::vector<pir::Attribute> new_dims;
+      for (int index = 0; index < local_dims.size(); ++index) {
+        new_dims.push_back(pir::Int64Attribute::get(ctx, local_dims[index]));
+      }
+      prev_op->set_attribute("value", pir::ArrayAttribute::get(ctx, new_dims));
     }
     // TODO(2024-Q2) not all op are dist type
     // PADDLE_ENFORCE_EQ(
@@ -113,9 +144,14 @@ void ProcessDistBlock(pir::Block* block) {
     //     common::errors::PreconditionNotMet("The op [%s] has not
     //     op_dist_attr.",
     //                                        op_item->name()));
+
+    int64_t chunk_id = -1;
     if (op_item->HasAttribute(kAttrOpDistAttr)) {
+      chunk_id = op_item->attribute<OperationDistAttribute>(kAttrOpDistAttr)
+                     .chunk_id();
       op_item->erase_attribute(kAttrOpDistAttr);
     }
+    op_item->set_attribute("chunk_id", pir::Int64Attribute::get(ctx, chunk_id));
 
     // TODO(2024-Q2) Handle other special dist op in future.
   }
@@ -123,7 +159,7 @@ void ProcessDistBlock(pir::Block* block) {
 
 /* Verification:
     1. no operator has not OperatorDistAttr.
-    2. all Values (Results) are DenseTensorType.
+    2. all Values are DenseTensorType.
     3. no shard_tensor / reshard in block.
 */
 void VerifyDenseBlock(pir::Block* block) {
@@ -135,6 +171,15 @@ void VerifyDenseBlock(pir::Block* block) {
 
       PADDLE_ENFORCE_EQ(
           IsDistType(result.type()),
+          false,
+          common::errors::PreconditionNotMet(
+              "Block op [%s] still contain dist type.", op_item->name()));
+    }
+
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto input = op_item->operand_source(i);
+      PADDLE_ENFORCE_EQ(
+          IsDistType(input.type()),
           false,
           common::errors::PreconditionNotMet(
               "Block op [%s] still contain dist type.", op_item->name()));

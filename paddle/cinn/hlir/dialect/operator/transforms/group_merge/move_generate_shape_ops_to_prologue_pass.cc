@@ -70,7 +70,7 @@ class MoveGenerateShapeOpsToProloguePass : public pir::Pass {
     auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
     PADDLE_ENFORCE(
         group_op,
-        phi::errors::InvalidArgument("The operation for group is failed"));
+        ::common::errors::InvalidArgument("The operation for group is failed"));
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     pir::ShapeConstraintIRAnalysis& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(group_op->GetParentProgram());

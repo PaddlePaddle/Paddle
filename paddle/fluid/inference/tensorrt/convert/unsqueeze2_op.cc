@@ -44,11 +44,7 @@ class Unsqueeze2OpConverter : public OpConverter {
     int cur_out_rank = input_dims.nbDims;
     for (size_t i = 0; i < axes.size(); i++) {
       cur_out_rank++;
-      if (engine_->with_dynamic_shape()) {
-        axes[i] += (axes[i] < 0) ? cur_out_rank : 0;
-      } else {
-        axes[i] += (axes[i] < 0) ? cur_out_rank : -1;
-      }
+      axes[i] += (axes[i] < 0) ? cur_out_rank : 0;
       // axes[i] is relative to cur_out_rank
       // we make [axes[i], cur_out_rank - 2] shift right
       // and make (axes[i]) to true!
@@ -61,33 +57,25 @@ class Unsqueeze2OpConverter : public OpConverter {
         should_unsqueeze[axes[i]] = true;
     }
 
-    nvinfer1::Dims trt_out_dims;
-    trt_out_dims.nbDims = should_unsqueeze.size();
     std::vector<int32_t> gather_indices;
     int in_rank_i = 0;
     for (size_t i = 0; i < should_unsqueeze.size(); i++) {
       if (should_unsqueeze[i]) {
-        trt_out_dims.d[i] = 1;
         gather_indices.push_back(input_dims.nbDims);
         continue;
       }
-      trt_out_dims.d[i] = input_dims.d[in_rank_i];
       gather_indices.push_back(in_rank_i);
       in_rank_i++;
     }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    if (engine_->with_dynamic_shape()) {
-      auto* shape_tensor = Shape(input);
-      std::vector<int32_t> all_one(axes.size(), 1);
-      auto* all_one_tensor = Add1DConstantLayer(all_one);
-      std::vector<nvinfer1::ITensor*> concat_inputs = {shape_tensor,
-                                                       all_one_tensor};
-      auto* real_shape_tensor = Gather(Concat(concat_inputs), gather_indices);
-      layer->setInput(1, *real_shape_tensor);
-    } else {
-      layer->setReshapeDimensions(trt_out_dims);
-    }
+    auto* shape_tensor = Shape(input);
+    std::vector<int32_t> all_one(axes.size(), 1);
+    auto* all_one_tensor = Add1DConstantLayer(all_one);
+    std::vector<nvinfer1::ITensor*> concat_inputs = {shape_tensor,
+                                                     all_one_tensor};
+    auto* real_shape_tensor = Gather(Concat(concat_inputs), gather_indices);
+    layer->setInput(1, *real_shape_tensor);
     ReplenishLayerAndOutput(layer, "unsqueeze2", {output_name}, test_mode);
   }
 };

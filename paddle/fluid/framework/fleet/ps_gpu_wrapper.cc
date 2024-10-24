@@ -38,7 +38,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/timer.h"
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
@@ -120,7 +120,7 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
 }
 #endif
 
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE)
 void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
                               const std::string& fs_user,
                               const std::string& pass_wd,

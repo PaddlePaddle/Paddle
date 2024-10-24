@@ -91,8 +91,6 @@ class TestLayer(TestBase):
             paddle.randint(low=0, high=10, shape=[49, 196], dtype=paddle.int64),
         )
         self.net = LayerCase
-        self.with_cinn = False
-        self.with_train = False
 
     # NOTE prim + cinn lead to error
     # NOTE can not pass when atol=1e-8 with prim

@@ -25,14 +25,15 @@ set(XPU_XFT_LIB_NAME "libxft.so")
 set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
+set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
 
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240818")
+  set(XPU_XHPC_BASE_DATE "eb35/20241015")
 endif()
-set(XPU_XCCL_BASE_VERSION "1.2.9")
+set(XPU_XCCL_BASE_VERSION "1.2.11e")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20230602")
 endif()
@@ -69,19 +70,9 @@ if(WITH_XPU_XRE5)
   )
 endif()
 
-if(WITH_XCCL_RDMA)
-  set(XPU_XCCL_PREFIX "xccl_rdma-")
-else()
-  set(XPU_XCCL_PREFIX "xccl_socket-")
-  # NOTE(lijin23): socket has not been supported for XPU3, so the xccl output name was changed.
-  if(WITH_XPU_XRE5)
-    set(XPU_XCCL_PREFIX "xccl_")
-  endif()
-endif()
-
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}kylin_aarch64")
+  set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
@@ -94,11 +85,11 @@ elseif(WITH_BDCENTOS)
   else()
     set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
   endif()
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl_bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 elseif(WITH_CENTOS)
   set(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 else()
   # Ubuntu as default
@@ -109,7 +100,7 @@ else()
     set(XPU_XRE_DIR_NAME "xre-ubuntu_1604_x86_64")
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
   endif()
-  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}ubuntu_x86_64")
+  set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 endif()
 
@@ -129,7 +120,7 @@ if(WITH_XPTI)
 endif()
 
 set(XPU_XHPC_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
+    "https://klx-sdk-release-public.su.bcebos.com/xhpc/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 
 if(DEFINED XPU_BASE_URL)
@@ -149,6 +140,7 @@ set(XPU_XBLAS_LIB "${XPU_LIB_DIR}/${XPU_XBLAS_LIB_NAME}")
 set(XPU_RT_LIB "${XPU_LIB_DIR}/${XPU_RT_LIB_NAME}")
 set(XPU_CUDA_LIB "${XPU_LIB_DIR}/${XPU_CUDA_LIB_NAME}")
 set(XPU_XFA_LIB "${XPU_LIB_DIR}/${XPU_XFA_LIB_NAME}")
+set(XPU_XPUDNN_LIB "${XPU_LIB_DIR}/${XPU_XPUDNN_LIB_NAME}")
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 
@@ -185,7 +177,9 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
-  BUILD_BYPRODUCTS ${XPU_API_LIB} BUILD_BYPORDUCTS ${XPU_XBLAS_LIB}
+  BUILD_BYPRODUCTS ${XPU_API_LIB}
+  BUILD_BYPRODUCTS ${XPU_XBLAS_LIB}
+  BUILD_BYPRODUCTS ${XPU_XPUDNN_LIB}
   BUILD_BYPRODUCTS ${XPU_XFA_LIB}
   BUILD_BYPRODUCTS ${XPU_RT_LIB}
   BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
@@ -213,6 +207,8 @@ set(XPU_XHPC_INC_DIR "${XPU_INC_DIR}/xhpc")
 include_directories(${XPU_XHPC_INC_DIR})
 set(XPU_XBLAS_INC_DIR "${XPU_INC_DIR}/xhpc/xblas")
 include_directories(${XPU_XBLAS_INC_DIR})
+set(XPU_XPUDNN_INC_DIR "${XPU_INC_DIR}/xhpc/xpudnn")
+include_directories(${XPU_XPUDNN_INC_DIR})
 
 if(WITH_XPU_XRE5)
   add_definitions(-DPADDLE_WITH_XPU_XRE5)
@@ -237,8 +233,14 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XRE5)
-  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
-                        ${XPU_API_LIB} ${XPU_XFA_LIB})
+  target_link_libraries(
+    xpulib
+    ${XPU_RT_LIB}
+    ${XPU_BKCL_LIB}
+    ${XPU_XBLAS_LIB}
+    ${XPU_API_LIB}
+    ${XPU_XFA_LIB}
+    ${XPU_XPUDNN_LIB})
 else()
   target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_BKCL_LIB} ${XPU_XBLAS_LIB}
                         ${XPU_API_LIB})

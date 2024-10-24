@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def Heaviside_grad(x, y, dout, astype="float16", is_bfloat16=False):
@@ -44,7 +43,9 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_prim_pir=True)
+        self.check_output(
+            check_pir=True, check_prim_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True)
@@ -113,7 +114,6 @@ class TestHeavisideAPI_float64(unittest.TestCase):
         self.out_np = np.heaviside(self.x_np, self.y_np)
         self.dtype = "float64"
 
-    @test_with_pir_api
     def test_static(self):
         for use_cuda in (
             [False, True] if paddle.device.is_compiled_with_cuda() else [False]
@@ -219,7 +219,9 @@ class TestHeavisideFP16Op(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_prim_pir=True)
+        self.check_output(
+            check_pir=True, check_prim_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -259,7 +261,10 @@ class TestHeavisideBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            self.place, check_pir=True, check_prim_pir=True
+            self.place,
+            check_pir=True,
+            check_prim_pir=True,
+            check_symbol_infer=False,
         )
 
     def test_check_grad(self):

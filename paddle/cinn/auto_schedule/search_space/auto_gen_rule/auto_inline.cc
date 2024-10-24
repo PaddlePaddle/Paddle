@@ -200,18 +200,18 @@ void AutoInline::Apply(int index) {
   PADDLE_ENFORCE_EQ(
       ir_schedule_ != nullptr,
       true,
-      phi::errors::InvalidArgument("Run AutoInline::Apply without Init"));
+      ::common::errors::InvalidArgument("Run AutoInline::Apply without Init"));
 
   PADDLE_ENFORCE_EQ(
       num_applicable_ > 0 && apply_indices_and_type_.size() == num_applicable_,
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "AutoInline::Apply pre-condition doesn't meet"));
 
   PADDLE_ENFORCE_EQ(
       index >= 0 && num_applicable_ > index,
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Invalid index for AutoInline::Apply, the index needs 0 <= index && "
           "index < NumberApplicable(), "
           "Currently index = %d, NumberApplicable() = %d",
@@ -231,8 +231,8 @@ RuleApplyType AutoInline::AnalyseApplyType(
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(
       block_realize,
-      phi::errors::InvalidArgument("stmt is not a ScheduleBlockRealize: %s",
-                                   block_expr));
+      ::common::errors::InvalidArgument(
+          "stmt is not a ScheduleBlockRealize: %s", block_expr));
 
   AnalyzeScheduleBlockReadWriteBuffer(
       block_realize->schedule_block.As<ir::ScheduleBlock>());
@@ -256,8 +256,8 @@ void AutoInline::Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr) {
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(
       block_realize,
-      phi::errors::InvalidArgument("stmt is not a ScheduleBlockRealize: %s",
-                                   block_expr));
+      ::common::errors::InvalidArgument(
+          "stmt is not a ScheduleBlockRealize: %s", block_expr));
 
   AnalyzeScheduleBlockReadWriteBuffer(
       block_realize->schedule_block.As<ir::ScheduleBlock>());

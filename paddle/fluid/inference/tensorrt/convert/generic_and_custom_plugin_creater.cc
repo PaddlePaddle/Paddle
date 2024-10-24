@@ -33,11 +33,7 @@ class CustomPluginCreater : public OpConverter {
 
     std::string plugin_name;
 
-    if (engine_->with_dynamic_shape()) {
-      plugin_name = op_desc.Type() + "_paddle_trt_dynamic_plugin";
-    } else {
-      plugin_name = op_desc.Type() + "_paddle_trt_plugin";
-    }
+    plugin_name = op_desc.Type() + "_paddle_trt_dynamic_plugin";
 
     nvinfer1::ILayer *layer = nullptr;
     std::vector<nvinfer1::ITensor *> inputs;
@@ -147,15 +143,8 @@ class CustomPluginCreater : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(
         plugin, common::errors::NotFound("Sorry,create plugin failed."));
 
-    if (engine_->with_dynamic_shape()) {
-      layer =
-          engine_->AddDynamicPlugin(inputs.data(),
-                                    inputs.size(),
-                                    (plugin::DynamicPluginTensorRT *)plugin);
-    } else {
-      layer = engine_->AddPlugin(
-          inputs.data(), inputs.size(), (plugin::PluginTensorRT *)plugin);
-    }
+    layer = engine_->AddDynamicPlugin(
+        inputs.data(), inputs.size(), (plugin::DynamicPluginTensorRT *)plugin);
 
     PADDLE_ENFORCE_NOT_NULL(
         layer, common::errors::NotFound("Sorry, add plugin layer failed."));

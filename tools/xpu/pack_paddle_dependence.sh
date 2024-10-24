@@ -28,6 +28,7 @@ XCCL_DIR_NAME=$6
 
 mkdir -p xpu/include/xhpc/xblas
 mkdir -p xpu/include/xhpc/xfa
+mkdir -p xpu/include/xhpc/xpudnn
 mkdir -p xpu/include/xpu
 mkdir -p xpu/lib
 
@@ -74,6 +75,10 @@ function xhpc_prepare() {
   check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
   cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
   cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+
+  check_files ${XHPC_DIR_NAME}/xpudnn/include/xpudnn.h ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so
+  cp -r ${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
+  cp -r ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
 }
 
 function xccl_prepare() {
@@ -120,6 +125,9 @@ function local_assemble() {
 
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
+    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
 }
 
 if [[ $XRE_URL != "http"* ]]; then

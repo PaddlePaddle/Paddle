@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_select_kernel.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -40,10 +41,11 @@ void IndexSelectKernel(const Context& ctx,
                         index_type,
                         phi::DataType::INT32,
                         phi::DataType::INT64));
+  using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
   std::vector<int> in_shape = common::vectorize<int>(input_dim);
   int index_len = output->dims()[dim];
-  T* out_data = ctx.template Alloc<T>(output);
+  ctx.template Alloc<T>(output);
   int r = 0;
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   int8_t* index_ptr = nullptr;  // temp xpu buffer
@@ -67,23 +69,24 @@ void IndexSelectKernel(const Context& ctx,
     const int64_t* index_data =
         index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
                   : index.template data<int64_t>();
-    r = xpu::gather<T, int64_t>(ctx.x_context(),
-                                in_data,
-                                index_data,
-                                out_data,
-                                in_shape,
-                                index_len,
-                                dim);
+    r = xpu::gather<XPUType, int64_t>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType*>(in_data),
+        reinterpret_cast<const int64_t*>(index_data),
+        reinterpret_cast<XPUType*>(output->data<T>()),
+        in_shape,
+        index_len,
+        dim);
   } else {
     const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
                                       : index.template data<int>();
-    r = xpu::gather<T, int>(ctx.x_context(),
-                            in_data,
-                            index_data,
-                            out_data,
-                            in_shape,
-                            index_len,
-                            dim);
+    r = xpu::gather<XPUType, int>(ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(in_data),
+                                  reinterpret_cast<const int*>(index_data),
+                                  reinterpret_cast<XPUType*>(output->data<T>()),
+                                  in_shape,
+                                  index_len,
+                                  dim);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 }
@@ -95,5 +98,7 @@ PD_REGISTER_KERNEL(index_select,
                    ALL_LAYOUT,
                    phi::IndexSelectKernel,
                    float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

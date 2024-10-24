@@ -729,18 +729,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "yolo_box") {
-      if (with_dynamic_shape) return false;
-      bool has_attrs =
-          (desc.HasAttr("class_num") && desc.HasAttr("anchors") &&
-           desc.HasAttr("downsample_ratio") && desc.HasAttr("conf_thresh") &&
-           desc.HasAttr("clip_bbox") && desc.HasAttr("scale_x_y"));
-      if (!has_attrs) return false;
+      return false;
     }
 
     if (op_type == "yolo_box_head") {
-      if (with_dynamic_shape) return false;
-      bool has_attrs = desc.HasAttr("class_num") && desc.HasAttr("anchors");
-      if (!has_attrs) return false;
+      return false;
     }
 
     if (op_type == "arg_max" || op_type == "arg_min") {
@@ -2857,8 +2850,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "index_put") {
-#if IS_TRT_VERSION_LT(8200)
-      VLOG(3) << "index_put is not supported when TensorRT < 8.2";
+#if IS_TRT_VERSION_LT(8510)
+      VLOG(3) << "index_put is not supported when TensorRT < 8.5.1";
       return false;
 #endif
       if (!with_dynamic_shape) {

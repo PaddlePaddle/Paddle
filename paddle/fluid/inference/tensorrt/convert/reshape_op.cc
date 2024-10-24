@@ -35,30 +35,23 @@ class ReshapeOpConverter : public OpConverter {
     nvinfer1::ITensor* real_shape_tensor = nullptr;
     std::vector<nvinfer1::ITensor*> concat_inputs;
     bool one_input = false;
-    if (engine_->with_dynamic_shape()) {
-      if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
-          !op_desc.Input("ShapeTensor").empty()) {
-        for (auto name : op_desc.Input("ShapeTensor"))
-          concat_inputs.push_back(engine_->GetITensor(name));
-        real_shape_tensor = Concat(concat_inputs);
-      } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
-                 !op_desc.Input("Shape").empty()) {
-        real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
-      } else {
-        reshape_dim.nbDims = nbDims_num;
-        for (int i = 0; i < nbDims_num; ++i) {
-          reshape_dim.d[i] = shape[i];
-        }
-        one_input = true;
+    if (op_desc.Inputs().find("ShapeTensor") != op_desc.Inputs().end() &&
+        !op_desc.Input("ShapeTensor").empty()) {
+      for (auto name : op_desc.Input("ShapeTensor"))
+        concat_inputs.push_back(engine_->GetITensor(name));
+      real_shape_tensor = Concat(concat_inputs);
+    } else if (op_desc.Inputs().find("Shape") != op_desc.Inputs().end() &&
+               !op_desc.Input("Shape").empty()) {
+      real_shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
+    } else {
+      reshape_dim.nbDims = nbDims_num;
+      for (int i = 0; i < nbDims_num; ++i) {
+        reshape_dim.d[i] = shape[i];
       }
-    } else {  // running the TRT Static Shape mode
-      reshape_dim.nbDims = nbDims_num - 1;
-      for (int i = 0; i < nbDims_num - 1; ++i) {
-        reshape_dim.d[i] = shape[i + 1];
-      }
+      one_input = true;
     }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    if (!engine_->with_dynamic_shape() || one_input)
+    if (one_input)
       layer->setReshapeDimensions(reshape_dim);
     else
       layer->setInput(1, *real_shape_tensor);

@@ -335,6 +335,38 @@ Dispatcher.register(
     ("TupleVariable", "VariableBase"),
     lambda var, value: var.index(value),
 )
+Dispatcher.register(
+    operator.add,
+    ("TupleVariable", "TupleVariable"),
+    lambda var, other: var.concat(other),
+)
+Dispatcher.register(
+    operator.iadd,
+    ("TupleVariable", "TupleVariable"),
+    lambda var, other: var.concat(other),
+)
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dispatch_tuple_eq(lhs: TupleVariable, rhs: TupleVariable):
+    if len(lhs) != len(rhs):
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+    size = len(lhs)
+
+    return ConstantVariable(
+        all(
+            Dispatcher.call(operator.eq, lhs[i], rhs[i]).get_py_value()
+            for i in range(size)
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_tuple_ne(lhs: TupleVariable, rhs: TupleVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 # list
 Dispatcher.register(
@@ -368,7 +400,10 @@ Dispatcher.register(
 )
 Dispatcher.register(
     list.extend,
-    ("ListVariable", "ListVariable | TupleVariable"),
+    (
+        "ListVariable",
+        "ListVariable | TupleVariable | DictVariable | RangeVariable",
+    ),
     lambda var, other: var.extend(other),
 )
 Dispatcher.register(
@@ -427,15 +462,37 @@ Dispatcher.register(
     lambda var, other: var.concat(other),
 )
 Dispatcher.register(
-    operator.add,
-    ("TupleVariable", "TupleVariable"),
-    lambda var, other: var.concat(other),
+    operator.iadd,
+    ("ListVariable", "ListVariable"),
+    lambda var, other: var.inplace_concat(other),
 )
 Dispatcher.register(
     operator.mul,
     ("ListVariable | TupleVariable", "ConstantVariable"),
     lambda var, other: var.repeat(other),
 )
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dispatch_list_eq(lhs: ListVariable, rhs: ListVariable):
+    if len(lhs) != len(rhs):
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+    size = len(lhs)
+
+    return ConstantVariable(
+        all(
+            Dispatcher.call(operator.eq, lhs[i], rhs[i]).get_py_value()
+            for i in range(size)
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_list_ne(lhs: ListVariable, rhs: ListVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 # getattr
 Dispatcher.register(
@@ -586,13 +643,14 @@ Dispatcher.register(
 # bool
 Dispatcher.register(
     bool,
-    ("ContainerVariable | SymbolicVariable",),
+    ("ContainerVariable",),
     lambda var: var.bool(),
 )
+
 Dispatcher.register(
     operator.truth,
-    ("ConstantVariable | SymbolicVariable",),
-    lambda var: var.bool(),
+    ("ConstantVariable",),
+    lambda var: Dispatcher.call(bool, var),
 )
 
 # str
@@ -882,7 +940,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
             ),
         )
-# Tensor
+# Tensor and Symbolic
 fallback_tensor_unary_method = {
     int,
     bool,
@@ -893,11 +951,10 @@ fallback_tensor_unary_method = {
 Dispatcher.register(tensor_numel, ("TensorVariable",), lambda x: x.numel())
 
 for unary_fn in UNARY_OPS:
-    # TODO(zrr1999): SymbolicVariable should have special dispatch for fallback_tensor_unary_method
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable | SymbolicVariable",),
+            ("TensorVariable",),
             raise_break_graph_fn,
         )
         continue
@@ -981,7 +1038,7 @@ for binary_fn in BINARY_OPS:
                         magic_method.name,
                     ),
                 )
-# Symbolic
+
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         if magic_method.name not in get_tensor_methods():

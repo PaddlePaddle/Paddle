@@ -83,7 +83,7 @@ function check_xhpc() {
     local xhpc_date="$1"
     local xhpc_base_url="https://klx-sdk-release-public.su.bcebos.com/xhpc/dev"
     local xhpc_tar_file_names=("xhpc-ubuntu2004_x86_64" "xhpc-bdcentos7_x86_64")
-    local xhpc_files=("xblas/include/cublasLt.h" "xblas/so/libxpu_blas.so" "xdnn/include/xpu/xdnn.h" "xdnn/so/libxpuapi.so" "xfa/include/flash_api.h" "xfa/so/libxpu_flash_attention.so")
+    local xhpc_files=("xblas/include/cublasLt.h" "xblas/so/libxpu_blas.so" "xdnn/include/xpu/xdnn.h" "xdnn/so/libxpuapi.so" "xfa/include/flash_api.h" "xfa/so/libxpu_flash_attention.so" "xpudnn/include/xpudnn.h" "xpudnn/so/libxpu_dnn.so")
     for name in ${xhpc_tar_file_names[@]}; do
         local xhpc_url="${xhpc_base_url}/${xhpc_date}/${name}.tar.gz"
         check_files "${xhpc_url}" "${name}" "${xhpc_files[@]}"

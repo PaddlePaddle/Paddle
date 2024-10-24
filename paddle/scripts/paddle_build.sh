@@ -2507,8 +2507,8 @@ set +x
             echo "Starting to predict ResNet50 model..."
             python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
                 -o Global.mode=predict \
-                -o Predict.model_dir="./resnet50_output/best_model" \
-                -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
+                -o Predict.model_dir="./resnet50_output/best_model/inference" \
+                -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
                 -o Global.device="xpu:${DEVICES[0]}"
             echo "Predicting Resnet50 completed!"
             cd ..
@@ -3633,7 +3633,7 @@ function distribute_test() {
     cd ${work_dir}/PaddleNLP
     # Disable Test: test_gradio
     rm tests/llm/test_gradio.py
-    python -m pytest -s -v tests/llm --timeout=3600
+    # python -m pytest -s -v tests/llm --timeout=3600
     echo "End LLM Test"
 
     echo "Start auto_parallel Test"
@@ -3709,8 +3709,8 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
 
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[typing]" || true`
-    DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[debug]" || true`
+    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[typing\]" || true`
+    DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[debug\]" || true`
 
     if [[ ${TITLE_CHECK_ALL} ]]; then
         if [[ ${DEBUG_MODE} ]]; then

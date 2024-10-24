@@ -53,6 +53,11 @@ void IrPrinter::Visit(const IntImm *x) {
     str_ += std::to_string(x->value);
     str_ += "ll";
   } else if (x->type().is_int(32)) {
+    // The min int32_t constant(-2147483648) will be recognized as long
+    // and max(long, int32_t) is illegal, so we need to add cast here.
+    if (x->value == std::numeric_limits<std::int32_t>::min()) {
+      str_ += "(int32_t)";
+    }
     str_ += std::to_string(x->value);
   } else if (x->type().is_int(16)) {
     str_ += "(int16_t)";
@@ -119,7 +124,11 @@ void IrPrinter::Visit(const FloatImm *x) {
   std::ostringstream ss;
   if (x->type().is_float16()) {
     if (std::isinf(x->value)) {
-      ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "cinn::common::raw_uint16_to_float16(0x7c00)";
+      } else {
+        ss << "cinn::common::raw_uint16_to_float16(0xfc00)";
+      }
     } else if (std::isnan(x->value)) {
       ss << "cinn::common::raw_uint16_to_float16(0x7e00)";
     } else {
@@ -129,7 +138,11 @@ void IrPrinter::Visit(const FloatImm *x) {
     }
   } else if (x->type().is_bfloat16()) {
     if (std::isinf(x->value)) {
-      ss << "cinn::common::raw_uint16_to_bfloat16(0x7F80)";
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "cinn::common::raw_uint16_to_bfloat16(0x7F80)";
+      } else {
+        ss << "cinn::common::raw_uint16_to_bfloat16(0xFF80)";
+      }
     } else if (std::isnan(x->value)) {
       ss << "cinn::common::raw_uint16_to_bfloat16(0x7FC0)";
     } else {
@@ -138,18 +151,34 @@ void IrPrinter::Visit(const FloatImm *x) {
       ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
-    float v = TruncateInfinity<float>(x->value);
-    if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
-    ss << std::setprecision(std::numeric_limits<float>::max_digits10);
-    ss << std::showpoint;
-    ss << v;
-    if (std::isfinite(v)) {
-      ss << "f";
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      float v = TruncateInfinity<float>(x->value);
+      if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
+      ss << std::setprecision(std::numeric_limits<float>::max_digits10);
+      ss << std::showpoint;
+      ss << v;
+      if (std::isfinite(v)) {
+        ss << "f";
+      }
     }
   } else if (x->type().is_float(64)) {
-    ss << std::setprecision(std::numeric_limits<double>::max_digits10);
-    ss << std::showpoint;
-    ss << x->value;
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      ss << std::setprecision(std::numeric_limits<double>::max_digits10);
+      ss << std::showpoint;
+      ss << x->value;
+    }
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();
@@ -161,6 +190,34 @@ void IrPrinter::Visit(const StringImm *x) {
   str_ += "\"";
   str_ += x->value;
   str_ += "\"";
+}
+
+void IrPrinter::Visit(const IterMark *x) {
+  str_ += "IterMark(";
+  Visit(x->source);
+  str_ += ",";
+  Visit(x->extent);
+  str_ += ")";
+}
+void IrPrinter::Visit(const IterSum *x) {
+  str_ += "IterSum(";
+  for (const auto &arg : x->args) {
+    Visit(arg);
+    str_ += "+";
+  }
+  Visit(x->base);
+  str_ += ")";
+}
+void IrPrinter::Visit(const IterSplit *x) {
+  str_ += "IterSplit(";
+  Visit(x->source);
+  str_ += "/";
+  Visit(x->lower_factor);
+  str_ += "%";
+  Visit(x->extent);
+  str_ += "*";
+  Visit(x->scale);
+  str_ += ")";
 }
 
 void IrPrinter::Visit(const Add *x) { PrintBinaryOp("+", x); }

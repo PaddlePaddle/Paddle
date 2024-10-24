@@ -23,7 +23,6 @@ from paddle import base
 from paddle.autograd.ir_backward import grad
 from paddle.base import core
 from paddle.framework import in_dynamic_or_pir_mode
-from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 paddle.enable_static()
@@ -52,7 +51,6 @@ class TestPrintOpCPU(unittest.TestCase):
             paddle.static.append_backward(loss=loss)
         return loss
 
-    @test_with_pir_api
     def test_forward(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -65,7 +63,6 @@ class TestPrintOpCPU(unittest.TestCase):
                 return_numpy=False,
             )
 
-    @test_with_pir_api
     def test_backward(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -76,7 +73,6 @@ class TestPrintOpCPU(unittest.TestCase):
                 feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
             )
 
-    @test_with_pir_api
     def test_all_parameters(self):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog, paddle.static.Program()):
@@ -106,7 +102,6 @@ class TestPrintOpCPU(unittest.TestCase):
                 feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
             )
 
-    @test_with_pir_api
     def test_no_summarize(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -199,7 +194,7 @@ class TestPrintOpBackward(unittest.TestCase):
             exe.run(binary, feed_dict)
 
     # fc is not supported in pir
-    # @test_with_pir_api
+    #
 
     def test_fw_bw(self):
         if paddle.is_compiled_with_cuda():

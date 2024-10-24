@@ -152,6 +152,17 @@ void InstanceNormInferMeta(const MetaTensor& x,
                            MetaTensor* saved_variance,
                            MetaConfig config = MetaConfig());
 
+void FasterTokenizerInferMeta(const MetaTensor& vocab,
+                              const MetaTensor& text,
+                              const MetaTensor& text_pair,
+                              bool do_lower_case,
+                              bool is_split_into_words,
+                              int max_seq_len,
+                              bool pad_to_max_seq_len,
+                              MetaTensor* input_ids,
+                              MetaTensor* segment_ids,
+                              MetaConfig config = MetaConfig());
+
 void GlobalGatherInferMeta(const MetaTensor& x,
                            const MetaTensor& local_count,
                            const MetaTensor& global_count,
@@ -230,6 +241,12 @@ void MatchMatrixTensorInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* tmp,
                                 MetaConfig config = MetaConfig());
+
+void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
+                                 const MetaTensor& atol,
+                                 const MetaTensor& rtol,
+                                 bool hermitian,
+                                 MetaTensor* out);
 
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,

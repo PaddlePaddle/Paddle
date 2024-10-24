@@ -21,7 +21,7 @@ namespace cinn::fusion {
 
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
   ValueUsage valud_dim;
-  size_t rank = GetCompitableRank(v);
+  size_t rank = GetRank(v);
   for (size_t i = 0; i < rank; ++i) {
     valud_dim.emplace_back(v, i, usage_idx);
   }

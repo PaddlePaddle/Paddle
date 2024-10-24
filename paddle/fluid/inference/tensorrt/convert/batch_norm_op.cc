@@ -120,16 +120,15 @@ class BatchNormOpConverter : public OpConverter {
     TensorRTEngine::Weight power_weights{
         nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
     nvinfer1::ILayer* layer = nullptr;
     nvinfer1::IShuffleLayer* expand_layer = nullptr;
     nvinfer1::IShuffleLayer* squeeze_layer = nullptr;
 
     auto x_dim = X->getDimensions();
-    if (x_dim.nbDims < 3 + dynamic_shape_offset) {
+    if (x_dim.nbDims < 4) {
       nvinfer1::Dims expand_shape;
-      expand_shape.nbDims = 3 + dynamic_shape_offset;
-      for (int i = 0; i < 3 + dynamic_shape_offset; i++) {
+      expand_shape.nbDims = 4;
+      for (int i = 0; i < 4; i++) {
         if (i < x_dim.nbDims) {
           expand_shape.d[i] = x_dim.d[i] < 0 ? 0 : x_dim.d[i];
         } else {
@@ -152,13 +151,13 @@ class BatchNormOpConverter : public OpConverter {
                                  shift_weights.get(),
                                  scale_weights.get(),
                                  power_weights.get(),
-                                 dynamic_shape_offset);
+                                 1);
 
     engine_->SetWeights(op_desc.Input("Bias").front(),
                         std::move(combile_bias_tensor));
     engine_->SetWeights(op_desc.Input("Scale").front(),
                         std::move(combile_scale_tensor));
-    if (x_dim.nbDims < 3 + dynamic_shape_offset) {
+    if (x_dim.nbDims < 4) {
       layer->getOutput(0)->setName(("BN: ScaleNd: " + output_name).c_str());
       layer->setName(("BN: ScaleNd: (Output: " + output_name + ")").c_str());
       nvinfer1::Dims squeeze_shape;

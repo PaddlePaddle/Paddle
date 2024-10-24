@@ -43,8 +43,8 @@ class Schedule : public cinn::common::Object {
     auto it = stage_map.find(op.name);
     PADDLE_ENFORCE(
         it != stage_map.end(),
-        phi::errors::NotFound("Cannot find Stage for operator in the schedule",
-                              op.name));
+        ::common::errors::NotFound(
+            "Cannot find Stage for operator in the schedule", op.name));
     return it->second;
   }
 

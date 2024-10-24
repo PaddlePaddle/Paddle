@@ -162,12 +162,13 @@ void RmsNormGradKernel(const Context& dev_ctx,
                        const DenseTensor& norm_weight,
                        const paddle::optional<DenseTensor>& norm_bias,
                        const DenseTensor& inv_var,
-                       const DenseTensor& dy,
+                       const DenseTensor& out_grad,
                        const float epsilon,
                        const int begin_norm_axis,
                        const float quant_scale,
-                       DenseTensor* grad_x,
-                       DenseTensor* grad_norm_weight) {
+                       DenseTensor* x_grad,
+                       DenseTensor* norm_weight_grad,
+                       DenseTensor* norm_bias_grad) {
   if (bias || residual || norm_bias) {
     PADDLE_THROW(common::errors::Unimplemented(
         "bias or residual or norm_bias is not supported yet"));
@@ -179,10 +180,10 @@ void RmsNormGradKernel(const Context& dev_ctx,
                                      x,
                                      norm_weight,
                                      inv_var,
-                                     dy,
+                                     out_grad,
                                      epsilon,
-                                     grad_x,
-                                     grad_norm_weight,
+                                     x_grad,
+                                     norm_weight_grad,
                                      begin_norm_axis);
 }
 }  // namespace phi

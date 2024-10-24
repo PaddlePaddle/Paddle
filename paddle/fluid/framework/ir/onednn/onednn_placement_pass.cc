@@ -54,8 +54,7 @@ inline bool FoundPhiOneDNNKernelWithCorrectDataType(
       if (!op->inputs.empty()) {
         if (op->inputs[0]->IsVar() && op->inputs[0]->Var()->Name() != "feed" &&
             kernel_pair.first.dtype() ==
-                framework::TransToPhiDataType(
-                    op->inputs[0]->Var()->GetDataType()))
+                phi::TransToPhiDataType(op->inputs[0]->Var()->GetDataType()))
           return true;
       } else {
         return true;

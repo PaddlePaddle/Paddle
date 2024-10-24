@@ -358,6 +358,15 @@ void PruneWithInput(const std::vector<pir::Value> &input_vars,
   }
 }
 
+void SetIsTestAttr(const std::shared_ptr<Program> &prog) {
+  for (auto &op : prog->block()->ops()) {
+    if (op->HasAttribute("is_test")) {
+      op->set_attribute(
+          "is_test", pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+    }
+  }
+}
+
 void BindProgram(py::module *m) {
   static int64_t global_prog_seed = 0;
   py::class_<Program, std::shared_ptr<Program>> program(
@@ -397,30 +406,8 @@ void BindProgram(py::module *m) {
             ...    x = static.data(name="x", shape=[-1, 784], dtype='float32')
             ...    y = static.data(name="y", shape=[-1, 1], dtype='int32')
             ...    z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
-
             >>> print("main program is: {}".format(main_program))
-            main program is: { // block 0
-                var x : LOD_TENSOR.shape(-1, 784).dtype(float32).stop_gradient(True)
-                var y : LOD_TENSOR.shape(-1, 1).dtype(int32).stop_gradient(True)
-                persist trainable param fc.w_0 : LOD_TENSOR.shape(784, 10).dtype(float32).stop_gradient(False)
-                var fc.tmp_0 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
-                persist trainable param fc.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
-                var fc.tmp_1 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
-                var fc.tmp_2 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
-
-                {Out=['fc.tmp_0']} = mul(inputs={X=['x'], Y=['fc.w_0']}, force_fp32_output = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], scale_out = 1.0, scale_x = 1.0, scale_y = [1.0], use_mkldnn = False, with_quant_attr = False, x_num_col_dims = 1, y_num_col_dims = 1)
-                {Out=['fc.tmp_1']} = elementwise_add(inputs={X=['fc.tmp_0'], Y=['fc.b_0']}, Scale_out = 1.0, Scale_x = 1.0, Scale_y = 1.0, axis = 1, mkldnn_data_type = float32, op_device = , op_namescope = /, op_role = 0, op_role_var = [], use_mkldnn = False, use_quantizer = False, with_quant_attr = False, x_data_format = , y_data_format = )
-                {Out=['fc.tmp_2']} = relu(inputs={X=['fc.tmp_1']}, op_device = , op_namescope = /, op_role = 0, op_role_var = [], use_cudnn = False, use_mkldnn = False, with_quant_attr = False)
-            }
-
             >>> print("start up program is: {}".format(startup_program))
-            start up program is: { // block 0
-                persist trainable param fc.w_0 : LOD_TENSOR.shape(784, 10).dtype(float32).stop_gradient(False)
-                persist trainable param fc.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
-
-                {Out=['fc.w_0']} = uniform_random(inputs={ShapeTensor=[], ShapeTensorList=[]}, diag_num = 0, diag_step = 0, diag_val = 1.0, dtype = 5, max = 0.08692913502454758, min = -0.08692913502454758, op_device = , op_namescope = /, op_role = 0, op_role_var = [], seed = 0, shape = [784, 10], with_quant_attr = False)
-                {Out=['fc.b_0']} = fill_constant(inputs={}, dtype = 5, force_cpu = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], place_type = -1, shape = [10], str_value = 0.0, use_mkldnn = False, value = 0.0, with_quant_attr = False)
-            }
   )DOC");
   program
       .def(py::init([]() {
@@ -444,6 +431,8 @@ void BindProgram(py::module *m) {
            [](const std::shared_ptr<Program> &self) {
              return self->parameters_num();
            })
+      .def("set_is_test_attr",
+           [](const std::shared_ptr<Program> &self) { SetIsTestAttr(self); })
       .def("set_parameters_from",
            [](const std::shared_ptr<Program> &self,
               const std::shared_ptr<Program> &other) {
@@ -528,6 +517,10 @@ void BindProgram(py::module *m) {
       .def("get_parameter_value_by_name",
            [](Program &self, const std::string &name) {
              return name_analysis::GetParameterValueByName(self, name);
+           })
+      .def("get_all_parameter_values",
+           [](Program &self) {
+             return name_analysis::GetAllParameterValues(self);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(
@@ -760,6 +753,7 @@ void BindIrMapping(py::module *m) {
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
+      .def("has", [](IrMapping &self, Value from) { return self.Has(from); })
       .def("add",
            [](IrMapping &self, Value from, Value to) {
              self.Add<Value>(from, to);
@@ -858,6 +852,12 @@ void BindOperation(py::module *m) {
              self.set_attribute(
                  attr_name, StrAttribute::get(pir::IrContext::Instance(), val));
            })
+      .def("set_int_attr",
+           [](Operation &self, std::string &attr_name, const int64_t &val) {
+             self.set_attribute(
+                 attr_name,
+                 pir::Int64Attribute::get(pir::IrContext::Instance(), val));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -873,6 +873,12 @@ void BindOperation(py::module *m) {
                }
              }
              return attrs_dict;
+           })
+      .def("copy_attrs_from",
+           [](Operation &self, Operation &other) {
+             for (auto &pair : other.attributes()) {
+               self.set_attribute(pair.first, pair.second);
+             }
            })
       .def("set_execution_stream",
            [](Operation &self, const std::string &exe_stream) {
@@ -1076,7 +1082,7 @@ void BindOperation(py::module *m) {
             if (int_attr) {
               return py::cast(int_attr.data());
             } else {
-              return py::cast<py::none>(Py_None);
+              return py::cast(-1);
             }
           },
           [](Operation &self, const int &op_role) {
@@ -1322,7 +1328,6 @@ void BindValue(py::module *m) {
           "get_defining_op",
           [](Value self) -> pir::Operation * { return self.defining_op(); },
           return_value_policy::reference)
-      .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
       .def("index",
            [](Value self) -> uint32_t {
@@ -1857,7 +1862,9 @@ SplitedResult SplitForwardBackward(
                              backward_range);
 
   pir::Block &backward_block = *backward_program->block();
-  bool has_backward = (backward_range[1] > backward_range[0]);
+  bool has_backward = forward_inputs_grads.size() > 0 ||
+                      forward_params_grads.size() > 0 ||
+                      forward_outputs_grads.size() > 0;
 
   // forward program construct.
   VLOG(4) << "start create forward program.";
@@ -2125,6 +2132,9 @@ void BindUtils(pybind11::module *m) {
          []() { ApiBuilder::Instance().ResetInsertionPointToStart(); });
   m->def("reset_insertion_point_to_end",
          []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
+  m->def("set_op_role",
+         [](int op_role) { ApiBuilder::Instance().SetOpRole(op_role); });
+  m->def("get_op_role", []() { return ApiBuilder::Instance().GetOpRole(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();

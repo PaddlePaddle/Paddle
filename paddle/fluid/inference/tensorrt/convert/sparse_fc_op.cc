@@ -320,10 +320,6 @@ class SparseFcOpConverter : public OpConverter {
               .values));
       bias_num = b_t->numel();
     }
-    // Running the TRT Static Shape mode: x_num_col_dims-1
-    if (!engine_->with_dynamic_shape()) {
-      x_num_col_dims--;
-    }
     // If use tensorrt'oss, the x_dim and x_num_col_dims need change, and can
     // not add Shuffle layer in ernie's multihead.
     // Sparse inference doesn't support variable length for now.

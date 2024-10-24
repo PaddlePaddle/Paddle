@@ -19,6 +19,7 @@ import unittest
 from test_case_base import TestCaseBase
 
 import paddle
+from paddle.jit.sot.psdb import breakgraph
 
 
 def test_delete_fast(a):
@@ -28,10 +29,32 @@ def test_delete_fast(a):
     return a
 
 
+def inner_call_with_breakgraph(a):
+    breakgraph()
+    return a + 1
+
+
+def test_delete_fast_with_breakgraph(a):
+    a = a + 2
+    t1 = a * 3
+    out1 = inner_call_with_breakgraph(a + t1)
+    t2 = a - 4
+    t3 = a / 5
+    out2 = inner_call_with_breakgraph(t1 + t2)
+    del t1, t2, t3
+    return a + out1 + out2
+
+
 class TestDeleteFast(TestCaseBase):
     def test_simple(self):
         a = paddle.to_tensor(1)
         self.assert_results(test_delete_fast, a)
+
+
+class TestDeleteFastWithBreakGraph(TestCaseBase):
+    def test_delete_fast_with_break_graph(self):
+        a = paddle.to_tensor(1)
+        self.assert_results(test_delete_fast_with_breakgraph, a)
 
 
 if __name__ == "__main__":

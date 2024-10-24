@@ -38,13 +38,8 @@ add_subdirectory(api)
 # Create static inference library if needed
 # All static libs in inference/api
 set(STATIC_INFERENCE_API
-    paddle_inference_api
-    analysis_predictor
-    zero_copy_tensor
-    reset_tensor_array
-    analysis_config
-    paddle_pass_builder
-    ${mkldnn_quantizer_cfg})
+    paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array
+    analysis_config paddle_pass_builder)
 
 set(OP_LIST
     ""

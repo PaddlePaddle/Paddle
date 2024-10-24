@@ -23,8 +23,8 @@
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/platform/monitor.h"
+#include "paddle/phi/core/platform/timer.h"
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
@@ -472,16 +472,15 @@ void MultiSlotDataset::PrepareTrain() {
   return;
 }
 
-inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>&
-GetReadThreadPool(int thread_num) {
-  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
-      thread_pools;
+inline std::vector<std::shared_ptr<phi::ThreadPool>>& GetReadThreadPool(
+    int thread_num) {
+  static std::vector<std::shared_ptr<phi::ThreadPool>> thread_pools;
   if (!thread_pools.empty()) {
     return thread_pools;
   }
   thread_pools.resize(thread_num);
   for (int i = 0; i < thread_num; ++i) {
-    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
+    thread_pools[i].reset(new phi::ThreadPool(1));
   }
   return thread_pools;
 }

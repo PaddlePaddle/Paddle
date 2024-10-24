@@ -32,6 +32,7 @@ from paddle.autograd.backward_utils import (
     dynamic_shape_prim_vjp_guard,
     get_grad_semantic_info,
     get_real_op_inputs,
+    get_real_op_outputs,
     get_split_op,
     inverse_sort_op,
     is_builtin_op,
@@ -78,6 +79,22 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             )
             full_like_op = value_grad.get_defining_op()
             backward_ops_ = [full_like_op]
+        elif copy_value.is_combine():
+            values = paddle._C_ops.builtin_split(copy_value)
+            value_grad = []
+            backward_ops_ = []
+            backward_ops_.append(values[0].get_defining_op())
+            for v in values:
+                grad = paddle.full_like(
+                    v,
+                    float_value,
+                    dtype=v.dtype,
+                )
+                value_grad.append(grad)
+                full_like_op = grad.get_defining_op()
+                full_op = full_like_op.operand_source(1).get_defining_op()
+                backward_ops_.append(full_like_op)
+                backward_ops_.append(full_op)
         else:
             value_grad = paddle.full_like(
                 copy_value,
@@ -92,7 +109,10 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
             state.op_to_opgrad[value.get_defining_op()],
             backward_ops_,
         )
-        state.value_to_valuegrad[value] = [[value_grad]]
+        if copy_value.is_combine():
+            state.value_to_valuegrad[value] = [value_grad]
+        else:
+            state.value_to_valuegrad[value] = [[value_grad]]
         return value_grad
 
 
@@ -260,13 +280,13 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     # from input to output
     if inputs_set:
         for i, op in enumerate(total_ops):
-            if some_in_set(op.results(), inputs_set):
+            if some_in_set(get_real_op_outputs(op), inputs_set):
                 union_op_flags[i] = True
                 continue
 
             if some_in_set(get_real_op_inputs(op), inputs_set):
                 union_op_flags[i] = True
-                for value in op.results():
+                for value in get_real_op_outputs(op):
                     if value not in no_grad_set:
                         inputs_set.add(value)
             else:
@@ -274,7 +294,7 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
 
     # from output to input
     for i, op in reversed(list(enumerate(total_ops))):
-        if some_in_set(op.results(), outputs_set):
+        if some_in_set(get_real_op_outputs(op), outputs_set):
             union_op_flags[i] = True
             for operand in get_real_op_inputs(op):
                 if operand not in no_grad_set:
@@ -995,6 +1015,60 @@ def create_backward_prune_set(
     return outputs_set, inputs_set, no_gradvar_set
 
 
+def _complete_grad_op_chunk_id(block, state):
+    dist_skip_op_list = ["builtin.split", "builtin.combine"]
+
+    def infer_dist_skip_op_chunk_id(op):
+        if op.name() == "builtin.split":
+            op_chunk_id = (
+                op.operand_source(0).get_defining_op().dist_attr.chunk_id
+            )
+        elif op.name() == "builtin.combine":
+            op_chunk_id = op.result(0).get_defining_op().dist_attr.chunk_id
+        else:
+            # TODO(luchang): need to support more ops such as pd_op.pylayer and so on
+            op_chunk_id = -1
+        return op_chunk_id
+
+    is_dist_program = False
+    for op in block.ops:
+        if op.dist_attr is not None:
+            is_dist_program = True
+            break
+
+    if not is_dist_program:
+        return
+
+    for op in block.ops:
+        if op not in state.op_to_opgrad:
+            continue
+
+        if op.dist_attr is None:
+            op_chunk_id = -1
+            if op.name() in dist_skip_op_list:
+                op_chunk_id = infer_dist_skip_op_chunk_id(op)
+        else:
+            op_chunk_id = op.dist_attr.chunk_id
+            if op_chunk_id == -1 and op.name() == "dist_op.reshard":
+                prev_op = op.operand_source(0).get_defining_op()
+                if prev_op.name() in dist_skip_op_list:
+                    op_chunk_id = infer_dist_skip_op_chunk_id(prev_op)
+                else:
+                    op_chunk_id = prev_op.dist_attr.chunk_id
+
+        for bwd_op in state.op_to_opgrad[op]:
+            if bwd_op.dist_attr is None:
+                continue
+            bwd_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    bwd_op.dist_attr.process_mesh,
+                    bwd_op.dist_attr.operands(),
+                    bwd_op.dist_attr.results(),
+                    op_chunk_id,
+                )
+            )
+
+
 def calc_gradient_helper(
     outputs: Value | Sequence[Value],
     inputs: Value | Sequence[Value],
@@ -1050,10 +1124,14 @@ def calc_gradient_helper(
         state,
         ValueDict(),
     )
+
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
+
+    # set chunk id for grad ops
+    _complete_grad_op_chunk_id(block, state)
 
     remove_ops = []
     if not is_inplace_net(backward_ops) and inputs:
@@ -1077,6 +1155,7 @@ def calc_gradient_helper(
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)
     state.turn_map()
+
     input_grad_map = state.value_to_valuegrad
 
     return input_grad_map

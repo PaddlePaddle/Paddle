@@ -22,10 +22,12 @@ from test_to_static_pir_program import create_data_loader
 import paddle
 import paddle.distributed as dist
 from paddle import nn
+from paddle.base.framework import auto_complete_op_role
 from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
     apply_mix2dist_pass,
 )
-from paddle.framework import _current_expected_place
+from paddle.distributed.auto_parallel.static.utils import set_all_ops_op_role
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 BATCH_SIZE = 4
 BATCH_NUM = 10
@@ -104,12 +106,15 @@ class TestML3DParallel(unittest.TestCase):
         dist_program = engine._fwd_main_progs["train"]
 
         apply_mix2dist_pass(dist_program)
+        set_all_ops_op_role(dist_program.global_block(), OpRole.Forward)
         loss = dist_program.get_output_value_by_name(engine._loss_names[0])
         with paddle.static.program_guard(dist_program):
-            params_grads = paddle.autograd.ir_backward.append_backward(loss)
-            engine._optimizer._apply_optimize(
-                loss, startup_program=None, params_grads=params_grads
-            )
+            with auto_complete_op_role(dist_program, OpRole.Backward):
+                params_grads = paddle.autograd.ir_backward.append_backward(loss)
+            with auto_complete_op_role(dist_program, OpRole.Optimize):
+                engine._optimizer._apply_optimize(
+                    loss, startup_program=None, params_grads=params_grads
+                )
         from paddle.distributed.auto_parallel.static.pir_pass import (
             apply_partition_pass,
         )
@@ -212,17 +217,6 @@ class TestML3DParallel(unittest.TestCase):
         dist_model._fetch_value(
             dist_program.global_block().ops[4].result(0), "fetch_value"
         )
-
-        # TODO(2024-Q2) hack for engine api
-        dist_model._engine._has_prepared[mode] = True
-        dist_model._mode = mode
-        dist_model._engine._mode = mode
-        paddle.disable_static()
-        dist_model._engine._initialize(mode)
-        dist_model._engine._executor = paddle.static.Executor(
-            _current_expected_place()
-        )
-        dist_model._engine._init_comm()
 
         loss_list = []
         for batch_id, data in enumerate(dist_loader()):

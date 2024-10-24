@@ -28,14 +28,9 @@ class TransposeOpConverter : public OpConverter {
     int dims = input->getDimensions().nbDims;
     std::vector<int> axis =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
-    if (!engine_->with_dynamic_shape()) {
-      for (size_t i = 1; i < axis.size(); i++) {
-        axis[i]--;
-      }
-    }
-    nvinfer1::Permutation perm = {};
+    nvinfer1::Permutation perm;
     for (int i = 0; i < dims; i++) {
-      int j = engine_->with_dynamic_shape() ? i : i + 1;
+      int j = i;
       perm.order[i] = axis[j];
     }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);

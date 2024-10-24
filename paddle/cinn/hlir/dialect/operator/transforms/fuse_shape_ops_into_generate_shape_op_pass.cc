@@ -126,7 +126,7 @@ bool MakeGenerateShapeOpAttribute(
   PADDLE_ENFORCE_GT(
       data_vec.size(),
       0,
-      phi::errors::PreconditionNotMet("The data_vec must not be empty."));
+      ::common::errors::PreconditionNotMet("The data_vec must not be empty."));
   // const auto& out_dim_exprs = shape_or_data_dim_exprs.data().value();
   const auto& out_dim_exprs = data_vec;
   return MakeGenerateShapeOpAttribute(ir_context,

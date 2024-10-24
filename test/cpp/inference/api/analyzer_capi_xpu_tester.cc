@@ -39,23 +39,23 @@ TEST(PD_AnalysisConfig, use_xpu) {
   LOG(INFO) << model_dir_;
   PD_EnableXpu(config, 0xfffc00);
   bool use_xpu = PD_UseXpu(config);
-  PADDLE_ENFORCE_EQ(use_xpu, true, phi::errors::PreconditionNotMet("NO"));
+  PADDLE_ENFORCE_EQ(use_xpu, true, common::errors::PreconditionNotMet("NO"));
   int device = PD_XpuDeviceId(config);
-  PADDLE_ENFORCE_EQ(device, 0, phi::errors::PreconditionNotMet("NO"));
+  PADDLE_ENFORCE_EQ(device, 0, common::errors::PreconditionNotMet("NO"));
   PD_SwitchIrOptim(config, true);
   bool ir_optim = PD_IrOptim(config);
-  PADDLE_ENFORCE_EQ(ir_optim, true, phi::errors::PreconditionNotMet("NO"));
+  PADDLE_ENFORCE_EQ(ir_optim, true, common::errors::PreconditionNotMet("NO"));
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
   PADDLE_ENFORCE_EQ(
-      memory_optim_enable, true, phi::errors::PreconditionNotMet("NO"));
+      memory_optim_enable, true, common::errors::PreconditionNotMet("NO"));
   PD_EnableProfile(config);
   bool profiler_enable = PD_ProfileEnabled(config);
   PADDLE_ENFORCE_EQ(
-      profiler_enable, true, phi::errors::PreconditionNotMet("NO"));
+      profiler_enable, true, common::errors::PreconditionNotMet("NO"));
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
-  PADDLE_ENFORCE_EQ(is_valid, false, phi::errors::PreconditionNotMet("NO"));
+  PADDLE_ENFORCE_EQ(is_valid, false, common::errors::PreconditionNotMet("NO"));
   PD_DeleteAnalysisConfig(config);
 }
 #endif

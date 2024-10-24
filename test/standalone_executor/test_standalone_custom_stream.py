@@ -53,11 +53,19 @@ class TestCustomStream(unittest.TestCase):
         op_index_for_stream2 = [7, 8, 10, 11]
         ops = prog.global_block().ops
         for op_index in op_index_for_stream1:
-            ops[op_index].dist_attr.execution_stream = "s1"
-            ops[op_index].dist_attr.stream_priority = 0
+            if paddle.framework.in_pir_mode():
+                ops[op_index].set_execution_stream("s1")
+                ops[op_index].set_scheduling_priority(0)
+            else:
+                ops[op_index].dist_attr.execution_stream = "s1"
+                ops[op_index].dist_attr.stream_priority = 0
         for op_index in op_index_for_stream2:
-            ops[op_index].dist_attr.execution_stream = "s2"
-            ops[op_index].dist_attr.stream_priority = -1
+            if paddle.framework.in_pir_mode():
+                ops[op_index].set_execution_stream("s2")
+                ops[op_index].set_scheduling_priority(-1)
+            else:
+                ops[op_index].dist_attr.execution_stream = "s2"
+                ops[op_index].dist_attr.stream_priority = -1
 
     def run_program(self, apply_custom_stream=False):
         paddle.seed(2022)

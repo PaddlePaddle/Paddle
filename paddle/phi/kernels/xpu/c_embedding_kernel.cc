@@ -39,7 +39,6 @@ void CEmbeddingKernel(const Context& dev_ctx,
   // xm: table height: number of entries of table.
   // n: embedding dim: number of float value within single entry.
   // ym: number of elements of input ids.
-
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32) {
     int r = xpu::embedding(dev_ctx.x_context(),

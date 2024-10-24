@@ -54,7 +54,7 @@ int32_t PsGraphClient::Initialize() {
     }
   }
   for (uint32_t k = 0; k < max_shard_num; ++k) {
-    _thread_pools.push_back(std::make_shared<paddle::framework::ThreadPool>(1));
+    _thread_pools.push_back(std::make_shared<phi::ThreadPool>(1));
   }
   _local_shard_keys.resize(max_shard_num);
   _shard_ars.resize(max_shard_num);

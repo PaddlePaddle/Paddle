@@ -24,11 +24,11 @@ class CConcatOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Input 'X' of c_concat must be provided."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Output 'Out' of c_concat must be provided."));
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
@@ -117,13 +117,3 @@ REGISTER_OPERATOR(c_concat,
                   ops::CConcatOpGradMaker<paddle::framework::OpDesc>,
                   ops::CConcatOpGradMaker<paddle::imperative::OpBase>,
                   ops::CConcatOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_concat,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CConcatOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          phi::dtype::float16) {}

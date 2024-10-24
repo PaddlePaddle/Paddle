@@ -1144,26 +1144,26 @@ std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
       ::common::errors::InvalidArgument("Tensor is not a tensor!"));
   if (op.As<ir::Add>()) {
     if (tensor.as_tensor()->type().is_bool()) {
-      return "cinn_block_reduce_any_internal_shm";
+      return "cinn_partial_block_reduce_any_internal_shm";
     }
-    return "cinn_block_reduce_sum" +
+    return "cinn_partial_block_reduce_sum" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Mul>()) {
     if (tensor.as_tensor()->type().is_bool()) {
-      return "cinn_block_reduce_all_internal_shm";
+      return "cinn_partial_block_reduce_all_internal_shm";
     }
-    return "cinn_block_reduce_prod" +
+    return "cinn_partial_block_reduce_prod" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Max>()) {
-    return "cinn_block_reduce_max" +
+    return "cinn_partial_block_reduce_max" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::Min>()) {
-    return "cinn_block_reduce_min" +
+    return "cinn_partial_block_reduce_min" +
            Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
   } else if (op.As<ir::And>()) {
-    return "cinn_block_reduce_all_internal_shm";
+    return "cinn_partial_block_reduce_all_internal_shm";
   } else if (op.As<ir::Or>()) {
-    return "cinn_block_reduce_any_internal_shm";
+    return "cinn_partial_block_reduce_any_internal_shm";
   } else {
     std::stringstream ss;
     ss << "Reduce type: " << op << " Not supported yet!";
@@ -1203,6 +1203,31 @@ std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
     PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return "";
+}
+
+std::string GridReduceExternalFuncName(const ir::Expr& op,
+                                       const cinn::common::Type type) {
+  if (op.As<ir::Add>()) {
+    if (type.is_bool()) {
+      return "cinn_grid_reduce_any";
+    }
+    return "cinn_grid_reduce_sum" + Type2StrForReduce(type);
+  } else if (op.As<ir::Mul>()) {
+    if (type.is_bool()) {
+      return "cinn_grid_reduce_all";
+    }
+    return "cinn_grid_reduce_prod" + Type2StrForReduce(type);
+  } else if (op.As<ir::Max>()) {
+    return "cinn_grid_reduce_max" + Type2StrForReduce(type);
+  } else if (op.As<ir::Min>()) {
+    return "cinn_grid_reduce_min" + Type2StrForReduce(type);
+  } else if (op.As<ir::And>()) {
+    return "cinn_grid_reduce_all";
+  } else if (op.As<ir::Or>()) {
+    return "cinn_grid_reduce_any";
+  }
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "No matching grid reduce template for op: %s, type: %s", op, type));
 }
 
 }  // namespace pe

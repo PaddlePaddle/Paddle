@@ -24,7 +24,6 @@ black_list = [
     'test_custom_relu_op_setup',
     'test_custom_relu_op_jit',
     'test_python_operator_overriding',
-    'test_c_comm_init_all_op',
     'test_c_embedding_op',
     # train op
     'test_imperative_optimizer',
@@ -33,8 +32,6 @@ black_list = [
     'test_sgd_op',
     'test_sgd_op_bf16',
     'test_warpctc_op',
-    # sync op
-    'test_sync_batch_norm_op',
     # case too large
     'test_reduce_op',
     'test_transpose_op',

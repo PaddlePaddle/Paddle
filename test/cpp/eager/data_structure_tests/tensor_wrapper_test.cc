@@ -103,6 +103,6 @@ TEST(TensorWrapper, Basic) {
   PADDLE_ENFORCE_EQ(
       tw2.recover().initialized(),
       false,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "Variable `tw2` should not be initialized after recover"));
 }

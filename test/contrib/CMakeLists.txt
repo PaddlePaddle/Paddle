@@ -5,11 +5,12 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 list(REMOVE_ITEM TEST_OPS test_multi_precision_fp16_train)
-
+list(REMOVE_ITEM TEST_OPS test_correlation)
 foreach(src ${TEST_OPS})
   py_test(${src} SRCS ${src}.py)
 endforeach()
 
+py_test(test_correlation SRCS test_correlation.py ENVS "FLAGS_enable_pir_api=0")
 py_test_modules(
   test_multi_precision_fp16_train
   MODULES

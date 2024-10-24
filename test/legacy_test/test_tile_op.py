@@ -23,7 +23,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 # Situation 1: repeat_times is a list (without tensor)
@@ -158,6 +157,24 @@ class TestTileOpRank4(TestTileOpRank1):
             check_prim=True,
             check_pir=True,
         )
+
+
+class TestTileOpRank5(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (4, 2, 2, 2, 6)
+        self.repeat_times = (2, 3, 4, 5, 7)
+
+    def if_enable_cinn(self):
+        self.check_cinn = True
+
+
+class TestTileOpRank6(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 2, 2, 2, 2, 6)
+        self.repeat_times = (2, 2, 3, 4, 5, 7)
+
+    def if_enable_cinn(self):
+        self.check_cinn = True
 
 
 # Situation 2: repeat_times is a list (with tensor)
@@ -386,7 +403,7 @@ class TestTileOpInt64_t(OpTest):
 
 
 class TestTileError(unittest.TestCase):
-    @test_with_pir_api
+
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -404,7 +421,7 @@ class TestTileError(unittest.TestCase):
 
 
 class TestTileAPIStatic(unittest.TestCase):
-    @test_with_pir_api
+
     def test_api(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -450,7 +467,6 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -488,7 +504,6 @@ class TestTileTripleGradCheck(unittest.TestCase):
     def tile_wrapper(self, x):
         return paddle.tile(x[0], [2, 1])
 
-    @test_with_pir_api
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -554,7 +569,7 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 
 class Testfp16TileOp(unittest.TestCase):
-    @test_with_pir_api
+
     def testfp16(self):
         if not paddle.is_compiled_with_cuda():
             return

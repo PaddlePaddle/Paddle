@@ -155,11 +155,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
 void CompilationTask::Lowering() {
   VLOG(5) << "Begin to lowering group: " << *context_->group_;
   auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
-  context_->SetLoweredFuncs(
-      op_lowerer.BucketLower(context_->group_,
-                             /* apply op schedule = */ false,
-                             /* apply group schedule = */ true,
-                             /* apply pass = */ true));
+  context_->SetLoweredFuncs(op_lowerer.BucketLower(context_->group_));
 
   if (context_->group_->IsBroadcastLeaf()) {
     const auto& broadcast_condition_dimexprs =
@@ -220,7 +216,8 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->target_,
       context_->group_->FuncName(),
       context_->group_->FuncName() + "_infer_shape",
-      context_->group_->symbol_args_map());
+      context_->group_->symbol_args_map(),
+      context_->group_->temp_space_sizes());
   VLOG(5) << "Start to compile module into cuda kernel...";
   backend_resource->GetBackendCompiler()->Build(module, "");
   backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
@@ -240,7 +237,8 @@ CompilationTask::CompileBroadcastModules(
       context_->target_,
       context_->group_->FuncName(),
       context_->group_->FuncName() + "_infer_shape",
-      context_->group_->symbol_args_map());
+      context_->group_->symbol_args_map(),
+      context_->group_->temp_space_sizes());
 
   std::vector<std::string> case_func_names;
   std::vector<ir::Expr> broadcast_conditions;

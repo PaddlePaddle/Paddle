@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 
@@ -230,6 +231,23 @@ void MatmulWithFlattenGradKernel(const Context &dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void LegacyMatmulGradKernel(const Context &dev_ctx,
+                            const DenseTensor &x,
+                            const DenseTensor &y,
+                            const DenseTensor &dout,
+                            bool transpose_x,
+                            bool transpose_y,
+                            float alpha,
+                            DenseTensor *dx,
+                            DenseTensor *dy) {
+  MatmulGradKernel<T, Context>(
+      dev_ctx, x, y, dout, transpose_x, transpose_y, dx, dy);
+  if (std::fabs(alpha - 1.f) > 1e-6f) {
+    ScaleKernel<T, Context>(dev_ctx, *dx, Scalar(alpha), Scalar(0), false, dx);
+    ScaleKernel<T, Context>(dev_ctx, *dy, Scalar(alpha), Scalar(0), false, dy);
+  }
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(matmul_grad,
@@ -243,5 +261,12 @@ PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    OneDNN,
                    ONEDNN,
                    phi::MatmulWithFlattenGradKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(legacy_matmul_grad,
+                   OneDNN,
+                   ONEDNN,
+                   phi::LegacyMatmulGradKernel,
                    float,
                    phi::dtype::bfloat16) {}

@@ -61,6 +61,7 @@ namespace pir {
 #define ATTRS "A"
 #define OPRESULTS_ATTRS "OA"
 #define DIST_ATTRS "DA"
+#define QUANT_ATTRS "QA"
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).
@@ -74,18 +75,29 @@ namespace pir {
 
 // type/attr's contents which is json::array.
 #define DATA "D"
+// float/double data with nan, inf, -inf
+#define VOID_DATA "VD"
 
 // NULL_TYPE
 #define NULL_TYPE "NULL"
 
 // special op compress
-
 #define PARAMETEROP "p"
+
+// actions for patch
+#define DELETE "DEL"
+#define ADD "ADD"
+#define UPDATE "UPD"
+#define NEW_NAME "NN"
+#define ADD_ATTRS "ADD_A"
+#define ADD_OPRESULTS_ATTRS "ADD_OA"
+#define PATCH "patch"
 
 std::pair<std::string, std::string> GetContentSplitByDot(
     const std::string& str);
 
 std::vector<std::string> GetOpDistAttr();
+std::vector<std::string> GetOpQuantAttr();
 
 void GetCompressOpName(std::string* op_name);
 
@@ -105,6 +117,4 @@ class DialectIdMap {
   std::unordered_map<std::string, std::string> DecompressDialect;
 };
 
-uint64_t GetPirVersion();
-uint64_t GetMaxReleasePirVersion();
 }  // namespace pir

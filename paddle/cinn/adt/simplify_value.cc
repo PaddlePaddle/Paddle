@@ -112,10 +112,10 @@ struct SimplifyDotUndot {
         pre_index_undot = index_undot_value;
       }
     }
-    PADDLE_ENFORCE_EQ(
-        pre_index_undot.has_value(),
-        true,
-        phi::errors::InvalidArgument("pre_index_undot should not be null"));
+    PADDLE_ENFORCE_EQ(pre_index_undot.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -200,11 +200,11 @@ struct SimplifyGcdShape {
     const auto& dot_dim_values = dot_dims;
     PADDLE_ENFORCE_EQ(IsConstantListAllPositiveInt64(undot_dim_values),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The undot_dim_values should be all positive int64"));
     PADDLE_ENFORCE_EQ(IsConstantListAllPositiveInt64(dot_dim_values),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The dot_dim_values should be all positive int64"));
     const auto& sub_reshape_dim_ranges =
         GetSubReshapeDimRanges(undot_dim_values, dot_dim_values);
@@ -332,7 +332,7 @@ struct SimplifyDotDot {
       PADDLE_ENFORCE_EQ(
           dim.Has<std::int64_t>(),
           true,
-          phi::errors::InvalidArgument("dim should have std::int64_t"));
+          ::common::errors::InvalidArgument("dim should have std::int64_t"));
       ret *= dim.Get<std::int64_t>();
     }
     return ret;
@@ -411,10 +411,10 @@ struct SymbolicDim_SimplifyDotUndot {
         pre_index_undot = index_undot_value;
       }
     }
-    PADDLE_ENFORCE_EQ(
-        pre_index_undot.has_value(),
-        true,
-        phi::errors::InvalidArgument("pre_index_undot should not be null"));
+    PADDLE_ENFORCE_EQ(pre_index_undot.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -461,10 +461,10 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
         pre_index_undot = index_undot_value;
       }
     }
-    PADDLE_ENFORCE_EQ(
-        pre_index_undot.has_value(),
-        true,
-        phi::errors::InvalidArgument("pre_index_undot should not be null"));
+    PADDLE_ENFORCE_EQ(pre_index_undot.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()

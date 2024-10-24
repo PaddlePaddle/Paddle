@@ -34,116 +34,77 @@ class TileOpConverter : public OpConverter {
     auto rank = input_shape.nbDims;
     auto output_name = op_desc.Output("Out")[0];
 
-    if (engine_->with_dynamic_shape()) {
-      auto input_shape_tensor = Shape(input);
+    auto input_shape_tensor = Shape(input);
 
-      nvinfer1::ITensor* repeat_tensor = nullptr;
-      int32_t repeat_rank = 0;
-      if (inputs.find("RepeatTimes") != inputs.end() &&
-          !op_desc.Input("RepeatTimes").empty()) {
-        repeat_tensor = engine_->GetITensor(op_desc.Input("RepeatTimes")[0]);
-        repeat_rank = repeat_tensor->getDimensions().d[0];
-      } else if (inputs.find("repeat_times_tensor") != inputs.end() &&
-                 !op_desc.Input("repeat_times_tensor").empty()) {
-        int32_t repeat_size = op_desc.Input("repeat_times_tensor").size();
-        std::vector<nvinfer1::ITensor*> repeat_tensors;
-        for (int32_t i = 0; i < repeat_size; ++i) {
-          repeat_tensors.push_back(
-              engine_->GetITensor(op_desc.Input("repeat_times_tensor")[i]));
-        }
-        repeat_tensor = Concat(repeat_tensors);
-        repeat_rank = repeat_size;
-      } else {
-        std::vector<int32_t> repeat_times = PADDLE_GET_CONST(
-            std::vector<int32_t>, op_desc.GetAttr("repeat_times"));
-        repeat_tensor =
-            Add1DConstantLayer(repeat_times, output_name + "_shape_tensor_");
-        repeat_rank = repeat_times.size();
+    nvinfer1::ITensor* repeat_tensor = nullptr;
+    int32_t repeat_rank = 0;
+    if (inputs.find("RepeatTimes") != inputs.end() &&
+        !op_desc.Input("RepeatTimes").empty()) {
+      repeat_tensor = engine_->GetITensor(op_desc.Input("RepeatTimes")[0]);
+      repeat_rank = repeat_tensor->getDimensions().d[0];
+    } else if (inputs.find("repeat_times_tensor") != inputs.end() &&
+               !op_desc.Input("repeat_times_tensor").empty()) {
+      int32_t repeat_size = op_desc.Input("repeat_times_tensor").size();
+      std::vector<nvinfer1::ITensor*> repeat_tensors;
+      for (int32_t i = 0; i < repeat_size; ++i) {
+        repeat_tensors.push_back(
+            engine_->GetITensor(op_desc.Input("repeat_times_tensor")[i]));
       }
-
-      nvinfer1::ITensor* repeat_expand_tensor;
-      if (rank > repeat_rank) {
-        auto* one_rank_tensor =
-            Add1DConstantLayer(std::vector<int32_t>(rank - repeat_rank, 1),
-                               output_name + "_one_rank_tensor_");
-        std::vector<nvinfer1::ITensor*> itensors;
-        itensors.push_back(one_rank_tensor);
-        itensors.push_back(repeat_tensor);
-        repeat_expand_tensor = Concat(itensors);
-      }
-      if (rank < repeat_rank) {
-        auto* one_rank_tensor =
-            Add1DConstantLayer(std::vector<int32_t>(repeat_rank - rank, 1));
-        std::vector<nvinfer1::ITensor*> itensors;
-        itensors.push_back(one_rank_tensor);
-        itensors.push_back(input_shape_tensor);
-        input_shape_tensor = Concat(itensors);
-        // need reshape input to more dims.
-        input = Reshape(input, input_shape_tensor, "reshape_input_befor_slice");
-        repeat_expand_tensor = repeat_tensor;
-      } else {
-        repeat_expand_tensor = repeat_tensor;
-      }
-      std::vector<int32_t> start(std::max(rank, repeat_rank), 0);
-      std::vector<int32_t> stride(std::max(rank, repeat_rank), 1);
-      auto start_tensor =
-          Add1DConstantLayer(start, output_name + "start_tensor");
-      auto stride_tensor =
-          Add1DConstantLayer(stride, output_name + "stride_tensor");
-      auto output_shape_tensor = Prod(input_shape_tensor, repeat_expand_tensor);
-      auto layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                        Slice,
-                                        *input,
-                                        nvinfer1::Dims{},
-                                        nvinfer1::Dims{},
-                                        nvinfer1::Dims{});
-
-      layer->setInput(1, *start_tensor);
-      layer->setInput(2, *output_shape_tensor);
-      layer->setInput(3, *stride_tensor);
-#if IS_TRT_VERSION_GE(8600)
-      layer->setMode(nvinfer1::SampleMode::kWRAP);
-#else
-      layer->setMode(nvinfer1::SliceMode::kWRAP);
-#endif
-      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
-
+      repeat_tensor = Concat(repeat_tensors);
+      repeat_rank = repeat_size;
     } else {
-      std::vector<int> repeat_times =
-          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
-      auto output_dim = input_shape;
-      auto output_stride = input_shape;
-      // If input_dims.nbDims + 1 < repeat_times.size() means we
-      // should expand 1 on batchsize. trt doesn't support this behavior.
-      PADDLE_ENFORCE_GE(
-          rank + 1,
-          repeat_times.size(),
-          common::errors::InvalidArgument(
-              "Can't change batchsize, please check repeat_times"));
-      int32_t diff = rank + 1 - repeat_times.size();
-      if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
-
-      // Can't expand on batchsize
-      PADDLE_ENFORCE_EQ(
-          repeat_times[0],
-          1,
-          common::errors::InvalidArgument(
-              "Can't expand on batchsize, please check repeat_times"));
-      output_stride.nbDims = rank;
-      for (int32_t i = 0; i < rank; i++) {
-        output_dim.d[i] = output_dim.d[i] * repeat_times[i + 1];
-        output_stride.d[i] = 1;
-      }
-      auto layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Slice, *input, input_shape, output_dim, output_stride);
-#if IS_TRT_VERSION_GE(8600)
-      layer->setMode(nvinfer1::SampleMode::kWRAP);
-#else
-      layer->setMode(nvinfer1::SliceMode::kWRAP);
-#endif
-      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+      std::vector<int32_t> repeat_times = PADDLE_GET_CONST(
+          std::vector<int32_t>, op_desc.GetAttr("repeat_times"));
+      repeat_tensor =
+          Add1DConstantLayer(repeat_times, output_name + "_shape_tensor_");
+      repeat_rank = repeat_times.size();
     }
 
+    nvinfer1::ITensor* repeat_expand_tensor;
+    if (rank > repeat_rank) {
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(rank - repeat_rank, 1),
+                             output_name + "_one_rank_tensor_");
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(repeat_tensor);
+      repeat_expand_tensor = Concat(itensors);
+    }
+    if (rank < repeat_rank) {
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(repeat_rank - rank, 1));
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(input_shape_tensor);
+      input_shape_tensor = Concat(itensors);
+      // need reshape input to more dims.
+      input = Reshape(input, input_shape_tensor, "reshape_input_befor_slice");
+      repeat_expand_tensor = repeat_tensor;
+    } else {
+      repeat_expand_tensor = repeat_tensor;
+    }
+    std::vector<int32_t> start(std::max(rank, repeat_rank), 0);
+    std::vector<int32_t> stride(std::max(rank, repeat_rank), 1);
+    auto start_tensor = Add1DConstantLayer(start, output_name + "start_tensor");
+    auto stride_tensor =
+        Add1DConstantLayer(stride, output_name + "stride_tensor");
+    auto output_shape_tensor = Prod(input_shape_tensor, repeat_expand_tensor);
+    auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                      Slice,
+                                      *input,
+                                      nvinfer1::Dims{},
+                                      nvinfer1::Dims{},
+                                      nvinfer1::Dims{});
+
+    layer->setInput(1, *start_tensor);
+    layer->setInput(2, *output_shape_tensor);
+    layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(8600)
+    layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
+    layer->setMode(nvinfer1::SliceMode::kWRAP);
+#endif
+    ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
 #endif
   }
 };

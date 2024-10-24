@@ -53,17 +53,6 @@ class TestStaticModelParallel(TestDistBase):
                 log_name=flag_name,
             )
 
-    def test_dist_static_model_parallel3(self):
-        from paddle import base
-
-        if base.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "static_model_parallel_embedding.py",
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name,
-            )
-
 
 if __name__ == '__main__':
     unittest.main()

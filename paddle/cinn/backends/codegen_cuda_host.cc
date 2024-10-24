@@ -32,14 +32,14 @@ using cinn::common::float16;
 
 const int kArgsArrayMaxLen = 20;
 
-llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
+llvm::Value* CodeGenGpuHost::LowerGPUKernelLauncher(
     const ir::_LoweredFunc_* func) {
   auto body = func->body;
   auto* call_ir = body.As<ir::Call>();
   PADDLE_ENFORCE_EQ(
       call_ir,
       nullptr,
-      phi::errors::InvalidArgument("The 'call_ir' must be true."));
+      ::common::errors::InvalidArgument("The 'call_ir' must be true."));
 
   // Create the function
   // @{
@@ -150,7 +150,7 @@ llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
         PADDLE_ENFORCE_EQ(
             global_args.count(r_arg.as_var()->name),
             1,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The argument '%s' must be present in global_args.",
                 r_arg.as_var()->name.c_str()));
         call_args.push_back(global_args[r_arg.as_var()->name]);
@@ -202,7 +202,7 @@ llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenGpuHost::LowerGPUKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
                  f_->arg_end(),
@@ -296,7 +296,7 @@ llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
         PADDLE_ENFORCE_EQ(
             global_args.count(r_arg.as_var()->name),
             1,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The argument '%s' must be present in global_args.",
                 r_arg.as_var()->name.c_str()));
         call_args.push_back(global_args[r_arg.as_var()->name]);

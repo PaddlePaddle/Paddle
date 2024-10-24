@@ -26,8 +26,8 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -389,6 +389,10 @@ inline void PirRunProgramAPI(
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
   int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
+  bool in_sot_mode = false;
+  if (attrs.count("in_sot_mode")) {
+    in_sot_mode = PADDLE_GET_CONST(bool, attrs.at("in_sot_mode"));
+  }
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   // NOTE(chenweihang): In order not to add new variable type, use vector
@@ -467,7 +471,8 @@ inline void PirRunProgramAPI(
         /*is_grad=*/false,
         program_id,
         global_inner_scope,
-        place_hash_key);
+        place_hash_key,
+        in_sot_mode);
     // Step 3. get all eager gc vars (skip_names = backward_inputs -
     // no_need_buffers + outputs)
     std::vector<std::string> skip_names;
@@ -668,7 +673,8 @@ inline void RunProgramAPI(
           /*is_grad=*/false,
           program_id,
           global_inner_scope,
-          place_hash_key);
+          place_hash_key,
+          /*used_for_sot=*/false);  // Simply pass false in PT mode
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -834,7 +840,8 @@ inline void RunProgramGradAPI(
           /*is_grad=*/true,
           program_id,
           global_inner_scope,
-          place_hash_key);
+          place_hash_key,
+          /*used_for_sot=*/false);  // Simply pass false in PT mode
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -956,6 +963,11 @@ inline void PirRunProgramGradAPI(
 
   int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
 
+  bool in_sot_mode = false;
+  if (attrs.count("in_sot_mode")) {
+    in_sot_mode = PADDLE_GET_CONST(bool, attrs.at("in_sot_mode"));
+  }
+
   auto place = egr::Controller::Instance().GetExpectedPlace();
   VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
@@ -1016,7 +1028,8 @@ inline void PirRunProgramGradAPI(
         /*is_grad=*/true,
         program_id,
         global_inner_scope,
-        place_hash_key);
+        place_hash_key,
+        in_sot_mode);
     // share threadpool
     // NOTE(zhiqiu): this only works interpreter_core is executed strictly
     // after the related fwd_interpreter_core.

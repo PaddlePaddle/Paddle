@@ -336,13 +336,6 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool MkldnnQuantize();
 
-  ///
-  /// \brief save program to model and save parameters to params
-  ///
-  /// \param[in] dir path to save the model
-  ///
-  void SaveOptimModel(const std::string &dir);
-
  protected:
   ///
   /// \brief Prepare predictor's required programs, including loading model
@@ -585,21 +578,13 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.
   std::map<size_t, std::string> idx2feeds_;
+  std::map<std::string, std::vector<int64_t>> feed_name2shapes_;
   std::vector<framework::OpDesc *> fetches_;
   std::vector<pir::Operation *> pir_fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  std::map<std::string, std::vector<int64_t>> fetch_name2shapes_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
-
-#if PADDLE_WITH_DNNL
-  // Helper class to perform quantization
-  class MkldnnQuantizer;
-  MkldnnQuantizer *mkldnn_quantizer_{nullptr};
-
-#if PADDLE_WITH_TESTING
-  friend class MkldnnQuantizerTest;
-#endif
-#endif
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.

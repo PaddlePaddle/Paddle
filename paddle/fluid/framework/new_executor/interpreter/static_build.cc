@@ -18,10 +18,10 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/phi/core/framework/reader.h"
+#include "paddle/phi/core/operators/reader/buffered_reader.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -57,9 +57,6 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "nop"};
 
 std::set<std::string> StaticBuildBlackList = {
-    "cinn_instruction_run" /*: to handle subgraph infermeta*/,
-    "cinn_launch" /*: to handle subgraph infermeta*/,
-    "run_program" /*: to handle scope output*/,
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
     "distributed_fused_lamb_init"};
 
@@ -189,9 +186,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
 }
 
 inline bool IsExtendedTensor(const phi::TensorBase& tensor) {
-  return framework::RawTensor::classof(&tensor) ||
-         framework::Strings::classof(&tensor) ||
-         framework::Vocab::classof(&tensor);
+  return phi::RawTensor::classof(&tensor) || phi::Strings::classof(&tensor) ||
+         phi::Vocab::classof(&tensor);
 }
 
 bool TensorShouldBeFakeInitialized(const OperatorBase& op,
@@ -224,11 +220,6 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
   }
 
   if (op_type == "dgc" && parameter_name == "k") {
-    VLOG(2) << "Skip fake initialization for: " << parameter_name;
-    return false;
-  }
-
-  if (op_type == "distributed_fused_lamb" && parameter_name == "ParamOut") {
     VLOG(2) << "Skip fake initialization for: " << parameter_name;
     return false;
   }
@@ -288,11 +279,13 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
       return var->template GetMutable<phi::SparseCooTensor>();
     } else if (var->template IsType<phi::TensorArray>()) {
       return var->template GetMutable<phi::TensorArray>();
-    } else if (var->template IsType<framework::Strings>()) {
-      return var->template GetMutable<framework::Strings>();
-    } else if (var->template IsType<paddle::framework::RawTensor>() ||
+    } else if (var->template IsType<phi::Strings>()) {
+      return var->template GetMutable<phi::Strings>();
+    } else if (var->template IsType<phi::Vocab>()) {
+      return var->template GetMutable<phi::Vocab>();
+    } else if (var->template IsType<phi::RawTensor>() ||
                !var->IsInitialized()) {
-      return var->template GetMutable<paddle::framework::RawTensor>();
+      return var->template GetMutable<phi::RawTensor>();
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type when get tensor.",
@@ -547,8 +540,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
     } else {
       VLOG(10) << "[while op]"
                << "skip backup input " << in_name << " type:"
-               << framework::TransToPhiDataType(
-                      framework::ToVarType(var->Type()));
+               << phi::TransToPhiDataType(framework::ToVarType(var->Type()));
     }
   }
 
@@ -626,7 +618,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       if (var->IsType<phi::DenseTensor>()) {
         // Clear all lod information for all lod_tensors.
         auto* t = var->GetMutable<phi::DenseTensor>();
-        framework::LoD empty_lod;
+        phi::LoD empty_lod;
         t->set_lod(empty_lod);
       } else if (var->IsType<phi::TensorArray>()) {
         // Clear elements of all tensor arrays.

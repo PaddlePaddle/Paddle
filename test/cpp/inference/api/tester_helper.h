@@ -34,7 +34,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "test/cpp/inference/api/config_printer.h"
 #include "test/cpp/inference/test_helper.h"
 
@@ -130,9 +130,21 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
 
 void CheckError(float data_ref, float data) {
   if (std::abs(data_ref) > 1) {
-    CHECK_LE(std::abs((data_ref - data) / data_ref), FLAGS_accuracy);
+    PADDLE_ENFORCE_LE(
+        std::abs((data_ref - data) / data_ref),
+        FLAGS_accuracy,
+        common::errors::InvalidArgument(
+            "[Error info] abs((data_ref - data) / data_ref) must be less than "
+            "or equal to FLAGS_accuracy.\n"
+            "[Argument info] Please check your input data_ref and data."));
   } else {
-    CHECK_LE(std::abs(data_ref - data), FLAGS_accuracy);
+    PADDLE_ENFORCE_LE(
+        std::abs(data_ref - data),
+        FLAGS_accuracy,
+        common::errors::InvalidArgument(
+            "[Error info] abs(data_ref - data) must be less than or equal to "
+            "FLAGS_accuracy.\n"
+            "[Argument info] Please check your input data_ref and data."));
   }
 }
 
@@ -370,21 +382,6 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
 }
 
 size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
-
-std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
-                                                   int *num_ops) {
-  std::unordered_map<std::string, int> res;
-  auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
-  auto fusion_status = analysis_predictor->fusion_statis();
-  if (fusion_status.empty()) {
-    fusion_status = res;
-  }
-  for (auto &item : fusion_status) {
-    LOG(INFO) << "fused " << item.first << " " << item.second;
-  }
-  *num_ops = 0;
-  return fusion_status;
-}
 
 void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::string &dirname,
@@ -684,7 +681,12 @@ void SummarizeAccuracy(float avg_acc_ref, float avg_acc, int compared_idx) {
 }
 
 void SummarizePerformance(const char *title, float sample) {
-  CHECK_GT(sample, 0.0);
+  PADDLE_ENFORCE_GT(sample,
+                    0.0,
+                    common::errors::InvalidArgument(
+                        "[Error info] sample must be greater than 0.0\n"
+                        "[Argument info] The current sample is %f.",
+                        sample));
   auto throughput = 1000.0 / sample;
   LOG(INFO) << title << ": avg fps: " << std::fixed << std::setw(6)
             << std::setprecision(4) << throughput << ", avg latency: " << sample
@@ -772,14 +774,35 @@ void CompareAccuracy(
 
   SummarizeAccuracy(avg_acc_ref, avg_acc_quant, compared_idx);
 
-  if (FLAGS_enable_fp32) CHECK_GT(avg_acc_ref, 0.0);
+  if (FLAGS_enable_fp32) {
+    PADDLE_ENFORCE_GT(avg_acc_ref,
+                      0.0,
+                      common::errors::PreconditionNotMet(
+                          "[Error info] avg_acc_ref must be greater than 0.0.\n"
+                          "[Condition info] The current avg_acc_ref is %f.",
+                          avg_acc_ref));
+  }
 
-  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)
-    CHECK_GT(avg_acc_quant, 0.0);
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16) {
+    PADDLE_ENFORCE_GT(
+        avg_acc_quant,
+        0.0,
+        common::errors::PreconditionNotMet(
+            "[Error info] avg_acc_quant must be greater than 0.0.\n"
+            "[Condition info] The current avg_acc_quant is %f.",
+            avg_acc_quant));
+  }
 
   if (FLAGS_enable_fp32 &&
-      (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16))
-    CHECK_LE(avg_acc_ref - avg_acc_quant, FLAGS_quantized_accuracy);
+      (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)) {
+    PADDLE_ENFORCE_LE(
+        avg_acc_ref - avg_acc_quant,
+        FLAGS_quantized_accuracy,
+        common::errors::PreconditionNotMet(
+            "[Error info] avg_acc_ref - avg_acc_quant must be less than or "
+            "equal to FLAGS_quantized_accuracy.\n"
+            "[Condition info] Please check your input data."));
+  }
 }
 
 void CompareDeterministic(
@@ -1010,13 +1033,6 @@ void CompareAnalysisAndZeroCopy(
   CompareResult(analysis_outputs, zerocopy_outputs);
 }
 
-void SaveOptimModel(AnalysisConfig *cfg, const std::string &dstPath) {
-  auto predictor = CreateTestPredictor(
-      reinterpret_cast<const PaddlePredictor::Config *>(cfg),
-      FLAGS_use_analysis);
-  (static_cast<AnalysisPredictor *>(predictor.get()))->SaveOptimModel(dstPath);
-}
-
 template <typename T>
 std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   std::stringstream ss;
@@ -1049,7 +1065,7 @@ std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   return ss.str();
 }
 
-static bool CompareLoD(const framework::LoD &a, const framework::LoD &b) {
+static bool CompareLoD(const phi::LoD &a, const phi::LoD &b) {
   if (a.size() != b.size()) {
     LOG(ERROR) << string::Sprintf(
         "lod size not match %d != %d", a.size(), b.size());

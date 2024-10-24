@@ -521,11 +521,9 @@ if(WITH_PSCORE)
 
   include(external/jemalloc) # download, build, install jemalloc
   list(APPEND third_party_deps extern_jemalloc)
-  if(WITH_HETERPS)
-    include(external/afs_api)
-    list(APPEND third_party_deps extern_afs_api)
-    set(WITH_AFSAPI ON)
-  endif()
+
+  include(external/afs_api)
+  list(APPEND third_party_deps extern_afs_api)
 endif()
 
 if(WITH_RPC

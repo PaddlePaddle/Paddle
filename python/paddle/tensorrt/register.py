@@ -39,10 +39,10 @@ class ConverterOpRegistry:
             return True
 
         trt_major, trt_minor = map(int, trt_version.split('.')[:2])
-        if version_range.startswith('trt_version_gt='):
+        if version_range.startswith('trt_version_ge='):
             min_version = float(version_range.split('=')[1])
             return float(trt_major) + trt_minor / 10 >= min_version
-        elif version_range.startswith('trt_version_lt='):
+        elif version_range.startswith('trt_version_le='):
             max_version = float(version_range.split('=')[1])
             return float(trt_major) + trt_minor / 10 <= max_version
         elif 'x' in version_range:

@@ -125,7 +125,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
         "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
-  framework::LoD dst_lod;
+  phi::LoD dst_lod;
   for (auto &src_lod : input_data.lod) {
     dst_lod.emplace_back(src_lod);
   }

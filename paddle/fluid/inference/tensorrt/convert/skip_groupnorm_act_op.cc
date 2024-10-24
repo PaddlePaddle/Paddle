@@ -55,22 +55,20 @@ class SkipGroupnormActOpConverter : public OpConverter {
     auto bias_weights = GetWeight(bias_name, &bias_dims);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-    if (engine_->with_dynamic_shape()) {
-      plugin::SkipGroupnormActPluginDynamic* plugin =
-          new plugin::SkipGroupnormActPluginDynamic(
-              static_cast<const float*>(scale_weights.get().values),
-              scale_weights.get().count,
-              static_cast<const float*>(bias_weights.get().values),
-              bias_weights.get().count,
-              epsilon,
-              groups,
-              with_fp16);
-      nvinfer1::ILayer* groupnorm_layer =
-          engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
-      auto output_name = op_desc.Output("Out")[0];
-      ReplenishLayerAndOutput(
-          groupnorm_layer, "skip_groupnorm_act", {output_name}, test_mode);
-    }
+    plugin::SkipGroupnormActPluginDynamic* plugin =
+        new plugin::SkipGroupnormActPluginDynamic(
+            static_cast<const float*>(scale_weights.get().values),
+            scale_weights.get().count,
+            static_cast<const float*>(bias_weights.get().values),
+            bias_weights.get().count,
+            epsilon,
+            groups,
+            with_fp16);
+    nvinfer1::ILayer* groupnorm_layer =
+        engine_->AddDynamicPlugin(inputs.data(), 2, plugin);
+    auto output_name = op_desc.Output("Out")[0];
+    ReplenishLayerAndOutput(
+        groupnorm_layer, "skip_groupnorm_act", {output_name}, test_mode);
   }
 };
 

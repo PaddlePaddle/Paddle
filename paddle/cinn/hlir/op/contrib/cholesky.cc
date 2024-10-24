@@ -61,7 +61,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCholesky(
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE(
         !pack_args.empty(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "at least one input tensor for cholesky compute, it is empty now"));
     Expr x_expr = pack_args[0];
     ir::Tensor x = x_expr.as_tensor_ref();

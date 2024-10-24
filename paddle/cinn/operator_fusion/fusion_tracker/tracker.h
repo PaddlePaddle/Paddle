@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/fusion_iters.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -27,7 +27,7 @@ enum InstructionType {
   T_TrivialInline,
   T_TmpTransform,
   T_TrivialLoopAlign,
-  T_AnchorTransform,
+  T_ItersTransform,
   T_Padding
 };
 
@@ -194,21 +194,28 @@ struct TrivialLoopAlignInstr : public FusionInstruction {
   }
 };
 
-struct AnchorTransformInstr : public FusionInstruction {
-  AnchorTransformInstr(const std::string& target,
-                       const std::string& result,
-                       const AnchorTransformRoute& transform_route)
-      : target_(target), result_(result), transform_route_(transform_route) {}
-  virtual InstructionType type() const { return T_AnchorTransform; }
+struct ItersTransformInstr : public FusionInstruction {
+  ItersTransformInstr(const std::string& source,
+                      const std::string& aligned,
+                      const std::string& target,
+                      const ItersTransformRoute& iters_transform_route)
+      : source_(source),
+        aligned_(aligned),
+        target_(target),
+        iters_transform_route_(iters_transform_route) {}
+  virtual InstructionType type() const { return T_ItersTransform; }
   virtual FusionInstrPtr Clone() {
-    return std::make_shared<AnchorTransformInstr>(*this);
+    return std::make_shared<ItersTransformInstr>(*this);
   }
+
+  std::string source_;
+  std::string aligned_;
   std::string target_;
-  std::string result_;
-  AnchorTransformRoute transform_route_;
+  ItersTransformRoute iters_transform_route_;
 
   virtual std::string DebugStr() const {
-    return "AnchorTransformInstr || " + target_ + " => " + result_;
+    return "ItersTransformInstr || " + source_ + " => " + target_ +
+           ", Align to " + aligned_;
   }
 };
 

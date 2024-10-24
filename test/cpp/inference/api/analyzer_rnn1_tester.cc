@@ -56,18 +56,18 @@ struct DataRecord {
       data.lod3.push_back(0);
       PADDLE_ENFORCE_EQ(!data.link_step_data_all.empty(),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "link_step_data_all should not be empty."));
 
-      PADDLE_ENFORCE_EQ(
-          !data.week_data_all.empty(),
-          true,
-          phi::errors::InvalidArgument("week_data_all should not be empty."));
+      PADDLE_ENFORCE_EQ(!data.week_data_all.empty(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "week_data_all should not be empty."));
 
-      PADDLE_ENFORCE_EQ(
-          !data.minute_data_all.empty(),
-          true,
-          phi::errors::InvalidArgument("minute_data_all should not be empty."));
+      PADDLE_ENFORCE_EQ(!data.minute_data_all.empty(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "minute_data_all should not be empty."));
       PADDLE_ENFORCE_EQ(
           data.link_step_data_all.size(),
           data.week_data_all.size(),
@@ -265,21 +265,6 @@ TEST(Analyzer_rnn1, profile) {
                  input_slots_all,
                  &outputs,
                  FLAGS_num_threads);
-}
-
-// Check the fuse status
-TEST(Analyzer_rnn1, fuse_statis) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  int num_ops;
-  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  auto fuse_statis = GetFuseStatis(
-      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-  EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
-  EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

@@ -78,6 +78,10 @@ class TensorArray : public TensorBase,
   /// \brief This overridden function is not used in TensorArray.
   TEST_API bool valid() const override;
 
+  /// \brief Test whether the holder is created.
+  /// \return Whether the holder is created.
+  TEST_API bool has_allocation() const override;
+
   /// \brief Test whether the tensor's storage in TensorArray is allocated.
   /// return Whether all tensors in TensorArray is allocated.
   TEST_API bool initialized() const override;

@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/operator_fusion/fusion_tracker/interpreter.h"
 #include "glog/logging.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 
 namespace cinn::fusion {
 
@@ -85,20 +86,25 @@ void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
       1,
       ::common::errors::InvalidArgument(
           "Downstream %s must have only one fusion_op.", instr->downstream_));
-  auto upstream_op = std::get<ReduceOp>(
-      interpreter->scope[instr->upstream_]->fusion_ops.back());
   auto downstream_op =
       interpreter->scope[instr->downstream_]->fusion_ops.front();
+  std::vector<FusibleOp> changed_upstreams;
+  for (auto fusion_op : interpreter->scope[instr->upstream_]->fusion_ops) {
+    auto upstream_op = std::get<ReduceOp>(fusion_op);
+    changed_upstreams = ConcatVector(
+        changed_upstreams,
+        cinn::hlir::framework::pir::trivial_fusion_detail::
+            TransformReduceLoopRange(
+                upstream_op, &downstream_op, instr->fake_reduce_iter_idx_));
+  }
+
   // inplace set the upstream
-  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  new_pattern->fusion_ops = cinn::hlir::framework::pir::trivial_fusion_detail::
-      TransformReduceLoopRange(
-          upstream_op, &downstream_op, instr->fake_reduce_iter_idx_);
-  interpreter->scope[instr->out_upstream_] = new_pattern;
+  interpreter->scope[instr->out_upstream_] = std::make_shared<ScopeElement>();
+  interpreter->scope[instr->out_upstream_]->fusion_ops = changed_upstreams;
   // inplace set the downstream
-  ScopeElementPtr new_downstream = std::make_shared<ScopeElement>();
-  new_downstream->fusion_ops.push_back(downstream_op);
-  interpreter->scope[instr->out_downstream_] = new_downstream;
+  interpreter->scope[instr->out_downstream_] = std::make_shared<ScopeElement>();
+  interpreter->scope[instr->out_downstream_]->fusion_ops.push_back(
+      downstream_op);
 }
 
 void RunTrivialLoopAlignInstr(
@@ -119,26 +125,30 @@ void RunTrivialLoopAlignInstr(
   interpreter->scope[instr->result_] = new_pattern;
 }
 
-void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
-                             FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->target_]->fusion_ops.size(),
-                    1,
-                    ::common::errors::InvalidArgument(
-                        "Target op must have only one fusion_op."));
-  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-
-  std::function<ir::Expr(ir::Expr)> do_transform =
-      [transform_route = instr->transform_route_](ir::Expr target) -> ir::Expr {
-    for (auto transform : transform_route) {
-      target = std::visit(ApplyTransform(target), transform);
+void RunItersTransformInstr(const std::shared_ptr<ItersTransformInstr>& instr,
+                            FusionInterpreter* interpreter) {
+  auto iters_transform = [transform_route = instr->iters_transform_route_](
+                             ir::Expr op_expr,
+                             ir::Expr aligned_expr) -> ir::Expr {
+    for (auto trans : transform_route) {
+      op_expr = std::visit(ApplyItersTransform(op_expr, aligned_expr), trans);
     }
-    return target;
+    return op_expr;
   };
 
-  auto candidate_exprs = std::visit(
-      FusibleOp2Expr(), interpreter->scope[instr->target_]->fusion_ops.front());
-  for (auto expr : candidate_exprs) {
-    auto transformed_expr = do_transform(expr);
+  auto new_pattern = std::make_shared<ScopeElement>();
+  auto fusion_ops = interpreter->scope[instr->source_]->fusion_ops;
+  PADDLE_ENFORCE(interpreter->scope.count(instr->aligned_) &&
+                     !interpreter->scope[instr->aligned_]->fusion_ops.empty(),
+                 ::common::errors::PreconditionNotMet(
+                     "ItersTransform to aligend op must be initialized."));
+  ir::Expr aligned_expr =
+      std::visit(FusibleOp2Expr(),
+                 interpreter->scope[instr->aligned_]->fusion_ops.back())[0];
+  for (const auto& fusion_op : fusion_ops) {
+    ir::Expr op_expr = std::visit(FusibleOp2Expr(), fusion_op).back();
+    VLOG(4) << "[ItersTransform] expr before transform: \n" << op_expr;
+    ir::Expr transformed_expr = iters_transform(op_expr, aligned_expr);
     if (cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody(
             transformed_expr)) {
       new_pattern->fusion_ops.emplace_back(ReduceOp(transformed_expr));
@@ -146,7 +156,7 @@ void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
       new_pattern->fusion_ops.emplace_back(TrivialOp(transformed_expr));
     }
   }
-  interpreter->scope[instr->result_] = new_pattern;
+  interpreter->scope[instr->target_] = new_pattern;
 }
 
 void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
@@ -160,10 +170,23 @@ void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
 
 void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
                     FusionInterpreter* interpreter) {
+  using namespace cinn::hlir::framework::pir::trivial_fusion_detail;  // NOLINT
   for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
     auto exprs = std::visit(GetSplitedExprFromFusionOp(), fusion_op);
-    interpreter->ret_expr.insert(
-        interpreter->ret_expr.end(), exprs.begin(), exprs.end());
+    // Insert if for append loops
+    for (const auto& expr : exprs) {
+      // interpreter->ret_expr.push_back(expr);
+      std::vector<std::string> load_tensor_names;
+      for (const auto& tensor : GetOutputTensors(expr)) {
+        load_tensor_names.push_back(tensor->name);
+      }
+      if (AnyFirstInSecond(load_tensor_names, interpreter->global_var_names)) {
+        interpreter->ret_expr.push_back(
+            ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr));
+      } else {
+        interpreter->ret_expr.push_back(expr);
+      }
+    }
   }
 }
 
@@ -192,10 +215,6 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
         RunTmpTransformInstr(
             dynamic_cast_instr_with_err<TmpTransformInstr>(instr), this);
         break;
-      case T_AnchorTransform:
-        RunAnchorTransformInstr(
-            dynamic_cast_instr_with_err<AnchorTransformInstr>(instr), this);
-        break;
       case T_Padding:
         RunPaddingInstr(dynamic_cast_instr_with_err<PaddingInstr>(instr), this);
         break;
@@ -205,6 +224,10 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
       case T_TrivialLoopAlign:
         RunTrivialLoopAlignInstr(
             dynamic_cast_instr_with_err<TrivialLoopAlignInstr>(instr), this);
+        break;
+      case T_ItersTransform:
+        RunItersTransformInstr(
+            dynamic_cast_instr_with_err<ItersTransformInstr>(instr), this);
         break;
       default:
         PADDLE_THROW(

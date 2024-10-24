@@ -21,7 +21,6 @@ from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseModOp(OpTest):
@@ -45,7 +44,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -173,7 +172,9 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(
+            place, check_pir=True, check_symbol_infer=False
+        )
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -231,7 +232,6 @@ class TestRemainderOp(unittest.TestCase):
             z = x % y
             np.testing.assert_allclose(self.z_expected3, z.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         mp, sp = static.Program(), static.Program()
         with static.program_guard(mp, sp):

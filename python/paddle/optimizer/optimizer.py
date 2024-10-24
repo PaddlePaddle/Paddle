@@ -140,8 +140,8 @@ class Optimizer:
             then the parameters are list of dict. Note that the learning_rate in parameter groups \
             represents the scale of base learning_rate. \
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
-            It can be a float value as coeff of L2 regularization or \
+        weight_decay (int|float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
+            It can be a int or float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
@@ -262,6 +262,8 @@ class Optimizer:
                 )
         if isinstance(weight_decay, float):
             self.regularization = L2Decay(weight_decay)
+        elif isinstance(weight_decay, int):
+            self.regularization = L2Decay(float(weight_decay))
         else:
             self.regularization = weight_decay
         self._grad_clip = grad_clip
@@ -904,6 +906,7 @@ class Optimizer:
                 var = self._master_grads[grad]
             else:
                 var = paddle.cast(grad, 'float32')
+                var.get_defining_op().set_bool_attr('master_grad_cast', True)
                 self._master_grads[grad] = var
         else:
             if grad.name in self._master_grads:
@@ -986,14 +989,25 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
 
         if in_pir_mode():
-            var = paddle.pir.core.create_persistable_value(
-                dtype or param.dtype,
-                shape,
-                var_name,
-                initializer=paddle.nn.initializer.Constant(
-                    value=float(fill_value)
-                ),
-            )
+            if 'beta' not in var_name:
+                var = paddle.pir.core.create_persistable_value(
+                    dtype or param.dtype,
+                    shape,
+                    var_name,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
+                    dist_attr=param.dist_attr(),
+                )
+            else:
+                var = paddle.pir.core.create_persistable_value(
+                    dtype or param.dtype,
+                    shape,
+                    var_name,
+                    initializer=paddle.nn.initializer.Constant(
+                        value=float(fill_value)
+                    ),
+                )
         else:
             if self.helper is None:
                 self.helper = LayerHelper(self.__class__.__name__)

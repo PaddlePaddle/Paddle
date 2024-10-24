@@ -76,6 +76,7 @@ UNARY_PRIM_VJP_OPS = [
     'sin_grad',
     'cos_grad',
     'tanh_grad',
+    'trunc_grad',
     'square_grad',
 ]
 
@@ -89,11 +90,17 @@ BINARY_PRIM_VJP_OPS = [
     'elementwise_pow_grad',
     'maximum_grad',
     'reduce_as_grad',
+    'fmax_grad',
+    'fmin_grad',
+    'dot_grad',
 ]
 
 OTHER_PRIM_VJP_OPS = [
     'assign_grad',
+    'atan_grad',
+    'atan2_grad',
     'cumsum_grad',
+    'cumprod_grad',
     'sum_grad',
     'cast_grad',
     'reshape_grad',
@@ -102,10 +109,12 @@ OTHER_PRIM_VJP_OPS = [
     'transpose_grad',
     'concat_grad',
     'expand_grad',
+    'expm1_grad',
     'gather_grad',
     'gather_nd_grad',
     'pad_grad',
     'prod_grad',
+    'put_along_axis_grad',
     'max_grad',
     'masked_select_grad',
     'scale_grad',
@@ -116,12 +125,16 @@ OTHER_PRIM_VJP_OPS = [
     'tile_grad',
     'topk_grad',
     'unsqueeze_grad',
+    'where_grad',
+    'logcumsumexp_grad',
+    'logsumexp_grad',
 ]
 
 # whole vjp list of primitive op vjp
 PRIM_VJP = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + OTHER_PRIM_VJP_OPS
 
 CUSTOM_VJP = [
+    'bce_loss_grad',
     'batch_norm_grad',
     'dropout_grad',
     'gelu_grad',
@@ -141,6 +154,7 @@ CUSTOM_VJP = [
     'sqrt_grad',
     'stack_grad',
     'swiglu',
+    'swish_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP
@@ -396,12 +410,12 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
-def process_optional_output_info(apis):
+def process_optional_inplace_output_info(apis):
     for api in apis:
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
             if not api['is_fwd']:
-                output['optional'] = False
+                return
             else:
                 if (
                     api.get("inplace", None)
@@ -524,7 +538,7 @@ def gen(
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
-    process_optional_output_info(apis)
+    process_optional_inplace_output_info(apis)
 
     apis = [
         {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}

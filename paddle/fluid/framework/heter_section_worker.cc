@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
@@ -41,7 +41,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   std::vector<int> dims{1};
   tensor->Resize(common::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPhiDataType(framework::proto::VarType::FP32));
+      place, phi::TransToPhiDataType(framework::proto::VarType::FP32));
   if (phi::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;

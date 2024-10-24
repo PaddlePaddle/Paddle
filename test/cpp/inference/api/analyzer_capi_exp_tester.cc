@@ -78,9 +78,6 @@ TEST(PD_Config, profile_mkldnn) {
   PD_ConfigEnableMKLDNN(config);
   bool mkldnn_enable = PD_ConfigMkldnnEnabled(config);
   EXPECT_TRUE(mkldnn_enable);
-  PD_ConfigEnableMkldnnQuantizer(config);
-  bool quantizer_enable = PD_ConfigMkldnnQuantizerEnabled(config);
-  EXPECT_TRUE(quantizer_enable);
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetMkldnnCacheCapacity(config, 0);
   PD_ConfigSetModel(config, prog_file.c_str(), params_file.c_str());

@@ -383,6 +383,9 @@ CastType NormCastValue(T value) {
   }
 
   if (std::isinf(value)) {
+    if (CastType(value) == -std::numeric_limits<CastType>::infinity()) {
+      return -std::numeric_limits<CastType>::infinity();
+    }
     return std::numeric_limits<CastType>::infinity();
   } else if (std::isnan(value)) {
     return std::numeric_limits<CastType>::signaling_NaN();

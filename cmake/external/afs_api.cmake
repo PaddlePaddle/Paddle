@@ -24,7 +24,7 @@ if((NOT DEFINED AFSAPI_VER) OR (NOT DEFINED AFSAPI_URL))
       "afs_api"
       CACHE STRING "" FORCE)
   set(AFSAPI_URL
-      "https://pslib.bj.bcebos.com/afs_api_so.tar.gz"
+      "https://fleet.bj.bcebos.com/heterps/afs_api.tar.gz"
       CACHE STRING "" FORCE)
 endif()
 message(STATUS "AFSAPI_NAME: ${AFSAPI_NAME}, AFSAPI_URL: ${AFSAPI_URL}")

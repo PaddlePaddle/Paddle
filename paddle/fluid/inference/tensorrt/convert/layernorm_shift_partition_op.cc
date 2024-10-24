@@ -78,22 +78,17 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
                           bias_weight.get().count,
                           scale_weight.get().count));
     nvinfer1::ILayer* layernorm_layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin::LayernormShiftPartitionPluginDynamic* plugin =
-          new plugin::LayernormShiftPartitionPluginDynamic(
-              static_cast<const float*>(scale_weight.get().values),
-              static_cast<const float*>(bias_weight.get().values),
-              bias_weight.get().count,
-              shift_size,
-              window_size,
-              input_resolution,
-              eps,
-              with_fp16);
-      layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
-    } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "LayernormShiftPartition TRT Plugin should run in dynamic shape."));
-    }
+    plugin::LayernormShiftPartitionPluginDynamic* plugin =
+        new plugin::LayernormShiftPartitionPluginDynamic(
+            static_cast<const float*>(scale_weight.get().values),
+            static_cast<const float*>(bias_weight.get().values),
+            bias_weight.get().count,
+            shift_size,
+            window_size,
+            input_resolution,
+            eps,
+            with_fp16);
+    layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
 
     auto output_name = op_desc.Output("Y").front();
     ReplenishLayerAndOutput(

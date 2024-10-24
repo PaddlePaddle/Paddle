@@ -43,14 +43,14 @@ TEST(Status, pd_exception) {
   PADDLE_ENFORCE_EQ(
       status.ok(),
       false,
-      phi::errors::PreconditionNotMet("Status should not be OK."));
+      common::errors::PreconditionNotMet("Status should not be OK."));
   PADDLE_ENFORCE_EQ(
       status == status,
       true,
-      phi::errors::PreconditionNotMet("Status should be equal to itself."));
+      common::errors::PreconditionNotMet("Status should be equal to itself."));
   PADDLE_ENFORCE_EQ(status != status,
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Status should not be different from itself."));
   PADDLE_ENFORCE_EQ(
       status.code(),
@@ -67,7 +67,7 @@ TEST(Status, basic_exception) {
   PADDLE_ENFORCE_EQ(
       status.ok(),
       false,
-      phi::errors::PreconditionNotMet("Status should not be OK."));
+      common::errors::PreconditionNotMet("Status should not be OK."));
   LOG(INFO) << status.error_message();
 }
 
@@ -77,7 +77,7 @@ TEST(Status, no_exception) {
   status = get_status([&]() { e.no_exception(); });
   PADDLE_ENFORCE_EQ(status.ok(),
                     true,
-                    phi::errors::PreconditionNotMet("Status should be OK."));
+                    common::errors::PreconditionNotMet("Status should be OK."));
 }
 
 TEST(Status, copy) {

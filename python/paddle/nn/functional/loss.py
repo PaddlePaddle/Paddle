@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
+import functools
 import math
+import operator
 from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
@@ -110,7 +112,8 @@ def dice_loss(
         input.shape[:-1] == label.shape[:-1]
     ), "All dimensions should be equal except the last one."
     assert (
-        input.numel() > 0 and label.numel() > 0
+        functools.reduce(operator.mul, input.shape) != 0
+        and functools.reduce(operator.mul, label.shape) != 0
     ), "Any dimension of input and label cannot be equal to 0."
 
     label = paddle.squeeze(label, [-1])
@@ -572,24 +575,9 @@ def edit_distance(
 
     # remove some tokens from input and labels
     if ignored_tokens is not None and len(ignored_tokens) > 0:
-        erased_input = helper.create_variable_for_type_inference(dtype="int64")
-        erased_label = helper.create_variable_for_type_inference(dtype="int64")
-
-        helper.append_op(
-            type="sequence_erase",
-            inputs={"X": [input]},
-            outputs={"Out": [erased_input]},
-            attrs={"tokens": ignored_tokens},
+        raise ValueError(
+            f'Expected ignored_tokens is None (got {ignored_tokens})'
         )
-        input = erased_input
-
-        helper.append_op(
-            type="sequence_erase",
-            inputs={"X": [label]},
-            outputs={"Out": [erased_label]},
-            attrs={"tokens": ignored_tokens},
-        )
-        label = erased_label
 
     if in_dynamic_mode():
         return _C_ops.edit_distance(

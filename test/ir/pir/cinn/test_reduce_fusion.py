@@ -16,6 +16,7 @@ import os
 import unittest
 
 import numpy
+import utils
 
 os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_group_schedule_tiling_first'] = '1'
@@ -26,7 +27,6 @@ os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
 os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
-os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 import paddle
 
@@ -50,7 +50,9 @@ class TestReduceFusion(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def compare_result(self, dy_compute, input_spec, data_init):
+    def check_accuracy_and_kernel_num(
+        self, data_init, dy_compute, kernel_num=None, input_spec=None
+    ):
         inputs = data_init()
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
@@ -63,6 +65,8 @@ class TestReduceFusion(unittest.TestCase):
             paddle.utils.flatten(dy_out), paddle.utils.flatten(st_out)
         ):
             numpy.testing.assert_allclose(a, b, atol=1e-5, rtol=1e-5)
+        if kernel_num is not None:
+            utils.check_jit_kernel_number(static_compute, kernel_num)
 
     def test_reduce_tree_grown(self):
         #  R -> B -> R
@@ -76,7 +80,7 @@ class TestReduceFusion(unittest.TestCase):
             x = paddle.rand((32, 32, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
     def test_reduce_broadcast_fusion(self):
         #  R -> B
@@ -89,7 +93,7 @@ class TestReduceFusion(unittest.TestCase):
             x = paddle.rand((32, 32, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
     def test_reduce_tree_plus_trivial(self):
         #  T -> R -> T
@@ -103,7 +107,7 @@ class TestReduceFusion(unittest.TestCase):
             x = paddle.rand((32, 32, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
     def test_reduce_fusion_without_axis_reuse(self):
         #     R
@@ -128,7 +132,58 @@ class TestReduceFusion(unittest.TestCase):
             x = paddle.rand((32, 32, 128))
             return (x,)
 
-        self.compare_result(func, None, init)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
+    def test_reduce_all_reshape(self):
+        # R(reduce all) -> reshape
+        def func(x):
+            a = paddle.max(x, axis=[0, 1, 2], keepdim=False)
+            b = paddle.reshape(a, [1])
+            return b
+
+        def init():
+            x = paddle.rand((8, 16, 32))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_cast_int32_reduce(self):
+        def func(x):
+            a = paddle.cast(x, dtype='int32')
+            b = paddle.max(a, axis=[2], keepdim=False)
+            return b
+
+        def init():
+            x = paddle.rand((3, 128, 96), dtype='float32')
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_reduce_horizontal_fusion_with_same_loop_but_different_reduce_dim(
+        self,
+    ):
+        def func(x):
+            a = paddle.max(x, axis=[2])
+            b = paddle.sum(x, axis=[1, 2])
+            return a, b
+
+        def init():
+            x = paddle.rand((64, 128, 96), dtype='float32')
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
+    def test_RT_fusion_with_different_fake_reduce_dim(self):
+        def func(x):
+            a = paddle.max(x, axis=[0, 1])
+            b = paddle.expand(a, shape=[128, 96])
+            return b
+
+        def init():
+            x = paddle.rand((64, 128, 96), dtype='float32')
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
 
 if __name__ == "__main__":

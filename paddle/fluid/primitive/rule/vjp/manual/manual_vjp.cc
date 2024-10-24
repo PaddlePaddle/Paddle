@@ -166,21 +166,21 @@ std::vector<std::vector<paddle::Tensor>> fused_attention_vjp(
   // x_grad
   vjp_res[0][0] = std::get<8>(op_res);
   // ln_scale_grad
-  vjp_res[1][0] = std::get<4>(op_res);
+  vjp_res[1][0] = std::get<4>(op_res).get();
   // ln_bias_grad
-  vjp_res[2][0] = std::get<5>(op_res);
+  vjp_res[2][0] = std::get<5>(op_res).get();
   // qkv_weight_grad
   vjp_res[3][0] = std::get<9>(op_res);
   // qkv_bias_grad
-  vjp_res[4][0] = std::get<0>(op_res);
+  vjp_res[4][0] = std::get<0>(op_res).get();
   // out_linear_weight_grad
   vjp_res[5][0] = std::get<10>(op_res);
   // out_linear_bias_grad
-  vjp_res[6][0] = std::get<3>(op_res);
+  vjp_res[6][0] = std::get<3>(op_res).get();
   // ln_scale_2_grad
-  vjp_res[7][0] = std::get<6>(op_res);
+  vjp_res[7][0] = std::get<6>(op_res).get();
   // ln_bias_2_grad
-  vjp_res[8][0] = std::get<7>(op_res);
+  vjp_res[8][0] = std::get<7>(op_res).get();
   vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
   return vjp_res;
 }

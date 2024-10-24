@@ -97,7 +97,7 @@ def save(
 
         .. code-block:: python
 
-            >>> # doctest: +SKIP('TODO: the error will be fix in the feature')
+            >>> # doctest: +SKIP('TODO: the error will be fixed in the future')
             >>> # type: ignore
             >>> import paddle
             >>> paddle.distributed.init_process_group(backend='nccl')

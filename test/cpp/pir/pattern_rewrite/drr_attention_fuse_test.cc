@@ -163,6 +163,6 @@ TEST(DrrTest, AttentionFuse) {
 
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
-                    phi::errors::Unavailable("pm fail to run program"));
+                    common::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 2u);
 }

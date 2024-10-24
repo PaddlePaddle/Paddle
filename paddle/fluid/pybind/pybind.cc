@@ -65,8 +65,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
-#include "paddle/fluid/framework/raw_tensor.h"
-#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -78,7 +76,9 @@ limitations under the License. */
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
+#include "paddle/phi/core/raw_tensor.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
@@ -87,13 +87,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
@@ -129,12 +125,17 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/platform/cpu_helper.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/monitor.h"
 #include "paddle/phi/core/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/utils/none.h"
 
@@ -159,21 +160,21 @@ limitations under the License. */
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #ifndef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device/custom/custom_device_resource_pool.h"
 #endif
 
@@ -670,8 +671,7 @@ static void inline CreateVariableIfNotExist(
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(common::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
-            exe->GetPlace(),
-            framework::TransToPhiDataType(var_desc.GetDataType()));
+            exe->GetPlace(), phi::TransToPhiDataType(var_desc.GetDataType()));
       }
     }
   } else {
@@ -1071,11 +1071,7 @@ void BindDecompVjp(pybind11::module *m) {
     for (size_t i = 0; i < decomp_res.size(); ++i) {
       py::list sub_res;
       for (size_t j = 0; j < decomp_res[i].size(); ++j) {
-        if (!decomp_res[i][j]) {
-          sub_res.append(nullptr);
-        } else {
-          sub_res.append(decomp_res[i][j]);
-        }
+        sub_res.append(decomp_res[i][j]);
       }
       res.append(sub_res);
     }
@@ -1098,7 +1094,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
-  BindEvalFrame(&m);
+  BindSot(&m);
   BindCustomDevicePy(&m);
   BindEagerUtils(m.ptr());
 
@@ -1177,10 +1173,9 @@ PYBIND11_MODULE(libpaddle, m) {
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
-          return phi::NeedTypePromotionOldIr(
-              op_name,
-              framework::TransToPhiDataType(type_x),
-              framework::TransToPhiDataType(type_y));
+          return phi::NeedTypePromotionOldIr(op_name,
+                                             phi::TransToPhiDataType(type_x),
+                                             phi::TransToPhiDataType(type_y));
         });
   m.def("get_promote_dtype_old_ir",
         [](const std::string &op_name,
@@ -1188,15 +1183,14 @@ PYBIND11_MODULE(libpaddle, m) {
            framework::proto::VarType::Type type_y) {
           return framework::TransToProtoVarType(
               phi::GetPromoteDtypeOldIr(op_name,
-                                        framework::TransToPhiDataType(type_x),
-                                        framework::TransToPhiDataType(type_y)));
+                                        phi::TransToPhiDataType(type_x),
+                                        phi::TransToPhiDataType(type_y)));
         });
   m.def("is_common_dtype_for_scalar",
         [](framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
           return phi::is_common_dtype_for_scalar(
-              framework::TransToPhiDataType(type_x),
-              framework::TransToPhiDataType(type_y));
+              phi::TransToPhiDataType(type_x), phi::TransToPhiDataType(type_y));
         });
   m.def("disable_signal_handler", &DisableSignalHandler);
 
@@ -1263,29 +1257,23 @@ PYBIND11_MODULE(libpaddle, m) {
     phi::DeviceContextPool::Instance().Get(place)->Wait();
   });
 
-  m.def("from_dlpack", [](py::capsule *dltensor) {
-    DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
-        PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+  m.def("from_dlpack", [](py::object data) {
+    DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(
+        PyCapsule_GetPointer(data.ptr(), "dltensor"));
 
     PADDLE_ENFORCE_NOT_NULL(
-        dmt,
+        dlMTensor,
         common::errors::InvalidArgument(
             "from_dlpack received an invalid capsule. "
-            "Note that a DLPack tensor can be consumed only once."));
+            "Note that DLTensor capsules can be consumed only once, "
+            "so you might have already constructed a tensor from it once."));
 
-    PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
-    DLTensor dl = dmt->dl_tensor;
-    phi::DenseTensor tensor;
+    // NOTE: Might meet bugged numpy version, see:
+    // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
+    auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
 
-    if (dl.device.device_type == kDLCPU) {
-      paddle::framework::TensorFromDLPack(dmt, &tensor);
-    }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (dl.device.device_type == kDLGPU) {
-      paddle::framework::TensorFromDLPack(dmt, &tensor);
-    }
-#endif
-    return tensor;
+    PyCapsule_SetName(data.ptr(), "used_dltensor");
+    return ptensor;
   });
 
   m.def("_create_loaded_parameter",
@@ -1656,6 +1644,15 @@ All parameter, weight, gradient are variables in Paddle.
            )DOC",
            py::return_value_policy::reference)
       .def("size", &Scope::Size)
+      .def("local_var_names",
+           &Scope::LocalVarNames,
+           R"DOC(
+          Get all variable names in the current scope.
+
+          Returns:
+              List[str]: The list of variable names.
+          )DOC",
+           py::return_value_policy::reference)
       .def("erase",
            &Scope::EraseVars,
            py::arg("names"),
@@ -2474,12 +2471,6 @@ All parameter, weight, gradient are variables in Paddle.
             const phi::DenseTensor &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
-  m.def("set_feed_variable",
-        static_cast<void (*)(  // NOLINT
-            Scope *,
-            const std::vector<std::string> &,
-            const std::string &,
-            size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope,
            const std::string &var_name,
@@ -2794,6 +2785,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
 
   m.def("size_of_dtype", framework::SizeOfType);
+  m.def("size_of_dtype", phi::SizeOf);
   py::class_<paddle::platform::ProfilerResult>(m, "_ProfilerResult")
       .def(py::init<>())
       .def("get_data",
@@ -2828,7 +2820,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("peak_allocated",
                      &paddle::platform::MemPythonNode::peak_allocated)
       .def_readwrite("peak_reserved",
-                     &paddle::platform::MemPythonNode::peak_reserved);
+                     &paddle::platform::MemPythonNode::peak_reserved)
+      .def("__repr__", [](paddle::platform::MemPythonNode &event_node) {
+        std::stringstream ostr;
+        ostr << "MemPythonNode(timestamp_ns=" << event_node.timestamp_ns
+             << ", addr=" << event_node.addr << ", type='"
+             << paddle::platform::StringTracerMemEventType(event_node.type)
+             << "', process_id=" << event_node.process_id
+             << ", thread_id=" << event_node.thread_id << ")";
+        return ostr.str();
+      });
 
   py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
       .def(py::init<>())
@@ -2862,7 +2863,18 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::DevicePythonNode::occupancy)
       .def_readwrite("num_bytes",
                      &paddle::platform::DevicePythonNode::num_bytes)
-      .def_readwrite("value", &paddle::platform::DevicePythonNode::value);
+      .def_readwrite("value", &paddle::platform::DevicePythonNode::value)
+      .def("__repr__", [](paddle::platform::DevicePythonNode &event_node) {
+        std::stringstream ostr;
+        ostr << "DevicePythonNode(name='" << event_node.name << "', type='"
+             << paddle::platform::StringTracerEventType(event_node.type)
+             << "', start_ns=" << event_node.start_ns
+             << ", end_ns=" << event_node.end_ns
+             << ", device_id=" << event_node.device_id
+             << ", context_id=" << event_node.context_id
+             << ", stream_id=" << event_node.stream_id << ")";
+        return ostr.str();
+      });
 
   py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
       .def(py::init<>())
@@ -2889,7 +2901,17 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("device_node",
                      &paddle::platform::HostPythonNode::device_node_ptrs)
       .def_readwrite("mem_node",
-                     &paddle::platform::HostPythonNode::mem_node_ptrs);
+                     &paddle::platform::HostPythonNode::mem_node_ptrs)
+      .def("__repr__", [](paddle::platform::HostPythonNode &event_node) {
+        std::stringstream ostr;
+        ostr << "HostPythonNode(name='" << event_node.name << "', type='"
+             << paddle::platform::StringTracerEventType(event_node.type)
+             << "', start_ns=" << event_node.start_ns
+             << ", end_ns=" << event_node.end_ns
+             << ", process_id=" << event_node.process_id
+             << ", thread_id=" << event_node.thread_id << ")";
+        return ostr.str();
+      });
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create",
@@ -2928,28 +2950,22 @@ All parameter, weight, gradient are variables in Paddle.
       }))
       .def("end", [](phi::RecordEvent *event) { event->End(); });
 
-  py::enum_<phi::TracerMemEventType>(m, "TracerMemEventType")
-      .value("Allocate", phi::TracerMemEventType::Allocate)
-      .value("Free", phi::TracerMemEventType::Free)
-      .value("ReservedAllocate", phi::TracerMemEventType::ReservedAllocate)
-      .value("ReservedFree", phi::TracerMemEventType::ReservedFree);
+  py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
+#define BIND_ENUM_ITEM(name) .value(#name, phi::TracerMemEventType::name)
+      FOR_EACH_TRACER_MEM_EVENT_TYPES(BIND_ENUM_ITEM)
+#undef BIND_ENUM_ITEM
+          ;  // NOLINT
 
-  py::enum_<phi::TracerEventType>(m, "TracerEventType")
-      .value("Operator", phi::TracerEventType::Operator)
-      .value("Dataloader", phi::TracerEventType::Dataloader)
-      .value("ProfileStep", phi::TracerEventType::ProfileStep)
-      .value("CudaRuntime", phi::TracerEventType::CudaRuntime)
-      .value("Kernel", phi::TracerEventType::Kernel)
-      .value("Memcpy", phi::TracerEventType::Memcpy)
-      .value("Memset", phi::TracerEventType::Memset)
-      .value("UserDefined", phi::TracerEventType::UserDefined)
-      .value("OperatorInner", phi::TracerEventType::OperatorInner)
-      .value("Forward", phi::TracerEventType::Forward)
-      .value("Backward", phi::TracerEventType::Backward)
-      .value("Optimization", phi::TracerEventType::Optimization)
-      .value("Communication", phi::TracerEventType::Communication)
-      .value("PythonOp", phi::TracerEventType::PythonOp)
-      .value("PythonUserDefined", phi::TracerEventType::PythonUserDefined);
+  py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
+#define BIND_ENUM_ITEM(name) .value(#name, phi::TracerEventType::name)
+      FOR_EACH_TRACER_EVENT_TYPES(BIND_ENUM_ITEM)
+#undef BIND_ENUM_ITEM
+          ;  // NOLINT
+
+  m.def("tracer_event_type_to_string",
+        &paddle::platform::StringTracerEventType);
+  m.def("tracer_mem_event_type_to_string",
+        &paddle::platform::StringTracerMemEventType);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);

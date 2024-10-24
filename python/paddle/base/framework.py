@@ -209,8 +209,21 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
+        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
+        env_pir_enabled = os.environ.get("FLAGS_enable_pir_api")
+
+        if env_pir_enabled is not None:
+            pir_enabled = env_pir_enabled.lower() not in [
+                'n',
+                'no',
+                'f',
+                'false',
+                'off',
+                '0',
+            ]
+            set_flags({"FLAGS_enable_pir_api": pir_enabled})
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]
@@ -218,6 +231,9 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
+        strings.append(
+            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
+        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -775,7 +791,9 @@ def _dygraph_tracer():
 
 def _current_expected_place_():
     global _global_expected_place_
-    if _global_expected_place_ is None:
+    if _global_expected_place_ is None or isinstance(
+        _global_expected_place_, core.Place
+    ):
         if core.is_compiled_with_cuda():
             try:
                 device_count = core.get_cuda_device_count()
@@ -1294,7 +1312,7 @@ def name_struct(prefix=None):
                 for idx in reversed(range(op_num_before, op_num)):
                     op = all_ops[idx]
                     if op.has_attr("struct_name"):
-                        break
+                        continue
                     op.set_str_attr("struct_name", _full_name_struct())
 
             _name_struct = _name_struct.parent()
@@ -2921,7 +2939,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
 
                 >>> # get the number of elements of the Variable
-                >>> y = x.size() # type: ignore
+                >>> y = x.size
 
         """
 
@@ -3136,7 +3154,6 @@ class Operator:
     OP_WITHOUT_KERNEL_SET = {
         "feed",
         "fetch",
-        "recurrent",
         "go",
         "conditional_block",
         "pylayer",
@@ -3145,7 +3162,6 @@ class Operator:
         "recv",
         "listen_and_serv",
         "fl_listen_and_serv",
-        "ncclInit",
         "select",
         "checkpoint_notify",
         "gen_bkcl_id",
@@ -3155,9 +3171,6 @@ class Operator:
         "c_comm_init",
         "c_sync_calc_stream",
         "c_sync_comm_stream",
-        "queue_generator",
-        "dequeue",
-        "enqueue",
         "heter_listen_and_serv",
         "c_wait_comm",
         "c_wait_compute",
@@ -4669,8 +4682,6 @@ class Block:
                 "conditional_block_grad",
                 "pylayer",
                 "pylayer_grad",
-                "recurrent",
-                "recurrent_grad",
                 "while",
                 "while_grad",
             }
@@ -8406,3 +8417,63 @@ def process_type_promotion(program):
                         idx += 1
             idx += 1
     return program
+
+
+# complete the op_role of the new added ops
+@signature_safe_contextmanager
+def auto_complete_op_role(program, op_role):
+    def is_dist_block(block):
+        return any(op.dist_attr is not None for op in block.ops)
+
+    def validate_op_roles(block):
+        for op in block.ops:
+            if op.op_role == -1:
+                raise ValueError(
+                    f"All ops' op_role should be set before the completion. However, {op.name()}'s op_role is -1"
+                )
+
+    def set_op_roles(block, op_role, always_forward_ops):
+        for op in block.ops:
+            # TODO(luchang): Some ops are inserted during the optimization stage, and their op_role should be set to Forward.
+            # Ops like "pd_op.data" are inserted at the beginning of the block.
+            # Currently, we can't set the op_role of these ops during the optimization stage because the parallel graph cutting
+            # requires the op_role to be continuous. In the future, we should set the op_role of these ops during the
+            # optimization stage and eliminate the use of the whitelist.
+            set_op_role = (
+                op_role
+                if op.name() not in always_forward_ops
+                else int(core.op_proto_and_checker_maker.OpRole.Forward)
+            )
+            if op.op_role == -1:
+                op.op_role = set_op_role
+            for sub_block in op.blocks():
+                set_op_roles(sub_block, op_role, always_forward_ops)
+
+    block = program.global_block()
+
+    if paddle.framework.in_pir_mode() and is_dist_block(block):
+        assert op_role != -1, "Can't set op_role to -1 for new added ops"
+        validate_op_roles(block)
+
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode() and is_dist_block(block):
+            always_forward_ops = ["pd_op.data", "builtin.parameter"]
+            set_op_roles(block, op_role, always_forward_ops)
+
+
+# set op when op_role when it is add by apibuilder
+# pir_op_role_guard could not distinguish "always_forward_ops", therefore if
+# there would be always_forward_ops in your region, you should use "auto_complete_op_role"
+@signature_safe_contextmanager
+def pir_op_role_guard(op_role: int - 1) -> Generator[None, None, None]:
+
+    if paddle.framework.in_pir_mode():
+        original_op_rope = pir.get_op_role()
+        pir.set_op_role(op_role)
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode():
+            pir.set_op_role(original_op_rope)

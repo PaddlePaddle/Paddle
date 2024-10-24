@@ -14,6 +14,16 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#include <hip/library_types.h>
+#include <hipblaslt/hipblaslt.h>
+
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -69,6 +79,50 @@ namespace gpu {
   for (index_type i = __index__; __index__ < (num);                         \
        __index__ += __stride__, i = __index__)
 
+template <typename T>
+hipDataType ToHipDataType() {
+  if (std::is_same<T, float>::value) {
+    return HIP_R_32F;
+  } else if (std::is_same<T, double>::value) {
+    return HIP_R_64F;
+  } else if (std::is_same<T, phi::dtype::float16>::value) {
+    return HIP_R_16F;
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    return HIP_R_16BF;
+  } else if (std::is_same<T, int8_t>::value) {
+    return HIP_R_8I;
+  } else if (std::is_same<T, int32_t>::value) {
+    return HIP_R_32I;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "DataType %s is unsupported for ROCm.",
+        DataTypeToString(phi::CppTypeToDataType<T>::Type())));
+  }
+}
+
+template <typename T>
+hipDataType_t ToHipBlasLtDataType() {
+  if (std::is_same<T, float>::value) {
+    return HIP_DATATYPE_R_32F;
+  } else if (std::is_same<T, double>::value) {
+    return HIP_DATATYPE_R_64F;
+  } else if (std::is_same<T, phi::dtype::float16>::value) {
+    return HIP_DATATYPE_R_16F;
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    return HIP_DATATYPE_R_16BF;
+  } else if (std::is_same<T, int8_t>::value) {
+    return HIP_DATATYPE_R_8I;
+  } else if (std::is_same<T, int32_t>::value) {
+    return HIP_DATATYPE_R_32I;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "DataType %s is unsupported for ROCm.",
+        DataTypeToString(phi::CppTypeToDataType<T>::Type())));
+  }
+}
+
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+
+#endif

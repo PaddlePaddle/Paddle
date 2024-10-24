@@ -23,6 +23,7 @@
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/memory/memory.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/lock_guard_ptr.h"
@@ -162,6 +163,7 @@ class RecordedXPUMallocHelper {
     auto result = xpu_malloc(ptr, size);
     if (result == XPU_SUCCESS) {
       cur_size_.fetch_add(size);
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
       return result;
     } else {
       RaiseNonOutOfMemoryError(result);
@@ -183,6 +185,7 @@ class RecordedXPUMallocHelper {
     dev_ctx->Wait();
     xpu_free(ptr);
     cur_size_.fetch_sub(size);
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
   }
 
   inline bool NeedRecord() const { return limit_size_ != 0; }

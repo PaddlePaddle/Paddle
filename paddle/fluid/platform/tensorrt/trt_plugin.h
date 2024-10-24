@@ -22,10 +22,9 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/tensorrt/helper.h"
 #include "paddle/fluid/platform/tensorrt/trt_plugin_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace nvinfer1 {
 class ITensor;

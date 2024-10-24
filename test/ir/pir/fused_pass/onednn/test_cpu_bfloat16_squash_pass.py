@@ -34,13 +34,6 @@ class TestConv2dAddBf16Pass(PassTest):
                 x = paddle.static.data(
                     name='x', shape=[5, 5, 5, 5], dtype='float32'
                 )
-                bias_attr = paddle.ParamAttr(
-                    learning_rate=0.0,
-                    initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0),
-                )
-                bias = paddle.static.create_parameter(
-                    shape=[1], dtype='float32', attr=bias_attr, is_bias=False
-                )
                 w_attr = paddle.ParamAttr(
                     learning_rate=0.0,
                     initializer=paddle.nn.initializer.Normal(mean=0.0, std=2.0),
@@ -58,7 +51,6 @@ class TestConv2dAddBf16Pass(PassTest):
                     weight_attr=w_attr,
                 )
 
-                # out = paddle.add(conv2d(x), bias)
                 out = conv2d(x)
                 out = paddle.assign(out)
                 self.pass_attr_list = [
@@ -129,7 +121,6 @@ class TestFusedConv2dBf16Pass(PassTest):
                     weight_attr=w_attr,
                 )
 
-                # out = paddle.add(conv2d(x), bias)
                 out_conv = conv2d(x)
                 out = paddle.add(out_conv, bias)
                 out = paddle.assign(out)

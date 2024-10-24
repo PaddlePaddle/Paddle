@@ -22,11 +22,11 @@ void Layout::Verify() {
     PADDLE_ENFORCE_NE(
         name_.empty(),
         true,
-        phi::errors::InvalidArgument("The name should not be empty."));
+        ::common::errors::InvalidArgument("The name should not be empty."));
     PADDLE_ENFORCE_NE(
         axes_.empty(),
         true,
-        phi::errors::InvalidArgument("The axes should not be empty."));
+        ::common::errors::InvalidArgument("The axes should not be empty."));
     axis_names_ = "";
     for (auto& axis : axes_) {
       PADDLE_ENFORCE_EQ(
@@ -38,11 +38,11 @@ void Layout::Verify() {
           (axis_name >= 'A' && axis_name <= 'Z') ||
               (axis_name >= 'a' && axis_name <= 'z'),
           true,
-          phi::errors::InvalidArgument("Axis name must be a letter."));
-      PADDLE_ENFORCE_EQ(
-          axis_names_.find(axis_name) == axis_names_.npos,
-          true,
-          phi::errors::InvalidArgument("{} has already existed.", axis_name));
+          ::common::errors::InvalidArgument("Axis name must be a letter."));
+      PADDLE_ENFORCE_EQ(axis_names_.find(axis_name) == axis_names_.npos,
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "{} has already existed.", axis_name));
       axis_names_ += axis_name;
     }
     int offset = 'A' - 'a';
@@ -56,8 +56,8 @@ void Layout::Verify() {
         PADDLE_ENFORCE_NE(
             axis_names_.find(axis_name + offset) == axis_names_.npos,
             true,
-            phi::errors::InvalidArgument("sub-axis {} finds no primal axis",
-                                         axis_name));
+            ::common::errors::InvalidArgument(
+                "sub-axis {} finds no primal axis", axis_name));
       }
     }
   }
@@ -66,7 +66,7 @@ Layout::Layout(const std::string& name) {
   PADDLE_ENFORCE_NE(
       name.empty(),
       true,
-      phi::errors::InvalidArgument("The name should not be empty."));
+      ::common::errors::InvalidArgument("The name should not be empty."));
   int factor = 0;
   std::vector<Var> axes;
   for (char c : name) {

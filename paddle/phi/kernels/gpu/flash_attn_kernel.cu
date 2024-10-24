@@ -451,16 +451,16 @@ void FlashAttnBaseKernel(
     PADDLE_ENFORCE_EQ(
         startend_row_indices->dims().size(),
         4,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "flashmask_attention receive startend_row_indices with dim "
             "[batch_size, num_heads,seq_len, mask_bounds]"));
-    PADDLE_ENFORCE_EQ(
-        startend_row_indices->dims()[3] == 1 ||
-            startend_row_indices->dims()[3] == 2 ||
-            startend_row_indices->dims()[3] == 4,
-        true,
-        phi::errors::InvalidArgument("flashmask_attention startend_row_indices "
-                                     "mask_bounds must in [1,2,4]"));
+    PADDLE_ENFORCE_EQ(startend_row_indices->dims()[3] == 1 ||
+                          startend_row_indices->dims()[3] == 2 ||
+                          startend_row_indices->dims()[3] == 4,
+                      true,
+                      common::errors::InvalidArgument(
+                          "flashmask_attention startend_row_indices "
+                          "mask_bounds must in [1,2,4]"));
     auto flashmask_maxmin_shape = params.startend_row_indices->dims();
     flashmask_maxmin_shape[2] = (flashmask_maxmin_shape[2] + 31) / 32 * 8;
     flashmask_maxmin.set_type(phi::DataType::INT32);

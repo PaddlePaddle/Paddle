@@ -62,7 +62,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
 
     if (out_h > 0 && out_w > 0) {
       // axis are different in static/dynamic mode
-      bool with_dynamic = engine_->with_dynamic_shape();
+      bool with_dynamic = true;
 
       int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
       int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
@@ -81,8 +81,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     // Priority: Input(SizeTensor) > attr(out_h/out_w) > attr(scale)
     nvinfer1::ITensor* outsize_tensor = nullptr;
 #if IS_TRT_VERSION_GE(8200)
-    if (engine_->with_dynamic_shape() &&
-        inputs.find("SizeTensor") != inputs.end()) {
+    if (inputs.find("SizeTensor") != inputs.end()) {
       if (op_desc.Input("SizeTensor").size() >= 2) {
         auto* outsize_h = engine_->GetITensor(op_desc.Input("SizeTensor")[0]);
         auto* outsize_w = engine_->GetITensor(op_desc.Input("SizeTensor")[1]);
@@ -92,9 +91,7 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     }
 #endif
 
-    if (engine_->with_dynamic_shape()) {
-      scales.push_back(1.f);
-    }
+    scales.push_back(1.f);
 
     if (data_layout == phi::DataLayout::kNCHW) {
       scales.push_back(1.f);
@@ -110,23 +107,19 @@ class NearestInterpolateV2OpConverter : public OpConverter {
           common::errors::InvalidArgument("Data layout must be NCHW or NHWC."));
     }
 
-    if (engine_->with_dynamic_shape()) {
-      if (outsize_tensor != nullptr) {
-        std::vector<nvinfer1::ITensor*> outsize_itensors;
-        auto* input_shape = Shape(input);
-        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
+    if (outsize_tensor != nullptr) {
+      std::vector<nvinfer1::ITensor*> outsize_itensors;
+      auto* input_shape = Shape(input);
+      outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 0));
 
-        if (data_layout == phi::DataLayout::kNCHW) {
-          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
-          outsize_itensors.push_back(outsize_tensor);
-        } else if (data_layout == phi::DataLayout::kNHWC) {
-          outsize_itensors.push_back(outsize_tensor);
-          outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
-        }
-        layer->setInput(1, *Concat(outsize_itensors));
-      } else {
-        layer->setScales(scales.data(), scales.size());
+      if (data_layout == phi::DataLayout::kNCHW) {
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 1));
+        outsize_itensors.push_back(outsize_tensor);
+      } else if (data_layout == phi::DataLayout::kNHWC) {
+        outsize_itensors.push_back(outsize_tensor);
+        outsize_itensors.push_back(GetEleTensorOfShape(input_shape, 3));
       }
+      layer->setInput(1, *Concat(outsize_itensors));
     } else {
       layer->setScales(scales.data(), scales.size());
     }

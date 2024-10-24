@@ -545,9 +545,9 @@ void AppendSymbolBindings(const std::vector<symbol::DimExpr>& dim_exprs,
   for (int in_tensor_dim_idx = 0; in_tensor_dim_idx < dim_exprs.size();
        ++in_tensor_dim_idx) {
     const auto& dim_expr = dim_exprs.at(in_tensor_dim_idx);
-    PADDLE_ENFORCE(
-        IsAtomic(dim_expr),
-        phi::errors::InvalidArgument("The type of dim_expr is not atomic"));
+    PADDLE_ENFORCE(IsAtomic(dim_expr),
+                   ::common::errors::InvalidArgument(
+                       "The type of dim_expr is not atomic"));
     if (!dim_expr.isa<std::string>()) continue;
     const auto& sym_name = dim_expr.dyn_cast<std::string>();
     if (symbol_names.find(sym_name) == symbol_names.end()) continue;

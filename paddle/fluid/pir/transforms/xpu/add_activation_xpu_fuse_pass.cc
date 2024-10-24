@@ -63,7 +63,7 @@ class AddActivationPattern : public paddle::drr::DrrPatternBase {
     } else if (act_type == 4) {
       act_op_name = paddle::dialect::GeluOp::name();
     } else {
-      phi::errors::InvalidArgument("Unsupported activation type.");
+      common::errors::InvalidArgument("Unsupported activation type.");
     }
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());

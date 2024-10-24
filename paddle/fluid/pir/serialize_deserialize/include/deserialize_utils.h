@@ -16,6 +16,7 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+#include "float.h"  // NOLINT
 
 #include "paddle/common/layout.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -28,6 +29,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace pir {
@@ -65,6 +67,10 @@ class AttrTypeReader {
   static pir::Attribute ReadPaddleDistAttr(const std::string attr_name,
                                            Json* attr_json,
                                            pir::IrContext* ctx);
+
+  static pir::Type ReadControlFlowType(const std::string type_name,
+                                       Json* type_json,
+                                       pir::IrContext* ctx);
 };
 
 template <typename T>
@@ -76,6 +82,41 @@ template <typename T, typename CPP_T>
 T deserializeAttrFromJson(Json* attr_json, pir::IrContext* ctx) {
   CPP_T data = attr_json->at(DATA).template get<CPP_T>();
   return T::get(ctx, data);
+}
+
+template <>
+pir::FloatAttribute deserializeAttrFromJson<pir::FloatAttribute, float>(
+    Json* attr_json, pir::IrContext* ctx) {
+  if (attr_json->contains(VOID_DATA)) {
+    auto string = attr_json->at(VOID_DATA).template get<std::string>();
+    if (string == "NAN") {
+      return pir::FloatAttribute::get(ctx, std::nanf(""));
+    } else if (string == "INF") {
+      return pir::FloatAttribute::get(ctx, FLT_MAX);
+    } else if (string == "-INF") {
+      return pir::FloatAttribute::get(ctx, FLT_MIN);
+    }
+  }
+
+  float data = attr_json->at(DATA).template get<float>();
+  return pir::FloatAttribute::get(ctx, data);
+}
+
+template <>
+pir::DoubleAttribute deserializeAttrFromJson<pir::DoubleAttribute, double>(
+    Json* attr_json, pir::IrContext* ctx) {
+  if (attr_json->contains(VOID_DATA)) {
+    auto string = attr_json->at(VOID_DATA).template get<std::string>();
+    if (string == "NAN") {
+      return pir::DoubleAttribute::get(ctx, std::nanf(""));
+    } else if (string == "INF") {
+      return pir::DoubleAttribute::get(ctx, DBL_MAX);
+    } else if (string == "-INF") {
+      return pir::DoubleAttribute::get(ctx, DBL_MIN);
+    }
+  }
+  double data = attr_json->at(DATA).template get<double>();
+  return pir::DoubleAttribute::get(ctx, data);
 }
 
 template <>
@@ -201,6 +242,9 @@ pir::Type parseType(Json* type_json) {
   } else if (DECOMPRESS_DIALECT_ID(name.first) ==
              paddle::dialect::DistDialect::name()) {
     return AttrTypeReader::ReadPaddleDistType(name.second, type_json, ctx);
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             pir::ControlFlowDialect::name()) {
+    return AttrTypeReader::ReadControlFlowType(name.second, type_json, ctx);
   } else {
     PADDLE_ENFORCE(
         false,
@@ -303,8 +347,11 @@ paddle::dialect::OperationDistAttribute deserializeOperationDistAttr(
   for (auto& item : results_json) {
     results.push_back(parseAttr(&item));
   }
+
+  Json chunk_id_json = data_json.at(3);
+  int64_t chunk_id = chunk_id_json.get<int64_t>();
   return paddle::dialect::OperationDistAttribute::get(
-      ctx, mesh, operands, results);
+      ctx, mesh, operands, results, chunk_id);
 }
 
 pir::Attribute AttrTypeReader::ReadBuiltInAttr(const std::string attr_name,
@@ -413,7 +460,7 @@ pir::Attribute AttrTypeReader::ReadPaddleDistAttr(const std::string attr_name,
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse paddle dist dialect attr", attr_name));
   }
   return pir::Attribute();
@@ -649,9 +696,30 @@ pir::Type AttrTypeReader::ReadPaddleDistType(const std::string type_name,
         paddle::dialect::DistDenseTensorType>(type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse paddleoperator dialect type",
                        type_name));
+    return pir::Type();
+  }
+}
+
+pir::Type AttrTypeReader::ReadControlFlowType(const std::string type_name,
+                                              Json* type_json,
+                                              pir::IrContext* ctx) {
+  if (type_name == pir::StackType::name()) {
+    VLOG(8) << "Parse StackType ... ";
+    return pir::deserializeTypeFromJson<pir::StackType>(type_json, ctx);
+  } else if (type_name == pir::InletType::name()) {
+    VLOG(8) << "Parse InletType ... ";
+    return pir::deserializeTypeFromJson<pir::InletType>(type_json, ctx);
+  } else if (type_name == pir::OutletType::name()) {
+    VLOG(8) << "Parse OutletType ... ";
+    return pir::deserializeTypeFromJson<pir::OutletType>(type_json, ctx);
+  } else {
+    PADDLE_ENFORCE(
+        false,
+        common::errors::InvalidArgument(
+            "Unknown Type %s for parse controlflow dialect type", type_name));
     return pir::Type();
   }
 }

@@ -28,6 +28,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 namespace pir {
 #define COMPRESS_DIALECT_NAME(attr_template)           \
@@ -53,6 +54,8 @@ class AttrTypeWriter {
   static Json WritePaddleDistType(const pir::Type& type);
 
   static Json WritePaddleDistAttr(const pir::Attribute& attr);
+
+  static Json WriteControlFlowType(const pir::Type& type);
 };
 /** serializeTypeToJson is a template function to serialize
  * a pir type to a json object. a pir type may have value or no value
@@ -101,6 +104,47 @@ Json serializeAttrToJson(const T& attr) {
   Json json_obj;
   json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
   json_obj[DATA] = attr.data();
+  return json_obj;
+}
+
+template <>
+Json serializeAttrToJson<pir::FloatAttribute>(const pir::FloatAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  auto data = attr.data();
+
+  if (std::isnan(data)) {
+    json_obj[VOID_DATA] = "NaN";
+  } else if (std::isinf(data)) {
+    if (static_cast<float>(data) > 0.0) {
+      json_obj[VOID_DATA] = "INF";
+    } else {
+      json_obj[VOID_DATA] = "-INF";
+    }
+  } else {
+    json_obj[DATA] = data;
+  }
+  return json_obj;
+}
+
+template <>
+Json serializeAttrToJson<pir::DoubleAttribute>(
+    const pir::DoubleAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  auto data = attr.data();
+
+  if (std::isnan(data)) {
+    json_obj[VOID_DATA] = "NaN";
+  } else if (std::isinf(data)) {
+    if (static_cast<double>(data) > 0.0) {
+      json_obj[VOID_DATA] = "INF";
+    } else if (static_cast<double>(data) < 0.0) {
+      json_obj[VOID_DATA] = "-INF";
+    }
+  } else {
+    json_obj[DATA] = data;
+  }
   return json_obj;
 }
 
@@ -204,6 +248,9 @@ Json writeType(const pir::Type& type) {
   } else if (type.dialect().name() == paddle::dialect::DistDialect::name()) {
     VLOG(6) << "write PaddleDistType ... ";
     return AttrTypeWriter::WritePaddleDistType(type);
+  } else if (type.dialect().name() == pir::ControlFlowDialect::name()) {
+    VLOG(6) << "write ControlFlowDialect ... ";
+    return AttrTypeWriter::WriteControlFlowType(type);
   } else {
     PADDLE_ENFORCE(
         false,
@@ -303,6 +350,7 @@ Json serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
     results_json.push_back(writeAttr(attr.results().at(i)));
   }
   content.push_back(results_json);
+  content.push_back(attr.chunk_id());
 
   json_obj[DATA] = content;
   return json_obj;
@@ -572,6 +620,10 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write DenseTensorType ... ";
     return pir::serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
         type.dyn_cast<pir::DenseTensorType>());
+  } else if (type.isa<pir::UndefinedType>()) {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Unexpected type pir::UndefinedType, "
+        "it should be replace with a concrete type when ArrayWrite."));
   } else {
     PADDLE_ENFORCE(false,
                    common::errors::InvalidArgument(
@@ -649,7 +701,7 @@ Json AttrTypeWriter::WritePaddleDistType(const pir::Type& type) {
         type.dyn_cast<paddle::dialect::DistDenseTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write paddle.dist_dialect type"));
     return Json::object();
   }
@@ -671,10 +723,32 @@ Json AttrTypeWriter::WritePaddleDistAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s when write paddle.operatordialect attr"));
   }
   return Json::object();
+}
+
+Json AttrTypeWriter::WriteControlFlowType(const pir::Type& type) {
+  Json type_json = Json::object();
+  if (type.isa<pir::StackType>()) {
+    VLOG(8) << "Write StackType ... ";
+    return pir::serializeTypeToJson<pir::StackType>(
+        type.dyn_cast<pir::StackType>());
+  } else if (type.isa<pir::InletType>()) {
+    VLOG(8) << "Write InletType ... ";
+    return pir::serializeTypeToJson<pir::InletType>(
+        type.dyn_cast<pir::InletType>());
+  } else if (type.isa<pir::OutletType>()) {
+    VLOG(8) << "Write OutletType ... ";
+    return pir::serializeTypeToJson<pir::OutletType>(
+        type.dyn_cast<pir::OutletType>());
+  } else {
+    PADDLE_ENFORCE(false,
+                   common::errors::InvalidArgument(
+                       "Unknown Type when write controlflow dialect type"));
+  }
+  return type_json;
 }
 
 }  // namespace pir

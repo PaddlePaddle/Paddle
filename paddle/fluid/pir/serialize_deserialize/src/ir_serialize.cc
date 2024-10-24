@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
 #include "paddle/pir/include/core/dialect.h"
@@ -20,6 +21,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
+COMMON_DECLARE_bool(save_cf_stack_op);
 namespace pir {
 
 Json ProgramWriter::GetProgramJson(const pir::Program* program) {
@@ -99,29 +101,31 @@ Json ProgramWriter::WriteBlock(pir::Block* block,
   Json ops_json = Json::array();
 
   /* delete cf.stack_create / cf.tuple_push */
-  std::vector<pir::Operation*> delete_ops;
-  for (auto op : block->ops()) {
-    if (op->isa<pir::StackCreateOp>()) {
-      delete_ops.push_back(op);
+  if (!FLAGS_save_cf_stack_op) {
+    std::vector<pir::Operation*> delete_ops;
+    for (auto op : block->ops()) {
+      if (op->isa<pir::StackCreateOp>()) {
+        delete_ops.push_back(op);
+      }
     }
+    VLOG(6) << "program before delete stack op :" << *(block->parent_program());
+    for (auto op : delete_ops) {
+      VLOG(0) << "Delete cf.stack_create / cf.tuple_push.";
+      auto stack_op = op->dyn_cast<pir::StackCreateOp>();
+      if (stack_op.inlet().HasOneUse()) {
+        auto tuple_push_op = stack_op.tuple_push_op();
+        auto block_in = tuple_push_op->GetParent();
+        block_in->erase(*tuple_push_op);
+      }
+      if (stack_op.outlet().HasOneUse()) {
+        auto tuple_pop_op = stack_op.tuple_pop_op();
+        auto block_in = tuple_pop_op->GetParent();
+        block_in->erase(*tuple_pop_op);
+      }
+      block->erase(*op);
+    }
+    VLOG(6) << "program after delete stack op :" << *(block->parent_program());
   }
-  VLOG(6) << "program before delete stack op :" << *(block->parent_program());
-  for (auto op : delete_ops) {
-    VLOG(0) << "Delete cf.stack_create / cf.tuple_push.";
-    auto stack_op = op->dyn_cast<pir::StackCreateOp>();
-    if (stack_op.inlet().HasOneUse()) {
-      auto tuple_push_op = stack_op.tuple_push_op();
-      auto block_in = tuple_push_op->GetParent();
-      block_in->erase(*tuple_push_op);
-    }
-    if (stack_op.outlet().HasOneUse()) {
-      auto tuple_pop_op = stack_op.tuple_pop_op();
-      auto block_in = tuple_pop_op->GetParent();
-      block_in->erase(*tuple_pop_op);
-    }
-    block->erase(*op);
-  }
-  VLOG(6) << "program after delete stack op :" << *(block->parent_program());
   for (auto op : block->ops()) {
     auto op_json = WriteOp(*op);
     ops_json.emplace_back(op_json);
@@ -187,8 +191,12 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "trainable",
                                             "op_callstack" /*no need*/};
   std::vector<std::string> DistAttrsNameList = GetOpDistAttr();
+  std::vector<std::string> QuantAttrsNameList = GetOpQuantAttr();
   AttrsNameList.insert(
       AttrsNameList.end(), DistAttrsNameList.begin(), DistAttrsNameList.end());
+  AttrsNameList.insert(AttrsNameList.end(),
+                       QuantAttrsNameList.begin(),
+                       QuantAttrsNameList.end());
   for (auto attr : op.attributes()) {
     auto attr_name = attr.first;
     auto it = std::find(AttrsNameList.begin(), AttrsNameList.end(), attr_name);
@@ -240,6 +248,15 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
     }
   }
   op_json[DIST_ATTRS] = dist_attrs_json;
+
+  Json quant_attrs_json = Json::array();
+  for (auto key : GetOpQuantAttr()) {
+    if (op.attributes().count(key) > 0) {
+      quant_attrs_json.emplace_back(
+          WriteAttribute(key, op.attributes().at(key)));
+    }
+  }
+  op_json[QUANT_ATTRS] = quant_attrs_json;
 
   Json other_attrs_json = Json::array();
   OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
@@ -329,6 +346,11 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
       }
     }
     for (auto key : GetOpDistAttr()) {
+      if (attr_map.count(key) > 0) {
+        attrs_json.emplace_back(WriteAttribute(key, attr_map.at(key)));
+      }
+    }
+    for (auto key : GetOpQuantAttr()) {
       if (attr_map.count(key) > 0) {
         attrs_json.emplace_back(WriteAttribute(key, attr_map.at(key)));
       }

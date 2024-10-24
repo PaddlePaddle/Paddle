@@ -57,22 +57,16 @@ class MergeLayernormOpConverter : public OpConverter {
         engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     nvinfer1::ILayer* merge_layernorm_layer = nullptr;
-    if (engine_->with_dynamic_shape()) {
-      plugin::MergeLayernormPluginDynamic* plugin =
-          new plugin::MergeLayernormPluginDynamic(
-              static_cast<const float*>(bias_weight.get().values),
-              bias_weight.get().count,
-              static_cast<const float*>(scale_weight.get().values),
-              scale_weight.get().count,
-              eps,
-              begin_norm_axis,
-              with_fp16);
-      merge_layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
-    } else {
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "Currently, MergeLayernorm TRT Plugin only support dynamic shape "
-          "mode."));
-    }
+    plugin::MergeLayernormPluginDynamic* plugin =
+        new plugin::MergeLayernormPluginDynamic(
+            static_cast<const float*>(bias_weight.get().values),
+            bias_weight.get().count,
+            static_cast<const float*>(scale_weight.get().values),
+            scale_weight.get().count,
+            eps,
+            begin_norm_axis,
+            with_fp16);
+    merge_layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     auto output_name = op_desc.Output("Y").front();
     ReplenishLayerAndOutput(
         merge_layernorm_layer, "merge_layernorm", {output_name}, test_mode);

@@ -48,7 +48,7 @@ void ExternFunctionEmitterRegistry::Register(const ExternFuncID& name,
   PADDLE_ENFORCE_EQ(
       !x.empty(),
       true,
-      phi::errors::InvalidArgument("Extern Function name is empty."));
+      ::common::errors::InvalidArgument("Extern Function name is empty."));
   data_[name] = x;
 }
 
@@ -73,8 +73,8 @@ const FunctionProto& ExternFunctionEmitter::func_proto() const {
   auto* proto = ExternFunctionProtoRegistry::Global().Lookup(func_name());
   PADDLE_ENFORCE_NOT_NULL(
       proto,
-      phi::errors::InvalidArgument("No prototype of function [" +
-                                   std::string(func_name()) + "]"));
+      ::common::errors::InvalidArgument("No prototype of function [" +
+                                        std::string(func_name()) + "]"));
   return *proto;
 }
 

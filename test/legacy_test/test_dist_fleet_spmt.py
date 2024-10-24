@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import unittest
 
 import paddle
 from paddle import base
 
 paddle.enable_static()
-os.environ['FLAGS_enable_pir_api'] = '0'
 
 # For Net
 base_lr = 0.2

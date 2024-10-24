@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import ctypes
 import errno
 import fnmatch
@@ -26,6 +28,7 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
@@ -291,7 +294,7 @@ class InstallLib(install_lib):
             self.byte_compile(outfiles)
 
 
-def git_commit():
+def git_commit() -> str:
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
         git_commit = (
@@ -330,25 +333,25 @@ def _mkdir_p(dir_str):
         raise RuntimeError("Failed to create build folder")
 
 
-def get_major():
+def get_major() -> int:
     return int(_get_version_detail(0))
 
 
-def get_minor():
+def get_minor() -> int:
     return int(_get_version_detail(1))
 
 
-def get_patch():
+def get_patch() -> int:
     return str(_get_version_detail(2))
 
 
-def get_nccl_version():
+def get_nccl_version() -> int:
     if env_dict.get("WITH_NCCL") == 'ON':
         return int(env_dict.get("NCCL_VERSION"))
     return 0
 
 
-def get_cuda_version():
+def get_cuda_version() -> str:
     with_gpu = env_dict.get("WITH_GPU")
     if with_gpu == 'ON':
         return env_dict.get("CUDA_VERSION")
@@ -356,7 +359,7 @@ def get_cuda_version():
         return 'False'
 
 
-def get_cudnn_version():
+def get_cudnn_version() -> str:
     with_gpu = env_dict.get("WITH_GPU")
     if with_gpu == 'ON':
         temp_cudnn_version = ''
@@ -380,7 +383,7 @@ def get_cudnn_version():
         return 'False'
 
 
-def get_xpu_xre_version():
+def get_xpu_xre_version() -> str:
     with_xpu = env_dict.get("WITH_XPU")
     if with_xpu == 'ON':
         return env_dict.get("XPU_XRE_BASE_VERSION")
@@ -388,7 +391,7 @@ def get_xpu_xre_version():
         return 'False'
 
 
-def get_xpu_xccl_version():
+def get_xpu_xccl_version() -> str:
     with_xpu_xccl = env_dict.get("WITH_XPU_BKCL")
     if with_xpu_xccl == 'ON':
         return env_dict.get("XPU_XCCL_BASE_VERSION")
@@ -396,7 +399,7 @@ def get_xpu_xccl_version():
         return 'False'
 
 
-def get_xpu_xhpc_version():
+def get_xpu_xhpc_version() -> str:
     with_xpu_xhpc = env_dict.get("WITH_XPU")
     if with_xpu_xhpc == 'ON':
         return env_dict.get("XPU_XHPC_BASE_DATE")
@@ -404,7 +407,7 @@ def get_xpu_xhpc_version():
         return 'False'
 
 
-def is_tagged():
+def is_tagged() -> bool:
     try:
         cmd = [
             'git',
@@ -432,10 +435,60 @@ def is_tagged():
         return False
 
 
-def get_cinn_version():
+def get_cinn_version() -> str:
     if env_dict.get("WITH_CINN") != 'ON':
         return "False"
     return "0.3.0"
+
+
+def get_cuda_archs() -> list[int]:
+    compiled_cuda_archs = env_dict.get("COMPILED_CUDA_ARCHS")
+    if isinstance(compiled_cuda_archs, str):
+        compiled_cuda_archs = re.findall(r'\d+', compiled_cuda_archs)
+        return [int(arch) for arch in compiled_cuda_archs]
+    else:
+        return []
+
+
+def get_tensorrt_version() -> str:
+
+    def find_libnvinfer():
+        """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
+
+        trt_infer_rt_path = env_dict.get("TR_INFER_RT")
+        tensorrt_library_path = env_dict.get("TENSORRT_LIBRARY_DIR")
+
+        libnvinfer_file = os.path.join(tensorrt_library_path, trt_infer_rt_path)
+
+        if os.path.exists(libnvinfer_file):
+            return libnvinfer_file
+        else:
+            print(f"{libnvinfer_file} not found.")
+        return None
+
+    try:
+        libnvinfer_path = find_libnvinfer()
+        if not libnvinfer_path:
+            return None
+
+        trt = ctypes.CDLL(libnvinfer_path)
+        get_version = trt.getInferLibVersion
+        get_version.restype = ctypes.c_int
+        version = get_version()
+        version_str = str(version)
+        major = version_str[:1] if len(version_str) > 1 else version_str
+        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
+        patch = version_str[3:] if len(version_str) > 3 else ''
+
+        minor = minor if minor else '0'
+        patch = patch if patch else '0'
+        version_str = f"{major}.{minor}.{patch}"
+
+        return version_str
+
+    except Exception as e:
+        print(f"Error while getting TensorRT version: {e}")
+        return None
 
 
 def write_version_py(filename='paddle/version/__init__.py'):
@@ -452,14 +505,16 @@ cudnn_version    = '%(cudnn)s'
 xpu_xre_version  = '%(xpu_xre)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
-is_tagged          = %(is_tagged)s
+is_tagged        = %(is_tagged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
-cinn_version      = '%(cinn)s'
-with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
-with_pip_tensorrt ='%(with_pip_tensorrt)s'
+cinn_version     = '%(cinn)s'
+tensorrt_version = '%(tensorrt)s'
+with_pip_cuda_libraries = '%(with_pip_cuda_libraries)s'
+with_pip_tensorrt       = '%(with_pip_tensorrt)s'
+compiled_cuda_archs     = %(compiled_cuda_archs)s
 
-__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc', 'tensorrt', 'cuda_archs']
 
 def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -538,6 +593,8 @@ def show() -> None:
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
+    print('tensorrt_version:', tensorrt_version)
+    print('cuda_archs:', compiled_cuda_archs)
 
 def mkl() -> str:
     return with_mkl
@@ -681,6 +738,42 @@ def cinn() -> str:
 
     """
     return cinn_version
+
+def tensorrt() -> str:
+    """Get TensorRT version of paddle package.
+
+    Returns:
+        string: Return the version information of TensorRT. If paddle package is not compiled with TensorRT, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.tensorrt()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            False
+
+    """
+    return tensorrt_version
+
+def cuda_archs():
+    """Get compiled cuda archs of paddle package.
+
+    Returns:
+        list[int]: Return the compiled cuda archs if with gpu. If paddle package is not compiled with gpu, it will return "".
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.cuda_archs()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            [86]
+
+    """
+    return compiled_cuda_archs
 '''
     commit = git_commit()
 
@@ -711,10 +804,12 @@ def cinn() -> str:
                 'is_tagged': is_tagged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
                 'cinn': get_cinn_version(),
+                'tensorrt': get_tensorrt_version(),
                 'with_pip_cuda_libraries': env_dict.get(
                     "WITH_PIP_CUDA_LIBRARIES"
                 ),
                 'with_pip_tensorrt': env_dict.get("WITH_PIP_TENSORRT"),
+                'compiled_cuda_archs': get_cuda_archs(),
             }
         )
 
@@ -957,6 +1052,7 @@ def get_setup_requires():
                 or '<"3.7"' in setup_requires_i
                 or '<="3.7"' in setup_requires_i
                 or '<"3.8"' in setup_requires_i
+                or setup_requires_i.strip().endswith('[build]')
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
@@ -969,47 +1065,6 @@ def get_setup_requires():
         )
 
 
-def find_libnvinfer():
-
-    trt_infer_rt_path = env_dict.get("TR_INFER_RT")
-    tensorrt_library_path = env_dict.get("TENSORRT_LIBRARY_DIR")
-
-    libnvinfer_file = os.path.join(tensorrt_library_path, trt_infer_rt_path)
-
-    if os.path.exists(libnvinfer_file):
-        return libnvinfer_file
-    else:
-        print(f"{libnvinfer_file} not found.")
-    return None
-
-
-def get_tensorrt_version():
-    try:
-
-        libnvinfer_path = find_libnvinfer()
-        if not libnvinfer_path:
-            return None
-
-        trt = ctypes.CDLL(libnvinfer_path)
-        get_version = trt.getInferLibVersion
-        get_version.restype = ctypes.c_int
-        version = get_version()
-        version_str = str(version)
-        major = version_str[:1] if len(version_str) > 1 else version_str
-        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
-        patch = version_str[3:] if len(version_str) > 3 else ''
-
-        minor = minor if minor else '0'
-        patch = patch if patch else '0'
-        version_str = f"{major}.{minor}.{patch}"
-
-        return version_str
-
-    except Exception as e:
-        print(f"Error while getting TensorRT version: {e}")
-        return None
-
-
 def get_paddle_extra_install_requirements():
     paddle_cuda_requires = []
     paddle_tensorrt_requires = []
@@ -1020,7 +1075,7 @@ def get_paddle_extra_install_requirements():
                 "V11": (
                     "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu11==8.9.6.50; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
@@ -1140,6 +1195,49 @@ def get_cinn_config_jsons():
         json = json[prefix_len:]
         json_path_list += [json]
     return json_path_list
+
+
+def get_typing_libs_packages(paddle_binary_dir):
+    """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
+    e.g.
+        'paddle._typing.libs.libpaddle.cinn'
+        'paddle._typing.libs.libpaddle.pir'
+        'paddle._typing.libs.libpaddle.eager'
+        'paddle._typing.libs.libpaddle.eager.ops'
+    """
+    base_dir = Path(paddle_binary_dir) / 'python'
+    libs_dir = base_dir / 'paddle' / '_typing' / 'libs' / 'libpaddle'
+    return [
+        '.'.join(str(Path(root).relative_to(base_dir)).split(os.sep))
+        for root, _, _ in os.walk(libs_dir)
+    ]
+
+
+def extend_type_hints_package_data(packages, package_data, paddle_binary_dir):
+    typing_libs_packages = get_typing_libs_packages(paddle_binary_dir)
+
+    # update packages
+    packages += typing_libs_packages
+
+    # update package_data
+    type_hints_files = {
+        'paddle': ['py.typed', '*.pyi'],
+        'paddle.framework': ['*.pyi'],
+        'paddle.base': ['*.pyi'],
+        'paddle.tensor': ['tensor.pyi'],
+        'paddle._typing': ['*.pyi'],
+        'paddle._typing.libs': ['*.pyi', '*.md'],
+    }
+
+    for libpaddle_module in typing_libs_packages:
+        type_hints_files[libpaddle_module] = ['*.pyi']
+
+    for pkg, files in type_hints_files.items():
+        if pkg not in package_data:
+            package_data[pkg] = []
+        package_data[pkg] += files
+
+    return packages, package_data
 
 
 def get_package_data_and_package_dir():
@@ -1375,6 +1473,8 @@ def get_package_data_and_package_dir():
         package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
         shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XPUDNN_LIB_NAME")]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -1512,21 +1612,6 @@ def get_package_data_and_package_dir():
     elif sys.platform == 'darwin':
         ext_modules = []
 
-    # type hints
-    package_data['paddle'] = [*package_data.get('paddle', []), 'py.typed']
-    package_data['paddle.framework'] = [
-        *package_data.get('paddle.framework', []),
-        '*.pyi',
-    ]
-    package_data['paddle.base'] = [
-        *package_data.get('paddle.base', []),
-        '*.pyi',
-    ]
-    package_data['paddle.tensor'] = [
-        *package_data.get('paddle.tensor', []),
-        'tensor.pyi',
-    ]
-
     return package_data, package_dir, ext_modules
 
 
@@ -1621,6 +1706,14 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # drr init headers
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape',
+                recursive=True,
+            )
+        )
         + list(  # operator init headers
             find_files(
                 '*.h',
@@ -1657,6 +1750,50 @@ def get_headers():
             find_files(
                 'op_yaml_info_util.h',
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # op yaml parser interface headers
+            find_files(
+                'op_yaml_info_parser.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # pir op utils interface headers
+            find_files(
+                'utils.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(  # ir translator interface headers
+            find_files(
+                'op_compat_info.h',
+                paddle_source_dir + '/paddle/fluid/ir_adaptor/translator/',
+            )
+        )
+        + list(
+            find_files(
+                'infer_symbolic_shape.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape',
+            )
+        )
+        + list(
+            find_files(
+                'vjp.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(
+            find_files(
+                'lexer.h',
+                paddle_source_dir + '/paddle/pir/src/core/parser',
+            )
+        )
+        + list(
+            find_files(
+                'token.h',
+                paddle_source_dir + '/paddle/pir/src/core/parser',
             )
         )
     )
@@ -1799,6 +1936,7 @@ def get_setup_parameters():
         'paddle.jit.sot.opcode_translator.executor',
         'paddle.jit.sot.opcode_translator.executor.variables',
         'paddle.jit.sot.opcode_translator.instruction_utils',
+        'paddle.jit.sot.profiler',
         'paddle.jit.sot.symbolic',
         'paddle.jit.sot.utils',
         'paddle.inference',
@@ -1886,6 +2024,7 @@ def get_setup_parameters():
         'paddle.pir',
         'paddle.decomposition',
         'paddle._typing',
+        'paddle._typing.libs',
     ]
 
     paddle_bins = ''
@@ -2016,10 +2155,11 @@ def check_submodules():
             sys.exit(1)
 
 
-def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
-    print('-' * 2, 'Generate stub file tensor.pyi ... ')
+def generate_stub_files(paddle_binary_dir, paddle_source_dir):
     script_path = paddle_source_dir + '/tools/'
     sys.path.append(script_path)
+
+    print('-' * 2, 'Generate stub file tensor.pyi ... ')
     import gen_tensor_stub
 
     gen_tensor_stub.generate_stub_file(
@@ -2033,6 +2173,40 @@ def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
         paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
     )
     print('-' * 2, 'End Generate stub file tensor.pyi ... ')
+
+    print('-' * 2, 'Generate stub file for python binding APIs ... ')
+    import gen_pybind11_stub
+
+    gen_pybind11_stub.generate_stub_file(
+        output_dir=str(Path(paddle_binary_dir) / 'python/paddle/_typing/libs/'),
+        module_name='paddle.base.libpaddle',
+        ignore_all_errors=True,
+        ops_yaml=[
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/ops.yaml;paddle.base.libpaddle.eager.ops",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/ops.yaml;paddle.base.libpaddle.pir.ops",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/sparse_ops.yaml;paddle.base.libpaddle.eager.ops;sparse",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/sparse_ops.yaml;paddle.base.libpaddle.pir.ops;sparse",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.eager.ops;strings",
+            paddle_source_dir
+            + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
+        ],
+    )
+
+    libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'
+    if Path(libpaddle_dst).exists():
+        shutil.rmtree(libpaddle_dst)
+
+    shutil.copytree(
+        paddle_binary_dir + '/python/paddle/_typing/libs/libpaddle',
+        libpaddle_dst,
+    )
+
+    print('-' * 2, 'End Generate stub for python binding APIs ... ')
 
 
 def main():
@@ -2123,7 +2297,11 @@ def main():
         'on',
         '1',
     ]:
-        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+        generate_stub_files(paddle_binary_dir, paddle_source_dir)
+    # package stub files
+    packages, package_data = extend_type_hints_package_data(
+        packages, package_data, paddle_binary_dir
+    )
 
     setup(
         name=package_name,

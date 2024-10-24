@@ -51,6 +51,13 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     endif()
   endfunction()
 
+  function(download_int8_data_without_verify_pir install_dir data_file)
+    if(NOT EXISTS ${install_dir}/${data_file})
+      inference_download_and_uncompress_without_verify(
+        ${install_dir} ${INFERENCE_URL}/int8/pir ${data_file})
+    endif()
+  endfunction()
+
   function(download_bfloat16_data install_dir data_file check_sum)
     if(NOT EXISTS ${install_dir}/${data_file})
       inference_download_and_uncompress(
@@ -200,7 +207,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --batch_size=50
       --enable_bf16=true
       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
-      --iterations=2)
+      --iterations=2
+      --with_accuracy_layer=false)
   endfunction()
 
   function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME
@@ -338,9 +346,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       test_analyzer_seq_pool1_fuse_compare_zero_copy ${SEQ_POOL1_INSTALL_DIR}
       analyzer_seq_pool1_fuse_compare_zero_copy_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(
-      test_analyzer_seq_pool1_fuse_statis ${SEQ_POOL1_INSTALL_DIR}
-      analyzer_seq_pool1_fuse_statis_tester.cc EXTRA_DEPS common)
-    inference_analysis_api_test(
       test_analyzer_seq_pool1_profile ${SEQ_POOL1_INSTALL_DIR}
       analyzer_seq_pool1_profile_tester.cc EXTRA_DEPS common)
     if(NOT WIN32)
@@ -348,8 +353,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_analyzer_seq_pool1 PROPERTIES TIMEOUT 120)
       set_tests_properties(test_analyzer_seq_pool1_fuse_compare_zero_copy
-                           PROPERTIES TIMEOUT 120)
-      set_tests_properties(test_analyzer_seq_pool1_fuse_statis
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_analyzer_seq_pool1_profile PROPERTIES TIMEOUT
                                                                       120)
@@ -384,60 +387,53 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz"
                   73beea65abda2edb61c1662cd3180c62)
   if(WITH_GPU)
-    inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR}
-                                analyzer_ernie_tester.cc EXTRA_DEPS common)
     inference_analysis_api_test(gpu_ernie_half_test ${ERNIE_INSTALL_DIR}
                                 gpu_ernie_half_test.cc EXTRA_DEPS common)
     set_tests_properties(gpu_ernie_half_test PROPERTIES TIMEOUT 60)
   endif()
-  inference_analysis_api_int8_test(
-    test_analyzer_ernie_int8 ${ERNIE_INSTALL_DIR} analyzer_ernie_int8_tester.cc
-    EXTRA_DEPS common)
 
-  # Ernie large
-  set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
+  # text_classification
+  set(TEXT_CLASSIFICATION_INSTALL_DIR
+      "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
   download_model_and_data(
-    ${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz"
-    af7715245ed32cc77374625d4c80f7ef "Ernie_large_data.txt.tar.gz"
-    edb2113eec93783cad56ed76d47ba57f)
-  download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz"
-                  1facda98eef1085dc9d435ebf3f23a73)
-  inference_analysis_test(
-    test_analyzer_ernie_large
-    SRCS
-    analyzer_ernie_tester.cc
-    EXTRA_DEPS
-    paddle_inference_shared
-    common
-    ARGS
-    --infer_model=${ERNIE_INSTALL_DIR}/model
-    --infer_data=${ERNIE_INSTALL_DIR}/data.txt
-    --refer_result=${ERNIE_INSTALL_DIR}/result.txt
-    --ernie_large=true)
-  if(NOT WIN32
-     AND NOT APPLE
-     AND TEST test_analyzer_ernie_large)
-    set_tests_properties(test_analyzer_ernie_large
-                         PROPERTIES TIMEOUT 150 LABELS "RUN_TYPE=NIGHTLY")
-  endif()
-  if(WIN32 AND TEST test_analyzer_ernie_large)
-    set_tests_properties(test_analyzer_ernie_large PROPERTIES TIMEOUT 200)
-  endif()
+    ${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz"
+    3f0f440313ca50e26184e65ffd5809ab "text_classification_data.txt.tar.gz"
+    36ae620020cc3377f45ed330dd36238f)
+  inference_analysis_api_test(
+    test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR}
+    analyzer_text_classification_tester.cc EXTRA_DEPS common)
 
-  # densebox
-  set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
-  download_data_without_verify(${DENSEBOX_INSTALL_DIR} "densebox.tar.gz")
+  # mobilenet
+  set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_pir")
+  if(NOT EXISTS ${MOBILENET_INSTALL_DIR}/mobilenetv1.tar.gz)
+    inference_download_and_uncompress_without_verify(
+      ${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/"
+      "inference-vis-demos/mobilenetv1.tar.gz")
+  endif()
+  inference_analysis_api_test(
+    test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR}
+    analyzer_vis_tester.cc EXTRA_DEPS common)
+  set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
+
   inference_analysis_test(
-    test_analyzer_detect_functional_mkldnn
+    test_analyzer_capi_exp_pd_tensor
     SRCS
-    analyzer_detect_functional_mkldnn_tester.cc
+    analyzer_capi_exp_pd_tensor_tester.cc
     EXTRA_DEPS
-    common
-    paddle_inference_shared
+    paddle_inference_c_shared
     ARGS
-    --infer_model=${DENSEBOX_INSTALL_DIR}/model
-    --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
-    --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
+    --infer_model=${MOBILENET_INSTALL_DIR}/model)
+
+  if(NOT APPLE AND NOT WIN32)
+    inference_analysis_test(
+      test_analyzer_capi_exp_pd_threads
+      SRCS
+      analyzer_capi_exp_pd_threads_tester.cc
+      EXTRA_DEPS
+      paddle_inference_c_shared
+      ARGS
+      --infer_model=${MOBILENET_INSTALL_DIR}/model)
+  endif()
 
   if(WITH_ONEDNN)
 
@@ -456,61 +452,41 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
                                       ${IMAGENET_DATA_ARCHIVE})
 
     # build test binary to be used in subsequent tests
-    set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
-    set(INT8_IMG_CLASS_TEST_APP_SRC
-        "analyzer_int8_image_classification_tester.cc")
-    inference_analysis_api_test_build(${INT8_IMG_CLASS_TEST_APP}
-                                      ${INT8_IMG_CLASS_TEST_APP_SRC})
 
-    # resnet50 int8
-    set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50")
-    download_int8_data_without_verify(${INT8_RESNET50_MODEL_DIR}
-                                      "resnet50_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run(
-      test_analyzer_int8_resnet50 ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
+    # new resnet50 int8
+    set(INT8_RESNET50_MODEL_DIR "${INT8_DATA_DIR}/resnet50_pir")
+    download_int8_data_without_verify_pir(${INT8_RESNET50_MODEL_DIR}
+                                          "resnet50_int8_model.tar.gz")
 
     # mobilenetv1 int8
-    set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
-    download_int8_data_without_verify(${INT8_MOBILENETV1_MODEL_DIR}
-                                      "mobilenetv1_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run(
-      test_analyzer_int8_mobilenetv1 ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
+    set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1_pir")
+    download_int8_data_without_verify_pir(${INT8_MOBILENETV1_MODEL_DIR}
+                                          "mobilenetv1_int8_model.tar.gz")
 
     # mobilenetv2 int8
-    set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
-    download_int8_data_without_verify(${INT8_MOBILENETV2_MODEL_DIR}
-                                      "mobilenet_v2_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run(
-      test_analyzer_int8_mobilenetv2 ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
+    set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2_pir")
+    download_int8_data_without_verify_pir(${INT8_MOBILENETV2_MODEL_DIR}
+                                          "mobilenet_v2_int8_model.tar.gz")
 
     # resnet101 int8
     set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
     download_int8_data_without_verify(${INT8_RESNET101_MODEL_DIR}
                                       "Res101_int8_model.tar.gz")
-    #   inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # vgg16 int8
     set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
     download_int8_data_without_verify(${INT8_VGG16_MODEL_DIR}
                                       "VGG16_int8_model.tar.gz")
-    #  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # vgg19 int8
     set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
     download_int8_data_without_verify(${INT8_VGG19_MODEL_DIR}
                                       "VGG19_int8_model.tar.gz")
-    #   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
     # googlenet int8
-    set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-    download_int8_data_without_verify(${INT8_GOOGLENET_MODEL_DIR}
-                                      "GoogleNet_int8_model.tar.gz")
-    inference_analysis_api_int8_test_run_custom_warmup_batch_size(
-      test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP}
-      ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
+    set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet_pir")
+    download_int8_data_without_verify_pir(${INT8_GOOGLENET_MODEL_DIR}
+                                          "GoogleNet_int8_model.tar.gz")
 
     # mobilenetv3_large_x1_0 int8
     set(INT8_MOBILENETV3_LARGE_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv3_large")
@@ -522,19 +498,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/inference/"
         ${INT8_MOBILENETV3_FILE_NAME})
     endif()
-    inference_analysis_test_run(
-      test_analyzer_int8_mobilenetv3_large
-      COMMAND
-      ${INT8_IMG_CLASS_TEST_APP}
-      ARGS
-      --infer_model=${INT8_MOBILENETV3_LARGE_MODEL_DIR}/MobileNetV3_large_x1_0_infer
-      --infer_data=${IMAGENET_DATA_PATH}
-      --warmup_batch_size=50
-      --batch_size=1
-      --enable_int8_ptq=true
-      --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
-      --iterations=100
-      --with_accuracy_layer=false)
 
     ### BFLOAT16 tests
 
@@ -581,78 +544,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
     ### Object detection models
     set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
-    set(INT8_OBJ_DETECT_TEST_APP "test_analyzer_int8_object_detection")
-    set(INT8_OBJ_DETECT_TEST_APP_SRC "analyzer_int8_object_detection_tester.cc")
 
     # download dataset if necessary
     download_int8_data_without_verify(${INT8_DATA_DIR}
                                       "pascalvoc_val_head_300.tar.gz")
-
-    # build test binary to be used in subsequent tests
-    inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP}
-                                      ${INT8_OBJ_DETECT_TEST_APP_SRC})
-
-    # mobilenet-ssd int8
-    set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
-    download_int8_data_without_verify(${INT8_MOBILENET_SSD_MODEL_DIR}
-                                      "mobilenet_ssd_int8_model.tar.gz")
-    inference_analysis_api_object_dection_int8_test_run(
-      test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP}
-      ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
-
-    ### Lexcial analysis GRU model
-    set(GRU_PATH "${INFERENCE_DEMO_INSTALL_DIR}/gru")
-    download_gru_data_without_verify("${GRU_PATH}" "GRU_eval_data.tar.gz")
-    download_gru_data_without_verify("${GRU_PATH}" "GRU_eval_model_v2.tar.gz")
-    set(GRU_DATA_PATH "${GRU_PATH}/GRU_eval_data.bin")
-    set(GRU_MODEL_PATH "${GRU_PATH}/GRU_eval_model_v2")
-    set(LEXICAL_TEST_APP "test_analyzer_lexical_analysis")
-    set(LEXICAL_TEST_APP_SRC "analyzer_lexical_analysis_gru_tester.cc")
-
-    # build test binary to be used in subsequent tests
-    inference_analysis_api_test_build(${LEXICAL_TEST_APP}
-                                      ${LEXICAL_TEST_APP_SRC})
-    # run lexcial analysis test
-    inference_analysis_api_lexical_test_run(
-      test_analyzer_lexical_gru ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run bfloat16 lexical analysis test
-    inference_analysis_api_lexical_bfloat16_test_run(
-      test_analyzer_lexical_gru_bfloat16 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH})
-    # run post-training quantization lexical analysis test
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      false) # fuse_multi_gru
-    # run post-training quantization lexical analysis test with multi_gru fuse
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_int8_multi_gru
-      ${LEXICAL_TEST_APP}
-      ${GRU_MODEL_PATH}
-      ${GRU_DATA_PATH}
-      true # enable_int8_ptq
-      false # enable_int8_qat
-      true) # fuse_multi_gru
-
-    # run qat gru test
-    set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
-    set(QAT_GRU_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant/GRU_quant2")
-    download_quant_data(${QAT_GRU_MODEL_DIR} ${QAT_GRU_MODEL_ARCHIVE}
-                        cf207f8076dcfb8b74d8b6bdddf9090c)
-
-    inference_analysis_api_lexical_int8_test_run(
-      test_analyzer_lexical_gru_qat_int8
-      ${LEXICAL_TEST_APP}
-      "${QAT_GRU_MODEL_DIR}/GRU_quant_acc"
-      ${GRU_DATA_PATH}
-      false # enable_int8_ptq
-      true # enable_int8_qat
-      false) # fuse_multi_gru
 
     ### optimized FP32 vs. Quant INT8 tests
 
@@ -711,17 +606,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${QUANT_IMG_CLASS_TEST_APP} ${QUANT2_RESNET50_MODEL}
       ${QUANT2_RESNET50_MODEL} ${IMAGENET_DATA_PATH} true)
 
-    ### Other tests
-
-    # MKLDNN quantizer config
-    set(MKLDNN_QUANTIZER_CONFIG_TEST_APP "test_mkldnn_quantizer_config")
-    set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC
-        "mkldnn_quantizer_config_tester.cc")
-    inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP}
-                                      ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
-    inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND
-                                ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
-
     # preprocess data2bin imagenet
     download_int8_data_without_verify(${INT8_DATA_DIR} "imagenet_small.tar.gz")
     set(IMAGENET_SMALL_DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
@@ -776,15 +660,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       trt_disable_tensorrt_half_ops_test
       SRCS
       trt_disable_tensorrt_half_ops_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(
-      trt_cascade_rcnn_test
-      SRCS
-      trt_cascade_rcnn_test.cc
       EXTRA_DEPS
       common
       paddle_inference_shared
@@ -854,15 +729,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         ${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test
         "yolov3_r50_quant_aware.tgz")
     endif()
-    inference_analysis_test(
-      trt_quant_int8_yolov3_r50_test
-      SRCS
-      trt_quant_int8_yolov3_r50_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
 
     set(TEST_TRT_DYNAMIC_MODEL2
         "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
@@ -879,15 +745,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
         ${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test
         "conv_bn_swish_split_gelu.tar.gz" 2a5e8791e47b221b4f782151d76da9c6)
     endif()
-    inference_analysis_test(
-      trt_dynamic_shape_test
-      SRCS
-      trt_dynamic_shape_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${TRT_MODEL_INSTALL_DIR})
 
     set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
     if(NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4.tar.gz)
@@ -905,24 +762,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       paddle_inference_shared
       ARGS
       --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
-
-    set(TEST_TRT_TRANSFORMER_PRUNE_MODEL
-        "${TRT_MODEL_INSTALL_DIR}/transformer_prune")
-    if(NOT EXISTS ${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune.tar.gz)
-      inference_download_and_uncompress(
-        ${TEST_TRT_TRANSFORMER_PRUNE_MODEL} ${INFERENCE_URL}/tensorrt_test
-        "transformer_prune.tar.gz" 77b56dc73ff0cf44ddb1ce9ca0b0f471)
-    endif()
-
-    inference_analysis_test(
-      test_trt_dynamic_shape_transformer_prune
-      SRCS
-      trt_dynamic_shape_transformer_prune_test.cc
-      EXTRA_DEPS
-      paddle_inference_shared
-      common
-      ARGS
-      --infer_model=${TEST_TRT_TRANSFORMER_PRUNE_MODEL}/transformer_prune)
 
     if(NOT EXISTS ${TEST_TRT_ERNIE_MODEL}/ernie_model_4_unserialized.tgz)
       inference_download_and_uncompress(
@@ -980,6 +819,24 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
+  # ch_PP-OCRv3_det
+  set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ch_PP-OCRv3_det_pir")
+  if(NOT EXISTS ${OCR_INSTALL_DIR}/ch_PP-OCRv3_det.tar.gz)
+    inference_download_and_uncompress_without_verify(
+      ${OCR_INSTALL_DIR} "http://paddle-inference-dist.bj.bcebos.com/"
+      "int8/pir/ch_PP-OCRv3_det.tar.gz")
+  endif()
+
+  inference_analysis_test(
+    test_analyzer_zerocopytensor_tensor
+    SRCS
+    analyzer_zerocopy_tensor_tester.cc
+    EXTRA_DEPS
+    common
+    paddle_inference_shared
+    ARGS
+    --infer_model=${OCR_INSTALL_DIR}/model)
+
   if(WITH_DISTRIBUTE
      AND WITH_PSCORE
      AND WITH_XPU
@@ -993,18 +850,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       paddle_inference_shared
       ARGS
       --infer_model=${OCR_INSTALL_DIR}/model)
-  endif()
-
-  if(WITH_ONEDNN)
-    inference_analysis_test(
-      test_analyzer_capi_exp_int
-      SRCS
-      analyzer_capi_exp_int_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_c_shared
-      ARGS
-      --infer_model=${INT8_DATA_DIR}/resnet50/model)
   endif()
 
   # chinese_ner
@@ -1021,9 +866,86 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
+  # small DAM
+  set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
+  download_model_and_data_without_verify(
+    ${DAM_SMALL_INSTALL_DIR} "dam_small_model.tar.gz"
+    "dam_small_data.txt.tar.gz")
+  inference_analysis_test(
+    test_analyzer_small_dam
+    SRCS
+    analyzer_dam_tester.cc
+    EXTRA_DEPS
+    paddle_inference_shared
+    common
+    ARGS
+    --infer_model=${DAM_SMALL_INSTALL_DIR}/model
+    --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
+
+  set_tests_properties(test_analyzer_small_dam PROPERTIES TIMEOUT 120)
+
+  # seq_conv1
+  set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
+  download_model_and_data_without_verify(
+    ${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz"
+    "seq_conv1_data.txt.tar.gz")
+  inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR}
+                              analyzer_seq_conv1_tester.cc EXTRA_DEPS common)
+
+  # RNN2
+  set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
+  download_model_and_data_without_verify(
+    ${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
+  inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR}
+                              analyzer_rnn2_tester.cc EXTRA_DEPS common)
+
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(test_analyzer_rnn2)
+  endif()
+
+  # chinese_ner
+  set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
+  download_model_and_data_without_verify(
+    ${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz"
+    "chinese_ner-data.txt.tar.gz")
+  inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR}
+                              analyzer_ner_tester.cc EXTRA_DEPS common)
+  set_tests_properties(test_analyzer_ner PROPERTIES TIMEOUT 120)
+
+  # multiple models prediction
+  set(MMP_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_model_prediction")
+  download_data_without_verify(${MMP_INSTALL_DIR}
+                               PaddleInference/mobilenet_v2_models.tar.gz)
+  inference_multiple_models_analysis_api_test(
+    test_analyzer_multi_model_prediction ${MMP_INSTALL_DIR}
+    analyzer_mmp_tester.cc EXTRA_DEPS common)
+
+  # lac
+  set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
+  download_model_and_data(
+    ${LAC_INSTALL_DIR} "lac_model.tar.gz" 419ca6eb85f57a01bfe173591910aec5
+    "lac_data.txt.tar.gz" 9983539cd6b34fbdc411e43422776bfd)
+  inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR}
+                              analyzer_lac_tester.cc EXTRA_DEPS common)
+  ### Image classification tests with fake data
+  set(IMG_CLASS_TEST_APP "analyzer_image_classification")
+  set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
+
+  # build test binary to be used in subsequent tests
+  inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP}
+                                                   ${IMG_CLASS_TEST_APP_SRC})
+
   # resnet50
   set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
   download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
+  if(NOT WIN32)
+    inference_analysis_api_test_with_fake_data_run(
+      test_analyzer_resnet50 ${IMG_CLASS_TEST_APP} ${RESNET50_MODEL_DIR} true)
+    set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
+  endif()
+
   inference_analysis_test(
     test_analyzer_capi_exp
     SRCS
@@ -1033,38 +955,12 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     ARGS
     --infer_model=${RESNET50_MODEL_DIR}/model)
 
-  if(WITH_GPU)
-    inference_analysis_test(
-      paddle_infer_api_test
-      SRCS
-      paddle_infer_api_test.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${RESNET50_MODEL_DIR})
-
-    inference_analysis_test(
-      paddle_infer_api_copy_tensor_tester
-      SRCS
-      paddle_infer_api_copy_tensor_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${RESNET50_MODEL_DIR})
-    set_tests_properties(paddle_infer_api_copy_tensor_tester PROPERTIES TIMEOUT
-                                                                        30)
-  endif()
-
   cc_test(
     paddle_infer_api_errors_test
     SRCS paddle_infer_api_errors_tester.cc
     DEPS ${inference_api_tester_deps} common)
 
   if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_quant_int8_yolov3_r50_test PROPERTIES TIMEOUT 400)
-    set_tests_properties(trt_cascade_rcnn_test PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_ser_deser
                          PROPERTIES TIMEOUT 300)
     set_tests_properties(test_trt_dynamic_shape_ernie_fp16_ser_deser
@@ -1077,25 +973,14 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endif()
 
   if(WITH_ONEDNN)
-    set_tests_properties(test_analyzer_int8_resnet50 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenet_ssd PROPERTIES TIMEOUT
-                                                                     120)
     set_tests_properties(test_analyzer_quant_performance_benchmark
                          PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenetv2 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenetv1 PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_analyzer_int8_mobilenetv3_large PROPERTIES TIMEOUT
-                                                                         120)
     set_tests_properties(test_analyzer_quant2_mobilenetv1_mkldnn
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_analyzer_quant2_resnet50_channelwise_mkldnn
                          PROPERTIES TIMEOUT 120)
   endif()
 
-  set_tests_properties(test_analyzer_ernie_int8 PROPERTIES TIMEOUT 120)
-  if(WITH_GPU)
-    set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
-  endif()
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 240)
     if(NOT WIN32)
@@ -1203,18 +1088,40 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${RESNET50_MODEL_DIR})
   endif()
 
-  if(WITH_TESTING AND WITH_ONEDNN)
+  if(WITH_TESTING)
     if(NOT APPLE)
+      if(NOT EXISTS ${WORD2VEC_INSTALL_DIR}/word2vec.inference.model.tar.gz)
+        inference_download_and_uncompress_without_verify(
+          ${WORD2VEC_INSTALL_DIR} ${INFERENCE_URL}
+          "word2vec.inference.model.tar.gz")
+      endif()
       inference_base_test(
-        test_mkldnn_quantizer
+        test_api_impl
         SRCS
-        mkldnn_quantizer_tester.cc
+        api_impl_tester.cc
         DEPS
-        paddle_inference_shared
         common
+        paddle_inference_shared
         ARGS
-        --dirname=${WORD2VEC_MODEL_DIR})
+        --word2vec_dirname=${WORD2VEC_MODEL_DIR}
+        --book_dirname=${IMG_CLS_RESNET_INSTALL_DIR})
     endif()
   endif()
+
+  set(VIT_OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/vit")
+  if(NOT EXISTS ${VIT_OCR_INSTALL_DIR}/vit_ocr.tgz)
+    inference_download_and_uncompress_without_verify(
+      ${VIT_OCR_INSTALL_DIR} ${INFERENCE_URL} "ocr/vit_ocr.tgz")
+  endif()
+  inference_analysis_test(
+    test_analyzer_vit_ocr
+    SRCS
+    analyzer_vit_ocr_tester.cc
+    EXTRA_DEPS
+    common
+    paddle_inference_shared
+    ARGS
+    --infer_model=${VIT_OCR_INSTALL_DIR}/vit_ocr/model
+    --infer_data=${VIT_OCR_INSTALL_DIR}/vit_ocr/datavit.txt)
 
 endif()

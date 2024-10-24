@@ -123,53 +123,18 @@ def switch_rng_state_tracker(rng_state, tracker):
 
 class RecomputeFunction(PyLayer):
     @staticmethod
-    def forward(ctx, run_function, preserve_rng_state, *args, **kwargs):
+    def forward(
+        ctx, run_function, preserve_rng_state, offload_indices, *args, **kwargs
+    ):
         # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
+        ctx.offload_indices = offload_indices
         ctx.kwargs = kwargs
 
         # NOTE the number of outputs of backward() should be equal to the number of tensors in forward()'s input
         # the order of tensors in backward()'s output should be the same as tensors in forward()'s input
         # None tensor inputs will be filtered in backward inputs.
-
-        # save input for backward
-        ctx.inputs = []
-        ctx.tensor_indices = []
-        ctx.duplicate_tensor = [False for _ in range(len(args))]
-        tensor_inputs = []
-        for i, arg in enumerate(args):
-            if paddle.is_tensor(arg):
-                tensor_inputs.append(arg)
-                ctx.tensor_indices.append(i)
-                ctx.inputs.append(None)
-            elif type(arg) is tuple:
-                is_tensors = [paddle.is_tensor(a) for a in arg]
-                if all(is_tensors):
-                    # the tuple is a tuple of tensors
-                    tensors_stop_gradient = [a.stop_gradient for a in arg]
-                    if not all(tensors_stop_gradient) and any(
-                        tensors_stop_gradient
-                    ):
-                        # tensors in the tuple have different stop_gradient value, which pylayer doesn't support
-                        raise ValueError(
-                            "Recompute receive a tuple containing tensor holds different stop gradient."
-                        )
-                    tensor_inputs.append(arg)
-                    ctx.tensor_indices.append(i)
-                    # Mark the tuple is a tuple of tensors
-                    ctx.duplicate_tensor[i] = True
-                    ctx.inputs.append(None)
-                elif any(is_tensors):
-                    # the tuple contains tensors and non-tensor values
-                    raise ValueError(
-                        "Recompute receive a tuple containing tensor and non-tensor at same time."
-                    )
-                else:
-                    ctx.inputs.append(arg)
-            else:
-                ctx.inputs.append(arg)
-        ctx.save_for_backward(*tensor_inputs)
 
         # NOTE recompute with restore RNG only support one scenario where one process for one cuda gpu.
         # one process with multiple gpu and mix-gpu-cpu scenarios are not support
@@ -202,6 +167,52 @@ class RecomputeFunction(PyLayer):
 
         with paddle.no_grad():
             outputs = run_function(*args, **kwargs)
+
+        # save input for backward
+        ctx.inputs = []
+        ctx.tensor_indices = []
+        ctx.duplicate_tensor = [False for _ in range(len(args))]
+        tensor_inputs = []
+        for i, arg in enumerate(args):
+            if paddle.is_tensor(arg):
+                if i in ctx.offload_indices:
+                    cpu_arg = arg.pin_memory()
+                    cpu_arg._share_buffer_to(arg)
+                tensor_inputs.append(arg)
+                ctx.tensor_indices.append(i)
+                ctx.inputs.append(None)
+            elif type(arg) is tuple:
+                assert (
+                    i not in ctx.offload_indices
+                ), f"offload_indices should not contain tensor tuple in position{i}"
+                is_tensors = [paddle.is_tensor(a) for a in arg]
+                if all(is_tensors):
+                    # the tuple is a tuple of tensors
+                    tensors_stop_gradient = [a.stop_gradient for a in arg]
+                    if not all(tensors_stop_gradient) and any(
+                        tensors_stop_gradient
+                    ):
+                        # tensors in the tuple have different stop_gradient value, which pylayer doesn't support
+                        raise ValueError(
+                            "Recompute receive a tuple containing tensor holds different stop gradient."
+                        )
+                    tensor_inputs.append(arg)
+                    ctx.tensor_indices.append(i)
+                    # Mark the tuple is a tuple of tensors
+                    ctx.duplicate_tensor[i] = True
+                    ctx.inputs.append(None)
+                elif any(is_tensors):
+                    # the tuple contains tensors and non-tensor values
+                    raise ValueError(
+                        "Recompute receive a tuple containing tensor and non-tensor at same time."
+                    )
+                else:
+                    ctx.inputs.append(arg)
+            else:
+                ctx.inputs.append(arg)
+
+        ctx.save_for_backward(*tensor_inputs)
+
         return outputs
 
     @staticmethod
@@ -215,7 +226,13 @@ class RecomputeFunction(PyLayer):
             duplicate_tensor = ctx.duplicate_tensor
             tensors = ctx.saved_tensor()
             for i, idx in enumerate(tensor_indices):
-                inputs[idx] = tensors[i]
+                inputs[idx] = (
+                    tensors[i].to(
+                        paddle.base.framework._current_expected_place()
+                    )
+                    if i in ctx.offload_indices
+                    else tensors[i]
+                )
 
             # paddle.enable_grad()
             tracer = framework._dygraph_tracer()
@@ -565,6 +582,7 @@ def recompute(function, *args, **kwargs):
         check_recompute_necessary(check_args)
 
     if use_reentrant:
+        offload_indices = kwargs.pop('offload_indices', [])
         input_args = []
         # rearrange `position-args + keyword-args` into `position-args`
         if isinstance(function, paddle.nn.Layer):
@@ -594,7 +612,9 @@ def recompute(function, *args, **kwargs):
             else:
                 raise ValueError("Unknown parameter kind.")
 
-        return RecomputeFunction.apply(function, preserve, *input_args)
+        return RecomputeFunction.apply(
+            function, preserve, offload_indices, *input_args
+        )
     else:
         return _recompute_without_reentrant(function, preserve, *args, **kwargs)
 

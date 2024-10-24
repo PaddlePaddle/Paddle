@@ -745,13 +745,14 @@ __global__ void finalize_moe_routing_kernel(
           expanded_permuted_rows + expanded_permuted_row * cols;
 
       const int expert_idx = expert_for_source_row[k_offset];
-      const T* bias_ptr = bias + expert_idx * cols;
+      const T* bias_ptr = bias ? bias + expert_idx * cols : nullptr;
+      const T bias_value = bias_ptr ? bias_ptr[tid] : T{0.f};
 
       thread_output =
           static_cast<float>(thread_output) +
           row_scale * static_cast<float>(
                           expanded_permuted_rows_row_ptr[tid] +
-                          bias_ptr[tid] *
+                          bias_value *
                               static_cast<T>(static_cast<float>(compute_bias)));
     }
     thread_output = static_cast<float>(thread_output) /

@@ -205,9 +205,9 @@ class CtrDoubleAccessor : public ValueAccessor {
   float GetField(float* value, const std::string& name) override {
     PADDLE_ENFORCE_EQ(name,
                       "show",
-                      phi::errors::InvalidArgument("name must be 'show', "
-                                                   "but received '%s'",
-                                                   name.c_str()));
+                      common::errors::InvalidArgument("name must be 'show', "
+                                                      "but received '%s'",
+                                                      name.c_str()));
     if (name == "show") {
       return static_cast<float>(CtrDoubleFeatureValue::Show(value));
     }

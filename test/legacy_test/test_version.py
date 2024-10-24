@@ -15,6 +15,7 @@
 import re
 import unittest
 
+import paddle
 import paddle.version as base_version
 
 
@@ -47,6 +48,12 @@ class VersionTest(unittest.TestCase):
             self.assertEqual(base_version.patch, "0")
             self.assertEqual(base_version.rc, "0")
             self.assertEqual(base_version.full_version, "0.0.0")
+
+        if paddle.is_compiled_with_cuda():
+            self.assertTrue(isinstance(base_version.cuda(), str))
+            self.assertTrue(isinstance(base_version.cuda_archs(), list))
+        else:
+            self.assertEqual(base_version.cuda(), "False")
 
 
 if __name__ == '__main__':

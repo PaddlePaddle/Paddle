@@ -125,11 +125,11 @@ struct XPUContext::Impl {
   void Wait() {
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
-    xpu_wait(context_->xpu_stream);
+    PADDLE_ENFORCE_XRE_SUCCESS(xpu_wait(context_->xpu_stream));
     xpu::Context* ctx_t = GetXdlCtx();
     if (ctx_t) {
       PD_CHECK(ctx_t != nullptr, "the xpu context is nullptr.");
-      xpu_wait(ctx_t->xpu_stream);
+      PADDLE_ENFORCE_XRE_SUCCESS(xpu_wait(ctx_t->xpu_stream));
     }
 
     ClearStashedMemory();
@@ -220,7 +220,7 @@ struct XPUContext::Impl {
   void SetXContext(xpu::Context* context) {
     if (context_ != nullptr) {
       backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
-      xpu_wait(context_->xpu_stream);
+      PADDLE_ENFORCE_XRE_SUCCESS(xpu_wait(context_->xpu_stream));
       if (context_->xpu_stream != nullptr && stream_owned_) {
         xpu_stream_destroy(context_->xpu_stream);
         stream_owned_ = false;

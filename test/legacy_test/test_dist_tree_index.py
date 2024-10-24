@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import tempfile
 import unittest
 
@@ -21,7 +24,6 @@ from paddle.dataset.common import download
 from paddle.distributed.fleet.dataset import TreeIndex
 
 paddle.enable_static()
-os.environ['FLAGS_enable_pir_api'] = '0'
 
 
 def create_feeds():

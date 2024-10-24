@@ -59,6 +59,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ConcatInferMeta',
     'DeformableConvInferMeta',
     'FusedBiasActInferMeta',
+    'FusedLayerNormInferMeta',
     'InterpolateInferMeta',
     'NceInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
@@ -120,6 +121,16 @@ _INFERMETA_NEED_META_CONFIG = {
     'UnsqueezeInferMeta',
     'UnsqueezeWithXShapeInferMeta',
     'ArrayPopInferMeta',
+    # backward.h
+    'CrossEntropyGradInferMeta',
+    'CrossEntropyGrad2InferMeta',
+    'CrossEntropyWithSoftmaxGradInferMeta',
+    'CSoftmaxWithCrossEntropyGradInferMeta',
+    'LSTMGradInferMeta',
+    'FFTC2RGradInferMeta',
+    'GruGradInferMeta',
+    'GruUnitGradInferMeta',
+    'NllLossGradInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}

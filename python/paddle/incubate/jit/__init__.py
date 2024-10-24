@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .inference_decorator import inference  # noqa: F401
+from .inference_decorator import inference, is_inference_mode  # noqa: F401
 
 __all__ = []

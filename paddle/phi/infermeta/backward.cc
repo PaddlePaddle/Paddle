@@ -970,6 +970,19 @@ void GradSameWithXInferMeta(const MetaTensor& x,
   dx->share_lod(x);
 }
 
+void LodResetGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& out_grad,
+                           const std::vector<int>& target_lod,
+                           bool append,
+                           MetaTensor* x_grad,
+                           MetaConfig config) {
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x.dims());
+    x_grad->share_lod(x);
+    x_grad->set_dtype(x.dtype());
+  }
+}
+
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
                      const MetaTensor& pivots,
@@ -1418,6 +1431,23 @@ void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                 MetaTensor* out_grad_grad) {
   if (out_grad_grad != nullptr) {
     out_grad_grad->share_dims(out_grad);
+  }
+}
+
+void RmsNormGradInferMeta(const MetaTensor& x,
+                          const MetaTensor& norm_weight,
+                          const MetaTensor& norm_bias,
+                          MetaTensor* x_grad,
+                          MetaTensor* norm_weight_grad,
+                          MetaTensor* norm_bias_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (norm_weight && norm_weight_grad) {
+    norm_weight_grad->share_meta(norm_weight);
+  }
+  if (norm_bias && norm_bias_grad) {
+    norm_bias_grad->share_meta(norm_bias);
   }
 }
 

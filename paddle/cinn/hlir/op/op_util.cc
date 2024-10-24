@@ -31,7 +31,7 @@ CINNSchedule GetElementwiseScheduleFunc(
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
     PADDLE_ENFORCE_NE(args.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument of ElementwiseSchedule is "
                           "invalid! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
@@ -50,7 +50,7 @@ CINNSchedule GetElementwiseScheduleFunc(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The vector of AbstractSyntaxTree is empty!"
                           "Please ensure that the argument pack "
                           "contains at least one valid expression."));
@@ -71,7 +71,7 @@ CINNSchedule GetInjectiveScheduleFunc(
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
     PADDLE_ENFORCE_NE(args.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument of InjectiveSchedule is "
                           "invalid! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
@@ -84,7 +84,7 @@ CINNSchedule GetInjectiveScheduleFunc(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The vector of AbstractSyntaxTree is empty!"
                           "Please ensure that the argument pack "
                           "contains at least one valid expression."));

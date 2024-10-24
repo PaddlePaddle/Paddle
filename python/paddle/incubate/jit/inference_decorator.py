@@ -34,6 +34,14 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 
+def is_inference_mode(function):
+    if isinstance(function, Layer):
+        return function.forward.__name__ == "innermost_decorator"
+    elif hasattr(function, "__name__"):
+        return function.__name__ == "innermost_decorator"
+    return False
+
+
 def get_inference_precision(precision_str):
     if precision_str == "float32":
         return PrecisionType.Float32
@@ -131,6 +139,15 @@ class InferenceEngine:
             )
         self.save_model_dir = os.path.join(self.save_model_dir, func.__name__)
 
+        import paddle.distributed as dist
+
+        n_ranks = dist.get_world_size()
+        if n_ranks > 1:
+            local_rank: int = dist.ParallelEnv().dev_id
+            self.save_model_dir = os.path.join(
+                self.save_model_dir, f"{n_ranks}_{local_rank}"
+            )
+
         self.precision_mode = kwargs.get("precision_mode")
         self.switch_ir_optim = kwargs.get("switch_ir_optim")
         self.switch_ir_debug = kwargs.get("switch_ir_debug")
@@ -156,6 +173,7 @@ class InferenceEngine:
         py_script = py_script[py_script.find("def") :]
         if used_as_at_decorator:
             assert self.arg_names[0] == "self"
+
         self.save_path = os.path.join(self.save_model_dir, "infer")
         d2s_input_info_path = self.save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
@@ -302,6 +320,7 @@ class InferenceEngine:
             input_spec=input_specs,
             full_graph=True,
         )
+
         paddle.jit.save(model, self.save_path, skip_prune_program=True)
 
         # save d2s_shapes
@@ -572,14 +591,8 @@ def inference(
 
     """
     # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
-    if (
-        hasattr(function, "__name__")
-        and function.__name__ == "innermost_decorator"
-    ):
+    if is_inference_mode(function):
         return function
-    elif isinstance(function, Layer):
-        if function.forward.__name__ == "innermost_decorator":
-            return function
 
     used_as_at_decorator = function is None
 
@@ -606,7 +619,7 @@ def inference(
             delete_pass_lists=delete_pass_lists,
         )
 
-        # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
+        # This is the innermost_decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
         # he is actually invoke this internel function.
         def innermost_decorator(*args, **kwargs):
             input_tensor_lists = infer_engine.get_input_tensor_lists(

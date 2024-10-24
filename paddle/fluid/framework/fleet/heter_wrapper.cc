@@ -98,7 +98,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
   for (auto& dim : common::vectorize(tensor->dims())) {
     req_var->add_dims(dim);
   }
-  const framework::LoD lod = tensor->lod();
+  const phi::LoD lod = tensor->lod();
   if (lod.size() > 0) {
     req_var->set_lod_level(lod.size());
     for (auto& each : lod) {
@@ -167,7 +167,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   tensor->set_lod(lod);
 
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPhiDataType(ToVarType(req_var.data_type())));
+      place, phi::TransToPhiDataType(ToVarType(req_var.data_type())));
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   memory::Copy(place,
@@ -212,7 +212,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope,
   tensor->set_lod(lod);
 
   void* tensor_data = tensor->mutable_data(
-      place, framework::TransToPhiDataType(ToVarType(req_var.data_type())));
+      place, phi::TransToPhiDataType(ToVarType(req_var.data_type())));
 
 #ifdef PADDLE_WITH_XPU
   memory::Copy(place,

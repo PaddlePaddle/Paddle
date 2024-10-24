@@ -276,16 +276,30 @@ class TensorDtypeVariable(DataVariable):
                 self.tracker.obj.tracker.trace_value_from_frame()
             )
             dtype_str, dtype_free_vars = stringify_pyobject(self.value)
+            # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
+            if not paddle.framework.use_pir_api():
+                return [
+                    StringifiedExpression(
+                        f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
+                        [tensor_value_tracer],
+                        union_free_vars(
+                            {"MetaInfo": MetaInfo},
+                            tensor_value_tracer.free_vars,
+                            dtype_free_vars,
+                        ),
+                    )
+                ]
             return [
                 StringifiedExpression(
-                    f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
+                    f"{{}}.dtype == {dtype_str}",
                     [tensor_value_tracer],
                     union_free_vars(
-                        {"MetaInfo": MetaInfo},
+                        tensor_value_tracer.free_vars,
                         dtype_free_vars,
                     ),
                 )
             ]
+
         else:
             return object_equal_stringified_guard(self)
 
@@ -363,9 +377,9 @@ class TensorVariable(VariableBase):
                 1,
                 f"Start analyse dynamic axes for {tracker.trace_value_from_frame().inlined_expr} in {self.graph.pycode_gen._origin_code}\n",
             )
-            for key in symbolic_inputs:
+            for key, symbolic_input in symbolic_inputs.items():
                 if key.startswith(tracker_expr):
-                    log(1, f"  {key}: {symbolic_inputs[key]}\n")
+                    log(1, f"  {key}: {symbolic_input}\n")
             log(
                 1,
                 f"  -> Tensor {tracker_expr} with dynamic axes {dynamic_axes}\n",
@@ -418,19 +432,55 @@ class TensorVariable(VariableBase):
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
-        else:
-            str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
+        # TODO(cleanup-legacy-ir): Remove this branch after we remove legacy IR
+        if not paddle.framework.use_pir_api():
+            if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+                str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
+            else:
+                str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
+            return [
+                StringifiedExpression(
+                    f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
+                    [frame_value_tracer],
+                    union_free_vars(
+                        {"MetaInfo": MetaInfo},
+                        frame_value_tracer.free_vars,
+                    ),
+                )
+            ]
+
+        # A quick check path for PIR, we don't need dtype conversion for AMP in PIR
+        meta = self.origin_meta
+        dtype_str, dtype_free_vars = stringify_pyobject(meta.dtype)
         return [
+            # Check rank
             StringifiedExpression(
-                f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
+                f"len({{}}.shape) == {len(meta.shape)}",
                 [frame_value_tracer],
-                union_free_vars(
-                    {"MetaInfo": MetaInfo},
-                    frame_value_tracer.free_vars,
-                ),
-            )
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            # Check each dim except dynamic dim
+            *[
+                StringifiedExpression(
+                    f"{{}}.shape[{i}] == {meta.shape[i]}",
+                    [frame_value_tracer],
+                    union_free_vars(frame_value_tracer.free_vars),
+                )
+                for i in range(len(meta.shape))
+                if not isinstance(meta.shape[i], SymbolicInt)
+            ],
+            # Check dtype
+            StringifiedExpression(
+                f"{{}}.dtype == {dtype_str}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars, dtype_free_vars),
+            ),
+            # Check stop_gradient
+            StringifiedExpression(
+                f"{{}}.stop_gradient == {meta.stop_gradient!r}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
         ]
 
     def get_iter(self):
@@ -478,7 +528,24 @@ class TensorVariable(VariableBase):
 
         perm = list(range(len(self.meta.shape) - 1, -1, -1))
         perm_var = ListVariable(perm, self.graph, tracker=ConstTracker(perm))
-        assert perm_var is not None
+        out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
+        return out
+
+    @tensor_property
+    def mT(self):
+        """
+        Return a new TensorVariable object that wraps the result of calling the mT method on the wrapped value of this TensorVariable.
+        """
+        from .container import ListVariable
+
+        if len(self.meta.shape) < 2:
+            raise ValueError(
+                f"Variable.ndim({self.ndim}) is required to be greater than or equal to 2."
+            )
+
+        perm = list(range(len(self.meta.shape)))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        perm_var = ListVariable(perm, self.graph, tracker=DummyTracker([self]))
         out = self.graph.call_paddle_api(paddle.transpose, self, perm_var)
         return out
 
@@ -666,6 +733,7 @@ class SymbolicVariable(VariableBase):
 
     var_name_generator = NameGenerator("symint_")
     value: int | SymbolicValue
+    mutable_attrs = ["need_guard_value"]
 
     def __init__(
         self,
@@ -685,8 +753,38 @@ class SymbolicVariable(VariableBase):
                 [], paddle.int64, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
+        self.graph.side_effects.record_mutable_variable(self)
 
-    def get_py_value(self, allow_tensor=False):
+    def to_constant(self):
+        from ..executor_cache import (
+            OpcodeExecutorCache,
+        )
+
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
+
+        disabled_vars = set()
+
+        def disable_symbolic(var: VariableBase):
+            if var in disabled_vars:
+                return
+
+            disabled_vars.add(var)
+            if var.tracker.is_traceable():
+                tracker_expr = var.tracker.trace_value_from_frame().inlined_expr
+                symbolic_inputs[tracker_expr] = None
+                return
+            for input_var in var.tracker.inputs:
+                disable_symbolic(input_var)
+
+        disable_symbolic(self)
+        self.graph.need_cache = False
+        return ConstantVariable(
+            self.get_py_value(), self.graph, DummyTracker([self])
+        )
+
+    def get_py_value(self, allow_tensor: bool = False) -> bool | int | float:
         self.need_guard_value = True
         if isinstance(self.value, SymbolicValue):
             assert isinstance(
@@ -698,6 +796,7 @@ class SymbolicVariable(VariableBase):
             self.value = getattr(
                 inputs[0].get_py_value(), self.tracker.method_name
             )(*other_inputs_value)
+            assert isinstance(self.value, (bool, int, float))
         return self.value
 
     def get_py_type(self):
@@ -713,6 +812,18 @@ class SymbolicVariable(VariableBase):
 
     def bool(self):
         return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
+
+    def __int__(self) -> int:
+        return int(self.get_py_value())
+
+    def int(self):
+        return ConstantVariable(int(self), self.graph, DummyTracker([self]))
+
+    def __float__(self) -> float:
+        return float(self.get_py_value())
+
+    def float(self):
+        return ConstantVariable(float(self), self.graph, DummyTracker([self]))
 
     @property
     def out_var_name(self):
@@ -735,11 +846,6 @@ class SymbolicVariable(VariableBase):
 
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
-        # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        if isinstance(self.value, int):
-            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-            symbolic_input.setdefault(self.value, 0)
-            symbolic_input[self.value] += 1
         if self.need_guard_value:
             return super().make_stringified_guard()
         return [
@@ -752,12 +858,16 @@ class SymbolicVariable(VariableBase):
 
     @staticmethod
     def should_create_symbolic_variable(
-        value: Any, tracker: Tracker, symbolic_inputs: dict[str, dict[int, int]]
+        value: Any,
+        tracker: Tracker,
+        symbolic_inputs: dict[str, dict[int, int] | None],
     ):
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
             symbolic_input = symbolic_inputs[tracker_expr]
+            if symbolic_input is None:
+                return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
             if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:

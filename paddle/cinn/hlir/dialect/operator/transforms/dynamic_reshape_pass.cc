@@ -114,7 +114,7 @@ class DynamicSqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     PADDLE_ENFORCE_EQ(axis_shape_expr.data().has_value(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      ::common::errors::PreconditionNotMet(
                           "The axis_shape_expr data must have a value."));
 
     return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
@@ -135,7 +135,7 @@ class DynamicUnsqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     PADDLE_ENFORCE_EQ(axis_shape_expr.data().has_value(),
                       true,
-                      phi::errors::PreconditionNotMet(
+                      ::common::errors::PreconditionNotMet(
                           "The axis_shape_expr data must have a value."));
 
     return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);

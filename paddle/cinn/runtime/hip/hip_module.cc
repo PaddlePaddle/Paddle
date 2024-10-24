@@ -31,7 +31,7 @@ HIPModule::HIPModule(const std::string& data) : data_(data) {
   PADDLE_ENFORCE_GT(
       num_devices_,
       0,
-      phi::errors::Fatal("HIP Module Error: No available devices."));
+      ::common::errors::Fatal("HIP Module Error: No available devices."));
 
   int current_device_id;
   hipGetDevice(&current_device_id);

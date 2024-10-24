@@ -3540,8 +3540,21 @@ struct MMHAStore {
   explicit MMHAStore(StoreT* dst) : dst_(dst) {}
 
   template <typename Vec>
-  __device__ void store(Vec& src, int idx) {  // NOLINT
+  __device__ void store(Vec& src, size_t idx) {
     *reinterpret_cast<Vec*>(dst_ + idx) = src;
+  }
+
+  template <typename Vec>
+  __device__ void store(const Vec& src, float scale, size_t idx) {
+    constexpr int VecSize = sizeof(Vec) / sizeof(T);
+    using TVec = phi::AlignedVector<T, VecSize>;
+    TVec src_vec;
+    *reinterpret_cast<Vec*>(&src_vec) = src;
+#pragma unroll
+    for (int i = 0; i < VecSize; i++) {
+      src_vec[i] = static_cast<T>(static_cast<float>(src_vec[i]) * scale);
+    }
+    phi::Store<T, VecSize>(src_vec, dst_ + idx);
   }
 
   StoreT* dst_;

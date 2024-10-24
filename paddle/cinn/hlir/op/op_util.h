@@ -32,13 +32,13 @@ T GetAttr(const cinn::utils::AttributeMap &attr_map,
           const std::string &attr_name) {
   PADDLE_ENFORCE_EQ(attr_map.count(attr_name),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Sorry, cannot found attribute %s", attr_name));
   const auto &attr = attr_map.at(attr_name);
   PADDLE_ENFORCE_EQ(
       absl::holds_alternative<T>(attr),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of attribute %s isn't %s", attr_name, typeid(T).name()));
   return absl::get<T>(attr_map.at(attr_name));
 }
@@ -75,9 +75,9 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   PADDLE_ENFORCE_EQ(
       type,
       cinn::common::type_of<T>(),
-      phi::errors::InvalidArgument("Cannot get %s value from %s vector!",
-                                   cinn::common::type_of<T>(),
-                                   type));
+      ::common::errors::InvalidArgument("Cannot get %s value from %s vector!",
+                                        cinn::common::type_of<T>(),
+                                        type));
 
   std::vector<T> shape_v;
   if (type.is_bool()) {
