@@ -82,13 +82,3 @@ REGISTER_OPERATOR(mp_allreduce_sum,
                   ops::MpAllReduceSumOpGradMaker<paddle::imperative::OpBase>,
                   ops::MpAllReduceSumOpMaker,
                   ops::MpAllReduceSumInplaceInferer);
-
-PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::MpAllReduceSumCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          phi::dtype::float16) {}
