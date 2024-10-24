@@ -42,7 +42,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import is_builtin, is_paddle_func
+from .utils import WeakMethod, is_builtin, is_paddle_func
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -191,15 +191,6 @@ def is_unsupported(func):
                 func,
             )
             return True
-
-    # NOTE: should be placed before `is_paddle_func`
-    # The api(s) should be considered as plain function and convert
-    # them into static layer code.
-    from paddle.nn import Sequential
-
-    PADDLE_NEED_CONVERT_APIS = [Sequential]
-    if type(func) in PADDLE_NEED_CONVERT_APIS:
-        return False
 
     if is_paddle_func(func):
         translator_logger.log(
@@ -367,11 +358,11 @@ def convert_call(func):
             try:
                 _, forward_func = unwrap_decorators(func.forward)
                 func._original_funcs['forward'] = forward_func.__func__
-                forward_func = convert_to_static(forward_func)
+                forward_func = convert_to_static(forward_func.__func__)
                 # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                func.forward = forward_func.__get__(func)
+                func.forward = WeakMethod(forward_func, func)
             except (OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self

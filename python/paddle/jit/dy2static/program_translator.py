@@ -377,7 +377,7 @@ def unwrap_decorators(func):
         if isinstance(cur, StaticFunction):
             decorators.append(cur)
             # Note: if `cur` is a method, keep it as bound method of class.
-            instance = cur._class_instance
+            instance = cur.class_instance
             if instance is not None:
                 cur = cur.dygraph_function.__get__(instance)
             else:
@@ -401,14 +401,14 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
         if inspect.ismethod(function):
             self._dygraph_function = function.__func__
-            self._class_instance = function.__self__
+            self._class_instance = weakref.ref(function.__self__)
 
-            if not hasattr(self._class_instance, '_original_funcs'):
+            if not hasattr(self.class_instance, '_original_funcs'):
                 raise TypeError(
                     "When using 'to_static' to convert method of a class, "
                     "please ensure the class inherits from nn.Layer"
                 )
-            self._class_instance._original_funcs[function.__name__] = (
+            self.class_instance._original_funcs[function.__name__] = (
                 self._dygraph_function
             )
         else:
@@ -430,8 +430,8 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
     def _get_debug_name(self) -> str:
         try:
-            if self._class_instance:
-                self._debug_name = self._class_instance.__class__.__name__
+            if self.class_instance:
+                self._debug_name = self.class_instance.__class__.__name__
             else:
                 self._debug_name = self._dygraph_function.__name__
         except Exception:
@@ -444,8 +444,8 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
     def train(self) -> None:
         if (
-            isinstance(self._class_instance, layers.Layer)
-            and self._class_instance.training is False
+            isinstance(self.class_instance, layers.Layer)
+            and self.class_instance.training is False
         ):
             raise RuntimeError(
                 f"Failed to switch train mode. {self.dygraph_function} is a Layer's method, "
@@ -455,8 +455,8 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
     def eval(self) -> None:
         if (
-            isinstance(self._class_instance, layers.Layer)
-            and self._class_instance.training is True
+            isinstance(self.class_instance, layers.Layer)
+            and self.class_instance.training is True
         ):
             raise RuntimeError(
                 f"Failed to switch eval mode. {self.dygraph_function} is a Layer's method, "
@@ -501,7 +501,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 instance._original_funcs[self._dygraph_function.__name__] = (
                     self._dygraph_function
                 )
-            new_static_layer._class_instance = instance
+            new_static_layer._class_instance = weakref.ref(instance)
             self._descriptor_cache[instance] = new_static_layer
 
         return self._descriptor_cache[instance]
@@ -548,13 +548,13 @@ class StaticFunction(Generic[_InputT, _RetT]):
         return self._perform_call(*args, **kwargs)
 
     def _is_train_mode(self) -> bool:
-        if self._class_instance is not None:
-            if not hasattr(self._class_instance, 'training'):
+        if self.class_instance is not None:
+            if not hasattr(self.class_instance, 'training'):
                 raise TypeError(
                     "When using 'to_static' to convert method of a class, "
                     "please ensure the class inherits from nn.Layer"
                 )
-            return self._class_instance.training
+            return self.class_instance.training
         else:
             return self._training
 
@@ -598,12 +598,22 @@ class StaticFunction(Generic[_InputT, _RetT]):
         raise NotImplementedError("Not implemented yet.")
 
     @property
+    def class_instance(self):
+        if self._class_instance is None:
+            return None
+        if self._class_instance() is None:
+            raise RuntimeError(
+                "The instance of class has been deleted, please re-create the instance."
+            )
+        return self._class_instance()
+
+    @property
     def dygraph_function(self) -> Callable[_InputT, _RetT]:
         """
         Returns the original decorated function.
         """
-        if self._class_instance is not None:
-            return self._dygraph_function.__get__(self._class_instance)
+        if self.class_instance is not None:
+            return self._dygraph_function.__get__(self.class_instance)
         else:
             return self._dygraph_function
 
@@ -658,23 +668,23 @@ class StaticFunction(Generic[_InputT, _RetT]):
             for sublayer in class_instance.sublayers(include_self=False):
                 rollback_impl(sublayer)
 
-        if self._class_instance is None:
+        if self.class_instance is None:
             return self._dygraph_function
 
         # only rollback sub-functions on path of top _dygraph_function
         func_name = self._dygraph_function.__name__
         assert (
-            func_name in self._class_instance._original_funcs
-        ), f"Not Found function '{func_name}' in class '{self._class_instance.__class__}'."
-        func = self._class_instance._original_funcs[func_name]
+            func_name in self.class_instance._original_funcs
+        ), f"Not Found function '{func_name}' in class '{self.class_instance.__class__}'."
+        func = self.class_instance._original_funcs[func_name]
         setattr(
-            self._class_instance, func_name, func.__get__(self._class_instance)
+            self.class_instance, func_name, func.__get__(self.class_instance)
         )
 
-        for sublayer in self._class_instance.sublayers(include_self=False):
+        for sublayer in self.class_instance.sublayers(include_self=False):
             rollback_impl(sublayer)
 
-        return getattr(self._class_instance, func_name)
+        return getattr(self.class_instance, func_name)
 
     def __deepcopy__(self, memo):
         """
@@ -708,17 +718,15 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
         Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
         """
-        if self._class_instance is not None:
-            net_name = type(self._class_instance).__name__
+        if self.class_instance is not None:
+            net_name = type(self.class_instance).__name__
             logging_utils.log(
                 level=-1,
                 msg=f"Not recommend to deepcopy '{net_name}' decorated with @to_static, it has side effect that will"
                 f" rollback into original state before @to_static. Please deepcopy '{net_name}' before applying @to_static.",
             )
             self.rollback()
-            return self._dygraph_function.__get__(
-                memo[id(self._class_instance)]
-            )
+            return self._dygraph_function.__get__(memo[id(self.class_instance)])
         else:
             return self._dygraph_function
 
@@ -784,8 +792,8 @@ class SymbolicStaticFunction(StaticFunction):
             training=self._is_train_mode(),
             backend=backend,
         )
-        if self._class_instance is not None:
-            args = (self._class_instance, *args)
+        if self.class_instance is not None:
+            args = (self.class_instance, *args)
         return traced_fun(*args, **kwargs)
 
     @property
@@ -844,8 +852,8 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
                 *args, **kwargs, is_train=self._is_train_mode()
             )
             # 2. synchronize self.training attribute.
-            if isinstance(self._class_instance, layers.Layer):
-                partial_program_layer.training = self._class_instance.training
+            if isinstance(self.class_instance, layers.Layer):
+                partial_program_layer.training = self.class_instance.training
             else:
                 partial_program_layer.training = self._training
 
@@ -912,7 +920,7 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
             self._function_spec,
             input_args_with_spec,
             input_kwargs_with_spec,
-            self._class_instance,
+            self.class_instance,
             **self._kwargs,
             with_hook=with_hook,
             is_train=is_train,

@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/version.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "gtest/gtest.h"
+namespace phi {
 
-namespace paddle {
-namespace framework {
-TEST(Version, Basic) {}
-}  // namespace framework
-}  // namespace paddle
+KernelSignature CConcatOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature(
+      "c_concat",
+      {"X"},
+      {"rank", "nranks", "ring_id", "use_calc_stream", "use_model_parallel"},
+      {"Out"});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(c_concat, phi::CConcatOpArgumentMapping);
