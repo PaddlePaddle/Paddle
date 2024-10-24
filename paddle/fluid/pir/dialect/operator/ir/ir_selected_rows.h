@@ -74,6 +74,11 @@ class IrSelectedRows
 
   bool valid() const noexcept override { return true; }
 
+  bool has_allocation() const override {
+    PADDLE_THROW(::common::errors::Unavailable(
+        "`has_allocation` is only available at runtime"));
+  }
+
   bool initialized() const override { return true; }
 
   void* AllocateFrom(phi::Allocator* allocator,

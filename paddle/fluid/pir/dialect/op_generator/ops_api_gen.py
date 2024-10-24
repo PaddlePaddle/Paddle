@@ -98,6 +98,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'c_reducescatter',
     'c_allreduce_min_',
     'c_allreduce_prod_',
+    'c_concat',
     'c_softmax_with_cross_entropy',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',

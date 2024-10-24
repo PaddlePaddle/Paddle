@@ -21,6 +21,22 @@ if(WITH_XPU)
          phi
          common
          var_helper)
+elseif((WITH_GPU OR WITH_ROCM) AND NOT WIN32)
+  cc_library(
+    prepared_operator
+    SRCS prepared_operator.cc
+    DEPS proto_desc
+         operator
+         device_context
+         lod_tensor
+         selected_rows_utils
+         var_type_traits
+         op_kernel_type
+         data_transform
+         phi
+         common
+         var_helper
+         process_group_nccl)
 else()
   cc_library(
     prepared_operator

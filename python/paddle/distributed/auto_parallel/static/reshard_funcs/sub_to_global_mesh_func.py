@@ -58,10 +58,7 @@ class SubToGlobalMeshFunction(ReshardFunction):
 
         cur_rank = paddle.distributed.get_rank()
 
-        group_ranks = sorted(dst_mesh.process_ids)
-        comm_group = new_process_group(group_ranks)
-
-        if cur_rank == root_rank:
+        if cur_rank in src_mesh.process_ids:
             # the root rank will broadcast the src_value to other ranks
             chunk_id = -1
             if src_value.get_defining_op().dist_attr:
@@ -92,8 +89,8 @@ class SubToGlobalMeshFunction(ReshardFunction):
             )
 
         group = new_process_group(sorted(dst_mesh.process_ids))
-        broadcast_value = paddle._C_ops.c_broadcast(
-            tmp_value, group.id, root_rank, True
+        broadcast_value = paddle._C_ops.broadcast(
+            tmp_value, group.id, root_rank
         )
         broadcast_value.set_type(dst_type)
 

@@ -748,7 +748,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
       if (!group_tensor.IsInitialized()) {
         group_tensor.Resize({static_cast<int64_t>(length)});
         group_tensor.mutable_data(place_,
-                                  framework::TransToPhiDataType(group.dtype_));
+                                  phi::TransToPhiDataType(group.dtype_));
       }
 
 #ifdef PADDLE_WITH_XPU_BKCL
@@ -850,7 +850,7 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
     auto *tensor = group.dense_contents_.GetMutable<phi::DenseTensor>();
     tensor->Resize(common::make_ddim({group.all_length_}))
-        .mutable_data(place_, framework::TransToPhiDataType(group.dtype_));
+        .mutable_data(place_, phi::TransToPhiDataType(group.dtype_));
 
     // For CUDA or XPU, compute_stream --> comm_stream.
     // For CPU, do nothing.
