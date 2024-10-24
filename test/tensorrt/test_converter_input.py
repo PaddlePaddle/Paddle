@@ -47,7 +47,7 @@ class TestOneHotCase2TRTPattern(TensorRTBaseTest):
         self.num_classes = 2
         self.api_args = {
             "x": np.random.randint(0, 2, size=(3, 1)).astype(
-                "int32"
+                "int64"
             ),  # Random integers between 0 and num_classes
             "num_classes": self.num_classes,
         }
