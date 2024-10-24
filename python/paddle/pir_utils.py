@@ -181,9 +181,10 @@ class DygraphOldIrGuard:
 
 
 def get_memory(value):
+    if value.is_nullptr():
+        return 0
     from paddle.base.core import DataType
 
-    numel = value.numel()
     mapping = {
         DataType.BOOL: 1,
         DataType.INT8: 1,
@@ -194,11 +195,21 @@ def get_memory(value):
         DataType.UINT16: 2,
         DataType.UINT32: 4,
         DataType.UINT64: 8,
+        DataType.FLOAT16: 2,
+        DataType.BFLOAT16: 2,
         DataType.FLOAT32: 4,
         DataType.FLOAT64: 8,
+        DataType.FLOAT8_E4M3FN: 1,
+        DataType.FLOAT8_E5M2: 1,
+        DataType.COMPLEX64: 8,
+        DataType.COMPLEX128: 16,
     }
     dtype = mapping[value.type().dtype]
-    return dtype * numel
+
+    import functools
+
+    numel = functools.reduce(lambda x, y: x * y, value.shape, 1)
+    return dtype * numel if numel >= 0 else 1
 
 
 def analysis_io(program: paddle.pir.Program):
