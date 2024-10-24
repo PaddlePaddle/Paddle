@@ -48,15 +48,15 @@ void ComputeAtReductionTactic::Apply(ir::IRSchedule* sch,
   const auto ContainsConditionOrLet = [&](const ir::Expr& expr) -> bool {
     const auto condition_or_let = ir::ir_utils::CollectIRNodesWithoutTensor(
         expr, [&](const Expr* x) -> bool {
-          if (x->As<ir::IfThenElse>() || x->As<ir::Select>() ||
-              x->As<ir::Let>())
-            return true;
+          if (x->As<ir::IfThenElse>()) return true;
+          if (x->As<ir::Select>()) return true;
+          if (x->As<ir::Let>()) return true;
+          return false;
         });
     return !condition_or_let.empty();
   };
-  // Should analyze condition after having dependency tools.
-  if (ContainsConditionOrLet(sch->GetRootBlock(sch->GetBlock(block_id))))
-    return;
+  // Should analyze condition when dependency tools are done.
+  if (ContainsConditionOrLet(sch->GetModule().GetExprs().front())) return;
 
   if (!compute_at_reduce_init_done_) {
     for (const auto& block : sch->GetAllBlocks()) {
