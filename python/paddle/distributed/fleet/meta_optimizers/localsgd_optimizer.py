@@ -149,9 +149,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         attrs={OP_ROLE_KEY: OpRole.Optimize},
                     )
                     sub_block.append_op(
-                        type='c_sync_calc_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
+                        type='sync_calc_stream',
+                        inputs={'x': param},
+                        outputs={'out': param},
                         attrs={OP_ROLE_KEY: OpRole.Optimize},
                     )
                     ring_id = (ring_id + 1) % self.nrings
@@ -167,9 +167,9 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
                 for ring_id in range(self.nrings):
                     sub_block.append_op(
-                        type='c_sync_comm_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
+                        type='sync_comm_stream',
+                        inputs={'x': param},
+                        outputs={'out': param},
                         attrs={
                             'ring_id': ring_id,
                             OP_ROLE_KEY: OpRole.Optimize,
@@ -288,9 +288,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             },
         )
         program_block.append_op(
-            type='c_sync_calc_stream',
-            inputs={'X': [avg_loss]},
-            outputs={'Out': [avg_loss]},
+            type='sync_calc_stream',
+            inputs={'x': [avg_loss]},
+            outputs={'out': [avg_loss]},
             attrs={OP_ROLE_KEY: OpRole.Optimize},
         )
 
@@ -400,9 +400,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         attrs={OP_ROLE_KEY: OpRole.Optimize},
                     )
                     sub_block.append_op(
-                        type='c_sync_calc_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
+                        type='sync_calc_stream',
+                        inputs={'x': param},
+                        outputs={'out': param},
                         attrs={OP_ROLE_KEY: OpRole.Optimize},
                     )
                     ring_id = (ring_id + 1) % self.nrings
@@ -418,9 +418,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
 
                 for ring_id in range(self.nrings):
                     sub_block.append_op(
-                        type='c_sync_comm_stream',
-                        inputs={'X': param},
-                        outputs={'Out': param},
+                        type='sync_comm_stream',
+                        inputs={'x': param},
+                        outputs={'out': param},
                         attrs={
                             'ring_id': ring_id,
                             OP_ROLE_KEY: OpRole.Optimize,

@@ -102,14 +102,14 @@ class PipelinePass(PassBase):
                     # step1: set 'use_calc_stream' False
                     op._set_attr("use_calc_stream", False)
                     op_role = op.attr('op_role')
-                    # step2: insert 'c_sync_calc_stream' op before 'send_v2' op
+                    # step2: insert 'sync_calc_stream' op before 'send_v2' op
                     var_name = op.input_arg_names[0]
                     var = block.var(var_name)
                     block._insert_op_without_sync(
                         index=index + offset,
-                        type="c_sync_calc_stream",
-                        inputs={'X': [var]},
-                        outputs={'Out': [var]},
+                        type="sync_calc_stream",
+                        inputs={'x': [var]},
+                        outputs={'out': [var]},
                         attrs={'op_role': op_role},
                     )
                     offset += 1
@@ -369,9 +369,9 @@ class PipelinePass(PassBase):
 
                     if not is_after_send_op or not is_after_recv_op:
                         if self._cur_pp_stage == self._pp_stages - 1:
-                            # NOTE: the c_sync_calc_stream about all_gather cannot be removed
+                            # NOTE: the sync_calc_stream about all_gather cannot be removed
                             if (
-                                op.type == "c_sync_calc_stream"
+                                op.type == "sync_calc_stream"
                                 and src_block.ops[i + 1].type == "send_v2"
                             ):
                                 continue

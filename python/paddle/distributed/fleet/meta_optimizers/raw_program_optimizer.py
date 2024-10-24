@@ -114,9 +114,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if not param:
             return  # no parameter on this device
         block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': param},
-            outputs={'Out': param},
+            type='sync_comm_stream',
+            inputs={'x': param},
+            outputs={'out': param},
             attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
         )
 
@@ -244,9 +244,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         gm_block._insert_op(
             first_optimize_op_idx,
-            type="c_sync_calc_stream",
-            inputs={'X': grad_vars[0]},
-            outputs={'Out': grad_vars[0]},
+            type="sync_calc_stream",
+            inputs={'x': grad_vars[0]},
+            outputs={'out': grad_vars[0]},
             attrs={OP_ROLE_KEY: OpRole.Backward},
         )
 
@@ -269,9 +269,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         gm_block._insert_op(
             first_optimize_op_idx + insert_op_num,
-            type="c_sync_comm_stream",
-            inputs={'X': grad_vars},
-            outputs={'Out': grad_vars},
+            type="sync_comm_stream",
+            inputs={'x': grad_vars},
+            outputs={'out': grad_vars},
             attrs={
                 'ring_id': ring_id,
                 OP_ROLE_KEY: OpRole.Backward,
@@ -452,9 +452,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
             if not self.calc_comm_same_stream and self.sync_before_allreduce:
                 block._insert_op_without_sync(
                     after_idx + 1,
-                    type='c_sync_calc_stream',
-                    inputs={'X': fused_var},
-                    outputs={'Out': fused_var},
+                    type='sync_calc_stream',
+                    inputs={'x': fused_var},
+                    outputs={'out': fused_var},
                     attrs={OP_ROLE_KEY: OpRole.Backward},
                 )
         idx = 0
@@ -522,9 +522,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
             if is_optimizer_op(op):
                 block._insert_op_without_sync(
                     idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': fused_vars},
-                    outputs={'Out': fused_vars},
+                    type='sync_comm_stream',
+                    inputs={'x': fused_vars},
+                    outputs={'out': fused_vars},
                     attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
                 )
                 break

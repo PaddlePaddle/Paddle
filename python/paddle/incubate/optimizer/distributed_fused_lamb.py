@@ -95,9 +95,9 @@ def init_communicator(block, rank, ranks, ring_id):
         attrs={'ring_id': ring_id, 'use_calc_stream': True},
     )
     block.append_op(
-        type='c_sync_calc_stream',
-        inputs={'X': tmp_var},
-        outputs={'Out': tmp_var},
+        type='sync_calc_stream',
+        inputs={'x': tmp_var},
+        outputs={'out': tmp_var},
     )
     return ring_id
 

@@ -869,8 +869,8 @@ class Remover:
                             break
                     continue
 
-                # replace the input and output of c_sync_comm_stream op when in pipeline scene.
-                if op.type == "c_sync_comm_stream":
+                # replace the input and output of sync_comm_stream op when in pipeline scene.
+                if op.type == "sync_comm_stream":
                     need_save = []
                     for var_name in op.input_arg_names:
                         process_mesh = (
@@ -1000,8 +1000,8 @@ class Remover:
         startup_output_vars = set()
         startup_ops = startup_block.ops
         for op in startup_ops:
-            # skip c_sync_comm_stream op
-            if op.type == "c_sync_comm_stream":
+            # skip sync_comm_stream op
+            if op.type == "sync_comm_stream":
                 continue
             for var_name in op.output_arg_names:
                 startup_output_vars.add(var_name)
@@ -1015,7 +1015,7 @@ class Remover:
         actual_need_vars = set()
         for idx, op in enumerate(startup_ops):
             is_need_op = False
-            if op.type == "c_sync_comm_stream":
+            if op.type == "sync_comm_stream":
                 continue
             for var_name in op.output_arg_names:
                 if var_name in need_vars:
@@ -1039,7 +1039,7 @@ class Remover:
         vars = startup_block.vars
         for idx, op in enumerate(startup_block.ops):
             is_no_need_op = False
-            if op.type == "c_sync_comm_stream":
+            if op.type == "sync_comm_stream":
                 var_names = []
                 for var_name in op.input_arg_names:
                     if var_name in vars:

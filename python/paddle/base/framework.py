@@ -3169,8 +3169,8 @@ class Operator:
         "gen_nccl_id",
         "c_gen_nccl_id",
         "c_comm_init",
-        "c_sync_calc_stream",
-        "c_sync_comm_stream",
+        "sync_calc_stream",
+        "sync_comm_stream",
         "heter_listen_and_serv",
         "c_wait_comm",
         "c_wait_compute",
@@ -4589,7 +4589,7 @@ class Block:
                         # NOTE: "coalesce_tensor" is a special case for rnn with cudnn support
                         if op.type in [
                             "broadcast",
-                            "c_sync_comm_stream",
+                            "sync_comm_stream",
                             "coalesce_tensor",
                         ]:
                             continue

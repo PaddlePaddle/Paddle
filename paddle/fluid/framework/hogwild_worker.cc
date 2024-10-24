@@ -332,7 +332,7 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
     // broadcast op
     if (op_desc->Type() != "c_broadcast") {
       // has sync comm stream
-      if (op_desc->Type() == "c_sync_comm_stream") {
+      if (op_desc->Type() == "sync_comm_stream") {
         is_has_sync_comm_stream = true;
       }
       continue;
@@ -401,8 +401,8 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
   std::multiset<std::string> out2refs;
   for (auto &op_desc : all_desc) {
     bool find = false;
-    if (op_desc->Type() == "c_sync_calc_stream") {  // remove error sync
-      auto &inputs = op_desc->Input("X");
+    if (op_desc->Type() == "sync_calc_stream") {  // remove error sync
+      auto &inputs = op_desc->Input("x");
       std::vector<std::string> removenames;
       for (auto &name : inputs) {
         auto it = out2refs.find(name);
@@ -538,7 +538,7 @@ void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
           << ", offload var name count=" << offload_names_.size()
           << ", total_broadcast=" << total_broadcast
           << ", remove_broadcast=" << remove_broadcast
-          << ", remove c_sync_calc_stream=" << remove_sync_stream
+          << ", remove sync_calc_stream=" << remove_sync_stream
           << ", remove cast_op=" << remove_cast_op;
 }
 size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
@@ -777,7 +777,7 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
     }
     // skip remove ops, remove sync
     if (remove_ops_.find(op_desc) != remove_ops_.end() ||
-        op_name == "c_sync_comm_stream") {
+        op_name == "sync_comm_stream") {
       if (enable_adjust_op_order_) {
         remove_ids.insert(op_index);
       } else {

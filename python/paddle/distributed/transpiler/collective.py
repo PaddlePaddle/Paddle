@@ -258,9 +258,9 @@ class Collective:
 
         for ring_id in range(self.nrings):
             block.append_op(
-                type='c_sync_comm_stream',
-                inputs={'X': param},
-                outputs={'Out': param},
+                type='sync_comm_stream',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={'ring_id': ring_id, self.op_role_key: OpRole.Forward},
             )
 
@@ -345,9 +345,9 @@ class GradAllReduce(Collective):
                         offset += 1
                         block._insert_op(
                             offset,
-                            type='c_sync_calc_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
+                            type='sync_calc_stream',
+                            inputs={'x': grad},
+                            outputs={'out': grad},
                             attrs={self.op_role_key: OpRole.Backward},
                         )
                         offset += 1
@@ -374,9 +374,9 @@ class GradAllReduce(Collective):
                 for ring_id in range(self.nrings):
                     block._insert_op(
                         idx + ring_id,
-                        type='c_sync_comm_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
+                        type='sync_comm_stream',
+                        inputs={'x': grad},
+                        outputs={'out': grad},
                         attrs={
                             'ring_id': ring_id,
                             self.op_role_key: OpRole.Backward,
@@ -446,9 +446,9 @@ class LocalSGD(Collective):
                 )
                 block._insert_op(
                     idx + 2,
-                    type='c_sync_calc_stream',
-                    inputs={'X': param},
-                    outputs={'Out': param},
+                    type='sync_calc_stream',
+                    inputs={'x': param},
+                    outputs={'out': param},
                     attrs={self.op_role_key: OpRole.Optimize},
                 )
                 ring_id = (ring_id + 1) % self.nrings
@@ -467,9 +467,9 @@ class LocalSGD(Collective):
 
         for ring_id in range(self.nrings):
             block.append_op(
-                type='c_sync_comm_stream',
-                inputs={'X': param},
-                outputs={'Out': param},
+                type='sync_comm_stream',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={'ring_id': ring_id, self.op_role_key: OpRole.Optimize},
             )
 
@@ -538,7 +538,7 @@ class SingleProcessMultiThread(GradAllReduce):
             self.nranks = 1
             print("begin to _transpile_startup_program for single-node")
             block = self.startup_program.global_block()
-            block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+            block.append_op(type='comm_init_all', attrs={'ring_id': 0})
 
     def _transpile_main_program(self):
         # not need loss scale and no dense param
@@ -640,9 +640,9 @@ class SingleProcessMultiThread(GradAllReduce):
             # grads aggregation of multi-gpus
             block._insert_op(
                 global_offset,
-                type='c_sync_calc_stream',
-                inputs={'X': input_grads[0]},
-                outputs={'Out': input_grads[0]},
+                type='sync_calc_stream',
+                inputs={'x': input_grads[0]},
+                outputs={'out': input_grads[0]},
                 attrs={self.op_role_key: OpRole.Backward},
             )
             global_offset += 1
@@ -658,9 +658,9 @@ class SingleProcessMultiThread(GradAllReduce):
             # sync before adam
             block._insert_op(
                 global_offset,
-                type='c_sync_comm_stream',
-                inputs={'X': input_grads[0]},
-                outputs={'Out': input_grads[0]},
+                type='sync_comm_stream',
+                inputs={'x': input_grads[0]},
+                outputs={'out': input_grads[0]},
                 attrs={'ring_id': ring_id, self.op_role_key: OpRole.Backward},
             )
             global_offset += 1
@@ -692,9 +692,9 @@ class SingleProcessMultiThread(GradAllReduce):
             # grads aggregation of multi-gpus
             block._insert_op(
                 global_offset,
-                type='c_sync_calc_stream',
-                inputs={'X': fused_output},
-                outputs={'Out': fused_output},
+                type='sync_calc_stream',
+                inputs={'x': fused_output},
+                outputs={'out': fused_output},
                 attrs={self.op_role_key: OpRole.Backward},
             )
             global_offset += 1
@@ -711,9 +711,9 @@ class SingleProcessMultiThread(GradAllReduce):
             # sync before adam
             block._insert_op(
                 global_offset,
-                type='c_sync_comm_stream',
-                inputs={'X': fused_output},
-                outputs={'Out': fused_output},
+                type='sync_comm_stream',
+                inputs={'x': fused_output},
+                outputs={'out': fused_output},
                 attrs={'ring_id': ring_id, self.op_role_key: OpRole.Backward},
             )
             global_offset += 1
@@ -756,7 +756,7 @@ class MultiThread(GradAllReduce):
                 )
                 block = self.startup_program.global_block()
                 block.append_op(
-                    type='c_comm_init_all',
+                    type='comm_init_all',
                     attrs={
                         'devices': list(
                             map(
@@ -769,7 +769,7 @@ class MultiThread(GradAllReduce):
             else:
                 print("begin to _transpile_startup_program for single-node")
                 block = self.startup_program.global_block()
-                block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+                block.append_op(type='comm_init_all', attrs={'ring_id': 0})
 
     def _transpile_main_program(self):
         self._insert_scale_loss_grad_ops()
@@ -827,9 +827,9 @@ class MultiThread(GradAllReduce):
                         offset += 1
                         block._insert_op(
                             offset,
-                            type='c_sync_calc_stream',
-                            inputs={'X': grad},
-                            outputs={'Out': grad},
+                            type='sync_calc_stream',
+                            inputs={'x': grad},
+                            outputs={'out': grad},
                             attrs={self.op_role_key: OpRole.Backward},
                         )
                         offset += 1
@@ -857,9 +857,9 @@ class MultiThread(GradAllReduce):
                 for ring_id in range(self.nrings):
                     block._insert_op(
                         idx + ring_id,
-                        type='c_sync_comm_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
+                        type='sync_comm_stream',
+                        inputs={'x': grad},
+                        outputs={'out': grad},
                         attrs={
                             'ring_id': ring_id,
                             self.op_role_key: OpRole.Backward,
@@ -1030,9 +1030,9 @@ class MultiThread(GradAllReduce):
                     )
                     block._insert_op(
                         idx,
-                        type='c_sync_calc_stream',
-                        inputs={'X': fused_var},
-                        outputs={'Out': fused_var},
+                        type='sync_calc_stream',
+                        inputs={'x': fused_var},
+                        outputs={'out': fused_var},
                         attrs={self.op_role_key: OpRole.Backward},
                     )
                 break
@@ -1046,9 +1046,9 @@ class MultiThread(GradAllReduce):
             if self._is_optimizer_op(op):
                 block._insert_op(
                     idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': fused_vars[0]},
-                    outputs={'Out': fused_vars[0]},
+                    type='sync_comm_stream',
+                    inputs={'x': fused_vars[0]},
+                    outputs={'out': fused_vars[0]},
                     attrs={
                         'ring_id': ring_id,
                         self.op_role_key: OpRole.Backward,

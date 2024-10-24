@@ -283,7 +283,7 @@ bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
 
 bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
     const std::string &op_type) const {
-  if (op_type == "c_sync_calc_stream" || op_type == "c_sync_comm_stream") {
+  if (op_type == "sync_calc_stream" || op_type == "sync_comm_stream") {
     return true;
   }
   bool support_cpu = false;

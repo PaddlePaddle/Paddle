@@ -37,9 +37,9 @@ class TestAvoidTwiceInitialization(unittest.TestCase):
             attrs={'root': 0, 'ring_id': 0},
         )
         cur_block.append_op(
-            type="c_sync_comm_stream",
-            inputs={'X': [var]},
-            outputs={'Out': [var]},
+            type="sync_comm_stream",
+            inputs={'x': [var]},
+            outputs={'out': [var]},
             attrs={'ring_id': 0},
         )
         var2 = cur_block.create_parameter(

@@ -875,9 +875,9 @@ class PipelineOptimizer:
 
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='c_sync_calc_stream',
-                            inputs={'X': [var]},
-                            outputs={'Out': [var]},
+                            type='sync_calc_stream',
+                            inputs={'x': [var]},
+                            outputs={'out': [var]},
                             attrs={
                                 self._op_device_key: prev_dev,
                                 self._op_role_key: op_role,
@@ -920,9 +920,9 @@ class PipelineOptimizer:
                             new_op_role = self._op_role.Backward
                         sync_comm_op = block._insert_op_without_sync(
                             index=insert_index + extra_index_info['index'],
-                            type='c_sync_comm_stream',
-                            inputs={'X': [var]},
-                            outputs={'Out': [var]},
+                            type='sync_comm_stream',
+                            inputs={'x': [var]},
+                            outputs={'out': [var]},
                             attrs={
                                 self._op_device_key: prev_dev,
                                 self._op_role_key: new_op_role,
@@ -1008,7 +1008,7 @@ class PipelineOptimizer:
             input_names = op.input_arg_names
             output_names = op.output_arg_names
             in_out_names = input_names + output_names
-            if op.type == 'cast' or op.type == "c_sync_comm_stream":
+            if op.type == 'cast' or op.type == "sync_comm_stream":
                 continue
             # append "MERGED" to the names of parameter gradients,
             # and modify the op_role_var attribute (by rename_arg func).
@@ -1639,9 +1639,9 @@ class PipelineOptimizer:
                 )
                 read_block._insert_op(
                     index=1,
-                    type='c_sync_comm_stream',
-                    inputs={'X': [read_block.var(var_name)]},
-                    outputs={'Out': [read_block.var(var_name)]},
+                    type='sync_comm_stream',
+                    inputs={'x': [read_block.var(var_name)]},
+                    outputs={'out': [read_block.var(var_name)]},
                     attrs={
                         self._op_device_key: read_device,
                         # A trick to make the role LRSched to avoid copy every
@@ -1708,7 +1708,7 @@ class PipelineOptimizer:
         for index, op in enumerate(list(block.ops)):
             if index >= backward_recv_index:
                 break
-            if op.type == 'c_sync_comm_stream' and op.has_attr('pipeline_flag'):
+            if op.type == 'sync_comm_stream' and op.has_attr('pipeline_flag'):
                 var_name = op.input_arg_names[0]
                 var = block.var(var_name)
                 block._remove_op(index + offset, sync=False)
