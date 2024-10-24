@@ -447,3 +447,58 @@ def convert_conv2d(network, paddle_op, inputs):
     layer.dilation_nd = nv_dilations
 
     return layer.get_output(0)
+
+
+def add_reduce_layer(network, paddle_op, inputs, op_type):
+    input_tensor = inputs[0]
+    axis = paddle_op.operands()[1].source().get_defining_op().attrs()["value"]
+    input_shape = paddle_op.operands()[0].source().shape
+    keepdim = paddle_op.attrs()["keepdim"]
+    if network.has_implicit_batch_dimension:
+        assert (
+            axis != 0
+        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+    output_shape = []
+    if len(axis) == 0:
+        axis = list(range(len(input_shape)))
+    for i in range(len(axis)):
+        if axis[i] < 0:
+            axis[i] = len(input_shape) + axis[i]
+    layer = network.add_reduce(
+        input_tensor,
+        op_type,
+        axes=get_axes_for_reduce_op(axis),
+        keep_dims=keepdim,
+    )
+    layer.get_output(0).dtype = layer.get_input(0).dtype
+    return layer.get_output(0)
+
+
+def add_cast_reduce_layer(network, paddle_op, inputs, op_type):
+    input_tensor = inputs[0]
+    cast_layer = network.add_identity(input_tensor)
+    cast_layer.set_output_type(0, trt.int32)
+    cast_layer.get_output(0).dtype = trt.int32
+
+    axis = paddle_op.attrs().get("axis")
+    input_shape = paddle_op.operands()[0].source().shape
+    keepdim = paddle_op.attrs()["keepdim"]
+    if network.has_implicit_batch_dimension:
+        assert (
+            axis != 0
+        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+    output_shape = []
+    if len(axis) == 0:
+        axis = list(range(len(input_shape)))
+    for i in range(len(axis)):
+        if axis[i] < 0:
+            axis[i] = len(input_shape) + axis[i]
+    layer = network.add_reduce(
+        cast_layer.get_output(0),
+        op_type,
+        axes=get_axes_for_reduce_op(axis),
+        keep_dims=keepdim,
+    )
+    layer.set_output_type(0, trt.bool)
+    layer.get_output(0).dtype = cast_layer.get_output(0).dtype
+    return layer.get_output(0)
