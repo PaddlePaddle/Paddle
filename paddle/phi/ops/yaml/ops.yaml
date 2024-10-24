@@ -2927,6 +2927,7 @@
     data_type : x
   optional: bias
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log
   args : (Tensor x)
