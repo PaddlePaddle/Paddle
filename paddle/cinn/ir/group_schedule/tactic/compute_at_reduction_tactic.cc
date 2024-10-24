@@ -45,6 +45,19 @@ void ComputeAtReductionTactic::Init(ScheduleContext* context) {
 
 void ComputeAtReductionTactic::Apply(ir::IRSchedule* sch,
                                      const std::string& block_id) {
+  const auto ContainsConditionOrLet = [&](const ir::Expr& expr) -> bool {
+    const auto condition_or_let = ir::ir_utils::CollectIRNodesWithoutTensor(
+        expr, [&](const Expr* x) -> bool {
+          if (x->As<ir::IfThenElse>() || x->As<ir::Select>() ||
+              x->As<ir::Let>())
+            return true;
+        });
+    return !condition_or_let.empty();
+  };
+  // Should analyze condition after having dependency tools.
+  if (ContainsConditionOrLet(sch->GetRootBlock(sch->GetBlock(block_id))))
+    return;
+
   if (!compute_at_reduce_init_done_) {
     for (const auto& block : sch->GetAllBlocks()) {
       ComputeAtReduceInit(sch,
@@ -169,7 +182,7 @@ std::string FindCandidateBlockId(ir::IRSchedule* sch,
       return false;
     const std::vector<ir::Expr> first_loops = sch->GetLoops(first_block);
     const std::vector<ir::Expr> second_loops = sch->GetLoops(second_block);
-    if (!ForExtentsEqual(first_loops, second_loops)) false;
+    if (!ForExtentsEqual(first_loops, second_loops)) return false;
     std::unordered_map<ir::Var, ir::Var> for_var_map =
         ConstructForVarMap(first_loops, second_loops);
 
@@ -255,15 +268,6 @@ std::string FindCandidateBlockId(ir::IRSchedule* sch,
 bool IsSafeComputeAt(ir::IRSchedule* sch,
                      const std::string& candidate_block_id,
                      const std::string& block_id) {
-  const auto ContainsConditionOrLet = [&](const ir::Expr& expr) -> bool {
-    const auto condition_or_let = ir::ir_utils::CollectIRNodesWithoutTensor(
-        expr, [&](const Expr* x) -> bool {
-          return x->As<ir::IfThenElse>() || x->As<ir::Select>() ||
-                 x->As<ir::Let>();
-        });
-    return !condition_or_let.empty();
-  };
-
   const auto GetLoopsAllSbrs =
       [&](const std::vector<ir::Expr>& loops) -> std::vector<ir::Expr> {
     std::vector<ir::Expr> loop_sbrs;
@@ -361,9 +365,6 @@ bool IsSafeComputeAt(ir::IRSchedule* sch,
     }
     return true;
   };
-  // Should analyze condition after having dependency tools.
-  if (ContainsConditionOrLet(sch->GetRootBlock(sch->GetBlock(block_id))))
-    return false;
   return AllBlockSafeComputeAt(
       sch->GetAllBlocks(), candidate_block_id, block_id);
 }
