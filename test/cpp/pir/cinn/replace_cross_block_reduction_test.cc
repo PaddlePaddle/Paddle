@@ -78,7 +78,7 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
             ScheduleBlock(B)
             {
               i0_0, i1 = axis.bind(i, reduce_k)
-              B[i0_0] = cinn_grid_reduce_sum_fp32(Tensor(A, [8,16]), 1, i0_0)
+              B[i0_0] = cinn_grid_reduce_sum_fp32(Tensor(A, [8,16]), 16, i0_0)
             }
           }
         }
@@ -166,7 +166,7 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
               ScheduleBlock(B)
               {
                 i0_0, i1_0, i2 = axis.bind(i, j, reduce_k)
-                B[i0_0, i1_0] = cinn_grid_reduce_max_fp32(Tensor(A, [8,4,32]), 32, ((32 * i0_0) + i1_0))
+                B[i0_0, i1_0] = cinn_grid_reduce_max_fp32(Tensor(A, [8,4,32]), 128, ((32 * i0_0) + i1_0))
               }
             }
           }

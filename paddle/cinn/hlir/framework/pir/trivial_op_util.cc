@@ -386,6 +386,10 @@ ExprSetFinder FilterLoadByTensor(const ir::Tensor& tensor) {
 ExprSetFinder ChildFors =
     Collector([](const ir::Expr* e) { return e->As<ir::For>(); }, "ChildFors");
 
+ExprSetFinder ChildIfThenElses =
+    Collector([](const ir::Expr* e) { return e->As<ir::IfThenElse>(); },
+              "ChildIfThenElses");
+
 ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [root](const auto& child) -> ExprSet {
     ExprSetFinder find_child =

@@ -191,6 +191,8 @@ extern ExprSetFinder ChildTensorStores;
 
 extern ExprSetFinder ChildFors;
 
+extern ExprSetFinder ChildIfThenElses;
+
 ExprSetFinder IsForIterVar(const ir::Var& var);
 
 ExprSetFinder FilterLoadByTensor(const ir::Tensor& tensor);
