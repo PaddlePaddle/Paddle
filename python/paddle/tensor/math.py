@@ -3782,7 +3782,7 @@ def clip(
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
 
-    if isinstance(min, paddle.Tensor) or isinstance(max, paddle.Tensor):
+    if (isinstance(min, paddle.Tensor) and min.shape not in [[1], []]) or (isinstance(max, paddle.Tensor) and max.shape not in [[1], []]):
         min_n = check_clip_tensor(x, min, min_, x_dtype, 'min')
         max_n = check_clip_tensor(x, max, max_, x_dtype, 'max')
 
@@ -3881,11 +3881,7 @@ def clip_(
     max = fmax if max is None else max
 
     if in_dynamic_mode():
-        if not isinstance(max, paddle.Tensor) and not isinstance(
-            min, paddle.Tensor
-        ):
-            return _C_ops.clip_(x, min, max)
-        else:
+        if (isinstance(min, paddle.Tensor) and min.shape not in [[1], []]) or (isinstance(max, paddle.Tensor) and max.shape not in [[1], []]):
             max = check_clip_tensor(x, max, fmin, x.dtype, 'max')
             min = check_clip_tensor(x, min, fmin, x.dtype, 'min')
 
@@ -3898,6 +3894,8 @@ def clip_(
 
             paddle.where_(x > min_expand, x, min_expand)
             return paddle.where_(x < max_expand, x, max_expand)
+        else:
+            return _C_ops.clip_(x, min, max)
 
 
 def trace(
