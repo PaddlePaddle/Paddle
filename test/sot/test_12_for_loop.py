@@ -321,5 +321,24 @@ class TestArange(TestCaseBase):
         self.assert_results(for_arange, x)
 
 
+def for_break_with_load_same_consts(x: paddle.Tensor):
+    y = None
+    z = None
+    for i in [1, 2, 3]:
+        if y is None:
+            y = i
+        if z is None:
+            z = i
+        x += y + z
+        sot.psdb.breakgraph()
+    return x
+
+
+class TestForBreakWithLoadSameConsts(TestCaseBase):
+    def test_for_break_with_load_same_consts(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(for_break_with_load_same_consts, x)
+
+
 if __name__ == "__main__":
     unittest.main()

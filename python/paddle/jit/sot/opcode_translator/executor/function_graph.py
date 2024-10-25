@@ -184,7 +184,9 @@ class VariableLoader:
         elif isinstance(var, NullVariable):
             var.reconstruct(self._pycode_gen)
         else:
-            self._pycode_gen.gen_load(self._store_var_info[var.id])
+            # NOTE: One variable may have multiple names, we can
+            # use any name to load it.
+            self._pycode_gen.gen_load(self._store_var_info[var.id][0])
 
 
 class FunctionGraph:
@@ -367,13 +369,18 @@ class FunctionGraph:
         # here is not update changed values, it just give names to stack vars
         # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
-            if store_var_info[var.id] is None:
-                store_var_info[var.id] = name_gen.next()
-                self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            if not store_var_info[var.id]:
+                name = name_gen.next()
+                store_var_info[var.id].append(name)
+                self.pycode_gen.gen_store_fast(name)
             else:
-                self.pycode_gen.gen_store(
-                    store_var_info[var.id], self.pycode_gen._origin_code
-                )
+                all_names = store_var_info[var.id]
+                for _ in range(len(all_names) - 1):
+                    self.pycode_gen.gen_dup_top()
+                for name in all_names:
+                    self.pycode_gen.gen_store(
+                        name, self.pycode_gen._origin_code
+                    )
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
@@ -391,13 +398,18 @@ class FunctionGraph:
         name_gen = NameGenerator("___compile_fn_saved_")
 
         for var in to_store_vars[::-1]:
-            if store_var_info[var.id] is None:
-                store_var_info[var.id] = name_gen.next()
-                self.pycode_gen.gen_store_fast(store_var_info[var.id])
+            if not store_var_info[var.id]:
+                name = name_gen.next()
+                store_var_info[var.id].append(name)
+                self.pycode_gen.gen_store_fast(name)
             else:
-                self.pycode_gen.gen_store(
-                    store_var_info[var.id], self.pycode_gen._origin_code
-                )
+                all_names = store_var_info[var.id]
+                for _ in range(len(all_names) - 1):
+                    self.pycode_gen.gen_dup_top()
+                for name in all_names:
+                    self.pycode_gen.gen_store(
+                        name, self.pycode_gen._origin_code
+                    )
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
