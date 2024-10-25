@@ -41,6 +41,8 @@ class ResultPatternGraph;
 
 class NormalAttribute {
  public:
+  NormalAttribute() : attr_name_("default_name") {}
+
   explicit NormalAttribute(const std::string& name) : attr_name_(name) {}
 
   const std::string& name() const { return attr_name_; }
@@ -53,6 +55,8 @@ using AttrComputeFunc = std::function<std::any(const MatchContext&)>;
 
 class ComputeAttribute {
  public:
+  ComputeAttribute() : attr_compute_func_(nullptr) {}
+
   explicit ComputeAttribute(const AttrComputeFunc& attr_compute_func)
       : attr_compute_func_(attr_compute_func) {}
 

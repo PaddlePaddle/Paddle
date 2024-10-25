@@ -44,6 +44,8 @@ template std::vector<int32_t> MatchContext::Attr<std::vector<int32_t>>(
     const std::string&) const;
 template std::vector<int64_t> MatchContext::Attr<std::vector<int64_t>>(
     const std::string&) const;
+template std::vector<float> MatchContext::Attr<std::vector<float>>(
+    const std::string&) const;
 template phi::DataType MatchContext::Attr<phi::DataType>(
     const std::string&) const;
 template phi::Place MatchContext::Attr<phi::Place>(const std::string&) const;
