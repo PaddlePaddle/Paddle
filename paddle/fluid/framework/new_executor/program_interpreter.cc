@@ -1031,7 +1031,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
           auto attrs = op->Attrs();
-          if (!dev_ctx->GetCommContext() &&
+          if ((!dev_ctx->GetCommContext() || op->Type() == "p_send" ||
+               op->Type() == "p_recv") &&
               attrs.find("ring_id") != attrs.end()) {
             auto ring_id_attr = attrs.at("ring_id");
             int ring_id = PADDLE_GET(int, ring_id_attr);
