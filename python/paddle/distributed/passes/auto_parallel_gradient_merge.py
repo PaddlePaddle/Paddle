@@ -32,7 +32,7 @@ world_process_group = get_world_process_group()
 def _move_used_grad_op(used_grad_op, grad):
     move_to_opt_block_flag = True
     move_to_opt_ops = []
-    cannot_move_op = ["pd_op.send_v2", "pd_op.send"]
+    cannot_move_op = ["pd_op.p_send", "pd_op.send"]
 
     def find_move_op(backward_op):
         nonlocal move_to_opt_block_flag
