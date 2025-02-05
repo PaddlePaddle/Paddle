@@ -1,0 +1,38 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/utils/optional.h"
+
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+using Tensor = paddle::Tensor;
+using Scalar = phi::Scalar;
+using IntArray = paddle::experimental::IntArray;
+using DataType = phi::DataType;
+
+{% for api in apis %}
+  {%- if api is only_composite_op or "infer_meta" not in api and "composite" not in api and "invoke" not in api -%}{#- render nothing -#}
+  {%- elif api.name not in backend_black_list -%}
+    {%- if 'invoke' not in api or 'invoke' in api and api.is_fwd -%}
+      {% if api.attrs is exist_mutable_attribute %}
+{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, True, True)}};
+
+      {% endif %}
+{{common.sig(api.name, api.inputs, api.outputs|trip_intermediate , api.attrs, False, True)}};
+
+    {% endif %}
+  {% else %}{#- render nothing -#}
+  {% endif %}
+{% endfor %}
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle

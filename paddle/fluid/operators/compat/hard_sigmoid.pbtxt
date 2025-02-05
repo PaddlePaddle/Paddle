@@ -1,0 +1,17 @@
+type: "hard_sigmoid"
+def {
+  inputs {
+    name: "X"
+  }
+  outputs {
+    name: "Out"
+  }
+  attrs {
+    name: "slope"
+    type: FLOAT
+  }
+  attrs {
+    name: "offset"
+    type: FLOAT
+  }
+}

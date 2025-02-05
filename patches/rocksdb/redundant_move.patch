@@ -1,0 +1,40 @@
+diff --git a/db/db_impl/db_impl.cc b/db/db_impl/db_impl.cc
+index aaa3b5125..e7b3cc879 100644
+--- a/db/db_impl/db_impl.cc
++++ b/db/db_impl/db_impl.cc
+@@ -1237,11 +1237,11 @@ Status DBImpl::FlushWAL(bool sync) {
+       // future writes
+       IOStatusCheck(io_s);
+       // whether sync or not, we should abort the rest of function upon error
+-      return std::move(io_s);
++      return io_s;
+     }
+     if (!sync) {
+       ROCKS_LOG_DEBUG(immutable_db_options_.info_log, "FlushWAL sync=false");
+-      return std::move(io_s);
++      return io_s;
+     }
+   }
+   if (!sync) {
+@@ -1338,7 +1338,7 @@ Status DBImpl::LockWAL() {
+     // future writes
+     WriteStatusCheck(status);
+   }
+-  return std::move(status);
++  return status;
+ }
+ 
+ Status DBImpl::UnlockWAL() {
+diff --git a/table/plain/plain_table_builder.cc b/table/plain/plain_table_builder.cc
+index 506472c7a..10cd3ee34 100644
+--- a/table/plain/plain_table_builder.cc
++++ b/table/plain/plain_table_builder.cc
+@@ -272,7 +272,7 @@ Status PlainTableBuilder::Finish() {
+   IOStatus s = WriteBlock(property_block_builder.Finish(), file_, &offset_,
+                           &property_block_handle);
+   if (!s.ok()) {
+-    return std::move(s);
++    return s;
+   }
+   meta_index_builer.Add(kPropertiesBlock, property_block_handle);
+ 

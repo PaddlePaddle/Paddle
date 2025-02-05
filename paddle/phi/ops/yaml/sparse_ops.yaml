@@ -1,0 +1,575 @@
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : abs_coo{sparse_coo -> sparse_coo},
+           abs_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : abs_grad
+
+- op : acos
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : acos_coo{sparse_coo -> sparse_coo},
+           acos_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : acos_grad
+
+- op : acosh
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : acosh_coo{sparse_coo -> sparse_coo},
+           acosh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : acosh_grad
+
+- op : add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : add_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           add_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+           add_coo_dense{sparse_coo, dense -> sparse_coo},
+    layout : x
+  backward : add_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : asin
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : asin_coo{sparse_coo -> sparse_coo},
+           asin_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : asin_grad
+
+- op : asinh
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : asinh_coo{sparse_coo -> sparse_coo},
+           asinh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : asinh_grad
+
+- op : atan
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : atan_coo{sparse_coo -> sparse_coo},
+           atan_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : atan_grad
+
+- op : atanh
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : atanh_coo{sparse_coo -> sparse_coo},
+           atanh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : atanh_grad
+
+- op : batch_norm_
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta :
+    func : BatchNormInferMeta
+  kernel :
+    func : batch_norm_coo {sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
+    data_type : x
+  inplace : (mean -> mean_out), (variance -> variance_out)
+  backward : batch_norm_grad
+
+- op : cast
+  args : (Tensor x, DataType index_dtype=DataType::UNDEFINED, DataType value_dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::CastInferMeta
+  kernel :
+    func : cast_coo{sparse_coo -> sparse_coo},
+           cast_csr{sparse_csr -> sparse_csr}
+    layout : x
+    data_type : x
+  backward : cast_grad
+
+- op : conv3d
+  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key="")
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
+  infer_meta :
+    func : sparse::Conv3dInferMeta
+  kernel :
+    func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
+    layout : x
+  intermediate: rulebook, counter
+  backward : conv3d_grad
+
+- op : conv3d_implicit_gemm
+  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key="")
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::Conv3dImplicitGemmInferMeta
+  kernel :
+    func : conv3d_implicit_gemm{sparse_coo, dense -> sparse_coo}
+    layout : x
+
+- op : divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : divide_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           divide_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : divide_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : divide_scalar
+  args : (Tensor x, float scalar)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : divide_scalar_coo{sparse_coo -> sparse_coo},
+           divide_scalar_csr{sparse_csr -> sparse_csr}
+  backward : divide_scalar_grad
+
+- op : expm1
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : expm1_coo{sparse_coo -> sparse_coo},
+           expm1_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : expm1_grad
+
+- op : isnan
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : IsfiniteInferMeta
+    param: [x]
+  kernel :
+    func : isnan_coo{sparse_coo -> sparse_coo},
+      isnan_csr{sparse_csr -> sparse_csr}
+    layout : x
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : leaky_relu
+  args : (Tensor x, float alpha)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : leaky_relu_coo{sparse_coo -> sparse_coo},
+           leaky_relu_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : leaky_relu_grad
+
+- op : log1p
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : log1p_coo{sparse_coo -> sparse_coo},
+           log1p_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : log1p_grad
+
+- op : multiply
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : multiply_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           multiply_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : multiply_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : pow
+  args : (Tensor x, float factor)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : pow_coo{sparse_coo -> sparse_coo},
+           pow_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : pow_grad
+
+- op : relu
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : relu_coo{sparse_coo -> sparse_coo},
+           relu_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : relu_grad
+
+- op : relu6
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : relu6_coo{sparse_coo -> sparse_coo},
+           relu6_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : relu6_grad
+
+- op : reshape
+  args : (Tensor x,  IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : reshape_grad
+
+- op : scale
+  args : (Tensor x, float scale, float bias, bool bias_after_scale)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : scale_coo{sparse_coo -> sparse_coo},
+           scale_csr{sparse_csr -> sparse_csr}
+  backward : scale_grad
+
+- op : sin
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sin_coo{sparse_coo -> sparse_coo},
+           sin_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sin_grad
+
+- op : sinh
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sinh_coo{sparse_coo -> sparse_coo},
+           sinh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sinh_grad
+
+- op : softmax
+  args : (Tensor x, int axis=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : softmax_coo{sparse_coo -> sparse_coo},
+           softmax_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : softmax_grad
+
+- op : sparse_coo_tensor
+  args : (Tensor values, Tensor indices, int64_t[] shape={})
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::SparseCooTensorInferMeta
+  kernel :
+    func : sparse_coo_tensor{dense, dense -> sparse_coo}
+    layout : values
+    data_type : values
+  backward : sparse_coo_tensor_grad
+
+- op : sqrt
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sqrt_coo{sparse_coo -> sparse_coo},
+           sqrt_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : sqrt_grad
+
+- op : square
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : square_coo{sparse_coo -> sparse_coo},
+           square_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : square_grad
+
+- op : subtract
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : subtract_coo_coo{sparse_coo, sparse_coo -> sparse_coo},
+           subtract_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
+    layout : x
+  backward : subtract_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : sum
+  args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : SumInferMeta
+  kernel :
+    func : sum_coo{sparse_coo -> sparse_coo},
+           sum_csr{sparse_csr -> sparse_csr}
+    data_type : x
+  backward : sum_grad
+
+- op : sync_batch_norm_
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta :
+    func : BatchNormInferMeta
+  kernel :
+    func : sync_batch_norm_coo{sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
+    data_type : x
+  backward : sync_batch_norm_grad
+  inplace : (mean -> mean_out), (variance -> variance_out)
+
+- op : tan
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tan_coo{sparse_coo -> sparse_coo},
+           tan_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : tan_grad
+
+- op : tanh
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : tanh_coo{sparse_coo -> sparse_coo},
+           tanh_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : tanh_grad
+
+- op : to_dense
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : coo_to_dense {sparse_coo -> dense},
+           csr_to_dense {sparse_csr -> dense}
+  backward : to_dense_grad
+
+- op : to_sparse_coo
+  args : (Tensor x, int64_t sparse_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : dense_to_coo { dense -> sparse_coo },
+           csr_to_coo { sparse_csr -> sparse_coo}
+  backward : to_sparse_coo_grad
+
+- op : to_sparse_csr
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : dense_to_csr {dense -> sparse_csr},
+           coo_to_csr {sparse_coo -> sparse_csr}
+
+- op : transpose
+  args : (Tensor x, int[] perm)
+  output : Tensor(out)
+  infer_meta :
+    func : TransposeInferMeta
+    param: [ x, perm ]
+  kernel :
+    func : transpose_coo{sparse_coo -> sparse_coo},
+           transpose_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : transpose_grad
+
+- op : values
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::ValuesInferMeta
+  kernel :
+    func : values_coo{sparse_coo -> dense},
+           values_csr{sparse_csr -> dense}
+    layout : x
+  backward : values_grad
+
+- op: addmm
+  args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [input]
+  kernel :
+    func : addmm_csr_dense {dense, sparse_csr, dense -> dense},
+           addmm_csr_csr {sparse_csr, sparse_csr, sparse_csr -> sparse_csr},
+           addmm_coo_dense {dense, sparse_coo, dense -> dense},
+           addmm_coo_coo {sparse_coo, sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: addmm_grad
+
+- op: coalesce
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func: coalesce_coo{sparse_coo -> sparse_coo}
+    layout : x
+
+- op: full_like
+  args : (Tensor x, Scalar value, DataType dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : CreateLikeInferMeta
+    param : [x, dtype]
+  kernel :
+    func : full_like_coo{sparse_coo -> sparse_coo},
+           full_like_csr{sparse_csr -> sparse_csr}
+    layout : x
+    data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op: fused_attention
+  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
+  output : Tensor(out), Tensor(softmax)
+  infer_meta :
+    func : sparse::FusedAttentionInferMeta
+  kernel :
+    func : fused_attention_csr{dense, dense, dense, sparse_csr, dense, dense -> dense, sparse_csr}
+    layout : sparse_mask
+    data_type: query
+  optional : key_padding_mask, attn_mask
+  intermediate : softmax
+  backward: fused_attention_grad
+
+- op: indices
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : sparse::IndicesInferMeta
+  kernel :
+    func : indices_coo{sparse_coo -> dense}
+    layout : x
+
+- op: mask_as
+  args : (Tensor x, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : mask_as_coo{dense, sparse_coo -> sparse_coo},
+           mask_as_csr{dense, sparse_csr -> sparse_csr}
+    layout : x
+  backward: mask_as_grad
+
+- op: masked_matmul
+  args : (Tensor x, Tensor y, Tensor mask)
+  output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param : [x, y, false, false]
+  kernel :
+    func : masked_matmul_csr{dense, dense, sparse_csr -> sparse_csr}
+    layout : x
+  backward: masked_matmul_grad
+
+- op: matmul
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : MatmulInferMeta
+    param: [x, y, false, false]
+  kernel :
+    func : matmul_csr_dense {sparse_csr, dense -> dense},
+           matmul_csr_csr {sparse_csr, sparse_csr -> sparse_csr},
+           matmul_coo_dense {sparse_coo, dense -> dense},
+           matmul_coo_coo {sparse_coo, sparse_coo -> sparse_coo}
+    layout : x
+  backward: matmul_grad
+
+- op: maxpool
+  args : (Tensor x, int[] kernel_sizes, int[] paddings, int[] dilations, int[] strides)
+  output : Tensor(out), Tensor(rulebook), Tensor(counter)
+  infer_meta :
+    func : sparse::Pool3dInferMeta
+  kernel :
+    func : maxpool_coo{sparse_coo -> sparse_coo, dense, dense}
+    layout : x
+  intermediate : rulebook, counter
+  backward : maxpool_grad
+
+- op: mv
+  args : (Tensor x, Tensor vec)
+  output : Tensor(out)
+  infer_meta :
+    func : MvInferMeta
+  kernel :
+    func : mv_coo{sparse_coo, dense -> dense},
+           mv_csr{sparse_csr, dense -> dense}
+    layout : x
+  backward: mv_grad
+
+- op: slice
+  args : (Tensor x, IntArray axes, IntArray starts, IntArray ends)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : slice_coo{sparse_coo -> sparse_coo},
+           slice_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : slice_grad

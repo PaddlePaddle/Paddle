@@ -1,0 +1,33 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#pragma once
+
+#include "paddle/fluid/primitive/primitive/primitive.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/int_array.h"
+
+namespace paddle {
+namespace primitive {
+
+using IntArray = paddle::experimental::IntArray;
+
+{% macro sig(fwd_name, name, inputs, attrs, outputs) %}
+std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs, attrs, attrs is exist_mutable_attribute)}}, const std::vector<std::vector<bool>>& stop_gradients);
+{% endmacro %}
+
+{%- set api_map = {} -%}
+{%- for api in apis -%} {%- do api_map.update({api.name: api}) -%} {%- endfor -%}
+{% for api in apis %}
+  {%- if api.backward and api.backward in api_map  and api.backward not in vjp_black_list -%}
+    {%- set backward_api = api_map[api.backward] -%}
+  {%- if backward_api is only_composite_op -%}{#- render nothing -#}
+  {%- else -%}
+{{sig(api.name, backward_api.name, backward_api.inputs, backward_api.attrs, backward_api.outputs)}}
+
+  {% endif %}
+  {% endif %}
+{% endfor %}
+}  // namespace primitive
+}  // namespace paddle

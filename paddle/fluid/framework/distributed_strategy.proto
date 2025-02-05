@@ -1,0 +1,442 @@
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.fleet;
+
+enum Mode {
+  COLLECTIVE = 1;
+  PS = 2;
+  PIPELINE = 3;
+  HETER = 4; // support XPU and GPU computing server
+}
+
+message RefinedOpsPattern {
+    repeated string main_ops = 1;
+    optional int32 num = 2 [default = 0];
+    repeated string pre_ops = 3;
+    repeated string suf_ops = 4;
+}
+
+message RecomputeConfig {
+  repeated string checkpoints = 1;
+  optional bool enable_offload = 2 [ default = false ];
+  repeated int32 checkpoint_shape = 3;
+  optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
+  repeated RefinedOpsPattern refined_ops_patterns = 5;
+}
+
+message ShardingConfig {
+  optional string sharding_segment_strategy = 1
+      [ default = 'segment_broadcast_MB' ];
+  optional float segment_broadcast_MB = 2 [ default = 32.0 ];
+  repeated string segment_anchors = 3;
+  optional int32 sharding_degree = 4 [ default = 8 ];
+  optional int32 mp_degree = 5 [ default = 1 ];
+  optional int32 dp_degree = 6 [ default = 1 ];
+  optional bool hybrid_dp = 7 [ default = false ];
+  optional int32 gradient_merge_acc_step = 8 [ default = 1 ];
+  optional bool optimize_offload = 9 [ default = false ];
+  optional bool pp_allreduce_in_optimize = 10 [ default = false ];
+  optional int32 pp_degree = 11 [ default = 1 ];
+  optional bool optimize_cast = 12 [ default = false ];
+  // Optimizer sharding. Temporary plans and may be deprecated
+  optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
+  optional int32 stage = 14 [ default = 1 ];
+  optional bool enable_tuning = 15 [ default = false ]; // incubate for auto parallel
+  optional bool use_calc_stream = 16 [default = false];
+}
+
+// for dygraph
+message MpConfig {
+    optional bool sync_param = 1 [ default = true ];
+    optional bool sync_grad = 2 [ default = false ];
+    optional bool sync_moment = 3 [ default = false ];
+    optional string sync_mode = 4 [ default = 'broadcast' ];
+    // Support all_reduce(dx) overlap with matmul(dw) in ColumnParallelLinear
+    optional bool mp_async_allreduce = 5 [default = false ];
+    // Support skip c_identity in ColumnParallelLinear and RowParallelLinear. Only works when mp_async_allreduce is true.
+    optional bool mp_skip_c_identity = 6 [default = false ];
+    // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
+    optional bool mp_fused_linear_param_grad_add = 7 [default = false ];
+    // Broadcast mp input data
+    optional bool need_broadcast_data = 8 [default = true];
+    // Recompute AllGather in forward of ColumnSequenceParallelLinear to reduce the memory usage.
+    optional bool recompute_allgather = 9 [default = false];
+    optional bool sp_async_reduce_scatter = 10 [default = false];
+}
+
+message PpConfig {
+    optional bool dp_comm_overlap = 1 [ default = false ];
+    optional bool delay_scale_loss = 2 [ default = false ];
+    optional bool enable_timer = 3 [ default = false ];
+    optional bool sharding_comm_overlap = 4 [ default = false ];
+    optional bool profiling = 5 [ default = false ];
+    optional bool release_gradients = 6 [ default = false ];
+    optional bool overlap_p2p_comm = 7 [default = false];
+    optional bool clear_every_step_cache = 8 [default = false];
+    optional bool use_batch_p2p_comm = 9 [default = true];
+    optional bool best_unbalanced_scheduler = 10 [ default = false ];
+}
+
+message DygraphShardingConfig {
+  optional bool tensor_fusion = 1 [ default = false ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+  optional bool comm_overlap = 3 [ default = false ];
+  optional bool split_param = 4 [ default = false ];
+  optional bool fuse_optimizer = 5 [ default = true ];
+  optional bool use_reduce_avg = 6 [ default = true ];
+  optional int32 comm_buffer_size_MB = 7 [ default = 256 ];
+  optional bool release_gradients = 8 [ default = false ];
+  optional bool free_grads_in_comm = 9 [ default = false ];
+  optional bool enable_fuse_optimizer_states = 10 [ default = false ];
+}
+
+message HybridConfig {
+  optional int32 dp_degree = 1 [ default = -1 ];
+  optional int32 mp_degree = 2 [ default = 1 ];
+  optional int32 pp_degree = 3 [ default = 1 ];
+  optional int32 sharding_degree = 4 [ default = 1 ];
+  optional int32 sep_degree = 5 [ default = 1 ];
+  optional MpConfig mp_configs = 6;
+  optional PpConfig pp_configs = 7;
+  optional DygraphShardingConfig sharding_configs = 8;
+  optional bool enable_optimizer_timer = 9 [ default = false ];
+}
+
+message AMPConfig {
+  optional float init_loss_scaling = 1 [ default = 32768.0 ];
+  optional int32 incr_every_n_steps = 2 [ default = 1000 ];
+  optional int32 decr_every_n_nan_or_inf = 3 [ default = 2 ];
+  optional float incr_ratio = 4 [ default = 2.0 ];
+  optional float decr_ratio = 5 [ default = 0.8 ];
+  optional bool use_dynamic_loss_scaling = 6 [ default = true ];
+  repeated string custom_white_list = 7;
+  repeated string custom_black_list = 8;
+  repeated string custom_black_varnames = 9;
+  optional bool use_pure_fp16 = 10 [ default = false ];
+  optional bool use_fp16_guard = 11 [ default = true ];
+  optional bool use_optimizer_fp16 = 12
+      [ default = false ]; // auto parallel effective only
+  optional bool use_pure_bf16 = 13 [ default = false ];
+}
+
+message LocalSGDConfig {
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional int32 begin_step = 2 [ default = 1 ];
+}
+
+message AdaptiveLocalSGDConfig {
+  optional int32 init_k_steps = 1 [ default = 1 ];
+  optional int32 begin_step = 2 [ default = 1 ];
+}
+
+message GradientMergeConfig {
+  optional int32 k_steps = 1 [ default = 1 ];
+  optional bool avg = 2 [ default = true ];
+}
+
+message DGCConfig {
+  optional int32 rampup_begin_step = 1 [ default = 0 ];
+  optional int32 rampup_step = 2 [ default = 1 ];
+  repeated float sparsity = 3;
+}
+
+message LarsConfig {
+  optional float lars_coeff = 1 [ default = 0.001 ];
+  optional float lars_weight_decay = 2 [ default = 0.0005 ];
+  optional float epsilon = 3 [ default = 0.0 ];
+  repeated string exclude_from_weight_decay = 4;
+}
+
+message LambConfig {
+  optional float lamb_weight_decay = 1 [ default = 0.01 ];
+  repeated string exclude_from_weight_decay = 2;
+}
+
+message BuildStrategy {
+  optional bool fuse_elewise_add_act_ops = 2 [ default = false ];
+  optional bool fuse_bn_act_ops = 3 [ default = false ];
+  optional bool fuse_relu_depthwise_conv = 4 [ default = false ];
+  optional bool fuse_broadcast_ops = 5 [ default = false ];
+  optional bool fuse_all_optimizer_ops = 6 [ default = false ];
+  optional bool enable_inplace = 7 [ default = false ];
+  optional bool enable_backward_optimizer_op_deps = 8 [ default = true ];
+  optional bool cache_runtime_context = 9 [ default = false ];
+  optional bool fuse_bn_add_act_ops = 10 [ default = true ];
+  optional bool enable_auto_fusion = 11 [ default = false ];
+  optional bool enable_addto = 12 [ default = false ];
+  optional bool allow_cuda_graph_capture = 14 [ default = false ];
+  optional int32 reduce_strategy = 15 [ default = 0 ];
+  optional bool fuse_gemm_epilogue = 16 [ default = false ];
+  optional string debug_graphviz_path = 17;
+  optional bool fused_attention = 18 [ default = false];
+  optional bool fused_feedforward = 19 [ default = false];
+  optional bool fuse_dot_product_attention = 20 [ default = false ];
+  optional bool fuse_resunit = 21 [ default = false ];
+}
+
+message GradientScaleConfig {
+  // Optional value ['avg', 'sum', 'customized']
+  // If avg, loss@grad will be divided by the number of devices,
+  // that is, the gradient will be accumulated and averaged among
+  // multiple devices.
+  // Else if sum, the gradient will accumulated among multiple
+  // devices.
+  optional string scale_strategy = 1 [ default = 'avg' ];
+  // The avg_loss flag is used to determine the position of average
+  // If scale_gradient is False, it will avg the loss@Grad before grad merge.
+  // Otherwise, it will do grad merge firstly, then avg the grad after merging.
+  optional bool scale_gradient = 2 [ default = false ];
+}
+
+message AsyncConfig {
+  optional int32 k_steps = 1 [ default = -1 ];
+  optional int32 max_merge_var_num = 2 [ default = 1 ];
+  optional int32 send_queue_size = 3 [ default = 16 ];
+  optional bool independent_recv_thread = 4 [ default = false ];
+  optional int32 min_send_grad_num_before_recv = 5 [ default = 1 ];
+  optional int32 thread_pool_size = 6 [ default = 1 ];
+  optional int32 send_wait_times = 7 [ default = 1 ];
+  optional bool runtime_split_send_recv = 8 [ default = false ];
+  optional bool launch_barrier = 9 [ default = true ];
+  optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
+  optional int32 lr_decay_steps = 11 [ default = 10 ];
+  optional int32 use_ps_gpu = 12 [ default = 0 ];
+  optional int32 use_gpu_graph = 13 [ default = 0 ];
+}
+
+message TrainerDescConfig {
+  optional string dump_fields_path = 1;
+  repeated string dump_fields = 2;
+  repeated string dump_param = 3;
+  repeated string stat_var_names = 4;
+  optional string trainer = 5;
+  optional string device_worker = 6;
+  repeated string local_sparse = 7;
+  repeated string remote_sparse = 8;
+}
+
+message PipelineConfig {
+  optional int32 micro_batch_size = 1 [ default = 1 ];
+  optional int32 accumulate_steps = 2 [ default = 1 ];
+  optional string schedule_mode = 3 [ default = '1F1B' ];
+  optional bool p2p_cache_shape = 4 [ default = true ];
+  optional bool enable_partial_send_recv = 5 [ default = true ];
+}
+
+message TensorParallelConfig {
+  optional int32 tensor_parallel_degree = 1 [ default = 1 ];
+  optional int32 tensor_init_seed = 2 [ default = -1 ];
+}
+
+message QatConfig {
+  optional bool channel_wise_abs_max = 1 [default = true];
+  optional int32 weight_bits = 2 [default = 8];
+  optional int32 activation_bits = 3 [default = 8];
+  repeated string not_quant_pattern = 4;
+  optional string algo = 5;
+}
+
+enum TableType {
+  PS_SPARSE_TABLE = 0;
+  PS_DENSE_TABLE = 1;
+}
+
+message TableParameter {
+  optional uint64 table_id = 1;
+  optional string table_name = 2;
+  optional string table_class = 3;
+  optional uint64 shard_num = 4 [ default = 1000 ];
+  optional TableType type = 5;
+  optional TableAccessorParameter accessor = 6;
+  optional bool compress_in_save = 7 [ default = false ];
+  // for cache model
+  optional bool enable_sparse_table_cache = 10 [ default = true ];
+  optional double sparse_table_cache_rate = 11 [ default = 0.00055 ];
+  optional uint32 sparse_table_cache_file_num = 12 [ default = 16 ];
+  // for patch model
+  optional bool enable_revert = 13 [ default = false ];
+  optional float shard_merge_rate = 14 [ default = 1.0 ];
+  optional bool use_gpu_graph = 15 [ default = false ];
+}
+
+message TableAccessorParameter {
+  optional string accessor_class = 1;
+  optional uint32 fea_dim = 4 [ default = 11 ];   // field size of one value
+  optional uint32 embedx_dim = 5 [ default = 8 ]; // embedx feature size
+  optional uint32 embedx_threshold = 6
+      [ default = 10 ]; // embedx feature create threshold
+  optional CtrAccessorParameter ctr_accessor_param = 7;
+  repeated TableAccessorSaveParameter table_accessor_save_param = 8;
+  optional SGDParameter embed_sgd_param = 10;
+  optional SGDParameter embedx_sgd_param = 11;
+  optional GraphSGDParameter graph_sgd_param = 12;
+}
+
+message GraphSGDParameter {
+  optional uint32 nodeid_slot = 1 [ default = 9008 ];
+  optional float feature_learning_rate = 2 [ default = 0.05 ];
+}
+
+message SGDParameter {
+  optional string name = 1;
+  optional SparseNaiveSGDRuleParameter naive = 2;
+  optional SparseAdagradSGDRuleParameter adagrad = 3;
+  optional SparseAdamSGDParameter adam = 4;
+}
+
+message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  repeated float weight_bounds = 3;
+}
+
+message
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule|SparseAdaGradV2SGDRule
+  optional double learning_rate = 1 [ default = 0.05 ];
+  optional double initial_g2sum = 2 [ default = 3.0 ];
+  optional double initial_range = 3 [ default = 0.0001 ];
+  repeated float weight_bounds = 4;
+}
+
+message SparseAdamSGDParameter { // SparseAdamSGDRule | SparseSharedAdamSGDRule
+  optional double learning_rate = 1 [ default = 0.001 ];
+  optional double initial_range = 2 [ default = 0.0001 ];
+  optional double beta1_decay_rate = 3 [ default = 0.9 ];
+  optional double beta2_decay_rate = 4 [ default = 0.999 ];
+  optional double ada_epsilon = 5 [ default = 1e-08 ];
+  repeated float weight_bounds = 6;
+}
+
+message CtrAccessorParameter {
+  optional float nonclk_coeff = 1
+      [ default = 0.1 ]; // to calculate show_click_score
+  optional float click_coeff = 2
+      [ default = 1 ]; // to calculate show_click_score
+  optional float base_threshold = 3 [
+    default = 1.5
+  ]; // show_click_score > base_threshold, this feature can be saved
+  optional float delta_threshold = 4
+      [ default =
+            0.25 ]; // delta_score > delta_threshold, this feature can be saved
+  optional float delta_keep_days = 5
+      [ default =
+            16 ]; // unseen_day < delta_keep_days, this feature can be saved
+  optional float show_click_decay_rate = 6
+      [ default = 0.98 ]; // show/click will update to
+                          // show/click *
+                          // show_click_decay_rate after a day
+  optional float delete_threshold = 7
+      [ default = 0.8 ]; // threshold to shrink a feasign
+  optional float delete_after_unseen_days = 8 [ default = 30 ];
+  optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
+  optional bool show_scale = 10 [ default = true ];
+  optional bool zero_init = 11 [ default = true ];
+  repeated float load_filter_slots = 12;
+  repeated float save_filter_slots = 13;
+}
+
+message TableAccessorSaveParameter {
+  optional uint32 param = 1;
+  optional string converter = 2;
+  optional string deconverter = 3;
+}
+
+message FsClientParameter {
+  optional string uri = 1;
+  optional string user = 2;
+  optional string passwd = 3;
+  optional string hadoop_bin = 4;
+}
+
+message DistributedStrategy {
+  // bool options
+  optional Mode mode = 1 [ default = COLLECTIVE ];
+  optional bool amp = 2 [ default = false ];
+  optional bool recompute = 3 [ default = false ];
+  optional bool localsgd = 4 [ default = false ];
+  optional bool dgc = 5 [ default = false ];
+  optional bool gradient_merge = 6 [ default = false ];
+  optional bool lars = 7 [ default = false ];
+  optional bool lamb = 8 [ default = false ];
+  optional bool pipeline = 9 [ default = false ];
+  optional bool elastic = 10 [ default = false ];
+  optional bool auto = 11 [ default = false ];
+  optional bool a_sync = 12 [ default = true ];
+  optional bool sync_nccl_allreduce = 13 [ default = true ];
+  optional int32 nccl_comm_num = 14 [ default = 1 ];
+  optional bool use_hierarchical_allreduce = 15 [ default = false ];
+  optional int32 hierarchical_allreduce_inter_nranks = 16 [ default = 1 ];
+  optional bool sync_batch_norm = 17 [ default = false ];
+  optional bool fuse_all_reduce_ops = 18 [ default = true ];
+  optional int32 fuse_grad_size_in_MB = 19 [ default = 32 ];
+  optional float fuse_grad_size_in_TFLOPS = 20 [ default = 50 ];
+  optional bool cudnn_exhaustive_search = 21 [ default = false ];
+  optional int32 conv_workspace_size_limit = 22 [ default = 512 ];
+  optional bool cudnn_batchnorm_spatial_persistent = 23 [ default = false ];
+  optional bool adaptive_localsgd = 24 [ default = false ];
+  optional bool fp16_allreduce = 25 [ default = false ];
+  optional bool sharding = 26 [ default = false ];
+  optional float last_comm_group_size_MB = 27 [ default = 1 ];
+  optional bool find_unused_parameters = 28 [ default = false ];
+  optional bool tensor_parallel = 29 [ default = false ];
+  optional bool without_graph_optimization = 30 [ default = true ];
+  optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
+  optional bool calc_comm_same_stream = 32 [ default = false ];
+  optional bool asp = 33 [ default = false ];
+  optional bool fuse_grad_merge = 34 [ default = false ];
+  optional bool semi_auto = 35 [ default = false ];
+  optional bool adam_d2sum = 36 [ default = false ];
+  optional bool auto_search = 37 [ default = false ];
+  optional bool heter_ccl_mode = 38 [ default = false ];
+  optional bool is_fl_ps_mode = 39 [ default = false ];
+  optional bool with_coordinator = 40 [ default = false ];
+  optional bool qat = 41 [ default = false ];
+  optional bool split_data = 42 [ default = true ];
+
+  optional RecomputeConfig recompute_configs = 101;
+  optional AMPConfig amp_configs = 102;
+  optional LocalSGDConfig localsgd_configs = 103;
+  optional GradientMergeConfig gradient_merge_configs = 104;
+  optional DGCConfig dgc_configs = 105;
+  optional PipelineConfig pipeline_configs = 106;
+  optional AsyncConfig a_sync_configs = 107;
+  optional LarsConfig lars_configs = 108;
+  optional LambConfig lamb_configs = 109;
+  optional AdaptiveLocalSGDConfig adaptive_localsgd_configs = 110;
+  optional ShardingConfig sharding_configs = 111;
+  optional HybridConfig hybrid_configs = 112;
+  optional TensorParallelConfig tensor_parallel_configs = 113;
+  optional TrainerDescConfig trainer_desc_configs = 114;
+  repeated TableParameter downpour_table_param = 115;
+  optional FsClientParameter fs_client_param = 116;
+  optional QatConfig qat_configs = 117;
+
+  optional BuildStrategy build_strategy = 201;
+  optional GradientScaleConfig gradient_scale_configs = 203;
+}
+
+message DistributedJobInfo {
+  optional int32 worker_num = 1;
+  optional int32 server_num = 2;
+  repeated string worker_ips = 3;
+  repeated string server_endpoints = 4;
+  optional string origin_startup = 5;
+  optional string origin_main = 6; // without backpropagation and optimization
+  optional string distributed_main = 7; // with backpropagation and optimization
+  optional string optimizer_name = 8;   // optimizer name
+  optional DistributedStrategy strategy = 101;
+}

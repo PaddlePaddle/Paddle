@@ -1,0 +1,387 @@
+# The apis in this file are unstandardized that may caused by a variety of reasons,
+# we are trying to fix these apis and will move standardized apis into ops.yaml.
+
+- op : add
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : add
+  inplace : (x -> out)
+  backward : add_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : add_n
+  args : (Tensor[] inputs)
+  output : Tensor
+  invoke : add_n_impl(inputs)
+  backward : add_n_grad
+
+- op : arange
+  args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : ArangeTensorInferMeta
+    param : [start, end, step]
+  kernel :
+    func : arange_tensor
+    param : [start, end, step]
+    data_type : dtype
+    backend : place
+  data_transform :
+    support_trans_dtype : start, end, step
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : assign
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    spmd_rule : AssignInferSpmd
+  kernel :
+    func : assign
+  backward : assign_grad
+  inplace : (x -> out)
+
+- op : batch_norm
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta:
+    func : BatchNormInferMeta
+  kernel :
+    func : batch_norm
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
+  backward : batch_norm_grad
+  optional : scale, bias, reserve_space
+
+- op : c_embedding
+  args : (Tensor weight, Tensor x, int64_t start_index=0, int64_t vocab_size=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : CEmbeddingInferMeta
+    param : [weight, x, start_index]
+  kernel :
+    func : c_embedding
+    param : [weight, x, start_index, vocab_size]
+    data_type : weight
+  backward : c_embedding_grad
+
+- op : distribute_fpn_proposals
+  args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
+  output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
+  infer_meta :
+    func : DistributeFpnProposalsInferMeta
+  kernel :
+    func : distribute_fpn_proposals
+    data_type : fpn_rois
+  optional : rois_num
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : divide
+  inplace: (x -> out)
+  backward : divide_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : einsum
+  args : (Tensor[] x, str equation)
+  output : Tensor(out), Tensor[](inner_cache){x.size()}, Tensor[](xshape){x.size()}
+  infer_meta :
+    func : EinsumRawInferMeta
+    param : [x, equation]
+  kernel :
+    func : einsum
+  backward : einsum_grad
+
+- op : elementwise_pow
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule: ElementwiseBinaryInferSpmd
+  kernel :
+    func : elementwise_pow
+  backward : elementwise_pow_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : embedding
+  args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor
+  infer_meta :
+    func : EmbeddingInferMeta
+    param : [x, weight, padding_idx]
+    spmd_rule: EmbeddingInferSpmdUnsupportVocabParallel
+  kernel :
+    func : embedding {dense, dense -> dense}
+           sparse_weight_embedding {dense, selected_rows -> dense}
+    param : [x, weight, padding_idx]
+    data_type : weight
+  backward : embedding_grad
+
+- op : embedding_grad_dense
+  args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1, bool sparse=false)
+  output : Tensor(weight_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [weight]
+  kernel :
+    func : embedding_grad
+    data_type : weight
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : equal
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareInferMeta
+    spmd_rule: ElementwiseBinaryInferSpmd
+  kernel :
+    func : equal
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : floor_divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : floor_divide
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
+
+- op : fused_adam_
+  args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] moments2_max, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow, bool amsgrad = false)
+  output : Tensor[](params_out){params.size()}, Tensor[](moments1_out){params.size()}, Tensor[](moments2_out){params.size()}, Tensor[](moments2_max_out){params.size()}, Tensor[](beta1_pows_out){params.size()}, Tensor[](beta2_pows_out){params.size()}, Tensor[](master_params_out){params.size()}
+  infer_meta :
+    func : FusedAdamInferMeta
+  kernel :
+    func : fused_adam
+    data_type : params
+  optional : moments2_max, skip_update, master_params, moments2_max_out
+  inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (moments2_max -> moments2_max_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : fused_gemm_epilogue
+  args : (Tensor x, Tensor y, Tensor bias, bool trans_x, bool trans_y, str activation)
+  output : Tensor(out), Tensor(reserve_space)
+  invoke : fused_gemm_epilogue_impl(x, y, bias, trans_x, trans_y, activation)
+  backward: fused_gemm_epilogue_grad
+  optional: reserve_space
+
+- op : greater_equal
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : greater_equal
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : greater_than
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : greater_than
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : hardswish
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardswish
+  backward : hardswish_grad
+
+- op : less_equal
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : less_equal
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : less_than
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : less_than
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : matmul
+  args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
+  output : Tensor
+  infer_meta :
+    func : MatmulInferMeta
+    spmd_rule : MatmulInferSpmd
+  kernel :
+    func : matmul
+  backward : matmul_grad
+
+- op : maximum
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : maximum
+  backward : maximum_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : min
+  args : (Tensor x, IntArray axis={}, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMeta
+  kernel :
+    func : min
+  backward : min_grad
+
+- op : minimum
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : minimum
+  backward : minimum_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : multiply
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : multiply {dense, dense -> dense},
+           multiply_sr {selected_rows, dense -> selected_rows}
+  inplace : (x -> out)
+  backward : multiply_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : not_equal
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : not_equal
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : remainder
+  args : (Tensor x, Tensor y)
+  output : Tensor (out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param: [x, y]
+  kernel :
+    func : remainder
+  inplace : (x -> out)
+  backward: remainder_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : set_value
+  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
+  output : Tensor(out)
+  inplace: (x -> out)
+  infer_meta :
+    func : SetValueInferMeta
+    param : [x]
+  kernel :
+    func : set_value
+  backward: set_value_grad
+
+- op : softmax
+  args : (Tensor x, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxInferMeta
+    spmd_rule : SoftmaxInferSpmd
+  kernel :
+    func : softmax
+  inplace : (x -> out)
+  backward : softmax_grad
+
+- op : subtract
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : subtract
+  inplace : (x -> out)
+  backward : subtract_grad
+  traits : pir::BinaryElementWiseTrait
+
+- op : sync_comm_stream
+  args : (Tensor[] x, int ring_id = 0)
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : sync_comm_stream
+    data_type : DataType::FLOAT32
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : tensor_unfold
+  args : (Tensor input, int64_t axis, int64_t size, int64_t step)
+  output : Tensor
+  infer_meta :
+    func : StridedUnChangedInferMeta
+    param : [input]
+  kernel :
+    func : tensor_unfold
+  backward : tensor_unfold_grad
+  no_need_buffer : input
+
+- op : tile
+  args : (Tensor x, IntArray repeat_times = {})
+  output : Tensor(out)
+  infer_meta :
+    func : TileInferMeta
+    spmd_rule : TileInferSpmdDynamic
+  kernel :
+    func : tile
+  backward : tile_grad
+
+# The `axis` argument of Python API paddle.unique is not vector
+- op : unique
+  args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  infer_meta :
+    func : UniqueInferMeta
+  kernel :
+    func : unique
+    data_type : x
+  optional : indices, inverse, counts
+  traits : paddle::dialect::ForwardOnlyTrait

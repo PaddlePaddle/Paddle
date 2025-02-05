@@ -1,0 +1,33 @@
+# Paddle CMake configuration file
+# -------
+#
+# Finds the Paddle library
+#
+# This will define the following variables:
+#
+#   PADDLE_FOUND        -- True if the system has the Paddle library
+#   PADDLE_INCLUDE_DIRS -- The include directories for Paddle
+#   PADDLE_LIBRARIES    -- Libraries to link against
+
+get_filename_component(PADDLE_INSTALL_PREFIX "${CMAKE_CURRENT_LIST_FILE}/../.." ABSOLUTE)
+
+# include directories
+set(PADDLE_INCLUDE_DIRS
+    ${PADDLE_INSTALL_PREFIX}/include
+    ${PADDLE_INSTALL_PREFIX}/include/third_party
+)
+
+# Library dependencies.
+set(PADDLE_LIBRARIES_DIRS ${PADDLE_INSTALL_PREFIX}/lib)
+link_directories(${PADDLE_LIBRARIES_DIRS})
+
+file(GLOB PADDLE_LIBRARIES ${PADDLE_LIBRARIES_DIRS}/lib*)
+
+find_package(PythonLibs @PY_VERSION@ REQUIRED)
+list(APPEND PADDLE_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
+list(APPEND PADDLE_LIBRARIES ${PYTHON_LIBRARIES})
+
+if(@WITH_GPU@)
+    find_package(CUDA @CUDA_VERSION@ REQUIRED)
+    list(APPEND PADDLE_LIBRARIES ${CUDA_LIBRARIES})
+endif()

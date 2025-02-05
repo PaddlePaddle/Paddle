@@ -1,0 +1,139 @@
+# Docker Image for PaddlePaddle Hygon DCU2
+
+FROM sugonhub/kylin:v10-dev
+LABEL maintainer="PaddlePaddle Authors <paddle-dev@baidu.com>"
+
+RUN yum install -y bzip2-devel openssh-server elfutils-devel diffutils libtool iproute \
+        blas-devel lapack-devel make git patch unzip bison hostname yasm libsndfile-devel \
+        automake which file net-tools zlib-devel libffi-devel vim tk-devel tkinter rpm-build \
+        sqlite-devel xz-devel wget curl-devel initscripts mesa-libGL numactl-devel pcre-devel \
+        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel
+
+COPY build_scripts /build_scripts
+RUN bash /build_scripts/install_gcc.sh gcc82
+RUN ln -sf /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
+RUN ln -sf /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
+RUN ln -sf /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
+RUN ln -sf /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH
+
+# workdir
+WORKDIR /opt
+
+# cmake 3.27.7
+RUN wget -q https://cmake.org/files/v3.27/cmake-3.27.7-linux-x86_64.sh && \
+    chmod +x cmake-3.27.7-linux-x86_64.sh && mkdir -p /opt/cmake-3.27.7 && \
+    ./cmake-3.27.7-linux-x86_64.sh --prefix=/opt/cmake-3.27.7 --skip-license && \
+    rm -rf cmake-3.27.7-linux-x86_64.sh && rm -rf /opt/cmake
+RUN rm -rf /usr/bin/cmake /usr/bin/cmake3 && \
+    ln -s /opt/cmake-3.27.7/bin/cmake /usr/bin/cmake && \
+    ln -s /opt/cmake-3.27.7/bin/cmake /usr/bin/cmake3
+ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
+
+# Python 3.8\3.9\3.10
+RUN wget -q https://www.python.org/ftp/python/3.8.14/Python-3.8.14.tgz && \
+    tar xzf Python-3.8.14.tgz && cd Python-3.8.14 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j16 > /dev/null && make altinstall > /dev/null && ldconfig && \
+    cd ../ && rm -rf Python-3.8.14 && rm -rf Python-3.8.14.tgz
+
+RUN wget -q https://www.python.org/ftp/python/3.9.14/Python-3.9.14.tgz && \
+    tar xzf Python-3.9.14.tgz && cd Python-3.9.14 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j16 > /dev/null && make altinstall > /dev/null && ldconfig && \
+    cd ../ && rm -rf Python-3.9.14 && rm -rf Python-3.9.14.tgz
+
+RUN wget -q https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz && \
+    tar xzf Python-3.10.14.tgz && cd Python-3.10.14 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j16 > /dev/null && make altinstall > /dev/null && ldconfig && \
+    cd ../ && rm -rf Python-3.10.14 && rm -rf Python-3.10.14.tgz
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+
+# create venv and activate
+RUN /usr/local/bin/python3.10 -m venv /opt/py310 && \
+    /usr/local/bin/python3.9 -m venv /opt/py39 && \
+    /usr/local/bin/python3.8 -m venv /opt/py38
+# update env
+ENV PATH=/opt/py310/bin:/opt/py39/bin:/opt/py38/bin:$PATH
+
+# upgrade pip
+RUN pip3.10 install --upgrade pip setuptools wheel && \
+    pip3.9 install --upgrade pip setuptools wheel && \
+    pip3.8 install --upgrade pip setuptools wheel
+
+# install pylint and pre-commit
+RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
+    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
+    pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
+
+RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub && \
+    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub  && \
+    pip3.8  install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub
+
+# install Paddle requirement
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
+    pip3.10 install -r requirements.txt && \
+    pip3.9 install -r requirements.txt && \
+    pip3.8 install -r requirements.txt && rm -rf requirements.txt
+
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
+    pip3.10 install -r requirements.txt && \
+    pip3.9 install -r requirements.txt && rm -rf requirements.txt
+
+# git credential to skip password typing
+RUN git config --global credential.helper store && \
+    git config --global pull.rebase false
+
+# Fix locales to en_US.UTF-8
+RUN yum -y install glibc-locale-source glibc-langpack-en
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+
+# patchelf 0.14.5 - https://github.com/NixOS/patchelf/pull/216
+RUN wget -q https://github.com/NixOS/patchelf/archive/refs/tags/0.14.5.tar.gz && \
+    tar xzf 0.14.5.tar.gz && cd patchelf-0.14.5 && \
+    ./bootstrap.sh  > /dev/null && ./configure > /dev/null && \
+    make -j16 > /dev/null && make install > /dev/null && \
+    cd .. && rm -rf patchelf-0.14.5 && rm -rf 0.14.5.tar.gz
+
+# ccache 4.6.3
+RUN wget -q https://github.com/ccache/ccache/releases/download/v4.6.3/ccache-4.6.3.tar.gz && \
+    tar xf ccache-4.6.3.tar.gz && mkdir /usr/local/ccache-4.6.3 && cd ccache-4.6.3 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DREDIS_STORAGE_BACKEND=OFF \
+    -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.6.3 ..  > /dev/null && \
+    make -j16 > /dev/null && make install > /dev/null && \
+    cd ../../ && rm -rf ccache-4.6.3.tar.gz && rm -rf ccache-4.6.3 && \
+    ln -s /usr/local/ccache-4.6.3/bin/ccache /usr/local/bin/ccache
+ENV CCACHE_MAXSIZE=50G \
+    CCACHE_LIMIT_MULTIPLE=0.8 \
+    CCACHE_SLOPPINESS=clang_index_store,time_macros,include_file_mtime
+
+# configure ssh
+RUN sed -i "s/^#PermitRootLogin/PermitRootLogin/" /etc/ssh/sshd_config && \
+    sed -i "s/^#PubkeyAuthentication/PubkeyAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/^#RSAAuthentication/RSAAuthentication/" /etc/ssh/sshd_config && \
+    sed -i "s/#UseDNS .*/UseDNS no/" /etc/ssh/sshd_config
+RUN ssh-keygen -A
+
+# yum clean
+RUN yum clean all && \
+    rm -rf /var/cache/yum && \
+    rm -rf /var/lib/yum/yumdb && \
+    rm -rf /var/lib/yum/history
+
+# Install DTK
+RUN wget -q --no-proxy https://cancon.hpccube.com:65024/file/1/DTK-24.04.1/CentOS7.6/DTK-24.04.1-CentOS7.6-x86_64.tar.gz && \
+    tar zxf DTK-24.04.1-CentOS7.6-x86_64.tar.gz && rm -rf DTK-24.04.1-CentOS7.6-x86_64.tar.gz
+# Replace if you use other device type, e.g. Z100, Z100L, K100
+RUN wget -q https://paddle-device.bj.bcebos.com/dcu/hyhal-K100AI.tar.gz && \
+    tar zxf hyhal-K100AI.tar.gz && rm -rf hyhal-K100AI.tar.gz
+RUN echo "source /opt/dtk-24.04.1/env.sh" >> /root/.bashrc
+# Disable compile warnings
+RUN sed -i '74d' /opt/dtk-24.04.1/include/rocrand/rocrand_common.h
+
+# generate core dump
+RUN echo "kernel.core_pattern=core_%e_%p_%t" >>  /etc/sysctl.conf && \
+    echo "kernel.core_uses_pid=0" >>  /etc/sysctl.conf
+
+EXPOSE 22

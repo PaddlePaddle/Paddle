@@ -1,0 +1,8 @@
+{"bucketInfo":{"dimension":[{"lowerBound":2,"upperBound":127,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"16","treeReduceNum":"1","spatialInnerNum":"2"}}
+{"bucketInfo":{"dimension":[{"lowerBound":128,"upperBound":511,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"8","treeReduceNum":"1","spatialInnerNum":"1"}}
+{"bucketInfo":{"dimension":[{"lowerBound":512,"upperBound":1023,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"1","treeReduceNum":"1","spatialInnerNum":"1"}}
+{"bucketInfo":{"dimension":[{"lowerBound":1024,"upperBound":2047,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"8","treeReduceNum":"1","spatialInnerNum":"1"}}
+{"bucketInfo":{"dimension":[{"lowerBound":2048,"upperBound":4095,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"8","treeReduceNum":"1","spatialInnerNum":"1"}}
+{"bucketInfo":{"dimension":[{"lowerBound":4096,"upperBound":8191,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"8","treeReduceNum":"1","spatialInnerNum":"1"}}
+{"bucketInfo":{"dimension":[{"lowerBound":8192,"upperBound":16383,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"8","treeReduceNum":"1","spatialInnerNum":"1"}}
+{"bucketInfo":{"dimension":[{"lowerBound":16384,"upperBound":1048576,"iterType":"S","isDynamic":true}]},"tileConfig":{"warpNum":"16","treeReduceNum":"1","spatialInnerNum":"1"}}

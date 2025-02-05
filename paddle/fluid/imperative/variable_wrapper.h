@@ -1,0 +1,371 @@
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+
+#include "paddle/common/layout.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/hooks.h"
+#include "paddle/fluid/imperative/op_base.h"
+#include "paddle/phi/core/vocab/string_array.h"
+
+namespace paddle {
+namespace imperative {
+
+class VariableWrapperHook;
+class InplaceVariableWrapperHook;
+class VarBase;
+class GradOpNode;
+
+class VariableWrapper {
+ public:
+  friend class VarBase;
+
+  explicit VariableWrapper(const std::string& name) : name_(name) {}
+
+  VariableWrapper(const std::string& name, const framework::Variable& variable)
+      : var_(variable), name_(name) {}
+
+  ~VariableWrapper() { VLOG(10) << "Destruct VariableWrapper: " << Name(); }
+
+  const framework::Variable& Var() const { return var_; }
+
+  framework::Variable* MutableVar() { return &var_; }
+
+  // This is used for python api
+  void SetOverriddenStopGradient(bool stop_gradient) {
+    overridden_stop_gradient_ = static_cast<int>(stop_gradient);
+
+    if (auto grad_var = grad_var_.lock()) {
+      grad_var->SetOverriddenStopGradient(stop_gradient);
+    }
+  }
+
+  // This is used for python api
+  bool OverriddenStopGradient() const { return overridden_stop_gradient_ != 0; }
+
+  // This is used inside C++
+  int InnerOverriddenStopGradient() const { return overridden_stop_gradient_; }
+
+  // This is used inside C++
+  void InnerSetOverriddenStopGradient(bool stop_gradient) {
+    if (overridden_stop_gradient_ == -1) {
+      overridden_stop_gradient_ = static_cast<int>(stop_gradient);
+    } else {
+      VLOG(6) << "Ignore Stop gradient conversion for Var: " << Name()
+              << "Set value is: " << overridden_stop_gradient_;
+    }
+
+    if (auto grad_var = grad_var_.lock()) {
+      grad_var->InnerSetOverriddenStopGradient(stop_gradient);
+    }
+  }
+
+  bool IsLeaf() const {
+    if (OverriddenStopGradient()) {
+      return true;
+    }
+    if (HasGradVar() && !GetGradVar()->HasGradNode()) {
+      return true;
+    }
+    return false;
+  }
+
+  bool IsLeafGrad() const {
+    if (!HasGradNode() && !OverriddenStopGradient()) {
+      return true;
+    }
+    return false;
+  }
+
+  void SetPersistable(bool persistable) { persistable_ = persistable; }
+
+  bool Persistable() const { return persistable_; }
+
+  bool IsEmpty() const {
+    bool is_empty = true;
+    if (var_.IsInitialized()) {
+      const phi::DenseTensor* tensor = nullptr;
+      if (var_.IsType<phi::DenseTensor>()) {
+        tensor = &(var_.Get<phi::DenseTensor>());
+      } else if (var_.IsType<phi::SelectedRows>()) {
+        tensor = &(var_.Get<phi::SelectedRows>().value());
+      } else {
+        PADDLE_THROW(common::errors::PermissionDenied(
+            "Only support DenseTensor and SelectedRows for gradient var"));
+      }
+      if (tensor && tensor->IsInitialized()) {
+        is_empty = false;
+      }
+    }
+    return is_empty || is_empty_;
+  }
+
+  // TODO(zhouwei): fix Tensor.clear_gradient() bug, function SetIsEmpty() isn't
+  // need
+  void SetIsEmpty(bool is_empty) { is_empty_ = is_empty; }
+
+  const std::string& Name() const { return name_; }
+
+  void SetName(const std::string& name) { name_ = name; }
+
+  void SetType(framework::proto::VarType::Type type) { type_ = type; }
+
+  framework::proto::VarType::Type Type() const { return type_; }
+
+  std::shared_ptr<VariableWrapper> GetGradVar() const {
+    return grad_var_.lock();
+  }
+
+  const std::weak_ptr<VariableWrapper>& GetWeakGradVar() const {
+    return grad_var_;
+  }
+
+  std::shared_ptr<GradOpNode> GetGradNode() const { return grad_node_.lock(); }
+
+  bool HasGradNode() const { return !grad_node_.expired(); }
+
+  bool HasGradVar() const { return !grad_var_.expired(); }
+
+  void SetDataType(framework::proto::VarType::Type data_type) {
+    data_type_ = data_type;
+  }
+
+  framework::proto::VarType::Type DataType() const {
+    const phi::DenseTensor* tensor = nullptr;
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::DENSE_TENSOR) {
+        tensor = &(var_.Get<phi::DenseTensor>());
+      } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
+        tensor = &(var_.Get<phi::SelectedRows>().value());
+      } else if (type_ == framework::proto::VarType::VOCAB) {
+        const phi::Vocab* data = nullptr;
+        data = &(var_.Get<phi::Vocab>());
+        if (data && data->size() != 0) {
+          VLOG(6) << "The tensor of variable " << name_
+                  << " is not initialized";
+          return data_type_;
+        }
+        return framework::proto::VarType::VOCAB;
+      } else {
+        VLOG(6) << "Variable " << name_ << " is not initialized";
+        return data_type_;
+      }
+    }
+    if (tensor && tensor->IsInitialized()) {
+      return framework::TransToProtoVarType(tensor->dtype());
+    } else {
+      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+
+      return data_type_;
+    }
+  }
+
+  void SetForwardDataType(framework::proto::VarType::Type data_type) {
+    fwd_data_type_ = data_type;
+  }
+
+  framework::proto::VarType::Type ForwardDataType() const {
+    return fwd_data_type_;
+  }
+
+  phi::DataLayout DataLayout() { return layout_; }
+
+  void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
+
+  const phi::Place Place() const {
+    const phi::DenseTensor* tensor = nullptr;
+    auto place = phi::CPUPlace();  // Default place for var not initialized.
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::DENSE_TENSOR) {
+        tensor = &(var_.Get<phi::DenseTensor>());
+      } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
+        tensor = &(var_.Get<phi::SelectedRows>().value());
+      } else {
+        VLOG(6) << "Variable " << name_ << " is not initialized";
+        return place;
+      }
+    }
+    if (tensor && tensor->IsInitialized()) {
+      return tensor->place();
+    } else {
+      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+      return place;
+    }
+  }
+
+  uint32_t InplaceVersionSnapshot() const { return inplace_version_snapshot_; }
+
+  void ResetInplaceVersion(bool set_to_zero = false) {
+    if (!set_to_zero) {
+      auto new_version = var_.CurrentInplaceVersion();
+
+      VLOG(6) << "The wrapper version of VariableWrapper '" << name_
+              << "' will be updated from " << inplace_version_snapshot_ << "to "
+              << new_version;
+      inplace_version_snapshot_ = new_version;
+
+    } else {
+      // Reset Snapshot & InplaceVersion to zero
+      inplace_version_snapshot_ = 0;
+      auto var = this->MutableVar();
+      if (var) {
+        var->SetInplaceVersionToZero();
+      }
+    }
+  }
+
+  bool hasCacheKey(const phi::KernelKey& key) {
+    return var_cache.find(key) != var_cache.end();
+  }
+
+  std::shared_ptr<VariableWrapper> getCacheValue(const phi::KernelKey& key) {
+    return var_cache[key];
+  }
+
+  void setCacheValue(const phi::KernelKey& key,
+                     std::shared_ptr<VariableWrapper> val) {
+    var_cache[key] = val;
+    return;
+  }
+
+  /* Hook related methods */
+  bool HasVariableWrapperHook() const { return !var_hooks_.empty(); }
+
+  int64_t AddVariableWrapperHook(std::shared_ptr<VariableWrapperHook>&& hook) {
+    var_hooks_.emplace(next_hook_id_, std::move(hook));
+    return next_hook_id_++;
+  }
+
+  bool RemoveVariableWrapperHook(const int64_t& hook_id) {
+    auto remove_cnt = var_hooks_.erase(hook_id);
+    if (remove_cnt == 0) {
+      return false;
+    }
+    return true;
+  }
+
+  const std::map<int64_t, std::shared_ptr<VariableWrapperHook>>&
+  GetVariableWrapperHooks() const {
+    return var_hooks_;
+  }
+
+  bool HasVoidHook() const { return !void_hooks_.empty(); }
+
+  void AddVoidHook(std::shared_ptr<std::function<void()>>&& hook) {
+    void_hooks_.emplace_back(std::move(hook));
+  }
+
+  const std::vector<std::shared_ptr<std::function<void()>>>& GetVoidHooks()
+      const {
+    return void_hooks_;
+  }
+
+ private:
+  void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
+    auto shared_var = grad_var_.lock();
+    if (shared_var != var) {
+      PADDLE_ENFORCE_EQ(
+          shared_var,
+          nullptr,
+          common::errors::PermissionDenied(
+              "Cannot set gradient variable wrapper twice for %s", name_));
+      grad_var_ = var;
+    }
+  }
+
+  void SetGradNode(const std::shared_ptr<GradOpNode>& grad_node) {
+    if (!grad_node) {
+      grad_node_.reset();
+      return;
+    }
+
+    auto shared_node = grad_node_.lock();
+    if (shared_node != grad_node) {
+      if (grad_node->InplaceGradNameMap().empty()) {
+        // grad_node doesn't have Inplace message
+        PADDLE_ENFORCE_EQ(
+            shared_node,
+            nullptr,
+            common::errors::PermissionDenied(
+                "Cannot set gradient op twice unless using Inplace Strategy."));
+      } else if (shared_node) {
+        VLOG(3) << "The gradient op of Var (" << Name()
+                << ") has been set twice. Because Inplace Strategy is used.";
+      }
+      grad_node_ = grad_node;
+    }
+  }
+
+ private:
+  framework::Variable var_;
+  std::string name_;
+
+  // Used for cache the dtype promotioned variableWrapper in real and complex
+  // compute of Paddle Quantum
+  std::map<phi::KernelKey, std::shared_ptr<VariableWrapper>> var_cache;
+  // add this property for users may set stop_gradient themselves and this
+  // should override the frameworks setting (-1) unset, (1) true, (0) false
+  int overridden_stop_gradient_{-1};
+  bool persistable_{false};
+
+  // Used for checking whether there is any inplace operation affecting gradient
+  // calculation.
+  uint32_t inplace_version_snapshot_{0};
+
+  framework::proto::VarType::Type type_{
+      framework::proto::VarType::DENSE_TENSOR};
+  framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
+
+  // See [ Why need handle complex gradient to real gradient? ]
+  // Used for grad var to get the data type of its corresponding forward var,
+  // if inconsistent, the data type of grad var needs to be casted to be
+  // consistent with forward var
+  framework::proto::VarType::Type fwd_data_type_{
+      static_cast<framework::proto::VarType::Type>(-1)};
+
+  std::weak_ptr<VariableWrapper> grad_var_;
+  std::weak_ptr<GradOpNode> grad_node_;
+
+  // TODO(zhouwei): fix bug of Tensor.clear_gradient(), function SetIsEmpty()
+  // isn't need
+  bool is_empty_{false};
+
+  // NOTE(chenweihang): only grad var will hold hooks now
+  int64_t next_hook_id_{0};
+  // [ Hooks with VariableWrapper as input and output ]
+  // NOTE: Now registered for grad var, support adding and removing,
+  // key is the accumulated int64_t value
+  // NOTE: Var hook need to support removing, so need hook id
+  std::map<int64_t, std::shared_ptr<VariableWrapperHook>> var_hooks_;
+  // [ Hooks without input and output ]
+  // NOTE: Now registered after the execution of the entire backward
+  // process is over, currently only used for reducing in distributed
+  // training
+  // NOTE: Now no need to support remove void hook
+  std::vector<std::shared_ptr<std::function<void()>>> void_hooks_;
+
+  // DataLayout for layoutAutotune
+  phi::DataLayout layout_{phi::DataLayout::UNDEFINED};
+};
+
+}  // namespace imperative
+}  // namespace paddle

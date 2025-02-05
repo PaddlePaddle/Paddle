@@ -1,0 +1,48 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/fluid/primitive/backend/generated/generated_backend.h"
+
+namespace paddle {
+namespace primitive {
+namespace backend {
+
+{%- macro args(inputs, attrs) -%}  {#- Arguments are variable pass into method -#}
+  {{common.sequence('', '', ', ', inputs)}}
+  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between
+  nputs and attrs -#}
+  {{common.sequence('', '', ', ', attrs)}}
+{%- endmacro -%}
+
+{%- macro sig(name, inputs, attrs, outputs) -%}
+template <>
+{{common.ret(outputs)}} {{name}}<Tensor>({{common.params(inputs, attrs, False)}})
+{%- endmacro -%}
+
+{% macro body(name, inputs, attrs, outputs) %}
+  {%- set input_names = [] -%}
+  {%- for i in inputs -%} {%- do input_names.append(i.name) -%} {%-endfor-%}
+  {%- set attr_names = [] -%}
+  {%- for i in attrs -%} {%- do attr_names.append(i.name) -%} {%-endfor-%}
+  {% filter indent(2, True) %}
+VLOG(4) << "Eager Prim API {{name}}_ad_func call";
+return ::{{name}}_ad_func({{common.args(input_names, attr_names)}});
+  {% endfilter %}
+{% endmacro %}
+
+
+{% for api in apis %}
+  {%- if api.is_prim and api.name not in backend_black_list and api.name[-1] !=  '_' -%}
+{{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} {
+{{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}}
+}
+
+  {% endif %}
+{% endfor %}
+
+}  // namespace backend
+}  // namespace primitive
+}  // namespace paddle

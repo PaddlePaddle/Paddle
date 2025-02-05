@@ -1,0 +1,10 @@
+httpx
+numpy>=1.21
+protobuf>=3.20.2
+Pillow
+decorator
+astor
+opt_einsum==3.3.0
+networkx
+typing_extensions
+pybind11-stubgen==2.5.1 # generate stub file from pybind11 C++ APIs [build]

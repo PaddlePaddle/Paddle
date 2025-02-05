@@ -1,0 +1,77 @@
+# This file is migrated from CI script, it's an effort of modenizing our dev infra.
+# Code owners are expected to take responsibility for review patches to respective file.
+
+/CMakeLists.txt @wanghuancoder @XiaoguangHu01
+paddle/fluid/distributed/collective @sneaxiy @ForFishes
+paddle/fluid/eager/autograd_meta.cc @JiabinYang @phlrain
+paddle/fluid/eager/autograd_meta.h @JiabinYang @phlrain
+paddle/fluid/eager/backward.cc @JiabinYang @phlrain
+paddle/fluid/eager/backward.h @JiabinYang @phlrain
+paddle/fluid/eager/grad_node_info.cc @JiabinYang @phlrain
+paddle/fluid/eager/grad_node_info.h @JiabinYang @phlrain
+paddle/fluid/eager/grad_tensor_holder.cc @JiabinYang @phlrain
+paddle/fluid/eager/grad_tensor_holder.h @JiabinYang @phlrain
+paddle/fluid/eager/tensor_wrapper.h @JiabinYang @phlrain
+paddle/fluid/framework/block_desc.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/details/op_registry.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/framework.proto @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/grad_op_desc_maker.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/ir/graph.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/ir/node.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/lod_tensor.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/op_desc.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/operator.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/scope.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/selected_rows.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/tensor.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/framework/unused_var_check.cc @zhiqiu @phlrain
+paddle/fluid/framework/var_desc.h @XiaoguangHu01 @zhiqiu @Xreki
+paddle/fluid/operators/distributed/send_recv.proto.in @gongweibao @seiriosPlus
+paddle/fluid/prim/api/api.yaml @xiaoguoguo626807 @JiabinYang @phlrain
+paddle/fluid/prim/api/composite_backward/composite_backward_api.h @xiaoguoguo626807 @JiabinYang
+paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h @xiaoguoguo626807 @JiabinYang
+paddle/fluid/prim/api/manual_prim/prim_manual_api.h @xiaoguoguo626807 @JiabinYang
+paddle/phi/api/include/tensor.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/attribute.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/dense_tensor.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/device_context.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/infermeta_utils.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/kernel_context.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/kernel_factory.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/kernel_registry.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/kernel_utils.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/meta_tensor.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/tensor_base.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/core/tensor_meta.h @phlrain @zyfncg @YuanRisheng
+paddle/phi/infermeta/spmd_rules @LiYuRio @ForFishes @zhiqiu
+paddle/scripts/paddle_build.bat @zhwesky2010 @wanghuancoder
+paddle/scripts/paddle_build.sh @risemeup1 @zhangbo9674 @XieYunshen
+pyproject.toml @SigureMo @gouzil
+python/paddle/autograd/backward_utils.py @xiaoguoguo626807 @changeyoung98 @phlrain
+python/paddle/autograd/ir_backward.py @xiaoguoguo626807 @changeyoung98
+python/paddle/base/backward.py @XiaoguangHu01 @zhiqiu @Xreki @qili93
+python/paddle/base/compiler.py @XiaoguangHu01 @zhiqiu @Xreki @qili93
+python/paddle/base/dygraph/layers.py @JiabinYang @phlrain
+python/paddle/base/framework.py @XiaoguangHu01 @zhiqiu @Xreki @qili93
+python/paddle/base/__init__.py @phlrain @qili93
+test/white_list/check_op_sequence_batch_1_input_white_list.py @phlrain
+test/white_list/check_op_sequence_instance_0_input_white_list.py @phlrain
+test/white_list/check_shape_white_list.py @hong19860320 @phlrain
+test/white_list/compile_vs_runtime_white_list.py @phlrain
+test/white_list/no_check_set_white_list.py @phlrain
+test/white_list/no_grad_set_white_list.py @phlrain
+test/white_list/op_accuracy_white_list.py @juncaipeng @zhangting2020
+test/white_list/op_threshold_white_list.py @juncaipeng @zhangting2020
+python/paddle/distributed/fleet/__init__.py @sneaxiy @raindrops2sea
+python/paddle/distributed/fleet/launch.py @sneaxiy @raindrops2sea
+python/paddle/distributed/__init__.py @sneaxiy @raindrops2sea
+python/paddle/incubate/autograd/composite_rules.py @xiaoguoguo626807 @JiabinYang
+python/paddle/incubate/autograd/primitives.py @xiaoguoguo626807 @JiabinYang @phlrain
+python/paddle/_typing @SigureMo @zrr1999 @gouzil
+python/requirements.txt @phlrain @jzhang533 @kolinwei
+test/dygraph_to_static @SigureMo @zrr1999 @gouzil
+test/sot @SigureMo @zrr1999 @gouzil
+tools/parallel_UT_rule.py @zhwesky2010 @wanghuancoder
+tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder
+.pre-commit-config.yaml @SigureMo @gouzil
+_typos.toml @SigureMo

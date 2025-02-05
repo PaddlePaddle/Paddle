@@ -1,0 +1,81 @@
+{%- macro sig(name, inputs, outputs, attrs, mutable_attribute_as_inputs=False, default=False) -%}
+template <typename T>
+{{ret(outputs)}} {{name}}({{params(inputs, attrs, mutable_attribute_as_inputs, default)}})
+{%- endmacro %}
+
+
+{%- macro params(inputs, attrs, mutable_attribute_as_inputs=False, default=False) -%}
+  {%- set input_params = [] -%}
+  {%- for i in inputs -%} {%- do input_params.append(i.typename|to_paddle_input_type(i.optional)~' '~i.name) -%} {%- endfor -%}
+  {%- set attr_params = [] -%}
+  {%- for i in attrs -%}
+    {%- if not mutable_attribute_as_inputs or i is not mutable_attribute -%}
+      {%- if default -%}
+        {%- do attr_params.append(i.typename|to_paddle_attr_type~' '~i.name~default_value(i)) -%}
+      {%- else -%}
+        {%- do attr_params.append(i.typename|to_paddle_attr_type~' '~i.name) -%}
+      {%- endif -%}
+    {%- else -%}
+      {%- do input_params.append('const Tensor&'~' '~i.name~'_') -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {{sequence('', '', ', ', input_params)}}
+  {%- if input_params|length>0 and attr_params|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between inputs and attrs -#}
+  {{sequence('', '', ', ', attr_params)}}
+{%- endmacro -%}
+
+
+{%- macro default_value(attr) -%}
+  {%- if  'default_value' in attr %}
+ = {{attr.default_value}}
+  {%- else -%} {#- render nothing -#}
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro args(arg1, arg2) -%}  {#- Arguments are variable pass into method -#}
+  {{sequence('', '', ', ', arg1)}}
+  {%- if arg1|length>0 and arg2|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between arg1 and arg2 -#}
+  {{sequence('', '', ', ', arg2)}}
+{%- endmacro -%}
+
+
+{%- macro ret(outputs) -%}
+  {%- set names = [] -%}
+  {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type(i.optional)) -%} {%- endfor -%}
+  {%- if names|length > 1 -%}
+std::tuple<{{sequence('', '', ', ', names)}}>
+  {%- else -%}
+{{names[0]}}
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro sequence(lsymbol, rsymbol, delimiter, items) -%}
+{{lsymbol}}{%- for item in items -%}{{item}}{{delimiter if not loop.last else "" }}{%- endfor -%}{{rsymbol}}
+{%- endmacro -%}
+
+
+{%- macro phi2ir_attr(attr) -%}
+  {%- if attr.typename is intarray -%}
+{{intarray2ir(attr.name)}}
+  {%- elif attr.typename is scalar -%}
+{{scalar2ir(attr.name, attr.data_type)}}
+  {%- else -%}
+{{attr.name}}
+  {%- endif -%}
+{%- endmacro %}
+
+
+{%- macro intarray2ir(name) -%}
+{{name}}.GetData()
+{%- endmacro -%}
+
+
+{%- macro scalar2ir(name, data_type) -%}
+  {%- if data_type == 'std::vector<Scalar>' -%}
+{{name}}
+  {%- else -%}
+{{name}}.to<{{data_type}}>()
+  {%- endif -%}
+{%- endmacro -%}

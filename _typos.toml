@@ -1,0 +1,125 @@
+[files]
+# The following files will be excluded from spell check during commits
+extend-exclude = [
+    "third_party",
+    "patches",
+    "build",
+    # Skip `intermidiate` check in these files
+    "test/cpp/eager/task_tests/CMakeLists.txt",
+    "test/cpp/eager/task_tests/hook_test_intermidiate.cc",
+    # Skip `creater` check in these files
+    "paddle/fluid/inference/tensorrt/convert/CMakeLists.txt",
+    "paddle/fluid/inference/tensorrt/convert/generic_and_custom_plugin_creater.cc",
+    "paddle/fluid/inference/tensorrt/convert/test_custom_plugin_creater.cc",
+]
+
+[default]
+# Ignore 1-3 letter words, refer to https://github.com/crate-ci/typos/issues/1079
+extend-ignore-words-re = ["^[a-zA-Z]{1,3}$"]
+# refer to https://github.com/crate-ci/typos/blob/master/docs/reference.md#example-configurations
+extend-ignore-re = [
+    # Ignore lines by `# typos: disable-line`
+    "(?Rm)^.*(#|//)\\s*typos:\\s*disable-line$",
+    # Ignore block by `# typos: off` and `# typos: on`
+    "(?s)(#|//)\\s*typos:\\s*off.*?\\n\\s*(#|//)\\s*typos:\\s*on"
+]
+
+[default.extend-words]
+# PaddlePaddle specific words
+arange = "arange"
+astroid = 'astroid'
+cacl = 'cacl'
+CANN = 'CANN'
+Clas = 'Clas'
+clen = 'clen'
+datas = 'datas'
+dota = 'dota'
+dout = "dout"
+eles = 'eles'
+entrys = 'entrys'
+feeded = 'feeded'
+grad = "grad"
+Halfs = 'Halfs'
+kinf = 'kinf'
+Optin = 'Optin'
+padd = 'padd'
+pash = 'pash'
+splited = 'splited'
+splitted = 'splitted'
+statis = 'statis'
+UNEXPECT = 'UNEXPECT'
+tood = 'tood'
+unpacket = "unpacket"
+vaccum = 'vaccum'
+
+# These words need to be fixed
+Operants = 'Operants'
+operants = 'operants'
+outout = 'outout'
+ouput = 'ouput'
+outpout = 'outpout'
+ouptut = 'ouptut'
+Ouput = 'Ouput'
+producted = 'producted'
+progam = 'progam'
+progrss = 'progrss'
+propogated = 'propogated'
+Propogation = 'Propogation'
+protocal = 'protocal'
+PROTOCAL = 'PROTOCAL'
+pyrhon = 'pyrhon'
+pthon = 'pthon'
+regist = 'regist'
+Regist = 'Regist'
+Registe = 'Registe'
+registe = 'registe'
+REGIST = 'REGIST'
+Regiter = 'Regiter'
+setted = 'setted'
+Skiped = 'Skiped'
+skiped = 'skiped'
+smll = 'smll'
+samll = 'samll'
+somme = 'somme'
+patial = 'patial'
+Patial = 'Patial'
+specificed = 'specificed'
+splite = 'splite'
+spliter = 'spliter'
+sqaure = 'sqaure'
+sequeze = 'sequeze'
+starup = 'starup'
+statment = 'statment'
+staticly = 'staticly'
+staticaly = 'staticaly'
+Stati = 'Stati'
+STOPED = 'STOPED'
+Stoped = 'Stoped'
+stoped = 'stoped'
+storeage = 'storeage'
+sotring = 'sotring'
+stragety = 'stragety'
+strem = 'strem'
+structed = 'structed'
+sturcture = 'sturcture'
+subsituted = 'subsituted'
+subsitute = 'subsitute'
+substitude = 'substitude'
+substitue = 'substitue'
+Subsitute = 'Subsitute'
+Substitude = 'Substitude'
+substract = 'substract'
+Substract = 'Substract'
+successed = 'successed'
+sucessfully = 'sucessfully'
+Succeess = 'Succeess'
+Suger = 'Suger'
+supportted = 'supportted'
+supoort = 'supoort'
+Supprot = 'Supprot'
+suport = 'suport'
+suppport = 'suppport'
+SWTICH = 'SWTICH'
+Swith = 'Swith'
+sysyem = 'sysyem'
+UNSUPPORT = 'UNSUPPORT'

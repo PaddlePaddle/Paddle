@@ -1,0 +1,70 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.framework;
+option cc_generic_services = true;
+
+// It can be: phi::DenseTensor、SelectedRows or NCCL_ID
+enum VarType {
+  DENSE_TENSOR = 0;
+  SELECTED_ROWS = 1;
+  NCCL_ID = 2;
+}
+
+// VariableMessage is serialized paddle variable message.
+// NOTICE(gongwb):don't modify this proto if you are not
+//   not familiar with how we serialize in sendrecvop_utils.h
+//   and deserialize it in  variable_response.h.
+message VariableMessage {
+  enum Type {
+    // Pod Types
+    BOOL = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+    FP64 = 6;
+  }
+
+  message LodData { repeated int64 lod_data = 1; }
+  optional string varname = 1;
+  // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
+  optional VarType type = 2;
+  // bool persistable is not needed for sending.
+  // tensor info:
+  optional Type data_type = 3;
+  repeated int64 dims = 4;
+
+  // lod details:
+  optional int64 lod_level = 5;
+  repeated LodData lod = 6;
+  // selected_rows height, aka. original dim0
+  optional int64 slr_height = 7;
+  // tensor data
+  optional bytes data = 8;
+}
+message HeterRequest {
+  required int32 cmd = 1;
+  optional int32 cur_batch = 2;
+  repeated VariableMessage vars = 3;
+};
+
+message HeterResponse {
+  // optional VariableMessage vars = 1;
+  repeated VariableMessage vars = 1;
+};
+
+service HeterService { rpc service(HeterRequest) returns (HeterResponse); };

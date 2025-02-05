@@ -1,0 +1,12 @@
+diff --git a/src/brpc/http2.h b/src/brpc/http2.h
+index 9a40d40d..5da47e60 100644
+--- a/src/brpc/http2.h
++++ b/src/brpc/http2.h
+@@ -19,6 +19,7 @@
+ #define BAIDU_RPC_HTTP2_H
+ 
+ #include "brpc/http_status_code.h"
++#include <cstdint>
+ 
+ // To baidu-rpc developers: This is a header included by user, don't depend
+ // on internal structures, use opaque pointers instead.

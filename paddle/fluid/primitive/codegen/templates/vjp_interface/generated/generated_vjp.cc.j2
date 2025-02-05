@@ -1,0 +1,180 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#include "paddle/fluid/primitive/vjp_interface/generated/generated_vjp.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/prim/utils/static/static_global_utils.h"
+#include "paddle/fluid/primitive/backend/backend.h"
+#include "paddle/fluid/primitive/decomp_rule/decomp_vjp/details.h"
+#include "paddle/fluid/primitive/base/lazy_tensor.h"
+#include "paddle/fluid/primitive/decomp_utils/decomp_utils.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/common/flags.h"
+#include "paddle/utils/optional.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+
+COMMON_DECLARE_string(tensor_operants_mode);
+
+namespace paddle {
+namespace primitive {
+{% macro sig(fwd_name, name, inputs, attrs, outputs) -%}
+std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs, attrs, attrs is exist_mutable_attribute)}}, const std::vector<std::vector<bool>>& stop_gradients)
+{%- endmacro -%}
+
+{% macro join_need_skip(attrs, api_name) %}
+  {% for i in attrs %}
+    {%- if i is mutable_attribute -%}
+      {% if i.typename is scalar %}
+auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
+if({{i.name}}_define_op->name() != "pd_op.full") {
+  need_skip = true;
+  VLOG(4) << "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite for now, set need_skip=true.";
+}
+      {% elif i.typename is intarray %}
+auto* {{i.name}}_define_op = std::static_pointer_cast<primitive::LazyTensor>({{i.name~'_'}}.impl())->value().defining_op();
+if({{i.name}}_define_op->name() != "pd_op.full_int_array") {
+  need_skip = true;
+  VLOG(4) << "We don't support dynamic tensors attribute {{i.name}} for {{api_name}} composite for now, set need_skip=true.";
+}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{% macro body(api) %}
+std::vector<std::vector<paddle::Tensor>> vjp_res;
+for (auto arg: stop_gradients) {
+  vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
+}
+  {% if api.name in vjp_comp_white_list %}
+std::string op_name = "{{api.name}}";
+auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(op_name);
+{{join_need_skip(api.attrs, api.name)}}
+if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() && !need_skip) {
+{% filter indent(2, True) %}{{body_prim(api)}}{% endfilter %}
+} else {
+{% filter indent(2, True) %}{{body_unprim(api)}}{% endfilter %}
+}
+  {% else %}
+{{body_unprim(api)}}
+  {%- endif %}
+return vjp_res;
+{%- endmacro -%}
+
+{% macro get_mutable_attribute(attrs, api_name) %}
+  {% for i in attrs %}
+    {%- if i is mutable_attribute -%}
+      {% if i.typename is scalar %}
+auto {{i.name}} = {{i.name}}_define_op->attribute("value").dyn_cast<paddle::dialect::ScalarAttribute>().data();
+      {% elif i.typename is intarray %}
+auto {{i.name}} = phi::IntArray(paddle::dialect::GetInt64Vector({{i.name}}_define_op->attribute("value")));
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{% macro body_unprim(api) %}
+  {%- set input_names=[] -%}
+  {%- for api in apis -%} {%- do api_map.update({api.name: api}) -%} {%- endfor -%}
+  {%- for i in api.inputs -%} {%- do input_names.append(i.name) -%} {%- endfor -%}
+  {%- set attr_names=[] -%}
+  {%- for i in api.attrs -%}
+    {%- if i is mutable_attribute -%}
+      {%- do input_names.append(i.name~'_') -%}
+    {%- else -%}
+      {%- do attr_names.append(i.name) -%}
+    {%- endif -%}
+  {%- endfor %}
+  {% if 'invoke' in api and api.invoke.func in api_map %}
+auto op_res = backend::{{api.invoke.func}}<LazyTensor>({{api.invoke.args}});
+  {% else %}
+auto op_res = backend::{{api.name}}<LazyTensor>({{common.args(input_names, attr_names)}});
+  {% endif %}
+  {% set outputs = api.outputs|trip_intermediate %} {#- ignore intermediate output -#}
+  {% if outputs|length > 1 %}
+    {% for i in range(outputs|length) %}
+      {% if outputs[i].typename=='Tensor' %}
+        {% if outputs[i].optional %}
+if(std::get<{{i}}>(op_res)){
+  vjp_res[{{i}}][0] = std::get<{{i}}>(op_res).get();
+}
+        {% else %}
+vjp_res[{{i}}][0] = std::get<{{i}}>(op_res);
+        {% endif %}
+      {% else %}
+        {% if outputs[i].optional %}
+if(std::get<{{i}}>(op_res)){
+  vjp_res[{{i}}] = std::get<{{i}}>(op_res).get();
+}
+        {% else %}
+vjp_res[{{i}}] = std::get<{{i}}>(op_res);
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  {% elif outputs|length == 1 %}
+    {% if outputs[0].typename=='Tensor' %}
+      {% if outputs[0].optional %}
+if(op_res){
+  vjp_res[0][0] = op_res.get();
+}
+      {% else %}
+vjp_res[0][0] = op_res;
+      {% endif %}
+    {% else %}
+       {% if outputs[0].optional %}
+if(op_res){
+  vjp_res[0] = op_res.get();
+}
+       {% else %}
+vjp_res[0] = op_res;
+       {% endif %}
+    {% endif %}
+  {% else %} {#- render nothing -#}
+  {% endif %}
+vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
+{% endmacro %}
+
+{% macro body_prim(api) %}
+FLAGS_tensor_operants_mode = "static";
+VLOG(4) << "Call Pir Decomposed backward op {{api.name}}";
+  {% for i in range(api.outputs|length) %}
+    {% if api.outputs[i].typename=='Tensor' %}
+paddle::Tensor* {{api.outputs[i].name}} = !stop_gradients[{{i}}][0] ? &vjp_res[{{i}}][0] : nullptr;
+    {% else %}
+std::vector<paddle::Tensor*> {{api.outputs[i].name}}(stop_gradients[{{i}}].size(), nullptr);
+for (size_t i=0; i< stop_gradients[{{i}}].size(); i++ ) {
+  {{api.outputs[i].name}}[i] =  !stop_gradients[{{i}}][i] ?  &vjp_res[{{i}}][i] : nullptr;
+}
+    {% endif %}
+  {% endfor %}
+{{get_mutable_attribute(api.attrs, api.name)}}
+
+{%- set args_names=[] -%}
+{%- for i in api.inputs -%} {%- do args_names.append(i.name) -%} {%- endfor -%}
+{%- for i in api.attrs -%} {%- do args_names.append(i.name) -%} {%- endfor %}
+{%- set outputs_names=[] -%}
+{%- for i in api.outputs -%} {%- do outputs_names.append(i.name) -%} {%- endfor -%}
+details::{{api.name}}<LazyTensor>({{common.args(args_names, outputs_names)}});
+{% endmacro %}
+
+{%- set api_map = {} -%}
+{%- for api in apis -%} {%- do api_map.update({api.name: api}) -%} {%- endfor -%}
+{%- for api in apis %}
+  {%- if api.backward and api.backward in api_map and api.backward not in vjp_black_list -%}
+      {%- set backward_api = api_map[api.backward] %}
+  {%- if backward_api is only_composite_op -%}{#- render nothing -#}
+  {%- else -%}
+{{sig(api.name, backward_api.name, backward_api.inputs, backward_api.attrs, backward_api.outputs)}} {
+    {% filter indent(2, True) %}
+{{body(backward_api)}}
+    {% endfilter -%}
+}
+
+  {% endif %}
+  {% endif %}
+{% endfor %}
+
+
+}  // namespace primitive
+}  // namespace paddle

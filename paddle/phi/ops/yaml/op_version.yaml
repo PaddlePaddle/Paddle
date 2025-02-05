@@ -1,0 +1,666 @@
+- op : adam_
+  version :
+    - checkpoint : Upgrade adam add 1 attribute [multi_precision].
+      action :
+        - add_attr : multi_precision
+          comment : (bool) Whether to use multi-precision during weight updating.
+          default : "false"
+    - checkpoint : Upgrade adam, add 1 dispensable input [EpsilonTensor].
+      action :
+        - add_input : EpsilonTensor
+          comment : If provided, Adam will use this as epsilon, this has a higher priority than attr(epsilon). For better performance in npu kernel.
+    - checkpoint : Upgrade adam, add 1 attribute [use_global_beta_pow].
+      action :
+        - add_attr : use_global_beta_pow
+          comment : If true, Adam will use global beta_pow for whole model instead of creating beta_pow for each parameter. In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be used in adam op, and beta_pow will be updated after all adam op in the model.
+          default : "false"
+    - checkpoint : Upgrade adam, add 1 dispensable input [SkipUpdate].
+      action :
+        - add_input : SkipUpdate
+          comment : If the value is true, Adam will skip the update.
+
+- op : affine_grid
+  version :
+    - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].
+      action :
+        - add_attr : align_corners
+          comment : Whether to align the corners of input and output.
+          default : "true"
+
+- op : allclose
+  version :
+    - checkpoint : Upgrade allclose, add two new inputs [Rtol] and [Atol].
+      action:
+        - add_input : Rtol
+          comment : The added input 'Rtol' is not dispensable.
+        - add_input : Atol
+          comment : The added input 'Atol' is not dispensable.
+    - checkpoint : Delete two float attributes [rtol] and [atol],
+        then add 2 string attributes [atol, rtol]. Don't be surprised.
+        This is because float cannot represent height-precision
+        floating-point values, and our framework doesn't support
+        the use of double attributes. As a result, string instead
+        of double is used here to represent height-precision
+        floating-point values.
+      action :
+        - add_attr : rtol
+          comment : The relative tolerance. Default::math:`1e-5` .
+          default : std::string("1e-5")
+        - delete_attr : rtol
+          comment : The attribute 'rtol' is deleted. The reason why it is deleted is that
+                    attributes do not support a float64 value and it is changed to a tensor.
+        - add_attr : atol
+          comment : (string) The absolute tolerance. Default::math:`1e-8` .
+          default : std::string("1e-5")
+        - delete_attr : atol
+          comment : The attribute 'atol' is deleted. The reason why it is deleted is that
+                    attributes do not support a float64 value and it is changed to a tensor.
+
+- op : argsort
+  version :
+    - checkpoint : Upgrade agsort, add a new attribute [stable]
+      action :
+        - add_attr : stable
+          comment : If true, it will use stable sorting algorithm which preserves the order
+                    of equivalent elements. Otherwise, the order of equivalent elements will
+                    not be guaranteed to be preserved.
+          default : "false"
+
+- op : assign_value
+  version :
+    - checkpoint : Upgrade assign_value, remove plain attributes in favor of generic attribute.
+      action :
+        - add_attr : values
+          comment : replace generic types with scalar.
+          default : std::vector<paddle::experimental::Scalar>()
+        - delete_attr : bool_values
+          comment : remove plain attributes.
+        - delete_attr : fp32_values
+          comment : remove plain attributes.
+        - delete_attr : int32_values
+          comment : remove plain attributes.
+        - delete_attr : int64_values
+          comment : remove plain attributes.
+
+- op : auc
+  version :
+    - checkpoint :  Upgrade auc, add a new input [InsTagWeight].
+      action :
+        - add_input : ValueTensor
+          comment : In order to support multi-tag task.
+
+- op : c_split
+  version :
+    - checkpoint : Upgrade c_split delete 1 attribute[use_calc_stream].
+      action :
+        - delete_attr : use_calc_stream
+          comment : eject CUDA operations to calculation stream.
+          default : false
+
+- op : clip
+  version :
+    - checkpoint :  Upgrade clip add a new input [Min]
+      action :
+        - add_input : Min
+          comment : Pass the mix, min value as input, not attribute. Min is dispensable.
+        - add_input : Max
+          comment : Pass the mix, min value as input, not attribute. Max is dispensable.
+
+- op : coalesce_tensor
+  version :
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [use_align]."
+      action :
+        - add_attr : use_align
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is true to be compatible
+            with before.
+          default : "true"
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [align_size]."
+      action :
+        - add_attr : align_size
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is -1 and use the default
+            align_size
+            of each place to be compatible with before.
+          default : -1
+
+- op : collect_fpn_proposals
+  version :
+    - checkpoint : Upgrade collect_fpn_proposals add a new input [MultiLevelRoIsNum] and add a new output [RoisNum].
+      action :
+        - add_input : multi_level_rois_num
+          comment : The RoIs' number of each image on multiple levels. The number on each level has the shape of (N), N is the number of images.
+        - add_output : rois_num
+          comment : The number of RoIs in each image.
+
+- op : conv2d
+  version :
+    - checkpoint : Upgrade conv2d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : conv2d_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+    - checkpoint : Upgrade conv2d transpose to add a new attributes [force_fp32_output, mkldnn_data_type].
+      action :
+        - add_attr : force_fp32_output
+          comment : Force BF16 kernel output FP32, only used in MKL-DNN BF16.
+          default : "false"
+        - add_attr : mkldnn_data_type
+          comment : Data type of mkldnn kernel.
+          default : "\"float32\""
+
+- op : conv3d
+  version :
+    - checkpoint : Upgrade conv3d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : conv3d_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+
+- op : conv_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+
+- op : cumprod
+  version :
+    - checkpoint : Upgrade cumprod add 2 new attributes [exlucsive] and [reverse].
+      action :
+        - add_attr : exlucsive
+          comment : In order to perform exclusive cumprod.
+          default : "false"
+        - add_attr : reverse
+          comment : In order to perform cumprod in the opposite direction
+          default : "false"
+
+- op : cumsum
+  version :
+    - checkpoint : Upgrade cumsum add a new attribute [flatten].
+      action :
+        - add_attr : flatten
+          comment : In order to compute the cumsum over the flattened array when the argument `axis` in python API is None.
+          default : "false"
+
+- op : depthwise_conv2d
+  version :
+    - checkpoint : Upgrade depthwise_conv2d, add a new attribute [use_addto].
+      action :
+        - add_attr : use_addto
+          comment : In order to support new feature (inplace addto strategy) for
+            gradient accumulation.
+          default : "false"
+
+- op : depthwise_conv2d_transpose
+  version :
+    - checkpoint : Upgrade convtranspose add a new attribute [output_padding].
+      action :
+        - add_attr : output_padding
+          comment : In order to add additional size to one side of each dimension in the output.
+          default : "std::vector<int>{}"
+
+- op : elementwise_floordiv
+  version :
+    - checkpoint : Register elementwise_floordiv for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_floordiv.
+          default : 1.0
+
+- op : elementwise_max
+  version :
+    - checkpoint : Register elementwise_max for adding the attribute of Scale_y.
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_max.
+          default : 1.0
+
+- op : elementwise_min
+  version :
+    - checkpoint : Register elementwise_min for adding the attribute of Scale_y.
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_min.
+          default : 1.0
+
+- op : elementwise_mod
+  version :
+    - checkpoint : Register elementwise_mod for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_mod.
+          default : "false"
+
+- op : elementwise_pow
+  version :
+    - checkpoint : Register elementwise_pow for adding the attribute of Scale_y
+      action :
+        - add_attr : Scale_y
+          comment : In order to support the function of scaling the input Y when using the operator of elementwise_pow.
+          default : 1.0
+
+- op : embedding
+  version :
+    - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
+      action :
+        - fix_bug : fix_bug
+          comment : lookup_table_v2 support input type `int64`; after support input type `int32/int64`
+
+- op : equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : expand_as_v2
+  version :
+    - checkpoint : fix expand_as_v2 and add new input [Y].
+      action :
+        - add_input : Y
+          comment : Expand X according to the shape of Y.
+
+- op : flip
+  version :
+    - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
+      action :
+        - add_attr : axis
+          comment : The added attr 'axis' doesn't set default value
+          default : paddle::none
+        - delete_attr : dims
+          comment : The attr 'dims' is deleted.
+
+- op : gather
+  version :
+    - checkpoint : Upgrade gather, add a new input [Axis]
+      action :
+        - add_input : Axis
+          comment : Specify the axis of gather operation.
+
+- op : gaussian_random
+  version :
+    - checkpoint : Upgrade gaussian_random add new inputs [ShapeTensor] and [ShapeTensorList]
+               and modify the attribute of [shape]
+      action :
+        - add_input : ShapeTensor
+          comment : The output shape supports Tensor type. ShapeTensor is dispensable.
+        - add_input : ShapeTensorList
+          comment : The output shape supports list filled with Tensor. ShapeTensorList is dispensable.
+        - modify_attr : shape
+          comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
+          default : std::vector<int64_t>{}
+
+- op : generate_proposals
+  version :
+    - checkpoint : Register generate_proposals_v2 for adding the attribute of pixel_offset
+      action :
+        - add_attr : pixel_offset
+          comment : If true, im_shape pixel offset is 1.
+          default : "true"
+
+- op : global_gather
+  version :
+    - checkpoint : Upgrade global_gather delete 1 attribute[use_calc_stream].
+      action :
+        - delete_attr : use_calc_stream
+          comment : eject CUDA operations to calculation stream.
+          default : false
+
+- op : global_scatter
+  version :
+    - checkpoint : Upgrade global_scatter delete 1 attribute[use_calc_stream].
+      action :
+        - delete_attr : use_calc_stream
+          comment : eject CUDA operations to calculation stream.
+          default : false
+
+- op : greater_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : greater_than
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : grid_sample
+  version :
+    - checkpoint : Upgrade grid_sampler add a new attribute [mode]
+      action :
+        - add_attr : mode
+          comment : In order to specify interpolation mode
+          default : std::string("bilinear")
+
+- op : histogram
+  version :
+    - checkpoint : Upgrade histogram, add a new Input [Weight] and a new attribute [density]
+      action :
+        - add_input : Weight
+          comment : The weight of each value in the input tensor.
+        - add_attr : density
+          comment : If true, the histogram is normalized to form a probability density.
+          default : "false"
+
+- op : instance_norm
+  version :
+    - checkpoint : Change dispensable of attribute from False to True in instance_norm.
+      action :
+        - modify_attr : Bias
+          comment : "The arg 'dispensable' of Input 'Bias' is changed: from 'False' to 'True'."
+          default : "true"
+        - modify_attr : Scale
+          comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
+          default : "true"
+
+- op : kldiv_loss
+  version :
+    - checkpoint : Upgrade kldiv_loss, add a new attribute [log_target]
+      action :
+        - add_attr : log_target
+          comment : In order to specify whether 'label' is passed in log space.
+          default : "false"
+
+- op : lamb
+  version :
+    - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].
+      action :
+        - add_output : Beta1PowOut
+          comment : The Output beta1 power accumulator. 'Beta1PowOut' is dispensable.
+        - add_output : Beta2PowOut
+          comment : The Output beta2 power accumulator. 'Beta2PowOut' is dispensable.
+
+- op : legacy_generate_proposals
+  version :
+    - checkpoint : Incompatible upgrade of output [RpnRoisLod].
+      action :
+        - delete_output : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect output name and it is not used in object detection models yet.
+    - checkpoint : Upgrade generate_proposals add a new output [RpnRoisNum]
+      action :
+        - add_output : rpn_rois_num
+          comment : The number of Rpn RoIs in each image. RpnRoisNum is dispensable.
+
+- op : less_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : less_than
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : linspace
+  version :
+    - checkpoint : Upgrade linspace to add a new attribute [dtype]
+      action :
+        - add_attr : dtype
+          comment : In order to change output data type
+          default : 5
+
+- op : lstsq
+  version :
+    - checkpoint : Upgrade lstsq, add 1 outputs [Residuals].
+      action :
+        - add_output : Residuals
+          comment : Output tensor of lstsq operator, meaning the squared residuals of the calculated solutions.
+
+- op : matrix_nms
+  version :
+    - checkpoint : Upgrade matrix_nms, add a new output [RoisNum].
+      action :
+        - add_output : RoisNum
+          comment : The number of RoIs in each image.
+
+- op : max_pool2d_with_index
+  version :
+    - checkpoint : Upgrade max_pool2d_with_index, add a new attribute [ceil_mode].
+      action :
+        - add_attr : ceil_mode
+          comment : When true, will use ceil instead of floor to compute the output shape.
+          default : "false"
+
+- op : max_pool3d_with_index
+  version :
+    - checkpoint : Upgrade max_pool3d_with_index, add a new attribute [ceil_mode].
+      action :
+        - add_attr : ceil_mode
+          comment : When true, will use ceil instead of floor to compute the output shape.
+          default : "false"
+
+- op : momentum
+  version :
+    - checkpoint : Upgrade momentum add 4 attributes [regularization_method, regularization_coeff, multi_precision, rescale_grad].
+      action :
+        - add_input : MasterParam
+          comment : FP32 master weight for AMP.
+        - add_output : MasterParamOut
+          comment : The updated FP32 master weight for AMP. It shared memory with Input(MasterParam).
+        - add_attr : regularization_method
+          comment : (string) regularization_method, right now only support l2decay or none
+          default : std::string("")
+        - add_attr : regularization_coeff
+          comment : (float) regularization_coeff
+          default : 0.0
+        - add_attr : multi_precision
+          comment : (bool) Whether to use multi-precision during weight updating.
+          default : "false"
+        - add_attr : rescale_grad
+          comment : (float) Multiply the gradient with `rescale_grad` before updating. Often choose to be `1.0/batch_size`.
+          default : 1.0
+
+- op : not_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : p_norm
+  version :
+    - checkpoint : Upgrade p_norm, add 1 attribute [asvector].
+      action :
+        - add_attr : asvector
+          comment : Compute as vector when axis is None and input is matrix.
+          default : "false"
+
+- op : partial_allgather
+  version :
+    - checkpoint : Upgrade partial_allgather delete 1 attribute[use_calc_stream].
+      action :
+        - delete_attr : use_calc_stream
+          comment : eject CUDA operations to calculation stream.
+          default : false
+
+- op : partial_send
+  version :
+    - checkpoint : Upgrade partial_send delete 1 attribute[use_calc_stream].
+      action :
+        - delete_attr : use_calc_stream
+          comment : eject CUDA operations to calculation stream.
+          default : false
+
+- op : pixel_shuffle
+  version :
+    - checkpoint : Compatible upgrade of pixel_shuffle, add a new attribute [data_format]
+      action :
+        - add_attr : data_format
+          comment : Specify the data format of the input data
+          default : "true"
+
+- op : roi_align
+  version :
+    - checkpoint : Incompatible upgrade of input [RpnRoisLod])
+      action :
+        - delete_input : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect input name and it is not used in object detection models yet
+    - checkpoint :  Upgrade roi_pool add a new input [RoisNum]
+      action :
+        - add_input : RoisNum
+          comment : The number of RoIs in each image. RoisNum is dispensable
+    - checkpoint :  Upgrade roi_align add a new input [aligned]
+      action :
+        - add_attr : aligned
+          comment : If true, pixel shift it by -0.5 for align more perfectly.
+          default : "false"
+
+- op : roi_pool
+  version :
+    - checkpoint :  Incompatible upgrade of input [RpnRoisLod]
+      action :
+        - delete_input : RpnRoisLod
+          comment : Delete RpnRoisLod due to incorrect input name and it is not used in object detection models yet.
+    - checkpoint :  Upgrade roi_pool add a new input [RoisNum]
+      action :
+        - add_input : RoisNum
+          comment : The number of RoIs in each image. RoisNum is dispensable
+
+- op : roll
+  version :
+    - checkpoint : Upgrade roll add 1 attribute [axis], delete 1 attribute[dims].
+      action :
+        - add_attr : axis
+          comment : Axis along which to roll. It must have the same size with shifts, or size = 0.
+          default : std::vector<float>()
+        - delete_attr : dims
+          comment : Dims along which to roll. It must have the same size with shifts, or size = 0
+    - checkpoint : Upgrade roll add a dispensable input "ShiftsTensor"
+      action :
+        - add_input : ShiftsTensor
+          comment : The number of places by which the elements of the tensor are shifted.
+
+- op : round
+  version :
+    - checkpoint : Add a new attribute [decimals] to round
+      action :
+        - add_attr : decimals
+          comment : The number of decimal places rounded
+          default : 0.0
+
+- op : softmax_with_cross_entropy
+  version :
+    - checkpoint : Add a new attribute [use_softmax]
+      action :
+        - add_attr : use_softmax
+          comment : A flag to indicate whether to do softmax
+          default : "true"
+
+- op : thresholded_relu
+  version :
+    - checkpoint : Upgrade thresholded_relu, add a new attribute [value]
+      action :
+        - add_attr : value
+          comment : The threshold value of thresholded_relu.
+          default : 0.0
+
+- op : trace
+  version :
+    - checkpoint : Upgrade trace add a new attribute [axis2]
+      action :
+        - add_attr : axis1
+          comment : The added attribute 'axis1' is not yet registered.
+          default : std::vector<float>{0.0f}
+        - add_attr : axis2
+          comment : The added attribute 'axis2' is not yet registered.
+          default : std::vector<float>{1.0f}
+        - delete_attr : dim1
+          comment : The attribute 'dim1' is not recommend according to the specification 2.0.
+        - delete_attr : dim2
+          comment : The attribute 'dim2' is not recommend according to the specification 2.0.
+
+- op : truncated_gaussian_random
+  version :
+    - checkpoint : Upgrade truncated_gaussian_random add 2 new attribute [a, b]
+      action :
+        - add_attr : a
+          comment : The minimum cutoff value.
+          default: -2.0
+        - add_attr : b
+          comment : The maximum cutoff value.
+          default: 2.0
+
+- op : unique_consecutive
+  version :
+    - checkpoint : Upgrade unique_consecutive, add 2 outputs [Indices, Counts] and 3 attribute [return_inverse, return_counts, axis].
+      action :
+        - add_output : Counts
+          comment : The counts for each unique element.
+        - add_attr : return_inverse
+          comment : If True, also return the indices for where elements in the original input ended up in the returned unique tensor.
+          default : "false"
+        - add_attr : return_counts
+          comment : If True, also return the counts for each unique element.
+          default : "false"
+        - add_attr : axis
+          comment : The axis to apply unique. If None, the input will be flattened.
+          default : std::vector<int>{}
+
+- op : weight_dequantize
+  version :
+    - checkpoint : Upgrade weight_dequantize, add a new attribute [group_size]
+      action :
+        - add_attr : group_size
+          comment : The group size of the dequantization scales.
+          default : -1
+
+- op : weight_only_linear
+  version :
+    - checkpoint : Upgrade weight_only_linear, add a new attribute [group_size]
+      action :
+        - add_attr : group_size
+          comment : The group size of the dequantization scales.
+          default : -1
+
+- op : weight_quantize
+  version :
+    - checkpoint : Upgrade weight_quantize, add a new attribute [group_size]
+      action :
+        - add_attr : group_size
+          comment : The group size of the quantization scales.
+          default : -1
+
+- op : yolo_box
+  version :
+    - checkpoint : Upgrade yolo box to add new attribute [iou_aware, iou_aware_factor].
+      action :
+        - add_attr : iou_aware
+          comment : Whether use iou aware.
+          default : "false"
+        - add_attr : iou_aware_factor
+          comment : iou aware factor.
+          default : 0.5f

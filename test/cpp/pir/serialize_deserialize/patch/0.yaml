@@ -1,0 +1,32 @@
+op_pair_patches:
+  - op_pair : [pd_op.full, pd_op.scale]
+    actions:
+      - action : add_value
+        object : [1,2]
+        type : pir::DenseTensorType
+        default : [pir::Float32Type,[1],"NCHW",[],0]
+      - action : delete_value
+        object : [1, 2]
+  - op_pair : [test1.operation4, test1.operation3]
+    actions:
+      - action : delete_value
+        object : [0, 0]
+  - op_pair : [test1.operation1, test1.operation2]
+    actions:
+      - action : add_value
+        object : [1, 0]
+        type : pir::DenseTensorType
+        default : [pir::Int32Type,[1],"NCHW",[],0]
+op_patches:
+  - op_name : builtin.parameter
+    actions :
+      - action : add_attr
+        object : new_attribute
+        type : pir::StrAttribute
+        default : "new.attribute"
+  - op_name : pd_op.fetch
+    actions :
+      - action : delete_input
+        object : 0
+      - action : delete_attr
+        object : col

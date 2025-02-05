@@ -1,0 +1,76 @@
+op_patches:
+  - op_name : pd_op.data
+    actions:
+      - action : modify_output_attr
+        object : stop_gradient
+        type : pir::ArrayAttribute
+        default :
+          - type: pir::BoolAttribute
+            default: "false"
+  - op_name : builtin.constant
+    actions:
+      - action : modify_attr
+        object : value
+        type : pir::FloatAttribute
+        default : 1.0
+      - action : modify_output_type
+        object : 0
+        type : pir::Float64Type
+        default : pir::Float32Type
+  - op_name : builtin.parameter
+    actions :
+      - action : modify_attr
+        object : parameter_name
+        type : pir::StrAttribute
+        default : "fc_0"
+      - action : modify_output_attr
+        object : stop_gradient
+        type: pir::BoolAttribute
+        default : "false"
+  - op_name : pd_op.fetch
+    actions :
+      - action : add_output
+        object : 1
+        type : pir::DenseTensorType
+        default : [pir::Float32Type,[-1,30],"NCHW",[],0]
+
+  - op_name : test.operation1
+    actions :
+      - action : modify_attr
+        object : op1_attr1
+        type : pir::StrAttribute
+        default : "op1_attr1_value"
+      - action : delete_attr
+        object : op1_attr2
+      - action : add_attr
+        object : op1_attr3
+        type : pir::StrAttribute
+        default : "op1_attr3_value"
+      - action : modify_name
+        default : test1.operation1
+  - op_name : test.operation2
+    actions :
+      - action : add_output
+        object : 0
+        type : pir::DenseTensorType
+        default : [pir::Float32Type,[-1],"NCHW",[],0]
+      - action : add_output_attr
+        object : op2_attr1
+        type : pir::StrAttribute
+        default : "op2_attr1_value"
+  - op_name : test1.operation3
+    actions :
+      - action : delete_input
+        object : 0
+
+attr_patches:
+  - attr_name : pir::FloatAttribute
+    actions:
+      - action : modify_name
+        type : pir::DoubleAttribute
+
+type_patches:
+  - type_name : pir::Float32Type
+    actions:
+      - action : modify_name
+        type : pir::Float64Type

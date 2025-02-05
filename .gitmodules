@@ -1,0 +1,131 @@
+[submodule "third_party/protobuf"]
+	path = third_party/protobuf
+	url = https://github.com/protocolbuffers/protobuf.git
+	ignore = dirty
+[submodule "third_party/pocketfft"]
+	path = third_party/pocketfft
+	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
+	ignore = dirty
+[submodule "third_party/gflags"]
+	path = third_party/gflags
+	url = https://github.com/gflags/gflags.git
+	ignore = dirty
+[submodule "third_party/gloo"]
+	path = third_party/gloo
+	url = https://github.com/ziyoujiyi/gloo.git
+	ignore = dirty
+[submodule "third_party/dlpack"]
+	path = third_party/dlpack
+	url = https://github.com/dmlc/dlpack.git
+	ignore = dirty
+[submodule "third_party/utf8proc"]
+	path = third_party/utf8proc
+	url = https://github.com/JuliaStrings/utf8proc.git
+	ignore = dirty
+[submodule "third_party/warpctc"]
+	path = third_party/warpctc
+	url = https://github.com/baidu-research/warp-ctc.git
+	ignore = dirty
+[submodule "third_party/warprnnt"]
+	path = third_party/warprnnt
+	url = https://github.com/PaddlePaddle/warp-transducer.git
+	ignore = dirty
+[submodule "third_party/xxhash"]
+	path = third_party/xxhash
+	url = https://github.com/Cyan4973/xxHash.git
+	ignore = dirty
+[submodule "third_party/pybind"]
+	path = third_party/pybind
+	url = https://github.com/pybind/pybind11.git
+	ignore = dirty
+[submodule "third_party/threadpool"]
+	path = third_party/threadpool
+	url = https://github.com/progschj/ThreadPool.git
+	ignore = dirty
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/madler/zlib.git
+	ignore = dirty
+[submodule "third_party/glog"]
+	path = third_party/glog
+	url = https://github.com/google/glog.git
+	ignore = dirty
+[submodule "third_party/eigen3"]
+	path = third_party/eigen3
+	url = https://gitlab.com/libeigen/eigen.git
+	ignore = dirty
+[submodule "third_party/snappy"]
+	path = third_party/snappy
+	url = https://github.com/google/snappy.git
+	ignore = dirty
+[submodule "third_party/cub"]
+	path = third_party/cub
+	url = https://github.com/NVIDIA/cub.git
+	ignore = dirty
+[submodule "third_party/cutlass"]
+	path = third_party/cutlass
+	url = https://github.com/NVIDIA/cutlass.git
+	ignore = dirty
+[submodule "third_party/xbyak"]
+	path = third_party/xbyak
+	url = https://github.com/herumi/xbyak.git
+	ignore = dirty
+[submodule "third_party/onednn"]
+	path = third_party/onednn
+	url = https://github.com/oneapi-src/oneDNN.git
+	ignore = dirty
+[submodule "third_party/flashattn"]
+	path = third_party/flashattn
+	url = https://github.com/PaddlePaddle/flash-attention.git
+	ignore = dirty
+[submodule "third_party/gtest"]
+	path = third_party/gtest
+	url = https://github.com/google/googletest.git
+	ignore = dirty
+[submodule "third_party/openblas"]
+	path = third_party/openblas
+	url = https://github.com/xianyi/OpenBLAS.git
+	ignore = dirty
+[submodule "third_party/leveldb"]
+	path = third_party/leveldb
+	url = https://github.com/google/leveldb.git
+	ignore = dirty
+[submodule "third_party/brpc"]
+	path = third_party/brpc
+	url = https://github.com/apache/brpc.git
+	ignore = dirty
+[submodule "third_party/rocksdb"]
+	path = third_party/rocksdb
+	url = https://github.com/Thunderbrook/rocksdb
+	ignore = dirty
+[submodule "third_party/absl"]
+	path = third_party/absl
+	url = https://github.com/abseil/abseil-cpp.git
+	ignore = dirty
+[submodule "third_party/jitify"]
+	path = third_party/jitify
+	url = https://github.com/NVIDIA/jitify.git
+	ignore = dirty
+[submodule "third_party/cccl"]
+	path = third_party/cccl
+	url = https://github.com/NVIDIA/cccl.git
+	ignore = dirty
+[submodule "third_party/cryptopp"]
+	path = third_party/cryptopp
+	url = https://github.com/weidai11/cryptopp.git
+	ignore = dirty
+[submodule "third_party/cryptopp-cmake"]
+	path = third_party/cryptopp-cmake
+	url = https://github.com/noloader/cryptopp-cmake.git
+	ignore = dirty
+[submodule "third_party/nlohmann_json"]
+	path = third_party/nlohmann_json
+	url = https://github.com/nlohmann/json.git
+	ignore = dirty
+[submodule "third_party/yaml-cpp"]
+	path = third_party/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp
+[submodule "third_party/openvino"]
+	path = third_party/openvino
+	url = https://github.com/openvinotoolkit/openvino.git
+	ignore = dirty

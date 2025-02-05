@@ -1,0 +1,94 @@
+# These operators have been unified for both dynamic and static modes in the new IR and have been moved to the 'ops.yaml'.
+# However, these operators are inconsistent between dynamic and static modes in the old IR.
+# So when generating static graph operator definitions from ’ops.yaml‘ in the old IR, these operators need to be skipped
+# to avoid generating duplicate or incorrect definitions.
+# This file should be removed after the old IR is deprecated.
+
+- all
+- amax
+- amin
+- any
+- assign_out_
+- assign_value_
+- c_allreduce_sum
+- c_concat
+- c_identity
+- c_split
+- cast
+- conv2d_transpose
+- conv2d_transpose_bias
+- copy_to
+- decode_jpeg
+- deformable_conv
+- depthwise_conv2d_transpose
+- dequantize_log
+- disable_check_model_nan_inf
+- dropout
+- empty
+- empty_like
+- enable_check_model_nan_inf
+- exponential_
+- eye
+# FIXME(dev): Remove flatten after deprecate flatten_contiguous_range in old IR system.
+# flatten is alias name of flatten_contiguous_range.
+- flatten
+- frobenius_norm
+- full
+- full_
+- full_batch_size_like
+- full_like
+- full_with_tensor
+- fused_batch_norm_act
+- fused_bn_add_activation
+- fused_softmax_mask
+- fused_softmax_mask_upper_triangle
+- gaussian
+- hsigmoid_loss
+- increment
+- linspace
+- logspace
+- matrix_rank
+- matrix_rank_tol
+- max
+- mean
+- memcpy_d2h
+- memcpy_h2d
+- mish
+- mp_allreduce_sum
+- norm
+- one_hot
+- ones
+- ones_like
+- pad
+- pool2d
+- pool3d
+- prod
+- randint
+- randperm
+- read_file
+- repeat_interleave
+- repeat_interleave_with_tensor_index
+- reshape
+- rnn
+- sequence_mask
+- set_value_with_tensor
+- slice
+- split
+- split_with_num
+- squeeze
+- strided_slice
+- sum
+- swish
+- sync_batch_norm_
+- trans_layout
+- transpose
+- tril
+- tril_indices
+- triu
+- triu_indices
+- truncated_gaussian_random
+- uniform
+- unpool
+- unsqueeze
+- zeros
+- zeros_like

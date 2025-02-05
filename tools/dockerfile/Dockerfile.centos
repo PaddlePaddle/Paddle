@@ -1,0 +1,78 @@
+# NOTE The manylinux1 policy mandates CentOS-5. We replace it with CentOS-6 in
+# order to satisfy the build of capnproto library (a nupic.core dependency),
+# which requires some headers and symbols not present on CentOS-5 (e.g.,
+# signalfd.h, pipe2, O_NONBLOCK, SOCK_NONBLOCK, etc.). See
+# https://github.com/sandstorm-io/capnproto/issues/350.
+FROM nvidia/cuda:<baseimg>
+MAINTAINER Numenta, based on the ManyLinux project
+
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
+ENV LD_LIBRARY_PATH /usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+RUN yum update -y && yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel libtool xz graphviz wget curl-devel patch perl swig
+COPY build_scripts /build_scripts
+RUN bash build_scripts/build.sh
+#RUN bash build_scripts/install_nccl2.sh
+RUN bash build_scripts/install_trt.sh
+RUN rm -rf build_scripts
+RUN ln -s /usr/local/ssl/include/openssl /usr/include
+
+# git 2.17.1
+RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
+  tar -xvf git-2.17.1.tar.gz && \
+  cd git-2.17.1 && \
+  ./configure --with-openssl CFLAGS="-Dsocklen_t=uint32_t" --prefix=/usr/local && \
+  make -j8 && make install
+
+ENV SSL_CERT_FILE=/opt/_internal/certs.pem
+ENV GOROOT=/usr/local/go GOPATH=/root/gopath
+ENV PATH=/usr/local/ssl:${GOROOT}/bin:${GOPATH}/bin:${PATH}
+ENV LIBRARY_PATH=/usr/local/ssl/lib:$LIBRARY_PATH
+
+
+# for paddle
+RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.linux-amd64.tar.gz | \
+    tar -xz -C /usr/local && \
+    mkdir /root/gopath && \
+    mkdir /root/gopath/bin && \
+    mkdir /root/gopath/src
+
+
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
+
+
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.10.0/bin/pip3 install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.11.0/bin/pip3 install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install setuptools -U
+
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.10.0/bin/pip3 install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.11.0/bin/pip3 install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install -r /root/requirements.txt && \
+    go get github.com/Masterminds/glide && \
+    rm -rf /root/requirements.txt
+
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.8.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.9.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.10.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.11.0/bin/pip3 install pre-commit 'ipython==5.3.0' && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.12.0/bin/pip3 install pre-commit 'ipython==5.3.0'
+
+
+# ccache 4.8.2
+RUN wget -q https://paddle-ci.gz.bcebos.com/ccache-4.8.2.tar.gz && \
+    tar xf ccache-4.8.2.tar.gz && mkdir /usr/local/ccache-4.8.2 && cd ccache-4.8.2 && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local/ccache-4.8.2 .. && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-4.8.2/bin/ccache /usr/local/bin/ccache && \
+    cd ../../ && rm -rf ccache-4.8.2.tar.gz
+
+CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

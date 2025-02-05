@@ -1,0 +1,128 @@
+- op : broadcast
+  args : (Tensor x, int64_t[] broadcast_axes,  int64_t[] out_shape)
+  output : Tensor(out)
+  infer_meta :
+    func : CINNBroadcastInferMeta
+    param : [x, broadcast_axes, out_shape]
+  kernel :
+    func : expand
+    param : [x, broadcast_axes]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : gather
+  args : (Tensor x, Tensor index, int axis)
+  output : Tensor
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : isclose
+  args : (Tensor x, Tensor y, float rtol=1e-5, float atol=1e-8,  bool equal_nan=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ValueCompareInferMeta
+    param: [x, y]
+  kernel :
+    func : isclose
+    data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : pool2d
+  args : (Tensor x, int[] kernel_size, int[] stride_size, int[] padding_size, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : pool2d
+    param : [x, kernel_size, stride_size, padding_size, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+
+- op : reduce_max
+  args : (Tensor x, int64_t[] axis, bool keepdim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reduce_min
+  args : (Tensor x, int64_t[] axis, bool keepdim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reduce_prod
+  args : (Tensor x, int64_t[] axis, bool keepdim, bool reduce_all)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+    param : [x, axis, keepdim]
+  kernel :
+    func : frobenius_norm
+    param : [x, axis, keepdim]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reduce_sum
+  args : (Tensor x, int64_t[] axis, bool keepdim, DataType dtype=DataType::UNDEFINED)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceSumInferMeta
+    param : [x, axis, keepdim, dtype]
+  kernel :
+    func : frobenius_norm
+    param : [x, axis, keepdim]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reshape
+  args : (Tensor x, int[] shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : reverse
+  args : (Tensor x, int[] axis)
+  output : Tensor
+  infer_meta :
+    func : ReverseInferMeta
+  kernel :
+    func : reverse
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : scale
+  args : (Tensor x, float scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : scale
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : slice
+  args : (Tensor x, int64_t[] axes, int64_t[] starts, int64_t[] ends, int64_t[] infer_flags, int64_t[] decrease_axis)
+  output : Tensor
+  infer_meta :
+    func : SliceRawInferMeta
+  kernel :
+    func : slice
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : uniform_random
+  args : (int64_t[] shape,  float min, float max, int seed, DataType dtype, int diag_num = 0, int diag_step=0, float diag_val=1.0, Place place={})
+  output : Tensor(out)
+  infer_meta :
+    func : CreateVecShapeInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full_int_array
+    param : [shape, dtype]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface

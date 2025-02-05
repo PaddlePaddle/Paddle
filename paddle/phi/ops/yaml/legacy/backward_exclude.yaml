@@ -1,0 +1,58 @@
+# These backward operators have been unified for both dynamic and static modes in the new IR and have been moved to the 'backward.yaml'.
+# Just like the operators in 'ops_exclude.yaml', these operators need to be skipped when generating static graph operator definitions in the old IR.
+# This file should be removed after the old IR is deprecated.
+
+- amax_grad
+- amin_grad
+- cast_grad
+- conv2d_transpose_double_grad
+- conv2d_transpose_grad
+- deformable_conv_grad
+- depthwise_conv2d_transpose_grad
+- disable_check_model_nan_inf_grad
+- dropout_grad
+- enable_check_model_nan_inf_grad
+# FIXME(dev): Remove flatten_grad after deprecate flatten_contiguous_range in old IR system.
+# flatten_grad is alias name of flatten_contiguous_range_grad.
+- flatten_grad
+- frobenius_norm_grad
+- fused_batch_norm_act_grad
+- fused_bn_add_activation_grad
+- fused_softmax_mask_grad
+- fused_softmax_mask_upper_triangle_grad
+- hsigmoid_loss_grad
+- max_grad
+- mean_double_grad
+- mean_grad
+- mish_grad
+- mp_allreduce_sum_grad
+- norm_grad
+- pad_double_grad
+- pad_grad
+- pool2d_double_grad
+- pool2d_grad
+- pool3d_grad
+- prod_grad
+- repeat_interleave_grad
+- repeat_interleave_with_tensor_index_grad
+- reshape_grad
+- reshape_double_grad
+- rnn_grad
+- set_value_with_tensor_grad
+- slice_double_grad
+- slice_grad
+- split_grad
+- split_with_num_grad
+- squeeze_grad
+- strided_slice_grad
+- sum_double_grad
+- sum_grad
+- swish_grad
+- sync_batch_norm_grad
+- trans_layout_grad
+- transpose_double_grad
+- transpose_grad
+- tril_grad
+- triu_grad
+- unpool_grad
+- unsqueeze_grad

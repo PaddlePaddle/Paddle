@@ -1,0 +1,208 @@
+[tool.black]
+line-length = 80
+skip-string-normalization = true
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+extend-exclude = '''
+(
+    third_party/.+      # Exclude third_party directory
+    | build/.+          # Exclude build directory
+)
+'''
+
+[tool.ruff]
+exclude = [
+    "./build",
+    "third_party",
+    "./python/paddle/utils/gast/**",
+]
+line-length = 80
+target-version = "py38"
+
+[tool.ruff.format]
+# Prevent change to double quotes by some users use ruff format
+quote-style = "preserve"
+
+[tool.ruff.lint]
+select = [
+    # Pycodestyle
+    "E",
+    "W",
+
+    # Pyflakes
+    "F",
+
+    # Isort
+    "I",
+
+    # Comprehensions
+    "C4",
+
+    # Debugger
+    "T100",
+
+    # Pyupgrade
+    "UP",
+
+    # Flake8-pyi
+    "PYI",
+
+    # NumPy-specific rules
+    "NPY001",
+    "NPY003",
+    "NPY201",
+
+    # Bugbear
+    "B002",
+    "B003",
+    "B004",
+    "B009",
+    "B010",
+    "B011",
+    "B012",
+    "B013",
+    "B014",
+    "B015",
+    "B016",
+    "B017",
+    "B018",
+    "B019",
+    "B020",
+    "B021",
+    "B022",
+    "B025",
+    "B029",
+    "B032",
+
+    # Pylint
+    "PLE",
+    "PLC3002",
+    "PLR0206",
+    "PLR0402",
+    "PLR1711",
+    "PLR1722",
+    "PLW3301",
+
+    # Flake8-simplify
+    "SIM101",
+
+    # Pygrep-hooks
+    "PGH004",
+
+    # Flake8-type-checking
+    "TC",
+
+    # Ruff-specific rules
+    "RUF005",
+    "RUF008",
+    "RUF009",
+    "RUF010",
+    "RUF013",
+    "RUF015",
+    "RUF016",
+    "RUF017",
+    "RUF018",
+    "RUF019",
+    "RUF020",
+    "RUF024",
+    "RUF026",
+    "RUF100",
+
+    # Flake8-raise
+    "RSE",
+
+    # Flake8-quotes
+    "Q003",
+    "Q004",
+
+    # Refurb
+    "FURB",
+
+    # Flake8-future-annotations
+    "FA",
+]
+unfixable = [
+    "NPY001"
+]
+ignore = [
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    "E203",
+    # Module level import not at top of file
+    "E402",
+    # Line too long (82 > 79 characters)
+    "E501",
+    # Do not compare types, use `isinstance()`
+    "E721",
+    # Do not use bare except, specify exception instead
+    "E722",
+    # Do not assign a lambda expression, use a def
+    "E731",
+    # Do not use variables named ‘l’, ‘O’, or ‘I’
+    "E741",
+    # `name` may be undefined, or defined from star imports: `module`
+    "F405",
+    # Local variable name is assigned to but never used
+    "F841",
+    # It not met the "Explicit is better than implicit" rule
+    "UP015",
+    # It will cause the performance regression on python3.10
+    "UP038",
+    # collections.namedtuple can be quickly created a inlined class
+    "PYI024",
+    # `__all__.append` is a common pattern in Paddle
+    "PYI056",
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["paddle"]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore for re-export in __init__ files
+"__init__.py" = ["PLC0414"]
+# Ignore compare with True in sot unittest
+"test/sot/test_dup_top.py" = ["E712"]
+# Ignore undefined variables in CMake config and some dygraph_to_static tests
+".cmake-format.py" = ["F821"]
+"test/dygraph_to_static/test_closure_analysis.py" = ["F821"]
+# Ignore version check in setup.py
+"setup.py" = ["UP036"]
+# Ignore unnecessary comprehension in dy2st unittest test_loop
+"test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
+# Ignore unnecessary lambda in dy2st unittest test_lambda
+"test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
+# Ignore docstring in tensor.pyi
+"python/paddle/tensor/tensor.prototype.pyi" = ["PYI021", "PYI048"]
+# Temproray ignore some dy2st test case because SOT bug
+# See https://github.com/PaddlePaddle/Paddle/pull/67344#discussion_r1714155671 for more details
+"test/dygraph_to_static/seq2seq_dygraph_model.py" = ["RUF005"]
+
+[tool.mypy]
+python_version = "3.8"
+cache_dir = ".mypy_cache"
+# Miscellaneous strictness flags
+allow_redefinition = true
+local_partial_types = true
+strict = false
+# Untyped definitions and calls
+check_untyped_defs = true
+# Import discovery
+follow_imports = "normal"
+# Miscellaneous
+warn_unused_configs = true
+# Disallow generic without type arguments
+disallow_any_generics = true
+# Configuring warnings
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+# Configuring error messages
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "astor",
+    "cv2",
+    "scipy",
+    "xlsxwriter"
+]
+ignore_missing_imports = true

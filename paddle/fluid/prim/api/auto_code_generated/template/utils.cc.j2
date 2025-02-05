@@ -1,0 +1,200 @@
+
+{% macro static_prim_api(api) %}
+  {%- set fluid_name = api.op_name -%}
+  {%- set phi_name = api.name -%}
+  {%- set inputs = api.inputs -%}
+  {%- set outputs = api.outputs|trip_intermediate -%} {#- ignore intermediate output -#}
+  {%- set attrs = api.attrs -%}
+  {%- set output_names = [] -%}
+  {%- for o in outputs -%} {%- do output_names.append(o.name) -%} {%-endfor-%}
+  {%- set output_dtype = static_prim_api_output_dtype(api.inputs, api.attrs) -%}
+{{static_prim_api_sig(phi_name, inputs, outputs, attrs)}} {
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("{{fluid_name}}");
+  {% filter indent(2, True) %}
+    {% for input in inputs %}
+{{static_prim_api_input(input)}}
+    {% endfor %}
+    {% for output in outputs %}
+{{static_prim_api_output(output, output_dtype)}}
+    {% endfor %}
+    {% for attr in attrs %}
+{{static_prim_api_attr(attr)}}
+    {% endfor %}
+  {% endfilter %}
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  {% if outputs|length > 1 %}
+  return std::make_tuple{{sequence('(', ')', ', ', output_names)}};
+  {% elif outputs|length == 1 %}
+  return {{outputs[0].name}};
+  {% else %} {#- render nothing -#}
+  {% endif %}
+}
+{% endmacro %}
+
+
+{%- macro static_prim_api_sig(name, inputs, outputs, attrs) -%}
+template <>
+{{static_prim_api_sig_ret(outputs)}} {{name}}<DescTensor>({{static_prim_api_sig_params(inputs, attrs)}})
+{%- endmacro %}
+
+
+{%- macro static_prim_api_sig_params(inputs, attrs) -%}
+  {%- set input_params = [] -%}
+  {%- for i in inputs -%} {%- do input_params.append(i.typename|to_paddle_input_type(i.optional)~' '~i.name) -%} {%- endfor -%}
+  {%- set attr_params = [] -%}
+  {%- for i in attrs -%} {%- do attr_params.append(i.typename|to_paddle_attr_type~' '~i.name) -%} {%- endfor -%}
+  {{sequence('', '', ', ', input_params)}}
+  {%- if attr_params|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between inputs and attrs -#}
+  {{sequence('', '', ', ', attr_params)}}
+{%- endmacro -%}
+
+
+{%- macro static_prim_api_sig_ret(outputs) -%}
+  {%- set names = [] -%}
+  {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type) -%} {%- endfor -%}
+  {%- if names|length > 1 -%}
+std::tuple<{{sequence('', '', ', ', names)}}>
+  {%- else -%}
+{{names[0]}}
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{% macro static_prim_api_input(input) %}
+  {%- if input.optional -%}
+{{static_prim_api_input_optional(input)}}
+  {%- else -%}
+{{static_prim_api_input_without_optional(input)}}
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro static_prim_api_input_optional(input) -%}
+  {%- if input.typename=='Tensor[]' -%} {#- render the input of type paddle::optional<std::Vector<Tensor>> -#}
+if ({{input.name}}) {
+  std::vector<std::string> {{input.name}}_names({{input.name}}.get().size());
+  std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_names.begin(), [](const Tensor& t) {
+    return std::static_pointer_cast<prim::DescTensor>(t.impl())->Name();
+  });
+  op->SetInput("{{input.fluid_name | to_pascal}}", {{input.name}}_names);
+}
+  {%- else -%}
+if ({{input.name}}) {
+  op->SetInput("{{input.fluid_name | to_pascal}}", {std::static_pointer_cast<prim::DescTensor>({{input.name}}->impl())->Name()});
+}
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro static_prim_api_input_without_optional(input) -%}
+  {%- if input.typename is tensor_sequence -%} {#- render the input of type std::Vector<Tensor> -#}
+std::vector<std::string> {{input.name}}_names({{input.name}}.size());;
+std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_names.begin(), [](const Tensor& t) {
+  return std::static_pointer_cast<prim::DescTensor>(t.impl())->Name();
+});
+op->SetInput("{{input.fluid_name | to_pascal}}", {{input.name}}_names);
+  {%- else -%}
+op->SetInput("{{input.fluid_name | to_pascal}}", {std::static_pointer_cast<prim::DescTensor>({{input.name}}.impl())->Name()});
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{% macro static_prim_api_output(output, dtype) %}
+  {%- if output.optional -%}
+{{static_prim_api_output_optional(output, dtype)}}
+  {%- else -%}
+{{static_prim_api_output_without_optional(output, dtype)}}
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro static_prim_api_output_without_optional(output, dtype) -%}
+  {%- if output.typename is tensor_sequence -%} {#- render the output of type std::Vector<Tensor> -#}
+std::vector<Tensor> {{output.name}};
+std::vector<std::string> {{output.name}}_names;
+for (size_t i=0; i<{{output.size}}; i++) {
+  auto tmp = empty<DescTensor>({}, {{dtype}}, paddle::Place());
+  {{output.name}}.push_back(tmp);
+  {{output.name}}_names.push_back(std::static_pointer_cast<prim::DescTensor>(tmp.impl())->Name());
+}
+op->SetOutput("{{output.fluid_name | to_pascal}}", {{output.name}}_names);
+  {%- else -%}
+auto {{output.name}} = empty<DescTensor>({}, {{dtype}}, paddle::Place());
+op->SetOutput("{{output.fluid_name | to_pascal}}", {std::static_pointer_cast<prim::DescTensor>({{output.name}}.impl())->Name()});
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro static_prim_api_output_optional(output, dtype) -%}
+// TODO(cxxly): Render optional output
+{%- endmacro -%}
+
+
+{% macro static_prim_api_attr(attr) %}
+op->SetAttr("{{attr.fluid_name}}", {{phi_attr_to_fluid(attr)}});
+{%- endmacro %}
+
+
+{%- macro phi_attr_to_fluid(attr) -%}
+  {%- if attr.typename is intarray -%}
+{{int_array_to_fluid(attr.name, attr.typename, attr.fluid_name, attr.data_type)}}
+  {%- elif attr.typename is scalar -%}
+{{scalar_to_fluid(attr.name, attr.typename, attr.fluid_name, attr.data_type)}}
+  {%- elif attr.typename is datatype -%}
+{{datatype_to_fluid(attr.name, attr.typename, attr.fluid_name, attr.data_type)}}
+  {%- else -%}
+{{attr.name}}
+  {%- endif -%}
+{%- endmacro %}
+
+
+{%- macro int_array_to_fluid(src_name, src_type, dst_name, dst_type) -%}
+  {%- if dst_type=='std::vector<int>' -%}
+unsafe_vector_cast<int64_t, int>({{src_name}}.GetData())
+  {%- else -%}
+{{src_name}}.GetData()
+  {%- endif -%}
+{%- endmacro -%}
+
+
+{%- macro scalar_to_fluid(src_name, src_type, dst_name, dst_type) -%}
+{{src_name}}.to<{{dst_type}}>()
+{%- endmacro -%}
+
+
+{%- macro datatype_to_fluid(src_name, src_type, dst_name, dst_type) -%}
+paddle::framework::TransToProtoVarType({{src_name}})
+{%- endmacro -%}
+
+
+{%- macro sequence(lsymbol, rsymbol, delimiter, items) -%}
+{{lsymbol}}{%- for item in items -%}{{item}}{{delimiter if not loop.last else "" }}{%- endfor -%}{{rsymbol}}
+{%- endmacro -%}
+
+
+{%- macro static_prim_api_output_dtype(inputs, attrs) -%}
+  {%- set is_set = [] -%}  {#- why not use boolean, ref: https://stackoverflow.com/questions/17925674/jinja2-local-global-variable -#}
+  {%- if not is_set -%} {#- use DataType attr as default output dtype -#}
+    {%- for attr in attrs -%}
+      {%- if attr.typename is datatype -%}
+{{attr.name}}
+        {%- do is_set.append(1) -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+  {%- if not is_set -%} {#- use first input named x dtype as default output dtype -#}
+    {%- for input in inputs -%}
+      {%- if input.typename == 'Tensor' and input.name == 'x' -%}
+{{input.name}}.dtype()
+        {%- do is_set.append(1) -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endif -%}
+  {%- if not is_set -%} {#- use fp32 as default output dtype -#}
+phi::DataType::FLOAT32
+  {%- endif -%}
+{%- endmacro -%}

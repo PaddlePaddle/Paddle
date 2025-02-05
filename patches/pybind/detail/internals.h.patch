@@ -1,0 +1,22 @@
+diff --git a/include/pybind11/detail/internals.h b/include/pybind11/detail/internals.h
+index 232bc32d..b6491c11 100644
+--- a/include/pybind11/detail/internals.h
++++ b/include/pybind11/detail/internals.h
+@@ -203,11 +203,18 @@ struct internals {
+     PyTypeObject *static_property_type;
+     PyTypeObject *default_metaclass;
+     PyObject *instance_base;
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 8
++#    pragma GCC diagnostic push
++#    pragma GCC diagnostic ignored "-Wmissing-field-initializers"
++#endif
+     // Unused if PYBIND11_SIMPLE_GIL_MANAGEMENT is defined:
+     PYBIND11_TLS_KEY_INIT(tstate)
+ #if PYBIND11_INTERNALS_VERSION > 4
+     PYBIND11_TLS_KEY_INIT(loader_life_support_tls_key)
+ #endif // PYBIND11_INTERNALS_VERSION > 4
++#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 8
++#    pragma GCC diagnostic pop
++#endif
+     // Unused if PYBIND11_SIMPLE_GIL_MANAGEMENT is defined:
+     PyInterpreterState *istate = nullptr;

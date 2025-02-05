@@ -1,0 +1,8 @@
+if(WITH_TESTING AND WITH_CINN)
+  paddle_test(map_expr_test SRCS map_expr_test.cc)
+  set_tests_properties(map_expr_test PROPERTIES LABELS "RUN_TYPE=CINN")
+  paddle_test(test_data_dependency_graph SRCS data_dependency_graph_test.cc)
+  paddle_test(test_index_expr SRCS index_expr_test.cc)
+  paddle_test(test_iter_simplify SRCS iter_simplify_test.cc)
+  paddle_test(merge_block_utils_test SRCS merge_block_utils_test.cc)
+endif()

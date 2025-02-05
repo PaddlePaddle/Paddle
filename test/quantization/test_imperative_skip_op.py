@@ -1,0 +1,137 @@
+#   copyright (c) 2022 paddlepaddle authors. all rights reserved.
+#
+# licensed under the apache license, version 2.0 (the "license");
+# you may not use this file except in compliance with the license.
+# you may obtain a copy of the license at
+#
+#     http://www.apache.org/licenses/license-2.0
+#
+# unless required by applicable law or agreed to in writing, software
+# distributed under the license is distributed on an "as is" basis,
+# without warranties or conditions of any kind, either express or implied.
+# see the license for the specific language governing permissions and
+# limitations under the license.
+
+import os
+import sys
+import unittest
+
+import numpy as np
+
+sys.path.append("../../quantization")
+from imperative_test_utils import (
+    ImperativeLenetWithSkipQuant,
+    fix_model_dict,
+    train_lenet,
+)
+
+import paddle
+from paddle.framework import core, set_flags
+from paddle.optimizer import Adam
+from paddle.quantization import ImperativeQuantAware
+
+INFER_MODEL_SUFFIX = ".pdmodel"
+INFER_PARAMS_SUFFIX = ".pdiparams"
+os.environ["CPU_NUM"] = "1"
+if core.is_compiled_with_cuda():
+    set_flags({"FLAGS_cudnn_deterministic": True})
+
+
+class TestImperativeOutSclae(unittest.TestCase):
+    def test_out_scale_acc(self):
+        paddle.disable_static()
+        seed = 1000
+        lr = 0.1
+
+        qat = ImperativeQuantAware()
+
+        np.random.seed(seed)
+        reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=512, drop_last=True
+        )
+
+        lenet = ImperativeLenetWithSkipQuant()
+        lenet = fix_model_dict(lenet)
+        qat.quantize(lenet)
+
+        adam = Adam(learning_rate=lr, parameters=lenet.parameters())
+        dynamic_loss_rec = []
+        lenet.train()
+        loss_list = train_lenet(lenet, reader, adam)
+
+        lenet.eval()
+
+        path = "./save_dynamic_quant_infer_model/lenet"
+        save_dir = "./save_dynamic_quant_infer_model"
+
+        qat.save_quantized_model(
+            layer=lenet,
+            path=path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32'
+                )
+            ],
+        )
+
+        paddle.enable_static()
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = paddle.static.Executor(place)
+        with paddle.pir_utils.OldIrGuard():
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.load_inference_model(
+                save_dir,
+                executor=exe,
+                model_filename="lenet" + INFER_MODEL_SUFFIX,
+                params_filename="lenet" + INFER_PARAMS_SUFFIX,
+            )
+        model_ops = inference_program.global_block().ops
+
+        conv2d_count, matmul_count = 0, 0
+        conv2d_skip_count, matmul_skip_count = 0, 0
+        find_conv2d = False
+        find_matmul = False
+        for i, op in enumerate(model_ops):
+            if op.type == 'conv2d':
+                find_conv2d = True
+                if op.has_attr("skip_quant"):
+                    conv2d_skip_count += 1
+                if conv2d_count > 0:
+                    self.assertTrue(
+                        'fake_quantize_dequantize' in model_ops[i - 1].type
+                    )
+                else:
+                    self.assertTrue(
+                        'fake_quantize_dequantize' not in model_ops[i - 1].type
+                    )
+                conv2d_count += 1
+
+            if op.type == 'matmul':
+                find_matmul = True
+                if op.has_attr("skip_quant"):
+                    matmul_skip_count += 1
+                if matmul_count > 0:
+                    self.assertTrue(
+                        'fake_quantize_dequantize' in model_ops[i - 1].type
+                    )
+                else:
+                    self.assertTrue(
+                        'fake_quantize_dequantize' not in model_ops[i - 1].type
+                    )
+                matmul_count += 1
+
+        if find_conv2d:
+            self.assertTrue(conv2d_skip_count == 1)
+        if find_matmul:
+            self.assertTrue(matmul_skip_count == 1)
+
+
+if __name__ == '__main__':
+    unittest.main()

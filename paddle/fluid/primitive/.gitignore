@@ -1,0 +1,5 @@
+backend/generated/*.cc
+backend/generated/*.h
+primitive/generated_primitive.h
+vjp_interface/generated/generated_vjp.h
+vjp_interface/generated/generated_vjp.cc

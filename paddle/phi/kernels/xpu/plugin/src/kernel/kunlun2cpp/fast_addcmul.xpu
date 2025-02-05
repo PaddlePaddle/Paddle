@@ -1,0 +1,77 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/cluster.h"
+#include "xpu/kernel/cluster_partition.h"
+#include "xpu/kernel/cluster_primitive.h"
+
+namespace xpu2 {
+namespace plugin {
+
+template <typename T>
+static inline __device__ void primitive_addcmul(T* x, const T* y, int len) {
+  float32x16_t vx0;
+  float32x16_t vy0;
+  float32x16_t vx1;
+  float32x16_t vy1;
+  for (int i = 0; i < len; i += 32) {
+    vload2_lm(x + i, vx0, vx1);
+    vload2_lm(y + i, vy0, vy1);
+    vx0 = vvmac_float32x16(vx0, vy0, vx0);
+    vx1 = vvmac_float32x16(vx1, vy1, vx1);
+    vstore2_lm(x + i, vx0, vx1);
+  }
+  mfence_lm();
+}
+
+template <typename T>
+__global__ void fast_addcmul(const T* x, const T* y, T* z, int64_t len) {
+  int cid = core_id();
+  const int ncores = core_num();
+  int tid = cid * cluster_num() + cluster_id();
+  int nthreads = cluster_num() * ncores;
+  const int buf_len = 512 / sizeof(T);
+  __simd__ float local_x_after_cast[buf_len];
+  __simd__ float local_y_after_cast[buf_len];
+  T* local_x = (T*)(local_x_after_cast);
+  T* local_y = (T*)(local_y_after_cast);
+
+  int loop = 0;
+  for (int64_t i = tid * buf_len; i < len; i += nthreads * buf_len) {
+    int read_len = min(static_cast<int64_t>(buf_len), len - i);
+    GM2LM_ASYNC(x + i, local_x, read_len * sizeof(T));
+    GM2LM(y + i, local_y, read_len * sizeof(T));
+    primitive_addcmul<T>(local_x, local_y, read_len);
+    LM2GM_ASYNC(local_x, z + i, read_len * sizeof(T));
+    mfence_lm();
+#ifndef __XPU3__
+    loop++;
+    if ((loop & 0xF) == 0) {
+      sync_all();
+    }
+#endif
+  }
+}
+
+#define _XPU_DEF__FAST_ADDCMUL_(DTYPE)          \
+  template __global__ void fast_addcmul<DTYPE>( \
+      const DTYPE* x, const DTYPE* y, DTYPE* z, int64_t len);
+_XPU_DEF__FAST_ADDCMUL_(float);
+_XPU_DEF__FAST_ADDCMUL_(float16);
+
+}  // namespace plugin
+}  // namespace xpu2

@@ -1,0 +1,15 @@
+test_assign_pos_op
+test_bernoulli_op
+test_dirichlet_op
+test_empty_op
+test_exponential_op
+test_gumbel_softmax_op
+test_multinomial_op
+test_poisson_op
+test_randint_op
+test_randperm_op
+test_seed_op
+test_tdm_sampler_op
+test_uniform_random_bf16_op
+test_uniform_random_inplace_op
+test_shuffle_batch_op

@@ -1,0 +1,60 @@
+diff --git a/db/compaction/compaction_iteration_stats.h b/db/compaction/compaction_iteration_stats.h
+index cb7b82c65..a82cf95ea 100644
+--- a/db/compaction/compaction_iteration_stats.h
++++ b/db/compaction/compaction_iteration_stats.h
+@@ -6,6 +6,7 @@
+ #pragma once
+ 
+ #include "rocksdb/rocksdb_namespace.h"
++#include <cstdint>
+ 
+ struct CompactionIterationStats {
+   // Compaction statistics
+diff --git a/include/rocksdb/utilities/checkpoint.h b/include/rocksdb/utilities/checkpoint.h
+index df2a74403..30e3d88a6 100644
+--- a/include/rocksdb/utilities/checkpoint.h
++++ b/include/rocksdb/utilities/checkpoint.h
+@@ -10,6 +10,7 @@
+ 
+ #include <string>
+ #include <vector>
++#include <cstdint>
+ #include "rocksdb/status.h"
+ 
+ namespace ROCKSDB_NAMESPACE {
+diff --git a/table/block_based/data_block_hash_index.h b/table/block_based/data_block_hash_index.h
+index f356395f3..6eaf71735 100644
+--- a/table/block_based/data_block_hash_index.h
++++ b/table/block_based/data_block_hash_index.h
+@@ -7,6 +7,7 @@
+ 
+ #include <string>
+ #include <vector>
++#include <cstdint>
+ 
+ #include "rocksdb/slice.h"
+ 
+diff --git a/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h b/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h
+index 573330ceb..ada1e63d4 100644
+--- a/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h
++++ b/third-party/folly/folly/synchronization/detail/ProxyLockable-inl.h
+@@ -14,6 +14,7 @@
+ #include <mutex>
+ #include <stdexcept>
+ #include <utility>
++#include <system_error>
+ 
+ namespace folly {
+ namespace detail {
+diff --git a/util/string_util.h b/util/string_util.h
+index 5ff516cac..b8845f9d7 100644
+--- a/util/string_util.h
++++ b/util/string_util.h
+@@ -10,6 +10,7 @@
+ #include <string>
+ #include <unordered_map>
+ #include <vector>
++#include <cstdint>
+ 
+ #include "rocksdb/rocksdb_namespace.h"
+ 

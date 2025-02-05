@@ -1,0 +1,192 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#pragma once
+#include <cmath>
+#include <memory>
+#include <vector>
+
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
+#ifdef PADDLE_WITH_XPU
+#include <type_traits>
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#endif
+
+namespace phi {
+namespace funcs {
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <typename T>
+void BatchTranspose(T* output,
+                    const T* input,
+                    int64_t batch,
+                    int64_t m,
+                    int64_t n,
+                    const phi::GPUContext* dev_ctx);
+#endif
+template <typename DeviceContext, typename T>
+struct TransposeNormal {
+  // for dims >= 7 situation
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& in,
+                  phi::DenseTensor* out,
+                  const std::vector<int>& axis);
+};
+
+template <typename DeviceContext, typename T, int Rank>
+struct Transpose {
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& in,
+                  phi::DenseTensor* out,
+                  const std::vector<int>& axis);
+};
+
+template <typename DeviceContext, typename T>
+struct SetConstant {
+  void operator()(const DeviceContext& context,
+                  phi::DenseTensor* tensor,
+                  T num);
+};
+
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+struct SetConstant<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
+                  phi::DenseTensor* tensor,
+                  T num);
+};
+#endif
+
+template <typename Place>
+void set_constant_with_place(const phi::DeviceContext& context,
+                             phi::DenseTensor* tensor,
+                             float value);
+
+void set_constant(const phi::DeviceContext& context,
+                  phi::DenseTensor* tensor,
+                  float value);
+
+template <typename DeviceContext, typename T>
+struct RowwiseAdd {
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& vec,
+                  phi::DenseTensor* output);
+};
+
+template <typename DeviceContext, typename T>
+struct ColwiseSum {
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* vec);
+};
+
+template <typename DeviceContext, typename T>
+struct RowwiseSum {
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* vec);
+};
+
+template <typename DeviceContext, typename T>
+struct RowwiseMean {
+  void operator()(const DeviceContext& context,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* vec);
+};
+
+#ifdef PADDLE_WITH_XPU
+template <typename U>
+struct TensorSetConstantXPU {
+  TensorSetConstantXPU(phi::DenseTensor* tensor, U value, phi::Place place)
+      : tensor_(tensor), value_(value), place_(place) {}
+  template <typename T>
+  void apply() const {
+    auto* ctx = phi::DeviceContextPool::Instance().Get(place_);
+    auto begin = ctx->Alloc<T>(tensor_);
+    int numel = tensor_->numel();
+    if (std::is_same<T, phi::dtype::complex<float>>::value ||
+        std::is_same<T, phi::dtype::complex<double>>::value) {
+      std::unique_ptr<T[]> data_cpu(new T[numel]);
+      std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
+      memory_utils::Copy(place_,
+                         begin,
+                         phi::CPUPlace(),
+                         static_cast<void*>(data_cpu.get()),
+                         numel * sizeof(T));
+    } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value ||
+               std::is_same<T, phi::dtype::float8_e5m2>::value) {
+      PADDLE_THROW(common::errors::Fatal("XPU does not support fp8"));
+    } else {
+      auto* dev_ctx = static_cast<phi::XPUContext*>(ctx);
+      using XPUType = typename XPUTypeTrait<T>::Type;
+      T val = static_cast<T>(value_);
+      int r = xpu::constant<XPUType>(dev_ctx->x_context(),
+                                     reinterpret_cast<XPUType*>(begin),
+                                     numel,
+                                     static_cast<XPUType>(val));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    }
+  }
+  phi::DenseTensor* tensor_;
+  U value_;
+  phi::Place place_;
+};
+#endif
+
+template <typename Context, typename T>
+inline void TransCompute(const int dim,
+                         const Context& dev_ctx,
+                         const DenseTensor& in,
+                         DenseTensor* out,
+                         const std::vector<int>& axis) {
+  switch (dim) {
+    case 1:
+      Transpose<Context, T, 1> trans1;
+      trans1(dev_ctx, in, out, axis);
+      break;
+    case 2:
+      Transpose<Context, T, 2> trans2;
+      trans2(dev_ctx, in, out, axis);
+      break;
+    case 3:
+      Transpose<Context, T, 3> trans3;
+      trans3(dev_ctx, in, out, axis);
+      break;
+    case 4:
+      Transpose<Context, T, 4> trans4;
+      trans4(dev_ctx, in, out, axis);
+      break;
+    case 5:
+      Transpose<Context, T, 5> trans5;
+      trans5(dev_ctx, in, out, axis);
+      break;
+    case 6:
+      Transpose<Context, T, 6> trans6;
+      trans6(dev_ctx, in, out, axis);
+      break;
+    default:
+      // for dim >= 7 situation
+      TransposeNormal<Context, T> trans_normal;
+      trans_normal(dev_ctx, in, out, axis);
+  }
+}
+
+}  // namespace funcs
+}  // namespace phi

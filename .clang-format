@@ -1,0 +1,29 @@
+# This file is used by clang-format to autoformat paddle source code
+#
+# The clang-format is part of llvm toolchain.
+# It need to install llvm and clang to format source code style.
+#
+# The basic usage is,
+#   clang-format -i -style=file PATH/TO/SOURCE/CODE
+#
+# The -style=file implicit use ".clang-format" file located in one of
+# parent directory.
+# The -i means inplace change.
+#
+# The document of clang-format is
+#   http://clang.llvm.org/docs/ClangFormat.html
+#   http://clang.llvm.org/docs/ClangFormatStyleOptions.html
+---
+Language:        Cpp
+BasedOnStyle:  Google
+IndentWidth:     2
+TabWidth:        2
+ContinuationIndentWidth: 4
+AccessModifierOffset: -1  # The private/protected/public has no indent in class
+Standard:  Cpp11
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackParameters: false
+BinPackArguments: false
+IncludeBlocks: Preserve
+IncludeIsMainSourceRegex: (\.cu)$
+...
