@@ -140,14 +140,34 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
 }
 
 void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
+  const auto& GetValueMessage = [](Value val) -> std::string {
+    std::ostringstream oss;
+    if (val.isa<pir::OpResult>()) {
+      const auto val_idx = val.dyn_cast<OpResult>().index();
+      oss << "The Value is a OpResult, defined by " << val.defining_op()->name()
+          << "[" << val.defining_op()->id() << "], with results index "
+          << val_idx;
+    } else if (val.isa<pir::BlockArgument>()) {
+      const auto val_idx = val.dyn_cast<pir::BlockArgument>().index();
+      const auto* block = val.dyn_cast<pir::BlockArgument>().owner();
+      oss << "The Value is a BlockArgument, defined by "
+          << block->GetParentOp()->name() << "[" << block->GetParentOp()->id()
+          << "], with input index " << val_idx;
+    } else {
+      oss << "It's a FakeValue.";
+    }
+    return oss.str();
+  };
   const auto& value_type = val.type();
   if (!val || !value_type) {
-    LOG(WARNING) << "Risk on SetSymbolForValueByStaticShape for null value";
+    LOG(WARNING) << "Risk on SetSymbolForValueByStaticShape for null value. "
+                 << GetValueMessage(val);
     return;
   }
   if (!IsStaticShape(val) && !val.isa<pir::BlockArgument>()) {
     LOG(WARNING)
-        << "Risk on SetSymbolForValueByStaticShape for contain_unknown_dim";
+        << "Risk on SetSymbolForValueByStaticShape for contain_unknown_dim. "
+        << GetValueMessage(val);
   }
   const auto& GetStaticShapeForDenseTensorType =
       [&](DenseTensorType type_info) -> symbol::TensorShapeOrDataDimExprs {
