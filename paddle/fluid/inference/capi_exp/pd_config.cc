@@ -44,7 +44,7 @@ static Config::Precision ConvertToCxxPrecisionType(PD_PrecisionType precision) {
       return Config::Precision::kHalf;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupport paddle precision type %d.", precision));
+          "Unsupported paddle precision type %d.", precision));
       return Config::Precision::kFloat32;
   }
 }

@@ -131,7 +131,7 @@ bool ScheduleBlockRealizesShouldVectorizeCheck(
 void CollectScheduleBlockRealizeLoadTensorsAndIndex(
     ir::Expr block,
     std::unordered_map<std::string, std::vector<std::vector<Expr>>>&
-        load_tensor_and_indexs) {
+        load_tensor_and_indexes) {
   ir::ir_utils::CollectIRNodesWithoutTensor(
       block,
       [&](const ir::Expr* expr) {
@@ -146,7 +146,7 @@ void CollectScheduleBlockRealizeLoadTensorsAndIndex(
               tensor,
               ::common::errors::InvalidArgument(
                   "Expected _Tensor_ node in load, but received nullptr."));
-          load_tensor_and_indexs[tensor->name].push_back(node->indices);
+          load_tensor_and_indexes[tensor->name].push_back(node->indices);
           return true;
         }
         return false;
@@ -158,7 +158,7 @@ void CollectScheduleBlockRealizeLoadTensorsAndIndex(
 void CollectScheduleBlockRealizeStoreTensorsAndIndex(
     ir::Expr block,
     std::unordered_map<std::string, std::vector<std::vector<Expr>>>&
-        store_tensor_and_indexs) {
+        store_tensor_and_indexes) {
   ir::ir_utils::CollectIRNodesWithoutTensor(
       block,
       [&](const ir::Expr* expr) {
@@ -173,7 +173,7 @@ void CollectScheduleBlockRealizeStoreTensorsAndIndex(
               tensor,
               ::common::errors::InvalidArgument(
                   "Expected _Tensor_ node in load, but received nullptr."));
-          store_tensor_and_indexs[tensor->name].push_back(node->indices);
+          store_tensor_and_indexes[tensor->name].push_back(node->indices);
           return true;
         }
         return false;
@@ -294,10 +294,10 @@ bool ScheduleBlockRealizeCanVectorize(
   std::unordered_map<ir::Var, ir::Expr> iter_var2value =
       ir::analyzer::GetIterVarToValueOfSBlock(expr_schedule_block_realize);
   std::unordered_map<std::string, std::vector<std::vector<Expr>>>
-      load_tensor_and_indexs;
+      load_tensor_and_indexes;
   CollectScheduleBlockRealizeLoadTensorsAndIndex(expr_schedule_block_realize,
-                                                 load_tensor_and_indexs);
-  for (const auto& tensor : load_tensor_and_indexs) {
+                                                 load_tensor_and_indexes);
+  for (const auto& tensor : load_tensor_and_indexes) {
     if (TensorCanBeVectorized(tensor.first,
                               tensor.second,
                               for_iters,
@@ -309,11 +309,11 @@ bool ScheduleBlockRealizeCanVectorize(
   }
 
   std::unordered_map<std::string, std::vector<std::vector<Expr>>>
-      store_tensor_and_indexs;
+      store_tensor_and_indexes;
   CollectScheduleBlockRealizeStoreTensorsAndIndex(expr_schedule_block_realize,
-                                                  store_tensor_and_indexs);
+                                                  store_tensor_and_indexes);
 
-  for (const auto& tensor : store_tensor_and_indexs) {
+  for (const auto& tensor : store_tensor_and_indexes) {
     if (TensorCanBeVectorized(tensor.first,
                               tensor.second,
                               for_iters,

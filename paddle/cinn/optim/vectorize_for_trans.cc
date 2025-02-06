@@ -56,8 +56,8 @@ std::unordered_map<std::string, ir::Var> CollectExprSymbols(Expr *x) {
   return std::move(mutator.GetSymbols());
 }
 
-Expr CalculateTensorOffsetWithIndexs(Expr *tensor,
-                                     const std::vector<ir::Expr> &indices) {
+Expr CalculateTensorOffsetWithIndexes(Expr *tensor,
+                                      const std::vector<ir::Expr> &indices) {
   auto *tensor_ptr = tensor->As<ir::_Tensor_>();
   PADDLE_ENFORCE_NOT_NULL(
       tensor_ptr,
@@ -341,7 +341,7 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
     }
 
     // eg 2 : Address access of tensor contains vectorize axis.
-    Expr offset = CalculateTensorOffsetWithIndexs(&node->tensor, indices);
+    Expr offset = CalculateTensorOffsetWithIndexes(&node->tensor, indices);
     // situation 2. don't deal with select situation
     if (IsSelectOpWithSpecialOffset(offset)) {
       vectorize_tensors_.clear();
