@@ -139,7 +139,6 @@ test_imperative_se_resnext
 test_imperative_transformer_sorted_gradient
 test_imperative_triple_grad
 test_index_put_op
-test_index_sample_op
 test_index_select_strided
 test_inference_api_deprecated
 test_inplace
@@ -154,9 +153,7 @@ test_layer_astype
 test_linalg_cond
 test_linalg_matrix_exp
 test_linalg_pinv_op
-test_list
 test_lstm
-test_manual_seed
 test_masked_select_op
 test_math_op_patch_var_base
 test_matmul_weight_trans_pass
@@ -167,7 +164,6 @@ test_mnist_amp
 test_modelaverage
 test_normal
 test_normal_inplace
-test_optimizer_for_varbase
 test_ormqr
 test_pad3d_op
 test_parallel_dygraph_dataparallel
@@ -189,12 +185,10 @@ test_quant_amp_deprecated
 test_quantile_and_nanquantile
 test_reduce_op
 test_reduce_op_static_build
-test_reshape_op
 test_resnet_amp
 test_rmsprop_op
 test_rnn_cells
 test_run
-test_scatter_op
 test_setitem
 test_sink_decomp
 test_slice
