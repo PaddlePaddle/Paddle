@@ -964,7 +964,9 @@ void PirInterpreter::BuildInstruction() {
               op_idx++, place_, &op, *(value_exe_info_.get())));
     } else if (paddle::dialect::IsCustomEngineOp(&op)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      CREATE_INSTR(CustomEngineInstruction);
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CustomEngineInstruction>(
+              op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
 #else
       PADDLE_THROW(common::errors::PreconditionNotMet(
           "Program has CustomEngineOp and must compile Paddle use "

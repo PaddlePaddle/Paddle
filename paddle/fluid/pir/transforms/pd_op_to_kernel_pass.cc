@@ -72,7 +72,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(enable_collect_shape);
-
+REGISTER_FILE_SYMBOLS(pd_op_to_kernel_pass);
 namespace paddle::dialect {
 
 pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
