@@ -176,7 +176,7 @@ ir::Expr CopiedReplaceExpr(const Expr& source,
   return copied_source;
 }
 
-void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
+void SubstituteTargetExprWithDestExpr(const ir::Expr& source,
                                       const ir::Expr& dest,
                                       ir::Expr* body) {
   VLOG(4) << "SubstitideExpr Start";
@@ -193,7 +193,7 @@ void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
   VLOG(5) << "SubstitideExpr Result: " << *body;
 }
 
-ir::Expr SubstitudeIndexVector(const Expr& source,
+ir::Expr SubstituteIndexVector(const Expr& source,
                                const std::vector<Var>& load_vars,
                                const std::vector<ir::Expr>& indices) {
   return CopiedReplaceExpr(source, load_vars, indices);
@@ -623,7 +623,7 @@ ExprTransformer WrapReduceOperation(const ir::Reduce::ReduceType& reduce_type,
   return ExprTransformer(f);
 }
 
-ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize) {
+ExprTransformer SubstituteByScheduleBlockRealize(const ir::Expr& realize) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
     const auto& iter_values =
         realize.As<ir::ScheduleBlockRealize>()->iter_values;

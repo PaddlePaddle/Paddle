@@ -94,7 +94,7 @@ ir::Expr GetComputeBody(const FusibleOp& op) {
       const auto& compute_body =
           (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
               .GetSingle(compute_realize);
-      return ExprTransformerUtils::SubstitudeByScheduleBlockRealize(
+      return ExprTransformerUtils::SubstituteByScheduleBlockRealize(
           compute_realize)(compute_body);
     }
     ir::Expr operator()(const TrivialOp& op) {
@@ -104,7 +104,7 @@ ir::Expr GetComputeBody(const FusibleOp& op) {
       const auto& compute_body =
           (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
               .GetSingle(compute_realize);
-      return ExprTransformerUtils::SubstitudeByScheduleBlockRealize(
+      return ExprTransformerUtils::SubstituteByScheduleBlockRealize(
           compute_realize)(compute_body);
     }
   };
