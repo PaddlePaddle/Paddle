@@ -1889,7 +1889,7 @@ PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
     "Specify path for loading libmkl_rt.so. "
-    "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+    "For instance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
     "If default, "
     "dlopen will search mkl from LD_LIBRARY_PATH");
 
