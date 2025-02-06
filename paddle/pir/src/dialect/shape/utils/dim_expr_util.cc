@@ -922,52 +922,40 @@ struct FoldRedundantSymbolicBroadcast {
 
 /*
  * Simplify Example:
- * Broadcast(dim_expr0, Broadcast(dim_expr1, dim_expr2)) =>
- * Broadcast(dim_expr0, dim_expr1, dim_expr2)
+ * Broadcast(S0,S0,S1) => Broadcast(S0,S1)
  */
 struct FoldRedundantBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
-  struct SearchResult {
-    std::size_t value_pos;
-    std::size_t same_value_pos;
-  };
-
   DimExpr Rewrite(const DimExpr& expr) {
     const auto& [operands] = expr.Get<Broadcast<DimExpr>>();
-    const auto& opt_searched = SearchInversedPair(operands);
-    if (!opt_searched.has_value()) {
-      return expr;
+    while (operands->size() > 1) {
+      int pos_index = SearchSameIndex(operands);
+      if (pos_index < 0) {
+        break;
+      }
+      operands->erase(operands->begin() + pos_index);
     }
-    const auto& [i, _] = opt_searched.value();
-    List<DimExpr> ret_operands{};
-    ret_operands->insert(ret_operands->end(),
-                         operands->begin(),
-                         std::next(operands->begin(), i));
-    ret_operands->insert(ret_operands->end(),
-                         std::next(operands->begin(), i + 1),
-                         operands->end());
-    if (ret_operands->size() == 1) {
-      return ret_operands->at(0);
+    if (operands->size() == 1) {
+      return operands->at(0);
     } else {
-      return Broadcast<DimExpr>{ret_operands};
+      return Broadcast<DimExpr>{operands};
     }
     PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 
-  std::optional<SearchResult> SearchInversedPair(
-      const List<DimExpr>& operands) {
+  int SearchSameIndex(const List<DimExpr>& operands) {
     for (std::size_t i = 0; i < operands->size(); ++i) {
       for (std::size_t j = 0; j < operands->size(); ++j) {
         if (i == j) {
           continue;
         }
         if (operands->at(i) == operands->at(j)) {
-          return SearchResult{i, j};
+          return i;
         }
       }
     }
-    return std::nullopt;
+    return -1;
   }
 };
 
