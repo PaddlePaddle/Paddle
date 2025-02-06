@@ -864,13 +864,13 @@ class DecoderLayerPattern(BasePattern):
         down_linear_dist_infos = MpDistInfos("row")
         # # # build ops dist infos # # #
         ops_dist_infos = {
-            (21,): qkv_linear_dist_infos,
             (22,): qkv_linear_dist_infos,
             (23,): qkv_linear_dist_infos,
-            (88,): out_linear_dist_infos,
-            (97,): up_linear_dist_infos,
-            (98,): up_linear_dist_infos,
-            (100,): down_linear_dist_infos,
+            (24,): qkv_linear_dist_infos,
+            (89,): out_linear_dist_infos,
+            (99,): up_linear_dist_infos,
+            (100,): up_linear_dist_infos,
+            (102,): down_linear_dist_infos,
         }
         self.ops_dist_infos = ops_dist_infos
 
