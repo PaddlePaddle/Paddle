@@ -116,7 +116,7 @@ class TestSimpleNetShardingTensorFusionSaveLoad:
             for k, v in a_op.attrs().items():
                 assert (
                     k in b_op.attrs()
-                ), f'Can not find key of {k} attribute in other progmam'
+                ), f'Can not find key of {k} attribute in other program'
                 if k == 'place':
                     assert type(v) == type(
                         b_op.attrs()[k]
