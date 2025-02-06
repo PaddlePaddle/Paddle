@@ -2891,6 +2891,9 @@ set +x
             pushd ${PADDLE_ROOT}/build/paddle/cinn
             ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
             popd
+            pushd ${PADDLE_ROOT}/build/test/cpp/cinn # Note: Some tests have been moved to test/cpp/cinn.
+            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
+            popd
             ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
             echo "========================================"
             echo "pr_ci_cinn_ut_list: "
