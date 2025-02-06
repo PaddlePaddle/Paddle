@@ -1038,20 +1038,24 @@ void DiagonalInferMeta(const MetaTensor& input,
   out_dims.erase(out_dims.begin() + std::max(axis1_, axis2_));
   out_dims.erase(out_dims.begin() + std::min(axis1_, axis2_));
 
-  if (offset_ == 0) {
-    out_dims.push_back(std::min(axis1_size, axis2_size));
-  } else if (offset_ > 0) {
-    if ((axis2_size - offset_) > 0) {
-      out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
+  if (axis1_size != -1 && axis2_size != -1) {
+    if (offset_ == 0) {
+      out_dims.push_back(std::min(axis1_size, axis2_size));
+    } else if (offset_ > 0) {
+      if ((axis2_size - offset_) > 0) {
+        out_dims.push_back(std::min(axis1_size, axis2_size - offset_));
+      } else {
+        out_dims.push_back(0);
+      }
     } else {
-      out_dims.push_back(0);
+      if ((axis1_size + offset_) > 0) {
+        out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
+      } else {
+        out_dims.push_back(0);
+      }
     }
   } else {
-    if ((axis1_size + offset_) > 0) {
-      out_dims.push_back(std::min(axis1_size + offset_, axis2_size));
-    } else {
-      out_dims.push_back(0);
-    }
+    out_dims.push_back(-1);
   }
   out->set_dims(common::make_ddim(out_dims));
   out->set_dtype(input.dtype());
