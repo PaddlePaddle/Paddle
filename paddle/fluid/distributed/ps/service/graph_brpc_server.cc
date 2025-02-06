@@ -346,7 +346,7 @@ int32_t GraphBrpcService::StopServer(Table *table,
   GraphBrpcServer *p_server = reinterpret_cast<GraphBrpcServer *>(_server);
   std::thread t_stop([p_server]() {
     p_server->Stop();
-    LOG(INFO) << "Server Stoped";
+    LOG(INFO) << "Server Stopped";
   });
   p_server->export_cv()->notify_all();
   t_stop.detach();
