@@ -62,7 +62,7 @@ struct CUBlas<float> {
         phi::dynload::rocblas_sgemm_strided_batched(args...));
   }
 
-  // HIP not supportted, refer to the doc here:
+  // HIP not supported, refer to the doc here:
   // https://github.com/ROCm-Developer-Tools/HIP/blob/roc-3.5.x/docs/markdown/CUBLAS_API_supported_by_HIP.md
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {

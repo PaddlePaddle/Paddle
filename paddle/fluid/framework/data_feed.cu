@@ -3168,7 +3168,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
       if (FLAGS_enable_graph_multi_node_sampling) {
         if (sample_flag == EVENT_CONTINUE_SAMPLE) {
           // Switching only occurs when multi machine sampling continues
-          switch_flag = EVENT_SWTICH_METAPATH;
+          switch_flag = EVENT_SWITCH_METAPATH;
         }
       } else {
         cursor += 1;

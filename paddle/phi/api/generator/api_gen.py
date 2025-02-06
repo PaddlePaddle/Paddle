@@ -523,7 +523,7 @@ def generate_api(
         if is_fused_ops_yaml is True
         else "paddle/phi/api/include/api.h"
     )
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if is_fused_ops_yaml is True:
         new_apis = [
             api

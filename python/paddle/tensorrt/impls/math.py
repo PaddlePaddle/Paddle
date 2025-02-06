@@ -157,7 +157,7 @@ def divide_converter(network, paddle_op, inputs):
 
 
 @converter_registry.register("pd_op.subtract", trt_version="trt_version_ge=8.0")
-def substract_converter(network, paddle_op, inputs):
+def subtract_converter(network, paddle_op, inputs):
     return add_elementwise_layer(
         network, paddle_op, inputs, trt.ElementWiseOperation.SUB
     )

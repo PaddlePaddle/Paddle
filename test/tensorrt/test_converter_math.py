@@ -68,7 +68,7 @@ class TestMultiplyTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
-class TestSubstractTRTPattern(TensorRTBaseTest):
+class TestSubtractTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.subtract
         self.api_args = {
