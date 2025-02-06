@@ -383,7 +383,7 @@ def _pir_append_gradient_merge_backward_op(
         )
         new_gradient_merge_var_add_op.set_bool_attr("grad_merge_add", True)
 
-        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather/all_recdue/split/... op
+        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather/all_reduce/split/... op
         for used_grad_op in grad.all_used_ops():
             _move_used_grad_op(used_grad_op, grad)
 

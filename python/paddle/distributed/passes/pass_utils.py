@@ -2107,7 +2107,7 @@ class PipelineMemoryEstimator:
                     continue
 
                 var_info[var_name]["count"] -= 1
-                if var_name not in has_used_vars and not self._is_perisitable(
+                if var_name not in has_used_vars and not self._is_persistable(
                     var_name, var_info
                 ):
                     has_used_vars.add(var_name)
@@ -2122,7 +2122,7 @@ class PipelineMemoryEstimator:
 
                 if self._is_last_used(var_name, var_info):
                     if (
-                        not self._is_perisitable(var_name, var_info)
+                        not self._is_persistable(var_name, var_info)
                         and var_name not in skip_gc_vars
                     ):
                         last_use_vars.append(var_name)
@@ -2242,7 +2242,7 @@ class PipelineMemoryEstimator:
 
         return var_info[var_name]["count"] == 0
 
-    def _is_perisitable(self, var_name, var_info):
+    def _is_persistable(self, var_name, var_info):
         if var_name not in var_info:
             return False
 
