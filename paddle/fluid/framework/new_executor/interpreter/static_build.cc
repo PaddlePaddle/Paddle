@@ -38,7 +38,7 @@ std::set<std::string> OpsHandledInStaticBuild = {"conditional_block",
                                                  "read",
                                                  "while"};
 
-std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
+std::set<std::string> OpsCanSkippedFakeAllocInStaticBuild = {
     "c_comm_init",
     "comm_init_all",
     "c_comm_init_multitrainer",
@@ -130,7 +130,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) ||
+    if (OpsCanSkippedFakeAllocInStaticBuild.count(op_type) ||
         OpsHandledInStaticBuild.count(op_type)) {
       continue;
     }
@@ -194,7 +194,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
                                    const std::string& parameter_name,
                                    const phi::TensorBase* tensor) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+  if (OpsCanSkippedFakeAllocInStaticBuild.count(op_type)) {
     return false;
   }
 
@@ -644,7 +644,7 @@ void FakeInitializeOutputsForOperatorBase(
     Scope* scope,
     std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+  if (OpsCanSkippedFakeAllocInStaticBuild.count(op_type)) {
     return;
   }
 
@@ -937,7 +937,7 @@ void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,
     ExecutionContext* execution_context) {
   const framework::OperatorBase& op = execution_context->GetOp();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op.Type())) {
+  if (OpsCanSkippedFakeAllocInStaticBuild.count(op.Type())) {
     return;
   }
 

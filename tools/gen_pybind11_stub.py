@@ -92,7 +92,7 @@ PYBIND11_INVALID_FULL_MAPPING = {
     'TensorOrTensors': 'paddle._typing.TensorOrTensors',
 }
 
-# some bad patial expression pybind11-stubgen can not catch as invalid exp
+# some bad partial expression pybind11-stubgen can not catch as invalid exp
 _PYBIND11_INVALID_PART_MAPPING = {
     'NestedSequence': 'paddle._typing.NestedSequence',
     'Dep': 'Node.Dep',

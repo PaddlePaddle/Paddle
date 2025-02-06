@@ -710,7 +710,7 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
-        # scale will be skiped when reduce_avg comm operation is enabled.
+        # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
@@ -772,7 +772,7 @@ class FusedCommBuffer:
             assert self._task is not None, "Task is not initialized."
             self._task.wait()
 
-            # scale will be skiped when use reduce_avg comm operation
+            # scale will be skipped when use reduce_avg comm operation
             if self._scale_after_comm and not self._use_reduce_avg:
                 scale_factor = 1.0 / self._comm_group.nranks
                 self.grad_storage.scale_(scale_factor)
