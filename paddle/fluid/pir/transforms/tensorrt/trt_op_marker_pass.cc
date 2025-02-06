@@ -650,6 +650,7 @@ class TransposeOpPattern
     return true;
   }
 };
+
 class GatherOpPattern
     : public pir::OpRewritePattern<paddle::dialect::GatherOp> {
  public:
@@ -660,9 +661,10 @@ class GatherOpPattern
         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
-    pir::Value axis = op.operand_source(2);
-    if (!axis) {
-      VLOG(3) << "axis is empty. Skipping rewrite.";
+    if (!op.axis().defining_op()->isa<paddle::dialect::FullOp>()) {
+      VLOG(3) << "When axis is not a constant "
+                 "Skip to convert into TRT.";
+
       return false;
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
