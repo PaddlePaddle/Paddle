@@ -58,22 +58,23 @@ namespace phi {
     }                                                                     \
   }()
 
-#define PD_VISIT_FLOATING_AND_HALF_TYPES(TYPE, NAME, ...)                  \
-  [&] {                                                                    \
-    const auto& __dtype__ = TYPE;                                          \
-    switch (__dtype__) {                                                   \
-      PD_PRIVATE_CASE_TYPE(                                                \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)           \
-      PD_PRIVATE_CASE_TYPE(                                                \
-          NAME, ::paddle::DataType::FLOAT64, double, __VA_ARGS__)          \
-      PD_PRIVATE_CASE_TYPE(                                                \
-          NAME, ::paddle::DataType::FLOAT16, paddle::float16, __VA_ARGS__) \
-      PD_PRIVATE_CASE_TYPE_BFLOAT16(NAME, __VA_ARGS__)                     \
-      default:                                                             \
-        PD_THROW("function " #NAME " is not implemented for data type `",  \
-                 __dtype__,                                                \
-                 "`");                                                     \
-    }                                                                      \
+#define PD_VISIT_FLOATING_AND_HALF_TYPES(TYPE, NAME, ...)                      \
+  [&] {                                                                        \
+    const auto& __dtype__ = TYPE;                                              \
+    switch (__dtype__) {                                                       \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)               \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::paddle::DataType::FLOAT64, double, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::paddle::DataType::FLOAT16, ::paddle::float16, __VA_ARGS__)   \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::paddle::DataType::BFLOAT16, ::paddle::bfloat16, __VA_ARGS__) \
+      default:                                                                 \
+        PD_THROW("function " #NAME " is not implemented for data type `",      \
+                 __dtype__,                                                    \
+                 "`");                                                         \
+    }                                                                          \
   }()
 
 ///////// Integral Dispatch Marco ///////////
@@ -179,7 +180,7 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(                                                   \
           NAME, ::paddle::DataType::INT16, int16_t, __VA_ARGS__)              \
       PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME, ::paddle::DataType::FLOAT16, float16, __VA_ARGS__)            \
+          NAME, ::paddle::DataType::FLOAT16, ::paddle::float16, __VA_ARGS__)  \
       PD_PRIVATE_CASE_TYPE_BFLOAT16(NAME, __VA_ARGS__)                        \
       default:                                                                \
         PD_THROW("function " #NAME " is not implemented for data type `",     \
