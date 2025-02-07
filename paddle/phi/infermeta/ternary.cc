@@ -546,6 +546,19 @@ void FlashAttnInferMeta(const MetaTensor& q,
       softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
     }
   }
+  if (out_dims.size() == 3) {  // when use flash_attn_unpadded
+    auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
+    int batch_and_seq_size = q.dims()[0];
+    int num_heads = q.dims()[1];
+    int seqlen_q_rounded = round_multiple(batch_and_seq_size);
+    int seqlen_k_rounded = round_multiple(batch_and_seq_size);
+    if (softmax) {
+      softmax->set_dims({num_heads, seqlen_q_rounded, seqlen_k_rounded});
+    }
+    if (softmax_lse) {
+      softmax_lse->set_dims({num_heads, seqlen_q_rounded});
+    }
+  }
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
     seed_offset->set_dims({2});
