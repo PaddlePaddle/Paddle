@@ -267,6 +267,24 @@ TEST_F(TestIndexExpr, Test_dynamic) {
   ir::Expr q2 = ((f % ((S5 * S6) * 640)) % ((S5 * S6) * S4)) % (S5 * S6);
   ir::Expr q3 = (S5 * S6) * S4 / (S5 * S6);
   ir::Expr q4 = (S5 * S6) * S4 % (S5 * S6);
+  ir::Expr q5 =
+      (((((((((((((f % ((S5 * S6) * 640)) % ((S5 * S6) * S4)) / (S5 * S6)) +
+                ((f / ((S5 * S6) * 640)) * S4)) *
+               S5) *
+              S6) +
+             (f % (S5 * S6))) %
+            ((S5 * S6) * S4)) /
+           (S5 * S6)) +
+          (((((((((f % ((S5 * S6) * 640)) % ((S5 * S6) * S4)) / (S5 * S6)) +
+                ((f / ((S5 * S6) * 640)) * S4)) *
+               S5) *
+              S6) +
+             (f % (S5 * S6))) /
+            ((S5 * S6) * S4)) *
+           S4)) *
+         S5) *
+        S6) +
+       (f % (S5 * S6)));
 
   EXPECT_EQ(
       q.as_index().Normalize(ir::IndexExpr::OptLevel::Level2),
@@ -280,6 +298,9 @@ TEST_F(TestIndexExpr, Test_dynamic) {
             f % (S5 * S6));
   EXPECT_EQ(q3.as_index().Normalize(ir::IndexExpr::OptLevel::Level2), Expr(S4));
   EXPECT_EQ(q4.as_index().Normalize(ir::IndexExpr::OptLevel::Level2), Expr(0));
+  EXPECT_EQ(q5.as_index().Normalize(ir::IndexExpr::OptLevel::Level2),
+            (((((f / ((S5 * S6) * 640)) * S4) * S5) * S6) +
+             ((f % ((S5 * S6) * 640)) % ((S5 * S6) * S4))));
 }
 }  // namespace common
 }  // namespace cinn
