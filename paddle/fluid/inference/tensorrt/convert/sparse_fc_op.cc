@@ -166,10 +166,10 @@ class SparseFcOpConverter : public OpConverter {
       }
     };
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    auto regist_fc = [&](nvinfer1::ITensor* inputs,
-                         int n_output,
-                         TensorRTEngine::Weight& weight,
-                         TensorRTEngine::Weight& bias) {
+    auto register_fc = [&](nvinfer1::ITensor* inputs,
+                           int n_output,
+                           TensorRTEngine::Weight& weight,
+                           TensorRTEngine::Weight& bias) {
       if (enable_int8 || support_int8) {
         // add conv1x1 layer
         nvinfer1::DimsHW nv_ksize(1, 1);
@@ -235,10 +235,10 @@ class SparseFcOpConverter : public OpConverter {
         }
       }
     };
-    auto regist_sparse_fc = [&](nvinfer1::ITensor* inputs,
-                                int n_output,
-                                TensorRTEngine::Weight* weight,
-                                TensorRTEngine::Weight* bias) {
+    auto register_sparse_fc = [&](nvinfer1::ITensor* inputs,
+                                  int n_output,
+                                  TensorRTEngine::Weight* weight,
+                                  TensorRTEngine::Weight* bias) {
       if (enable_int8 || support_int8) {
         // add conv layer
         float out_scale = 0;
@@ -331,7 +331,7 @@ class SparseFcOpConverter : public OpConverter {
       TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(bias_data),
                                   static_cast<size_t>(bias_num)};
-      regist_fc(X, n_output, weight, bias);
+      register_fc(X, n_output, weight, bias);
     } else {  // need reshape input before and after fc
       PADDLE_ENFORCE_GT(
           x_dim.nbDims,
@@ -382,7 +382,7 @@ class SparseFcOpConverter : public OpConverter {
       if (enable_int8 || support_int8) {
         engine_->SetTensorDynamicRange(reshape_itensor, in_scale);
       }
-      regist_sparse_fc(reshape_itensor, n_output, &weight, &bias);
+      register_sparse_fc(reshape_itensor, n_output, &weight, &bias);
     }
   }
 };

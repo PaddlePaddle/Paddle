@@ -81,7 +81,7 @@ uint64_t GraphBrpcServer::Start(const std::string &ip, uint32_t port) {
     LOG(ERROR) << "GraphBrpcServer start failed, ip_port=" << ip_port;
     return 0;
   }
-  _environment->RegistePsServer(ip, port, _rank);
+  _environment->RegisterPsServer(ip, port, _rank);
   return 0;
 }
 

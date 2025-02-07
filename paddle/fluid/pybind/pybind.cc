@@ -3423,8 +3423,9 @@ All parameter, weight, gradient are variables in Paddle.
     paddle::framework::CollectShapeManager::Instance().ClearShapeInfo();
   });
 #ifdef PADDLE_WITH_TENSORRT
-  m.def("register_paddle_plugin",
-        []() { paddle::platform::TrtPluginRegistry::Global()->RegistToTrt(); });
+  m.def("register_paddle_plugin", []() {
+    paddle::platform::TrtPluginRegistry::Global()->RegisterToTrt();
+  });
 #endif
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

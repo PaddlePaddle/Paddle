@@ -416,7 +416,7 @@ int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
   VLOG(3) << "calling FleetWrapper::RegisterHeterCallback";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
-  return pslib_ptr_->_worker_ptr->registe_heter_callback(handler);
+  return pslib_ptr_->_worker_ptr->register_heter_callback(handler);
 
 #else
   VLOG(0) << "FleetWrapper::RegisterHeterCallback"
@@ -1879,8 +1879,8 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
   VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
-  return pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
-                                                                    handler);
+  return pslib_ptr_->_worker_ptr->register_client2client_msg_handler(msg_type,
+                                                                     handler);
 #else
   VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler"
           << " does nothing when no pslib";

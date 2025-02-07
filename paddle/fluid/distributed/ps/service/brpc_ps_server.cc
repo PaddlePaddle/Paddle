@@ -92,7 +92,7 @@ uint64_t BrpcPsServer::Start(const std::string &ip, uint32_t port) {
     }
   }
 
-  _environment->RegistePsServer(ip, port, _rank);
+  _environment->RegisterPsServer(ip, port, _rank);
   cv_.wait(lock, [&] { return stopped_; });
 
   PSHost host;

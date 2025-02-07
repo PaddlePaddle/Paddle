@@ -16,12 +16,12 @@ limitations under the License. */
 
 namespace paddle::inference::tensorrt {
 
-template <typename RegistFunc, typename SetDilationFunc>
+template <typename RegisterFunc, typename SetDilationFunc>
 void ConvertConv3d(TensorRTEngine* engine,
                    const framework::proto::OpDesc& op,
                    const framework::Scope& scope,
                    bool test_mode,
-                   RegistFunc fadd_layer,
+                   RegisterFunc fadd_layer,
                    SetDilationFunc fset_dilation,
                    const std::string& name) {
   VLOG(3) << "convert a " << name << " op to tensorrt layer without bias";
