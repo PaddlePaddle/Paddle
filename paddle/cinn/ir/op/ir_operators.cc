@@ -435,6 +435,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
     // dynamic branch!
     if (common::IsSumPartialBySymbol(lhs, rhs))
       return common::SimplifySymbolicAdd(lhs, rhs);
+
     if (auto rhs_mul = rhs.As<ir::Mul>()) {
       if (rhs_mul->b().as_index().is_constant()) {
         if (common::IsSumPartialBySymbol(lhs, rhs_mul->a().as_index())) {
@@ -443,6 +444,66 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
         }
       }
     }
+
+    // (S0 * S1 * S2) + (S2 * S1 * S3) ==> (S0 + S3) * (S1 * S2)
+    auto MergeByCommonFactor =
+        [](const ir::IndexExpr &lhs,
+           const ir::IndexExpr &rhs) -> std::optional<ir::IndexExpr> {
+      auto flatten_mul_lhs = common::GetFlattenExprs<ir::Mul>(lhs);
+      auto flatten_mul_rhs = common::GetFlattenExprs<ir::Mul>(rhs);
+
+      if (flatten_mul_lhs.size() > 1 && flatten_mul_rhs.size() > 1) {
+        ir::IndexExpr common_factor(lhs.type(), 1);
+        std::unordered_map<ir::IndexExpr, int> lhs_count;
+        std::unordered_map<ir::IndexExpr, int> rhs_count;
+
+        for (auto &l : flatten_mul_lhs) lhs_count[l]++;
+        for (auto &r : flatten_mul_rhs) rhs_count[r]++;
+        // Find common factor
+        for (auto &l : flatten_mul_lhs) {
+          if (rhs_count[l] > 0) {
+            common_factor = l * common_factor;
+            rhs_count[l]--;
+            lhs_count[l]--;
+          }
+        }
+        // Find Lhs remainder
+        ir::IndexExpr lhs_remainder(lhs.type(), 1);
+        for (auto &l : flatten_mul_lhs) {
+          while (lhs_count[l] > 0) {
+            lhs_remainder = l * lhs_remainder;
+            lhs_count[l]--;
+          }
+        }
+        // Find Rhs remainder
+        ir::IndexExpr rhs_remainder(rhs.type(), 1);
+        for (auto &r : flatten_mul_rhs) {
+          while (rhs_count[r] > 0) {
+            rhs_remainder = r * rhs_remainder;
+            rhs_count[r]--;
+          }
+        }
+
+        if (common_factor != ir::IndexExpr(1))
+          return (lhs_remainder + rhs_remainder) * common_factor;
+      }
+      return std::nullopt;
+    };
+
+    auto flatten_add_lhs = common::GetFlattenExprs<ir::Add>(lhs);
+
+    bool found = false;
+    ir::IndexExpr res(lhs.type(), 0);
+    for (size_t i = 0; i < flatten_add_lhs.size(); ++i) {
+      auto merge_res = MergeByCommonFactor(flatten_add_lhs[i], rhs);
+      if (!found && merge_res.has_value()) {
+        res = res + merge_res.value();
+        found = true;
+      } else {
+        res = res + flatten_add_lhs[i];
+      }
+    }
+    if (found) return res;
   }
 
   return Add::Make(lhs, rhs);
