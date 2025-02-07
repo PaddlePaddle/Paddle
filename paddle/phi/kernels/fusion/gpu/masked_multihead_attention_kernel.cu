@@ -857,8 +857,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
     FMHA_LAUNCH_KERNEL(128, 128, stream)
     FMHA_LAUNCH_KERNEL(192, 256, stream)
     default:
-      PADDLE_THROW(common::errors::Unimplemented("Dim_head = %d is unsupport!",
-                                                 dim_head));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Dim_head = %d is unsupported!", dim_head));
   }
 }
 

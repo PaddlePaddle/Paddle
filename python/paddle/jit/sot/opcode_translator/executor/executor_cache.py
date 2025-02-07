@@ -258,7 +258,7 @@ def start_translate(
             raise
         log(
             2,
-            f"Unsupport Frame is {frame.f_code}, error message is: \n"
+            f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
         # simulation not complete, not sure whether this code has sir, set disable_eval_frame = False

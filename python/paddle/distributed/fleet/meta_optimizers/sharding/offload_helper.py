@@ -26,7 +26,7 @@ class PlaceType:
     CPU = 0
     CUDA = 1
     CUDA_PINNED = 2
-    XPU = 3  # unsupport for now
+    XPU = 3  # unsupported for now
 
     @staticmethod
     def default_device():

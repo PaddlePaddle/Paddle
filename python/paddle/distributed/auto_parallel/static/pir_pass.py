@@ -1292,7 +1292,7 @@ def complete_chunk_id(dist_program, startup_program, pipeline_strategy):
             op.erase()
         else:
             raise ValueError(
-                f"Unsupport reshard function: {reshard_func_name}, reshard op's dist_attr: {op.dist_attr}"
+                f"Unsupported reshard function: {reshard_func_name}, reshard op's dist_attr: {op.dist_attr}"
             )
 
     # Step6: add reshard op between pipeline chunks
