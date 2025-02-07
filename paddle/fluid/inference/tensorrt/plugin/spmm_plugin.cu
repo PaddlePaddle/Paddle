@@ -153,7 +153,7 @@ void SpmmPluginDynamic::cusparseLtContext::init(
       break;
     default:
       PADDLE_THROW(
-          common::errors::Fatal("cusparLtContext only supports data type"
+          common::errors::Fatal("cusparseLtContext only supports data type"
                                 "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]"));
   }
   phi::dynload::cusparseLtDenseDescriptorInit(

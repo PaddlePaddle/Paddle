@@ -447,8 +447,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
     const dim3 num_blocks(
         B,
         max_sequence_length,
-        length /
-            num_threads);  //  batches, max_sequence_length, vector_ength/***
+        length / num_threads);  // batches, max_sequence_length, vector_length
     varlen_prune_token_change_order<<<num_blocks, num_threads, 0, stream>>>(
         tokens, output3, padding_token_length, token_index_, output0);
   } else {
