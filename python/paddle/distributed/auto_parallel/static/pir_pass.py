@@ -772,7 +772,7 @@ def complete_op_role(main_program, op_role_scope: list):
             global_op_idx += 1
 
 
-def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
+def pipeline_pass(dense_main_program, dense_startup_program, pipeline_strategy):
     """
     Pipeline schedule pass for auto parallel. Enables the pipeline parallel scheduling
     strategies like FThenB, 1F1B, VPP, etc.
@@ -807,7 +807,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     pass_context = PassContext()
     pipeline_pass.apply(
         dense_main_program,
-        dense_starup_program,
+        dense_startup_program,
         pass_context,
     )
     plan = pass_context.get_attr("plan")
