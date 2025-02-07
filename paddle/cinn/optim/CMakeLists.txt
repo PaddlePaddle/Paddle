@@ -27,6 +27,7 @@ gather_srcs(
   remove_schedule_block_pass.cc
   replace_cross_block_reduction.cc
   replace_cross_thread_reduction.cc
+  reindex_transpose_buffer_pass.cc
   replace_mod_to_max.cc
   resize_buffer.cc
   update_buffer_axis_pass.cc

@@ -95,12 +95,23 @@ std::vector<ir::stmt::StmtRef> CodeGenGpuDev::GenerateBufferAliasStmts(
   }
 
   for (auto &t : unique_tensors) {
-    auto data_type = t->type();
-    auto data_ptr_type = data_type;
-    data_ptr_type.set_cpp_handle();
+    auto tensor_type = t->type();
+    auto tensor_ptr_type = tensor_type;
+    tensor_ptr_type.set_cpp_handle();
 
-    Var t_var(t->name, data_ptr_type);
-    Var buf_var(t->buffer->name, data_ptr_type);
+    auto buffer_type = t->buffer->dtype;
+    auto buffer_ptr_type = buffer_type;
+    buffer_ptr_type.set_cpp_handle();
+
+    Expr t_var = Var(t->name, tensor_ptr_type);
+    Expr buf_var = Var(t->buffer->name, buffer_ptr_type);
+
+    // A tensor and its buffer may have different types when multiple tensors
+    // share the same buffer. In this case, add a Cast before aliasing.
+    if (tensor_type != buffer_type) {
+      buf_var = common::cast(buf_var, tensor_ptr_type);
+    }
+
     buffer_alias.push_back(ir::stmt::Let(t_var, buf_var));
   }
 

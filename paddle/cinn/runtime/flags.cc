@@ -80,6 +80,10 @@ PD_DEFINE_bool(cinn_enable_tile_broadcast,
                BoolFromEnv("FLAGS_cinn_enable_tile_broadcast", true),
                "Whether to enable the tile broadcast tactic.");
 
+PD_DEFINE_bool(cinn_enable_tile_transpose,
+               BoolFromEnv("FLAGS_cinn_enable_tile_transpose", true),
+               "Whether to enable the tile transpose tactic.");
+
 PD_DEFINE_bool(cinn_enable_rearrange_load,
                BoolFromEnv("FLAGS_cinn_enable_rearrange_load", true),
                "Whether to enable rearranging load instructions.");
