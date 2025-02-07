@@ -1073,6 +1073,7 @@ class ResumeFunctionCreator:
         self.codegen._code_options['co_flags'] &= ~(
             inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
         )
+        self.codegen._code_options['co_kwonlyargcount'] = 0
         new_code = self.codegen.gen_pycode()
         # TODO(SigureMo): cache_key should not be None
         if cache_key is not None:
