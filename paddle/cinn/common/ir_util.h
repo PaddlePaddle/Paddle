@@ -287,29 +287,29 @@ ir::IndexExpr SimplifySymbolicAdd(
  * `SimplifySymbolicDivide` function.
  *
  * For example:
- * 1. `IsDivisiblieBySymbol(5, S0, div)` return false;
- * 2. `IsDivisiblieBySymbol(S0, S0, div)` return true;
- * 3. `IsDivisiblieBySymbol(S0 + S1, S1, div)` return false;
- * 4. `IsDivisiblieBySymbol(S0 * 5 + S1 * S2, S0, div)` return true;
- * 5. `IsDivisiblieBySymbol(S0 / 3, S0, div)` return true;
- * 6. `IsDivisiblieBySymbol(S0 * 4 / 3, S0, div)` return true;
- * 7. `IsDivisiblieBySymbol(S0 % 3, S0, div)` return false;
- * 8. `IsDivisiblieBySymbol(S0 / 3, S0, mod)` return false;
+ * 1. `IsDivisibleBySymbol(5, S0, div)` return false;
+ * 2. `IsDivisibleBySymbol(S0, S0, div)` return true;
+ * 3. `IsDivisibleBySymbol(S0 + S1, S1, div)` return false;
+ * 4. `IsDivisibleBySymbol(S0 * 5 + S1 * S2, S0, div)` return true;
+ * 5. `IsDivisibleBySymbol(S0 / 3, S0, div)` return true;
+ * 6. `IsDivisibleBySymbol(S0 * 4 / 3, S0, div)` return true;
+ * 7. `IsDivisibleBySymbol(S0 % 3, S0, div)` return false;
+ * 8. `IsDivisibleBySymbol(S0 / 3, S0, mod)` return false;
  *
  * \param expr The expression to be checked.
  * \param symbol  The symbol to be checked.
  * \param ty ty is `Mod` or `Div`.
  * \return True means there are sub-parts in the `expr` that can be simplified.
  * \note this func dont deal the corner case, please use `ProveDivisible` for
- * exact result. e.g. `IsDivisiblieBySymbol(f % S0 - f, S0, div)` is false
+ * exact result. e.g. `IsDivisibleBySymbol(f % S0 - f, S0, div)` is false
  */
-bool IsDivisiblieBySymbol(const ir::IndexExpr &expr,
-                          const ir::IndexExpr &symbol,
-                          const ir::IrNodeTy &ty);
+bool IsDivisibleBySymbol(const ir::IndexExpr &expr,
+                         const ir::IndexExpr &symbol,
+                         const ir::IrNodeTy &ty);
 
 /*!
  * \brief Simplify the `lhs` by symbol `sym`. Usually run after
- * `IsDivisiblieBySymbol`
+ * `IsDivisibleBySymbol`
  *
  * \param lhs The expression to be simplified.
  * \param sym  The symbol to be checked.

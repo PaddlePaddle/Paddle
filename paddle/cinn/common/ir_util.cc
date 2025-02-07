@@ -565,9 +565,9 @@ ir::IndexExpr SimplifySymbolicAdd(const ir::IndexExpr &lhs,
   }
 }
 
-bool IsDivisiblieBySymbol(const ir::IndexExpr &expr,
-                          const ir::IndexExpr &symbol,
-                          const ir::IrNodeTy &ty) {
+bool IsDivisibleBySymbol(const ir::IndexExpr &expr,
+                         const ir::IndexExpr &symbol,
+                         const ir::IrNodeTy &ty) {
   if (expr == symbol) return true;
   // TODO(liujinnan): Check Ty
   switch (expr.node_type()) {
@@ -578,21 +578,21 @@ bool IsDivisiblieBySymbol(const ir::IndexExpr &expr,
     case ir::IrNodeTy::_Var_:
       return expr == symbol;
     case ir::IrNodeTy::Add:
-      return IsDivisiblieBySymbol(expr.operand(0), symbol, ty) &&
-             IsDivisiblieBySymbol(expr.operand(1), symbol, ty);
+      return IsDivisibleBySymbol(expr.operand(0), symbol, ty) &&
+             IsDivisibleBySymbol(expr.operand(1), symbol, ty);
     case ir::IrNodeTy::Mul:
-      // Because (S0 / 7 * 100) / S0 is not divisiblie by S0, so we push
+      // Because (S0 / 7 * 100) / S0 is not divisible by S0, so we push
       // `expr.node_type()` into third parameter.
-      return IsDivisiblieBySymbol(expr.operand(0), symbol, expr.node_type()) ||
-             IsDivisiblieBySymbol(expr.operand(1), symbol, expr.node_type());
+      return IsDivisibleBySymbol(expr.operand(0), symbol, expr.node_type()) ||
+             IsDivisibleBySymbol(expr.operand(1), symbol, expr.node_type());
     case ir::IrNodeTy::Mod:
-      // Because S0 % 3 + S0 % 5 is not divisiblie by S0, so we push
+      // Because S0 % 3 + S0 % 5 is not divisible by S0, so we push
       // `expr.node_type()` into third parameter.
-      return IsDivisiblieBySymbol(expr.operand(0), symbol, expr.node_type()) &&
-             IsDivisiblieBySymbol(expr.operand(1), symbol, expr.node_type());
+      return IsDivisibleBySymbol(expr.operand(0), symbol, expr.node_type()) &&
+             IsDivisibleBySymbol(expr.operand(1), symbol, expr.node_type());
     case ir::IrNodeTy::Div: {
       if (ty != expr.node_type()) return false;
-      return IsDivisiblieBySymbol(expr.operand(0), symbol, expr.node_type());
+      return IsDivisibleBySymbol(expr.operand(0), symbol, expr.node_type());
     }
     case ir::IrNodeTy::Min:
     case ir::IrNodeTy::Max:
@@ -601,7 +601,7 @@ bool IsDivisiblieBySymbol(const ir::IndexExpr &expr,
       return false;
     default:
       PADDLE_THROW(::common::errors::InvalidArgument(
-          "Unsupported type of expr in IsDivisiblieBySymbol which is: %s",
+          "Unsupported type of expr in IsDivisibleBySymbol which is: %s",
           expr));
   }
 }
@@ -624,7 +624,7 @@ ir::IndexExpr SimplifySymbolicDivide(const ir::IndexExpr &lhs,
       return SimplifySymbolicDivide(lhs.operand(0), sym, ty) +
              SimplifySymbolicDivide(lhs.operand(1), sym, ty);
     case ir::IrNodeTy::Mul: {
-      if (!common::IsDivisiblieBySymbol(lhs.operand(0), sym, ty))
+      if (!common::IsDivisibleBySymbol(lhs.operand(0), sym, ty))
         return lhs.operand(0) * SimplifySymbolicDivide(lhs.operand(1), sym, ty);
       return SimplifySymbolicDivide(lhs.operand(0), sym, ty) * lhs.operand(1);
     }
@@ -765,7 +765,7 @@ std::optional<ir::IndexExpr> DivByPartMul(const ir::IndexExpr &lhs,
   ir::IndexExpr result = ir::ir_utils::IRCopy(lhs);
 
   for (const auto &elem : elems) {
-    if (common::IsDivisiblieBySymbol(result, elem, ty)) {
+    if (common::IsDivisibleBySymbol(result, elem, ty)) {
       result = common::SimplifySymbolicDivide(result, elem, ty);
     } else {
       return std::nullopt;
