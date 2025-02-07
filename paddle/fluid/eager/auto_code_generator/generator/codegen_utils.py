@@ -118,7 +118,10 @@ def ReadFwdFile(filepath):
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
     # not all fused ops support dygraph
-    if filepath.endswith("fused_ops.yaml") is True:
+    if (
+        filepath.endswith("fused_ops.yaml") is True
+        or filepath.endswith("fused_backward.yaml") is True
+    ):
         new_apis = [
             api
             for api in contents

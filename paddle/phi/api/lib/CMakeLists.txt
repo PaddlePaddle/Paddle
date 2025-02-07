@@ -202,8 +202,9 @@ endif()
 execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${sparse_api_gen_file} --api_yaml_path
-    ${sparse_api_yaml_file} --api_header_path ${sparse_api_header_file_tmp}
-    --api_source_path ${sparse_api_source_file_tmp})
+    ${sparse_api_yaml_file} ${sparse_bw_api_yaml_file} --api_header_path
+    ${sparse_api_header_file_tmp} --api_source_path
+    ${sparse_api_source_file_tmp})
 
 # generate backward sparse api
 execute_process(
@@ -226,17 +227,18 @@ if(WITH_DISTRIBUTE)
     COMMAND
       ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
       ${bw_api_yaml_file} ${legacy_api_yaml_file} ${legacy_bw_api_yaml_file}
-      --sparse_api_yaml_path ${sparse_api_yaml_file} --dygraph_api_header_path
-      ${dygraph_api_header_file_tmp} --dygraph_api_source_path
-      ${dygraph_api_source_file_tmp} --gen_dist_branch)
+      --sparse_api_yaml_path ${sparse_api_yaml_file} ${sparse_bw_api_yaml_file}
+      --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+      --dygraph_api_source_path ${dygraph_api_source_file_tmp}
+      --gen_dist_branch)
 else()
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
       ${bw_api_yaml_file} ${legacy_api_yaml_file} ${legacy_bw_api_yaml_file}
-      --sparse_api_yaml_path ${sparse_api_yaml_file} --dygraph_api_header_path
-      ${dygraph_api_header_file_tmp} --dygraph_api_source_path
-      ${dygraph_api_source_file_tmp})
+      --sparse_api_yaml_path ${sparse_api_yaml_file} ${sparse_bw_api_yaml_file}
+      --dygraph_api_header_path ${dygraph_api_header_file_tmp}
+      --dygraph_api_source_path ${dygraph_api_source_file_tmp})
 endif()
 
 # generate tensor and tensor operants file

@@ -3357,8 +3357,12 @@ if __name__ == "__main__":
             generator_grad = DygraphForwardAndNodesGenerator(
                 backward_yaml_paths[i], backward_yaml_paths[i], all_bw, all_bw
             )
-        else:
+        elif backward_yaml_path.endswith('/dygraph_backward.yaml'):
             continue
+        else:
+            generator_grad = DygraphForwardAndNodesGenerator(
+                backward_yaml_path, backward_yaml_path
+            )
 
         generator_grad.run(True)
 
