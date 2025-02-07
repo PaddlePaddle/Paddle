@@ -124,12 +124,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   target.arch.Match(
       [&](common::NVGPUArch) {
-        if (!FLAGS_cinn_enable_vectorize) {
-          FuncPassManager func_pass_manager;
-          func_pass_manager.AddPass(CreateRearrangeLoadInstructionPass());
-          func_pass_manager.Run(copied);
-          VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
-        }
+        FuncPassManager func_pass_manager;
+        func_pass_manager.AddPass(CreateRearrangeLoadInstructionPass());
+        func_pass_manager.Run(copied);
+        VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
       },
       [](auto) {});
 
