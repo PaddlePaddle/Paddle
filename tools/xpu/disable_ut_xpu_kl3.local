@@ -3,7 +3,6 @@ preprocess_local_imagenet
 preprocess_local_pascalvoc
 test_accuracy_op
 test_adaptive_max_pool2d
-test_addmm_op
 test_analyzer
 test_analyzer_bfloat16_googlenet
 test_analyzer_bfloat16_mobilenetv1
