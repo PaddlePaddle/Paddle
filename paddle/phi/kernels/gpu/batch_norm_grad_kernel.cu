@@ -175,7 +175,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
   __shared__ typename BlockReduce::TempStorage ds_storage;
   __shared__ typename BlockReduce::TempStorage db_storage;
   __shared__ typename BlockReduce::TempStorage mean_storage;
-  __shared__ typename BlockReduce::TempStorage variance_storeage;
+  __shared__ typename BlockReduce::TempStorage variance_storage;
   __shared__ BatchNormParamType<T> inv_var_val;
   __shared__ BatchNormParamType<T> mean_val;
   __shared__ BatchNormParamType<T> dscale_val;
@@ -207,7 +207,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackward(
 
       x_sum = BlockReduce(mean_storage).Reduce(x_sum, cub::Sum());
       x_square_sum =
-          BlockReduce(variance_storeage).Reduce(x_square_sum, cub::Sum());
+          BlockReduce(variance_storage).Reduce(x_square_sum, cub::Sum());
       if (threadIdx.x == 0) {
         mean_val = x_sum / inner_size;
         inv_var_val =

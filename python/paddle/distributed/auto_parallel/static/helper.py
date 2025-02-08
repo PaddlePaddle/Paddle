@@ -463,9 +463,9 @@ class ProgramHelper:
         if self.lazy_init:
             return
 
-        amp_stragety = dist_context.strategy.amp
-        amp_config = copy.deepcopy(amp_stragety.to_dict())
-        need_cast_parameter = amp_stragety.enable and amp_config["level"] in [
+        amp_strategy = dist_context.strategy.amp
+        amp_config = copy.deepcopy(amp_strategy.to_dict())
+        need_cast_parameter = amp_strategy.enable and amp_config["level"] in [
             "o2",
             "o3",
         ]

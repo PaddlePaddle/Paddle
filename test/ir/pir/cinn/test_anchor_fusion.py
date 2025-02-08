@@ -216,7 +216,7 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_recompute_multidownstrema_trivial(self):
+    def test_recompute_multidownstream_trivial(self):
         #     T
         #    / \
         #   S   S
