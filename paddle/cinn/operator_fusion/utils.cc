@@ -158,7 +158,7 @@ std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(pir::Operation* op) {
   PADDLE_ENFORCE_GE(output_rank,
                     input_rank,
                     ::common::errors::PreconditionNotMet(
-                        "[Error info] The ouput_rank should "
+                        "[Error info] The output_rank should "
                         "be greater or equal to input_rank."));
 
   // Compare axis one by one, from back to front.

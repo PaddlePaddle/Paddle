@@ -136,7 +136,7 @@ def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
     skipped_inplace_ops = [
         "pd_op.set_value_",
         "pd_op.set_value_with_tensor_",
-        # It willn't change tensor imdeiately,but it's ouput is dangerous.
+        # It willn't change tensor imdeiately,but it's output is dangerous.
         "pd_op.share_data_",
     ]
 

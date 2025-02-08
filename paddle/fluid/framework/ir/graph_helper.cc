@@ -450,7 +450,7 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
   return ret;
 }
 
-void RemoveControlDepInputAndOuput(OpDesc *op_desc) {
+void RemoveControlDepInputAndOutput(OpDesc *op_desc) {
   auto remove_control_dep_var = [](VariableNameMap *var_name_map) {
     for (auto &pair : *var_name_map) {
       std::vector<std::string> &var_names = pair.second;
@@ -736,7 +736,7 @@ static void GraphToBlock(const Graph &graph,
   GetGraphOpDesc(nodes, block, &ops, graph, graph_idx);
 
   for (auto &op : ops) {
-    RemoveControlDepInputAndOuput(&op);
+    RemoveControlDepInputAndOutput(&op);
     block->add_ops()->MergeFrom(*op.Proto());
   }
 }

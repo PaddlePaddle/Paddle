@@ -345,7 +345,7 @@ std::vector<Tensor> WarpReduce(const ir::Tensor& A,
       },
       UniqName(output_name + "_" + reduce_type));
 
-  // compute ouput shape.
+  // compute output shape.
   std::vector<Expr> out_shape(A->shape.begin(),
                               A->shape.begin() + shape_size_without_reduce_dim);
   for (int idx = 0; idx < last_reduce_dim_num && keep_dim; ++idx) {
