@@ -25,12 +25,17 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/stmt_visitors.h"
+
+using cinn::ir::stmt::BlockRef;
+using cinn::ir::stmt::StmtRef;
 
 namespace cinn {
 namespace ir {
 namespace ir_utils {
 namespace {
-struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
+struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr>,
+                       public stmt::StmtVisitor<StmtRef, BlockRef> {
  public:
   explicit IRCopyVisitor(bool copy_buffer_node)
       : copy_buffer_node(copy_buffer_node) {}
@@ -127,6 +132,11 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
 
     return LoweredFunc(func);
   }
+
+  StmtRef VisitStmt(const StmtRef& stmt) {
+    return StmtVisitor::VisitStmt(stmt);
+  }
+  BlockRef VisitBlock(const BlockRef& block) override;
 
  protected:
   // The methods of ir nodes follows the order defined in node.h
@@ -521,6 +531,10 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   NODETY_UNARY_OP_FOR_EACH(OP_UNARY_HANDLE)
 #undef OP_UNARY_HANDLE
 
+#define __(stmt__) StmtRef VisitStmt(const stmt::stmt__& stmt) override;
+  NODETY_FORALL_STMT(__)
+#undef __
+
   std::vector<Expr> Visit(const std::vector<Expr>& vs) {
     std::vector<Expr> copied;
     for (auto& e : vs) {
@@ -557,6 +571,75 @@ Expr IRCopyVisitor::Visit(const ir::intrinsics::BuiltinIntrin* op) {
   return intrinsics::BuiltinIntrin::Make(
       op->name, op->args, op->id, op->arg_nums, op->type());
 }
+
+// copy for stmt
+StmtRef IRCopyVisitor::VisitStmt(const stmt::Let& stmt) {
+  return stmt::Let(Visit(&stmt->symbol()), Visit(&stmt->body()));
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::Store& stmt) {
+  return stmt::Store(
+      Visit(&stmt->tensor()), Visit(&stmt->value()), Visit(stmt->indices()));
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::Alloc& stmt) {
+  Expr condition;
+  Expr body;
+  if (stmt->condition().defined()) condition = Visit(&stmt->condition());
+  if (stmt->body().defined()) body = Visit(&stmt->body());
+  return stmt::Alloc(Visit(&stmt->destination()),
+                     stmt->type(),
+                     Visit(stmt->extents()),
+                     condition,
+                     body);
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::Free& stmt) {
+  return stmt::Free(Visit(&stmt->destination()));
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::IfThenElse& stmt) {
+  return stmt::IfThenElse(Visit(&stmt->condition()),
+                          VisitBlock(stmt->true_case()),
+                          VisitBlock(stmt->false_case()));
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::For& stmt) {
+  return stmt::For(stmt->loop_var(),
+                   Visit(&stmt->min()),
+                   Visit(&stmt->extent()),
+                   stmt->for_type(),
+                   stmt->device_api(),
+                   VisitBlock(stmt->body()),
+                   stmt->vectorize_info(),
+                   stmt->bind_info());
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::Evaluate& stmt) {
+  return stmt::Evaluate(Visit(&stmt->value()));
+}
+StmtRef IRCopyVisitor::VisitStmt(const stmt::Schedule& stmt) {
+  std::vector<Var> iter_vars;
+  for (auto iter_var : stmt->iter_vars()) {
+    auto* var = iter_var.As<_Var_>();
+    PADDLE_ENFORCE_NE(var,
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "Schedule iter_var is not a valid _Var_ type."));
+    iter_vars.emplace_back(Visit(var));
+  }
+  return stmt::Schedule(iter_vars,
+                        Visit(stmt->iter_values()),
+                        Visit(stmt->read_buffers()),
+                        Visit(stmt->write_buffers()),
+                        stmt->name(),
+                        VisitBlock(stmt->body()),
+                        stmt->attrs(),
+                        stmt->reduce_method());
+}
+// copy for block
+BlockRef IRCopyVisitor::VisitBlock(const stmt::BlockRef& block) {
+  std::vector<StmtRef> new_stmts;
+  for (const auto& stmt : block->stmts()) {
+    new_stmts.emplace_back(VisitStmt(stmt));
+  }
+  return stmt::BlockRef(new_stmts);
+}
+
 }  // namespace
 Expr IRCopy(const Expr& x, bool copy_buffer_node) {
   IRCopyVisitor visitor(copy_buffer_node);
@@ -570,6 +653,11 @@ std::vector<Expr> IRCopy(const std::vector<Expr>& x, bool copy_buffer_node) {
     res.emplace_back(IRCopy(i, copy_buffer_node));
   }
   return res;
+}
+
+BlockRef IRCopy(const BlockRef& x, bool copy_buffer_node) {
+  IRCopyVisitor visitor(copy_buffer_node);
+  return visitor.VisitBlock(x);
 }
 
 ir::ModuleExpr IRCopy(const ir::ModuleExpr& x, bool copy_buffer_node) {
