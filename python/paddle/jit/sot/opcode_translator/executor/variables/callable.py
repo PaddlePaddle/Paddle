@@ -83,6 +83,12 @@ if TYPE_CHECKING:
 
 PD_ALL_CONTAINERS = (paddle.nn.Sequential, paddle.nn.LayerList)
 PD_SEQ_CONTAINERS = (paddle.nn.Sequential, paddle.nn.LayerList)
+PD_PURE_CLASSES = (
+    paddle.distributed.ProcessMesh,
+    paddle.distributed.Shard,
+    paddle.distributed.Replicate,
+    paddle.distributed.Partial,
+)
 
 
 class CallableVariable(VariableBase):
@@ -904,4 +910,26 @@ class PaddleLayerClassVariable(ClassVariable):
             and value.__module__.startswith("paddle.nn.")
         ):
             return PaddleLayerClassVariable(value, graph, tracker)
+        return None
+
+
+class PureClassVariable(ClassVariable):
+    def __init__(self, class_: type, graph: FunctionGraph, tracker: Tracker):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        from ..function_graph import convert_to_py_value
+
+        obj = self.value(
+            *convert_to_py_value(args),
+            **convert_to_py_value(kwargs),
+        )
+        return VariableFactory.from_value(
+            obj, self.graph, CreateLayerTracker(self, args, kwargs)
+        )
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if inspect.isclass(value) and value in PD_PURE_CLASSES:
+            return PureClassVariable(value, graph, tracker)
         return None
