@@ -31,9 +31,9 @@ alignment = {
 }
 
 align = {
-    paddle.float16.value: 2,
-    paddle.bfloat16.value: 2,
-    paddle.float32.value: 4,
+    paddle.float16: 2,
+    paddle.bfloat16: 2,
+    paddle.float32: 4,
 }
 
 __current_device_type__ = None
