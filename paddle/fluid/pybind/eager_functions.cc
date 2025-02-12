@@ -1393,7 +1393,7 @@ PyObject* eager__for_test_check_cuda_error(PyObject* self,
   char* cpu_mem = new char[bytes + 1];
 
   cudaMalloc(&cuda_mem, bytes + 1);
-  cudaMemset(&cuda_mem, 0, bytes + 1);
+  cudaMemset(cuda_mem, 0, bytes + 1);
   cudaMemcpyAsync(cpu_mem, cuda_mem, bytes, cudaMemcpyDeviceToHost);
 
   cudaFree(cuda_mem);

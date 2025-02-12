@@ -104,15 +104,22 @@ class ConfigDump:
             result = result + ")"
             return result
         elif isinstance(item, slice):
-            return (
-                "slice("
-                + str(item.start)
-                + ","
-                + str(item.stop)
-                + ","
-                + str(item.step)
-                + ")"
+            start_str = (
+                str(int(item.start.numpy()))
+                if isinstance(item.start, paddle.Tensor)
+                else str(item.start)
             )
+            stop_str = (
+                str(int(item.stop.numpy()))
+                if isinstance(item.stop, paddle.Tensor)
+                else str(item.stop)
+            )
+            step_str = (
+                str(int(item.step.numpy()))
+                if isinstance(item.step, paddle.Tensor)
+                else str(item.step)
+            )
+            return "slice(" + start_str + "," + stop_str + "," + step_str + ")"
         elif isinstance(item, complex):
             return (
                 "complex("
@@ -145,8 +152,21 @@ class ConfigDump:
                 + str(item)[str(item).index("'") + 1 : str(item).rindex("'")]
                 + ")"
             )
+        elif isinstance(item, np.ndarray):
+            return str(item)[1:-1]
+        elif isinstance(item, np.dtype):
+            return "Dtype(" + str(item) + ")"
+        elif item == Ellipsis:
+            return "Ellipsis"
         else:
-            print("[api_tracer error] : dump_item_str ", api, ", item = ", item)
+            print(
+                "[api_tracer error] : dump_item_str ",
+                api,
+                ", item = ",
+                item,
+                ", type(item) = ",
+                type(item),
+            )
             return ""
 
 
