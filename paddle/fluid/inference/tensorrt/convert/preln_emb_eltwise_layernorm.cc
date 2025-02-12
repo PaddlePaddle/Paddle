@@ -147,7 +147,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         common::errors::InvalidArgument(
             "Only Precision::KHalf(fp16) is supported when inferring "
             "ernie(bert) model with config.EnableVarseqlen(). "
-            "But Precision::KFloat32 is setted."));
+            "But Precision::KFloat32 is set."));
 
     std::vector<nvinfer1::PluginField> fields;
     std::vector<std::string> temp_fields_keys;

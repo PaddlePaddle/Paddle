@@ -514,7 +514,7 @@ class ParameterList(Layer):
 class LayerList(Layer):
     """
     LayerList holds sublayers, and sublayers it contains are properly registered.
-    Holded sublayers can be indexed like a regular python list.
+    held sublayers can be indexed like a regular python list.
 
     Parameters:
         sublayers (iterable of Layer, optional): sublayers to hold

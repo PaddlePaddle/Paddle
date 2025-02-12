@@ -389,7 +389,7 @@ except Exception as e:
 
 def set_paddle_custom_device_lib_path(lib_path):
     if os.environ.get('CUSTOM_DEVICE_ROOT', None) is not None:
-        # use setted environment value
+        # use set environment value
         return
     if os.path.exists(lib_path):
         # set CUSTOM_DEVICE_ROOT default path

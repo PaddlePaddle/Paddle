@@ -51,6 +51,3 @@ UNEXPECT = 'UNEXPECT'
 tood = 'tood'
 unpacket = "unpacket"
 vaccum = 'vaccum'
-
-# These words need to be fixed
-setted = 'setted'

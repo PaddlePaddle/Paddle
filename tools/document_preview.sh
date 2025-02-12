@@ -137,15 +137,15 @@ nbsphinx
         BCECMD_CONFIG=/opt/linux-bcecmd-0.3.0/boscmdconfig
 
         is_shell_attribute_set x
-        xdebug_setted=$?
-        if [ $xdebug_setted ] ; then
+        xdebug_set=$?
+        if [ $xdebug_set ] ; then
             set +x
         fi
         if [ -n "${BOS_CREDENTIAL_AK}" ] && [ -n "${BOS_CREDENTIAL_SK}" ] ; then
             echo "Ak = ${BOS_CREDENTIAL_AK}" >> ${BCECMD_CONFIG}/credentials
             echo "Sk = ${BOS_CREDENTIAL_SK}" >> ${BCECMD_CONFIG}/credentials
         fi
-        if [ $xdebug_setted ] ; then
+        if [ $xdebug_set ] ; then
             set -x
         fi
 

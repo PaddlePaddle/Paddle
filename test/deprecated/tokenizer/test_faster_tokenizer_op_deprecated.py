@@ -32,10 +32,10 @@ from paddle.framework import in_dynamic_mode
 def to_string_tensor(string_values, name):
     """
     Create the tensor that the value holds the list of string.
-    NOTICE: The value will be holded in the cpu place.
+    NOTICE: The value will be held in the cpu place.
 
     Args:
-        string_values(list[string]): The value will be setted to the tensor.
+        string_values(list[string]): The value will be set to the tensor.
         name(string): The name of the tensor.
     """
     tensor = paddle.Tensor(
@@ -53,10 +53,10 @@ def to_map_tensor(string_dict, name):
     """
     Create the tensor that the value holds the map, the type of key is the string
     and the value is the int.
-    NOTICE: The value will be holded in the cpu place.
+    NOTICE: The value will be held in the cpu place.
 
     Args:
-        string_dict(dict): The value will be setted to the tensor.
+        string_dict(dict): The value will be set to the tensor.
         name(string): The name of the tensor.
     """
     tensor = paddle.Tensor(

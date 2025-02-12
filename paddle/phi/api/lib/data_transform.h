@@ -58,17 +58,17 @@ class TransformFlag {
 
  private:
   // This is the highest priority in flags,
-  // and can be setted by api[data_transform->skip_transform] in the yaml file.
+  // and can be set by api[data_transform->skip_transform] in the yaml file.
   bool stop_transform_ = false;
 
-  // trans_data_type_ can be setted by api[data_transform->support_trans_dtype]
+  // trans_data_type_ can be set by api[data_transform->support_trans_dtype]
   // in the yaml file.
   // trans_data_type_ only affect the non complex types,
   // the complex is always transferred, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
   // trans_backend_ and trans_layout_ are true default,
-  // and they can only be setted by global flag.
+  // and they can only be set by global flag.
   bool trans_backend_ = true;
   bool trans_layout_ = true;
 };
