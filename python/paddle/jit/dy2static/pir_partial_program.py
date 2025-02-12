@@ -406,6 +406,24 @@ class RunnableProgram:
         bwd_map = RunnableProgram._get_name_value_map_from_program(
             self.backward_program
         )
+
+        program_name_attr = self.program_name_attr
+        no_need_buffer_names = program_name_attr["no_need_buffers"]
+        rename_mapping = {}
+        rename_mapping = RunnableProgram.unify_value_names(
+            self.forward_program, rename_mapping
+        )
+        rename_mapping = RunnableProgram.unify_value_names(
+            self.backward_program, rename_mapping
+        )
+        # Update no_need_buffer_names by rename_mapping
+        for original_name, new_name in rename_mapping.items():
+            if (
+                original_name not in no_need_buffer_names
+                and new_name in no_need_buffer_names
+            ):
+                no_need_buffer_names.remove(new_name)
+
         value_program_attr = {}
         for k, ns in self.program_name_attr.items():
             if k.startswith("f"):
@@ -418,13 +436,6 @@ class RunnableProgram:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
 
-        rename_mapping = {}
-        rename_mapping = RunnableProgram.unify_value_names(
-            self.forward_program, rename_mapping
-        )
-        rename_mapping = RunnableProgram.unify_value_names(
-            self.backward_program, rename_mapping
-        )
         return value_program_attr
 
     @staticmethod
