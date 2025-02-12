@@ -58,7 +58,8 @@ bool InferSymbolicShapeElementWiseBinary(
     return shapes;
   }();
 
-  if (x_shape.data() && y_shape.data() && DataComputeFunc) {
+  if (x_shape.data() && y_shape.data() &&
+      x_shape.data()->size() == y_shape.data()->size() && DataComputeFunc) {
     PADDLE_ENFORCE_LE(
         x_shape.shape().size(),
         1,
@@ -71,13 +72,6 @@ bool InferSymbolicShapeElementWiseBinary(
         common::errors::InvalidArgument("When compute data, the rank of y "
                                         "should be 0 or 1, but now received %d",
                                         y_shape.shape().size()));
-    PADDLE_ENFORCE_EQ(x_shape.data()->size(),
-                      y_shape.data()->size(),
-                      common::errors::InvalidArgument(
-                          "When compute data, the size of x and y should be "
-                          "equal, but now received %d and %d",
-                          x_shape.data()->size(),
-                          y_shape.data()->size()));
     std::vector<symbol::DimExpr> out_data;
     for (size_t i = 0; i < x_shape.data()->size(); ++i) {
       out_data.emplace_back(
