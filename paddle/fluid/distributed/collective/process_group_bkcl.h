@@ -201,9 +201,9 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
   std::unordered_map<std::string, std::unique_ptr<phi::XPUContext>>
       place_to_comm_ctx_;
 
-  // For colaescing tensors processing (eg. batch_isend_irecv)
+  // For coalescing tensors processing (eg. batch_isend_irecv)
   bool is_coalescing_{false};
-  std::vector<std::string> colaescing_place_keys_;
+  std::vector<std::string> coalescing_place_keys_;
 };
 
 }  //  namespace distributed

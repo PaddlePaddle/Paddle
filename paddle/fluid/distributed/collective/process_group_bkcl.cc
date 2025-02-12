@@ -271,7 +271,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
-      colaescing_place_keys_.push_back(key);
+      coalescing_place_keys_.push_back(key);
     }
   }
 
@@ -325,7 +325,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
-      colaescing_place_keys_.push_back(key);
+      coalescing_place_keys_.push_back(key);
     }
   }
 
@@ -657,7 +657,7 @@ void ProcessGroupBKCL::EndCoalescing(
 
   // NOTE(shenliang03): If using calculate stream, no need to record stream and
   // update task.
-  if (!tasks_opt.has_value() | colaescing_place_keys_.empty()) {
+  if (!tasks_opt.has_value() | coalescing_place_keys_.empty()) {
     is_coalescing_ = false;
     return;
   }
@@ -666,21 +666,21 @@ void ProcessGroupBKCL::EndCoalescing(
 
   PADDLE_ENFORCE_EQ(
       tasks.size(),
-      colaescing_place_keys_.size(),
+      coalescing_place_keys_.size(),
       common::errors::PreconditionNotMet(
           "Number of tasks[%d] do not match number of collectives[%d].",
           tasks.size(),
-          colaescing_place_keys_.size()));
+          coalescing_place_keys_.size()));
 
   for (size_t i = 0; i < tasks.size(); ++i) {
     auto* task = static_cast<ProcessGroupBKCL::BKCLTask*>(tasks[i].get());
-    const auto& key = colaescing_place_keys_[i];
+    const auto& key = coalescing_place_keys_[i];
     const auto& comm_ctx = place_to_comm_ctx_.at(key);
     task->comm_event_->Record(*comm_ctx.get());
   }
 
   is_coalescing_ = false;
-  colaescing_place_keys_.clear();
+  coalescing_place_keys_.clear();
 }
 
 }  //  namespace distributed

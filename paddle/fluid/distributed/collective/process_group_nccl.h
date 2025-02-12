@@ -230,7 +230,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
         memory::EraseStream(holder_ptr, allocation_stream.second);
       }
     }
-    VLOG(5) << "After task wait/synchronize, totoal "
+    VLOG(5) << "After task wait/synchronize, total "
             << allocation_stream_pairs_.size()
             << " tensor(s) allocation stream have been removed.";
     allocation_stream_pairs_.clear();
@@ -270,10 +270,10 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs_;
 
-  // For colaescing tensors processing (eg. batch_isend_irecv)
+  // For coalescing tensors processing (eg. batch_isend_irecv)
   bool is_coalescing_{false};
-  std::vector<std::shared_ptr<phi::DenseTensor>> colaescing_tensors_;
-  std::vector<std::string> colaescing_place_keys_;
+  std::vector<std::shared_ptr<phi::DenseTensor>> coalescing_tensors_;
+  std::vector<std::string> coalescing_place_keys_;
 };
 
 }  //  namespace distributed

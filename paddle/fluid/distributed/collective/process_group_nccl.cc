@@ -967,9 +967,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       task->UpdateWaitChain(*comm_ctx);
       allocation_stream_pairs_.emplace_back(tensor.Holder(), nccl_stream);
     } else {
-      colaescing_tensors_.emplace_back(
+      coalescing_tensors_.emplace_back(
           std::make_shared<phi::DenseTensor>(tensor));
-      colaescing_place_keys_.push_back(key);
+      coalescing_place_keys_.push_back(key);
     }
   }
 
@@ -1089,9 +1089,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
       task->UpdateWaitChain(*comm_ctx);
       allocation_stream_pairs_.emplace_back(tensor.Holder(), nccl_stream);
     } else {
-      colaescing_tensors_.emplace_back(
+      coalescing_tensors_.emplace_back(
           std::make_shared<phi::DenseTensor>(tensor));
-      colaescing_place_keys_.push_back(key);
+      coalescing_place_keys_.push_back(key);
     }
   }
 
@@ -1159,7 +1159,7 @@ void ProcessGroupNCCL::EndCoalescing(
 
   // NOTE(shenliang03): If using calculate stream, no need to record stream and
   // update task.
-  if (!tasks_opt.has_value() || colaescing_tensors_.empty()) {
+  if (!tasks_opt.has_value() || coalescing_tensors_.empty()) {
     is_coalescing_ = false;
     return;
   }
@@ -1168,16 +1168,16 @@ void ProcessGroupNCCL::EndCoalescing(
 
   PADDLE_ENFORCE_EQ(
       tasks.size(),
-      colaescing_tensors_.size(),
+      coalescing_tensors_.size(),
       common::errors::PreconditionNotMet(
           "Number of tasks[%d] do not match number of collectives[%d].",
           tasks.size(),
-          colaescing_tensors_.size()));
+          coalescing_tensors_.size()));
 
   for (size_t i = 0; i < tasks.size(); ++i) {
     auto* nccl_task = static_cast<ProcessGroupNCCL::NCCLTask*>(tasks[i].get());
-    const auto& tensor = colaescing_tensors_[i];
-    const auto& key = colaescing_place_keys_[i];
+    const auto& tensor = coalescing_tensors_[i];
+    const auto& key = coalescing_place_keys_[i];
     const auto& comm_ctx = place_to_comm_ctx_.at(key);
     auto nccl_stream = comm_ctx->stream();
 
@@ -1191,8 +1191,8 @@ void ProcessGroupNCCL::EndCoalescing(
   }
 
   is_coalescing_ = false;
-  colaescing_tensors_.clear();
-  colaescing_place_keys_.clear();
+  coalescing_tensors_.clear();
+  coalescing_place_keys_.clear();
 }
 
 }  // namespace paddle::distributed
