@@ -203,7 +203,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(one_hot_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.one_hot.x86",
                     1);
 

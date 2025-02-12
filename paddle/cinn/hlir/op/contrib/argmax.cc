@@ -159,69 +159,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
     *ret = cinn::common::CINNValuePack{cinn_values};
   });
 
-  framework::CINNSchedule argmax_schedule([=](lang::Args args,
-                                              lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        !args.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The input argument of argmax_schedule is empty! Please check."));
-    cinn::common::CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        !vec_ast.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The input argument of argmax_schedule is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    auto blocks = ir_sch.GetAllBlocks();
-    // TODO(zhhsplendid): It needs to be rewritten according to the
-    // reduction_max operator to improve performance. Do not use local
-    // variables, because the size will exceed the limit.
-    ir_sch.SetBuffer(blocks[0], "local");
-    ir_sch.SetBuffer(blocks[1], "local");
-
-    int iter_var_size = blocks[0]
-                            .As<ir::ScheduleBlockRealize>()
-                            ->schedule_block.As<ir::ScheduleBlock>()
-                            ->iter_vars.size();
-    int real_axis = axis;
-    if (real_axis < 0) {
-      real_axis += iter_var_size;
-    }
-    blocks[0]
-        .As<ir::ScheduleBlockRealize>()
-        ->schedule_block.As<ir::ScheduleBlock>()
-        ->iter_vars[real_axis]
-        ->is_reduce_axis = true;
-    blocks[1]
-        .As<ir::ScheduleBlockRealize>()
-        ->schedule_block.As<ir::ScheduleBlock>()
-        ->iter_vars[real_axis]
-        ->is_reduce_axis = true;
-
-    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
-                                        output_shapes[0].end(),
-                                        1,
-                                        std::multiplies<int>());
-    if (prod_size > 1 && std::holds_alternative<common::X86Arch>(target.arch)) {
-      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-    }
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(argmax_compute, argmax_schedule, "strategy.argmax", 1);
+  strategy->AddImpl(argmax_compute, "strategy.argmax", 1);
 
   return strategy;
 }

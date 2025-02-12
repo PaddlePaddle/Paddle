@@ -18,17 +18,18 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/cinn/cinn.h"
 #include "paddle/cinn/hlir/framework/op.h"
-#include "paddle/cinn/hlir/framework/schedule.h"
+#include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
 
 using CINNCompute = lang::PackedFunc;
-using CINNSchedule = lang::PackedFunc;
 
 class OpStrategy;
 
@@ -77,8 +78,6 @@ class OpImpl : public cinn::common::Object {
  public:
   //! Compute function
   CINNCompute fcompute;
-  //! Schedule function
-  CINNSchedule fschedule;
   //! Name of the implementation
   std::string name;
   //! Priority level
@@ -96,21 +95,6 @@ class OpImpl : public cinn::common::Object {
     // Expected : return this->fcompute(inputs, out_type);
     ir::Tensor temp;
     return temp;
-  }
-  /**
-   * \brief Build the computation schedule.
-   * @param attrs The attribute of the node.
-   * @param outs The output tensors.
-   * @param target The build target.
-   * @return The computation schedule.
-   */
-  cinn::common::Shared<Schedule> GetSchedule(
-      const std::vector<ir::Tensor>& outs,
-      const std::vector<ir::Tensor>& temp_tensors,
-      const Target& target) {
-    // TODO(haozech) : add support for packedfunc to return Schedule
-    // Expected : return this->fschedule(outs, target);
-    return nullptr;
   }
 
   const char* type_info() const override { return __type_info__; }
@@ -134,13 +118,9 @@ class OpSpec : public cinn::common::Object {
 
   const char* type_info() const override { return __type_info__; }
 
-  void AddImpl(CINNCompute fcompute,
-               CINNSchedule fschedule,
-               std::string name,
-               int plevel) {
+  void AddImpl(CINNCompute fcompute, std::string name, int plevel) {
     auto n = std::make_shared<OpImpl>();
     n->fcompute = fcompute;
-    n->fschedule = fschedule;
     n->name = std::move(name);
     n->plevel = plevel;
     this->implementations.push_back(n);
@@ -160,14 +140,10 @@ class OpStrategy : public cinn::common::Object {
   /**
    * \brief Add an implementation.
    * @param fcompute Compute function
-   * @param fschedule Schedule function
    * @param name Name of the implementation
    * @param plevel Priority level of the implementation
    */
-  void AddImpl(CINNCompute fcompute,
-               CINNSchedule fschedule,
-               std::string name,
-               int plevel);
+  void AddImpl(CINNCompute fcompute, std::string name, int plevel);
   static std::shared_ptr<OpImpl> SelectImpl(
       const std::shared_ptr<OpStrategy>& strategy);
 

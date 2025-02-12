@@ -70,7 +70,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRandInt(
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(randint_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.randint.x86",
                     1);
   return strategy;

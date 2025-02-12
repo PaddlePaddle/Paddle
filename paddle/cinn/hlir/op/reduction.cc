@@ -177,76 +177,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         });
   });
 
-  framework::CINNSchedule reduction_schedule([=](lang::Args args,
-                                                 lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(!args.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of schedule is empty! Please "
-                          "check."));
-
-    CINNValuePack arg_pack = args[0];
-    PADDLE_ENFORCE_GE(arg_pack.size(),
-                      2UL,
-                      ::common::errors::InvalidArgument(
-                          "The input tensor size should be greater than 2!"));
-    PADDLE_ENFORCE_LE(arg_pack.size(),
-                      8UL,
-                      ::common::errors::InvalidArgument(
-                          "The input tensor size should be less than 8!"));
-    std::vector<Expr> vec_ast;
-    std::vector<Expr> vec_tensor;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        // TODO(zhhsplendid): old reduction schedule assumes all length-1
-        // for loops are simplified, but it is not after we add length-1
-        // back. Reduction schedule is complex and we haven't changed it to
-        // support the length-1 for loop yet. So we simplify here. The todo
-        // is that remove SimplifyForLoops below and change reduction schedule
-        optim::SimplifyForLoops(&temp);
-        optim::SimplifyBlocks(&temp);
-        vec_ast.emplace_back(temp);
-      } else if (arg_pack[i].is_tensor()) {
-        Expr temp = arg_pack[i];
-        vec_tensor.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of schedule is empty! Please "
-                          "check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    target.arch.Match(
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::ARMArch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::NVGPUArch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        });
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      reduction_compute, reduction_schedule, "strategy." + op_name + ".x86", 1);
+  strategy->AddImpl(reduction_compute, "strategy." + op_name + ".x86", 1);
 
   return strategy;
 }
@@ -361,8 +293,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      reduction_compute, lang::PackedFunc(), "strategy." + op_name + ".x86", 1);
+  strategy->AddImpl(reduction_compute, "strategy." + op_name + ".x86", 1);
 
   return strategy;
 }

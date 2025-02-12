@@ -147,11 +147,8 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
     *ret = CINNValuePack{{CINNValue(func)}};
   });
 
-  framework::CINNSchedule schedule(
-      [=](lang::Args args, lang::RetValue *ret) {});
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(compute, schedule, "strategy.custom_call.x86", 1);
+  strategy->AddImpl(compute, "strategy.custom_call.x86", 1);
   return strategy;
 }
 

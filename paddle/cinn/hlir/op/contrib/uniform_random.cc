@@ -69,10 +69,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForUniformRandom(
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(uniform_random_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.uniform_random.x86",
-                    1);
+  strategy->AddImpl(uniform_random_compute, "strategy.uniform_random.x86", 1);
   return strategy;
 }
 

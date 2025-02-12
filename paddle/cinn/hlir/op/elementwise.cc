@@ -116,10 +116,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(unary_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy." + op_name + ".x86",
-                    1);
+  strategy->AddImpl(unary_compute, "strategy." + op_name + ".x86", 1);
 
   return strategy;
 }
@@ -174,8 +171,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwiseSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      unary_compute, lang::PackedFunc(), "strategy." + op_name + ".x86", 1);
+  strategy->AddImpl(unary_compute, "strategy." + op_name + ".x86", 1);
 
   return strategy;
 }
@@ -260,10 +256,7 @@ std::shared_ptr<OpStrategy> StrategyForScale(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(scale_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.scale.x86",
-                    1);
+  strategy->AddImpl(scale_compute, "strategy.scale.x86", 1);
 
   return strategy;
 }
@@ -362,7 +355,7 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(scale_compute, lang::PackedFunc(), "strategy.scale.x86", 1);
+  strategy->AddImpl(scale_compute, "strategy.scale.x86", 1);
 
   return strategy;
 }
@@ -463,10 +456,7 @@ std::shared_ptr<OpStrategy> StrategyForConstScalar(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(const_scalar_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.const_scalar.x86",
-                    1);
+  strategy->AddImpl(const_scalar_compute, "strategy.const_scalar.x86", 1);
 
   return strategy;
 }
@@ -556,10 +546,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(fill_constant_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.fill_constant.x86",
-                    1);
+  strategy->AddImpl(fill_constant_compute, "strategy.fill_constant.x86", 1);
 
   return strategy;
 }
@@ -620,10 +607,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstantSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(fill_constant_compute,
-                    lang::PackedFunc(),
-                    "strategy.fill_constant.x86",
-                    1);
+  strategy->AddImpl(fill_constant_compute, "strategy.fill_constant.x86", 1);
 
   return strategy;
 }
@@ -699,10 +683,7 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(assign_value_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.assign_value.x86",
-                    1);
+  strategy->AddImpl(assign_value_compute, "strategy.assign_value.x86", 1);
 
   return strategy;
 }
@@ -807,10 +788,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(squeeze_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.squeeze.x86",
-                    1);
+  strategy->AddImpl(squeeze_compute, "strategy.squeeze.x86", 1);
   return strategy;
 }
 
@@ -866,10 +844,7 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
   }};
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(expand_dims_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.expand_dims.x86",
-                    1);
+  strategy->AddImpl(expand_dims_compute, "strategy.expand_dims.x86", 1);
   return strategy;
 }
 
@@ -936,10 +911,7 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(reshape_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(reshape_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1005,8 +977,7 @@ std::shared_ptr<OpStrategy> StrategyForReshapeSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      reshape_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
+  strategy->AddImpl(reshape_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1059,10 +1030,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCast(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(cast_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1115,7 +1083,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCastSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.cast.x86", 1);
+  strategy->AddImpl(cast_compute, "strategy.cast.x86", 1);
   return strategy;
 }
 
@@ -1169,10 +1137,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStore(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(cast_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1225,7 +1190,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForYieldStoreSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cast_compute, lang::PackedFunc(), "strategy.store.x86", 1);
+  strategy->AddImpl(cast_compute, "strategy.store.x86", 1);
   return strategy;
 }
 
@@ -1279,8 +1244,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      generate_shape_compute, lang::PackedFunc(), "strategy.store.x86", 1);
+  strategy->AddImpl(generate_shape_compute, "strategy.store.x86", 1);
   return strategy;
 }
 
@@ -1341,10 +1305,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
       });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(arange_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.reshape.x86",
-                    1);
+  strategy->AddImpl(arange_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1401,8 +1362,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      arange_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
+  strategy->AddImpl(arange_compute, "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1460,7 +1420,7 @@ std::shared_ptr<OpStrategy> StrategyForTril(
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(tril_compute, lang::PackedFunc(), "strategy.tril.x86", 1);
+  strategy->AddImpl(tril_compute, "strategy.tril.x86", 1);
 
   return strategy;
 }
@@ -1522,8 +1482,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      assign_out_compute, lang::PackedFunc(), "strategy.default", 1);
+  strategy->AddImpl(assign_out_compute, "strategy.default", 1);
   return strategy;
 }
 
@@ -1590,7 +1549,7 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(isclose_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.assertisclose",
                     1);
 
@@ -1659,8 +1618,7 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      isclose_compute, lang::PackedFunc(), "strategy.assertisclose", 1);
+  strategy->AddImpl(isclose_compute, "strategy.assertisclose", 1);
   return strategy;
 }
 

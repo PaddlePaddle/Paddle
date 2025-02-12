@@ -68,10 +68,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(gaussian_random_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.gaussian_random.x86",
-                    1);
+  strategy->AddImpl(gaussian_random_compute, "strategy.gaussian_random.x86", 1);
   return strategy;
 }
 

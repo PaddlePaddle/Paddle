@@ -143,7 +143,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(reciprocal_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.reciprocal.x86",
                     1);
   return strategy;
@@ -215,8 +215,7 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      reciprocal_compute, lang::PackedFunc(), "strategy.reciprocal.x86", 1);
+  strategy->AddImpl(reciprocal_compute, "strategy.reciprocal.x86", 1);
   return strategy;
 }
 

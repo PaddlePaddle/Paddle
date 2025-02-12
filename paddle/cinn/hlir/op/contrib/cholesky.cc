@@ -71,10 +71,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForCholesky(
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(cholesky_compute,
-                    GetElementwiseScheduleFunc(output_shapes, target),
-                    "strategy.cholesky.x86",
-                    1);
+  strategy->AddImpl(cholesky_compute, "strategy.cholesky.x86", 1);
   return strategy;
 }
 

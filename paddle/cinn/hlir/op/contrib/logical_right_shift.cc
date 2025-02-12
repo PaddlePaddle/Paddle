@@ -126,7 +126,7 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(logical_right_shift_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.logical_right_shift.x86",
                     1);
   return strategy;

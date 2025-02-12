@@ -85,7 +85,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(bitcast_convert_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.bitcast_convert.x86",
                     1);
   return strategy;

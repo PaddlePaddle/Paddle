@@ -181,59 +181,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     *ret = cinn::common::CINNValuePack{res};
   });
 
-  framework::CINNSchedule repeat_schedule([=](lang::Args args,
-                                              lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        !args.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The input argument of repeat schedule is empty. "
-            "Please check your input arguments and ensure they are "
-            "not empty."));
-    cinn::common::CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        !vec_ast.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The vector of AST expressions is empty. "
-            "Please ensure there are valid expressions in the argument pack."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
-                                        output_shapes[0].end(),
-                                        1,
-                                        std::multiplies<int>());
-    if (prod_size > 1) {
-      target.arch.Match(
-          [&](std::variant<common::UnknownArch, common::ARMArch>) {
-            CINN_NOT_IMPLEMENTED;
-          },
-          [&](common::X86Arch) {
-            pe::IRScheduleInjectiveCPU(
-                ir_sch, output_shapes.front(), target, true);
-          },
-          [&](common::NVGPUArch) {
-            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
-          },
-          [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
-          });
-    }
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(repeat_compute, repeat_schedule, "strategy.repeat.x86", 1);
+  strategy->AddImpl(repeat_compute, "strategy.repeat.x86", 1);
 
   return strategy;
 }
