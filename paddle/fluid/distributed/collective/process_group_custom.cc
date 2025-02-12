@@ -149,8 +149,12 @@ phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
   }
 }
 
-phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
+phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) {
   const std::string& key = GetKeyFromPlace(place);
+  phi::DeviceGuard guard(place);
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+    CreateXCCLEnvCache(place, key);
+  }
   const auto& iter = place_to_comm_ctx_.find(key);
   PADDLE_ENFORCE_NE(
       iter,

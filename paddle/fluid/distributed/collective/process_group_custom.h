@@ -172,7 +172,7 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
   static void GroupEnd(const std::string& dev_type);
 
-  phi::ccl::CCLComm XCCLComm(const Place& place) const;
+  phi::ccl::CCLComm XCCLComm(const Place& place);
 
   // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
