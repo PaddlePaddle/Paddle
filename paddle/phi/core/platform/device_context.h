@@ -21,13 +21,9 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/backends/custom/custom_context.h"
-#include "paddle/phi/backends/gpu/gpu_decls.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device_type.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -66,10 +62,7 @@ limitations under the License. */
 #include <map>
 
 #include "glog/logging.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/enforce.h"
 
-#include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"
 
 #if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
@@ -89,26 +82,6 @@ struct GpuDevice;
 
 namespace paddle {
 namespace platform {
-
-enum DeviceType {
-  CPU = 0,
-  CUDA = 1,
-  XPU = 3,
-  IPU = 4,
-  CUSTOM_DEVICE = 6,
-
-  MAX_DEVICE_TYPES = 7,
-};
-
-DeviceType Place2DeviceType(const phi::Place& place);
-
-constexpr DeviceType kCPU = DeviceType::CPU;
-constexpr DeviceType kCUDA = DeviceType::CUDA;
-constexpr DeviceType kXPU = DeviceType::XPU;
-constexpr DeviceType kIPU = DeviceType::IPU;
-constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
-
-using DeviceContext = phi::DeviceContext;
 
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU

@@ -14,7 +14,7 @@
 #pragma once
 
 #include <unordered_set>
-#include "paddle/phi/core/platform/device_event_base.h"
+#include "paddle/phi/core/platform/device_event_defs.h"
 #include "paddle/pir/include/core/operation.h"
 
 namespace paddle {
