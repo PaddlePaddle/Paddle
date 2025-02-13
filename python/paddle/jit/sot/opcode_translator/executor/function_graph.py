@@ -630,7 +630,7 @@ class FunctionGraph:
                 **kwargs,
             )
         except Exception as e:
-            log(3, f"[call AST] {e}")
+            log(3, f"[call AST] {e}\n")
             return None
 
     def symbolic_call(

@@ -803,7 +803,7 @@ class SymbolicVariable(VariableBase):
 
         disable_symbolic(self)
         self.graph.need_cache = False
-        log(3, f"Fallback {self} to ConstantVariable")
+        log(3, f"Fallback {self} to ConstantVariable\n")
         return ConstantVariable(
             self.get_py_value(), self.graph, DummyTracker([self])
         )
