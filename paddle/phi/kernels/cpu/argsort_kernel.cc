@@ -95,6 +95,15 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
   auto rank = in_dims.size();
+
+  if (input.numel() == 0) {
+    output->Resize(in_dims);
+    indices->Resize(in_dims);
+    dev_ctx.template Alloc<T>(output);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
+
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   T* out_data = dev_ctx.template Alloc<T>(output);
 

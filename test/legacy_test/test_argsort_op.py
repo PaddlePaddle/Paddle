@@ -155,6 +155,30 @@ class TestArgsort4(TestArgsort):
         self.axis = 1
 
 
+class TestArgsortZeroSize(TestArgsort):
+    def init(self):
+        self.input_shape = [0, 3]
+        self.axis = 0
+
+
+class TestArgsortZeroSize2(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 4]
+        self.axis = 0
+
+
+class TestArgsortZeroSize3(TestArgsort):
+    def init(self):
+        self.input_shape = [0, 3]
+        self.axis = 1
+
+
+class TestArgsortZeroSize4(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 4]
+        self.axis = 1
+
+
 class TestStableArgsort(unittest.TestCase):
     def init(self):
         self.input_shape = [
@@ -281,6 +305,34 @@ class TestStableArgsort4(TestStableArgsort):
             ]
             * 20
         )
+
+
+class TestStableArgsortZeroSize(TestStableArgsort):
+    def init(self):
+        self.input_shape = [0, 30]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsortZeroSize2(TestStableArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 40]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsortZeroSize3(TestStableArgsort):
+    def init(self):
+        self.input_shape = [0, 30]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 1
+
+
+class TestStableArgsortZeroSize4(TestStableArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 40]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 1
 
 
 class TestArgsortImperative(unittest.TestCase):
