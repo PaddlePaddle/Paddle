@@ -122,6 +122,13 @@ class Builder {
   /// Set/Get the chunk_id
   void set_chunk_id(int chunk_id) { chunk_id_ = chunk_id; }
   int chunk_id() const { return chunk_id_; }
+
+  /// Set/Get the comp_op_name
+  void set_comp_op_name(std::string comp_op_name) {
+    comp_op_name_ = comp_op_name;
+  }
+  std::string comp_op_name() const { return comp_op_name_; }
+
   IrContext *ir_context() const { return context_; }
 
   Block *block() const { return insertion_point_.first; }
@@ -183,6 +190,9 @@ class Builder {
   // bw, opt region.
   int op_role_ = -1;
   int chunk_id_ = -1;
+
+  // comp_op_name is used to specify the composite op name after decomposition
+  std::string comp_op_name_ = "";
 };
 
 template <typename OpTy, typename... Args>
@@ -195,7 +205,10 @@ OpTy Builder::Build(Args &&...args) {
 
 class BuilderAttrGuard {
  public:
-  BuilderAttrGuard(std::shared_ptr<Builder> builder, int op_role, int chunk_id);
+  BuilderAttrGuard(std::shared_ptr<Builder> builder,
+                   int op_role,
+                   int chunk_id,
+                   std::string comp_op_name);
 
   ~BuilderAttrGuard();
 
@@ -207,6 +220,7 @@ class BuilderAttrGuard {
   std::shared_ptr<Builder> builder_;
   int pre_op_role_ = -1;
   int pre_chunk_id_ = -1;
+  std::string pre_comp_op_name_ = "";
 };
 
 }  // namespace pir

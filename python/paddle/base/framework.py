@@ -8506,3 +8506,16 @@ def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode():
             pir.set_chunk_id(original_chunk_id)
+
+
+@signature_safe_contextmanager
+def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
+
+    if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
+        original_comp_op_name = pir.get_comp_op_name()
+        pir.set_comp_op_name(op_name)
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
+            pir.set_comp_op_name(original_comp_op_name)

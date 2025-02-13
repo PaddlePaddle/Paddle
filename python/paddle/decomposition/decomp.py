@@ -26,7 +26,11 @@ from paddle.base.core import (
     has_decomp_rule,
     has_decomp_vjp,
 )
-from paddle.base.framework import pir_chunk_id_guard, pir_op_role_guard
+from paddle.base.framework import (
+    pir_chunk_id_guard,
+    pir_op_name_guard,
+    pir_op_role_guard,
+)
 from paddle.base.libpaddle.pir import Block, Operation
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.decomposition.recompute import DebugPrint, auto_recompute
@@ -869,9 +873,9 @@ def decompose_dist_program(pir_program):
                 ) and _check_prim_dynamic(op):
                     skip_decomp = True
                 if not skip_decomp:
-                    with pir_op_role_guard(op.op_role), pir_chunk_id_guard(
-                        op.chunk_id
-                    ):
+                    with pir_op_name_guard(op.name()), pir_op_role_guard(
+                        op.op_role
+                    ), pir_chunk_id_guard(op.chunk_id):
                         pir.set_insertion_point(op)
                         orig_outs = op.results()
 

@@ -51,6 +51,7 @@ from paddle.autograd.backward_utils import (
     warning_once,
     while_prune_check,
 )
+from paddle.base.framework import pir_op_name_guard
 from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
@@ -908,7 +909,9 @@ def append_backward_ops(
                         # create grad_op
 
                         before_ops_num = len(bwd_block.ops)
-                        with dynamic_shape_prim_vjp_guard(op, inputs):
+                        with dynamic_shape_prim_vjp_guard(
+                            op, inputs
+                        ), pir_op_name_guard(op.name() + '_grad'):
                             input_grads = paddle.framework.core.call_vjp(
                                 op,
                                 inputs,

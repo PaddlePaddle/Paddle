@@ -504,7 +504,8 @@ void DecompProgram::decomp_block(
       int chunk_id = (op->attribute<pir::Int32Attribute>("chunk_id"))
                          ? op->attribute<pir::Int32Attribute>("chunk_id").data()
                          : -1;
-      pir::BuilderAttrGuard guard(builder, op_role, chunk_id);
+      std::string comp_op_name = op->name();
+      pir::BuilderAttrGuard guard(builder, op_role, chunk_id, comp_op_name);
 
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       if (decomp_res.size() == 0) {

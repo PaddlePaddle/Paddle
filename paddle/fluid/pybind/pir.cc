@@ -2370,6 +2370,11 @@ void BindUtils(pybind11::module *m) {
   m->def("set_op_role",
          [](int op_role) { ApiBuilder::Instance().SetOpRole(op_role); });
   m->def("get_op_role", []() { return ApiBuilder::Instance().GetOpRole(); });
+  m->def("set_comp_op_name", [](std::string comp_op_name) {
+    ApiBuilder::Instance().SetCompOpName(comp_op_name);
+  });
+  m->def("get_comp_op_name",
+         []() { return ApiBuilder::Instance().GetCompOpName(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
