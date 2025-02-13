@@ -4771,7 +4771,7 @@ def isfinite(x: Tensor, name: str | None = None) -> Tensor:
     Return whether every element of input tensor is finite number or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4802,6 +4802,8 @@ def isfinite(x: Tensor, name: str | None = None) -> Tensor:
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'isfinite',
         )
@@ -4818,7 +4820,7 @@ def isinf(x: Tensor, name: str | None = None) -> Tensor:
     Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4852,6 +4854,8 @@ def isinf(x: Tensor, name: str | None = None) -> Tensor:
                 'int64',
                 'uint8',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'isinf',
         )
@@ -4866,7 +4870,7 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
     Return whether every element of input tensor is `NaN` or not.
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4897,6 +4901,8 @@ def isnan(x: Tensor, name: str | None = None) -> Tensor:
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'isnan',
         )
@@ -4916,7 +4922,7 @@ def prod(
     Compute the product of tensor elements over the given axis.
 
     Args:
-        x (Tensor): The input tensor, its data type should be bfloat16, float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor, its data type should be bfloat16, float16, float32, float64, int32, int64, complex64, complex128.
         axis (int|list|tuple|None, optional): The axis along which the product is computed. If :attr:`None`,
             multiply all elements of `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`,
