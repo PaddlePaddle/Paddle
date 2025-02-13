@@ -67,10 +67,6 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
   }
 
   DenseTensor out_reduce_scatter;
-#if defined(PADDLE_WITH_XPU)
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "Not supported Reducescatter on xpu yet."));
-#else
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             ReduceScatter,
                             dtype,
@@ -78,7 +74,7 @@ void ReshardPToSWithPadding(DeviceContext* dev_ctx,
                             in_reduce_scatter,
                             static_cast<int64_t>(process_ids.size()),
                             &out_reduce_scatter);
-#endif
+
   DenseTensor out_result;
   if (split_axis != 0) {
     RESHARD_FUNCTOR(
