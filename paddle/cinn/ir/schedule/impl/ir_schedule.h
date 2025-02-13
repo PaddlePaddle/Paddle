@@ -46,6 +46,7 @@ class DyScheduleImpl : public ScheduleBase {
   std::vector<Expr> GetLoops(const Expr& block) const;
   std::vector<Expr> GetLoops(const std::string& block_name) const;
   std::vector<Expr> GetAllBlocks() const;
+  std::vector<stmt::StmtRef> GetAllSchedules() const;
   std::vector<Expr> GetChildBlocks(const Expr& expr) const;
   Expr GetBlock(const std::string& block_name) const;
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);

@@ -354,6 +354,12 @@ std::vector<Expr> IRSchedule::GetAllBlocks() const {
   return results;
 }
 
+std::vector<stmt::StmtRef> IRSchedule::GetAllSchedules() const {
+  auto results = impl_->GetAllSchedules();
+  trace_.Append(ScheduleDesc::Step("GetAllSchedules", {}, {}, {}, results));
+  return results;
+}
+
 std::vector<Expr> IRSchedule::GetChildBlocks(const Expr& expr) const {
   auto results = impl_->GetChildBlocks(expr);
   trace_.Append(ScheduleDesc::Step(

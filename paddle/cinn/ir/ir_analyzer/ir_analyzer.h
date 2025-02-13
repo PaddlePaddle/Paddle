@@ -35,6 +35,8 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block);
 
 std::vector<Expr> GetAllBlocks(const std::vector<Expr>& exprs);
 
+std::vector<stmt::StmtRef> GetAllSchedules(const std::vector<Expr>& exprs);
+
 std::vector<Expr> GetChildBlocks(const Expr& expr);
 
 Expr GetBlock(const std::vector<Expr>& exprs, const std::string& block_name);

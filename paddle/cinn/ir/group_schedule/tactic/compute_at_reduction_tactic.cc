@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/compute_at_reduction_tactic.h"
+#include "paddle/cinn/ir/ir_analyzer/data_dependency_graph.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -104,7 +106,6 @@ class ComputeAtReductionTactic final : public ScheduleTactic {
   // A copy of the IRSchedule and ScheduleBlockGraph, with all loop vars
   // unifiedly rewritten to the form `$<loop_index>` (e.g. $0, $1).
   std::unique_ptr<ir::IRSchedule> sch_;
-  std::unique_ptr<ir::ScheduleBlockGraph> graph_;
 
   // Cache of the results of GetUnifiedControlFlow, GetLoopVariantLoads,
   // GetSerialLoopExtent and IsReductionSBlock because these functions are too
@@ -241,7 +242,6 @@ void ComputeAtReductionTactic::Init(ScheduleContext* context,
   serial_loop_extent_.clear();
 
   sch_ = std::make_unique<ir::IRSchedule>(*sch);
-  graph_ = std::make_unique<ir::ScheduleBlockGraph>(*sch_);
 
   for (auto& block : sch_->GetAllBlocks()) {
     // Replace loop_vars to the unified form `$<loop_index>`
@@ -373,10 +373,8 @@ std::vector<std::string>
 ComputeAtReductionTactic::GetDependencyHarzardFreeBlocks(
     ir::IRSchedule* sch, const std::string& block_id) {
   std::vector<std::string> results;
-  std::vector<ir::Expr> blocks = sch->GetAllBlocks();
-  auto* graph_node = graph_->RetrieveNode(block_id);
-  std::unordered_set<std::string> upstreams = graph_node->UpstreamNodes();
-  std::unordered_set<std::string> downstreams = graph_node->DownstreamNodes();
+  std::vector<stmt::StmtRef> stmts = sch->GetAllSchedules();
+  analyzer::DataDependencyGraph dep_graph(stmts);
 
   // Find the position of the current block in the graph, then search upwards
   // and downwards until a denepency harzard is met.
@@ -397,25 +395,25 @@ ComputeAtReductionTactic::GetDependencyHarzardFreeBlocks(
   // C has denepency harzard with B because it directly depends on B. C also has
   // dependency harzard with A, because if we move C to the position of A, we
   // will violate the dependency of B->C. C is only harzard-free with D and E.
-  auto this_it =
-      std::find_if(blocks.begin(), blocks.end(), [&](const ir::Expr& block) {
-        return analyzer::GetBlockName(block) == block_id;
+  auto this_it = std::find_if(
+      stmts.begin(), stmts.end(), [&](const ir::stmt::StmtRef& stmt) {
+        return stmt.as<stmt::Schedule>()->name() == block_id;
       });
 
   // Search upwards
   auto this_it_rev = std::make_reverse_iterator(this_it);
-  for (auto it = this_it_rev; it != blocks.rend(); ++it) {
-    std::string other_id = analyzer::GetBlockName(*it);
+  for (auto it = this_it_rev; it != stmts.rend(); ++it) {
+    std::string other_id = (*it).as<stmt::Schedule>()->name();
     // As a special case, we can ignore the `reduce_init` in front of Reduce.
     if (IsReduceInitTensorName(other_id)) continue;
-    if (upstreams.count(other_id) > 0) break;
+    if (dep_graph.HasDependency(*it, *this_it) == analyzer::DepKind::DEP) break;
     results.push_back(other_id);
   }
 
   // Search downwards
-  for (auto it = this_it + 1; it != blocks.end(); ++it) {
-    std::string other_id = analyzer::GetBlockName(*it);
-    if (downstreams.count(other_id) > 0) break;
+  for (auto it = this_it + 1; it != stmts.end(); ++it) {
+    std::string other_id = (*it).as<stmt::Schedule>()->name();
+    if (dep_graph.HasDependency(*this_it, *it) == analyzer::DepKind::DEP) break;
     results.push_back(other_id);
   }
 

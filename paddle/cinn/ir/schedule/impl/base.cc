@@ -167,6 +167,15 @@ std::vector<Expr> DyScheduleImpl::GetAllBlocks() const {
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
 
+std::vector<stmt::StmtRef> DyScheduleImpl::GetAllSchedules() const {
+  CINN_IR_SCHEDULE_BEGIN();
+  std::string primitive = "GetAllSchedules";
+  std::ostringstream os;
+  auto exprs = module_expr_.GetExprs();
+  return analyzer::GetAllSchedules(exprs);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
+}
+
 std::vector<Expr> DyScheduleImpl::GetChildBlocks(const Expr& expr) const {
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "GetChildBlocks";

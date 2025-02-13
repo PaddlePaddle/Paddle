@@ -34,6 +34,7 @@
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -107,6 +108,27 @@ std::vector<Expr> GetAllBlocks(const std::vector<Expr>& exprs) {
       result.empty(),
       false,
       ::common::errors::InvalidArgument("Didn't find blocks in expr."));
+  return result;
+}
+
+std::vector<stmt::StmtRef> GetAllSchedules(const std::vector<Expr>& exprs) {
+  std::vector<stmt::StmtRef> result;
+  for (auto& it_expr : exprs) {
+    stmt::BlockRef stmt_block;
+    if (it_expr.As<ir::Block>()) {
+      stmt_block = ConvertExprBlockToStmtBlock(it_expr);
+    } else {
+      stmt_block = ConvertExprBlockToStmtBlock(
+          ir::Block::Make(std::vector<ir::Expr>{it_expr}));
+    }
+    FindSchedulesVisitor visitor;
+    auto find_blocks = visitor(stmt_block);
+    result.insert(result.end(), find_blocks.begin(), find_blocks.end());
+  }
+  PADDLE_ENFORCE_EQ(
+      result.empty(),
+      false,
+      ::common::errors::InvalidArgument("Didn't find schedules in expr."));
   return result;
 }
 

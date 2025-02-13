@@ -1180,6 +1180,48 @@ struct FindBlocksVisitor {
   std::vector<Expr> result{};
 };
 
+struct FindSchedulesVisitor {
+  explicit FindSchedulesVisitor(const std::string& schedule_name = "")
+      : schedule_name_(schedule_name) {}
+
+  std::vector<stmt::StmtRef> operator()(const stmt::BlockRef& block) {
+    VisitBlock(block);
+    return result;
+  }
+
+ private:
+  void VisitStmt(const stmt::StmtRef& stmt) {
+    if (!stmt.defined()) return;
+    if (!schedule_name_.empty() && !result.empty()) return;
+    if (stmt.isa<stmt::For>()) {
+      VisitBlock(stmt.as<stmt::For>()->body());
+    } else if (stmt.isa<stmt::Schedule>()) {
+      if (stmt.as<stmt::Schedule>()->name().substr(0, 4) != "root") {
+        auto schedule_block = stmt.as<stmt::Schedule>();
+        if (schedule_name_.empty() ||
+            schedule_block->name() == schedule_name_) {
+          result.emplace_back(stmt);
+        }
+      } else {
+        VisitBlock(stmt.as<stmt::Schedule>()->body());
+      }
+    } else if (stmt.isa<stmt::IfThenElse>()) {
+      VisitBlock(stmt.as<stmt::IfThenElse>()->true_case());
+      if (stmt.as<stmt::IfThenElse>()->false_case().defined())
+        VisitBlock(stmt.as<stmt::IfThenElse>()->false_case());
+    }
+  }
+
+  void VisitBlock(const stmt::BlockRef& block) {
+    for (const stmt::StmtRef& inner_stmt : block->stmts()) {
+      VisitStmt(inner_stmt);
+    }
+  }
+
+  std::string schedule_name_;
+  std::vector<stmt::StmtRef> result{};
+};
+
 struct FindLoopsVisitor {
   explicit FindLoopsVisitor(const Expr& block) : block_(block) {}
 

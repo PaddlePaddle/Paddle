@@ -90,6 +90,9 @@ class IRSchedule {
   //! Get all blocks stored in this ModuleExpr.
   std::vector<Expr> GetAllBlocks() const;
 
+  //! Get all schedules stored in this ModuleExpr.
+  std::vector<stmt::StmtRef> GetAllSchedules() const;
+
   //! Get a block with the specific name.
   Expr GetBlock(const std::string& block_name) const;
 
