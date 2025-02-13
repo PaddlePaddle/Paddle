@@ -385,3 +385,12 @@
     data_type : x
   optional : indices, inverse, counts
   traits : paddle::dialect::ForwardOnlyTrait
+
+- op : view_shape
+  args : (Tensor input, int64_t[] dims = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ViewShapeInferMeta
+  kernel :
+    func : view_shape
+  backward : view_shape_grad

@@ -5294,16 +5294,6 @@
   no_need_buffer : input
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : view_shape
-  args : (Tensor input, int64_t[] dims = {})
-  output : Tensor(out)
-  infer_meta :
-    func : ViewShapeInferMeta
-  kernel :
-    func : view_shape
-  backward : view_shape_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : view_slice
   args : (Tensor input, int64_t begin_idx, int64_t end_idx)
   output : Tensor
