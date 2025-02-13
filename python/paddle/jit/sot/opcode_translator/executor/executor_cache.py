@@ -132,7 +132,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                 if guard_result:
                     log(
                         2,
-                        f"[Cache]: Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                        f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     return custom_code
                 else:
@@ -142,14 +142,18 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     )
                     log(
                         2,
-                        f"[Cache]: Cache miss, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                        f"[Cache] Cache miss, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     log_do(
                         2,
                         self.analyse_guard_error(guard_fn, frame),
                     )
             except Exception as e:
-                log(2, f"[Cache]: Guard function error: {e}\n")
+                log(2, f"[Cache] Guard function error: {e}\n")
+                log(
+                    2,
+                    f"[Cache] Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                )
                 log_do(
                     2,
                     self.analyse_guard_error(guard_fn, frame),
@@ -207,7 +211,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     result = guard(frame)
                 except Exception as e:
                     print(
-                        f"[Cache]: Error occurred when checking guard {guard_str}: {e}"
+                        f"[Cache] Error occurred when checking guard {guard_str}: {e}"
                     )
                     return
                 if result is False:

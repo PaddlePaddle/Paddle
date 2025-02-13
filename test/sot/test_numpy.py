@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from test_case_base import TestCaseBase
+from test_case_base import (
+    TestCaseBase,
+    test_instruction_translator_cache_context,
+)
 
 import paddle
 from paddle.jit.sot.utils import strict_mode_guard
@@ -32,6 +35,10 @@ def tensor_add_numpy(x, y):
 
 
 def large_numpy_array_to_tensor(x):
+    return paddle.to_tensor(x)
+
+
+def normal_numpy_array_to_tensor(x):
     return paddle.to_tensor(x)
 
 
@@ -60,6 +67,15 @@ class TestNumpy(TestCaseBase):
         # when the size is larger than 1024*1024 in assign API (to_tensor static branch)
         x = np.random.rand(1024, 1024, 2).astype(np.float32)
         self.assert_results(large_numpy_array_to_tensor, x)
+
+    def test_numpy_array_guard(self):
+        x = np.array([1.0, 2.0])
+        with test_instruction_translator_cache_context() as ctx:
+            self.assertEqual(ctx.translate_count, 0)
+            self.assert_results(normal_numpy_array_to_tensor, x)
+            self.assertEqual(ctx.translate_count, 1)
+            self.assert_results(normal_numpy_array_to_tensor, x)
+            self.assertEqual(ctx.translate_count, 1)
 
 
 if __name__ == "__main__":
