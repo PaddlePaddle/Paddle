@@ -45,7 +45,11 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   endif()
 endif()
 
-set(XPU_XPTI_BASE_VERSION "0.0.1")
+if(WITH_XPU_XRE5)
+  set(XPU_XPTI_BASE_VERSION "0.1.0")
+else()
+  set(XPU_XPTI_BASE_VERSION "0.0.1")
+endif()
 
 set(XPU_XRE_BASE_URL
     "https://klx-sdk-release-public.su.bcebos.com/xre/release/${XPU_XRE_BASE_VERSION}"

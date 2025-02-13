@@ -39,5 +39,5 @@ cp -r ${XPTI_DIR_NAME}/include/* xpu/include/xpu
 cp -r ${XPTI_DIR_NAME}/so/* xpu/lib/
 # copy libxpurt.so that support klprof
 # commit fa894b83f9e2d1235564b93301265d8b55be5464 (HEAD -> trace)
-rm xpu/lib/libxpurt.so*
-cp -r ${XPTI_DIR_NAME}/runtime/libxpurt.so* xpu/lib/
+# rm xpu/lib/libxpurt.so*
+# cp -r ${XPTI_DIR_NAME}/runtime/libxpurt.so* xpu/lib/
