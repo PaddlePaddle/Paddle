@@ -179,6 +179,19 @@ def IsGradName(string):
     return string.endswith("_grad")
 
 
+def FindRenameForwardName(string):
+    # when op has double_grad and double_grad api has same output of grad api,
+    # double_grad's forward yaml is different from input/output name of grad api
+    # this func find the rename name in double_grad's forward_yaml.
+    # eg acos_grad x_grad -> grad_x, out_grad -> grad_out
+    if string.endswith('_grad'):
+        base_part = string[:-5]
+        transformed_string = 'grad_' + base_part
+        return transformed_string
+    else:
+        raise Exception(f"{string} is not a grad name")
+
+
 def IsPlainTensorType(string):
     plain_tensor_types = ['Tensor&', 'Tensor', 'const Tensor&', 'const Tensor']
     if string in plain_tensor_types:

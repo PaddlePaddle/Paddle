@@ -615,7 +615,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 )
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str = python_c_inplace_func_reg_str
-            elif "backward_op" not in self.forward_api_contents:
+            else:
                 self.python_c_function_str += python_c_inplace_func_str
                 self.python_c_function_declare_str += (
                     python_c_function_declare_str
@@ -670,7 +670,7 @@ class PythonCGenerator(GeneratorBase):
         for forward_api_content in forward_api_list:
             if "backward_op" in forward_api_content and forward_api_content[
                 "backward_op"
-            ].endswith(('double_grad', 'triple_grad', 'grad_grad', '_grad_')):
+            ].endswith(('double_grad', 'triple_grad', 'grad_grad')):
                 continue
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace

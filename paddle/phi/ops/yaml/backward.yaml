@@ -2929,16 +2929,16 @@
   optional : pos_weight
 
 - backward_op : sigmoid_double_grad
-  forward : sigmoid_grad (Tensor out, Tensor fwd_grad_out) -> Tensor(grad_x)
-  args : (Tensor out, Tensor fwd_grad_out, Tensor grad_x_grad)
-  output : Tensor(out_grad), Tensor(fwd_grad_out_grad)
+  forward : sigmoid_grad (Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor out, Tensor grad_out, Tensor grad_x_grad)
+  output : Tensor(out_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
-    param : [out, fwd_grad_out]
+    param : [out, grad_out]
   kernel :
     func : sigmoid_double_grad
   backward : sigmoid_triple_grad
-  inplace : (grad_x_grad -> fwd_grad_out_grad)
+  inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : sigmoid_grad
   forward : sigmoid (Tensor x) -> Tensor(out)

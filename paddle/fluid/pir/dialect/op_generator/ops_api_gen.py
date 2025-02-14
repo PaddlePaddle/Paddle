@@ -254,8 +254,10 @@ class OpsAPIGen(CodeGen):
             if op_name[:-5] in NO_NEED_GEN_STATIC_ONLY_APIS:
                 return True
         if op_name.endswith("_grad_"):
-            return True
-
+            if op_name.endswith(
+                ("double_grad_", "_grad_grad_", "triple_grad_")
+            ):
+                return True
         return (
             super()._need_skip(op_info, op_name)
             or op_name.endswith('xpu')
