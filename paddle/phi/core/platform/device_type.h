@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace platform {

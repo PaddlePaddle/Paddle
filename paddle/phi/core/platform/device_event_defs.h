@@ -16,7 +16,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/core/platform/device_type.h"
-#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace platform {

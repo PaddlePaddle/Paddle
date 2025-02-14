@@ -1835,6 +1835,102 @@ def get_headers():
                 paddle_source_dir + '/paddle/pir/src/core/parser',
             )
         )
+        + list(
+            find_files(
+                'pd_op.h',
+                paddle_binary_dir + 'paddle/fluid/pir/dialect/operator/ir',
+            )
+        )
+        + list(
+            find_files(
+                'pd_op_sig.h',
+                paddle_source_dir + '/paddle/fluid/ir_adaptor/translator',
+            )
+        )
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/trait',
+            )
+        )
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+            )
+        )
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/kernel/ir',
+            )
+        )
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/pir/include/core',
+            )
+        )
+        + list(
+            find_files(
+                'pd_op_to_kernel_pass.h',
+                paddle_source_dir + '/paddle/fluid/pir/transforms',
+            )
+        )
+        + list(
+            find_files(
+                'custom_engine_ext.h',
+                paddle_source_dir + '/paddle/fluid/custom_engine',
+            )
+        )
+        + list(
+            find_files(
+                'pir_adaptor_util.h',
+                paddle_source_dir
+                + '/paddle/fluid/framework/new_executor/pir_adaptor',
+            )
+        )
+        + list(
+            find_files(
+                'custom_engine_instruction.h',
+                paddle_source_dir
+                + '/paddle/fluid/framework/new_executor/instruction',
+            )
+        )
+        + list(
+            find_files(
+                'instruction_defs.h',
+                paddle_source_dir
+                + '/paddle/fluid/framework/new_executor/instruction',
+            )
+        )
+        + list(
+            find_files(
+                'instruction_base.h',
+                paddle_source_dir
+                + '/paddle/fluid/framework/new_executor/instruction',
+            )
+        )
+        + list(
+            find_files(
+                'sub_graph_detector.h',
+                paddle_source_dir + '/paddle/fluid/pir/transforms',
+            )
+        )
     )
 
     jit_layer_headers = [
