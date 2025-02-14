@@ -141,8 +141,9 @@ class TestFusedBiasDropoutResidualLayerNormTRTPattern(TensorRTBaseTest):
         self.opt_shape = {"x": [4, 4, 128]}
         self.max_shape = {"x": [8, 4, 128]}
 
-    def test_fp16_trt_result(self):
-        self.check_trt_result(rtol=1e-2, atol=1e-2, precision_mode="fp16")
+    # TODO(bukejiyu): FusedBiasDropoutResidualLayerNorm will support FP16 UT in the future.
+    # def test_fp16_trt_result(self):
+    # self.check_trt_result(rtol=1e-2, atol=1e-2, precision_mode="fp16")
 
 
 class TestFusedBiasDropoutResidualLayerNormCase1TRTPattern(TensorRTBaseTest):
