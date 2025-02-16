@@ -6030,19 +6030,25 @@ void MoeDispatchInferMeta(const MetaTensor& X,
                           MetaTensor* permute_indices_per_token,
                           MetaTensor* expert_scales_float,
                           MetaTensor* top_k_indices) {
-  int token_rows = 0;
+  int token_rows = -1;
   auto input_dims = X.dims();
+  auto gating_dims = gating_output.dims();
   if (input_dims.size() == 3) {
     token_rows = input_dims[0] * input_dims[1];
   } else {
     token_rows = input_dims[0];
   }
+  const int expert_num = gating_dims[gating_dims.size() - 1];
   const int num_rows = token_rows;
   const int hidden_size = X.dims()[input_dims.size() - 1];
 
   permute_input->set_dims({moe_topk * num_rows, hidden_size});
   permute_input->set_dtype(X.dtype());
   permute_input->set_layout(X.layout());
+
+  permute_indices_per_token->set_dims({expert_num});
+  token_nums_per_expert->set_dtype(DataType::INT64);
+  token_nums_per_expert->set_layout(X.layout());
 
   permute_indices_per_token->set_dims({moe_topk, num_rows});
   permute_indices_per_token->set_dtype(DataType::INT32);
