@@ -1838,7 +1838,7 @@ def get_headers():
         + list(
             find_files(
                 'pd_op.h',
-                paddle_binary_dir + 'paddle/fluid/pir/dialect/operator/ir',
+                paddle_binary_dir + '/paddle/fluid/pir/dialect/operator/ir',
             )
         )
         + list(
