@@ -579,6 +579,7 @@
     func : gemm_epilogue
     data_type : input
   optional : bias
+  support_dygraph_mode : true
 
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
