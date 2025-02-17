@@ -59,10 +59,7 @@ class ReduceAsOpPattern
 
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
-    if (y_rank == 1 && y_shape[0] == 1) {
-      // TODO(phrain): reduce to shape [1] will failed in codegen
-      return false;
-    }
+
     int64_t compare_offset = x_rank - y_rank;
     std::vector<int64_t> reduce_axis;
 
