@@ -84,22 +84,21 @@ AUTO_PARALLEL_COND_TEMPLATE = """
 """
 
 NCCL_COMMCONTEXT_INIT = """
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
   if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
     auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-    phi::distributed::CommContextManager::CreateNCCLCommContext(
-            store, std::to_string(ring_id), rank, nranks);
+    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
   }}
 #endif
 """
 
 SET_NCCL_COMMCONTEXT = """
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
   const auto & comm_context_manager = phi::distributed::CommContextManager::GetInstance();
-  phi::distributed::NCCLCommContext* comm_context = nullptr;
+  COMM_CONTEXT* comm_context = nullptr;
   if (comm_context_manager.Has(std::to_string(ring_id))) {{
-    comm_context = static_cast<phi::distributed::NCCLCommContext *>(
+    comm_context = static_cast<COMM_CONTEXT*>(
           comm_context_manager.Get(std::to_string(ring_id)));
     PADDLE_ENFORCE_NE(
         comm_context,
