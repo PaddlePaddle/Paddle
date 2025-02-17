@@ -68,7 +68,7 @@ def all_ops_into_trt(program):
     return True
 
 
-def run_pir_pass(program, disable_passes=[], scope=None):
+def run_pir_pass(program, disable_passes=[], scope=None, precision_mode=None):
     def _add_pass_(pm, passes, disable_passes):
         for pass_item in passes:
             for pass_name, pass_attr in pass_item.items():
@@ -86,6 +86,21 @@ def run_pir_pass(program, disable_passes=[], scope=None):
     passes = [
         {'trt_op_marker_pass': {}},
     ]
+    if precision_mode is not None and precision_mode.value == "INT8":
+        passes.append(
+            {
+                'delete_quant_dequant_linear_op_pass': {
+                    "__param_scope__": scope,
+                }
+            }
+        )
+        passes.append(
+            {
+                'trt_delete_weight_dequant_linear_op_pass': {
+                    "__param_scope__": scope,
+                }
+            }
+        )
     _add_pass_(pm, passes, disable_passes)
     pm.run(program)
 
@@ -343,6 +358,15 @@ def remove_duplicate_value(value_list):
             ret_list.append(value)
             ret_list_id.append(value.id)
     return ret_list
+
+
+def set_dynamic_range(paddle_op, trt_inputs):
+    if paddle_op.has_attr("inputs_index"):
+        inputs_index = paddle_op.attrs()["inputs_index"]
+        inputs_scale = paddle_op.attrs()["inputs_scale"]
+        for i, index in enumerate(inputs_index):
+            scale = inputs_scale[i]
+            trt_inputs[index].set_dynamic_range(-scale, scale)
 
 
 def get_trt_version():

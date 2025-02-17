@@ -110,5 +110,6 @@ USE_PIR_PASS(convert_MEA_to_FA);
 
 #ifdef PADDLE_WITH_TENSORRT
 USE_PIR_PASS(trt_op_marker_pass);
+USE_PIR_PASS(trt_delete_weight_dequant_linear_op_pass);
 USE_PIR_PASS(trt_sub_graph_extract_pass);
 #endif

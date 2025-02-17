@@ -277,6 +277,7 @@ def convert_to_trt(program, trt_config, scope):
             program,
             disable_passes=trt_config.disable_passes,
             scope=scope,
+            precision_mode=trt_config.precision_mode,
         )
 
         # run warmup for collecting shape
