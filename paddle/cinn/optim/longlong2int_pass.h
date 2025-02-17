@@ -86,7 +86,15 @@ namespace optim {
  *   }
  * }
  */
-void TryCastLonglong2Int(ir::stmt::BlockRef block);
+// if enforce_cast is not null, pass will run only if enforce_cast is true. if
+// enforce_cast is null, pass will run by default.
+bool TryCastLonglong2Int(ir::stmt::BlockRef block,
+                         std::optional<bool> enforce_cast = std::nullopt);
+
+// the lowered_func's args in symbol_args_set will be changed to int32
+bool TryCastLonglong2Int(ir::LoweredFunc& func,  // NOLINT
+                         const std::unordered_set<std::string>& symbol_args_set,
+                         std::optional<bool> enforce_cast = std::nullopt);
 
 }  // namespace optim
 }  // namespace cinn

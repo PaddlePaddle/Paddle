@@ -628,7 +628,11 @@ void IrNode::convert_int64_to_int32() {
   if (type_ == UInt(64)) type_ = UInt(32);
 
   for (Expr &operand : operands) {
-    operand->convert_int64_to_int32();
+    if (operand->node_type() == IrNodeTy::Load) {
+      operand = ir::Cast::Make(Int(32), operand);
+    } else {
+      operand->convert_int64_to_int32();
+    }
   }
 }
 
@@ -663,7 +667,6 @@ void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
 void TryElevateInt64ToInt32(const std::vector<Expr> &expr_vec) {
   for (const Expr &expr : expr_vec) {
     if (!expr.is_index()) return;
-    if (expr.as_index().IsDynamic()) return;
   }
 
   for (const Expr &expr : expr_vec) {

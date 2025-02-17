@@ -169,6 +169,7 @@ struct GroupVectorizeInfo {
 
 struct FusionGroupInfo {
   std::vector<int64_t> loop_ranges;
+  std::vector<ir::Expr> loop_ranges_expr;
   std::vector<int64_t> loop_strides;
   std::vector<int64_t> reduce_axis;
   std::vector<std::string> reduce_var_name;
@@ -178,6 +179,7 @@ struct FusionGroupInfo {
   std::string DebugPrint() {
     std::stringstream ss;
     ss << "GroupInfo\nloop_ranges: " << cinn::utils::Join(loop_ranges, " ")
+       << "\nloop_ranges_expr: " << cinn::utils::Join(loop_ranges_expr, ", ")
        << "\nloop_strides: " << cinn::utils::Join(loop_strides, ", ")
        << "\nreduce_axis: " << cinn::utils::Join(reduce_axis, " ")
        << "\nreduce_var_name: " << cinn::utils::Join(reduce_var_name, " ")
