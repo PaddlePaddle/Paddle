@@ -2960,6 +2960,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sigmoid_grad
   backward : sigmoid_double_grad
