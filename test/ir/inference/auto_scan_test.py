@@ -834,6 +834,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 main_program_desc, util_program = create_fake_model(
                     prog_config, run_pir=True
                 )
+
                 # transform program from old ir to new ir
                 startup_program = pir.translate_to_pir(util_program.desc)
                 pir_main_program = pir.translate_to_pir(main_program_desc)
@@ -841,6 +842,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     with paddle.static.program_guard(
                         pir_main_program, startup_program
                     ):
+
                         feed_dict = {}
                         feed_data = prog_config.get_feed_data()
                         for key, value in feed_data.items():

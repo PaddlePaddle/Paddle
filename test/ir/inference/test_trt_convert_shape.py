@@ -112,6 +112,9 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
             yield self.create_inference_config(), generate_trt_nodes_num(
                 False
             ), 1e-3
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
 
         # for dynamic_shape
         self.generate_dynamic_shape()

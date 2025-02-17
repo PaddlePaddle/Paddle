@@ -213,6 +213,56 @@ class TestPoolingTRTCase6Pattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestPoolingTRTCase7Pattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = pool2d_api
+        self.api_args = {
+            "x": np.random.randn(1, 3, 32, 32).astype("float32"),
+            "ksize": [2, 3],
+            "strides": [1, 2],
+            "paddings": [0, 2],
+            "ceil_mode": True,
+            "exclusive": True,
+            "data_format": "NCHW",
+            "pooling_type": "max",
+            "global_pooling": False,
+            "adaptive": False,
+            "padding_algorithm": "EXPLICIT",
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 32, 32]}
+        self.opt_shape = {"x": [1, 3, 32, 32]}
+        self.max_shape = {"x": [2, 3, 32, 32]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
+class TestPoolingTRTCase8Pattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = pool2d_api
+        self.api_args = {
+            "x": np.random.randn(1, 3, 32, 32).astype("float32"),
+            "ksize": [2, 3],
+            "strides": [1, 2],
+            "paddings": [0, 2],
+            "ceil_mode": False,
+            "exclusive": True,
+            "data_format": "NCHW",
+            "pooling_type": "max",
+            "global_pooling": False,
+            "adaptive": True,
+            "padding_algorithm": "EXPLICIT",
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 32, 32]}
+        self.opt_shape = {"x": [1, 3, 32, 32]}
+        self.max_shape = {"x": [2, 3, 32, 32]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+
 class TestPoolingTRTMarker(TensorRTBaseTest):
     def setUp(self):
         self.python_api = pool2d_api
