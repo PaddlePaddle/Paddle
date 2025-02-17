@@ -442,7 +442,7 @@ int32_t IterMapRewriter::FindBaseSplit(const ir::IterSum& expr,
   // Found! return the base index.
   if (base_index != -1) return base_index;
 
-  // If not found const scale, compare the symbole length in scale.
+  // If not found const scale, compare the symbol length in scale.
   int32_t min_reduce_size = 0;
   for (int32_t i = rbegin; i >= 0; --i) {
     if (skip_flag[i]) continue;

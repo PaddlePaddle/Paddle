@@ -769,7 +769,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
         PADDLE_ENFORCE_NE(
             arg_it,
             name2expr.end(),
-            ::common::errors::InvalidArgument("Cant't find argument: %s", arg));
+            ::common::errors::InvalidArgument("Can't find argument: %s", arg));
         step.inputs[param2args.parameter()].emplace_back(arg_it->second);
       }
     }

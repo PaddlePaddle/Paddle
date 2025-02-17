@@ -278,7 +278,7 @@ class Stage : public Object {
   /**
    * \brief Mark the stage compute at the level of some other stage.
    *
-   * NOTE This can only be called after all transformations are preformed, and
+   * NOTE This can only be called after all transformations are performed, and
    * once called, no further transform can perform for that if the iterators are
    * changed, the original `ComputeAt` level will become invalid.
    *
