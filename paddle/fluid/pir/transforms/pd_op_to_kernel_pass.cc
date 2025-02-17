@@ -101,6 +101,8 @@ pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
           ConvertOpTypeToKernelType(ctx, vec_type[i], place));
     }
     return pir::VectorType::get(ctx, vec_target_type);
+  } else if (!op_type) {
+    return pir::Type();
   }
   PADDLE_THROW(common::errors::Unimplemented(
       "Not support op type %s in ConvertOpTypeToKernelType.", op_type));
@@ -1731,6 +1733,8 @@ void AddShadowFeedForValue(
     block->push_back(shadow_tensors_op);
     (*map_op_pair)[op_item] = shadow_tensors_op;
     (*map_value_pair)[op_item->result(index)] = shadow_tensors_op->result(0);
+  } else if (!op_item->result(index).type()) {
+    return;
   } else {
     PADDLE_THROW(
         common::errors::Unimplemented("AddShadowFeed for value only support "
