@@ -78,10 +78,6 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     int64_t src = iter.first;
     int64_t dst = iter.second;
     if (src == cur_global_rank) {
-#if defined(PADDLE_WITH_XPU)
-      PADDLE_THROW(::common::errors::Unimplemented(
-          "Not supported PSendKernel on xpu yet."));
-#else
       VLOG(3) << "Send from src " << src << " to dst " << dst;
       int64_t dst_local_rank = GetLocalRankInParticipate(all_process_ids, dst);
       // Since send kernel only has input, so we don't need to infermeta
@@ -99,12 +95,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       // 2. The meta of some kernels can't decide in compile time.
       // 3. DenseTensor with empty value only need infermeta and skip the real
       // kernel execution.
-#endif
     } else if (dst == cur_global_rank) {
-#if defined(PADDLE_WITH_XPU)
-      PADDLE_THROW(::common::errors::Unimplemented(
-          "Not supported PRecvKernel on xpu yet."));
-#else
       VLOG(3) << "Recv from src " << src << " to dst " << dst;
       int64_t src_local_rank = GetLocalRankInParticipate(all_process_ids, src);
       RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
@@ -115,7 +106,6 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 {} /*out_shape*/,
                                 /*dynamic_shape=*/true,
                                 GetMutableTensor(out));
-#endif
     }
   }
   SetDistProps(out, in.dims(), out_dist_attr);
