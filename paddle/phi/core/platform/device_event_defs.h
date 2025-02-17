@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#ifndef PADDLE_PHI_CORE_PLATFORM_DEVICE_EVENT_DEFS_H
+#define PADDLE_PHI_CORE_PLATFORM_DEVICE_EVENT_DEFS_H
+
 #pragma once
 #include <memory>
 
-#include "glog/logging.h"
 #include "paddle/phi/core/platform/device_type.h"
 
 namespace paddle {
@@ -53,94 +55,17 @@ enum EventStatus {
 
 class DeviceEvent {
  public:
-  explicit DeviceEvent(const phi::Place& place, unsigned int flag)
-      : event_(), place_(place), flag_(flag) {
-    type_id_ = DeviceTypeToId(platform::Place2DeviceType(place));
-    PADDLE_ENFORCE_LT(type_id_,
-                      MaxDeviceTypes,
-                      common::errors::PreconditionNotMet(
-                          "Required type < %d, but received type = %d",
-                          MaxDeviceTypes,
-                          type_id_));
-#ifndef PADDLE_WITH_CUSTOM_DEVICE
-    // TODO(Aurelius84): only support CPU/CUDA.
-    PADDLE_ENFORCE_LT(type_id_,
-                      3,
-                      common::errors::Unavailable(
-                          "Currently DeviceEvent do not support %s", place));
-#endif
-    PADDLE_ENFORCE_NOT_NULL(
-        event_creator_[type_id_],
-        common::errors::Unavailable("event_creator_[%d] shall not be nullptr.",
-                                    type_id_));
-    event_creator_[type_id_](this, place, flag);
-  }
-
+  explicit DeviceEvent(const phi::Place& place, unsigned int flag);
   ~DeviceEvent() {}
 
-  void Record(const DeviceContext* dev_ctx) {
-    PADDLE_ENFORCE_NOT_NULL(
-        event_recorder_[type_id_],
-        common::errors::Unavailable("event_recorder_[%d] shall not be nullptr.",
-                                    type_id_));
-    if (!recorded_) {
-      recorded_ = true;
-    }
-    event_recorder_[type_id_](this, dev_ctx);
-  }
-
-  bool Query() {
-    PADDLE_ENFORCE_NOT_NULL(
-        event_querier_[type_id_],
-        common::errors::Unavailable("event_querier_[%d] shall not be nullptr.",
-                                    type_id_));
-    if (!recorded_) {
-      VLOG(4) << "Event " << this << " is not recorded yet, and skip query!";
-      return true;
-    }
-    return event_querier_[type_id_](this);
-  }
-
-  void Finish() const {
-    PADDLE_ENFORCE_NOT_NULL(
-        event_finisher_[type_id_],
-        common::errors::Unavailable("event_finisher_[%d] shall not be nullptr.",
-                                    type_id_));
-    event_finisher_[type_id_](this);
-  }
-
-  void SetFinished() {
-    PADDLE_ENFORCE_NOT_NULL(
-        event_finished_setter_[type_id_],
-        common::errors::Unavailable(
-            "event_finished_setter_[%d] shall not be nullptr.", type_id_));
-    event_finished_setter_[type_id_](this);
-  }
-
-  void Reset() {
-    PADDLE_ENFORCE_NOT_NULL(
-        event_resetter_[type_id_],
-        common::errors::Unavailable("event_resetter_[%d] shall not be nullptr.",
-                                    type_id_));
-    event_resetter_[type_id_](this);
-  }
-
-  void Wait(const DeviceType& waiter_type, const DeviceContext* context) const {
-    auto waiter_idx = DeviceTypeToId(waiter_type);
-    PADDLE_ENFORCE_NOT_NULL(event_waiter_[waiter_idx][type_id_],
-                            common::errors::Unavailable(
-                                "event_waiter_[%d][%d] shall not be nullptr.",
-                                waiter_idx,
-                                type_id_));
-    if (!recorded_) {
-      VLOG(4) << "Event " << this << " is not recorded yet, and skip wait!";
-      return;
-    }
-    event_waiter_[waiter_idx][type_id_](this, context);
-  }
+  void Record(const DeviceContext* dev_ctx);
+  bool Query();
+  void Finish() const;
+  void SetFinished();
+  void Reset();
+  void Wait(const DeviceType& waiter_type, const DeviceContext* context) const;
 
   void InitEvent(std::shared_ptr<void> event) { event_ = event; }
-
   std::shared_ptr<void> GetEvent() const { return event_; }
 
  private:
@@ -148,15 +73,9 @@ class DeviceEvent {
   phi::Place place_;
   int type_id_;
   unsigned int flag_;
-
-  // NOTE(chenruibiao): In cross-step stream synchronization, an event may be
-  // recorded in the first step and waited in the second step. So, in the first
-  // step, the WaitEvent may be called without RecordEvent.
-  // On cuda device, it is ok to wait event that is not recorded yet;
-  // while on npu device, it results in error.
-  // So, we add flag recorded_ to handle this case uniformly.
   bool recorded_{false};
 
+  // Static function pointers for event operations
   static EventCreateFunction event_creator_[MaxDeviceTypes];
   static EventRecordFunction event_recorder_[MaxDeviceTypes];
   static EventQueryFunction event_querier_[MaxDeviceTypes];
@@ -165,27 +84,23 @@ class DeviceEvent {
   static EventWaitFunction event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
   static EventResetFunction event_resetter_[MaxDeviceTypes];
 
+  // Template friends for function registerers
   template <DeviceType device_typ>
   friend struct EventCreateFunctionRegisterer;
-
   template <DeviceType device_typ>
   friend struct EventRecordFunctionRegisterer;
-
   template <DeviceType device_typ>
   friend struct EventQueryFunctionRegisterer;
-
   template <DeviceType device_typ>
   friend struct EventFinishFunctionRegisterer;
-
   template <DeviceType device_typ>
   friend struct EventSetFinishedFunctionRegisterer;
-
   template <DeviceType waiter_typ, DeviceType event_type>
   friend struct EventWaitFunctionRegisterer;
-
   template <DeviceType device_typ>
   friend struct EventResetFunctionRegisterer;
 };
 
 }  // namespace platform
 }  // namespace paddle
+#endif  // PADDLE_PHI_CORE_PLATFORM_DEVICE_EVENT_DEFS_H
