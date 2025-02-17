@@ -119,6 +119,7 @@ PD_REGISTER_KERNEL(scatter,
                    ALL_LAYOUT,
                    phi::ScatterKernel,
                    float,
-                   int,
+                   int32_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
