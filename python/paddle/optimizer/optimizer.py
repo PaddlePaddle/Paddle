@@ -51,6 +51,7 @@ from ..base.backward import (
 )
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
+from ..base.log_helper import get_logger
 from .fusion_utils import FusionStorage
 from .lr import LambdaDecay, LRScheduler
 
@@ -68,6 +69,11 @@ if TYPE_CHECKING:
         params: Sequence[Tensor]
         weight_decay: NotRequired[float | WeightDecayRegularizer | None]
         learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
+
+local_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 __all__ = []
@@ -361,9 +367,22 @@ class Optimizer:
         if self.__class__.__name__ != "AdamW":
             return
 
+        # add buffer check
+        if self.fused_states_buffer is not None:
+            for _, v in self._accumulators.items():
+                for _, vv in v.items():
+                    if not vv._is_shared_buffer_with(self.fused_states_buffer):
+                        self.need_refuse()
+            for _, v in self._master_weights.items():
+                if not v._is_shared_buffer_with(self.fused_states_buffer):
+                    self.need_refuse()
+
         if not self._need_refuse:
             return
 
+        local_logger.warning(
+            f"refuse optimizer fuse buffer version start: {self._fuse_buffer_version}"
+        )
         self.fusion_storage = FusionStorage(
             self._accumulators,
             self._master_weights,
@@ -371,6 +390,9 @@ class Optimizer:
         )
         self._fuse_buffer_version += 1
         self.reset_need_refuse()
+        local_logger.warning(
+            f"refuse optimizer fuse buffer version end: {self._fuse_buffer_version}"
+        )
 
     @framework.dygraph_only
     def state_dict(self) -> dict[str, Tensor]:
