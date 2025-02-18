@@ -26,6 +26,8 @@ def GenerateFileStructureForFinalDygraph(eager_dir):
     |  |- forwards
     |     |- "dygraph_functions.cc"
     |     |- "dygraph_functions.h"
+    |     |- "dygraph_grad_functions.cc"
+    |     |- "dygraph_grad_functions.h"
     |
     |  |- backwards
     |     |- "nodes.cc"
@@ -42,10 +44,12 @@ def GenerateFileStructureForFinalDygraph(eager_dir):
 
     # Empty files
     dygraph_forward_api_h_path = os.path.join(
-        generated_dir, "dygraph_functions.h"
+        forwards_dir, "dygraph_functions.h"
     )
     empty_files = [dygraph_forward_api_h_path]
+    empty_files.append(os.path.join(forwards_dir, "dygraph_grad_functions.h"))
     empty_files.append(os.path.join(forwards_dir, "dygraph_functions.cc"))
+    empty_files.append(os.path.join(forwards_dir, "dygraph_grad_functions.cc"))
     empty_files.append(os.path.join(nodes_dir, "nodes.cc"))
     empty_files.append(os.path.join(nodes_dir, "nodes.h"))
 

@@ -529,13 +529,39 @@ def main():
         default='paddle/phi/api/lib/sparse_api.cc',
     )
 
+    parser.add_argument(
+        '--backward_api_yaml_path',
+        help='path to sparse api yaml file',
+        nargs='+',
+        default='paddle/phi/ops/yaml/sparse_backward_ops.yaml',
+    )
+
+    parser.add_argument(
+        '--backward_api_header_path',
+        help='output of generated api header code file',
+        default='paddle/phi/api/backward/sparse_backward_api.h',
+    )
+
+    parser.add_argument(
+        '--backward_api_source_path',
+        help='output of generated api source code file',
+        default='paddle/phi/api/lib/sparse_backward_api.cc',
+    )
+
     options = parser.parse_args()
 
     api_yaml_path = options.api_yaml_path
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
-
+    backward_api_yaml_path = options.backward_api_yaml_path
+    backward_header_file_path = options.backward_api_header_path
+    backward_source_file_path = options.backward_api_source_path
     generate_api(api_yaml_path, header_file_path, source_file_path)
+    generate_api(
+        backward_api_yaml_path,
+        backward_header_file_path,
+        backward_source_file_path,
+    )
 
 
 if __name__ == '__main__':

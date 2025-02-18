@@ -2074,7 +2074,11 @@ class DistForwardAPI(ForwardAPI):
 
 
 def generate_api(
-    api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+    api_yaml_path,
+    is_fused_ops_yaml,
+    header_file_path,
+    source_file_path,
+    grad_flag,
 ):
     apis = []
 
@@ -2127,7 +2131,7 @@ def generate_api(
         header_file.write(dist_forward_api.gene_api_declaration())
         if dist_forward_api.api not in ["embedding_grad", "cudnn_lstm_grad"]:
             source_file.write(dist_forward_api.gene_api_code())
-    if not is_fused_ops_yaml:
+    if not is_fused_ops_yaml and grad_flag:
         source_file.write(manual_impl)
 
     header_file.write(namespace[1])
@@ -2151,6 +2155,13 @@ def main():
     )
 
     parser.add_argument(
+        '--backward_api_yaml_path',
+        help='path to api yaml file',
+        nargs='+',
+        default=['paddle/phi/ops/yaml/backward.yaml'],
+    )
+
+    parser.add_argument(
         '--is_fused_ops_yaml',
         help='flag of fused ops yaml',
         action='store_true',
@@ -2168,14 +2179,41 @@ def main():
         default='paddle/phi/api/lib/api.cc',
     )
 
+    parser.add_argument(
+        '--backward_api_header_path',
+        help='output of generated api header code file',
+        default='paddle/phi/api/backward/backward_api.h',
+    )
+
+    parser.add_argument(
+        '--backward_api_source_path',
+        help='output of generated api source code file',
+        default='paddle/phi/api/lib/backward_api.cc',
+    )
+
     options = parser.parse_args()
     api_yaml_path = options.api_yaml_path
+    backward_api_yaml_path = options.backward_api_yaml_path
     is_fused_ops_yaml = options.is_fused_ops_yaml
     header_file_path = options.api_header_path
     source_file_path = options.api_source_path
+    backward_header_file_path = options.backward_api_header_path
+    backward_source_file_path = options.backward_api_source_path
 
     generate_api(
-        api_yaml_path, is_fused_ops_yaml, header_file_path, source_file_path
+        api_yaml_path,
+        is_fused_ops_yaml,
+        header_file_path,
+        source_file_path,
+        False,
+    )
+
+    generate_api(
+        backward_api_yaml_path,
+        is_fused_ops_yaml,
+        backward_header_file_path,
+        backward_source_file_path,
+        True,
     )
 
 
