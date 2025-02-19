@@ -13,14 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <unordered_set>
-#include <utility>
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/lowered_func.h"
-#include "paddle/cinn/poly/isl_utils.h"
-#include "paddle/cinn/poly/stage.h"
+#include "paddle/cinn/pass/pass.h"
 
 namespace cinn {
 namespace optim {
@@ -40,7 +36,7 @@ namespace optim {
  *   2) Buffer and Memory Access Optimization
  *   3) Expression Simplification and Type Casting
  */
-void OptimizeExprGPU(Expr* expr);
+void OptimizeExprGPU(ir::stmt::BlockRef func_body);
 
 /**
  * Remove the GPU block/thread-bound For loops, add IfThenElse guards if needed.
@@ -70,7 +66,13 @@ void OptimizeExprGPU(Expr* expr);
  *
  * @param fn The LoweredFunc to process.
  */
-void RemoveGpuForLoops(ir::LoweredFunc fn);
+class RemoveGpuForLoopsPass : public FuncPass {
+ public:
+  RemoveGpuForLoopsPass() : FuncPass("remove_gpu_for_loops") {}
+
+  LogicalResult Run(ir::LoweredFunc fn) override;
+};
+std::unique_ptr<FuncPass> CreateRemoveGpuForLoopsPass();
 
 /**
  * Removes conditional wrappers around CUDA thread synchronization calls.
@@ -101,7 +103,14 @@ void RemoveGpuForLoops(ir::LoweredFunc fn);
  * =>
  *   if (xxxx > 0) { __syncthreads(); }
  */
-void CudaSyncThreadsDropIfThenElse(ir::LoweredFunc fn);
+class CudaSyncThreadsDropIfThenElsePass : public BlockPass {
+ public:
+  CudaSyncThreadsDropIfThenElsePass()
+      : BlockPass("cuda_sync_threads_drop_ifthenelse") {}
+
+  LogicalResult Run(ir::stmt::BlockRef block) override;
+};
+std::unique_ptr<BlockPass> CreateCudaSyncThreadsDropIfThenElsePass();
 
 }  // namespace optim
 }  // namespace cinn

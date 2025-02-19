@@ -85,9 +85,17 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #ifdef CINN_WITH_CUDA
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
-          RemoveGpuForLoops(copied);
+          LOG(INFO) << "Before removing GPU for loops:\n" << copied;
+          FuncPassManager func_pass_manager;
+          func_pass_manager.AddPass(CreateRemoveGpuForLoopsPass());
+          func_pass_manager.Run(copied);
+          LOG(INFO) << "After removing GPU for loops:\n" << copied;
         }
-        CudaSyncThreadsDropIfThenElse(copied);
+        VLOG(10) << "Before Optimize CudaSyncThreadsDropIfThenElse:" << copied;
+        BlockPassManager blk_pass_manager;
+        blk_pass_manager.AddPass(CreateCudaSyncThreadsDropIfThenElsePass());
+        blk_pass_manager.Run(copied->body_block);
+        VLOG(10) << "After Optimize CudaSyncThreadsDropIfThenElse:" << copied;
         FuncPassManager func_pass_manager;
         VLOG(10) << "Before Optimize TransBufferWithDynamicShape:" << copied;
         func_pass_manager.AddPass(CreateTransBufferWithDynamicShapePass());
@@ -99,10 +107,17 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #ifdef CINN_WITH_HIP
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
-          RemoveGpuForLoops(copied);
+          LOG(INFO) << "Before removing GPU for loops:\n" << copied;
+          FuncPassManager func_pass_manager;
+          func_pass_manager.AddPass(CreateRemoveGpuForLoopsPass());
+          func_pass_manager.Run(copied);
+          LOG(INFO) << "After removing GPU for loops:\n" << copied;
         }
-        CudaSyncThreadsDropIfThenElse(copied);
-    // CudaTransBufferWithDynamicShape(&copied);
+        VLOG(10) << "Before Optimize CudaSyncThreadsDropIfThenElse:" << copied;
+        BlockPassManager blk_pass_manager;
+        blk_pass_manager.AddPass(CreateCudaSyncThreadsDropIfThenElsePass());
+        blk_pass_manager.Run(copied->body_block);
+        VLOG(10) << "After Optimize CudaSyncThreadsDropIfThenElse:" << copied;
 #endif
       },
       [&](common::HygonDCUArchSYCL) { CINN_NOT_IMPLEMENTED },
