@@ -118,7 +118,7 @@ std::vector<ir::stmt::StmtRef> CodeGenGpuDev::GenerateBufferAliasStmts(
   return buffer_alias;
 }
 
-std::vector<ir::stmt::StmtRef> FilterDeallocTempBuffers(
+std::vector<ir::stmt::StmtRef> CodeGenGpuDev::FilterDeallocTempBuffers(
     const std::vector<ir::stmt::StmtRef> &frees) {
   std::vector<ir::stmt::StmtRef> filtered;
   for (const auto &free : frees) {
