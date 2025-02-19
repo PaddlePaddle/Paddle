@@ -152,5 +152,34 @@ class TestTensorCopyToCPUWithComputeOnDefaultGPU(Dy2StTestBase):
         self.assertTrue(static_place.is_cpu_place())
 
 
+class TestMemcpyGrad(Dy2StTestBase):
+    def test_memcpy_grad(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        def fn(x):
+            return x.cpu()
+
+        paddle.seed(2)
+        x_dy = paddle.rand([3, 2])
+        x_dy.stop_gradient = False
+        paddle.seed(2)
+        x_st = paddle.rand([3, 2])
+        x_st.stop_gradient = False
+
+        static_fn = paddle.jit.to_static(fn)
+
+        dy_out = fn(x_dy)
+        st_out = static_fn(x_st)
+        np.testing.assert_allclose(dy_out, st_out)
+
+        st_out.backward()
+        dy_out.backward()
+
+        self.assertIsNone(x_dy.grad)
+        # TODO: The static graph result needs to align with the dynamic graph result.
+        # self.assertIsNone(x_st.grad)
+
+
 if __name__ == '__main__':
     unittest.main()
