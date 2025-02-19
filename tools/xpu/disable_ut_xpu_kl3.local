@@ -44,7 +44,6 @@ test_c_comm_init_op
 test_c_concat
 test_c_split
 test_cast_mixed_precision_op_fuse_pass
-test_clip_grad_value_
 test_comp_batch_norm_grad_deprecated
 test_comp_eager_batch_norm_grad
 test_comp_eager_matmul_double_grad
@@ -85,7 +84,6 @@ test_distribution_lkj_cholesky
 test_distribution_multivariate_normal
 test_distribution_normal
 test_dlpack
-test_dygraph_multi_forward
 test_eager_tensor
 test_eager_trace_op
 test_eig_op
