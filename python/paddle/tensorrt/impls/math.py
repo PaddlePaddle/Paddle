@@ -18,6 +18,7 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     add_cast_reduce_layer,
+    add_constant_layer,
     add_elementwise_layer,
     add_reduce_layer,
     broadcast,
@@ -215,6 +216,21 @@ def clip_converter(network, paddle_op, inputs):
     layer = network.add_elementwise(
         lower_clip, beta_t, trt.ElementWiseOperation.MIN
     )
+    return layer.get_output(0)
+
+
+@converter_registry.register("pd_op.pow", trt_version="trt_version_ge=8.0")
+def pow_converter(network, paddle_op, inputs):
+    from paddle.tensorrt.util import support_fp32_mix_precision
+
+    x = inputs[0]
+    factor = paddle_op.attrs()["y"]
+    dims_x = x.shape
+    trt_dims_y = trt.Dims([1] * len(dims_x))
+    w_data = [factor]
+    y = add_constant_layer(network, w_data, trt_dims_y, np.float32)
+    layer = network.add_elementwise(x, y, trt.ElementWiseOperation.POW)
+    support_fp32_mix_precision(paddle_op.name(), layer)
     return layer.get_output(0)
 
 
