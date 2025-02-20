@@ -847,7 +847,7 @@ class AddNOpPattern : public pir::OpRewritePattern<paddle::dialect::AddNOp> {
     rewriter.ReplaceAllUsesWith(op.result(0), tmp);
 
     rewriter.EraseOp(op);
-    rewriter.EraseOp(combine_op);
+    if (combine_op->use_empty()) rewriter.EraseOp(combine_op);
 
     return true;
   }
