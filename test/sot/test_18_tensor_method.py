@@ -17,13 +17,16 @@ import unittest
 from test_case_base import TestCaseBase, test_with_faster_guard
 
 import paddle
+from paddle.jit.sot.psdb import check_no_breakgraph
 
 
+@check_no_breakgraph
 def tensor_method_call_1(x: paddle.Tensor):
     y = x + 1
     return y.mean()
 
 
+@check_no_breakgraph
 def tensor_method_call_2(a: paddle.Tensor, b: paddle.Tensor):
     c = a.add(b)
     d = c.multiply(a)
@@ -39,15 +42,15 @@ def tensor_method_passed_by_user(a: paddle.Tensor, func: paddle.Tensor):
     return func(a)
 
 
-def tensor_method_property(a: paddle.Tensor, b: paddle.Tensor):
+@check_no_breakgraph
+def tensor_method_property_without_breakgraph(
+    a: paddle.Tensor, b: paddle.Tensor
+):
     return (
         a.name,
-        str(a.place),
         a.persistable,
         a.dtype,
-        a.type,
         a.is_tensor(),
-        a.clear_gradient(),
         a @ b.T.astype(a.dtype)
         + len(a.shape)
         + b.size
@@ -57,10 +60,22 @@ def tensor_method_property(a: paddle.Tensor, b: paddle.Tensor):
     )
 
 
+def tensor_method_property_with_breakgraph(a: paddle.Tensor, b: paddle.Tensor):
+    return (
+        a.type,
+        a.numpy(),
+        a.tolist(),
+        str(a.place),
+        a.clear_gradient(),
+    )
+
+
+@check_no_breakgraph
 def tensor_method_property_mT(a: paddle.Tensor):
     return a.mT
 
 
+@check_no_breakgraph
 def middle_tensor_name(a: paddle.Tensor, b: paddle.Tensor):
     c = a + b
     return c.name
@@ -87,7 +102,8 @@ class TestTensorMethod(TestCaseBase):
     def test_tensor_method_property(self):
         x = paddle.rand([42, 24], dtype='float64')
         y = paddle.rand([42, 24], dtype='float32')
-        self.assert_results(tensor_method_property, x, y)
+        self.assert_results(tensor_method_property_without_breakgraph, x, y)
+        self.assert_results(tensor_method_property_with_breakgraph, x, y)
 
     @unittest.skip("TODO: dynamic tensor name is different")
     def test_middle_tensor_name(self):
