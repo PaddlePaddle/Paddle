@@ -1064,7 +1064,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
                 (
                     "TensorVariable",
-                    "TensorVariable | SymbolicVariable | ConstantVariable | NumpyVariable",
+                    "TensorVariable | SymbolicVariable | ConstantVariable | NumpyNumberVariable",
                 ),
                 partial(
                     lambda magic_name, var, other: var.graph.call_tensor_method(
@@ -1092,7 +1092,7 @@ for binary_fn in BINARY_OPS:
                 Dispatcher.register(
                     binary_fn,
                     (
-                        "SymbolicVariable | ConstantVariable | NumpyVariable",
+                        "SymbolicVariable | ConstantVariable | NumpyNumberVariable",
                         "TensorVariable",
                     ),
                     partial(

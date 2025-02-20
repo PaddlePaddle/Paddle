@@ -27,6 +27,8 @@ from .basic import (  # noqa: F401
     GlobalVariable,
     ModuleVariable,
     NullVariable,
+    NumpyArrayVariable,
+    NumpyNumberVariable,
     NumpyVariable,
     ObjectVariable,
     ParameterVariable,
