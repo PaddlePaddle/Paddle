@@ -80,6 +80,17 @@ static int GetDeviceCountImpl() {
     }
   }
 
+  const auto* cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
+  if (cuda_visible_devices != nullptr) {
+    std::string cuda_visible_devices_str(cuda_visible_devices);
+    if (std::all_of(cuda_visible_devices_str.begin(),
+                    cuda_visible_devices_str.end(),
+                    [](char ch) { return ch == ' '; })) {
+      VLOG(2) << "CUDA_VISIBLE_DEVICES is set to be empty. No XPU detected.";
+      return 0;
+    }
+  }
+
   int count = 0;
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_count(&count));
   return count;
