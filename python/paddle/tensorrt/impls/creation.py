@@ -20,7 +20,6 @@ import paddle
 from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
-    cast_tensor,
     get_input_constant_value,
     resize_to_1d,
     trt_cast,
@@ -107,27 +106,31 @@ def assign_value_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.arange", trt_version="8.x")
 def arange_converter(network, paddle_op, inputs):
     start, end, step = inputs
-    zero_tensor = add_1D_constant_layer(network, 0, np.int32)
+    zero_tensor = add_1D_constant_layer(network, 0)
 
-    delta = trt_sub(network, end, start)
+    delta = trt_sub(network, start, end)
 
     f_quotient_tensor = trt_floor_div(network, delta, step)
 
     if start.dtype == trt.DataType.FLOAT:
-        quotient_tensor = cast_tensor(network, f_quotient_tensor, trt.int32)
+        quotient_tensor = trt_cast(network, f_quotient_tensor, trt.int32)
     else:
         quotient_tensor = f_quotient_tensor
 
-    number_tensor = trt_max(network, quotient_tensor, zero_tensor)
-
-    start_tensor = trt_reshape(network, start, ())
+    delta_1 = trt_sub(network, zero_tensor, quotient_tensor)
+    number_tensor = trt_max(network, delta_1, zero_tensor)
+    start1 = inputs[0]
+    start1 = trt_reshape(network, start1, ())
 
     fill_layer = network.add_fill(shape=(), op=trt.FillOperation.LINSPACE)
     fill_layer.set_input(0, number_tensor)
-    fill_layer.set_input(1, start_tensor)
+    fill_layer.set_input(1, start1)
     fill_layer.set_input(2, step)
 
-    return fill_layer.get_output(0)
+    output_tensor = fill_layer.get_output(0)
+    if start.dtype == trt.DataType.FLOAT:
+        output_tensor = trt_cast(network, output_tensor, trt.int32)
+    return output_tensor
 
 
 @converter_registry.register("pd_op.full_like", trt_version="8.x")

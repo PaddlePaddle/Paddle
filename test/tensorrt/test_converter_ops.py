@@ -419,6 +419,25 @@ class TestYoloBoxPattern(TensorRTBaseTest):
         self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
 
 
+class TestYoloBoxDynamicShapePattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = yolo_box
+        self.api_args = {
+            "x": np.random.randn(2, 14, 8, 8).astype("float32"),
+            "img_size": np.ones([2, 2]).astype("int32"),
+        }
+        self.program_config = {"feed_list": ["x", "img_size"]}
+        self.min_shape = {"x": [1, 14, 8, 8], "img_size": [1, 2]}
+        self.opt_shape = {"x": [2, 14, 8, 8], "img_size": [2, 2]}
+        self.max_shape = {"x": [3, 14, 8, 8], "img_size": [3, 2]}
+
+    def test_trt_result_dynamic(self):
+        self.check_trt_result()
+
+    def test_trt_fp16_result_dynamic(self):
+        self.check_trt_result(rtol=1e-3, atol=1e-3, precision_mode="fp16")
+
+
 class TestTanTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.tan

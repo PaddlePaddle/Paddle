@@ -16,11 +16,21 @@
 #include <cassert>
 
 #include "paddle/fluid/inference/tensorrt/plugin/yolo_box_op_plugin.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+#ifndef PADDLE_CUDA_NUM_THREADS
+#define PADDLE_CUDA_NUM_THREADS 256
+#endif
+
+#ifndef GET_BLOCKS
+#define GET_BLOCKS(N) \
+  ((N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS)
+#endif
 
 YoloBoxPlugin::YoloBoxPlugin(const nvinfer1::DataType data_type,
                              const std::vector<int>& anchors,
@@ -860,6 +870,321 @@ nvinfer1::IPluginV2Ext* PIRYoloBoxPluginCreator::deserializePlugin(
     const void* serial_data,
     size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new YoloBoxPlugin(serial_data, serial_length);
+  plugin->setPluginNamespace(namespace_.c_str());
+  return plugin;
+}
+
+YoloBoxPluginDynamic::YoloBoxPluginDynamic(const nvinfer1::DataType data_type,
+                                           const std::vector<int>& anchors,
+                                           const int class_num,
+                                           const float conf_thresh,
+                                           const int downsample_ratio,
+                                           const bool clip_bbox,
+                                           const float scale_x_y,
+                                           const bool iou_aware,
+                                           const float iou_aware_factor)
+    : data_type_(data_type),
+      class_num_(class_num),
+      conf_thresh_(conf_thresh),
+      downsample_ratio_(downsample_ratio),
+      clip_bbox_(clip_bbox),
+      scale_x_y_(scale_x_y),
+      iou_aware_(iou_aware),
+      iou_aware_factor_(iou_aware_factor) {
+  anchors_.insert(anchors_.end(), anchors.begin(), anchors.end());
+  assert(data_type_ == nvinfer1::DataType::kFLOAT ||
+         data_type_ == nvinfer1::DataType::kHALF);
+  assert(class_num_ > 0);
+  assert((iou_aware_factor_ > 0 && iou_aware_factor_ < 1));
+  cudaMalloc(&anchors_device_, anchors.size() * sizeof(int));
+  cudaMemcpy(anchors_device_,
+             anchors.data(),
+             anchors.size() * sizeof(int),
+             cudaMemcpyHostToDevice);
+}
+
+YoloBoxPluginDynamic::YoloBoxPluginDynamic(void const* serialData,
+                                           size_t serialLength) {
+  DeserializeValue(&serialData, &serialLength, &data_type_);
+  DeserializeValue(&serialData, &serialLength, &anchors_);
+  DeserializeValue(&serialData, &serialLength, &class_num_);
+  DeserializeValue(&serialData, &serialLength, &conf_thresh_);
+  DeserializeValue(&serialData, &serialLength, &downsample_ratio_);
+  DeserializeValue(&serialData, &serialLength, &clip_bbox_);
+  DeserializeValue(&serialData, &serialLength, &scale_x_y_);
+  DeserializeValue(&serialData, &serialLength, &iou_aware_);
+  DeserializeValue(&serialData, &serialLength, &iou_aware_factor_);
+}
+
+size_t YoloBoxPluginDynamic::getSerializationSize() const TRT_NOEXCEPT {
+  size_t serialize_size = 0;
+  serialize_size += SerializedSize(data_type_);
+  serialize_size += SerializedSize(anchors_);
+  serialize_size += SerializedSize(class_num_);
+  serialize_size += SerializedSize(conf_thresh_);
+  serialize_size += SerializedSize(downsample_ratio_);
+  serialize_size += SerializedSize(clip_bbox_);
+  serialize_size += SerializedSize(scale_x_y_);
+  serialize_size += SerializedSize(iou_aware_);
+  serialize_size += SerializedSize(iou_aware_factor_);
+  return serialize_size;
+}
+
+nvinfer1::IPluginV2DynamicExt* YoloBoxPluginDynamic::clone() const
+    TRT_NOEXCEPT {
+  return new YoloBoxPluginDynamic(data_type_,
+                                  anchors_,
+                                  class_num_,
+                                  conf_thresh_,
+                                  downsample_ratio_,
+                                  clip_bbox_,
+                                  scale_x_y_,
+                                  iou_aware_,
+                                  iou_aware_factor_);
+}
+
+void YoloBoxPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
+  SerializeValue(&buffer, data_type_);
+  SerializeValue(&buffer, anchors_);
+  SerializeValue(&buffer, class_num_);
+  SerializeValue(&buffer, conf_thresh_);
+  SerializeValue(&buffer, downsample_ratio_);
+  SerializeValue(&buffer, clip_bbox_);
+  SerializeValue(&buffer, scale_x_y_);
+  SerializeValue(&buffer, iou_aware_);
+  SerializeValue(&buffer, iou_aware_factor_);
+}
+
+void YoloBoxPluginDynamic::terminate() TRT_NOEXCEPT {}
+
+void YoloBoxPluginDynamic::destroy() TRT_NOEXCEPT {}
+
+const char* YoloBoxPluginDynamic::getPluginVersion() const TRT_NOEXCEPT {
+  return "1";
+}
+
+nvinfer1::DimsExprs YoloBoxPluginDynamic::getOutputDimensions(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
+  auto batch_size = inputs[0].d[0];
+  auto h = inputs[0].d[2];
+  auto w = inputs[0].d[3];
+  int anchor_num = anchors_.size() / 2;
+
+  VLOG(3) << "YoloBox Plugin input shape: batch_size="
+          << batch_size->getConstantValue() << ", h=" << h->getConstantValue()
+          << ", w=" << w->getConstantValue() << ", anchor_num=" << anchor_num;
+
+  // box_num = h * w * anchor_num
+  auto hw = expr_builder.operation(nvinfer1::DimensionOperation::kPROD, *h, *w);
+
+  nvinfer1::DimsExprs output_dims;
+  output_dims.nbDims = 3;
+  output_dims.d[0] = batch_size;  // batch_size
+  output_dims.d[1] = expr_builder.operation(
+      nvinfer1::DimensionOperation::kPROD,
+      *hw,
+      *expr_builder.constant(anchor_num));  // h * w * anchor_num
+
+  if (output_index == 0) {
+    // boxes output: [batch_size, h * w * anchor_num, 4]
+    output_dims.d[2] = expr_builder.constant(4);
+    VLOG(3) << "YoloBox Plugin output boxes shape: batch_size="
+            << batch_size->getConstantValue() << ", box_num="
+            << (h->getConstantValue() * w->getConstantValue() * anchor_num)
+            << ", box_size=4";
+  } else {
+    // scores output: [batch_size, h * w * anchor_num, class_num]
+    output_dims.d[2] = expr_builder.constant(class_num_);
+    VLOG(3) << "YoloBox Plugin output scores shape: batch_size="
+            << batch_size->getConstantValue() << ", box_num="
+            << (h->getConstantValue() * w->getConstantValue() * anchor_num)
+            << ", class_num=" << class_num_;
+  }
+
+  return output_dims;
+}
+
+bool YoloBoxPluginDynamic::supportsFormatCombination(
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
+    int nb_outputs) TRT_NOEXCEPT {
+  int total = nb_inputs + nb_outputs;
+  assert(pos < total);
+
+  if (pos == 0) {
+    return ((in_out[0].type == nvinfer1::DataType::kFLOAT) ||
+            (in_out[0].type == nvinfer1::DataType::kHALF)) &&
+           (in_out[0].format == nvinfer1::TensorFormat::kLINEAR);
+  } else if (pos == 1) {
+    return (in_out[1].type == nvinfer1::DataType::kINT32) &&
+           (in_out[1].format == nvinfer1::TensorFormat::kLINEAR);
+  } else {
+    return (in_out[pos].type == in_out[0].type) &&
+           (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+  }
+}
+
+void YoloBoxPluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc* in,
+    int nb_inputs,
+    const nvinfer1::DynamicPluginTensorDesc* out,
+    int nb_outputs) TRT_NOEXCEPT {}
+
+nvinfer1::DataType YoloBoxPluginDynamic::getOutputDataType(
+    int index,
+    const nvinfer1::DataType* input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
+  return input_types[0];
+}
+
+template <typename T>
+int YoloBoxPluginDynamic::enqueue_impl(
+    const nvinfer1::PluginTensorDesc* input_desc,
+    const nvinfer1::PluginTensorDesc* output_desc,
+    const void* const* inputs,
+    void* const* outputs,
+    void* workspace,
+    cudaStream_t stream) {
+  auto batch_size = input_desc[0].dims.d[0];
+  auto input_h = input_desc[0].dims.d[2];
+  auto input_w = input_desc[0].dims.d[3];
+
+  const T* input = static_cast<const T*>(inputs[0]);
+  const int* imgsize = static_cast<const int*>(inputs[1]);
+  T* boxes = static_cast<T*>(outputs[0]);
+  T* scores = static_cast<T*>(outputs[1]);
+
+  const int box_num = output_desc[0].dims.d[1];
+  const int an_num = anchors_.size() / 2;
+
+  KeYoloBoxFw<T><<<GET_BLOCKS(batch_size * box_num),
+                   PADDLE_CUDA_NUM_THREADS,
+                   0,
+                   stream>>>(input,
+                             imgsize,
+                             boxes,
+                             scores,
+                             conf_thresh_,
+                             anchors_device_,
+                             batch_size,
+                             input_h,
+                             input_w,
+                             an_num,
+                             class_num_,
+                             box_num,
+                             input_h * downsample_ratio_,
+                             input_w * downsample_ratio_,
+                             clip_bbox_,
+                             scale_x_y_,
+                             (scale_x_y_ - 1.f) * 0.5f,
+                             iou_aware_,
+                             iou_aware_factor_);
+  return cudaGetLastError() != cudaSuccess;
+}
+
+int YoloBoxPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+                                  const nvinfer1::PluginTensorDesc* output_desc,
+                                  const void* const* inputs,
+                                  void* const* outputs,
+                                  void* workspace,
+                                  cudaStream_t stream) TRT_NOEXCEPT {
+  if (input_desc[0].type == nvinfer1::DataType::kFLOAT) {
+    return enqueue_impl<float>(
+        input_desc, output_desc, inputs, outputs, workspace, stream);
+  } else {
+    return enqueue_impl<half>(
+        input_desc, output_desc, inputs, outputs, workspace, stream);
+  }
+}
+
+YoloBoxPluginDynamicCreator::YoloBoxPluginDynamicCreator() = default;
+
+void YoloBoxPluginDynamicCreator::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
+  namespace_ = std::string(lib_namespace);
+}
+
+const char* YoloBoxPluginDynamicCreator::getPluginNamespace() const
+    TRT_NOEXCEPT {
+  return namespace_.c_str();
+}
+
+const char* YoloBoxPluginDynamicCreator::getPluginName() const TRT_NOEXCEPT {
+  return "yolo_box_plugin_dynamic";
+}
+
+const char* YoloBoxPluginDynamicCreator::getPluginVersion() const TRT_NOEXCEPT {
+  return "1";
+}
+
+const nvinfer1::PluginFieldCollection*
+YoloBoxPluginDynamicCreator::getFieldNames() TRT_NOEXCEPT {
+  return &field_collection_;
+}
+
+nvinfer1::IPluginV2Ext* YoloBoxPluginDynamicCreator::createPlugin(
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
+  const nvinfer1::PluginField* fields = fc->fields;
+
+  int type_id = -1;
+  std::vector<int> anchors;
+  int class_num = -1;
+  float conf_thresh = 0.01;
+  int downsample_ratio = 32;
+  bool clip_bbox = true;
+  float scale_x_y = 1.;
+  bool iou_aware = false;
+  float iou_aware_factor = 0.5f;
+
+  for (int i = 0; i < fc->nbFields; ++i) {
+    const std::string field_name(fc->fields[i].name);
+    if (field_name.compare("type_id") == 0) {
+      const char* attr_name = fields[i].name;
+      const void* data = fields[i].data;
+      int length = fields[i].length;
+    } else if (field_name.compare("anchors") == 0) {
+      const int length = fc->fields[i].length;
+      const int* data = static_cast<const int*>(fc->fields[i].data);
+      anchors.insert(anchors.end(), data, data + length);
+    } else if (field_name.compare("class_num") == 0) {
+      class_num = *static_cast<const int*>(fc->fields[i].data);
+    } else if (field_name.compare("conf_thresh") == 0) {
+      conf_thresh = *static_cast<const float*>(fc->fields[i].data);
+    } else if (field_name.compare("downsample_ratio") == 0) {
+      downsample_ratio = *static_cast<const int*>(fc->fields[i].data);
+    } else if (field_name.compare("clip_bbox") == 0) {
+      clip_bbox = *static_cast<const bool*>(fc->fields[i].data);
+    } else if (field_name.compare("scale_x_y") == 0) {
+      scale_x_y = *static_cast<const float*>(fc->fields[i].data);
+    } else if (field_name.compare("iou_aware") == 0) {
+      iou_aware = *static_cast<const bool*>(fc->fields[i].data);
+    } else if (field_name.compare("iou_aware_factor") == 0) {
+      iou_aware_factor = *static_cast<const float*>(fc->fields[i].data);
+    } else {
+      assert(false && "unknown plugin field name.");
+    }
+  }
+  return new YoloBoxPluginDynamic(
+      type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+      anchors,
+      class_num,
+      conf_thresh,
+      downsample_ratio,
+      clip_bbox,
+      scale_x_y,
+      iou_aware,
+      iou_aware_factor);
+}
+
+nvinfer1::IPluginV2Ext* YoloBoxPluginDynamicCreator::deserializePlugin(
+    const char* name,
+    const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
+  auto plugin = new YoloBoxPluginDynamic(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
 }

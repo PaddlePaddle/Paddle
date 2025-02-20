@@ -117,9 +117,7 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
     iou_aware = paddle_op.attrs().get("iou_aware")
     iou_aware_factor = paddle_op.attrs().get("iou_aware_factor")
     type_id = int(WithFp16())
-    input_dim = x.shape
-    input_h = input_dim[2]
-    input_w = input_dim[3]
+    anchors = np.array(anchors, dtype=np.int32)
     plugin_fields = [
         trt.PluginField(
             "type_id",
@@ -128,7 +126,7 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
         ),
         trt.PluginField(
             "anchors",
-            np.array(anchors, dtype=np.int32),
+            anchors,
             trt.PluginFieldType.INT32,
         ),
         trt.PluginField(
@@ -166,19 +164,9 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
             np.array(iou_aware_factor, dtype=np.float32),
             trt.PluginFieldType.FLOAT32,
         ),
-        trt.PluginField(
-            "h",
-            np.array(input_h, dtype=np.int32),
-            trt.PluginFieldType.INT32,
-        ),
-        trt.PluginField(
-            "w",
-            np.array(input_w, dtype=np.int32),
-            trt.PluginFieldType.INT32,
-        ),
     ]
     plugin_field_collection = trt.PluginFieldCollection(plugin_fields)
-    plugin_name = "pir_yolo_box_plugin"
+    plugin_name = "yolo_box_plugin_dynamic"
     plugin_version = "1"
     plugin = get_trt_plugin(
         plugin_name, plugin_field_collection, plugin_version
