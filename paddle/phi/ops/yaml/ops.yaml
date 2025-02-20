@@ -5295,6 +5295,15 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : variance
+  args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : variance
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : view_dtype
   args : (Tensor input, DataType dtype)
   output : Tensor(out)

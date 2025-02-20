@@ -431,6 +431,7 @@ CINN_REGISTER_HELPER(reduce_ops) {
 
   CINN_REGISTER_REDUCTION(reduce_sum, ReduceSum);
   CINN_REGISTER_REDUCTION(reduce_prod, ReduceProd);
+  CINN_REGISTER_REDUCTION(variance, ReduceProd);
   CINN_REGISTER_REDUCTION(reduce_max, ReduceMax);
   CINN_REGISTER_REDUCTION(reduce_min, ReduceMin);
 

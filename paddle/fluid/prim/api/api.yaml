@@ -56,3 +56,4 @@
 - isnan
 - isfinite
 - take_along_axis
+- variance
