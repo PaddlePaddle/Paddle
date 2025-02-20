@@ -396,11 +396,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             // optim::EliminateCommonGlobalMemoryRead(&(func_body));
             ir::stmt::BlockRef func_body_block =
                 ir::ConvertExprBlockToStmtBlock(func_body);
-            LOG(INFO) << "Before OptimizeExprGPU in op_lowering_impl: \n"
-                      << func_body_block;
+            VLOG(4) << "Before OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
             optim::OptimizeExprGPU(func_body_block);
-            LOG(INFO) << "After OptimizeExprGPU in op_lowering_impl: \n"
-                      << func_body_block;
+            VLOG(4) << "After OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
             func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
 #endif
           },
@@ -408,11 +408,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             // optim::EliminateCommonGlobalMemoryRead(&(func_body));
             ir::stmt::BlockRef func_body_block =
                 ir::ConvertExprBlockToStmtBlock(func_body);
-            LOG(INFO) << "Before OptimizeExprGPU in op_lowering_impl: \n"
-                      << func_body_block;
+            VLOG(4) << "Before OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
             optim::OptimizeExprGPU(func_body_block);
-            LOG(INFO) << "After OptimizeExprGPU in op_lowering_impl: \n"
-                      << func_body_block;
+            VLOG(4) << "After OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
             func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
           });
     }
