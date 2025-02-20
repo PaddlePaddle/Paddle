@@ -131,21 +131,21 @@ ext_suffix = (
 
 
 def get_header_install_dir(header):
-    if 'pb.h' in header:
+    if 'pb.h' in header or 'pd_op.h' in header:
         install_dir = re.sub(
-            env_dict.get("PADDLE_BINARY_DIR") + '/', '', header
+            env_dict.get("PADDLE_BINARY_DIR") + '/', '', header, count=1
         )
     elif 'third_party' not in header:
         # paddle headers
         install_dir = re.sub(
-            env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
+            env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header, count=1
         )
         if 'fluid/jit' in install_dir:
-            install_dir = re.sub('fluid/jit', 'jit', install_dir)
+            install_dir = re.sub('fluid/jit', 'jit', install_dir, count=1)
     else:
         # third_party
         install_dir = re.sub(
-            env_dict.get("THIRD_PARTY_PATH"), 'third_party', header
+            env_dict.get("THIRD_PARTY_PATH"), 'third_party', header, count=1
         )
         patterns = [
             'install/mkldnn/include/',
@@ -153,7 +153,7 @@ def get_header_install_dir(header):
             'third_party/xpu/src/extern_xpu/xpu/include/',
         ]
         for pattern in patterns:
-            install_dir = re.sub(pattern, '', install_dir)
+            install_dir = re.sub(pattern, '', install_dir, count=1)
     return install_dir
 
 
