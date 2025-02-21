@@ -66,7 +66,6 @@ DEFINE_GENERAL_PATTERN(Layer_norm, paddle::dialect::LayerNormOp)
 DEFINE_GENERAL_PATTERN(Add, paddle::dialect::AddOp)
 DEFINE_GENERAL_PATTERN(Full, paddle::dialect::FullOp)
 DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
-DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
 DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
@@ -454,6 +453,22 @@ class Pool2dOpPattern
                    "issues in TRT. Skip TRT conversion.";
         return false;
       }
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class Conv2dOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::Conv2dOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::Conv2dOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::Conv2dOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto filter_define_op = pir::GetDefiningOpForInput(op, 1);
+    if (filter_define_op->name() != "builtin.parameter" &&
+        filter_define_op->name() != "builtin.constant") {
+      return false;
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
@@ -2822,6 +2837,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
 #endif
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
+    ps.Add(std::make_unique<Conv2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DeformableConvOpPattern>(context));

@@ -1958,11 +1958,6 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
 
-    if (FLAGS_enable_collect_shape) {
-      CollectShapeManager::Instance().CollectShapeInfo(
-          instr_node, value_exe_info_.get(), scope_);
-    }
-
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_input_hookfuncs_) {
         hook(instr_node, value_exe_info_.get(), scope_);
@@ -1983,6 +1978,10 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
         VLOG(4) << "Operator(" << instr_node->Name()  // NOLINT
                 << "): context wait and get last error";
 #endif
+      }
+      if (FLAGS_enable_collect_shape) {
+        CollectShapeManager::Instance().CollectShapeInfo(
+            instr_node, value_exe_info_.get(), scope_);
       }
       if (FLAGS_check_nan_inf) {
         CheckTensorHasNanOrInf(instr_node, scope_, value_exe_info_.get());
@@ -2009,6 +2008,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
 
     VLOG(5) << "after run kernel";
+
     instr_node->RecordEvent(cur_place);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {
