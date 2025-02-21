@@ -176,24 +176,42 @@ class PipelineParallel(ParallelModel):
             if isinstance(output, (list, tuple)):
                 global_output = list(output)
                 for ind in range(len(global_output)):
-                    if is_tensor(global_output[ind]):
-                        global_output[ind] = dist.shard_tensor(
-                            global_output[ind],
-                            g_mesh,
-                            [
-                                dist.Replicate()
-                                for _ in range(len(g_mesh._shape))
-                            ],
-                        )
+                    output_i = global_output[ind]
+                    if is_tensor(output_i):
+                        if output_i.is_dist():
+                            global_output[ind] = dist.reshard(
+                                output_i,
+                                g_mesh,
+                                [
+                                    dist.Replicate()
+                                    for _ in range(len(g_mesh._shape))
+                                ],
+                            )
+                        else:
+                            global_output[ind] = dist.shard_tensor(
+                                output_i,
+                                g_mesh,
+                                [
+                                    dist.Replicate()
+                                    for _ in range(len(g_mesh._shape))
+                                ],
+                            )
                 if isinstance(output, tuple):
                     global_output = tuple(global_output)
                 return global_output
             elif is_tensor(output):
-                return dist.shard_tensor(
-                    output,
-                    g_mesh,
-                    [dist.Replicate() for _ in range(len(g_mesh._shape))],
-                )
+                if output.is_dist():
+                    return dist.reshard(
+                        output,
+                        g_mesh,
+                        [dist.Replicate() for _ in range(len(g_mesh._shape))],
+                    )
+                else:
+                    return dist.shard_tensor(
+                        output,
+                        g_mesh,
+                        [dist.Replicate() for _ in range(len(g_mesh._shape))],
+                    )
             else:
                 raise TypeError(
                     "layer output can only be tensor or list/tuple of tensor"
