@@ -148,7 +148,7 @@ Tensor p_norm_decomp(const Tensor& x,
     auto porder_tensor = full_scalar<T>(porder, x_tmp.dtype(), x_tmp.place());
     auto inv_porder_tensor =
         full_scalar<T>(1 / porder, x_tmp.dtype(), x_tmp.place());
-    res = elementwise_pow<T>(x_tmp, porder_tensor);
+    res = elementwise_pow<T>(abs<T>(x_tmp), porder_tensor);
     res = sum<T>(res, reduce_axis, x_tmp.dtype(), keepdim);
     res = elementwise_pow<T>(res, inv_porder_tensor);
   }
