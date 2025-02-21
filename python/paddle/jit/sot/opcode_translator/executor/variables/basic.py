@@ -254,7 +254,11 @@ class PrintStmtVariable(VariableBase):
         codegen.gen_pop_top()
 
     def flatten_inner_vars(self):
-        return self.args.flatten_inner_vars()
+        return [
+            inner_var
+            for arg in list(self.args) + list(self.kwargs.values())
+            for inner_var in arg.flatten_inner_vars()
+        ]
 
 
 IMPLEMENTED_TENSOR_PROPERTIES = set()
