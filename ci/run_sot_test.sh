@@ -75,7 +75,7 @@ function run_sot_test() {
     fi
 }
 
-source paddle/scripts/paddle_build/utils.sh
+source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
 run_sot_test $1

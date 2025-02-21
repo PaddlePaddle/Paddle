@@ -17,7 +17,7 @@ ln -sf $(which python3.10) /usr/local/bin/python
 ln -sf $(which pip3.10) /usr/local/bin/pip
 pip config set global.cache-dir "/home/data/cfs/.cache/pip"
 
-function check_run_sot_ci() {
+function determine_sot_ci_trigger() {
     set +x
     # use "git commit -m 'message, test=sot'" to force ci to run
     COMMIT_RUN_CI=$(git log -10 --pretty=format:"%s" | grep -w "test=sot" || true)
@@ -64,4 +64,4 @@ function check_run_sot_ci() {
     # set -x
 }
 
-check_run_sot_ci
+determine_sot_ci_trigger

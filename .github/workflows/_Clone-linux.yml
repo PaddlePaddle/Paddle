@@ -12,6 +12,7 @@ defaults:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  ci_scripts: ${{ github.workspace }}/ci
 
 jobs:
   Clone:
@@ -44,7 +45,7 @@ jobs:
         git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
         git merge --no-ff pr
         git branch -d pr
-        bash ${{ github.workspace }}/paddle/scripts/paddle_build/third_party_tag.sh
+        bash ${ci_scripts}/third_party_tag.sh
 
     - name: Download bos client
       env:

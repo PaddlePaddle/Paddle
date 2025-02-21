@@ -13,7 +13,6 @@ concurrency:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
-  # PR_REF: ${{ github.event.pull_request.head.ref }}
 
 jobs:
   Clone:

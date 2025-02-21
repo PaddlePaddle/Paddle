@@ -9,58 +9,46 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   container_name: paddle-CI-${{ github.event.pull_request.number }}-py3
+  ci_scripts: ${{ github.workspace }}/ci
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  build-test:
+  build-and-test:
     runs-on:
       group: GZ_BD-CPU
 
     steps:
-    - name: Check docker image and run container
+    - name: Check docker image  and run container
       env:
         BRANCH: develop
         work_dir: ${{ github.workspace }}
         PADDLE_ROOT: ${{ github.workspace }}
         WITH_SHARED_PHI: "ON"
-        FLAGS_fraction_of_gpu_memory_to_use: 0.15
-        CTEST_OUTPUT_ON_FAILURE: 1
-        CTEST_PARALLEL_LEVEL: 2
-        WITH_GPU: "OFF"
-        WITH_CACHE: "ON"
-        WITH_AVX: "OFF"
         WITH_MKL: "OFF"
         WITH_TESTING: "ON"
-        WITH_COVERAGE: "OFF"
         COVERALLS_UPLOAD: "OFF"
         GIT_PR_ID: ${{ github.event.pull_request.number }}
         PADDLE_VERSION: 0.0.0
-        CMAKE_BUILD_TYPE: Release
-        PADDLE_FRACTION_GPU_MEMORY_TO_USE: 0.15
         WITH_DISTRIBUTE: "ON"
-        RUN_TEST: "ON"
-        PRECISION_TEST: "OFF"
         PREC_SUFFIX: .py3
         WITH_UNITY_BUILD: "ON"
-        TIMEOUT_DEBUG_HEL: "OFF"
         PY_VERSION: 3.9
-        CI_SKIP_CPP_TEST: "OFF"
         PROC_RUN: 12
         FLAGS_enable_eager_mode: 1
         WITH_TENSORRT: "OFF"
-        WITH_NEWIR: "ON"
         GENERATOR: "Ninja"
         CCACHE_MAXSIZE: 150G
         CCACHE_LIMIT_MULTIPLE: 0.8
+        WITH_AVX: "OFF"
       run: |
         # bash ${{ github.workspace }}/paddle/scripts/paddle_build/check_docker_image.sh
         docker run -d -t --name ${container_name} \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/gzcfs:/home/data/gzcfs" \
-          -v "/dev/shm:/dev/shm" \
+          -v "/dev/shm:/dev/shm"  \
           -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
           -e BRANCH \
           -e PR_ID \
@@ -68,37 +56,24 @@ jobs:
           -e work_dir \
           -e PADDLE_ROOT \
           -e WITH_SHARED_PHI \
-          -e FLAGS_fraction_of_gpu_memory_to_use \
-          -e CTEST_OUTPUT_ON_FAILURE \
-          -e CTEST_PARALLEL_LEVEL \
-          -e WITH_GPU \
-          -e WITH_CACHE \
-          -e WITH_AVX \
           -e WITH_MKL \
           -e WITH_TESTING \
-          -e WITH_COVERAGE \
           -e COVERALLS_UPLOAD \
           -e GIT_PR_ID \
           -e PADDLE_VERSION \
-          -e CMAKE_BUILD_TYPE \
-          -e PADDLE_FRACTION_GPU_MEMORY_TO_USE \
           -e WITH_DISTRIBUTE \
-          -e RUN_TEST \
-          -e PRECISION_TEST \
           -e PREC_SUFFIX \
           -e WITH_UNITY_BUILD \
-          -e TIMEOUT_DEBUG_HEL \
           -e PY_VERSION \
-          -e CI_SKIP_CPP_TEST \
           -e PROC_RUN \
           -e FLAGS_enable_eager_mode \
           -e WITH_TENSORRT \
-          -e WITH_NEWIR \
           -e GENERATOR \
-          -e WITH_INFERENCE_API_TEST \
           -e CCACHE_MAXSIZE \
           -e CCACHE_LIMIT_MULTIPLE \
           -e GITHUB_ENV \
+          -e ci_scripts \
+          -e WITH_AVX \
           -w ${{ github.workspace }} --network host ${docker_image}
 
     - name: Download paddle.tar.gz and merge develop
@@ -108,9 +83,13 @@ jobs:
         docker exec -t ${container_name} /bin/bash -c '
         rm -rf * .[^.]*
         rm -rf /root/.cache && ln -s /home/data/cfs/.cache/python35-cpu /root/.cache
+        set -e
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         tar xf Paddle.tar.gz --strip-components=1
-        bash ${work_dir}/paddle/scripts/paddle_build/config_paddle.sh
+        rm Paddle.tar.gz
+        git config --global user.name "PaddleCI"
+        git config --global user.email "paddle_ci@example.com"
+        git remote add upstream https://github.com/PaddlePaddle/Paddle.git
         . ../../../proxy
         git checkout develop
         git pull upstream develop
@@ -120,33 +99,31 @@ jobs:
         '
 
     - name: Configure cache and ccache
-      env:
-        work_dir: ${{ github.workspace }}
       run: |
-        docker exec -t ${container_name} /bin/bash -c 'bash ${work_dir}/paddle/scripts/paddle_build/config_cfs.sh py3 ${{ github.env }}'
+        docker exec -t ${container_name} /bin/bash -c 'bash ${ci_scripts}/config_cfs.sh py3 ${{ github.env }}'
 
     - name: Build
-      env:
-        work_dir: ${{ github.workspace }}
       run: |
         docker exec -t ${container_name} /bin/bash -c '
         export CACHE_DIR=${{ env.CACHE_DIR }}
         export CCACHE_DIR=${{ env.CCACHE_DIR }}
         . ../../../proxy
-        bash ${work_dir}/paddle/scripts/paddle_build/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} py3
+        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} py3
+        EXCODE=$?
+        exit $EXCODE
         '
 
     - name: Test
-      env:
-        work_dir: ${{ github.workspace }}
       run: |
         docker exec -t ${container_name} /bin/bash -c '
         . ../../../proxy
-        bash ${work_dir}/paddle/scripts/paddle_build/run_linux_cpu_test.sh
-        source paddle/scripts/paddle_build/utils.sh; clean_build_files
+        bash ${ci_scripts}/run_linux_cpu_test.sh
+        EXCODE=$?
+        source ${ci_scripts}/utils.sh; clean_build_files
         echo "::group::Install bce-python-sdk"
         python -m pip install bce-python-sdk==0.8.74
         echo "::endgroup::"
+        exit $EXCODE
         '
 
     - name: Upload paddle_whl
