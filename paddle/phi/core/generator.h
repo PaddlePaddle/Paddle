@@ -39,10 +39,15 @@ class Generator {
 
     GeneratorState(int64_t device_ = -1,
                    uint64_t seed_ = MAGIC_RANDOM_SEED,
-                   uint64_t offset_ = 0)
+                   uint64_t offset_ = 0,
+                   std::shared_ptr<std::mt19937_64> engine = nullptr)
         : device(device_), seed(seed_), offset(offset_) {
-      std::seed_seq seq({seed});
+      std::seed_seq seq({seed_});
       cpu_engine = std::make_shared<std::mt19937_64>(seq);
+      if (engine != nullptr) {
+        // Clone the engine state
+        *(cpu_engine) = *(engine);
+      }
     }
 
     GeneratorState(const GeneratorState& state)
