@@ -204,7 +204,7 @@ def main():
     parser.add_argument(
         '--api_source_path',
         help='output of generated api source code file',
-        default='paddle/phi/api/lib/sparse_bw_api.cc',
+        default='paddle/phi/api/lib/sparse_backward_api_base.cc',
     )
 
     options = parser.parse_args()

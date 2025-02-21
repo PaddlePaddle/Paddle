@@ -127,6 +127,73 @@ class BaseAPI:
                 input_args.append(self.inputs['input_info'][name] + ' ' + name)
         return input_args
 
+    # funcs backward_api.h will use
+    def get_grad_outputs_define(self, inplace_flag=False):
+        define_string = ""
+        for i, out_type in enumerate(self.outputs['types']):
+            out_name = self.outputs['names'][i].split('@')[0]
+            if out_type == "std::vector<Tensor>":
+                if inplace_flag and out_name in self.inplace_map:
+                    out_name = self.inplace_map[out_name]
+                    define_string = " "
+                else:
+                    define_string += "    " + out_type + " " + out_name + ";\n"
+
+                vec_tensor_string = f"""    std::vector<Tensor*> {out_name}_x;
+    for (size_t i = 0; i < {out_name}.size(); i++){{
+        {out_name}_x.push_back(&({out_name}[i]));
+    }}"""
+                define_string += vec_tensor_string
+            else:
+                if inplace_flag and out_name in self.inplace_map:
+                    continue
+                define_string += "    " + out_type + " " + out_name + ";\n"
+        return define_string
+
+    def get_grad_api_call_args(self, inplace_flag):
+        args = []
+        for name in self.inputs['names']:
+            name = name.split('@')[0]
+            args.append(name)
+
+        for name in self.attrs['names']:
+            args.append(name)
+
+        for i, name in enumerate(self.outputs['names']):
+            name = name.split('@')[0]
+            out_type = self.outputs['types'][i]
+            if out_type == "std::vector<Tensor>":
+                if inplace_flag and name in self.inplace_map:
+                    name = self.inplace_map[name]
+
+                out_string = name + "_x"
+            else:
+                if inplace_flag and name in self.inplace_map:
+                    name = self.inplace_map[name]
+                    if name in self.optional_vars:
+                        out_string = name + ".get_ptr()"
+                    else:
+                        out_string = "&" + name
+                else:
+                    out_string = "&" + name
+
+            args.append(out_string)
+        return ", ".join(args)
+
+    def get_grad_output(self, inplace_flag):
+        args = []
+        for i, name in enumerate(self.outputs['names']):
+            name = name.split('@')[0]
+            if inplace_flag and name in self.inplace_map:
+                args.append("std::ref(" + self.inplace_map[name] + ")")
+            else:
+                args.append(name)
+
+        if len(args) == 1:
+            return args[0]
+        else:
+            return f"""std::make_tuple({", ".join(args)})"""
+
     def get_declare_args(self, inplace_flag=False):
         declare_args = self.get_input_tensor_args(inplace_flag)
         for name in self.attrs['names']:

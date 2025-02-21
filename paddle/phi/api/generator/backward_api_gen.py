@@ -118,6 +118,10 @@ class BackwardAPI(BaseAPI):
                 not invoke_func_name.endswith('_impl')
             ):
                 return ""
+
+        if self.is_only_composite_api:
+            return ""
+
         api_func_name = self.get_api_func_name()
         api_declaration = f"""
 PADDLE_API void {api_func_name}({self.get_declare_args()});

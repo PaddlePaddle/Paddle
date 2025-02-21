@@ -38,6 +38,7 @@ from codegen_utils import (
     ParseYamlForwardFromBackward,
     ParseYamlInplaceInfo,
     ReadBwdFile,
+    ReadFwdFile,
     RemoveConstAndReference,
     core_ops_args_info,
     core_ops_args_type_info,
@@ -1829,7 +1830,34 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         api_out_type = "auto"
         if is_inplaced and len(forward_outputs_position_map) == 1:
             api_out_type = "auto&"
-        forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
+
+        is_invoke_api = IsInvokeForwardApi(
+            self.forward_api_contents, self.forward_apis_dict
+        )
+        if is_invoke_api:
+            invoke_api_name = (
+                self.forward_api_contents['invoke'].split('(')[0].strip()
+            )
+            invoke_api_str = self.forward_api_contents['invoke'].replace(
+                invoke_api_name,
+                GetDygraphForwardFunctionName(invoke_api_name),
+                1,
+            )
+
+            if self.is_forward_only:
+                forward_call_str = f"""// Invoke API Call
+  {indent}{api_out_type} api_result = paddle::experimental::{self.namespace}{self.forward_api_contents['invoke']};"""
+            else:
+                forward_call_str = f"""
+  // Invoke API Call
+  if (require_any_grad) {{
+  {indent}{api_out_type} api_result = {invoke_api_str};
+  }} else {{
+  {indent}{api_out_type} api_result = paddle::experimental::{self.namespace}{self.forward_api_contents['invoke']};
+  }}
+"""
+        else:
+            forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str});"
         num_outputs = len(forward_outputs_position_map) - len(
             intermediate_outputs
         )
@@ -3145,7 +3173,13 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
         GeneratorBase.__init__(self, api_yaml_path, fw_ops)
 
         self.backward_yaml_path = backward_yaml_path
-        self.bw_ops = bw_ops
+        if bw_ops is None:
+            if self.backward_yaml_path is not None:
+                self.backward_api_list = ReadFwdFile(self.backward_yaml_path)
+            else:
+                self.backward_api_list = []
+        else:
+            self.backward_api_list = bw_ops
         self.grad_api_dict = {}
 
         self.forward_declaration_str = ""
@@ -3161,12 +3195,13 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
 
     def ParseYamlContents(self):
         self.ParseForwardYamlContents()
-
         backward_yaml_path = self.backward_yaml_path
 
         # string api is forward_only, no backward_yaml respectively
         if backward_yaml_path is not None:
-            self.grad_api_dict = ReadBwdFile(backward_yaml_path, self.bw_ops)
+            self.grad_api_dict = ReadBwdFile(
+                backward_yaml_path, self.backward_api_list
+            )
 
     def GetBackwardAPIContents(self, forward_api_contents):
         grad_api_dict = self.grad_api_dict
@@ -3187,13 +3222,19 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
             op_string = 'backward_op'
         else:
             op_string = 'op'
+
         forward_api_list = self.forward_api_list
         forward_apis_dict = {}
         for api_item in forward_api_list:
-            forward_apis_dict[api_item[op_string]] = api_item
+            forward_apis_dict[
+                api_item['op' if 'op' in api_item else 'backward_op']
+            ] = api_item
         namespace = self.namespace
 
-        for forward_api_contents in forward_api_list:
+        true_forward_api_list = (
+            self.backward_api_list if grad_flag else self.forward_api_list
+        )
+        for forward_api_contents in true_forward_api_list:
             if forward_api_contents[op_string] in black_ops_list:
                 continue
             if op_string == 'backward_op' and (
@@ -3420,7 +3461,7 @@ if __name__ == "__main__":
         backward_yaml_path = backward_yaml_paths[i]
         if backward_yaml_path.endswith('/backward.yaml'):
             generator_grad = DygraphForwardAndNodesGenerator(
-                backward_yaml_paths[i], backward_yaml_paths[i], all_bw, all_bw
+                backward_yaml_path, backward_yaml_path, all_ops, all_bw
             )
         elif backward_yaml_path.endswith('/dygraph_backward.yaml'):
             continue
