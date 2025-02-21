@@ -735,10 +735,10 @@ void OptimizeExprGPU(ir::stmt::BlockRef block) {
 
   // Replace variables bound on block/thread to the actual
   // blockIdx/threadIdx.
-  LOG(INFO) << "Before ReplaceLoopVarToGpu: \n" << block;
+  VLOG(4) << "Before ReplaceLoopVarToGpu: \n" << block;
   ReplaceLoopVarToGpu replace_loop_var_to_gpu;
   replace_loop_var_to_gpu(block);
-  LOG(INFO) << "After ReplaceLoopVarToGpu: \n" << block;
+  VLOG(4) << "After ReplaceLoopVarToGpu: \n" << block;
 
   // Replace blockIdx in shared memory's indices to zero, because shared
   // memory cannot be accessed from another block.

@@ -85,11 +85,11 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #ifdef CINN_WITH_CUDA
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
-          LOG(INFO) << "Before removing GPU for loops:\n" << copied;
+          VLOG(4) << "Before removing GPU for loops:\n" << copied;
           FuncPassManager func_pass_manager;
           func_pass_manager.AddPass(CreateRemoveGpuForLoopsPass());
           func_pass_manager.Run(copied);
-          LOG(INFO) << "After removing GPU for loops:\n" << copied;
+          VLOG(4) << "After removing GPU for loops:\n" << copied;
         }
         VLOG(10) << "Before Optimize CudaSyncThreadsDropIfThenElse:" << copied;
         BlockPassManager blk_pass_manager;
@@ -107,11 +107,11 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #ifdef CINN_WITH_HIP
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
-          LOG(INFO) << "Before removing GPU for loops:\n" << copied;
+          VLOG(4) << "Before removing GPU for loops:\n" << copied;
           FuncPassManager func_pass_manager;
           func_pass_manager.AddPass(CreateRemoveGpuForLoopsPass());
           func_pass_manager.Run(copied);
-          LOG(INFO) << "After removing GPU for loops:\n" << copied;
+          VLOG(4) << "After removing GPU for loops:\n" << copied;
         }
         VLOG(10) << "Before Optimize CudaSyncThreadsDropIfThenElse:" << copied;
         BlockPassManager blk_pass_manager;
