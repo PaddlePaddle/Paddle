@@ -36,6 +36,12 @@ class FusedLinearPattern
   bool MatchAndRewrite(paddle::dialect::MatmulOp matmul,
                        pir::PatternRewriter &rewriter) const override {
     auto matmul_out = matmul->result(0);
+    // The datatype(without auto-promote) of matmul should not be float32 type,
+    // which may cause performance issue in some cases.
+    if (pir::GetDataTypeFromValue(matmul.x()).isa<pir::Float32Type>()) {
+      return false;
+    }
+
     // The result of matmul can only be uniquely used by an add OP.
     if (matmul_out.use_count() != 1) {
       return false;
@@ -99,6 +105,11 @@ class FusedLinearGradPattern
                        pir::PatternRewriter &rewriter) const override {
     auto matmul_grad_out = matmul_grad->operand_source(2);
 
+    // The datatype(without auto-promote) of matmul should not be float32 type,
+    // which may cause performance issue in some cases.
+    if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float32Type>()) {
+      return false;
+    }
     paddle::dialect::AddGradOp add_grad;
     if (add_grad = matmul_grad_out.defining_op()
                        ->dyn_cast<paddle::dialect::AddGradOp>()) {
@@ -175,6 +186,11 @@ class FusedLinearGradSinglePattern
                        pir::PatternRewriter &rewriter) const override {
     auto dout = matmul_grad->operand_source(2);
 
+    // The datatype(without auto-promote) of matmul should not be float32 type,
+    // which may cause performance issue in some cases.
+    if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float32Type>()) {
+      return false;
+    }
     if (pir::GetShapeFromValue(matmul_grad->operand_source(1)).size() != 2) {
       return false;
     }
