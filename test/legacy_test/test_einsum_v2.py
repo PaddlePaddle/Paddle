@@ -149,6 +149,18 @@ class TestEinsum(unittest.TestCase):
             "O": np.random.rand(3, 5, 7, 3),
             "P": np.random.rand(5, 7, 5, 7),
             "S": np.random.rand(4, 3, 4, 4),
+            "zero0": np.random.rand(0),
+            "zero1": np.random.rand(0, 5),
+            "zero2": np.random.rand(0, 4),
+            "zero3": np.random.rand(5, 0),
+            "zero4": np.random.rand(0, 0),
+            "zero5": np.random.rand(3, 0, 5),
+            "zero6": np.random.rand(3, 0, 3),
+            "zero7": np.random.rand(0, 4, 5),
+            "zero8": np.random.rand(0, 0, 0),
+            "zero9": np.random.rand(0, 5, 2),
+            "zero10": np.random.rand(3, 5, 7, 0),
+            "zero11": np.random.rand(0, 5, 4, 3),
         }
 
     def _get_place(self, force_to_use_cpu=False):
@@ -362,6 +374,176 @@ class TestEinsumBatch1(TestEinsum):
         self.sample = {"paradigm": "blq,bhlk->bhlqk", "data": ["J", "K"]}
 
 
+class TestEinsumTraceDiag1ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ii->", "data": ["zero4"]}
+
+
+class TestEinsumTraceDiag2ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "iji->j", "data": ["zero6"]}
+
+
+class TestEinsumTraceDiag3ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "a...a->...", "data": ["zero6"]}
+
+
+class TestEinsumTraceDiag4ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "a...a->a...", "data": ["zero8"]}
+
+
+class TestEinsumTraceDiag5ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "aaa->a", "data": ["zero8"]}
+
+
+class TestEinsumIdentityZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "...->...", "data": ["zero0"]}
+
+
+class TestEinsumElementwiseProductZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "..., ...->...", "data": ["zero0", "zero0"]}
+
+
+class TestEinsumVectorOuterZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "i,j->ij", "data": ["zero0", "zero0"]}
+
+
+class TestEinsumMatrixTransposeZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij->ji", "data": ["zero1"]}
+
+
+class TestEinsumMatrixRowSumZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij->j", "data": ["zero1"]}
+
+
+class TestEinsumMatrixColSumZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij->i", "data": ["zero3"]}
+
+
+class TestEinsumMatrixEleMulZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,ij->ij", "data": ["zero1", "zero1"]}
+
+
+class TestEinsumDegenerateMatrixVecMulZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,j", "data": ["zero3", "zero0"]}
+
+
+class TestEinsumMatrixVecMulZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,j->i", "data": ["zero3", "zero0"]}
+
+
+class TestEinsumMatrixMulZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,kj->ik", "data": ["zero1", "zero1"]}
+
+
+class TestEinsumMatrixOuterZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,kl->ijkl", "data": ["zero1", "zero1"]}
+
+
+class TestEinsumTensorBMMZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "bij,bjk->bik", "data": ["zero7", "zero9"]}
+
+
+class TestEinsumTensorContract1ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijk,jk->i", "data": ["zero5", "zero1"]}
+
+
+class TestEinsumTensorContract2ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijk,lk->ijl", "data": ["zero5", "zero1"]}
+
+
+class TestEinsumTensorContract3ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {
+            "paradigm": "abcd,dfg->abcfg",
+            "data": ["zero10", "zero7"],
+        }
+
+
+class TestEinsumTensorContract4ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijk,jk->ik", "data": ["zero5", "zero1"]}
+
+
+class TestEinsumTensorContract5ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijk,jk->ij", "data": ["zero5", "zero1"]}
+
+
+class TestEinsumTensorContract6ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ik, ijk->j", "data": ["zero1", "zero7"]}
+
+
+class TestEinsumTensorContract7ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijk, ik->jk", "data": ["zero7", "zero1"]}
+
+
+class TestEinsumEllipsis1ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "i...->...", "data": ["zero5"]}
+
+
+class TestEinsumEllipsis2ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ij,...i->j...", "data": ["zero1", "zero10"]}
+
+
+class TestEinsumEllipsis3ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "k...,jk", "data": ["zero11", "zero3"]}
+
+
+class TestEinsumBilinearZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {
+            "paradigm": "bn,anm,bm->ba",
+            "data": ["zero2", "zero7", "zero1"],
+        }
+
+
+class TestEinsumOthers1ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {
+            "paradigm": "ijkl, lmn->kmn",
+            "data": ["zero10", "zero7"],
+        }
+
+
+class TestEinsumOthers2ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {
+            "paradigm": "ijkl, lmn->ijn",
+            "data": ["zero10", "zero7"],
+        }
+
+
+class TestEinsumBatch1ZeroSize(TestEinsum):
+    def setUp(self):
+        self.sample = {
+            "paradigm": "blq,bhlk->bhlqk",
+            "data": ["zero7", "zero11"],
+        }
+
+
 class TestNumpyTests(unittest.TestCase):
     def setUp(self):
         pass
@@ -394,53 +576,53 @@ class TestNumpyTests(unittest.TestCase):
             self.check_output_equal(actual.numpy(), expect)
 
     def test_sums(self):
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(n).astype('float')
             self.check_output("i->", a)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             self.check_output("...i->...", a)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(2 * n).reshape(2, n).astype('float')
             self.check_output("i...->...", a)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             self.check_output("i...->...", a)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(3 * n).reshape(3, n).astype('float')
             b = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             self.check_output("..., ...", a, b)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(2 * 3 * n).reshape(2, 3, n).astype('float')
             b = np.arange(n).astype('float')
             self.check_output("...i, ...i", a, b)
 
-        for n in range(1, 11):
+        for n in range(0, 11):
             a = np.arange(n * 3 * 2).reshape(n, 3, 2).astype('float')
             b = np.arange(n).astype('float')
             self.check_output("i..., i...", a, b)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = (np.arange(3) + 1).astype('float')
             b = (np.arange(n) + 1).astype('float')
             self.check_output("i,j", a, b)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(4 * n).reshape(4, n).astype('float')
             b = np.arange(n).astype('float')
             self.check_output("ij, j", a, b)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(4 * n).reshape(4, n).astype('float')
             b = np.arange(n).astype('float')
             self.check_output("ji,j", a.T, b.T)
 
-        for n in range(1, 17):
+        for n in range(0, 17):
             a = np.arange(4 * n).reshape(4, n).astype('float')
             b = np.arange(n * 6).reshape(n, 6).astype('float')
             self.check_output("ij,jk", a, b)
@@ -454,7 +636,7 @@ class TestNumpyTests(unittest.TestCase):
         b = np.arange(24).reshape(4, 3, 2).astype('float')
         self.check_output("ijk, jil -> kl", a, b)
 
-        for n in range(1, 25):
+        for n in range(0, 25):
             a = np.arange(n).astype('float')
             self.check_output("...,...", a, a)
             self.check_output("i,i", a, a)
