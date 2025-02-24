@@ -725,14 +725,14 @@ void AucInferMeta(const MetaTensor& input,
       0,
       common::errors::InvalidArgument(
           "The Input(Predict) has not been initialized properly. The "
-          "shape of Input(Predict) = [%s], the shape can not involes 0.",
+          "shape of Input(Predict) = [%s], the shape can not involves 0.",
           predict_dims));
   PADDLE_ENFORCE_NE(
       common::product(label_dims),
       0,
       common::errors::InvalidArgument(
           "The Input(Label) has not been initialized properly. The "
-          "shape of Input(Label) = [%s], the shape can not involes 0.",
+          "shape of Input(Label) = [%s], the shape can not involves 0.",
           label_dims));
 
   if (config.is_runtime) {
