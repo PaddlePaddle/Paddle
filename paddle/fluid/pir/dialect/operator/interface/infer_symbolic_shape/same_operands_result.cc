@@ -121,7 +121,6 @@ OP_SAME_OPERANDS_AND_RESULT(Logit_)
 OP_SAME_OPERANDS_AND_RESULT(Logsigmoid)
 OP_SAME_OPERANDS_AND_RESULT(Logsigmoid_)
 OP_SAME_OPERANDS_AND_RESULT(LogSoftmax)
-OP_SAME_OPERANDS_AND_RESULT(Memcpy)
 OP_SAME_OPERANDS_AND_RESULT(Mish)
 OP_SAME_OPERANDS_AND_RESULT(NumberCount)
 OP_SAME_OPERANDS_AND_RESULT(Pow)
@@ -293,6 +292,14 @@ bool CeilOpInferSymbolicShape(pir::Operation *op,
 bool Ceil_OpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   return CeilOpInferSymbolicShape(op, infer_context);
+}
+
+bool MemcpyOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+  return true;
 }
 
 }  // namespace paddle::dialect

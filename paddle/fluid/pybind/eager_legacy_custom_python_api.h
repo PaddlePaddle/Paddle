@@ -90,12 +90,12 @@ static PyObject *pir_eager_api_run_program(PyObject *self,
     }
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
-    VLOG(1) << "Start Pir ConstructAttrMapFromPyArgs";
+    VLOG(6) << "Start Pir ConstructAttrMapFromPyArgs";
 
     ConstructAttrMapForRunProgram(
         "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
-    VLOG(1) << "Finish Pir ConstructAttrMapFromPyArgs";
+    VLOG(6) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
     pir_run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
