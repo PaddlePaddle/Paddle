@@ -50,8 +50,7 @@ class YoloBoxOpConverter : public OpConverter {
             : 0.5;
 
     int type_id = static_cast<int>(engine_->WithFp16());
-    auto input_dim = X_tensor->getDimensions();
-    auto* yolo_box_plugin = new plugin::YoloBoxPlugin(
+    auto* yolo_box_plugin = new plugin::YoloBoxPluginDynamic(
         type_id ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
         anchors,
         class_num,
@@ -60,9 +59,7 @@ class YoloBoxOpConverter : public OpConverter {
         clip_bbox,
         scale_x_y,
         iou_aware,
-        iou_aware_factor,
-        input_dim.d[1],
-        input_dim.d[2]);
+        iou_aware_factor);
 
     std::vector<nvinfer1::ITensor*> yolo_box_inputs;
     yolo_box_inputs.push_back(X_tensor);
