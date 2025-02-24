@@ -91,7 +91,8 @@ def roi_align_converter(network, paddle_op, inputs):
         ),
         trt.PluginField(
             "aligned",
-            np.array(aligned, dtype=np.bool),
+            np.array(aligned, dtype=np.bool_),
+            trt.PluginFieldType.INT32,
         ),
     ]
     plugin_field_collection = trt.PluginFieldCollection(plugin_fields)

@@ -29,23 +29,22 @@ void CollectShapeManager::CollectShapeInfo(
     framework::Scope *scope) {
   std::lock_guard<std::mutex> lock(info_mutex_);
   is_shape_range_info_ready_ = false;
-  for (auto &output : instr->Outputs()) {
-    auto var_name = value_exe_info->GetVarName(output.first);
+  for (auto &input : instr->Inputs()) {
+    if (!op_value2instr_id_.count(input.first)) {
+      // Because the input value maybe same between different ops.
+      // To prevent duplicate shape collection, we only select one op for
+      // getting shape of value
+      op_value2instr_id_[input.first] = instr->Id();
+    }
+    if (op_value2instr_id_[input.first] != instr->Id()) {
+      continue;
+    }
+    auto var_name = value_exe_info->GetVarName(input.first);
     auto *var = scope->FindVar(var_name);
     if (!var || !var->IsType<phi::DenseTensor>()) continue;
 
-    // inplace var in kernel program has same value between input and output,
-    // we should use ‘continue’ to prevent duplicate data entries.
-    bool is_inplace_var = false;
-    for (const auto &inplace_var_pair : instr->InplaceInfo()) {
-      if (inplace_var_pair.first == var) {
-        is_inplace_var = true;
-      }
-    }
-    if (is_inplace_var) continue;
-
     auto tensor = var->Get<phi::DenseTensor>();
-    if (!tensor.initialized() && !instr->NoNeedBuffer().count(output.first)) {
+    if (!tensor.initialized() && !instr->NoNeedBuffer().count(input.first)) {
       continue;
     }
     paddle::platform::DeviceContextPool &pool =
@@ -65,7 +64,7 @@ void CollectShapeManager::CollectShapeInfo(
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
-      shape_info_[output.first].emplace_back(shape);
+      shape_info_[input.first].emplace_back(shape);
     } else if (tensor.numel() > 0) {
       // This must be a zero dimension tensor.
       PADDLE_ENFORCE_EQ(tensor.numel(),
@@ -74,7 +73,7 @@ void CollectShapeManager::CollectShapeInfo(
                             "This tensor must have one element, but got %ld.",
                             tensor.numel()));
       std::vector<int32_t> zero_shape(1, 1);
-      shape_info_[output.first].emplace_back(zero_shape);
+      shape_info_[input.first].emplace_back(zero_shape);
     }
 
     // We need collect value range for shape tensor for Paddle-TRT's use.
@@ -120,7 +119,7 @@ void CollectShapeManager::CollectShapeInfo(
                              nullptr);
 #endif
       }
-      shape_tensor_info_[output.first].emplace_back(int32_host);
+      shape_tensor_info_[input.first].emplace_back(int32_host);
     }
   }
 }

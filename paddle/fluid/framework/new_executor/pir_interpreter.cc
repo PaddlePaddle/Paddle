@@ -1964,6 +1964,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       }
     }
 
+    if (FLAGS_enable_collect_shape) {
+      CollectShapeManager::Instance().CollectShapeInfo(
+          instr_node, value_exe_info_.get(), scope_);
+    }
+
     if (!instr_node->IsArtificial()) {
       {
         phi::RecordEvent record(
@@ -1979,10 +1984,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                 << "): context wait and get last error";
 #endif
       }
-      if (FLAGS_enable_collect_shape) {
-        CollectShapeManager::Instance().CollectShapeInfo(
-            instr_node, value_exe_info_.get(), scope_);
-      }
+
       if (FLAGS_check_nan_inf) {
         CheckTensorHasNanOrInf(instr_node, scope_, value_exe_info_.get());
       }
