@@ -287,32 +287,78 @@ def pipeline_parallel(model, optimizer=None, config=None):
 
         def is_match(layer_name):
             for pattern in patterns:
-                if re.match(pattern, layer_name):
+                if re.match(pattern, layer_name) or layer_name in split_spec:
                     return True
             return False
+
+        def filter_matched_layer(matched_layer_name):
+            # remove the base name if it has a numbered suffix
+            string_set = set(matched_layer_name)
+            to_remove = set()
+
+            numbered_pattern = re.compile(r'^(.+)\.\d+$')
+            for s in matched_layer_name:
+                match = numbered_pattern.match(s)
+                if match:
+                    base_name = match.group(1)
+                    if base_name in string_set:
+                        to_remove.add(base_name)
+
+            res = []
+            for s in matched_layer_name:
+                if s not in to_remove:
+                    res.append(s)
+            return res
 
         matched_layer_name = [
             name for name, _ in model.named_sublayers() if is_match(name)
         ]
-
+        matched_layer_name = filter_matched_layer(matched_layer_name)
         pp_size = mesh.get_dim_size("pp")
         layer_num = len(matched_layer_name)
         assert (
             layer_num > 0
         ), "No layer match the split_spec, please check its correctness"
         assert (
-            layer_num % pp_size == 0
-        ), f"The number of layers must be divisible by the pp size, but got {layer_num} and {pp_size}"
-        layers_per_rank = layer_num // pp_size
-        split_spec_dict = OrderedDict(
-            [
-                (
-                    matched_layer_name[i * layers_per_rank - 1],
-                    SplitPoint.END,
-                )
-                for i in range(1, pp_size)
-            ]
-        )
+            layer_num >= pp_size
+        ), "The number of layers must not be less than the pp size"
+        if layer_num % pp_size != 0:
+            logger.warning(
+                f"The number of layers({layer_num}) must be divisible by the pp size({pp_size}), but got {layer_num} and {pp_size}"
+            )
+
+            def divide_list_indices(n, k):
+                base_size = n // k
+                extra = n % k
+
+                indices = []
+                current_index = -1
+
+                for i in range(k - 1):
+                    current_index += base_size
+                    if i < extra:
+                        current_index += 1
+                    indices.append(current_index)
+                return indices
+
+            indices = divide_list_indices(layer_num, pp_size)
+            split_spec_dict = OrderedDict(
+                [
+                    (matched_layer_name[indices[i]], SplitPoint.END)
+                    for i in range(pp_size - 1)
+                ]
+            )
+        else:
+            layers_per_rank = layer_num // pp_size
+            split_spec_dict = OrderedDict(
+                [
+                    (
+                        matched_layer_name[i * layers_per_rank - 1],
+                        SplitPoint.END,
+                    )
+                    for i in range(1, pp_size)
+                ]
+            )
     else:
         split_spec_dict = split_spec
         if global_spec:
@@ -328,7 +374,7 @@ def pipeline_parallel(model, optimizer=None, config=None):
             ), f"global_spec can only be list or list(str), but got:{type(global_spec)}"
 
     logger.info(
-        f"split_spec_dict: {split_spec_dict}, global_spec: {global_spec}"
+        f"split_spec_dict: {split_spec_dict}, global_spec: {global_spec}, matched_layer_name: {matched_layer_name}"
     )
 
     model = PipelineParallel(
