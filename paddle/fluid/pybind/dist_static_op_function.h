@@ -182,15 +182,25 @@ static PyObject *static_api_dtensor_to_local(PyObject *self,
                                              PyObject *args,
                                              PyObject *kwargs) {
   try {
-    VLOG(6) << "Add dtensor_from_local op into program";
+    VLOG(6) << "Add dtensor_to_local op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
     // Get Value from args
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto input = CastPyArg2Value(input_obj, "dtensor_from_local", 0);
+    auto input = CastPyArg2Value(input_obj, "dtensor_to_local", 0);
+
+    PyObject *process_mesh_obj = PyTuple_GET_ITEM(args, 1);
+    auto process_mesh = CastPyArg2ProcessMesh(process_mesh_obj, 1);
+
+    PyObject *placements_obj = PyTuple_GET_ITEM(args, 2);
+    auto placements = CastPyArg2VectorOfPlacement(placements_obj, 2);
+
+    int64_t ndim = GetValueDims(input).size();
+    auto res = CvtPlacements(placements, ndim);
 
     // Call ir static api
-    auto static_api_out = paddle::dialect::dtensor_to_local(input);
+    auto static_api_out = paddle::dialect::dtensor_to_local(
+        input, process_mesh, std::get<0>(res), std::get<1>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {

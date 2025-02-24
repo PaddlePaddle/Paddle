@@ -94,7 +94,8 @@ class DtensorToLocalOp
   static constexpr uint32_t attributes_num = 0;
   TEST_API static void Build(pir::Builder& builder,             // NOLINT
                              pir::OperationArgument& argument,  // NOLINT
-                             pir::Value input);
+                             pir::Value input,
+                             TensorDistAttribute grad_dist_attr);
 
   static OpInfoTuple GetOpInfo();
   static std::vector<std::vector<pir::Value>> Vjp(

@@ -69,8 +69,12 @@ class TestLocalViewCompute:
         dist_pred = dist.shard_tensor(pred, self._mesh, [dist.Replicate()])
         dist_label = dist.shard_tensor(label, self._mesh, [dist.Replicate()])
 
-        local_pred = dtensor_to_local(dist_pred)
-        local_label = dtensor_to_local(dist_label)
+        local_pred = dtensor_to_local(
+            dist_pred, dist_pred.process_mesh, dist_pred.placements
+        )
+        local_label = dtensor_to_local(
+            dist_label, dist_label.process_mesh, dist_label.placements
+        )
 
         local_pred = local_pred + 1
         local_loss = self.masked_lm_loss_func(

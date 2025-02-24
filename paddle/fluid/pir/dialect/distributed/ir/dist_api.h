@@ -50,7 +50,13 @@ pir::Value dtensor_from_local(
 pir::Value dtensor_from_local(const pir::Value& x,
                               const TensorDistAttribute& tensor_dist_attr);
 
-pir::Value dtensor_to_local(const pir::Value& x);
+pir::Value dtensor_to_local(
+    const pir::Value& x,
+    const phi::distributed::ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
+pir::Value dtensor_to_local(const pir::Value& x,
+                            const TensorDistAttribute& grad_dist_attr);
 
 std::vector<pir::Value> moe_sub_mesh_tensors(
     const pir::Value& input,

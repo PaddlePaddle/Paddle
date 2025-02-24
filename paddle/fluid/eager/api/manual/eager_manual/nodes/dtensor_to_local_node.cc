@@ -47,9 +47,7 @@ DtensorToLocalGradNode::operator()(
 
   // Collect GradIn Tensors, Attrs and Recovered TensorWrappers
   auto input = egr::EagerUtils::RecoverTensorWrapper(&this->input_);
-  const auto& dist_attr =
-      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl())
-          ->dist_attr();
+
   auto& grad_out = hooked_grad[0][0];
   // Prepare Grad function call
 
@@ -82,7 +80,7 @@ DtensorToLocalGradNode::operator()(
 
   // Backward call dtensor_to_local_func function
   auto dist_grad_ptr = std::make_shared<phi::distributed::DistTensor>(
-      grad_out.dims(), dist_attr);
+      grad_out.dims(), grad_dist_attr_);
 
   *(dist_grad_ptr->unsafe_mutable_value()) =
       *(static_cast<phi::DenseTensor*>(grad_out.impl().get()));

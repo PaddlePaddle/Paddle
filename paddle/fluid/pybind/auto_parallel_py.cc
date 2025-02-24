@@ -803,9 +803,13 @@ void BindAutoParallel(py::module *m) {
 
   m->def(
       "dtensor_to_local",
-      [](py::handle py_tensor) {
+      [](py::handle py_tensor,
+         py::handle py_process_mesh,
+         py::handle py_placements) {
         auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-        return dtensor_to_local_ad_function(tensor);
+        auto process_mesh = CastPyArg2ProcessMesh(py_process_mesh.ptr(), 1);
+        auto placements = CastPyArg2VectorOfPlacement(py_placements.ptr(), 2);
+        return dtensor_to_local_ad_function(tensor, process_mesh, placements);
       },
       py::return_value_policy::reference);
 

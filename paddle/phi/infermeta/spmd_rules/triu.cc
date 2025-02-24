@@ -143,8 +143,8 @@ SpmdInfo TriuGradInferSpmdBase(const DistMetaTensor& out_grad) {
   auto out_grad_dist_attr =
       UnShardTensorDims(out_dist_attr_src, dims_to_unshard);
   out_grad_dist_attr.set_dims_mapping(out_grad_dist_attr.dims_mapping());
-  auto in_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad_dist_attr);
-  in_grad_dist_attr.set_dims_mapping(out_grad_dist_attr.dims_mapping());
+  auto grad_dist_attr = CopyTensorDistAttrForOutput(out_grad_dist_attr);
+  grad_dist_attr.set_dims_mapping(out_grad_dist_attr.dims_mapping());
 
   VLOG(4) << "TriuGradInferSpmdBase:";
 
@@ -155,10 +155,10 @@ SpmdInfo TriuGradInferSpmdBase(const DistMetaTensor& out_grad) {
           << str_join(out_grad_dist_attr.dims_mapping()) << "]";
 
   VLOG(4) << "in grad"
-          << "dst_dims_mapping: [" << str_join(in_grad_dist_attr.dims_mapping())
+          << "dst_dims_mapping: [" << str_join(grad_dist_attr.dims_mapping())
           << "]";
 
-  return SpmdInfo{{out_grad_dist_attr}, {in_grad_dist_attr}};
+  return SpmdInfo{{out_grad_dist_attr}, {grad_dist_attr}};
 }
 
 SpmdInfo TriuGradInferSpmd(const DistMetaTensor& out_grad, int diagonal) {

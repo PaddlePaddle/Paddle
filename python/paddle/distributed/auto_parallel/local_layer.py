@@ -36,6 +36,8 @@ class LocalLayer(Layer):
             A list where each entry is a tuple containing the `ProcessMesh` and the list of `Placement`
             attributes for the corresponding output tensors. These attributes define the distribution
             strategy for the outputs.
+        grad_dist_attrs (list[tuple[ProcessMesh, list[Placement]]]):
+            Similar to `out_dist_attrs` but for gradient tensors. The tuple in the list can be None, indicating that the dist_attr of the gradient tensor is same as the corresponding input tensor.
 
     Examples:
         .. code-block:: python
@@ -48,8 +50,8 @@ class LocalLayer(Layer):
             >>> from paddle.distributed import ProcessMesh
 
             >>> class CustomLayer(dist.LocalLayer):
-            ...     def __init__(self, out_dist_attrs):
-            ...         super().__init__(out_dist_attrs)
+            ...     def __init__(self, out_dist_attrs, grad_dist_attrs):
+            ...         super().__init__(out_dist_attrs, grad_dist_attrs)
             ...         self.local_result = paddle.to_tensor(0.0)
 
             ...     def forward(self, x):
@@ -68,7 +70,7 @@ class LocalLayer(Layer):
             >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> dist.init_parallel_env()
             >>> mesh = ProcessMesh([0, 1], dim_names=["x"])
-            >>> out_dist_attrs = [
+            >>> dist_attrs = [
             ...     (mesh, [dist.Partial(dist.ReduceType.kRedSum)]),
             ... ]
             >>> local_input = paddle.arange(0, 10, dtype="float32")
@@ -76,7 +78,7 @@ class LocalLayer(Layer):
             >>> input_dist = dist.auto_parallel.api.dtensor_from_local(
             ...     local_input, mesh, [dist.Shard(0)]
             ... )
-            >>> custom_layer = CustomLayer(out_dist_attrs)
+            >>> custom_layer = CustomLayer(dist_attrs, dist_attrs)
             >>> output_dist = custom_layer(input_dist)
 
             >>> local_value = custom_layer.local_result
@@ -96,10 +98,13 @@ class LocalLayer(Layer):
     """
 
     def __init__(
-        self, out_dist_attrs: list[tuple[ProcessMesh, list[Placement]]]
+        self,
+        out_dist_attrs: list[tuple[ProcessMesh, list[Placement]]],
+        grad_dist_attrs: list[tuple[ProcessMesh, list[Placement]]],
     ) -> None:
         super().__init__()
         self.out_dist_attrs = out_dist_attrs
+        self.grad_dist_attrs = grad_dist_attrs
 
     def __call__(self, *inputs: Any, **kwargs: Any) -> Any:
         """
@@ -108,19 +113,37 @@ class LocalLayer(Layer):
         outputs back to distributed tensors based on the specified distribution attributes.
         """
         inputs = list(inputs)
+        assert len(inputs) == len(
+            self.grad_dist_attrs
+        ), f"The number of inputs ({len(inputs)}) does not match the number of grad_dist_attrs ({len(self.grad_dist_attrs)})."
         for idx in range(len(inputs)):
             if inputs[idx].is_dist():
+                if self.grad_dist_attrs[idx] is None:
+                    if paddle.in_dynamic_mode():
+                        mesh, placement = (
+                            inputs[idx].process_mesh,
+                            inputs[idx].placements,
+                        )
+                    else:
+                        mesh, placement = (
+                            inputs[idx].dist_attr().process_mesh,
+                            inputs[idx].dist_attr().placements,
+                        )
+                else:
+                    mesh, placement = (
+                        self.grad_dist_attrs[idx][0],
+                        self.grad_dist_attrs[idx][1],
+                    )
+
                 inputs[idx] = dist.auto_parallel.api.dtensor_to_local(
-                    inputs[idx]
+                    inputs[idx], mesh, placement
                 )
 
         outputs = Layer.__call__(self, *inputs, **kwargs)
         list_outs = paddle.utils.flatten(outputs)
-        if len(list_outs) != len(self.out_dist_attrs):
-            raise ValueError(
-                f"The number of outputs ({len(list_outs)}) does not match "
-                f"the number of distribution attributes ({len(self.out_dist_attrs)})."
-            )
+        assert len(list_outs) == len(
+            self.out_dist_attrs
+        ), f"The number of outputs ({len(list_outs)}) does not match the number of distribution attributes ({len(self.out_dist_attrs)})."
 
         dist_outs = []
         for idx in range(len(list_outs)):

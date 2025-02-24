@@ -43,7 +43,9 @@ class TestDtensorToLocalAPI:
             )
         )
 
-        tensor1 = dtensor_to_local(input_tensor)
+        tensor1 = dtensor_to_local(
+            input_tensor, input_tensor.process_mesh, input_tensor.placements
+        )
         assert not tensor1.is_dist()
 
         tensor2 = tensor1 + 2

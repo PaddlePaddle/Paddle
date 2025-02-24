@@ -740,14 +740,14 @@ def dtensor_from_local(local_tensor, mesh, placements):
         )
 
 
-def dtensor_to_local(dist_tensor):
+def dtensor_to_local(dist_tensor, mesh, placements):
     if paddle.in_dynamic_mode():
         if dist_tensor.is_dist() is False:
             raise ValueError("The input should be a distributed tensor.")
 
-        return paddle.base.core.dtensor_to_local(dist_tensor)
+        return paddle.base.core.dtensor_to_local(dist_tensor, mesh, placements)
     elif paddle.framework.in_pir_mode():
-        return paddle._C_ops.dtensor_to_local(dist_tensor)
+        return paddle._C_ops.dtensor_to_local(dist_tensor, mesh, placements)
     else:
         raise RuntimeError(
             "dtensor_to_local() are only supported in dynamic or pir mode."

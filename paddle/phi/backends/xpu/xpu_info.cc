@@ -172,6 +172,7 @@ void MemcpySyncD2H(void* dst,
   dev_ctx.Wait();
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_DEVICE_TO_HOST));
+  dev_ctx.Wait();
 }
 
 // if src.device == dst.device and you need sync , after call this function,

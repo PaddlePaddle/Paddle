@@ -489,9 +489,15 @@ class DtensorToLocalGradNode : public egr::GradNodeBase {
     input_ = egr::TensorWrapper(input, true);
   }
 
+  void SetGradDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
+    grad_dist_attr_ = dist_attr;
+  }
+
  private:
   // TensorWrappers
   egr::TensorWrapper input_;
+
+  phi::distributed::TensorDistAttr grad_dist_attr_;
 };
 
 class DtensorFromLocalGradNode : public egr::GradNodeBase {
