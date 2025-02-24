@@ -2440,6 +2440,7 @@ def empty(
                     'int64',
                     'complex64',
                     'complex128',
+                    'float8_e4m3fn',
                 ],
                 'empty',
             )
@@ -2479,6 +2480,7 @@ def empty(
                 'int64',
                 'complex64',
                 'complex128',
+                'float8_e4m3fn',
             ],
             'empty',
         )
