@@ -443,10 +443,10 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
       AddReduceDownstream(expr_block);
     }
 
-    // When a block is downstream of reduce, its output shouldn't contain
-    // reduce axis. Otherwise, it broadcasts the result of reduce. If this
+    // When a block is downstream of reduce, its loop iters shouldn't contain
+    // any reduce axis. Otherwise, it broadcasts the result of reduce. If this
     // is the case, we cannot apply grid reduce.
-    if (is_reduce_downstream && output_has_reduce_axis) {
+    if (is_reduce_downstream && (is_reduce || output_has_reduce_axis)) {
       VLOG(4) << "grid reduce is prohibited by block: " << expr_block;
       return false;
     }
