@@ -168,28 +168,19 @@ def predict_program(program, feed_data, fetch_var_list, scope=None):
             return output
 
 
-def warmup_shape_infer(
-    program, min_shape_feed, opt_shape_feed, max_shape_feed, scope=None
-):
+def warmup_shape_infer(program, feeds, scope=None):
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
             # Run the program with input_data
-            for _ in range(1):
-                executor.run(program, feed=min_shape_feed, scope=scope)
-
-            for _ in range(1):
-                executor.run(program, feed=opt_shape_feed, scope=scope)
-
-            # Run the program with input_data_max_shape (fake max_shape input)
-            for _ in range(1):
-                executor.run(program, feed=max_shape_feed, scope=scope)
+            for i in range(len(feeds)):
+                executor.run(program, feed=feeds[i], scope=scope)
 
             exe_program, _, _ = (
                 executor._executor_cache.get_pir_program_and_executor(
                     program,
-                    feed=max_shape_feed,
+                    feed=feeds[-1],
                     fetch_list=None,
                     feed_var_name='feed',
                     fetch_var_name='fetch',

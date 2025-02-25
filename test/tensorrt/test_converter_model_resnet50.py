@@ -94,6 +94,48 @@ class TestConverterResNet50(unittest.TestCase):
             err_msg="Outputs are not within the 1e-3 tolerance",
         )
 
+    def test_paddle_to_tensorrt_conversion_r50_collect_shape(self):
+        # Step1: get program and init fake inputs
+        program, scope, param_dict = get_r50_program()
+
+        # Set input
+        input_data = tuple(
+            np.random.rand(n, 3, 224, 224).astype(np.float32) for n in (1, 2, 4)
+        )
+        input_optim_data = input_data[1]
+        input_config = Input(input_data=input_data)
+
+        # Create a TensorRTConfig with inputs as a required field.
+        trt_config = TensorRTConfig(inputs=[input_config])
+
+        output_var = program.list_vars()[-1]
+
+        # get original results(for tests only)
+
+        output_expected = predict_program(
+            program, {"input": input_optim_data}, [output_var]
+        )
+
+        program_with_trt = convert_to_trt(program, trt_config, scope)
+        output_var = program_with_trt.list_vars()[-1]
+
+        # Step6: run inference(converted_program)
+        output_converted = predict_program(
+            program_with_trt, {"input": input_optim_data}, [output_var]
+        )
+
+        output_expected = standardize(output_expected[0])
+        output_trt = standardize(output_converted[0])
+
+        # Check that the results are close to each other within a tolerance of 1e-3
+        np.testing.assert_allclose(
+            output_expected,
+            output_trt,
+            rtol=1e-3,
+            atol=1e-3,
+            err_msg="Outputs are not within the 1e-3 tolerance",
+        )
+
     def test_convert_quant_model(self):
         paddle.disable_static()
         image = paddle.ones([1, 3, 224, 224], dtype="float32")
