@@ -19,6 +19,7 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     get_input_constant_value,
     get_trt_plugin,
+    set_layer_name,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -109,6 +110,7 @@ def pool2d_converter(network, paddle_op, inputs):
             plugin_name, plugin_field_collection, plugin_version
         )
         layer = network.add_plugin_v2([input_tensor], plugin)
+        set_layer_name(layer, paddle_op)
         return layer
 
     reduce_operation = trt.ReduceOperation.MAX
@@ -183,6 +185,7 @@ def pool2d_converter(network, paddle_op, inputs):
             if reduce_layer is None:
                 raise RuntimeError("Failed to add reduce layer in TensorRT.")
             layer = reduce_layer
+            set_layer_name(layer, paddle_op)
         else:
             input_h = input_shape[input_dims - 2]
             input_w = input_shape[input_dims - 1]
@@ -228,6 +231,7 @@ def pool2d_converter(network, paddle_op, inputs):
                 pooling_layer.padding_nd = nv_paddings
                 pooling_layer.average_count_excludes_padding = exclusive
                 layer = pooling_layer
+                set_layer_name(layer, paddle_op)
 
     elif not adaptive and not global_pooling and not ceil_mode:
         if padding_algorithm != "SAME" and (
@@ -241,6 +245,7 @@ def pool2d_converter(network, paddle_op, inputs):
             )
             if pad_layer is None:
                 raise RuntimeError("Failed to add padding layer in TensorRT.")
+            set_layer_name(pad_layer, paddle_op)
             input_tensor = pad_layer.get_output(0)
         pooling_layer = network.add_pooling_nd(
             input=input_tensor, type=nv_pool_type, window_size=nv_ksize
@@ -254,6 +259,7 @@ def pool2d_converter(network, paddle_op, inputs):
             pooling_layer.padding_mode = trt.PaddingMode.SAME_UPPER
 
         layer = pooling_layer
+        set_layer_name(layer, paddle_op)
     elif not adaptive and not global_pooling and ceil_mode:
         pooling_layer = network.add_pooling_nd(
             input=input_tensor, type=nv_pool_type, window_size=nv_ksize
@@ -268,11 +274,13 @@ def pool2d_converter(network, paddle_op, inputs):
         else:
             pooling_layer.padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
         layer = pooling_layer
+        set_layer_name(layer, paddle_op)
     elif global_pooling and not adaptive:
         reduce_layer = network.add_reduce(
             input_tensor, reduce_operation, 12, True
         )
         layer = reduce_layer
+        set_layer_name(layer, paddle_op)
     else:
         layer = create_pool_plugin(
             network,

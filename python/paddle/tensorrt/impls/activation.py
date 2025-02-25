@@ -18,6 +18,7 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     add_constant_layer,
+    set_layer_name,
     trt_concat,
     trt_div,
     trt_min,
@@ -44,6 +45,7 @@ def activation_converter(network, paddle_op, inputs):
     layer = network.add_activation(
         inputs[0], activation_type_map[paddle_op.name()]
     )
+    set_layer_name(layer, paddle_op)
     return layer.get_output(0)
 
 
@@ -70,13 +72,52 @@ def relu6_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.softmax", trt_version="trt_version_ge=8.0")
 def softmax_converter(network, paddle_op, inputs):
-    axis = paddle_op.attrs().get("axis", 0)
-    if axis < 0:
-        axis = len(inputs[0].shape) + axis
+    input1 = inputs[0]
+    input_shape = input1.shape
+    input_dims = len(input_shape)
+    axis = paddle_op.attrs().get("axis", -1)
 
-    softmax_layer = network.add_softmax(inputs[0])
-    softmax_layer.axes = 1 << axis
-    return softmax_layer.get_output(0)
+    # support 0 or 1 dims input
+    is_0_dims = input_dims == 0
+    is_1_dims = input_dims == 1
+    if is_0_dims or is_1_dims:
+        reshaped_layer = network.add_shuffle(input1)
+        reshaped_dims = (1, 1 if is_0_dims else input_shape[0])
+        reshaped_layer.reshape_dims = reshaped_dims
+        set_layer_name(reshaped_layer, paddle_op)
+        input1 = reshaped_layer.get_output(0)
+        input_shape = input1.shape
+        input_dims = len(input_shape)
+        axis = -1
+
+    layer = network.add_softmax(input1)
+    set_layer_name(layer, paddle_op)
+    axes = max(0, input_dims - 3)
+
+    # Handle padded dimensions
+    padded_dims = 0
+    explicit_batch = 1
+    for i in range(input_dims - 1, explicit_batch, -1):
+        if input_shape[i] == 1:
+            padded_dims += 1
+        else:
+            break
+
+    if axis < 0:
+        axes = input_dims + axis
+    else:
+        axes = axis
+
+    layer.axes = 1 << axes
+
+    # Support 0 or 1 dims input
+    if is_0_dims or is_1_dims:
+        reshaped_layer = network.add_shuffle(layer.get_output(0))
+        reshaped_layer.reshape_dims = inputs[0].shape
+        layer = reshaped_layer
+        set_layer_name(layer, paddle_op)
+
+    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.gelu", trt_version="trt_version_ge=8.0")
@@ -86,49 +127,130 @@ def gelu_converter(network, paddle_op, inputs):
 
     const_shape = [1] * len(input_val.shape)
 
-    def create_constant(network, const_shape, value, dtype=np.float32):
-        arr = np.array([value], dtype=dtype)
-        const_layer = network.add_constant(const_shape, arr)
-        return const_layer.get_output(0)
-
     if approximate:
-        constant_layer_pow = create_constant(network, const_shape, 3.0)
-        constant_layer_multiply = create_constant(
-            network, const_shape, 0.044715
+        constant_layer_pow = add_constant_layer(
+            network,
+            [3.0],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_pow"],
         )
-        constant_layer_sqrt = create_constant(
-            network, const_shape, 0.7978845608028654
+        constant_layer_multiply = add_constant_layer(
+            network,
+            [0.044715],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_multiply"],
         )
-        constant_layer_one = create_constant(network, const_shape, 1.0)
-        constant_layer_half = create_constant(network, const_shape, 0.5)
+        constant_layer_sqrt = add_constant_layer(
+            network,
+            [0.7978845608028654],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_sqrt"],
+        )
+        constant_layer_one = add_constant_layer(
+            network,
+            [1.0],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_one"],
+        )
+        constant_layer_half = add_constant_layer(
+            network,
+            [0.5],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_half"],
+        )
 
-        layer_pow = trt_pow(network, input_val, constant_layer_pow)
-        layer_mul = trt_prod(network, layer_pow, constant_layer_multiply)
-        layer_add = trt_sum(network, layer_mul, input_val)
-        layer_sqrt = trt_prod(network, layer_add, constant_layer_sqrt)
+        layer_pow = trt_pow(
+            network,
+            input_val,
+            constant_layer_pow,
+            name=[paddle_op.name(), "layer_pow"],
+        )
+        layer_mul = trt_prod(
+            network,
+            layer_pow,
+            constant_layer_multiply,
+            name=[paddle_op.name(), "layer_mul"],
+        )
+        layer_add = trt_sum(
+            network, layer_mul, input_val, name=[paddle_op.name(), "layer_add"]
+        )
+        layer_sqrt = trt_prod(
+            network,
+            layer_add,
+            constant_layer_sqrt,
+            name=[paddle_op.name(), "layer_sqrt"],
+        )
 
-        layer_tanh = network.add_activation(
-            layer_sqrt, trt.ActivationType.TANH
-        ).get_output(0)
-        layer_one = trt_sum(network, layer_tanh, constant_layer_one)
-        layer_cdf = trt_prod(network, layer_one, constant_layer_half)
-        y = trt_prod(network, layer_cdf, input_val)
+        layer_tanh = network.add_activation(layer_sqrt, trt.ActivationType.TANH)
+        set_layer_name(layer_tanh, paddle_op)
+        layer_one = trt_sum(
+            network,
+            layer_tanh.get_output(0),
+            constant_layer_one,
+            name=[paddle_op.name(), "layer_one"],
+        )
+        layer_cdf = trt_prod(
+            network,
+            layer_one,
+            constant_layer_half,
+            name=[paddle_op.name(), "layer_cdf"],
+        )
+        y = trt_prod(
+            network, layer_cdf, input_val, name=[paddle_op.name(), "y"]
+        )
 
         return y
     else:
-        constant_layer_one = create_constant(network, const_shape, 1.0)
-        constant_layer_half = create_constant(network, const_shape, 0.5)
-        constant_layer_rsqrt2 = create_constant(
-            network, const_shape, 0.70710678118
+        constant_layer_one = add_constant_layer(
+            network,
+            [1.0],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_one"],
+        )
+        constant_layer_half = add_constant_layer(
+            network,
+            [0.5],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_half"],
+        )
+        constant_layer_rsqrt2 = add_constant_layer(
+            network,
+            [0.70710678118],
+            const_shape,
+            np.float32,
+            name=[paddle_op.name(), "constant_layer_rsqrt2"],
         )
 
-        layer_mul = trt_prod(network, input_val, constant_layer_rsqrt2)
-        layer_erf = network.add_unary(
-            layer_mul, trt.UnaryOperation.ERF
-        ).get_output(0)
-        layer_add = trt_sum(network, layer_erf, constant_layer_one)
-        layer_cdf = trt_prod(network, layer_add, constant_layer_half)
-        y = trt_prod(network, layer_cdf, input_val)
+        layer_mul = trt_prod(
+            network,
+            input_val,
+            constant_layer_rsqrt2,
+            name=[paddle_op.name(), "layer_mul"],
+        )
+        layer_erf = network.add_unary(layer_mul, trt.UnaryOperation.ERF)
+        set_layer_name(layer_erf, paddle_op)
+        layer_add = trt_sum(
+            network,
+            layer_erf.get_output(0),
+            constant_layer_one,
+            name=[paddle_op.name(), "layer_add"],
+        )
+        layer_cdf = trt_prod(
+            network,
+            layer_add,
+            constant_layer_half,
+            name=[paddle_op.name(), "layer_cdf"],
+        )
+        y = trt_prod(
+            network, layer_cdf, input_val, name=[paddle_op.name(), "y"]
+        )
 
         return y
 

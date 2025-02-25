@@ -26,6 +26,7 @@ from paddle.tensorrt.converter_utils import (
     get_shape_tensor_element,
     has_dynamic_shape,
     resize_to_1d,
+    set_layer_name,
     trt_cast,
     trt_concat,
     trt_expand,
@@ -55,19 +56,24 @@ def reshape_converter(network, paddle_op, inputs):
         is_constant_shape = True
     elif isinstance(inputs[1], list):
         # shape tensor is a list value
-        shape_tensor = trt_concat(network, inputs[1])
+        shape_tensor = trt_concat(
+            network, inputs[1], name=[paddle_op.name(), "shape_tensor"]
+        )
     else:
         # shape tensor is a value
         shape_tensor = inputs[1]
 
     if not is_constant_shape:
-        shape_tensor = resize_to_1d(network, shape_tensor)
+        shape_tensor = resize_to_1d(
+            network, shape_tensor, name=[paddle_op.name(), "shape_tensor"]
+        )
 
     layer = network.add_shuffle(x)
     if is_constant_shape:
         layer.reshape_dims = reshape_dim
     else:
         layer.set_input(1, shape_tensor)
+    set_layer_name(layer, paddle_op)
 
     assert len(layer.get_output(0).shape) >= 0, (
         'When convert reshape op to TRT reshape layer, the rank of trt reshape output dims is less than 0, '
@@ -99,6 +105,7 @@ def gather_nd_converter(network, paddle_op, inputs):
         input_tensor, indices_tensor, trt.GatherMode.ND
     )
     non_zero_layer.num_elementwise_dims = 0
+    set_layer_name(non_zero_layer, paddle_op)
     return non_zero_layer.get_output(0)
 
 
@@ -112,6 +119,7 @@ def flatten_converter(network, paddle_op, inputs):
     stop_axis = paddle_op.attrs().get("stop_axis")
 
     flatten_layer = network.add_shuffle(input_val)
+    set_layer_name(flatten_layer, paddle_op)
 
     if not has_dynamic_shape(input_val_shape):
         if start_axis < 0:
@@ -135,9 +143,10 @@ def flatten_converter(network, paddle_op, inputs):
             final_shape.append(flatten_dim)
 
         flatten_layer.reshape_dims = tuple(final_shape)
+        set_layer_name(flatten_layer, paddle_op)
     else:
         input_shape_layer = network.add_shape(input_val)
-        input_shape_layer.name = f"{input_val.name}_origin_shape"
+        set_layer_name(input_shape_layer, paddle_op)
 
         final_shapes = []
         # Shapes before start_axis
@@ -148,7 +157,7 @@ def flatten_converter(network, paddle_op, inputs):
                 shape=(start_axis,),
                 stride=(1,),
             )
-            prefix_shape_layer.name = f"{input_val.name}_prefix_shape"
+            set_layer_name(prefix_shape_layer, paddle_op)
             final_shapes.append(prefix_shape_layer.get_output(0))
 
         flatten_shape_layer = network.add_slice(
@@ -157,14 +166,14 @@ def flatten_converter(network, paddle_op, inputs):
             shape=(stop_axis - start_axis + 1,),
             stride=(1,),
         )
-        flatten_shape_layer.name = f"{input_val.name}_need_flatten"
+        set_layer_name(flatten_shape_layer, paddle_op)
         flatten_shape_layer = network.add_reduce(
             flatten_shape_layer.get_output(0),
             trt.ReduceOperation.PROD,
             axes=get_axes_for_reduce_op(0, False),
             keep_dims=True,
         )
-        flatten_shape_layer.name = f"{input_val.name}_flatten_dim"
+        set_layer_name(flatten_shape_layer, paddle_op)
         final_shapes.append(flatten_shape_layer.get_output(0))
 
         # Shapes after stop_axis
@@ -175,12 +184,12 @@ def flatten_converter(network, paddle_op, inputs):
                 shape=(len(input_val_shape) - stop_axis - 1,),
                 stride=(1,),
             )
-            suffix_shape_layer.name = f"{input_val.name}_suffix_shape"
+            set_layer_name(suffix_shape_layer, paddle_op)
             final_shapes.append(suffix_shape_layer.get_output(0))
 
         final_shape_layer = network.add_concatenation(final_shapes)
         final_shape_layer.axis = 0
-        final_shape_layer.name = f"{input_val.name}_final_shape"
+        set_layer_name(final_shape_layer, paddle_op)
         flatten_layer.set_input(1, final_shape_layer.get_output(0))
 
     return flatten_layer.get_output(0)
@@ -198,6 +207,7 @@ def concat_converter(network, paddle_op, inputs):
     if axis < 0:
         axis = len(input_tensors[0].shape) + axis
     concat_layer.axis = axis
+    set_layer_name(concat_layer, paddle_op)
 
     return concat_layer.get_output(0)
 
@@ -242,15 +252,25 @@ def unsqueeze_converter(network, paddle_op, inputs):
         gather_indices.append(in_rank_i)
         in_rank_i += 1
 
-    layer = network.add_shuffle(x)
-    shape_tensor = trt_shape(network, x)
+    shape_tensor = trt_shape(
+        network, x, name=[paddle_op.name(), "shape_tensor"]
+    )
     all_one = [1] * len(axes)
-    all_one_tensor = add_1D_constant_layer(network, all_one)
+    all_one_tensor = add_1D_constant_layer(
+        network, all_one, name=[paddle_op.name(), "all_one_tensor"]
+    )
     concat_inputs = [shape_tensor, all_one_tensor]
     real_shape_tensor = trt_gather(
-        network, trt_concat(network, concat_inputs), gather_indices
+        network,
+        trt_concat(
+            network, concat_inputs, name=[paddle_op.name(), "trt_concat"]
+        ),
+        gather_indices,
+        name=[paddle_op.name(), "real_shape_tensor"],
     )
+    layer = network.add_shuffle(x)
     layer.set_input(1, real_shape_tensor)
+    set_layer_name(layer, paddle_op)
     return layer.get_output(0)
 
 
@@ -263,7 +283,9 @@ def squeeze_converter(network, paddle_op, inputs):
 
     # If input is weights, convert to TensorRT tensor
     if isinstance(input_val, trt.Weights):
-        input_val = network.add_constant(input_shape, input_val).get_output(0)
+        input_val = network.add_constant(input_shape, input_val)
+        set_layer_name(input_val, paddle_op)
+        input_val = input_val.get_output(0)
 
     # Get axis
     axis = get_input_constant_value(paddle_op, inputs, 1)
@@ -301,10 +323,18 @@ def squeeze_converter(network, paddle_op, inputs):
     ]
 
     # Add Shuffle layer
+    shape_tensor = trt_shape(
+        network, input_val, name=[paddle_op.name(), 'shape_tensor']
+    )
+    real_shape_tensor = trt_gather(
+        network,
+        shape_tensor,
+        gather_indices,
+        name=[paddle_op.name(), 'real_shape_tensor'],
+    )
     layer = network.add_shuffle(input_val)
-    shape_tensor = trt_shape(network, input_val)
-    real_shape_tensor = trt_gather(network, shape_tensor, gather_indices)
     layer.set_input(1, real_shape_tensor)
+    set_layer_name(layer, paddle_op)
 
     return layer.get_output(0)
 

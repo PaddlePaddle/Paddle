@@ -28,6 +28,7 @@ from paddle.tensorrt.converter_utils import (
     get_axis_length,
     get_input_constant_value,
     get_shape_tensor_element,
+    set_layer_name,
     trt_cast,
     trt_concat,
     trt_equal,
@@ -56,15 +57,25 @@ def scale_converter(network, paddle_op, inputs):
     is_int = x.dtype == trt.DataType.INT32
     if is_int:
         bias_tensor = add_1D_constant_layer(
-            network, int(bias + 0.5) if bias > 0 else int(bias - 0.5)
+            network,
+            int(bias + 0.5) if bias > 0 else int(bias - 0.5),
+            name=[paddle_op.name(), "bias_tensor"],
         )
     else:
-        bias_tensor = add_1D_constant_layer(network, bias, dtype=np.float32)
+        bias_tensor = add_1D_constant_layer(
+            network,
+            bias,
+            dtype=np.float32,
+            name=[paddle_op.name(), "bias_tensor"],
+        )
     is_bias_0 = bias == 0
     bias_shapes = [1] * len(x.shape)
-    bias_shapes_tensor = add_1D_constant_layer(network, bias_shapes)
+    bias_shapes_tensor = add_1D_constant_layer(
+        network, bias_shapes, name=[paddle_op.name(), "bias_shapes_tensor"]
+    )
     reshape_layer_bias = network.add_shuffle(bias_tensor)
     reshape_layer_bias.set_input(1, bias_shapes_tensor)
+    set_layer_name(reshape_layer_bias, paddle_op)
 
     scale = get_input_constant_value(paddle_op, inputs, 1)
     if scale is not None:
@@ -72,11 +83,16 @@ def scale_converter(network, paddle_op, inputs):
         has_scale_tensor = False
         if is_int:
             scale_tensor = add_1D_constant_layer(
-                network, int(scale + 0.5 if scale > 0 else scale - 0.5)
+                network,
+                int(scale + 0.5 if scale > 0 else scale - 0.5),
+                name=[paddle_op.name(), "scale_tensor"],
             )
         else:
             scale_tensor = add_1D_constant_layer(
-                network, scale, dtype=np.float32
+                network,
+                scale,
+                dtype=np.float32,
+                name=[paddle_op.name(), "scale_tensor"],
             )
         is_scale_1 = scale == 1
     else:
@@ -84,15 +100,19 @@ def scale_converter(network, paddle_op, inputs):
         scale_tensor = inputs[1]
         is_scale_1 = False
     scale_shapes = [1] * len(x.shape)
-    scale_shapes_tensor = add_1D_constant_layer(network, scale_shapes)
+    scale_shapes_tensor = add_1D_constant_layer(
+        network, scale_shapes, name=[paddle_op.name(), "scale_shapes_tensor"]
+    )
     reshape_layer_scale = network.add_shuffle(scale_tensor)
     reshape_layer_scale.set_input(1, scale_shapes_tensor)
+    set_layer_name(reshape_layer_scale, paddle_op)
 
     # Initialize the layer variable to ensure it's defined in all branches
     layer = None
 
     if not has_scale_tensor and is_scale_1 and is_bias_0:
         layer = network.add_identity(x)
+        set_layer_name(layer, paddle_op)
     else:
         if bias_after_scale:
             if not is_scale_1:
@@ -101,6 +121,7 @@ def scale_converter(network, paddle_op, inputs):
                     reshape_layer_scale.get_output(0),
                     trt.ElementWiseOperation.PROD,
                 )
+                set_layer_name(layer, paddle_op)
                 x = layer.get_output(0)
 
             if not is_bias_0:
@@ -109,6 +130,7 @@ def scale_converter(network, paddle_op, inputs):
                     reshape_layer_bias.get_output(0),
                     trt.ElementWiseOperation.SUM,
                 )
+                set_layer_name(layer, paddle_op)
 
         else:
             if not is_bias_0:
@@ -117,6 +139,7 @@ def scale_converter(network, paddle_op, inputs):
                     reshape_layer_bias.get_output(0),
                     trt.ElementWiseOperation.SUM,
                 )
+                set_layer_name(layer, paddle_op)
                 x = layer.get_output(0)
             if not is_scale_1:
                 layer = network.add_elementwise(
@@ -124,6 +147,7 @@ def scale_converter(network, paddle_op, inputs):
                     reshape_layer_scale.get_output(0),
                     trt.ElementWiseOperation.PROD,
                 )
+                set_layer_name(layer, paddle_op)
 
     return layer.get_output(0)
 
@@ -257,8 +281,9 @@ def remainder_converter(network, paddle_op, inputs):
         network,
         input_tensor,
         weight_tensor,
-        input_tensor.name,
-        weight_tensor.name,
+        "input_tensor_broadcast",
+        "weight_tensor_broadcast",
+        paddle_op,
     )
     is_floor_div = input_tensor.dtype != trt.DataType.INT32
     if is_floor_div:
@@ -375,8 +400,9 @@ def cumsum_converter(network, paddle_op, inputs):
         network,
         squeeze_output,
         zero,
-        squeeze_output.name,
-        zero.name,
+        "squeeze_output_broadcast",
+        "zero_output_broadcast",
+        paddle_op,
     )
     cast_tensor = trt_cast(network, rhs_val, dtype)
     zero_tensor = network.add_elementwise(
