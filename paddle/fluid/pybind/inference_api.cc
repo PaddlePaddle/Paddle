@@ -401,10 +401,15 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
         static_cast<uint8_t *>(paddle_tensor.data()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::INT8) {
+    tensor.ShareExternalData(
+        static_cast<int8_t *>(paddle_tensor.data()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
+        "INT64, UINT8, INT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
