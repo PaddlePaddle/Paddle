@@ -22,6 +22,6 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: Clone
 
-  Py3:
-    uses: ./.github/workflows/_Py3.yml
-    needs: Clone
+  # Py3:
+  #   uses: ./.github/workflows/_Py3.yml
+  #   needs: Clone

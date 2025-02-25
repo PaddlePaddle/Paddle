@@ -187,7 +187,7 @@ function show_ut_retry_result() {
         if [ "$SYSTEM" == "Darwin" ]; then
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         else
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=2) {print $2}}')
         fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -197,12 +197,14 @@ function show_ut_retry_result() {
             echo "${retry_unittests_record}"
         else
             failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
-            echo "========================================"
-            echo "There are failed tests, which have been executed re-run,but success rate is less than 50%:"
-            echo "Summary Failed Tests... "
-            echo "========================================"
-            echo "The following tests FAILED: "
-            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re"
+            echo -e "${RED}========================================${NONE}"
+            echo -e "${RED}There are failed tests, which have been executed re-run,but success rate is less than 50%:${NONE}"
+            echo -e "${RED}Summary Failed Tests... ${NONE}"
+            echo -e "${RED}========================================${NONE}"
+            echo -e "${RED}The following tests FAILED: ${NONE}"
+            echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re" | while IFS= read -r line; do
+                echo -e "${RED}${line}${NONE}"
+            done
             exit 8;
         fi
     fi
