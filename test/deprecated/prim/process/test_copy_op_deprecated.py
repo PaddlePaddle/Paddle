@@ -53,7 +53,7 @@ class TestCompositeCopyOp(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that dropout is not splitted into small ops
+            # Ensure that dropout is not split into small ops
             self.assertTrue('dropout' in fwd_ops_new)
 
         exe = paddle.static.Executor()

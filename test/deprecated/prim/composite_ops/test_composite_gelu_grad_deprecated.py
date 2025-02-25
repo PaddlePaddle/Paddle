@@ -98,7 +98,7 @@ class TestCompositeGelu(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that gelu is splitted into small ops
+            # Ensure that gelu is split into small ops
             self.assertTrue('gelu' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], x)

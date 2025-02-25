@@ -94,7 +94,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that softmax is splitted into small ops
+            # Ensure that softmax is split into small ops
             self.assertTrue('softmax' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], x)

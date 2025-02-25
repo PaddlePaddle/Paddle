@@ -502,7 +502,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
             if core._is_fwd_prim_enabled():
                 paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                 fwd_ops_new = [op.type for op in blocks[0].ops]
-                # Ensure that instance_norm is splitted into small ops
+                # Ensure that instance_norm is split into small ops
                 assert 'instance_norm' not in fwd_ops_new
 
             grads = paddle.static.gradients([output], [input_, scale_, bias_])
@@ -586,7 +586,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                     if core._is_fwd_prim_enabled():
                         paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                         fwd_ops_new = [op.type for op in blocks[0].ops]
-                        # Ensure that instance_norm is splitted into small ops
+                        # Ensure that instance_norm is split into small ops
                         assert 'instance_norm' not in fwd_ops_new
 
                     grads = paddle.static.gradients(
