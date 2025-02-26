@@ -66,7 +66,6 @@ from .dispatch_functions import (
     operator_not_in,
 )
 from .dispatcher import Dispatcher
-from .function_graph import FunctionGraph
 from .instr_flag import (
     CALL_FUNCTION_EX_FLAG as CFE,
     CONVERT_VALUE_FLAG as CV,
@@ -111,7 +110,7 @@ from .variables import (
 )
 
 if TYPE_CHECKING:
-    from .function_graph import CompileGraphResult
+    from .function_graph import CompileGraphResult, FunctionGraph
 
 SUPPORT_COMPARE_OP = {
     ">": operator.gt,
@@ -449,16 +448,6 @@ class OpcodeExecutorBase:
         Args:
             result: The execution result.
             instr: The jump instruction.
-
-        Raises:
-            NotImplementedError: If the method is not implemented.
-
-        """
-        raise NotImplementedError
-
-    def transform(self):
-        """
-        Abstract method need to be implemented to symbolic translate each instruction.
 
         Raises:
             NotImplementedError: If the method is not implemented.
@@ -1886,18 +1875,17 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
     """
 
-    def __init__(self, frame: types.FrameType, **kwargs):
-        graph = FunctionGraph(frame, **kwargs)
-        self._frame = frame
+    def __init__(self, frame: types.FrameType, graph: FunctionGraph):
+        self._frame = frame  # TODO: Don't hold frame in executor, just hold vframe instead
         self._name = "Executor"
         self.call_stack[:] = []
         super().__init__(frame.f_code, graph)
         Dispatcher.graph = graph
 
-    def transform(self):
-        static_function = get_static_function(self._frame, "eval_frame")
+    def transform(self, frame: types.FrameType):
+        static_function = get_static_function(frame, "eval_frame")
         if static_function is not None:
-            code = self._frame.f_code
+            code = frame.f_code
             inputs = []
             for i in range(code.co_argcount):
                 arg_name = code.co_varnames[i]
@@ -1932,11 +1920,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         """
         log(
             3,
-            f"[Executor] code options: co_cellvars={self._frame.f_code.co_cellvars}\n",
+            f"[Executor] code options: co_cellvars={self._code.co_cellvars}\n",
         )
-        free_or_cell_vars = (
-            self._frame.f_code.co_cellvars + self._frame.f_code.co_freevars
-        )
+        free_or_cell_vars = self._code.co_cellvars + self._code.co_freevars
         for name, value in self._frame.f_locals.items():
             tracker = (
                 CellTracker(name)
@@ -2109,7 +2095,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
             ):
                 return None
             cache_key = (ResumeFunctionType.IF_RESUME, self._code, start_idx)
-            resume_fn_creator = ResumeFunctionCreator(self._frame)
+            resume_fn_creator = ResumeFunctionCreator(
+                self._graph.pycode_gen._origin_code,
+                self._graph.pycode_gen._real_globals,
+            )
             if (
                 maybe_resume_fn := resume_fn_creator.lookup(cache_key)
             ) is not None:
@@ -2265,7 +2254,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
             if self._instructions[next_index].opname == "RETURN_VALUE":
                 return None
             cache_key = (ResumeFunctionType.CALL_RESUME, self._code, next_index)
-            resume_fn_creator = ResumeFunctionCreator(self._frame)
+            resume_fn_creator = ResumeFunctionCreator(
+                self._graph.pycode_gen._origin_code,
+                self._graph.pycode_gen._real_globals,
+            )
             if (
                 maybe_resume_fn := resume_fn_creator.lookup(cache_key)
             ) is not None:
@@ -2370,7 +2362,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 loop_body_start_idx,
                 loop_body_end_idx,
             )
-            resume_fn_creator = ResumeFunctionCreator(self._frame)
+            resume_fn_creator = ResumeFunctionCreator(
+                self._graph.pycode_gen._origin_code,
+                self._graph.pycode_gen._real_globals,
+            )
             if (
                 maybe_resume_fn := resume_fn_creator.lookup(cache_key)
             ) is not None:
@@ -2441,7 +2436,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self._code,
                 loop_body_end_idx,
             )
-            resume_fn_creator = ResumeFunctionCreator(self._frame)
+            resume_fn_creator = ResumeFunctionCreator(
+                self._graph.pycode_gen._origin_code,
+                self._graph.pycode_gen._real_globals,
+            )
             if (
                 maybe_resume_fn := resume_fn_creator.lookup(cache_key)
             ) is not None:
@@ -2601,7 +2599,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 start_idx,
                 end_idx,
             )
-            resume_fn_creator = ResumeFunctionCreator(self._frame)
+            resume_fn_creator = ResumeFunctionCreator(
+                self._graph.pycode_gen._origin_code,
+                self._graph.pycode_gen._real_globals,
+            )
             if (
                 maybe_resume_fn := resume_fn_creator.lookup(cache_key)
             ) is not None:

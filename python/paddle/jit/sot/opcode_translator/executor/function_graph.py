@@ -22,7 +22,7 @@ import inspect
 from collections import namedtuple
 from copy import deepcopy
 from functools import cached_property, reduce
-from typing import Any, Callable, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Tuple, Union
 
 from typing_extensions import TypeAlias, TypeGuard
 
@@ -82,6 +82,10 @@ from .variables import (
     find_traceable_vars,
     map_variables,
 )
+
+if TYPE_CHECKING:
+    import types
+
 
 CompileGraphResult: TypeAlias = Tuple[
     Callable[..., Any],
@@ -211,11 +215,13 @@ class FunctionGraph:
         ],
     )
 
-    def __init__(self, frame, **kwargs):
+    def __init__(
+        self, code: types.CodeType, globals: dict[str, object], **kwargs
+    ):
         self.sir_ctx = SymbolicTraceContext()
         self.inner_out = set()
         self.input_variables = []  # Store variables required within a function
-        self.pycode_gen = PyCodeGen(frame, disable_eval_frame=True)
+        self.pycode_gen = PyCodeGen(code, globals, disable_eval_frame=True)
         self.side_effects = SideEffects()
         self.need_cache = True
         self._global_guarded_variables: OrderedSet[VariableBase] = OrderedSet()

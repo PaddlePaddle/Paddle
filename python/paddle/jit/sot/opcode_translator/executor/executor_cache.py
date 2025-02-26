@@ -35,6 +35,7 @@ from ...utils import (
     log_do,
 )
 from ..custom_code import CustomCode
+from .function_graph import FunctionGraph
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
 
@@ -235,12 +236,13 @@ def start_translate(
     Returns:
         tuple[CustomCode, Guard | None]: The translated code object and its guard function, or None if translation fails.
     """
-    simulator = OpcodeExecutor(frame, **kwargs)
+    graph = FunctionGraph(frame.f_code, frame.f_globals, **kwargs)
+    simulator = OpcodeExecutor(frame, graph)
     try:
         simulator.check_code_simulatable()
         InfoCollector().attach(CompileCountInfo, frame.f_code)
         with sot_simulation_mode_guard(True):
-            new_custom_code, guard_fn = simulator.transform()
+            new_custom_code, guard_fn = simulator.transform(frame)
         if not simulator._graph.need_cache:
             return (
                 CustomCode(None, True),
