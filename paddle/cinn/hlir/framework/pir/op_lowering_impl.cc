@@ -117,7 +117,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // =========== OpFusion ============
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
-  func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
+  func_bodies = OperationFusion(ops,
+                                func_bodies,
+                                group->fusion_tracker_ptr,
+                                group->substitute_dimexpr_map());
 
   std::unordered_set<std::string> fusion_group_args;
   for (auto value : group->GetInputOpValues()) {

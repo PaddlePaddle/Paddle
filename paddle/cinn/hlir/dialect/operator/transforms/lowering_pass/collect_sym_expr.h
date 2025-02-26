@@ -20,6 +20,11 @@ namespace cinn::dialect::ir::details {
 using OpLoweringGroup = cinn::hlir::framework::pir::OpLoweringGroup;
 using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 
+std::unordered_map<symbol::DimExpr, symbol::DimExpr>
+CollectSubstituteDimExprMap(
+    const OpLoweringGroupPtr& group,
+    pir::ShapeConstraintIRAnalysis& shape_analysis);  // NOLINT
+
 std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
 CreateGroupShapeOrDataExprs(
     const OpLoweringGroupPtr& group,

@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/fusion_iters.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_axis_mapping.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -28,6 +29,7 @@ enum InstructionType {
   T_ReshapeAlign,
   T_TmpTransform,
   T_TrivialLoopAlign,
+  T_AxisTransform,
   T_ItersTransform,
   T_Padding
 };
@@ -218,6 +220,27 @@ struct TrivialLoopAlignInstr : public FusionInstruction {
   virtual std::string DebugStr() const {
     return "TrivialLoopAlignInstr || " + upstream_ + ", " + downstream_ +
            " => " + result_;
+  }
+};
+
+struct AxisTransformInstr : public FusionInstruction {
+  AxisTransformInstr(const std::string& source,
+                     const std::string& target,
+                     const AxisTransformRoute& axis_transform_route)
+      : source_(source),
+        target_(target),
+        axis_transform_route_(axis_transform_route) {}
+  virtual InstructionType type() const { return T_AxisTransform; }
+  virtual FusionInstrPtr Clone() {
+    return std::make_shared<AxisTransformInstr>(*this);
+  }
+
+  std::string source_;
+  std::string target_;
+  AxisTransformRoute axis_transform_route_;
+
+  virtual std::string DebugStr() const {
+    return "AxisTransformInstr || " + source_ + " => " + target_;
   }
 };
 

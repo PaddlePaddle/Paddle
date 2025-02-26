@@ -177,6 +177,33 @@ std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(pir::Operation* op) {
   return res;
 }
 
+std::shared_ptr<pir::ShapeConstraintIRAnalysis> GetShapeAnalysisFromValue(
+    const pir::Value& value) {
+  pir::Operation* related_op = value.defining_op();
+  if (value.defining_op() == nullptr) {
+    // For inputs of the program, the defining_op is nullptr,
+    // we use it's user as the related op.
+    PADDLE_ENFORCE_EQ(value.use_empty(),
+                      false,
+                      ::common::errors::PreconditionNotMet(
+                          "Value is an input value, it should have a use."));
+    related_op = value.first_use().owner();
+  }
+  return pir::ShapeAnalysisManager::Instance()
+      .Get(related_op->GetParentProgram())
+      .shared_from_this();
+}
+
+std::vector<symbol::DimExpr> GetValueAllDims(const pir::Value& value) {
+  return GetValueDims(value, ArangeVector<int>(0, GetRank(value)));
+}
+
+std::vector<symbol::DimExpr> GetCompatibleValueAllDims(
+    const pir::Value& value) {
+  return GetRank(value) == 0 ? std::vector<symbol::DimExpr>{symbol::DimExpr(1)}
+                             : GetValueAllDims(value);
+}
+
 symbol::DimExpr GetShapeProduct(const std::vector<symbol::DimExpr>& shape,
                                 int start,
                                 int end) {
@@ -197,14 +224,18 @@ bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
          GetShapeProduct(out_shape, out_start, out_end);
 }
 
+bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
+                       const std::vector<symbol::DimExpr>& out_shape) {
+  return ShapeProductEqual(
+      in_shape, out_shape, 0, in_shape.size(), 0, out_shape.size());
+}
+
 std::vector<std::pair<int, int>> PartitionReshapeAxes(
     const std::vector<symbol::DimExpr>& in_shape,
     const std::vector<symbol::DimExpr>& out_shape) {
-  PADDLE_ENFORCE(
-      ShapeProductEqual(
-          in_shape, out_shape, 0, in_shape.size(), 0, out_shape.size()),
-      ::common::errors::InvalidArgument(
-          "Shape product should be equal for reshape operation."));
+  PADDLE_ENFORCE(ShapeProductEqual(in_shape, out_shape),
+                 ::common::errors::InvalidArgument(
+                     "Shape product should be equal for reshape operation."));
 
   int input_rank = in_shape.size();
   int output_rank = out_shape.size();
