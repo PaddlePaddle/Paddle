@@ -51,8 +51,8 @@ void FlashAttnUnpaddedBaseKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q_,
+    const Scalar& max_seqlen_k_,
     float scale,
     float dropout,
     bool causal,
@@ -107,6 +107,9 @@ void FlashAttnUnpaddedBaseKernel(
   const int64_t num_heads_k = k.dims()[1];
 
   // TODO(umiswing): add shape check
+
+  int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
+  int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
 
   FlashAttnFwdParamsV2<T> params =
       FlashAttnFwdParamsV2<T>(ctx,
@@ -225,8 +228,8 @@ void FlashAttnUnpaddedKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q,
+    const Scalar& max_seqlen_k,
     float scale,
     float dropout,
     bool causal,
@@ -302,8 +305,8 @@ void FlashAttnVarlenQKVPackedKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q,
+    const Scalar& max_seqlen_k,
     float scale,
     float dropout,
     bool causal,

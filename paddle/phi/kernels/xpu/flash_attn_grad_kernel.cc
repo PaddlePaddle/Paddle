@@ -35,8 +35,8 @@ void FlashAttnGradKernelBase(const Context& ctx,
                              const paddle::optional<DenseTensor>& attn_mask,
                              const DenseTensor& dout,
                              const int batch_size,
-                             const int64_t max_seqlen_q,
-                             const int64_t max_seqlen_k,
+                             const Scalar& max_seqlen_q_,
+                             const Scalar& max_seqlen_k_,
                              const int num_heads,
                              const int num_heads_k,
                              const int head_size,
@@ -96,6 +96,9 @@ void FlashAttnGradKernelBase(const Context& ctx,
   XPUType* dq_data = reinterpret_cast<XPUType*>(dq->data<T>());
   XPUType* dk_data = reinterpret_cast<XPUType*>(dk->data<T>());
   XPUType* dv_data = reinterpret_cast<XPUType*>(dv->data<T>());
+
+  int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
+  int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
 
   // get seed offset
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
@@ -183,8 +186,8 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  const DenseTensor& seed_offset,
                                  const paddle::optional<DenseTensor>& attn_mask,
                                  const DenseTensor& dout,
-                                 int64_t max_seqlen_q,
-                                 int64_t max_seqlen_k,
+                                 const Scalar& max_seqlen_q,
+                                 const Scalar& max_seqlen_k,
                                  float scale,
                                  float dropout,
                                  bool causal,

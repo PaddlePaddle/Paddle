@@ -31,8 +31,8 @@ void FlashAttnKernelBase(const Context& ctx,
                          const paddle::optional<DenseTensor>& fixed_seed_offset,
                          const paddle::optional<DenseTensor>& attn_mask,
                          const int batch_size,
-                         int64_t max_seqlen_q,
-                         int64_t max_seqlen_k,
+                         const Scalar& max_seqlen_q_,
+                         const Scalar& max_seqlen_k_,
                          const int num_heads,
                          const int num_heads_k,
                          const int head_size,
@@ -53,6 +53,8 @@ void FlashAttnKernelBase(const Context& ctx,
   float real_dropout = is_test ? 0.0f : dropout;
 
   // output: softmax_lse, 训练参数，给反向用于反向重计算的L
+  int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
+  int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
   std::vector<int64_t> softmax_lse_dims = {batch_size, num_heads, max_seqlen_q};
   softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
   ctx.template Alloc<float>(softmax_lse);
@@ -192,8 +194,8 @@ void FlashAttnUnpaddedKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q,
+    const Scalar& max_seqlen_k,
     float scale,
     float dropout,
     bool causal,
