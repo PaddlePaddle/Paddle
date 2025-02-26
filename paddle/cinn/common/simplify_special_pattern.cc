@@ -241,6 +241,39 @@ std::optional<ir::IndexExpr> AddMulCornerCase(
   return res;
 }
 
+// S0 / (S1 * S2) * S2 + S0 % (S1 * S2) / S1 ===>  S0 / S1
+std::optional<ir::IndexExpr> DivMulAddModDivCase(const ir::IndexExpr& lhs,
+                                                 const ir::IndexExpr& rhs) {
+  ir::Var a = ir::Var("a");
+  ir::Var b = ir::Var("b");
+  ir::Var c = ir::Var("c");
+  ir::Var f = ir::Var("f");
+  std::unordered_map<std::string, ir::IndexExpr> map;
+
+  ir::IndexExpr pattern = f / c * a + f % c / b;
+
+  auto flatten = GetFlattenExprs<ir::Add>(lhs);
+  ir::IndexExpr res = ir::IndexExpr(rhs->type(), 0);
+  bool find = false;
+  for (const auto& expr : flatten) {
+    if (!find) {
+      ir::IndexExpr cand = ir::Add::Make(expr, rhs);
+      map.clear();
+      // Check if the pattern is matched
+      if (CheckPattern(cand, pattern, &map) &&
+          map.at("c") == map.at("a") * map.at("b")) {
+        ir::IndexExpr simplied = map.at("f") / map.at("b");
+        res = res.defined() ? res + simplied : simplied;
+        find = true;
+        continue;
+      }
+    }
+    res = res.defined() ? ir::Add::Make(res, expr) : expr;
+  }
+  if (find) return res;
+  return std::nullopt;
+}
+
 // (S0 + S1 - (S0 + S1) % S2) % S2 == 0
 // (S0 + S1 - (S0 + S1) % S2) / S2 == (S0 + S1) / S2
 std::optional<ir::IndexExpr> SubModCornerCase(const ir::IndexExpr& lhs,
@@ -322,6 +355,7 @@ std::optional<ir::IndexExpr> SimplifyAddCornerCase(const ir::IndexExpr& lhs,
                                                    const ir::IndexExpr& rhs) {
   if (auto res = DivMulAddModCornerCase(lhs, rhs)) return res.value();
   if (auto res = AddMulCornerCase(lhs, rhs)) return res.value();
+  if (auto res = DivMulAddModDivCase(lhs, rhs)) return res.value();
   // Add other corner cases
   return std::nullopt;
 }
