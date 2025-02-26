@@ -370,6 +370,9 @@ class BoundReplacer : public ir::IRMutator<> {
 
  private:
   void Visit(const ir::_Var_* var, ir::Expr* op) override {
+    // if the variable is S0/S1..., do not replace it.
+    if (var->is_symbolic_constant) return;
+
     ir::Expr lower_bound = SymbolicExprLimit::negative_inf;
     ir::Expr upper_bound = SymbolicExprLimit::positive_inf;
     if (var_intervals_.count(var->name) != 0) {
