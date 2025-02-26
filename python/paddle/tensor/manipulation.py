@@ -6462,11 +6462,26 @@ def infer_dynamic_broadcast_shape(
     Returns:
         Tensor: The shape tensor for later broadcasting
     """
-    new_shapes = [
-        arr_shape[:axis],
-        indices_shape[axis : axis + 1],
-        arr_shape[axis + 1 :],
-    ]
+    if axis == 0:
+        new_shapes = [
+            indices_shape[
+                :1
+            ],  # use indices_shape[0] will error in concat after, because its shape is [], and shape of arr_shape[1:] is [1]
+            arr_shape[1:],
+        ]
+    elif axis == arr_shape_dim - 1:
+        new_shapes = [
+            arr_shape[:axis],
+            indices_shape[
+                axis:
+            ],  # use indices_shape[axis] will error in concat after, because its shape is [], and shape of arr_shape[axis:] is [1]
+        ]
+    else:
+        new_shapes = [
+            arr_shape[:axis],
+            indices_shape[axis : axis + 1],
+            arr_shape[axis + 1 :],
+        ]
     return paddle.concat(new_shapes)
 
 
