@@ -43,11 +43,13 @@ jobs:
         CCACHE_MAXSIZE: 150G
         CCACHE_LIMIT_MULTIPLE: 0.8
         WITH_AVX: "OFF"
+        CCACHE_DIR: "/root/.ccache/py3"
       run: |
         # bash ${{ github.workspace }}/paddle/scripts/paddle_build/check_docker_image.sh
         docker run -d -t --name ${container_name} \
           -v "/home/data/cfs:/home/data/cfs" \
-          -v "/home/data/gzcfs:/home/data/gzcfs" \
+          -v "/home/data/cfs/.cache:/root/.cache" \
+          -v "/home/data/cfs/.ccache:/root/.ccache" \
           -v "/dev/shm:/dev/shm"  \
           -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
           -e BRANCH \
@@ -98,15 +100,9 @@ jobs:
         git merge --no-edit develop
         '
 
-    - name: Configure cache and ccache
-      run: |
-        docker exec -t ${container_name} /bin/bash -c 'bash ${ci_scripts}/config_cfs.sh py3 ${{ github.env }}'
-
     - name: Build
       run: |
         docker exec -t ${container_name} /bin/bash -c '
-        export CACHE_DIR=${{ env.CACHE_DIR }}
-        export CCACHE_DIR=${{ env.CCACHE_DIR }}
         . ../../../proxy
         bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} py3
         EXCODE=$?
