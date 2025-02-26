@@ -149,7 +149,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
 
   return args;
 }
-// Generate Function Arguments for splitted kernel.
+// Generate Function Arguments for split kernel.
 std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
     Expr func_iterator, std::vector<ir::Tensor> temp_tensors) {
   CheckArgsUnique();

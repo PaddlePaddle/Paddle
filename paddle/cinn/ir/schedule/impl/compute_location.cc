@@ -123,8 +123,8 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
               GetLoopExtent(loops[0]) != 1) &&
              block_loops[0].As<ir::For>()->extent.is_constant() &&
              GetLoopExtent(block_loops[0]) == 1) {
-    auto splited = this->Split(loops[0], {1, -1});
-    this_loop = splited[1];
+    auto split = this->Split(loops[0], {1, -1});
+    this_loop = split[1];
   }
 
   block_loops = this->GetLoops(this_block);
