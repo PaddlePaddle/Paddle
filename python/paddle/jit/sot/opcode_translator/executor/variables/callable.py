@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import inspect
 import itertools
 import operator
@@ -792,6 +793,27 @@ class BuiltinVariable(FunctionVariable):
         return {
             "name": self.value.__name__,
         }
+
+
+class FunctoolsLruCacheWrapperVariable(FunctionVariable):
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+        self.value = fn
+
+    def call_function(self, /, *args, **kwargs):
+        wrapped_fn = self.value.__wrapped__
+        wrapped_fn = VariableFactory.from_value(
+            wrapped_fn, self.graph, GetAttrTracker(self, "__wrapped__")
+        )
+        return wrapped_fn(*args, **kwargs)
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, functools._lru_cache_wrapper):
+            return FunctoolsLruCacheWrapperVariable(value, graph, tracker)
+        return None
 
 
 class UserDefinedGeneratorFunctionVariable(FunctionVariable):
