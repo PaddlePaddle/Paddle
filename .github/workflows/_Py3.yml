@@ -8,7 +8,7 @@ env:
   docker_image: 077ca344c322
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
-  container_name: paddle-CI-${{ github.event.pull_request.number }}-py3
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-py3
   ci_scripts: ${{ github.workspace }}/ci
 
 defaults:
@@ -46,6 +46,8 @@ jobs:
         CCACHE_DIR: "/root/.ccache/py3"
       run: |
         # bash ${{ github.workspace }}/paddle/scripts/paddle_build/check_docker_image.sh
+        container_name=${TASK}-$(date +%s)
+        echo "container_name=${container_name}" >> ${{ github.env }}
         docker run -d -t --name ${container_name} \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache:/root/.cache" \
@@ -76,13 +78,14 @@ jobs:
           -e GITHUB_ENV \
           -e ci_scripts \
           -e WITH_AVX \
+          -e CCACHE_DIR \
           -w ${{ github.workspace }} --network host ${docker_image}
 
     - name: Download paddle.tar.gz and merge develop
       env:
         work_dir: ${{ github.workspace }}
       run: |
-        docker exec -t ${container_name} /bin/bash -c '
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
         rm -rf * .[^.]*
         rm -rf /root/.cache && ln -s /home/data/cfs/.cache/python35-cpu /root/.cache
         set -e
@@ -102,7 +105,7 @@ jobs:
 
     - name: Build
       run: |
-        docker exec -t ${container_name} /bin/bash -c '
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
         . ../../../proxy
         bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} py3
         EXCODE=$?
@@ -111,7 +114,7 @@ jobs:
 
     - name: Test
       run: |
-        docker exec -t ${container_name} /bin/bash -c '
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
         . ../../../proxy
         bash ${ci_scripts}/run_linux_cpu_test.sh
         EXCODE=$?
@@ -128,7 +131,7 @@ jobs:
         bos_file: ${{ github.workspace }}/../bos/BosClient.py
         paddle_whl: paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl
       run: |
-        docker exec -t ${container_name} /bin/bash -c '
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
         export AK=paddle
         export SK=paddle
         if [ ! -f "${{ env.bos_file }}" ]; then
@@ -143,6 +146,7 @@ jobs:
     - name: Terminate and delete the container
       if: always()
       run: |
-        docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-        docker stop ${container_name}
-        docker rm ${container_name}
+        set +e
+        docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        docker stop ${{ env.container_name }}
+        docker rm ${{ env.container_name }}
