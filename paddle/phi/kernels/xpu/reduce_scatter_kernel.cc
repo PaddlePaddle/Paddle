@@ -47,7 +47,7 @@ void ReduceScatterKernel(const Context& dev_ctx,
                         "BKCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
 
-  XPUStream stream = comm_ctx->GetStream();
+  XPUStream stream = dev_ctx.stream();
   comm_ctx->ReduceScatter(out, x, BKCL_ADD, stream);
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(

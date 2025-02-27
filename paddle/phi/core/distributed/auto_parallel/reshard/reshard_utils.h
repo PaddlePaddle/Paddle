@@ -27,6 +27,10 @@
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/visit_type.h"
 
+#if defined(PADDLE_WITH_XPU)
+#include <xpu/runtime.h>
+#endif
+
 namespace phi {
 class DeviceContext;
 
@@ -86,6 +90,18 @@ phi::DDim InferShapeForReshardFromReplicate(
 #define DEVICE_CONTEXT CustomContext
 #endif
 
+#if defined(PADDLE_WITH_XPU)
+#define DEVICE_WAIT(dev_ctx) \
+  do {                       \
+    xpu_wait();              \
+    (dev_ctx)->Wait();       \
+  } while (0)
+#else
+#define DEVICE_WAIT(dev_ctx) \
+  do {                       \
+  } while (0)  // no need to wait on other devices.
+#endif
+
 // Some reshard function supports fewer data types on xpu than on gpu. For
 // example, `Transpose`, `Split`, and `Divide` do not support double type.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -125,12 +141,14 @@ phi::DDim InferShapeForReshardFromReplicate(
                             __VA_ARGS__);                                   \
           }));                                                              \
     } else if (DEVICE_CONTEXT::classof(dev_ctx)) {                          \
+      DEVICE_WAIT(dev_ctx);                                                 \
       VLOG(4) << "Call `" << #fn_name << "` in Resharding on device.";      \
       PD_VISIT_RESHARD_TYPES(                                               \
           dtype, #fn_name, ([&] {                                           \
             fn_name<data_t>(static_cast<const DEVICE_CONTEXT&>(*dev_ctx),   \
                             __VA_ARGS__);                                   \
           }));                                                              \
+      DEVICE_WAIT(dev_ctx);                                                 \
     } else {                                                                \
       PADDLE_THROW(common::errors::Unimplemented(                           \
           "The %s in reshard only supported on CPU, GPU, and XPU for now.", \
