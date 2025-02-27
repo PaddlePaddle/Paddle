@@ -57,6 +57,8 @@ paddle::Tensor dtensor_to_local_ad_function(
         ToTensorDistAttr(process_mesh, placements, input.dims());
 
     grad_node->SetGradDistAttr(grad_dist_attr);
+    grad_node->SetGradProcessMesh(process_mesh);
+    grad_node->SetGradPlacements(placements);
   }
 
   // Forward API Call

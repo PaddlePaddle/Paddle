@@ -78,12 +78,15 @@ DtensorToLocalGradNode::operator()(
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
 
+  std::shared_ptr<phi::DenseTensor> grad_out_ptr =
+      std::static_pointer_cast<phi::DenseTensor>(grad_out.impl());
   // Backward call dtensor_to_local_func function
   auto dist_grad_ptr = std::make_shared<phi::distributed::DistTensor>(
-      grad_out.dims(), grad_dist_attr_);
+      grad_out_ptr,
+      out_metas[0][0].DistTensorGlobalDims(),
+      grad_process_mesh_,
+      grad_placements_);
 
-  *(dist_grad_ptr->unsafe_mutable_value()) =
-      *(static_cast<phi::DenseTensor*>(grad_out.impl().get()));
   grad_input.set_impl(dist_grad_ptr);
 
   VLOG(5) << "Finish C++ API: dtensor_to_local_func";

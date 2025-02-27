@@ -86,8 +86,10 @@ def to_dim_map(placements, tensor_dims):
         if placement.is_shard():
             shard_dim = cast(Shard, placement).get_dim()
             if dim_map[shard_dim] > -1:
-                raise Exception(
-                    "Tensor dim {shard_dim} is already sharded on mesh dim {dim_map[shard_dim]}"
+                import logging
+
+                logging.warning(
+                    f"Tensor dim {shard_dim} is already sharded on mesh dim {dim_map[shard_dim]}."
                 )
 
             dim_map[shard_dim] = i
