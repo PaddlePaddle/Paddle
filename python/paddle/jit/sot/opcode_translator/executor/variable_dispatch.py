@@ -1244,7 +1244,7 @@ def dispatch_pow(
 ):
     graph = base.graph
     result = BuiltinVariable(operator.pow, graph, DanglingTracker())(base, exp)
-    if exp is not None:
+    if mod is not None:
         result = BuiltinVariable(operator.mod, graph, DanglingTracker())(
             result, mod
         )
