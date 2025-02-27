@@ -169,7 +169,9 @@ void TuplePopOp::VerifyRegion() {
       PADDLE_ENFORCE(
           outlet_element(index).type() == inlet_element(index).type(),
           common::errors::InvalidArgument(
-              "The %d element's push type (%s) isn't equal to pop type (%s)",
+              "tuple_pop[id:%d]: The %d element's push type (%s) isn't equal "
+              "to pop type (%s)",
+              operation()->id(),
               index,
               outlet_element(index).type(),
               inlet_element(index).type()));

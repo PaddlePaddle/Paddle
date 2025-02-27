@@ -126,7 +126,10 @@ void ApplyPdToCinnPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(cinn::dialect::ir::CreateReduceAsToSumPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceZeroScaleToFullPass());
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
+    defined(PADDLE_WITH_HIP)
   pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
+#endif
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
@@ -172,6 +175,7 @@ void ApplyGroupOpPass(::pir::Program* program,
                       const std::function<std::shared_ptr<pir::PassManager>()>&
                           CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+
   pass_manager->AddPass(
       cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
   pass_manager->AddPass(cinn::dialect::ir::CreateInsertBroadcastPass());
@@ -262,6 +266,8 @@ void ApplyCinnPass(
     const std::function<std::shared_ptr<pir::PassManager>()>& CreatePassManager,
     bool is_train_mode) {
   const uint32_t origin_num_ops = program->num_ops();
+  if (origin_num_ops == 0) return;
+
   PirToPyCodeConverter(program)
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
