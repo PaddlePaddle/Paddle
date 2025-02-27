@@ -494,6 +494,7 @@ struct Reduce : public ExprNode<Reduce> {
     kMin,
     kAll,
     kAny,
+    kVariance,
   };
 
   //! The initial value.

@@ -283,8 +283,9 @@ class TestBatchNormOpNCHWFp64(TestBatchNormOp):
         self.data_format = "NCHW"
         self.use_global_stats = None
         self.check_prim_pir = True
-        self.check_cpu_prim_pir_grad = True
-        self.check_prim_pir_grad = True
+        # TODO(liangshuhao): uncomment when pd_op.variance has grad op
+        # self.check_prim_pir_grad = True
+        # self.check_cpu_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):

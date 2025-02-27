@@ -43,7 +43,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
   MACRO(sum_fp32, float, ##__VA_ARGS__)               \
   MACRO(prod_fp32, float, ##__VA_ARGS__)              \
   MACRO(max_fp32, float, ##__VA_ARGS__)               \
-  MACRO(min_fp32, float, ##__VA_ARGS__)
+  MACRO(min_fp32, float, ##__VA_ARGS__)               \
+  MACRO(sum_welford_fp32, float, ##__VA_ARGS__)
 
 #define EXPAND_REDUCE_BOOL_REGISTER_MACRO(MACRO, ...) \
   MACRO(all, bool, ##__VA_ARGS__)                     \
@@ -65,7 +66,8 @@ CINN_REGISTER_HELPER(cuda_intrinsics_reduce) {
   MACRO(sum_fp64, double, ##__VA_ARGS__)              \
   MACRO(prod_fp64, double, ##__VA_ARGS__)             \
   MACRO(max_fp64, double, ##__VA_ARGS__)              \
-  MACRO(min_fp64, double, ##__VA_ARGS__)
+  MACRO(min_fp64, double, ##__VA_ARGS__)              \
+  MACRO(sum_welford_fp64, float, ##__VA_ARGS__)
 
 #define REGISTER_BLOCK_REDUCE_FUNC_IMPL(REDUCE_TYPE, DTYPE)                   \
   REGISTER_FACKED_EXTERN_FUNC_HELPER(cinn_block_reduce_##REDUCE_TYPE, target) \

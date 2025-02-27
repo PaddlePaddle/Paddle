@@ -290,8 +290,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor inv_std;
   if (!use_run_stat) {
     batch_mean = mean_decomp<T>(x_cast, reduce_axes, true);
-    auto temp = mean_decomp<T>(x_cast * x_cast, reduce_axes, true);
-    auto batch_var = temp - batch_mean * batch_mean;
+    auto batch_var = variance<T>(x_cast, reduce_axes, true);
     inv_std = rsqrt<T>(batch_var + eps);
 
     x_hat = (x_cast - batch_mean) * inv_std;
