@@ -80,7 +80,7 @@ class TestConverterDummy(unittest.TestCase):
             np.random.rand(n, 64).astype(np.float32) for n in (1, 4, 8)
         )
         input_optim_data = input_data[1]
-        input_config = Input(input_data=input_data)
+        input_config = Input(warmup_data=input_data)
 
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
