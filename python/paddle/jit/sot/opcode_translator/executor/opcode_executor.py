@@ -35,9 +35,12 @@ from ...utils import (
     ENV_MIN_GRAPH_SIZE,
     ENV_SOT_FORCE_FALLBACK_SIR_IDS,
     BreakGraphError,
+    BuiltinFunctionBreak,
     FallbackError,
     InnerError,
     SotUndefinedVar,
+    UnsupportedIteratorBreak,
+    UnsupportedOperationBreak,
     get_static_function,
     is_comprehensive_name,
     log,
@@ -806,7 +809,9 @@ class OpcodeExecutorBase:
     def LOAD_SUPER_ATTR(self, instr: Instruction):
         # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
         # We align it's behavior with Python 3.11-.
-        raise BreakGraphError("call super is not supported")
+        raise BreakGraphError(
+            BuiltinFunctionBreak(reason_str="call super is not supported")
+        )
 
     def LOAD_CONST(self, instr: Instruction):
         var = self._co_consts[instr.arg]
@@ -1082,7 +1087,11 @@ class OpcodeExecutorBase:
             if not isinstance(
                 item, (TupleVariable, ListVariable, RangeVariable)
             ):
-                raise BreakGraphError(f"{type(item)} not support unpack")
+                raise BreakGraphError(
+                    UnsupportedOperationBreak(
+                        reason_str=f"{type(item)} not support unpack"
+                    )
+                )
             retval.extend(item.get_iter().to_list())
 
         if instr.opname in {
@@ -1971,7 +1980,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         try:
             if not isinstance(iterator, SequenceIterVariable):
                 raise BreakGraphError(
-                    f"Can not simulate iterator of {type(iterator)}."
+                    UnsupportedIteratorBreak(
+                        f"Can not simulate iterator of {type(iterator)}."
+                    )
                 )
 
             backup_iter_idx = iterator.idx

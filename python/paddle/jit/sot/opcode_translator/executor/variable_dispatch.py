@@ -24,7 +24,14 @@ import numpy as np
 
 import paddle
 
-from ...utils import BreakGraphError, FallbackError, get_numpy_ufuncs
+from ...utils import (
+    BreakGraphError,
+    BuiltinFunctionBreak,
+    FallbackError,
+    UnsupportedIteratorBreak,
+    UnsupportedOperationBreak,
+    get_numpy_ufuncs,
+)
 from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
@@ -32,11 +39,11 @@ from ...utils.magic_methods import (
 )
 from ...utils.paddle_api_config import get_tensor_methods
 from .dispatch_functions import (
+    create_raise_break_graph_handler,
     operator_in,
     operator_is_none,
     operator_is_not_none,
     operator_not_in,
-    raise_break_graph_fn,
     tensor_numel,
 )
 from .dispatcher import Dispatcher, optional
@@ -120,7 +127,9 @@ Dispatcher.register(
 Dispatcher.register(
     operator_in,
     ("VariableBase", "IterVariable"),
-    raise_err_handle(BreakGraphError("Codes like: `variable in iterator`.")),
+    create_raise_break_graph_handler(
+        UnsupportedIteratorBreak("Codes like: `variable in iterator`.")
+    ),
 )
 
 Dispatcher.register(
@@ -152,8 +161,8 @@ Dispatcher.register(
 Dispatcher.register(
     operator_not_in,
     ("VariableBase", "IterVariable"),
-    raise_err_handle(
-        BreakGraphError("Codes like: `variable not in iterator`.")
+    create_raise_break_graph_handler(
+        UnsupportedIteratorBreak("Codes like: `variable not in iterator`.")
     ),
 )
 
@@ -1025,7 +1034,11 @@ for unary_fn in UNARY_OPS:
         Dispatcher.register(
             unary_fn,
             ("TensorVariable",),
-            raise_break_graph_fn,
+            create_raise_break_graph_handler(
+                BuiltinFunctionBreak(
+                    fn_name=unary_fn, arg_types="TensorVariable"
+                )
+            ),
         )
         continue
 
@@ -1090,7 +1103,11 @@ for binary_fn in BINARY_OPS:
                 ):
                     if var.get_py_type() is str:
                         raise BreakGraphError(
-                            "(ConstantVariable % TensorVariable) raise a callback. "
+                            UnsupportedOperationBreak(
+                                left_type="ConstantVariable",
+                                right_type="TensorVariable",
+                                operator="__rmod__",
+                            )
                         )
                     raise FallbackError("Tensor doesn't support __rmod__")
 

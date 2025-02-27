@@ -21,7 +21,12 @@ import sys
 from typing import TYPE_CHECKING
 
 from ...profiler import event_register
-from ...utils import BreakGraphError, log
+from ...utils import (
+    BreakGraphError,
+    DataDependencyControlFlowBreak,
+    UnsupportedIteratorBreak,
+    log,
+)
 from ..instruction_utils import Instruction
 from .guard import StringifiedExpression, union_free_vars
 from .opcode_executor import OpcodeExecutorBase, Stop
@@ -298,9 +303,8 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             result: The result of the operation.
             instr (Instruction): The jump instruction.
         """
-        raise BreakGraphError(
-            "OpcodeInlineExecutor want break graph when simulate `if`."
-        )
+
+        raise BreakGraphError(DataDependencyControlFlowBreak())
 
     def FOR_ITER(self, instr: Instruction):
         iterator = self.stack.top
@@ -327,5 +331,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         else:
             self._graph.remove_global_guarded_variable(iterator)
             raise BreakGraphError(
-                f"Found {iterator.__class__.__name__} as iterator."
+                UnsupportedIteratorBreak(
+                    reason_str=f"Found {iterator.__class__.__name__} as iterator."
+                )
             )

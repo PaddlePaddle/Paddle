@@ -52,7 +52,12 @@ from ...utils import (
     map_if,
     switch_symbol_registry,
 )
-from ...utils.exceptions import BreakGraphError, SotExtraInfo
+from ...utils.exceptions import (
+    BreakGraphError,
+    DygraphInconsistentWithStaticBreak,
+    InferMetaBreak,
+    SotExtraInfo,
+)
 from ..instruction_utils import get_instructions
 from .guard import Guard, StringifiedExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
@@ -671,7 +676,9 @@ class FunctionGraph:
                     ):
                         # TODO(zrr1999): maybe we can continue to fallback to all args are constant.
                         raise BreakGraphError(
-                            f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            InferMetaBreak(
+                                f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            )
                         )
 
                     args, kwargs = map_if(
@@ -698,7 +705,9 @@ class FunctionGraph:
                         for arg in flatten_vars
                     ):
                         raise BreakGraphError(
-                            f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            InferMetaBreak(
+                                f"InferMeta encount {type(e)}, but all args are not symbolic."
+                            )
                         )
 
                     args, kwargs = map_structure(
@@ -712,7 +721,9 @@ class FunctionGraph:
             except Exception as e:
                 if SotExtraInfo.from_exception(e).need_breakgraph:
                     raise BreakGraphError(
-                        f"API {func} encountered a need break graph error {e}"
+                        DygraphInconsistentWithStaticBreak(
+                            f"API {func} encountered a need break graph error {e}"
+                        )
                     )
                 raise e
 

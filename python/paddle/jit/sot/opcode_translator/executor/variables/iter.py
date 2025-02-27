@@ -20,7 +20,7 @@ from paddle.jit.sot.opcode_translator.executor.variables.base import (
     VariableBase,
 )
 
-from ....utils import BreakGraphError, FallbackError
+from ....utils import BreakGraphError, FallbackError, UnsupportedOperationBreak
 from ..tracker import ConstTracker, DummyTracker
 from .base import VariableFactory
 from .basic import ConstantVariable
@@ -274,4 +274,8 @@ class UserDefinedIterVariable(IterVariable):
         super().__init__(obj, graph, tracker)
 
     def next(self):
-        raise BreakGraphError("Break graph when using user defined iterator")
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="Break graph when using user defined iterator"
+            )
+        )

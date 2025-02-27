@@ -37,12 +37,21 @@ from .envs import (  # noqa: F401
 )
 from .exceptions import (  # noqa: F401
     BreakGraphError,
+    BreakGraphReasonBase,
+    BuiltinFunctionBreak,
+    DataDependencyControlFlowBreak,
+    DataDependencyDynamicShapeBreak,
+    DataDependencyOperationBreak,
     ExportError,
     FallbackError,
     InnerError,
+    PsdbBreakReason,
+    UnsupportedIteratorBreak,
+    UnsupportedOperationBreak,
     inner_error_default_handler,
 )
 from .info_collector import (  # noqa: F401
+    BreakGraphReasonInfo,
     CompileCountInfo,
     InfoCollector,
     NewSymbolHitRateInfo,
