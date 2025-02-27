@@ -199,7 +199,7 @@ void PatternGraph::LiftToAnchorPattern() {
 
 void PatternGraph::AnchorFusion() {
   GraphTransformer<ReverseTopoNodePairPattern,
-                   CanAnchorFusionMatcher,
+                   And<CanAnchorFusionMatcher, InputOutputMaximumConstrain>,
                    AnchorFusionOperation>(this);
 }
 
