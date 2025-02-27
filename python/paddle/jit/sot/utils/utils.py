@@ -546,3 +546,15 @@ def get_api_fullname(api):
             return module_str + "." + api_name
         module_str = module_str.rpartition(".")[0]
     return None
+
+
+def get_numpy_ufuncs():
+    ufuncs = [
+        ufunc
+        for _, ufunc in inspect.getmembers(
+            np, lambda member: isinstance(member, np.ufunc)
+        )
+    ]
+    unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
+    binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
+    return list(unary_ufuncs), list(binary_ufuncs)

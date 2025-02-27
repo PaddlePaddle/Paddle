@@ -20,9 +20,11 @@ import operator
 from functools import partial, reduce
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 import paddle
 
-from ...utils import BreakGraphError, FallbackError
+from ...utils import BreakGraphError, FallbackError, get_numpy_ufuncs
 from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
@@ -47,6 +49,7 @@ from .variables import (
     EnumerateVariable,
     ListVariable,
     MapVariable,
+    NumpyArrayVariable,
     NumpyVariable,
     RangeVariable,
     SliceVariable,
@@ -980,7 +983,7 @@ for unary_fn in UNARY_OPS:
     for magic_method in magic_method_builtin_dispatch(unary_fn):
         Dispatcher.register(
             unary_fn,
-            ("ConstantVariable",),
+            ("ConstantVariable | NumpyNumberVariable",),
             partial(
                 lambda fn, var: VariableFactory.from_value(
                     fn(var.get_py_value()),
@@ -994,7 +997,10 @@ for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         Dispatcher.register(
             binary_fn,
-            ("ConstantVariable", "ConstantVariable"),
+            (
+                "ConstantVariable | NumpyNumberVariable",
+                "ConstantVariable | NumpyNumberVariable",
+            ),
             partial(
                 lambda fn, var, other: VariableFactory.from_value(
                     fn(var.get_py_value(), other.get_py_value()),
@@ -1137,31 +1143,6 @@ for binary_fn in BINARY_OPS:
                     magic_method.name,
                 ),
             )
-
-# Register dispatch for NumpyVariable: fallback !
-for unary_fn in UNARY_OPS:
-    if unary_fn in [bool]:
-        continue
-    for magic_method in magic_method_builtin_dispatch(unary_fn):
-
-        @Dispatcher.register_decorator(unary_fn)
-        def numpy_unary_dispatcher(var: NumpyVariable):
-            raise FallbackError('Numpy operator need fallback to dygraph')
-
-
-Dispatcher.register(
-    operator.eq,
-    ("NumpyVariable", "ConstantVariable | NumpyVariable"),
-    lambda left, right: constant_numpy_equal(right, left),
-)
-
-
-for binary_fn in BINARY_OPS:
-    for magic_method in magic_method_builtin_dispatch(binary_fn):
-
-        @Dispatcher.register_decorator(binary_fn)
-        def numpy_binary_dispatcher(var: NumpyVariable, other: NumpyVariable):
-            raise FallbackError('Numpy operator need fallback to dygraph')
 
 
 # Register dispatch for DataVariable: directly call and return a wrapped variable.
@@ -1344,7 +1325,7 @@ def get_math_unary_functions():
 for fn in get_math_unary_functions():
     Dispatcher.register(
         fn,
-        ("ConstantVariable",),
+        ("ConstantVariable | NumpyNumberVariable",),
         partial(
             lambda fn, var: ConstantVariable(
                 fn(var.get_py_value()),
@@ -1356,7 +1337,7 @@ for fn in get_math_unary_functions():
     )
 Dispatcher.register(
     math.log,
-    ("ConstantVariable",),
+    ("ConstantVariable | NumpyNumberVariable",),
     lambda var: ConstantVariable(
         math.log(var.get_py_value()),
         var.graph,
@@ -1365,13 +1346,39 @@ Dispatcher.register(
 )
 
 
+# NumpyVariable dispatch
 def constant_numpy_equal(left, right):
     numpy_ans = left.get_py_value() == right.get_py_value()
-    return NumpyVariable(
+    return VariableFactory.from_value(
         numpy_ans,
         left.graph,
         tracker=DummyTracker([left, right]),
     )
+
+
+for unary_fn in UNARY_OPS:
+    if unary_fn is bool:
+        continue
+    for magic_method in magic_method_builtin_dispatch(unary_fn):
+
+        @Dispatcher.register_decorator(unary_fn)
+        def numpy_unary_dispatcher(var: NumpyArrayVariable):
+            raise FallbackError('Numpy operator need fallback to dygraph')
+
+
+Dispatcher.register(
+    operator.eq,
+    ("NumpyVariable", "ConstantVariable | NumpyVariable"),
+    lambda left, right: constant_numpy_equal(right, left),
+)
+
+
+for binary_fn in BINARY_OPS:
+    for magic_method in magic_method_builtin_dispatch(binary_fn):
+
+        @Dispatcher.register_decorator(binary_fn)
+        def numpy_binary_dispatcher(var: NumpyVariable, other: NumpyVariable):
+            raise FallbackError('Numpy operator need fallback to dygraph')
 
 
 Dispatcher.register(
@@ -1389,3 +1396,44 @@ Dispatcher.register(
         tracker=DummyTracker([x]),
     ),
 )
+
+Dispatcher.register(
+    np.number.item,
+    ("NumpyNumberVariable",),
+    lambda x: ConstantVariable(
+        x.get_py_value().item(),
+        x.graph,
+        tracker=DummyTracker([x]),
+    ),
+)
+
+unary_ufuncs, binary_ufuncs = get_numpy_ufuncs()
+for ufunc in unary_ufuncs:
+    Dispatcher.register(
+        ufunc,
+        ("ConstantVariable | NumpyNumberVariable",),
+        partial(
+            lambda ufunc, var: VariableFactory.from_value(
+                ufunc(var.get_py_value()),
+                var.graph,
+                tracker=DummyTracker([var]),
+            ),
+            ufunc,
+        ),
+    )
+for ufunc in binary_ufuncs:
+    Dispatcher.register(
+        ufunc,
+        (
+            "ConstantVariable | NumpyNumberVariable",
+            "ConstantVariable | NumpyNumberVariable",
+        ),
+        partial(
+            lambda ufunc, var, other: VariableFactory.from_value(
+                ufunc(var.get_py_value(), other.get_py_value()),
+                var.graph,
+                tracker=DummyTracker([var, other]),
+            ),
+            ufunc,
+        ),
+    )
