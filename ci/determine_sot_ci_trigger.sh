@@ -30,6 +30,8 @@ function determine_sot_ci_trigger() {
 
     # git diff
     SOT_FILE_LIST=(
+        .github/workflows
+        ci
         paddle/pir
         paddle/phi
         paddle/scripts
