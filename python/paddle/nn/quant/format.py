@@ -148,7 +148,15 @@ class LinearQuanter(Layer):
 
     def forward(self, input):
         if in_dynamic_mode():
-            if len(self._scales.shape) > 1:
+            if self._qmax == 448:
+                return fake_fp8_quant(
+                    input, self._scales, self._quant_axis, type='e4m3'
+                )
+            elif self._qmax == 57344:
+                return fake_fp8_quant(
+                    input, self._scales, self._quant_axis, type='e5m2'
+                )
+            elif len(self._scales.shape) > 1:
                 if self._zero_point.sum() != 0:
                     quant_weight = paddle.clip(
                         paddle.round(input.cast('float32') / self._scales)
@@ -170,15 +178,6 @@ class LinearQuanter(Layer):
                         self._qmax,
                     )
                 return quant_weight.cast(input.dtype)
-
-            if self._qmax == 448:
-                return fake_fp8_quant(
-                    input, self._scales, self._quant_axis, type='e4m3'
-                )
-            elif self._qmax == 57344:
-                return fake_fp8_quant(
-                    input, self._scales, self._quant_axis, type='e5m2'
-                )
 
             return _legacy_C_ops.quantize_linear(
                 input.cast('float32'),
@@ -310,7 +309,15 @@ class LinearDequanter(Layer):
 
     def forward(self, input):
         if in_dynamic_mode():
-            if len(self._scales.shape) > 1:
+            if self._qmax == 448:
+                return fake_fp8_dequant(
+                    input, self._scales, self._quant_axis, type='e4m3'
+                )
+            elif self._qmax == 57344:
+                return fake_fp8_dequant(
+                    input, self._scales, self._quant_axis, type='e5m2'
+                )
+            elif len(self._scales.shape) > 1:
                 if self._zero_point.sum() != 0:
                     quant_dequant_weight = (
                         input.cast('float32') - self._zero_point
@@ -326,15 +333,6 @@ class LinearDequanter(Layer):
                         (input.cast('float32') - new_zp) / self._qmax * new_s
                     )
                 return quant_dequant_weight.cast(input.dtype)
-
-            if self._qmax == 448:
-                return fake_fp8_dequant(
-                    input, self._scales, self._quant_axis, type='e4m3'
-                )
-            elif self._qmax == 57344:
-                return fake_fp8_dequant(
-                    input, self._scales, self._quant_axis, type='e5m2'
-                )
 
             return _legacy_C_ops.dequantize_linear(
                 input.cast('float32'),
