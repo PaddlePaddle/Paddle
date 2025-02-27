@@ -1140,10 +1140,20 @@ class _ShardOptimizer(Optimizer):
                 placements[self._sharding_axis], dist.Replicate
             ), "The placement on sharding_axis should be Replicate"
 
-            # check the sharding degree since it has already been set
-            assert (
-                mesh.dim_size(self._sharding_axis) == self._sharding_degree
-            ), "The sharding degree of all parameters must be equal currently."
+            # check the sharding degree since it has already been set,
+            # skip check when mesh is true subset of global_mesh
+            if global_mesh:
+                if set(mesh.process_ids) < set(global_mesh.process_ids):
+                    continue
+            elif self._shard_fn._mesh:
+                if set(mesh.process_ids) < set(
+                    self._shard_fn._mesh.process_ids
+                ):
+                    continue
+            else:
+                assert (
+                    mesh.dim_size(self._sharding_axis) == self._sharding_degree
+                ), "The sharding degree of all parameters must be equal currently."
 
     def _shard_accumulator(self, param):
         target_name = param.name
