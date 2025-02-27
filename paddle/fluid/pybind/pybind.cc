@@ -211,6 +211,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_interface.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -963,6 +964,40 @@ void BindVjp(pybind11::module *m) {
                         fwd_attr.dims_mapping() == bwd_attr.dims_mapping()) {
                       continue;
                     }
+                  }
+                }
+                auto input_values =
+                    vjp_res[grad_index][j].defining_op()->operands_source();
+                auto output_values =
+                    vjp_res[grad_index][j].defining_op()->results();
+                paddle::dialect::ProcessMeshAttribute op_mesh;
+                if (!vjp_res[grad_index][j].defining_op()->HasAttribute(
+                        kAttrOpDistAttr) &&
+                    paddle::dialect::AllInputAreDist(input_values) &&
+                    paddle::dialect::AllInputAreDist(output_values)) {
+                  auto ctx = pir::IrContext::Instance();
+                  if (paddle::dialect::HasDistInput(input_values, &op_mesh)) {
+                    std::vector<pir::Attribute> dist_operand_attrs,
+                        dist_result_attrs;
+                    for (size_t input_id = 0; input_id < input_values.size();
+                         ++input_id) {
+                      dist_operand_attrs.push_back(
+                          paddle::dialect::GetTensorDistAttr(
+                              input_values[input_id].type()));
+                    }
+                    for (size_t output_id = 0; output_id < output_values.size();
+                         ++output_id) {
+                      dist_result_attrs.push_back(
+                          paddle::dialect::GetTensorDistAttr(
+                              output_values[output_id].type()));
+                    }
+                    vjp_res[grad_index][j].defining_op()->set_attribute(
+                        kAttrOpDistAttr,
+                        paddle::dialect::OperationDistAttribute::get(
+                            ctx,
+                            op_mesh,
+                            dist_operand_attrs,
+                            dist_result_attrs));
                   }
                 }
                 vjp_res[grad_index][j].set_type(inputs[idx][j].type());

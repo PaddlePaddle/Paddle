@@ -23,6 +23,7 @@ from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
     StaticFunction,
+    unwrap_decorators,
 )
 from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
@@ -91,7 +92,17 @@ class ProxyLayer(Layer):
         self._label_vars[mode] = labels
 
         # step 2. call inner_layer.forward
-        self._output_vars[mode] = self.inner_layer(*inputs)
+        has_labels_arg = False
+        if isinstance(self.inner_layer, Layer):
+            _, fwd_func = unwrap_decorators(self.inner_layer.forward)
+            if "labels" in inspect.signature(fwd_func).parameters.keys():
+                has_labels_arg = True
+        if has_labels_arg:
+            self._output_vars[mode] = self.inner_layer(
+                *inputs, labels=labels[0]
+            )
+        else:
+            self._output_vars[mode] = self.inner_layer(*inputs)
 
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
