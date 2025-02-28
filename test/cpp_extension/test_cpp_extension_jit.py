@@ -88,6 +88,10 @@ class TestCppExtensionJITInstall(unittest.TestCase):
             target_out = np.exp(np_x) + np.exp(np_y)
             np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
 
+            out = custom_cpp_extension.custom_optional_add(x, None)
+            target_out = np.exp(np_x)
+            np.testing.assert_allclose(out.numpy(), target_out, atol=1e-5)
+
             # Test we can call a method not defined in the main C++ file.
             out = custom_cpp_extension.custom_sub(x, y)
             target_out = np.exp(np_x) - np.exp(np_y)
