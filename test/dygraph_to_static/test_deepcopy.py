@@ -35,9 +35,21 @@ class TestDeepCopy(Dy2StTestBase):
         copy_net = deepcopy(net)
         copy_out = copy_net(x)
 
-        self.assertFalse(isinstance(net.forward, StaticFunction))
-        self.assertTrue(id(copy_net), id(copy_net.forward.__self__))
+        self.assertIsInstance(copy_net.forward, StaticFunction)
+        self.assertIsNot(net.forward, copy_net.forward)
+        self.assertIsNot(
+            net.forward.class_instance, copy_net.forward.class_instance
+        )
+        self.assertIs(net, net.forward.class_instance)
+        self.assertIs(copy_net, copy_net.forward.class_instance)
         np.testing.assert_array_equal(src_out.numpy(), copy_out.numpy())
+
+        copy_net.forward.rollback()
+        self.assertFalse(isinstance(copy_net.forward, StaticFunction))
+        copy_rollback_out = copy_net(x)
+        np.testing.assert_array_equal(
+            src_out.numpy(), copy_rollback_out.numpy()
+        )
 
     def test_func(self):
         st_foo = paddle.jit.to_static(foo)
