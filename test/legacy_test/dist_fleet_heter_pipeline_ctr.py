@@ -64,7 +64,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 dtype="float32",
             )
 
-            datas = [dnn_data, lr_data, label]
+            data = [dnn_data, lr_data, label]
 
             # build dnn model
             dnn_layer_dims = [128, 64, 32, 1]
@@ -124,7 +124,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             avg_cost = paddle.mean(x=cost)
             paddle.static.Print(avg_cost, message="avg_cost")
 
-        self.feeds = datas
+        self.feeds = data
         self.train_file_path = ["fake1", "fake2"]
         self.avg_cost = avg_cost
         self.predict = predict
