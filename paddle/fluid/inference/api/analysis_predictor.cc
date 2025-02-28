@@ -988,6 +988,20 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    } else if (config_.use_custom_device()) {
+      // custom device
+      if (!config_.custom_pass_only_) {
+        for (const auto &custom_device_pass : kPirCustomDevicePasses) {
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        custom_device_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(
+                pir::PassRegistry::Instance().Get(custom_device_pass));
+          }
+        }
+      }
+#endif
 #ifdef PADDLE_WITH_DNNL
     } else if (config_.mkldnn_enabled()) {
       // mkldnn
