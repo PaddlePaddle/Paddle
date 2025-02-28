@@ -7,7 +7,6 @@ gather_srcs(
   replace_var_with_expr.cc
   ir_simplify.cc
   optimize.cc
-  vectorize_loops.cc
   unroll_loops.cc
   transform_polyfor_to_for.cc
   eliminate_broadcast_in_forloop.cc
