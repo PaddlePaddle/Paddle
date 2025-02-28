@@ -37,8 +37,6 @@
 #include <execinfo.h>
 #endif
 
-// msvc conflict logging with windows.h
-#define GLOG_NO_ABBREVIATED_SEVERITIES
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
 #include "paddle/utils/variant.h"

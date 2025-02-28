@@ -149,8 +149,9 @@ struct write_output_op_fixed {
   std::uint64_t m;
   InputIterT in;
   OutputIterT out;
-  // flag contains inclusive scan of valid keys
-  // perform gather using valid keys
+// flag contains inclusive scan of valid keys
+// perform gather using valid keys
+#if CUDA_VERSION < 12060
   __thrust_exec_check_disable__ __host__ __device__ std::size_t operator()(
       key_flag_tuple_fixed x) {
     if (x.key < m) {
@@ -159,6 +160,16 @@ struct write_output_op_fixed {
     }
     return 0;  // Discarded
   }
+#else
+  _CCCL_EXEC_CHECK_DISABLE
+  _CCCL_HOST_DEVICE std::size_t operator()(key_flag_tuple_fixed x) {
+    if (x.key < m) {
+      // -1 because inclusive scan
+      out[x.flag - 1] = in[x.key];
+    }
+    return 0;  // Discarded
+  }
+#endif
 };
 
 template <typename ExecutionPolicy,
