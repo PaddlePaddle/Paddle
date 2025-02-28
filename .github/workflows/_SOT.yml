@@ -16,7 +16,16 @@ defaults:
     shell: bash
 
 jobs:
+  check-bypass:
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'sot'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-test:
+    needs: check-bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
 
