@@ -342,6 +342,7 @@ const std::set<std::string> ops_in_NCHW = {"pd_op.max_pool2d_with_index",
                                            //  "pd_op.batch_norm_",
                                            "pd_op.bilinear_interp",
                                            "pd_op.shape",
+                                           "pd_op.shape64",
                                            "pd_op.deformable_conv",
                                            "pd_op.set_value_with_tensor_",
                                            "pd_op.set_value_with_tensor"};
