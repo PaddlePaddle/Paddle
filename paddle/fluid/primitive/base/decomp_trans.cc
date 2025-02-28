@@ -29,6 +29,7 @@
 COMMON_DECLARE_bool(prim_check_ops);
 COMMON_DECLARE_bool(prim_enable_dynamic);
 COMMON_DECLARE_string(prim_forward_blacklist);
+COMMON_DECLARE_bool(comp_skip_default_ops);
 
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
@@ -368,9 +369,18 @@ bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
       flag = false;
     }
   }
+  std::set<std::string> default_comp_blacklist = {"pd_op.embedding",
+                                                  "pd_op.dropout"};
+
   auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
   if (!from_flag_blacklist.empty())
     blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
+
+  if (FLAGS_comp_skip_default_ops) {
+    blacklist_.insert(default_comp_blacklist.begin(),
+                      default_comp_blacklist.end());
+  }
+
   if (!blacklist_.empty() && blacklist_.find(op_name) != blacklist_.end())
     flag = false;
   return flag;

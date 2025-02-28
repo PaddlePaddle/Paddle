@@ -818,7 +818,12 @@ endif()
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(
+  test_dropout_op PROPERTIES TIMEOUT 120 ENVIRONMENT
+                             "FLAGS_comp_skip_default_ops=False")
+set_tests_properties(test_lookup_table_v2_op
+                     PROPERTIES ENVIRONMENT "FLAGS_comp_skip_default_ops=False")
+
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
@@ -1086,7 +1091,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
+    FLAGS_new_executor_static_build=true FLAGS_comp_skip_default_ops=False)
 endforeach()
 
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS

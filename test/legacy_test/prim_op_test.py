@@ -1119,7 +1119,15 @@ class PrimGradChecker(PrimForwardChecker):
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
-                    fw_outs = decompose(main_program, fw_outs)
+                    blacklist = set()
+                    for op in main_program.global_block().ops:
+                        if core.has_custom_vjp(op):
+                            blacklist.add(op.name())
+                    fw_outs = decompose(
+                        main_program,
+                        fw_outs,
+                        blacklist=blacklist,
+                    )
                 outputs_dict = self.get_output_dict(
                     self.outputs, fw_outs, outputs_sig
                 )
