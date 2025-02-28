@@ -32,6 +32,7 @@ from ...utils import (
     UnsupportedOperationBreak,
     get_numpy_ufuncs,
 )
+from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
@@ -50,10 +51,12 @@ from .dispatcher import Dispatcher, optional
 from .tracker import ConstTracker, DanglingTracker, DummyTracker
 from .variables import (
     BuiltinVariable,
+    CallableVariable,
     ConstantVariable,
     ContainerVariable,
     DictVariable,
     EnumerateVariable,
+    IterVariable,
     ListVariable,
     MapVariable,
     NumpyArrayVariable,
@@ -1280,6 +1283,36 @@ def dispatch_sum(
     )
     return result
 
+
+@Dispatcher.register_decorator(reduce)
+def dispatch_reduce(
+    func: CallableVariable,
+    iterable: ContainerVariable | TensorVariable | IterVariable,
+    initializer: VariableBase = None,  # type: ignore
+):
+    iterator = iterable.get_iter()
+    if initializer is None or (
+        isinstance(initializer, ConstantVariable)
+        and initializer.get_py_value() is None
+    ):
+        try:
+            initializer = iterator.next()
+        except StopIteration:
+            raise InnerError("reduce() of empty iterable with no initial value")
+    result = initializer
+    while True:
+        try:
+            result = func(result, iterator.next())
+        except StopIteration:
+            break
+    return result
+
+
+Dispatcher.register(
+    next,
+    ("IterVariable",),
+    lambda var: var.next(),
+)
 
 Dispatcher.register(
     max,

@@ -99,6 +99,11 @@ class TestCaseBase(unittest.TestCase):
         paddle_output = func(*args, **kwargs)
         self.assert_nest_match(sym_output, paddle_output)
 
+    def assert_exceptions(self, exec, info, func, *args, **kwargs):
+        self.assertRaisesRegex(
+            exec, info, symbolic_translate(func), *args, **kwargs
+        )
+
     def assert_results_with_side_effects(self, func, *args, **kwargs):
         sym_args, sym_kwargs = copy.deepcopy((args, kwargs))
         sym_output = symbolic_translate(func)(*sym_args, **sym_kwargs)
