@@ -46,7 +46,6 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
-#include "paddle/cinn/optim/var_mod_simplify.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
@@ -929,7 +928,6 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
       for (int offset = 0; offset < total_lanes; offset += total_lanes) {
         int lanes = total_lanes;
         Expr base = optim::ArithSimplify(ramp->base + offset);
-        optim::VarModSimplify(&base);
         auto *ptr =
             CreateBufferPtr(op->type().ElementOf(), buffer, Visit(&base));
         auto *vtype = llvm::VectorType::get(
@@ -1243,7 +1241,6 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
   for (int i = 0; i < load_lanes; i += load_lanes) {
     int slice_lanes = load_lanes;
     auto slice_base = optim::ArithSimplify(ramp->base + i);
-    optim::VarModSimplify(&slice_base);
 
 #if LLVM_VERSION_MAJOR >= 11
     const llvm::ElementCount elem_count(slice_lanes, /*scalable*/ false);

@@ -88,8 +88,6 @@ bool operator!=(Expr a, IndexExpr b) { return !(a == b); }
 bool operator==(IndexExpr a, IndexExpr b) {
   if (a.get() == b.get()) return true;
   if (a.node_type() != b.node_type()) return false;
-  std::vector<ir::IndexExpr> aPart;
-  std::vector<ir::IndexExpr> bPart;
   switch (a.node_type()) {
     case ir::IrNodeTy::IntImm: {
       return a.as_int64() == b.as_int64();

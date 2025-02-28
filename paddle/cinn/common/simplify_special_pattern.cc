@@ -253,7 +253,7 @@ std::optional<ir::IndexExpr> DivMulAddModDivCase(const ir::IndexExpr& lhs,
   ir::IndexExpr pattern = f / c * a + f % c / b;
 
   auto flatten = GetFlattenExprs<ir::Add>(lhs);
-  ir::IndexExpr res = ir::IndexExpr(rhs->type(), 0);
+  ir::IndexExpr res;
   bool find = false;
   for (const auto& expr : flatten) {
     if (!find) {
