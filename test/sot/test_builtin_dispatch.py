@@ -136,6 +136,26 @@ def test_log(x: int):
 
 
 @check_no_breakgraph
+def test_any(var):
+    return any(var)
+
+
+@check_no_breakgraph
+def test_any_iter(var):
+    return any(iter(var))
+
+
+@check_no_breakgraph
+def test_all(var):
+    return all(var)
+
+
+@check_no_breakgraph
+def test_all_iter(var):
+    return all(iter(var))
+
+
+@check_no_breakgraph
 def test_builtin_type_check_eq():
     a = 1
     b = []
@@ -300,6 +320,32 @@ class TestBuiltinDispatch(TestCaseBase):
 
     def test_dispatch_builtin_type_check_eq(self):
         self.assert_results(test_builtin_type_check_eq)
+
+    def test_dispatch_any(self):
+        l_pure_true = [1, True, 5, 6]
+        l_pure_false = [False, 0, 0]
+        l_true_and_false = [1, False, 0, 3]
+        d_true = {"a": 1}
+        d_false = {}
+        self.assert_results(test_any, l_pure_true)
+        self.assert_results(test_any, l_pure_false)
+        self.assert_results(test_any, l_true_and_false)
+        self.assert_results(test_any, d_true)
+        self.assert_results(test_any, d_false)
+        self.assert_results(test_any_iter, l_true_and_false)
+
+    def test_dispatch_all(self):
+        l_pure_true = [1, True, 5, 6]
+        l_pure_false = [False, 0, 0]
+        l_true_and_false = [1, False, 0, 3]
+        d_true = {"a": 1}
+        d_false = {}
+        self.assert_results(test_all, l_pure_true)
+        self.assert_results(test_all, l_pure_false)
+        self.assert_results(test_all, l_true_and_false)
+        self.assert_results(test_all, d_true)
+        self.assert_results(test_all, d_false)
+        self.assert_results(test_all_iter, l_true_and_false)
 
 
 def run_getattr(x: paddle.Tensor):
