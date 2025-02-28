@@ -188,7 +188,6 @@ def tos_inplace_op_wrapper(fn: Callable):
         res = BuiltinVariable(fn, graph=self._graph, tracker=DanglingTracker())(
             *args
         )
-        res.debug_name = args[0].debug_name
         self.stack.push(res)
 
     return inner
@@ -935,13 +934,11 @@ class OpcodeExecutorBase:
         """
         var = self.stack.pop()
         name = self._code.co_varnames[instr.arg]
-        var.debug_name = name
         self._locals[name] = var
 
     def STORE_GLOBAL(self, instr: Instruction):
         var = self.stack.pop()
         name = self._code.co_names[instr.arg]
-        var.debug_name = name
         self._globals.set(name, var)
 
     def DELETE_GLOBAL(self, instr: Instruction):
@@ -973,7 +970,6 @@ class OpcodeExecutorBase:
         BuiltinVariable(operator.setitem, self._graph, DanglingTracker())(
             container, key, value
         )
-        value.debug_name = f"{container.debug_name}[{key.debug_name}]"
 
     def DELETE_SUBSCR(self, instr: Instruction):
         key = self.stack.pop()
@@ -1939,7 +1935,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 else LocalTracker(name)
             )
             self._locals[name] = VariableFactory.from_value(
-                value, self._graph, tracker, debug_name=name
+                value, self._graph, tracker
             )
 
         for name in free_or_cell_vars:

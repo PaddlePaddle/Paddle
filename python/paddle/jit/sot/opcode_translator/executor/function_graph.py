@@ -240,7 +240,7 @@ class FunctionGraph:
         # prepare builtins
         for name, value in builtins.__dict__.items():
             builtins_[name] = VariableFactory.from_value(
-                value, self, BuiltinTracker(name), debug_name=name
+                value, self, BuiltinTracker(name)
             )
         return builtins_
 
