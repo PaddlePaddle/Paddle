@@ -73,7 +73,7 @@ class TestKernel : public OpKernel<float> {
     std::cout << "input place:" << input->place() << std::endl;
     auto* output = ctx.Output<phi::DenseTensor>("output");
     output->Resize(input->dims());
-    output->mutable_data<T>(ctx.GetPlace());
+    output->template mutable_data<T>(ctx.GetPlace());
 
     phi::funcs::TransformFunctor<AddFunctor<T>, T, DeviceContext> functor(
         *input,

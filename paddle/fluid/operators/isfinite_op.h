@@ -162,7 +162,7 @@ class OverflowKernel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* x = ctx.InputVar("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
+    out->template mutable_data<T>(ctx.GetPlace());
     Functor functor;
     if (x->IsType<phi::DenseTensor>()) {
       auto* in = ctx.Input<phi::DenseTensor>("X");
