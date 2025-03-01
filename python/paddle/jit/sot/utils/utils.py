@@ -22,7 +22,6 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
@@ -32,8 +31,6 @@ import paddle
 from paddle.utils import flatten, map_structure
 
 from .envs import (
-    ENV_CLEAN_CODE,
-    ENV_COST_MODEL,
     ENV_SOT_LOG_LEVEL,
     ENV_STRICT_MODE,
 )
@@ -319,10 +316,6 @@ def is_strict_mode():
     return ENV_STRICT_MODE.get()
 
 
-def is_clean_code() -> bool:
-    return ENV_CLEAN_CODE.get()
-
-
 def list_find_index_by_id(li: list[Any], item: Any) -> int:
     return [id(it) for it in li].index(id(item))
 
@@ -409,68 +402,14 @@ def printable(obj):
         return False
 
 
-class StepState(Enum):
-    COLLECT_INFO = 1
-    RUN_SOT = 2
-    RUN_DYN = 3
-
-
 class StepInfo:
-    REQUIRED_DYN_INFOS = 10
-    REQUIRED_SOT_INFOS = 10
-
-    USED_DYN_INFOS = 5
-
-    COLLECT_INFO_MAX_STEP = 50
-    CV_BOUNDARY = 0.1
-
     BACK_TRACE_STEPS = 20
 
     def __init__(self):
         self.step_count = -1
-        self.state = (
-            StepState.COLLECT_INFO
-            if ENV_COST_MODEL.get()
-            else StepState.RUN_SOT
-        )
-        self.dyn_time_costs = []
-        self.avg_dyn_time = 0
-        self.sot_time_costs = []
-        self.sot_step = -1
-
-    def add_dynamic_time_info(self, time_cost):
-        self.dyn_time_costs.append(time_cost)
-        if len(self.dyn_time_costs) == self.REQUIRED_DYN_INFOS:
-            self.avg_dyn_time = np.mean(
-                self.dyn_time_costs[-self.USED_DYN_INFOS :]
-            )
-
-    def add_sot_time_info(self, time_cost, current_code):
-        self.sot_time_costs.append(time_cost)
-        if len(self.sot_time_costs) == self.REQUIRED_SOT_INFOS:
-            avg_sot_time = np.mean(self.sot_time_costs)
-            log(
-                1,
-                f"[Cost Model] sot: {avg_sot_time}, dyn: {self.avg_dyn_time}\n",
-            )
-            if avg_sot_time < self.avg_dyn_time:
-                log(1, f"[Cost Model] Switch to RUN_SOT: {current_code} \n")
-                self.state = StepState.RUN_SOT
-            elif (
-                self.step_count > self.COLLECT_INFO_MAX_STEP
-                or np.std(self.sot_time_costs) / avg_sot_time < self.CV_BOUNDARY
-            ):
-                log(1, f"[Cost Model] Switch to RUN_DYN: {current_code}\n")
-                self.state = StepState.RUN_DYN
-            else:
-                log(1, f"[Cost Model] Decision delayed: {current_code}\n")
-                self.sot_time_costs.clear()
 
     def need_back_trace(self):
         return self.step_count < self.BACK_TRACE_STEPS
-
-    def need_dynamic_info(self):
-        return len(self.dyn_time_costs) < self.REQUIRED_DYN_INFOS
 
 
 class StepInfoManager(metaclass=Singleton):
@@ -491,33 +430,10 @@ class StepInfoManager(metaclass=Singleton):
             self.current_step_info = self.step_record[code]
 
             self.current_step_info.step_count += 1
-
-            log(
-                2,
-                f"[Cost Model] New step start, current state is {self.current_state}\n",
-            )
             yield
         finally:
             self.current_code = old_code
             self.current_step_info = old_info
-
-    def sot_step(self):
-        self.current_step_info.sot_step += 1
-
-    def collect_info(self, impl_dynamic, impl_sot, /, *args, **kwargs):
-        if self.current_step_info.need_dynamic_info():
-            start_time = time.perf_counter()
-            outs = impl_dynamic(*args, **kwargs)
-            time_cost = time.perf_counter() - start_time
-            self.current_step_info.add_dynamic_time_info(time_cost)
-        else:
-            start_time = time.perf_counter()
-            outs = impl_sot(*args, **kwargs)
-            time_cost = time.perf_counter() - start_time
-            self.current_step_info.add_sot_time_info(
-                time_cost, self.current_code
-            )
-        return outs
 
     @property
     def need_back_trace(self):
@@ -526,10 +442,6 @@ class StepInfoManager(metaclass=Singleton):
     @property
     def current_step(self):
         return self.current_step_info.step_count
-
-    @property
-    def current_state(self):
-        return self.current_step_info.state
 
     def clear(self):
         self.step_record.clear()

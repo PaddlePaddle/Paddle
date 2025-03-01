@@ -25,11 +25,9 @@ from paddle.utils.environments import (
     StringListEnvironmentVariable,
 )
 
-ENV_COST_MODEL = BooleanEnvironmentVariable("COST_MODEL", False)
 ENV_MIN_GRAPH_SIZE = IntegerEnvironmentVariable("MIN_GRAPH_SIZE", 10)
 ENV_SOT_LOG_LEVEL = IntegerEnvironmentVariable("SOT_LOG_LEVEL", 0)
 ENV_STRICT_MODE = BooleanEnvironmentVariable("STRICT_MODE", False)
-ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
 ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
     "SOT_WITH_CONTROL_FLOW", True
 )
@@ -58,12 +56,6 @@ ENV_SOT_COLLECT_INFO = StringListEnvironmentVariable("SOT_COLLECT_INFO", [])
 ENV_SOT_FORCE_FALLBACK_SIR_IDS = StringEnvironmentVariable(
     "SOT_FORCE_FALLBACK_SIR_IDS", ""
 )
-
-
-@contextmanager
-def cost_model_guard(value: bool):
-    with EnvironmentVariableGuard(ENV_COST_MODEL, value):
-        yield
 
 
 @contextmanager

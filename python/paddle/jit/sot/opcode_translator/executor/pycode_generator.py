@@ -33,7 +33,6 @@ from ...utils import (
     FallbackError,
     InnerError,
     ResumeFnNameFactory,
-    is_clean_code,
     list_contain_by_id,
     list_find_index_by_id,
     no_eval_frame,
@@ -516,8 +515,6 @@ class PyCodeGen:
         """
         Generates instructions to disable the evaluation frame.
         """
-        if is_clean_code():
-            return
         self.gen_load_object(
             paddle.framework.core.set_eval_frame, "paddle_set_eval_frame_fn"
         )
@@ -529,8 +526,6 @@ class PyCodeGen:
         """
         Generates instructions to enable the evaluation frame.
         """
-        if is_clean_code():
-            return
         self.gen_load_object(
             paddle.framework.core.set_eval_frame, "paddle_set_eval_frame_fn"
         )

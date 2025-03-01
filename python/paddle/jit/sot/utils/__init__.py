@@ -14,8 +14,6 @@
 
 from .call_ast_utils import get_static_function, try_ast_func  # noqa: F401
 from .envs import (  # noqa: F401
-    ENV_CLEAN_CODE,
-    ENV_COST_MODEL,
     ENV_MIN_GRAPH_SIZE,
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_FASTER_GUARD,
@@ -26,7 +24,6 @@ from .envs import (  # noqa: F401
     ENV_SOT_WITH_CONTROL_FLOW,
     ENV_STRICT_MODE,
     allow_dynamic_shape_guard,
-    cost_model_guard,
     export_guard,
     faster_guard_guard,
     guard_tree_guard,
@@ -74,7 +71,6 @@ from .utils import (  # noqa: F401
     Singleton,
     SotUndefinedVar,
     StepInfoManager,
-    StepState,
     count_if,
     current_symbol_registry,
     execute_time,
@@ -87,7 +83,6 @@ from .utils import (  # noqa: F401
     in_paddle_module,
     is_break_graph_api,
     is_builtin_fn,
-    is_clean_code,
     is_comprehensive_name,
     is_paddle_api,
     is_strict_mode,

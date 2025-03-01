@@ -26,7 +26,6 @@ from .utils import (
     GraphLogger,
     InfoCollector,
     StepInfoManager,
-    StepState,
     log_do,
 )
 
@@ -96,42 +95,23 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
     def callback(frame):
         return eval_frame_callback(frame, **kwargs)
 
-    def impl_sot(*args: P.args, **kwargs: P.kwargs) -> R:
-        assert hasattr(
-            fn, "__code__"
-        ), "Target function doesn't have code for simulating."
-        StepInfoManager().sot_step()
-        GraphLogger().clear()
-        InfoCollector().clear_step_info()
-        paddle.framework.core.set_eval_frame(callback)
-        try:
-            outs = fn(*args, **kwargs)
-        except Exception as e:
-            raise e
-        finally:
-            paddle.framework.core.set_eval_frame(None)
-
-        log_do(1, lambda: GraphLogger().print_info())
-        InfoCollector().print_step_report()
-        return outs
-
-    def impl_dynamic(*args: P.args, **kwargs: P.kwargs) -> R:
-        outs = fn(*args, **kwargs)
-        return outs
-
     def impl(*args: P.args, **kwargs: P.kwargs) -> R:
         with StepInfoManager().step_guard(fn.__code__), SotStepProfilerGuard():
-            state = StepInfoManager().current_state
+            assert hasattr(
+                fn, "__code__"
+            ), "Target function doesn't have code for simulating."
+            GraphLogger().clear()
+            InfoCollector().clear_step_info()
+            paddle.framework.core.set_eval_frame(callback)
+            try:
+                outs = fn(*args, **kwargs)
+            except Exception as e:
+                raise e
+            finally:
+                paddle.framework.core.set_eval_frame(None)
 
-            if state == StepState.RUN_SOT:
-                return impl_sot(*args, **kwargs)
-            elif state == StepState.RUN_DYN:
-                return impl_dynamic(*args, **kwargs)
-            elif state == StepState.COLLECT_INFO:
-                return StepInfoManager().collect_info(
-                    impl_dynamic, impl_sot, *args, **kwargs
-                )
-            else:
-                raise RuntimeError("Unknown state.")
+            log_do(1, lambda: GraphLogger().print_info())
+            InfoCollector().print_step_report()
+            return outs
 
     return impl
