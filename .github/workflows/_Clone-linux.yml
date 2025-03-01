@@ -17,6 +17,7 @@ env:
 jobs:
   Clone:
     # Don't run on forked repos.
+    name: Clone Paddle
     if: github.repository_owner == 'PaddlePaddle'
     runs-on:
       group: HK-Clone
