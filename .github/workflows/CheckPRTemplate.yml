@@ -7,7 +7,7 @@ on:
 
 jobs:
   check:
-    name: Check PR Template
+    name: Check
     runs-on: ubuntu-latest
     permissions:
       contents: read

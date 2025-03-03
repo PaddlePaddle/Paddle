@@ -6,7 +6,7 @@ on:
 
 jobs:
   check-bypass:
-    name: Check bypass
+    name: Check bypass for codestyle
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'codestyle'

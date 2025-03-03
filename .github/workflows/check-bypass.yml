@@ -14,7 +14,7 @@ on:
 
 jobs:
   check-bypass:
-    name: Check Bypass
+    name: Check bypass
     runs-on: ubuntu-latest
     permissions:
       contents: read
