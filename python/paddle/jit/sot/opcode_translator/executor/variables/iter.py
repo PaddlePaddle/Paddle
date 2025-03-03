@@ -24,7 +24,7 @@ from ....utils import BreakGraphError, FallbackError, UnsupportedOperationBreak
 from ..tracker import ConstTracker, DummyTracker
 from .base import VariableFactory
 from .basic import ConstantVariable
-from .container import ContainerVariable, TupleVariable
+from .container import TupleVariable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -226,21 +226,25 @@ class MapVariable(SequenceIterVariable):
     MapVariable holds a SequenceIterVariable and return a Iterable Variable after map function
     """
 
-    def __init__(self, func, val_iterator, graph, tracker):
-        super().__init__(val_iterator, graph, tracker)
+    def __init__(self, func, iters, graph, tracker):
+        # iters may contain only one iter.
+        super().__init__(iters, graph, tracker)
         self.func = func
 
     def next(self):
-        return self.func(self.hold.next())
+        values = []
+        for iter_var in self.hold:
+            next_var = iter_var.next()
+            values.append(next_var)
+        return self.func(*values)
 
     def to_list(self) -> list:
-        retval = []
-        while True:
-            try:
-                retval.append(self.func(self.hold.next()))
-            except StopIteration:
-                break
-        return retval
+        lists = [iter_vars.to_list() for iter_vars in self.hold]
+        min_len = min(len(l) for l in lists)
+        result = []
+        for i in range(min_len):
+            result.append(self.func(*(l[i] for l in lists)))
+        return result
 
     def has_side_effect(self) -> bool:
         return self.hold.has_side_effect()
@@ -256,16 +260,20 @@ class MapVariable(SequenceIterVariable):
 
     @staticmethod
     def from_iterator(
-        func, value, graph: FunctionGraph | None, tracker: Tracker
+        func,
+        value: Sequence[VariableBase],
+        graph: FunctionGraph | None,
+        tracker: Tracker,
     ):
-        iter_variable = (
-            value.get_iter() if isinstance(value, ContainerVariable) else value
-        )
+        map_targets = []
 
-        if isinstance(iter_variable, IterVariable):
-            return MapVariable(func, iter_variable, graph, tracker)
-        else:
-            return UserDefinedIterVariable(value, graph, tracker)
+        for variable in value:
+            iter_variable = variable.get_iter()
+            if not isinstance(iter_variable, SequenceIterVariable):
+                return UserDefinedIterVariable(value, graph, tracker)
+            map_targets.append(iter_variable)
+
+        return MapVariable(func, map_targets, graph, tracker)
 
 
 # what UserDefinedIterVariable holds doesn't matter, because use user defined iterator will trigger break graph
