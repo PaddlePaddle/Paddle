@@ -228,6 +228,22 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
   return temp_buffers;
 }
 
+std::vector<ir::Buffer> GetPreLoadTempBufferAfterVectorize(Expr body) {
+  std::unordered_set<std::string> buffer_names;
+  std::vector<ir::Buffer> temp_buffers;
+  ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+    if (x->as_tensor() && x->as_tensor()->buffer.defined() &&
+        !buffer_names.count(x->as_tensor()->buffer->name) &&
+        utils::StartsWith(x->as_tensor()->buffer->name, "pre_load")) {
+      buffer_names.insert(x->as_tensor()->buffer->name);
+      temp_buffers.push_back(x->as_tensor()->buffer);
+      return true;
+    }
+    return false;
+  });
+  return std::move(temp_buffers);
+}
+
 std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
     ast_gen_ius::TensorGroup* tensor_group,
     const std::vector<Tensor>& tensor_args) {
