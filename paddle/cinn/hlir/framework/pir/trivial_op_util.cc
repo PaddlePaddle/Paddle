@@ -1072,7 +1072,7 @@ void CheckLoopAlignment(const std::vector<ir::Expr>& roots) {
     }
     PADDLE_ENFORCE(fusion::VectorEqual(base_loop_vars, loop_vars, var_equal),
                    ::common::errors::PreconditionNotMet(
-                       "CheckLoopAlignment Failed, The loop vars are not euqal "
+                       "CheckLoopAlignment Failed, The loop vars are not equal "
                        "between FusionOps: \n%s\n%s",
                        roots[base_loop_idx],
                        roots[i]));
@@ -1087,7 +1087,7 @@ void CheckLoopAlignment(const std::vector<ir::Expr>& roots) {
       PADDLE_ENFORCE(
           fusion::VectorEqual(base_reduce_vars, reduce_vars, var_equal),
           ::common::errors::PreconditionNotMet(
-              "CheckLoopAlignment Failed, The reduce vars are not euqal "
+              "CheckLoopAlignment Failed, The reduce vars are not equal "
               "between FusionOps: \n%s\n%s",
               roots[base_reduce_idx],
               roots[i]));

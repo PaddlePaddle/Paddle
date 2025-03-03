@@ -1086,7 +1086,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
 
-  params.steps_per_block = timestep;  // if not SPLIT, this is unuseful.
+  params.steps_per_block = timestep;  // if not SPLIT, this is useless.
   params.split_seq = 1;               // if not SPLIT, grid.x==1
 
   bool SPLIT = false;

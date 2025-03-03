@@ -131,8 +131,8 @@ class SeqPoolJitCode : public JitCode {
           rest_used_num_regs,
           common::errors::InvalidArgument(
               "All heights of SeqPool should use the same number of registers."
-              "It equals to the numbr of rest registers. But use %d registers "
-              "and the numbr of rest registers is %d.",
+              "It equals to the number of rest registers. But use %d registers "
+              "and the number of rest registers is %d.",
               reg_idx,
               rest_used_num_regs));
       for (int i = 0; i < reg_idx; ++i) {

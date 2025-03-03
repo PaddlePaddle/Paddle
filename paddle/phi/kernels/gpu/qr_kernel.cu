@@ -93,7 +93,7 @@ struct QrFunctor {
     ctx.template Alloc<phi::dtype::Real<T>>(
         r, batch_size * k * n * sizeof(phi::dtype::Real<T>));
 
-    // Note: allocate temporary tensors because of lacking in-place operatios.
+    // Note: allocate temporary tensors because of lacking in-place operations.
     // Prepare qr
     DenseTensor qr;
     ctx.template Alloc<phi::dtype::Real<T>>(
@@ -220,7 +220,7 @@ struct QrFunctor<phi::dtype::complex<T>, Context> {
     }
     ctx.template Alloc<phi::dtype::complex<T>>(
         r, batch_size * k * n * sizeof(phi::dtype::complex<T>));
-    // Note: allocate temporary tensors because of lacking in-place operatios.
+    // Note: allocate temporary tensors because of lacking in-place operations.
     // Prepare qr
     DenseTensor qr;
     ctx.template Alloc<phi::dtype::complex<T>>(

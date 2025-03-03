@@ -311,7 +311,7 @@ void distribution_and_transform(const GPUContext &ctx,
   size_t total_thread = block_size * grid_size;
   size_t curand4_loop_times =
       (size + 4 * total_thread - 1) / (4 * total_thread);
-  // 'increment' shoulde be multiple of 4
+  // 'increment' should be multiple of 4
   uint64_t increment = curand4_loop_times * 4;
 
   auto seed_offset = gen_cuda->IncrementOffset(increment);

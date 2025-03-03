@@ -255,7 +255,7 @@ void UnStackRawKernel(const Context& ctx,
                       std::vector<DenseTensor*>* outs) {
   auto x_dims = x.dims();
 
-  // Input tensor is splited to split_dim tensors along split_dim dimension.
+  // Input tensor is split to split_dim tensors along split_dim dimension.
   int64_t split_dim = x_dims[axis];
 
   // zero sized tensor case
