@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -972,6 +973,105 @@ class TestWhereDygraphAPINonBoolCondition(unittest.TestCase):
                 cond_wrong_dtype = cond.to(dtype)
                 with self.assertRaises(ValueError):
                     x = x.where_(cond_wrong_dtype, x, x)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for zero size tensor is not fully supported",
+)
+class TestWhereZeroSizeTensor(unittest.TestCase):
+    def init_inputs_outputs(self, shapes):
+        cond = np.random.randint(0, 2, size=shapes[0]).astype('bool')
+        x = np.random.random(shapes[1]).astype('float64')
+        y = np.random.random(shapes[2]).astype('float64')
+        out_ref = np.where(cond, x, y)
+        return (cond, x, y), out_ref
+
+    def _test_with_shapes(self, shapes):
+        inputs, out_ref = self.init_inputs_outputs(shapes)
+
+        with dygraph_guard():
+            tensors = [paddle.to_tensor(inp) for inp in inputs]
+            result = paddle.where(tensors[0], tensors[1], tensors[2])
+        np.testing.assert_allclose(result, out_ref, rtol=1e-05)
+
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                cond_t = paddle.static.data(
+                    name='cond', shape=[2, 3, 5], dtype='bool'
+                )
+                x_t = paddle.static.data(
+                    name='x', shape=[2, 3, 5], dtype='float64'
+                )
+                y_t = paddle.static.data(
+                    name='y', shape=[2, 3, 5], dtype='float64'
+                )
+                result = paddle.where(cond_t, x_t, y_t)
+
+                exe = base.Executor(base.CPUPlace())
+                out = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'cond': inputs[0], 'x': inputs[1], 'y': inputs[2]},
+                    fetch_list=[result],
+                )
+        np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
+
+    def test_api_with_zero_size_input(self):
+        self._test_with_shapes([(0, 0), (0, 0), (0, 0)])
+        self._test_with_shapes([(0, 1), (0, 1), (0, 1)])
+        self._test_with_shapes([(0, 2, 1), (0, 2, 1), (0, 2, 1)])
+        self._test_with_shapes([(5, 17, 0, 6), (5, 17, 0, 6), (5, 17, 0, 6)])
+        self._test_with_shapes([(0, 5, 17, 6), (0, 5, 17, 6), (0, 5, 17, 6)])
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for bool dtype is not fully supported",
+)
+class TestWhereBoolInput(unittest.TestCase):
+    def test_api_with_dygraph(self):
+        cond = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        x = np.random.random([2, 3, 5]).astype('bool')
+        y = np.random.random([2, 3, 5]).astype('bool')
+        out_ref = np.where(cond, x, y)
+
+        with dygraph_guard():
+            cond_t = paddle.to_tensor(cond)
+            x_t = paddle.to_tensor(x)
+            y_t = paddle.to_tensor(y)
+            result = paddle.where(cond_t, x_t, y_t)
+        np.testing.assert_allclose(result, out_ref, rtol=1e-05)
+
+    def test_api_with_static(self):
+        cond = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        x = np.random.random([2, 3, 5]).astype('bool')
+        y = np.random.random([2, 3, 5]).astype('bool')
+        out_ref = np.where(cond, x, y)
+
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                cond_t = paddle.static.data(
+                    name='cond', shape=[2, 3, 5], dtype='bool'
+                )
+                x_t = paddle.static.data(
+                    name='x', shape=[2, 3, 5], dtype='bool'
+                )
+                y_t = paddle.static.data(
+                    name='y', shape=[2, 3, 5], dtype='bool'
+                )
+                result = paddle.where(cond_t, x_t, y_t)
+
+                exe = base.Executor(base.CPUPlace())
+                out = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'cond': cond, 'x': x, 'y': y},
+                    fetch_list=[result],
+                )
+        np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
 
 
 if __name__ == "__main__":
