@@ -856,5 +856,32 @@ bool CheckPattern(const ir::IndexExpr &expr,
 
   return false;
 }
+
+bool IsPureMath(Expr expr) {
+  std::set<ir::IrNodeTy> valid_node_tys({
+      ir::IrNodeTy ::_Var_,
+      ir::IrNodeTy ::IntImm,
+      ir::IrNodeTy ::Sum,
+      ir::IrNodeTy ::Product,
+      ir::IrNodeTy ::FracOp,
+      ir::IrNodeTy ::FloatImm,
+      ir::IrNodeTy ::Add,
+      ir::IrNodeTy ::Sub,
+      ir::IrNodeTy ::Div,
+      ir::IrNodeTy ::Mul,
+      ir::IrNodeTy::Mod,
+      ir::IrNodeTy ::Minus,
+  });
+
+  auto complex_nodes = ir::ir_utils::CollectIRNodes(expr, [&](const Expr *n) {
+    return !valid_node_tys.count(n->node_type());
+  });
+#ifdef CINN_DEBUG
+  for (auto &node : complex_nodes) {
+    VLOG(3) << "Found " << node->node_type() << " " << Expr(node);
+  }
+#endif
+  return complex_nodes.empty();
+}
 }  // namespace common
 }  // namespace cinn

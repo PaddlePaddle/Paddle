@@ -21,7 +21,6 @@
 #include <map>
 #include <string>
 
-#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -36,7 +35,6 @@ namespace cinn {
 namespace optim {
 using namespace ir;  // NOLINT
 using cinn::common::bfloat16;
-using cinn::common::ExprToGinacConverter;
 using cinn::common::float16;
 using utils::GetStreamCnt;
 using utils::Replace;
