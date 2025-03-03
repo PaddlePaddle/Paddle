@@ -170,7 +170,7 @@ void CodeGenC::Visit(const ir::Mul *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Div *op) { IrPrinter::Visit(op); }
 void CodeGenC::Visit(const ir::Mod *op) {
   auto copied = op->b();
-  optim::Simplify(&copied);
+  copied = optim::ArithSimplify(copied);
   if (copied.is_constant()) {
     int temp = static_cast<int>(copied.get_constant());
     if ((temp & (temp - 1)) == 0) {
@@ -891,7 +891,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::SimplifyBlocks(&func_body);
+  optim::SimplifyUnitBlock(&func_body);
 
   IrPrinter::Visit(func_body);
 }

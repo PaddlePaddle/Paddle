@@ -85,7 +85,7 @@ Expr UpdateOffsetOnlyContainsVectorizeAxis(Expr offset, Var vectorize_axis) {
     cinn::ir::ir_utils::IrReplaceVarBroadcast(
         &update_offset, Expr(value), Expr(int32_t(0)));
   }
-  cinn::optim::Simplify(&update_offset);
+  update_offset = cinn::optim::ArithSimplify(update_offset);
   return update_offset;
 }
 
@@ -100,7 +100,7 @@ bool IsSelectOpWithSpecialOffset(Expr offset) {
     cinn::ir::ir_utils::IrReplaceVarBroadcast(
         &selectOp_offset, Expr(value), Expr(int32_t(0)));
   }
-  cinn::optim::Simplify(&selectOp_offset);
+  selectOp_offset = cinn::optim::ArithSimplify(selectOp_offset);
   auto const_val = selectOp_offset.As<ir::IntImm>();
   if (const_val && const_val->value < 0) {
     return true;
@@ -123,9 +123,9 @@ Expr CalculateOffsetWithVectorizeAxis(Expr offset,
   Expr next = cinn::ir::ir_utils::IRCopy(offset);
   cinn::ir::ir_utils::IrReplaceVarBroadcast(
       &next, Expr(var_iter), Expr(int32_t(value)));
-  cinn::optim::Simplify(&next);
+  next = optim::ArithSimplify(next);
   auto compare = ir::Sub::Make(next, origin_offset);
-  cinn::optim::Simplify(&compare);
+  compare = optim::ArithSimplify(compare);
   return compare;
 }
 
@@ -137,7 +137,7 @@ Expr GetOriginOffsetWithVectorizeAxis(Expr offset, Var var_iter) {
   Expr origin_offset = cinn::ir::ir_utils::IRCopy(offset);
   cinn::ir::ir_utils::IrReplaceVarBroadcast(
       &origin_offset, Expr(var_iter), Expr(int32_t(0)));
-  cinn::optim::Simplify(&origin_offset);
+  origin_offset = optim::ArithSimplify(origin_offset);
   return origin_offset;
 }
 

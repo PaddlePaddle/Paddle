@@ -194,7 +194,7 @@ void CodeGenSyclDevice::PrintFunctionBody(const ir::_LoweredFunc_ *op) {
   APPEND_TO_NEW_BODY_STMTS(dealloc_temp_buffer_stmts);
   ir::stmt::BlockRef func_body_block = ir::stmt::BlockRef(new_body_stmts);
   // Use ir_simplify when pass updated.
-  // optim::SimplifyBlocks(&func_body);
+  // optim::SimplifyUnitBlock(&func_body);
   // // Make sure that the function's body is wrapped by a block
   // if (!func_body.As<ir::Block>()) {
   //   func_body = ir::Block::Make({func_body});
@@ -253,7 +253,7 @@ void CodeGenSyclDevice::PrintTempBufferCreation(const ir::Buffer &buffer) {
     for (int i = 0; i < buffer->shape.size(); i++) {
       buffer_size = buffer_size * buffer->shape[i];
     }
-    optim::Simplify(&buffer_size);
+    buffer_size = optim::ArithSimplify(buffer_size);
     IrPrinter::Visit(buffer_size);
     str_ += " ]";
   };
@@ -268,7 +268,7 @@ void CodeGenSyclDevice::PrintTempBufferCreation(const ir::Buffer &buffer) {
       for (int i = 0; i < buffer->shape.size(); i++) {
         buffer_size = buffer_size * buffer->shape[i];
       }
-      optim::Simplify(&buffer_size);
+      buffer_size = optim::ArithSimplify(buffer_size);
       IrPrinter::Visit(buffer_size);
       str_ += " ]>(item.get_group())";
       break;

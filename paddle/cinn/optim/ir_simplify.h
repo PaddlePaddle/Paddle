@@ -149,7 +149,7 @@ void SimplifyCast(Expr *expr);
  *    Output IR:
  *      for (int i = 0; i < 2; ++i) { doSomething(i); } (remains unchanged)
  */
-void SimplifyForLoops(Expr *expr);
+void SimplifyUnitLoop(Expr *expr);
 
 /**
  * Simplify block structures in the IR.
@@ -181,7 +181,7 @@ void SimplifyForLoops(Expr *expr);
  *    Output IR:
  *      Block { stmt1, stmt2, stmt3 }
  */
-void SimplifyBlocks(Expr *expr);
+void SimplifyUnitBlock(Expr *expr);
 
 void SimplifyLogical(Expr *expr);
 

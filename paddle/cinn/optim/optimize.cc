@@ -126,8 +126,8 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
       [&](common::HygonDCUArchSYCL) { CINN_NOT_IMPLEMENTED },
       [](auto) {});
 
-  SimplifyBlocks(&copied->body);
-  VLOG(4) << "After SimplifyBlocks:" << copied;
+  SimplifyUnitBlock(&copied->body);
+  VLOG(4) << "After SimplifyUnitBlock:" << copied;
 
   MapExternCall(&copied->body, target);
   VLOG(10) << "After Optimize MapExternCall:" << copied;

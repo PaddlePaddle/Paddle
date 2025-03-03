@@ -1300,9 +1300,9 @@ void IRCudaScheduleConv(ir::IRSchedule &ir_sch,  // NOLINT
 
   int n = output->shape[0].as_int32();
   int c = output->shape[1].as_int32();
-  optim::Simplify(&(output->shape[2]));
+  output->shape[2] = optim::ArithSimplify(output->shape[2]);
   int h = output->shape[2].as_int32();
-  optim::Simplify(&(output->shape[3]));
+  output->shape[3] = optim::ArithSimplify(output->shape[3]);
   int w = output->shape[3].as_int32();
   int rc = input_pad->shape[1].as_int32();
 
@@ -1480,8 +1480,8 @@ void IRCudaScheduleConv2(ir::IRSchedule &ir_sch,  // NOLINT
 
   // stages[input_pad]->ComputeInline();
 
-  optim::Simplify(&(output->shape[2]));
-  optim::Simplify(&(output->shape[3]));
+  output->shape[2] = optim::ArithSimplify(output->shape[2]);
+  output->shape[3] = optim::ArithSimplify(output->shape[3]);
 
   VLOG(3) << "Begin IRCudaScheduleConv2 with expr : "
           << ir_sch.GetModule().GetExprs().at(0);

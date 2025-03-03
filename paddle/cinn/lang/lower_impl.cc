@@ -384,7 +384,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
 
     if (support_ir_schedule_) {
       optim::TransformPolyForToFor(&func->body);
-      optim::SimplifyBlocks(&func->body);
+      optim::SimplifyUnitBlock(&func->body);
       func->body = ir::Block::Make({func->body});
       result.push_back(func);
       num_func++;

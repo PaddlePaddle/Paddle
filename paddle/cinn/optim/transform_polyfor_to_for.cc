@@ -39,14 +39,14 @@ Expr PlusOneWithMinMax(Expr expr) {
   if (min_n) {
     min_n->a() = min_n->a() + 1;
     min_n->b() = min_n->b() + 1;
-    Simplify(&min_n->a());
-    Simplify(&min_n->b());
+    min_n->a() = optim::ArithSimplify(min_n->a());
+    min_n->b() = optim::ArithSimplify(min_n->b());
     return expr;
   } else if (max_n) {
     max_n->a() = max_n->a() + 1;
     max_n->b() = max_n->b() + 1;
-    Simplify(&max_n->a());
-    Simplify(&max_n->b());
+    max_n->a() = optim::ArithSimplify(max_n->a());
+    max_n->b() = optim::ArithSimplify(max_n->b());
     return expr;
   }
   return expr + 1;

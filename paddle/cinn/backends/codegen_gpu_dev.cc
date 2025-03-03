@@ -183,7 +183,7 @@ void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   ir::stmt::BlockRef func_body_block = ir::stmt::BlockRef(new_body_stmts);
 
   // Use ir_simplify when pass updated.
-  // optim::SimplifyBlocks(&func_body);
+  // optim::SimplifyUnitBlock(&func_body);
   // // Make sure that the function's body is wrapped by a block
   // if (!func_body.As<ir::Block>()) {
   //   func_body = ir::Block::Make({func_body});
@@ -320,7 +320,7 @@ void CodeGenGpuDev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   for (int i = 0; i < buffer->shape.size(); i++) {
     buffer_size = buffer_size * buffer->shape[i];
   }
-  optim::Simplify(&buffer_size);
+  buffer_size = optim::ArithSimplify(buffer_size);
   bool has_symbolic_constant = false;
   ir::ir_utils::CollectIRNodes(buffer_size, [&](const Expr *x) {
     if (x->as_var()) {
@@ -352,7 +352,7 @@ void CodeGenGpuDev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     int type_bytes = buffer->dtype.bytes();
     dyn_shared_mem_offset_ =
         dyn_shared_mem_offset_ + buffer_size * Expr(type_bytes);
-    optim::Simplify(&dyn_shared_mem_offset_);
+    dyn_shared_mem_offset_ = optim::ArithSimplify(dyn_shared_mem_offset_);
     VLOG(6) << "dyn_shared_mem_offset_ = " << dyn_shared_mem_offset_;
   } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
     // print func of static allocation

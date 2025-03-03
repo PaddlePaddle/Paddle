@@ -206,7 +206,7 @@ bool CheckTensorIsBroadcastAndContinuous(
   bool is_broadcast = false;
   for (int i = 0; i < indices.size(); ++i) {
     ir::Expr index = indices[i];
-    cinn::optim::Simplify(&index);
+    index = optim::ArithSimplify(index);
     if (index.is_constant() && index.get_constant() == 0) {
       is_broadcast = true;
       continue;
@@ -244,7 +244,7 @@ bool CheckTensorIsContinuous(
     const std::unordered_map<ir::Var, ir::Expr>& iter_var2value) {
   for (int i = 0; i < indices.size(); ++i) {
     ir::Expr index = indices[i];
-    cinn::optim::Simplify(&index);
+    index = optim::ArithSimplify(index);
     if (index.is_constant()) return false;
     if (!index.is_var()) return false;
     ir::Var iter_var = index.as_var_ref();

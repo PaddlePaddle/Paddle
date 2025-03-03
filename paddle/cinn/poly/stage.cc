@@ -330,7 +330,7 @@ void Stage::ChangeIndex(Stage *other) {
 // Return a - b as integer.
 int Minus(const Expr &a, const Expr &b) {
   Expr diff = ir::Sub::Make(a, b);
-  optim::Simplify(&diff);
+  diff = optim::ArithSimplify(diff);
   if (!diff.is_constant()) {
     LOG(ERROR) << "Range is not constant";
   }
@@ -553,7 +553,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
       optim::ReplaceVarWithExpr(&i, dim_var, Expr(j.second));
     }
     i = ir::Add::Make(i, Expr(1));
-    optim::Simplify(&i);
+    i = optim::ArithSimplify(i);
   }
   // Set new shape.
   VLOG(3) << "Tensor is : " << this->tensor()->name;

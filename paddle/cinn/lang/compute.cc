@@ -178,14 +178,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   // construct the shape.
   for (auto dim : domain) {
-    auto copied = dim;
-    optim::Simplify(&copied);
+    auto copied = optim::ArithSimplify(dim);
     domain_without_reduce_axis.push_back(copied);
   }
 
   for (auto dim : shape) {
-    auto copied = dim;
-    optim::Simplify(&copied);
+    auto copied = optim::ArithSimplify(dim);
     shape_simplified.push_back(copied);
   }
 

@@ -61,46 +61,99 @@ struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
 #undef __
 };
 
-struct SimplifyLoadMutator : public ir::IRMutator<ir::Expr*> {
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
+  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
 
-  void Visit(const Load* expr, Expr* op) override {
-    auto* node = op->As<Load>();
-    for (auto& idx : node->indices) {
-      if (cinn::common::IsPureMath(idx)) {
-        idx = ArithSimplify(idx);
-      } else {
-        SimplifyNoPureMathMutator()(&idx);
-      }
-    }
-  }
+  void Visit(const FracOp* op, Expr* expr) override {
+    auto* node = expr->As<ir::FracOp>();
 
-  void Visit(const For* op, Expr* expr) override {
-    auto* node = expr->As<For>();
-    operator()(&node->body);
-    operator()(&node->extent);
+    ir::IRMutator<>::Visit(&node->operand(0), &node->operand(0));
+    ir::IRMutator<>::Visit(&node->operand(1), &node->operand(1));
+
+    *expr = ir::Div::Make(node->operand(0), node->operand(1));
   }
 };
 
-struct SimplifyStoreMutator : public ir::IRMutator<ir::Expr*> {
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
-
-  void Visit(const Store* expr, Expr* op) override {
-    auto* node = op->As<Store>();
-
-    for (auto& idx : node->indices) {
-      if (cinn::common::IsPureMath(idx)) {
-        idx = ArithSimplify(idx);
-      } else {
-        SimplifyNoPureMathMutator()(&idx);
-      }
-    }
+template <typename CastType, typename T>
+CastType NormCastValue(T value) {
+  if (type_of<CastType>().is_uint() || type_of<T>().is_uint()) {
+    // not support uint
+    return static_cast<CastType>(value);
   }
 
-  void Visit(const For* op, Expr* expr) override {
-    auto* node = expr->As<For>();
-    operator()(&node->body);
-    operator()(&node->extent);
+  if (std::isinf(value)) {
+    if (CastType(value) == -std::numeric_limits<CastType>::infinity()) {
+      return -std::numeric_limits<CastType>::infinity();
+    }
+    return std::numeric_limits<CastType>::infinity();
+  } else if (std::isnan(value)) {
+    return std::numeric_limits<CastType>::signaling_NaN();
+  } else if (value >= static_cast<T>(std::numeric_limits<CastType>::max())) {
+    return std::numeric_limits<CastType>::max();
+  } else if (value <= static_cast<T>(std::numeric_limits<CastType>::lowest())) {
+    return std::numeric_limits<CastType>::lowest();
+  }
+  return static_cast<CastType>(value);
+}
+
+struct SimplifyCastMutator : public ir::IRMutator<> {
+  void operator()(Expr* expr) { ir::IRMutator<ir::Expr*>::Visit(expr, expr); }
+
+  void Visit(const ir::Cast* op, Expr* expr) {
+    auto* node = expr->As<ir::Cast>();
+
+    ir::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
+
+    if (op->type() == op->v().type()) {
+      *expr = op->v();
+      return;
+    }
+
+#define __CAST_TO_TYPE(type__)                                          \
+  if (auto* i = op->v().As<ir::IntImm>()) {                             \
+    *expr = Expr(static_cast<type__>(i->value));                        \
+  } else if (auto* f = op->v().As<ir::FloatImm>()) {                    \
+    *expr = Expr(static_cast<type__>(NormCastValue<type__>(f->value))); \
+  } else if (auto* u = op->v().As<ir::UIntImm>()) {                     \
+    *expr = Expr(static_cast<type__>(u->value));                        \
+  } else {                                                              \
+    CINN_NOT_IMPLEMENTED                                                \
+  }
+
+    if (op->v().is_constant()) {
+      if (op->type() == type_of<int8_t>()) {
+        __CAST_TO_TYPE(int8_t)
+      } else if (op->type() == type_of<int16_t>()) {
+        __CAST_TO_TYPE(int16_t)
+      } else if (op->type() == type_of<int32_t>()) {
+        __CAST_TO_TYPE(int32_t)
+      } else if (op->type() == type_of<int64_t>()) {
+        __CAST_TO_TYPE(int64_t)
+      } else if (op->type() == type_of<uint8_t>()) {
+        __CAST_TO_TYPE(uint8_t)
+      } else if (op->type() == type_of<uint16_t>()) {
+        __CAST_TO_TYPE(uint16_t)
+      } else if (op->type() == type_of<uint32_t>()) {
+        __CAST_TO_TYPE(uint32_t)
+      } else if (op->type() == type_of<uint64_t>()) {
+        __CAST_TO_TYPE(uint64_t)
+      } else if (op->type() == type_of<float>()) {
+        __CAST_TO_TYPE(float)
+      } else if (op->type() == type_of<double>()) {
+        __CAST_TO_TYPE(double)
+      } else if (op->type() == type_of<bool>()) {
+        __CAST_TO_TYPE(bool)
+      } else if (op->type() == type_of<bfloat16>()) {
+        // Cannot simplify!!! pass
+        __CAST_TO_TYPE(bfloat16)
+      } else if (op->type() == type_of<float16>()) {
+        // Cannot simplify!!! pass
+        __CAST_TO_TYPE(float16)
+      } else {
+        CINN_NOT_IMPLEMENTED
+      }
+    }
+#undef __CAST_TO_TYPE
   }
 };
 
@@ -137,65 +190,22 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
   }
 };
 
-struct SimplifyIfThenElseMutator : public ir::IRMutator<> {
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
+struct SimplifyLoadStoreMutator : public ir::IRMutator<ir::Expr*> {
+  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
-  using ir::IRMutator<>::Visit;
-
-  void Visit(const IfThenElse* op, Expr* expr) override {
-    auto* node = expr->As<ir::IfThenElse>();
-
-    auto* condition_int = node->condition.As<ir::IntImm>();
-    auto* condition_uint = node->condition.As<ir::UIntImm>();
-
-    // not deterministic
-    if (!condition_int && !condition_uint) {
-      Visit(&node->true_case, &node->true_case);
-      if (node->false_case.defined()) {
-        Visit(&node->false_case, &node->false_case);
-      }
-      return;
-    }
-
-    bool value = condition_int ? condition_int->value : condition_uint->value;
-    if (value) {
-      *expr = op->true_case;
-      Visit(expr, expr);
-    } else if (op->false_case.defined()) {
-      *expr = op->false_case;
-      Visit(expr, expr);
-    } else {
-      *expr = ir::Block::Make({});
+  void Visit(const Load* expr, Expr* op) override {
+    auto* node = op->As<Load>();
+    for (auto& idx : node->indices) {
+      idx = ArithSimplify(idx);
     }
   }
-};
 
-struct SimplifySelectMutator : public ir::IRMutator<> {
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
-
-  using ir::IRMutator<>::Visit;
-
-  void Visit(const Select* op, Expr* expr) override {
-    auto* node = expr->As<ir::Select>();
-
-    auto* condition_int = node->condition.As<ir::IntImm>();
-    auto* condition_uint = node->condition.As<ir::UIntImm>();
-
-    // not deterministic
-    if (!condition_int && !condition_uint) {
-      Visit(&node->true_value, &node->true_value);
-      Visit(&node->false_value, &node->false_value);
-      return;
+  void Visit(const Store* expr, Expr* op) override {
+    auto* node = op->As<Store>();
+    for (auto& idx : node->indices) {
+      idx = ArithSimplify(idx);
     }
-
-    bool value = condition_int ? condition_int->value : condition_uint->value;
-    if (value) {
-      *expr = op->true_value;
-      Visit(expr, expr);
-    } else {
-      *expr = op->false_value;
-      Visit(expr, expr);
-    }
+    ir::IRMutator<ir::Expr*>::Visit(&node->value, &node->value);
   }
 };
 
@@ -295,25 +305,72 @@ struct SimplifyLogicalMutator : public ir::ExprMutator<> {
   }
 };
 
-struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
-  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
+struct SimplifyIfThenElseMutator : public ir::ExprMutator<> {
+  void operator()(Expr* x) { ir::ExprMutator<>::Visit(x, x); }
 
-  void Visit(const FracOp* op, Expr* expr) override {
-    auto* node = expr->As<ir::FracOp>();
+  using ir::ExprMutator<>::Visit;
 
-    ir::IRMutator<>::Visit(&node->operand(0), &node->operand(0));
-    ir::IRMutator<>::Visit(&node->operand(1), &node->operand(1));
+  void Visit(const IfThenElse* op, Expr* expr) override {
+    auto* node = expr->As<ir::IfThenElse>();
 
-    *expr = ir::Div::Make(node->operand(0), node->operand(1));
+    auto* condition_int = node->condition.As<ir::IntImm>();
+    auto* condition_uint = node->condition.As<ir::UIntImm>();
+
+    // not deterministic
+    if (!condition_int && !condition_uint) {
+      Visit(&node->true_case, &node->true_case);
+      if (node->false_case.defined()) {
+        Visit(&node->false_case, &node->false_case);
+      }
+      return;
+    }
+
+    bool value = condition_int ? condition_int->value : condition_uint->value;
+    if (value) {
+      *expr = op->true_case;
+      Visit(expr, expr);
+    } else if (op->false_case.defined()) {
+      *expr = op->false_case;
+      Visit(expr, expr);
+    } else {
+      *expr = ir::Block::Make({});
+    }
   }
 };
 
-struct SimplifyBlocksMutator : public ir::IRMutator<> {
-  SimplifyBlocksMutator() {}
+struct SimplifySelectMutator : public ir::ExprMutator<> {
+  void operator()(Expr* x) { ir::ExprMutator<>::Visit(x, x); }
 
-  void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
+  using ir::ExprMutator<>::Visit;
 
-  using ir::IRMutator<>::Visit;
+  void Visit(const Select* op, Expr* expr) override {
+    auto* node = expr->As<ir::Select>();
+
+    auto* condition_int = node->condition.As<ir::IntImm>();
+    auto* condition_uint = node->condition.As<ir::UIntImm>();
+
+    // not deterministic
+    if (!condition_int && !condition_uint) {
+      Visit(&node->true_value, &node->true_value);
+      Visit(&node->false_value, &node->false_value);
+      return;
+    }
+
+    bool value = condition_int ? condition_int->value : condition_uint->value;
+    if (value) {
+      *expr = op->true_value;
+      Visit(expr, expr);
+    } else {
+      *expr = op->false_value;
+      Visit(expr, expr);
+    }
+  }
+};
+
+struct SimplifyUnitBlockMutator : public ir::ExprMutator<> {
+  void operator()(Expr* x) { ir::ExprMutator<ir::Expr*>::Visit(x, x); }
+
+  using ir::ExprMutator<>::Visit;
 
   void Visit(const Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
@@ -347,35 +404,18 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
     PADDLE_ENFORCE_NOT_NULL(node,
                             ::common::errors::InvalidArgument(
                                 "The node expr->As<ScheduleBlock>() is null"));
-    for (auto& var : node->iter_vars) {
-      if (var->lower_bound.defined()) {
-        Visit(&var->lower_bound, &var->lower_bound);
-      }
-      if (var->upper_bound.defined()) {
-        Visit(&var->upper_bound, &var->upper_bound);
-      }
-    }
-    for (auto& buffer_region : node->read_buffers) {
-      Visit(&buffer_region, &buffer_region);
-    }
-    for (auto& buffer_region : node->write_buffers) {
-      Visit(&buffer_region, &buffer_region);
-    }
 
     if (node->body.As<Block>()) {
       if (node->body.As<Block>()->stmts.size() == 1) {
         node->body = node->body.As<Block>()->stmts[0];
       }
     }
-
     Visit(&(node->body), &(node->body));
   }
 };
 
-struct SimplifyForLoopsMutator : public ir::IRMutator<> {
+struct SimplifyUnitLoopMutator : public ir::IRMutator<> {
   absl::flat_hash_map<std::string, Expr> var_mins;
-  SimplifyForLoopsMutator() {}
-
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
   using ir::IRMutator<>::Visit;
@@ -387,7 +427,7 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
     auto* min_i = node->min.As<IntImm>();
     auto* extent_i = node->extent.As<IntImm>();
     if (min_i && extent_i && extent_i->value - min_i->value == 1) {
-      VLOG(6) << "Simplify current For Loop";
+      VLOG(6) << "Simplify current Unit For Loop";
       std::string var_name = node->loop_var->name;
       var_mins.emplace(var_name, node->min);
 
@@ -408,99 +448,11 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
     }
   }
 };
-
-template <typename CastType, typename T>
-CastType NormCastValue(T value) {
-  if (type_of<CastType>().is_uint() || type_of<T>().is_uint()) {
-    // not support uint
-    return static_cast<CastType>(value);
-  }
-
-  if (std::isinf(value)) {
-    if (CastType(value) == -std::numeric_limits<CastType>::infinity()) {
-      return -std::numeric_limits<CastType>::infinity();
-    }
-    return std::numeric_limits<CastType>::infinity();
-  } else if (std::isnan(value)) {
-    return std::numeric_limits<CastType>::signaling_NaN();
-  } else if (value >= static_cast<T>(std::numeric_limits<CastType>::max())) {
-    return std::numeric_limits<CastType>::max();
-  } else if (value <= static_cast<T>(std::numeric_limits<CastType>::lowest())) {
-    return std::numeric_limits<CastType>::lowest();
-  }
-  return static_cast<CastType>(value);
-}
-
-struct SimplifyCastMutator : public ir::IRMutator<> {
-  void operator()(Expr* expr) { ir::IRMutator<ir::Expr*>::Visit(expr, expr); }
-
-  void Visit(const ir::Cast* op, Expr* expr) {
-    auto* node = expr->As<ir::Cast>();
-
-    ir::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
-
-    if (op->type() == op->v().type()) {
-      *expr = op->v();
-      return;
-    }
-
-#define __CAST_TO_TYPE(type__)                                          \
-  if (auto* i = op->v().As<ir::IntImm>()) {                             \
-    *expr = Expr(static_cast<type__>(i->value));                        \
-  } else if (auto* f = op->v().As<ir::FloatImm>()) {                    \
-    *expr = Expr(static_cast<type__>(NormCastValue<type__>(f->value))); \
-  } else if (auto* u = op->v().As<ir::UIntImm>()) {                     \
-    *expr = Expr(static_cast<type__>(u->value));                        \
-  } else {                                                              \
-    CINN_NOT_IMPLEMENTED                                                \
-  }
-
-    if (op->v().is_constant()) {
-      if (op->type() == type_of<int8_t>()) {
-        __CAST_TO_TYPE(int8_t)
-      } else if (op->type() == type_of<int16_t>()) {
-        __CAST_TO_TYPE(int16_t)
-      } else if (op->type() == type_of<int32_t>()) {
-        __CAST_TO_TYPE(int32_t)
-      } else if (op->type() == type_of<int64_t>()) {
-        __CAST_TO_TYPE(int64_t)
-      } else if (op->type() == type_of<uint8_t>()) {
-        __CAST_TO_TYPE(uint8_t)
-      } else if (op->type() == type_of<uint16_t>()) {
-        __CAST_TO_TYPE(uint16_t)
-      } else if (op->type() == type_of<uint32_t>()) {
-        __CAST_TO_TYPE(uint32_t)
-      } else if (op->type() == type_of<uint64_t>()) {
-        __CAST_TO_TYPE(uint64_t)
-      } else if (op->type() == type_of<float>()) {
-        __CAST_TO_TYPE(float)
-      } else if (op->type() == type_of<double>()) {
-        __CAST_TO_TYPE(double)
-      } else if (op->type() == type_of<bool>()) {
-        __CAST_TO_TYPE(bool)
-      } else if (op->type() == type_of<uint32_t>()) {
-        __CAST_TO_TYPE(uint32_t)
-      } else if (op->type() == type_of<uint64_t>()) {
-        __CAST_TO_TYPE(uint64_t)
-      } else if (op->type() == type_of<bfloat16>()) {
-        // Cannot simplify!!! pass
-        __CAST_TO_TYPE(bfloat16)
-      } else if (op->type() == type_of<float16>()) {
-        // Cannot simplify!!! pass
-        __CAST_TO_TYPE(float16)
-      } else {
-        CINN_NOT_IMPLEMENTED
-      }
-    }
-#undef __CAST_TO_TYPE
-  }
-};
-
 }  // namespace
 
 void SimplifyCast(Expr* expr) { SimplifyCastMutator()(expr); }
-void SimplifyForLoops(Expr* expr) { SimplifyForLoopsMutator()(expr); }
-void SimplifyBlocks(Expr* expr) { SimplifyBlocksMutator()(expr); }
+void SimplifyUnitLoop(Expr* expr) { SimplifyUnitLoopMutator()(expr); }
+void SimplifyUnitBlock(Expr* expr) { SimplifyUnitBlockMutator()(expr); }
 
 void SimplifyLogical(Expr* expr) { SimplifyLogicalMutator()(expr); }
 
@@ -512,17 +464,15 @@ Expr ArithSimplify(const Expr& u) {
 
 void Simplify(Expr* expr) {
   VLOG(6) << "Begin Simplify " << *expr;
+  ReplaceFracWithDivMutator()(expr);
   SimplifyNoPureMathMutator()(expr);
   SimplifyCastMutator()(expr);
   SimplifyRampMutator()(expr);
-  SimplifyLoadMutator()(expr);
-  SimplifyStoreMutator()(expr);
+  SimplifyLoadStoreMutator()(expr);
   SimplifyLogicalMutator()(expr);
   SimplifyIfThenElseMutator()(expr);
   SimplifySelectMutator()(expr);
   SimplifyNoPureMathMutator()(expr);
-
-  ReplaceFracWithDivMutator()(expr);
   VLOG(6) << "End Simplify " << *expr;
 }
 }  // namespace optim
