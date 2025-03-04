@@ -105,6 +105,14 @@ def test_map_multi_input(func, tensor_, tuple_):
     return x
 
 
+@check_no_breakgraph
+def test_map_with_zip_and_call_fn_ex(x: list[tuple[int, int]]):
+    fn = lambda x: (0,) + x  # noqa: RUF005
+    map_results = map(fn, x)
+    res = tuple(map(list, zip(*map_results)))
+    return res
+
+
 class TestMap(TestCaseBase):
     @test_with_faster_guard
     def test_map(self):
@@ -139,6 +147,12 @@ class TestMap(TestCaseBase):
     @test_with_faster_guard
     def test_map_for_loop(self):
         self.assert_results(test_map_for_loop, [7, 8, 9, 10])
+
+    @test_with_faster_guard
+    def test_map_with_zip_and_call_fn_ex(self):
+        self.assert_results(
+            test_map_with_zip_and_call_fn_ex, [(1, 2), (3, 4), (5, 6)]
+        )
 
 
 if __name__ == "__main__":

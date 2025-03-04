@@ -1306,9 +1306,17 @@ class OpcodeExecutorBase:
             kwargs = {}
 
         args_variable = self.stack.pop()
-        assert isinstance(args_variable, (TupleVariable, ListVariable))
-        args = args_variable.get_wrapped_items()
-
+        args_iter = args_variable.get_iter()
+        assert isinstance(
+            args_iter, IterVariable
+        ), f"args_iter should be IterVariable, but got {args_iter}"
+        if not isinstance(args_iter, SequenceIterVariable):
+            raise BreakGraphError(
+                UnsupportedOperationBreak(
+                    reason_str="CALL_FUNCTION_EX only supports SequenceIterVariable for varargs"
+                )
+            )
+        args = args_iter.to_list()
         if sys.version_info >= (3, 11) and CALL_METHOD_LAYOUT_NULL_AFTER_VALUE:
             null = self.stack.pop()
             assert isinstance(null, NullVariable)
