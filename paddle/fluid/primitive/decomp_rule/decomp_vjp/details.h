@@ -1081,10 +1081,17 @@ void squeeze_grad(const Tensor& x,
                   const IntArray& axis,
                   Tensor* x_grad) {
   if (x_grad) {
-    auto x_grad_out = out_grad.dims().size() == x.dims().size()
-                          ? out_grad
-                          : unsqueeze<T>(out_grad, axis);
-    set_output<T>(x_grad_out, x_grad);
+    if (out_grad.dims().size() == x.dims().size()) {
+      set_output<T>(out_grad, x_grad);
+    } else {
+      Tensor grad_x_tmp;
+      if (has_dynamic_shape(x.shape())) {
+        grad_x_tmp = backend::reshape<T>(out_grad, shape64<T>(x));
+      } else {
+        grad_x_tmp = reshape<T>(out_grad, common::vectorize(x.dims()));
+      }
+      set_output<T>(grad_x_tmp, x_grad);
+    }
   }
 }
 
