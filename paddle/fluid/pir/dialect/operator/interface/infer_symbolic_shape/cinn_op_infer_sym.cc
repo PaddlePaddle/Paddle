@@ -396,14 +396,10 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
   }();
 
   const std::vector<symbol::DimExpr> &input_sym_shape =
-      input_shape_or_data.data().has_value()
-          ? input_shape_or_data.data().value()
-          : input_shape_or_data.shape();
+      input_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &index_sym_shape =
-      index_shape_or_data.data().has_value()
-          ? index_shape_or_data.data().value()
-          : index_shape_or_data.shape();
+      index_shape_or_data.shape();
 
   int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
   if (axis < 0) axis += input_sym_shape.size();

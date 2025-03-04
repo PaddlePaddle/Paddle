@@ -2910,15 +2910,13 @@ bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const auto step = [&] {
-    symbol::DimExpr expr;
-    if (num_shape_or_data.data().has_value()) {
-      expr = num_shape_or_data.data().value()[0];
-    } else {
-      expr = num_shape_or_data.shape()[0];
-    }
-    return expr;
-  }();
+  PADDLE_ENFORCE_EQ(
+      num_shape_or_data.data().has_value(),
+      true,
+      common::errors::InvalidArgument("TensorShapeOrDataDimExprs.data() of num "
+                                      "must have value, please check."));
+
+  const auto step = num_shape_or_data.data().value().at(0);
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_dims{step};
     return symbol::ShapeOrDataDimExprs{

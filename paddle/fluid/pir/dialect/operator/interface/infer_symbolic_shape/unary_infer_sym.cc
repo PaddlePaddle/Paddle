@@ -2941,26 +2941,16 @@ bool RepeatInterleaveOpInferSymbolicShape(
   // what should I do if axis is null
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  const std::vector<symbol::DimExpr> &in_dims_sym = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (operand_shape_or_data.data().has_value()) {
-      dims = operand_shape_or_data.data().value();
-    } else {
-      dims = operand_shape_or_data.shape();
-    }
-    return dims;
-  }();
-
-  int x_rank = in_dims_sym.size();
+  int x_rank = operand_shape_or_data.shape().size();
   if (axis < 0) axis += x_rank;
 
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
     for (int i = 0; i < x_rank; i++) {
       if (i == axis) {
-        out_sym_shape.push_back(in_dims_sym.at(i) * repeats);
+        out_sym_shape.push_back(operand_shape_or_data.shape().at(i) * repeats);
       } else {
-        out_sym_shape.push_back(in_dims_sym.at(i));
+        out_sym_shape.push_back(operand_shape_or_data.shape().at(i));
       }
     }
     return out_sym_shape;
@@ -3771,17 +3761,7 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
-  const std::vector<symbol::DimExpr> &in_dims_sym = [&] {
-    std::vector<symbol::DimExpr> dims;
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
-    return dims;
-  }();
-
-  int x_rank = in_dims_sym.size();
+  int x_rank = x_shape_or_data.shape().size();
 
   symbol::DimExpr k = k_shape_or_data.data().value().at(0);
 
@@ -3792,7 +3772,7 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
       if (i == axis) {
         out_sym_shape.push_back(k);
       } else {
-        out_sym_shape.push_back(in_dims_sym.at(i));
+        out_sym_shape.push_back(x_shape_or_data.shape().at(i));
       }
     }
     return out_sym_shape;
