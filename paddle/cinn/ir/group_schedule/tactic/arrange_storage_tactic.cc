@@ -99,7 +99,7 @@ std::tuple<CudaAxisSpace, CudaAxisSpace> GetCudaAxisSpace(
         for_node, ::common::errors::InvalidArgument("for_node is nullptr"));
     IntSet interval{
         for_node->min,
-        common::AutoSimplify(for_node->min + for_node->extent - Expr(1))};
+        optim::ArithSimplify(for_node->min + for_node->extent - Expr(1))};
     if (for_node->is_gpu_thread_binded()) {
       if (for_node->bind_info().offset == 0) {
         cuda_thread_space.x = interval;
@@ -175,10 +175,8 @@ IntSet Evaluate(Expr expr,
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var->upper_bound);
     }
   }
-  ir::Expr lower_bound =
-      common::AutoSimplify(copy_for_lower_bound, var_intervals);
-  ir::Expr upper_bound =
-      common::AutoSimplify(copy_for_upper_bound, var_intervals);
+  ir::Expr lower_bound = optim::ArithSimplify(copy_for_lower_bound);
+  ir::Expr upper_bound = optim::ArithSimplify(copy_for_upper_bound);
   lower_bound = common::EnhancedSimplifyModExpr(lower_bound, var_intervals);
   upper_bound = common::EnhancedSimplifyModExpr(upper_bound, var_intervals);
   return IntSet(lower_bound, upper_bound, var_intervals);
@@ -262,7 +260,7 @@ std::unordered_map<ir::Var, IntSet> GetVarDomainOfSBlock(
     var_domains.emplace(
         var2for.first,
         IntSet(for_node->min,
-               common::AutoSimplify(for_node->min + for_node->extent -
+               optim::ArithSimplify(for_node->min + for_node->extent -
                                     ir::Expr(1))));
   }
   return var_domains;
