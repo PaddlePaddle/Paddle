@@ -19,80 +19,13 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
-
-namespace detail {
-Expr ReplaceMinToConstant(Expr expr);
-Expr ReplaceMaxToConstant(Expr expr);
-}  // namespace detail
-
-/**
- * Interval of a _Var_.
- */
-struct CasInterval {
-  template <typename T>
-  CasInterval(T l, T r) : l(l), r(r) {
-    PADDLE_ENFORCE_LE(l,
-                      r,
-                      ::common::errors::InvalidArgument(
-                          "left should not be larger than right"));
-  }
-
-  /**
-   * @brief When iterator's upper_bound is an ir::Min of a constant value and a
-   * inconstant value, choose the constant value. When iterator's lower_bound is
-   * an ir::Max of a constant value and a inconstant value, choose the constant
-   * value. E.g: expr_l = max(x, 1) and expr_r = min(y,5): max(x, 1) <=
-   * iterator_i <= min(y,5)
-   *
-   * the bounds will be simplified to e_l = 1 and e_r = 5:
-   * 1 <= iterator_i <= 5
-   */
-  CasInterval(Expr expr_l, Expr expr_r) {
-    VLOG(6) << "CasInterval is : [" << expr_l << ", " << expr_r << "].";
-    expr_r = detail::ReplaceMinToConstant(expr_r);
-    expr_l = detail::ReplaceMaxToConstant(expr_l);
-    expr_l = optim::ArithSimplify(expr_l);
-    expr_r = optim::ArithSimplify(expr_r);
-    VLOG(6) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
-            << "].";
-
-    if (expr_l.is_constant() && expr_r.is_constant()) {
-      PADDLE_ENFORCE_EQ(expr_l->type().is_integer(),
-                        true,
-                        ::common::errors::InvalidArgument(
-                            "Expected expr_l to be an integer."));
-      PADDLE_ENFORCE_EQ(expr_r->type().is_integer(),
-                        true,
-                        ::common::errors::InvalidArgument(
-                            "Expected expr_r to be an integer."));
-      l = expr_l.as_int64();
-      r = expr_r.as_int64();
-      return;
-    }
-    e_l = expr_l;
-    e_r = expr_r;
-  }
-  int l, r;
-  // Note: not verify l <= r and (e_l, e_r) has higher priority than (l, r)
-  Expr e_l, e_r;
-
-  friend std::ostream& operator<<(std::ostream& os, const CasInterval& i) {
-    if (i.e_l.defined() && i.e_r.defined()) {
-      os << "Expr e_l Interval[" << i.e_l << ", " << i.e_r << "]";
-    } else {
-      os << "Int l Interval[" << i.l << ", " << i.r << "]";
-    }
-    return os;
-  }
-};
-
-using cas_intervals_t = absl::flat_hash_map<std::string, CasInterval>;
 
 Expr AutoSimplify(
     const Expr& u,

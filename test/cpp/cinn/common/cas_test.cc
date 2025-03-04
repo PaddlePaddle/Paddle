@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
