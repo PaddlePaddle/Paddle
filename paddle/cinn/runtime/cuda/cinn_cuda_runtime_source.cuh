@@ -824,6 +824,10 @@ CINN_NVGPU_INDEX_ADD(fp16, float16)
 
 #undef CINN_CUDA_INDEX_ADD
 
+#define CINN_ENTAIL_LOOP_CONDITION(__loop_var, __cond, __stride) \
+  }                                                              \
+  for (decltype(__stride) __loop_var = 0; __cond; __loop_var += __stride) {
+
 __device__ int cinn_cuda_resize_bilinear(const int *buf,
                                          const int c_size,
                                          const int in_h,

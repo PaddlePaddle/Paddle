@@ -22,6 +22,7 @@
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/eliminate_invariant_loop.h"
+#include "paddle/cinn/optim/entail_loop_condition_pass.h"
 #include "paddle/cinn/optim/extern_call_process_pass.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
 #include "paddle/cinn/optim/if_fold_pass.h"
@@ -146,7 +147,9 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   BlockPassManager pass_manager;
   pass_manager.AddPass(CreateIfFusionPass());
+  pass_manager.AddPass(CreateEntailLoopConditionPass());
   pass_manager.Run(copied);
+  VLOG(4) << "After Optimize IfFusion and EntailLoopCondition:" << copied;
 
   target.arch.Match(
       [&](common::NVGPUArch) {
