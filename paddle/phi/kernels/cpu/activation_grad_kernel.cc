@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 
 namespace phi {
@@ -248,6 +249,35 @@ void HardSwishGradKernel(const Context& dev_ctx,
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
+template <typename T, typename Context>
+void PowGradKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& dout,
+                   const Scalar& factor,
+                   DenseTensor* dx) {
+  if (factor.to<float>() == 0) {
+    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), dx);
+    return;
+  }
+  PADDLE_ENFORCE_NOT_NULL(
+      dx,
+      errors::InvalidArgument("The output DenseTensor dx can not be nullptr"));
+  dev_ctx.template Alloc<T>(dx);
+  auto dout_flatten = EigenVector<T>::Flatten(
+      GET_DATA_SAFELY(&dout, "Input", "Out@GRAD", "PowGrad"));
+  auto dx_flatten = EigenVector<T>::Flatten(
+      GET_DATA_SAFELY(dx, "Output", "X@GRAD", "PowGrad"));
+  auto x_flatten =
+      EigenVector<T>::Flatten(GET_DATA_SAFELY(&x, "Input", "X", "PowGrad"));
+  auto* place = dev_ctx.eigen_device();
+  phi::funcs::PowGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = factor.to<float>();
+  functor(*place, x_flatten, nullptr, dout_flatten, dx_flatten);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
@@ -462,7 +492,10 @@ PD_REGISTER_KERNEL(pow_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
 PD_REGISTER_KERNEL(pow_double_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -470,7 +503,10 @@ PD_REGISTER_KERNEL(pow_double_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
 PD_REGISTER_KERNEL(pow_triple_grad,
                    CPU,
                    ALL_LAYOUT,
@@ -478,4 +514,6 @@ PD_REGISTER_KERNEL(pow_triple_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

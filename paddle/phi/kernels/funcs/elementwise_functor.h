@@ -959,21 +959,18 @@ inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
   // TODO(wujionghao): A potential speed improvement is supporting different
   // types in C++.
-  // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+  // On CUDAPlace, pow(3, 1) calls pow(float, float), and
   // it will return a float number like 2.99... , which floor to 2
   // when cast to int by default and it is wrong.
   // Use llrint to cast it to the nearest integer, which is 3.
-  return std::llrint(std::pow(static_cast<double>(a), static_cast<double>(b)));
+  return llrint(pow(static_cast<double>(a), static_cast<double>(b)));
 }
 template <typename T, typename MPType>
 inline HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow(const T a, const T b) {
   MPType a_val = static_cast<MPType>(a);
   MPType b_val = static_cast<MPType>(b);
-#ifdef PADDLE_WITH_XPU_KP
   return static_cast<T>(pow(a_val, b_val));
-#endif
-  return static_cast<T>(std::pow(a_val, b_val));
 }
 #else
 template <typename T, typename MPType>

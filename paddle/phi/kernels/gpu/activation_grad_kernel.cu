@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 
@@ -297,6 +298,25 @@ void HardSwishGradKernel(const Context& dev_ctx,
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
+template <typename T, typename Context>
+void PowGradKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& dout,
+                   const Scalar& factor,
+                   DenseTensor* dx) {
+  if (factor.to<float>() == 0) {
+    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), dx);
+    return;
+  }
+  funcs::CudaPowGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = factor.to<float>();
+  ActivationGradGPUImpl<T, Context, funcs::CudaPowGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -542,7 +562,9 @@ PD_REGISTER_KERNEL(pow_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(pow_double_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -552,7 +574,9 @@ PD_REGISTER_KERNEL(pow_double_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(pow_triple_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -562,4 +586,6 @@ PD_REGISTER_KERNEL(pow_triple_grad,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

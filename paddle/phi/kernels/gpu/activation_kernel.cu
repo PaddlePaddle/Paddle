@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
@@ -199,6 +200,28 @@ void RoundKernel(const Context& dev_ctx,
       dev_ctx, x, out, functor);
 }
 
+template <typename T, typename Context>
+void PowKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const Scalar& factor,
+               DenseTensor* out) {
+  if (factor.to<float>() == 0) {
+    std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
+    return;
+  }
+  if (factor.to<float>() == 1) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+  funcs::CudaPowFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = factor.to<float>();
+  ActivationGPUImpl<T, Context, funcs::CudaPowFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -317,6 +340,7 @@ PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
 PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(selu, SeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logit, LogitCUDAKernel)
 
 PD_REGISTER_KERNEL(log,
@@ -376,12 +400,6 @@ PD_REGISTER_KERNEL(pow,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(selu,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SeluKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
