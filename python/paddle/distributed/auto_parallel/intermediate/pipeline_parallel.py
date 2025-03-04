@@ -60,7 +60,7 @@ class SplitPoint(Enum):
 
 
 class PipelineParallel(ParallelModel):
-    def __init__(self, model, split_spec, global_spec, pipeline_layers):
+    def __init__(self, model, split_spec, global_spec, pipeline_layers=None):
         super().__init__(model)
         self.split_spec = split_spec
         self.global_spec = global_spec
@@ -80,10 +80,6 @@ class PipelineParallel(ParallelModel):
         mesh = fleet.auto.get_mesh()
         pipeline_stage_num = mesh.get_dim_size("pp")
         assert len(self.split_spec) == pipeline_stage_num - 1
-
-        name_to_layer = {}
-        for layer_name, layer in model.named_sublayers():
-            name_to_layer[layer_name] = layer
 
         def forward_post_hook(layer, input, output):
             pipeline_stage_index = layer.pipeline_stage_index
@@ -164,8 +160,10 @@ class PipelineParallel(ParallelModel):
                     "SplitPoint.BEGINNING is not supported currently"
                 )
                 layer.register_forward_pre_hook(forward_pre_hook)
+
         if self.global_spec:
             self.process_global_mesh_layers()
+
         return model
 
     def process_global_mesh_layers(self):
@@ -196,6 +194,7 @@ class PipelineParallel(ParallelModel):
                                     for _ in range(len(g_mesh._shape))
                                 ],
                             )
+
                 if isinstance(output, tuple):
                     global_output = tuple(global_output)
                 return global_output
@@ -222,30 +221,45 @@ class PipelineParallel(ParallelModel):
             new_args = []
             new_kwargs = {}
 
-            def reshard_tensor_args(t):
-                if is_tensor(t) and t.is_dist() and t.process_mesh == g_mesh:
+            def rshard_not_mesh_match_tensor(arg):
+                cur_pp_mesh = self.get_mesh(pp_idx)
+                if (
+                    arg is not None
+                    and is_tensor(arg)
+                    and arg.is_dist()
+                    and arg.process_mesh != cur_pp_mesh
+                ):
                     return dist.reshard(
-                        t,
-                        self.get_mesh(pp_idx),
+                        arg,
+                        cur_pp_mesh,
                         [dist.Replicate(), dist.Replicate()],
                     )
-                return t
+                return arg
 
             for arg in args:
-                new_args.append(reshard_tensor_args(arg))
+                new_args.append(rshard_not_mesh_match_tensor(arg))
 
             for key, arg in kwargs.items():
-                new_kwargs[key] = reshard_tensor_args(arg)
+                new_kwargs[key] = rshard_not_mesh_match_tensor(arg)
 
-            return (new_args, new_kwargs)
+            return (tuple(new_args), new_kwargs)
 
+        # wa because of pir in vpp mode send receive bug
         for layer_name in self.global_spec:
             layer = self.get_layer_by_name(layer_name)
             layer.register_forward_post_hook(forward_post_hook)
 
-        for layer_name in self.pipeline_layers:
-            layer = self.get_layer_by_name(layer_name)
-            layer.register_forward_pre_hook(forward_pre_hook, with_kwargs=True)
+        if self.pipeline_layers is not None:
+            for layer_name in self.pipeline_layers:
+                layer = self.get_layer_by_name(layer_name)
+                layer.register_forward_pre_hook(
+                    forward_pre_hook, with_kwargs=True
+                )
+        else:
+            for layer in self.name_to_layer.values():
+                layer.register_forward_pre_hook(
+                    forward_pre_hook, with_kwargs=True
+                )
 
 
 def pipeline_parallel(model, optimizer=None, config=None):
@@ -366,11 +380,14 @@ def pipeline_parallel(model, optimizer=None, config=None):
                 ]
             )
     else:
+        sublayer_names = [name for name, _ in model.named_sublayers()]
         split_spec_dict = split_spec
-        if global_spec:
-            raise NotImplementedError(
-                "global_spec should be None if split_spec is a dict"
-            )
+        for key, value in split_spec_dict.items():
+            assert (
+                key in sublayer_names
+            ), f"wrong split layer, expected one of {sublayer_names}"
+            assert value is SplitPoint.END, "not supported split point at now."
+
     if global_spec:
         if isinstance(global_spec, str):
             global_spec = [global_spec]
