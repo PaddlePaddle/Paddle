@@ -86,8 +86,9 @@ def reshard_single_value(program, op, operand, attr):
 def reshard_combine_value(program, op, operand, attr):
     prev_var = operand.source()
 
-    if prev_var.get_defining_op().name() != 'builtin.combine':
-        return prev_var
+    assert (
+        prev_var.get_defining_op().name() == 'builtin.combine'
+    ), f"TensorList must be defined by builtin.combine op, but is {prev_var.get_defining_op().name()}."
 
     combine_op = prev_var.get_defining_op()
     array_attr = attr.as_array_attr()
@@ -134,11 +135,7 @@ def apply_partition_pass(program, block=None):
             operand = op.operand(in_idx)
             operand_attr = op.dist_attr.operand(in_idx)
             prev_var = operand.source()
-            if (
-                not prev_var.is_dist()
-                or operand_attr == prev_var.dist_attr()
-                or not operand_attr
-            ):
+            if not prev_var.is_dist() or operand_attr == prev_var.dist_attr():
                 continue
 
             assert (
@@ -484,7 +481,7 @@ class RemovePasses:
                             reverse_block_ops[i].erase()
                     skip_idx = dtensor_to_local_idx + 1
                     continue
-                elif op.name() in [*partition_skip_op_list, 'builtin.split']:
+                elif op.name() in partition_skip_op_list:
                     can_delete = True
                     for val in op.results():
                         if not val.use_empty():

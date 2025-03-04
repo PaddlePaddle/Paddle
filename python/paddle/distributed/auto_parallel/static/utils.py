@@ -58,6 +58,7 @@ _g_gradient_clip_ops = [
 
 partition_skip_op_list = [
     "builtin.combine",
+    "builtin.split",
     "pd_op.pylayer",
     "cf.yield",
     "cf.tuple_push",
@@ -1115,7 +1116,7 @@ def _complete_op_dist_attr(program, block=None):
     for op in block.ops:
         for sub_block in op.blocks():
             _complete_op_dist_attr(program, block=sub_block)
-        if op.name() in [*partition_skip_op_list, 'builtin.split']:
+        if op.name() in partition_skip_op_list:
             continue
 
         if op.dist_attr is None:
