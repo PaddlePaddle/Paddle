@@ -24,6 +24,19 @@ using BroadcastCond = std::pair<symbol::Broadcastable<symbol::DimExpr>,
                                 OpLoweringGroup::BranchType>;
 
 namespace {
+
+void UpdateGroupSubstituteDimExprMap(
+    const OpLoweringGroupPtr& group,
+    const std::vector<symbol::DimExpr>& origin_shape,
+    const std::vector<symbol::DimExpr>& new_shape) {
+  auto& dim_expr_map = group->mut_substitute_dimexpr_map();
+  for (size_t i = 0; i < origin_shape.size() && i < new_shape.size(); ++i) {
+    if (origin_shape[i] != new_shape[i]) {
+      dim_expr_map[origin_shape[i]] = new_shape[i];
+    }
+  }
+}
+
 void UpdateGroupShapeExprs(
     const OpLoweringGroupPtr& new_group,
     const OpLoweringGroupPtr& origin_group,
@@ -34,6 +47,8 @@ void UpdateGroupShapeExprs(
         value_dim_exprs_list->at(value_to_dim_expr_idx.at(value));
     const auto& origin_shape_or_data = origin_group->GetShapeOrDataExprs(value);
     if (origin_shape_or_data.data()) {
+      UpdateGroupSubstituteDimExprMap(
+          new_group, origin_shape_or_data.data().value(), shape_dim_expr);
       std::vector<symbol::DimExpr> shape_dim_expr_shape = {
           symbol::DimExpr(static_cast<int64_t>(shape_dim_expr.size()))};
       new_group->SetShapeOrDataExprs(
@@ -41,6 +56,8 @@ void UpdateGroupShapeExprs(
           symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
               shape_dim_expr_shape, shape_dim_expr)});
     } else {
+      UpdateGroupSubstituteDimExprMap(
+          new_group, origin_shape_or_data.shape(), shape_dim_expr);
       new_group->SetShapeOrDataExprs(
           value,
           symbol::ShapeOrDataDimExprs{

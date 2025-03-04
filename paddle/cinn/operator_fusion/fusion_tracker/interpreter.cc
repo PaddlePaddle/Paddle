@@ -164,8 +164,13 @@ void RunAxisTransformInstr(const std::shared_ptr<AxisTransformInstr>& instr,
   auto substitute_dimexpr_for_shape = [&](std::vector<symbol::DimExpr>& shape) {
     for (auto& dim_expr : shape) {
       if (dim_expr.isa<std::int64_t>()) continue;
-      dim_expr = symbol::SubstituteDimExpr(dim_expr,
-                                           interpreter->substitute_dimexpr_map);
+      symbol::DimExpr origin_dim_expr = dim_expr;
+      while (true) {
+        dim_expr = symbol::SubstituteDimExpr(
+            dim_expr, interpreter->substitute_dimexpr_map);
+        if (dim_expr == origin_dim_expr || dim_expr.isa<std::int64_t>()) break;
+        origin_dim_expr = dim_expr;
+      }
     }
   };
   auto substitute_dimexpr_for_transform =

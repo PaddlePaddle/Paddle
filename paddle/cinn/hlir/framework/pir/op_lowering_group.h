@@ -197,6 +197,9 @@ class OpLoweringGroup {
   const DimExprMap& substitute_dimexpr_map() const {
     return this->substitute_dimexpr_map_;
   }
+  DimExprMap& mut_substitute_dimexpr_map() {
+    return this->substitute_dimexpr_map_;
+  }
 
   void set_substitute_dimexpr_map(const DimExprMap& dimexpr_map) {
     this->substitute_dimexpr_map_ = dimexpr_map;
