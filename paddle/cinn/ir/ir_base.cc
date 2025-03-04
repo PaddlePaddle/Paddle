@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
@@ -287,12 +288,12 @@ bool Expr::is_var() const { return As<_Var_>(); }
 bool Expr::is_index() const {
   // Temporarily use `VerifyIndex`. because `get_index` depends on marking
   // `indexExpr` in For::make and sch
-  return VerifyIndex(*this);
+  return optim::VerifyIndex(*this);
   // return get()->get_index();
 }
 
 Expr &Expr::set_index(bool flag) {
-  if (flag && !VerifyIndex(*this)) {
+  if (flag && !optim::VerifyIndex(*this)) {
     PADDLE_THROW(::common::errors::InvalidType(
         "Expr: %s is not IndexExpr! cannot be set as IndexExpr.", *this));
   }
@@ -301,7 +302,7 @@ Expr &Expr::set_index(bool flag) {
 }
 
 const Expr &Expr::set_index(bool flag) const {
-  if (flag && !VerifyIndex(*this)) {
+  if (flag && !optim::VerifyIndex(*this)) {
     PADDLE_THROW(::common::errors::InvalidType(
         "Expr: %s is not IndexExpr! cannot be set as IndexExpr.", *this));
   }
@@ -523,7 +524,8 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
     case ir::IrNodeTy::Max: {
       auto lhs = Simplify(expr.operand(0), level);
       auto rhs = Simplify(expr.operand(1), level);
-      auto res = ConstructIndexExprByNodeType(expr.node_type(), lhs, rhs);
+      auto res =
+          optim::ConstructIndexExprByNodeType(expr.node_type(), lhs, rhs);
       if (level == IndexExpr::OptLevel::Level2 &&
           expr.node_type() == ir::IrNodeTy::Add)
         res = common::MergeMulMod(res);
@@ -537,7 +539,7 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
 
 IndexExpr IndexExpr::Normalize(OptLevel level) const {
   auto res = Simplify(*this, level);
-  res = ChangeSeqOfDivMod(res);
+  res = optim::ChangeSeqOfDivMod(res);
   return Simplify(res, level);
 }
 

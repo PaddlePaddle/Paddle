@@ -20,6 +20,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
@@ -360,7 +361,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
                     ::common::errors::InvalidArgument(
                         "Rhs in ProveDivisible must be defined."));
   PADDLE_ENFORCE_EQ(
-      cinn::common::IsPureMath(lhs),
+      cinn::optim::IsPureMath(lhs),
       true,
       ::common::errors::InvalidArgument(
           "Lhs in ProveDivisible must be a pure math expression."));

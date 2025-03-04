@@ -18,6 +18,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -25,17 +26,17 @@ namespace ir {
 
 template <typename T>
 static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
-  auto aPart = common::GetFlattenExprs<T>(a);
-  auto bPart = common::GetFlattenExprs<T>(b);
+  auto aPart = optim::GetFlattenExprs<T>(a);
+  auto bPart = optim::GetFlattenExprs<T>(b);
 
-  std::sort(aPart.begin(), aPart.end(), common::ComparePriority);
-  std::sort(bPart.begin(), bPart.end(), common::ComparePriority);
+  std::sort(aPart.begin(), aPart.end(), optim::ComparePriority);
+  std::sort(bPart.begin(), bPart.end(), optim::ComparePriority);
 
   if (aPart.size() != bPart.size()) return false;
 
   size_t i = 0;
   while (i < aPart.size()) {
-    if (!common::ComparePriority(aPart[i], bPart[i])) return false;
+    if (!optim::ComparePriority(aPart[i], bPart[i])) return false;
     std::vector<std::pair<ir::IndexExpr, int>> aGroup, bGroup;
 
     do {
@@ -43,8 +44,8 @@ static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
       bGroup.emplace_back(bPart[i], 0);
       ++i;
     } while (i < aPart.size() &&
-             common::ComparePriority(aPart[i - 1], aPart[i]) == 1 &&
-             common::ComparePriority(bPart[i - 1], bPart[i]) == 1);
+             optim::ComparePriority(aPart[i - 1], aPart[i]) == 1 &&
+             optim::ComparePriority(bPart[i - 1], bPart[i]) == 1);
 
     // compare expressions with same priority.
     for (size_t k = 0; k < aGroup.size(); ++k) {

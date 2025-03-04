@@ -30,6 +30,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
@@ -85,11 +86,11 @@ Expr Cast::Make(Type t, Expr v) {
 #undef __CAST_TO_TYPE
 
   // Cast indexExpr without `cast` and `load`
-  if (common::VerifyIndex(v) == common::IndexType::kValid && t == Int(64)) {
+  if (optim::VerifyIndex(v) == optim::IndexType::kValid && t == Int(64)) {
     v->convert_int32_to_int64();
     return v;
   }
-  if (common::VerifyIndex(v) == common::IndexType::kValid && t == Int(32)) {
+  if (optim::VerifyIndex(v) == optim::IndexType::kValid && t == Int(32)) {
     v->convert_int64_to_int32();
     return v;
   }

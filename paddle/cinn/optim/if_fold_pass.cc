@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/simplify_util.h"
 
 namespace cinn {
 namespace optim {
@@ -65,7 +66,7 @@ void AppendContinuousIfCond(const StmtRef& stmt,
     if (IsIfWithEqCond(stmt)) {
       auto eq_lhs = stmt.as<IfThenElse>()->condition().As<ir::EQ>()->a();
       if (eq_lhs.is_index()) {
-        cond_vec->push_back(common::ChangeSeqOfDivMod(
+        cond_vec->push_back(optim::ChangeSeqOfDivMod(
             ir::ir_utils::IRCopy(eq_lhs).as_index().Normalize()));
       }
     }
@@ -78,7 +79,7 @@ void AppendContinuousIfCond(const StmtRef& stmt,
   auto if_stmt = stmt.as<IfThenElse>();
   auto eq_lhs = if_stmt->condition().As<ir::EQ>()->a();
   if (eq_lhs.is_index())
-    cond_vec->push_back(common::ChangeSeqOfDivMod(
+    cond_vec->push_back(optim::ChangeSeqOfDivMod(
         ir::ir_utils::IRCopy(eq_lhs).as_index().Normalize()));
   AppendContinuousIfCond(
       if_stmt->true_case()->stmts().at(0), cond_vec, inner_op);

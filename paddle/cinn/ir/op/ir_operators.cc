@@ -23,6 +23,7 @@
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/cinn/runtime/flags.h"
 
 namespace cinn {
@@ -368,7 +369,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 + d0 ===> d0 + 3.
   // d0 + (d1 + d2) ===> (d1 + d2) + d0.
-  if (!ComparePriority(lhs, rhs)) {
+  if (!optim::ComparePriority(lhs, rhs)) {
     return rhs + lhs;
   }
 
@@ -433,13 +434,13 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   if (!rhs.As<IntImm>()) {
     // dynamic branch!
-    if (common::IsSumPartialBySymbol(lhs, rhs))
-      return common::SimplifySymbolicAdd(lhs, rhs);
+    if (optim::IsSumPartialBySymbol(lhs, rhs))
+      return optim::SimplifySymbolicAdd(lhs, rhs);
 
     if (auto rhs_mul = rhs.As<ir::Mul>()) {
       if (rhs_mul->b().as_index().is_constant()) {
-        if (common::IsSumPartialBySymbol(lhs, rhs_mul->a().as_index())) {
-          return common::SimplifySymbolicAdd(
+        if (optim::IsSumPartialBySymbol(lhs, rhs_mul->a().as_index())) {
+          return optim::SimplifySymbolicAdd(
               lhs, rhs_mul->a().as_index(), rhs_mul->b().as_index());
         }
       }
@@ -449,8 +450,8 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
     auto MergeByCommonFactor =
         [](const ir::IndexExpr &lhs,
            const ir::IndexExpr &rhs) -> std::optional<ir::IndexExpr> {
-      auto flatten_mul_lhs = common::GetFlattenExprs<ir::Mul>(lhs);
-      auto flatten_mul_rhs = common::GetFlattenExprs<ir::Mul>(rhs);
+      auto flatten_mul_lhs = optim::GetFlattenExprs<ir::Mul>(lhs);
+      auto flatten_mul_rhs = optim::GetFlattenExprs<ir::Mul>(rhs);
 
       if (flatten_mul_lhs.size() > 1 && flatten_mul_rhs.size() > 1) {
         ir::IndexExpr common_factor(lhs.type(), 1);
@@ -490,7 +491,7 @@ static IndexExpr SimplifyAdd(const IndexExpr &lhs, const IndexExpr &rhs) {
       return std::nullopt;
     };
 
-    auto flatten_add_lhs = common::GetFlattenExprs<ir::Add>(lhs);
+    auto flatten_add_lhs = optim::GetFlattenExprs<ir::Add>(lhs);
 
     bool found = false;
     ir::IndexExpr res(lhs.type(), 0);
@@ -516,7 +517,7 @@ static IndexExpr SimplifyMul(const IndexExpr &lhs, const IndexExpr &rhs) {
 
   // 3 * d0 ===> d0 * 3.
   // d0 * (d1 + d2) ===> (d1 + d2) * d0.
-  if (!ComparePriority(lhs, rhs)) {
+  if (!optim::ComparePriority(lhs, rhs)) {
     return rhs * lhs;
   }
 
@@ -596,7 +597,7 @@ static IndexExpr SimplifyDiv(const IndexExpr &lhs, const IndexExpr &rhs) {
     }
   } else {
     // dynamic branch!
-    if (auto res = DivByPartMul(lhs, rhs, ir::IrNodeTy::Div)) {
+    if (auto res = optim::DivByPartMul(lhs, rhs, ir::IrNodeTy::Div)) {
       return res.value();
     }
   }
@@ -647,13 +648,13 @@ static IndexExpr SimplifyMod(const IndexExpr &lhs, const IndexExpr &rhs) {
     }
   } else {
     // dynamic branch!
-    if (auto res = DivByPartMul(lhs, rhs, ir::IrNodeTy::Mod)) {
+    if (auto res = optim::DivByPartMul(lhs, rhs, ir::IrNodeTy::Mod)) {
       return IndexExpr(0);
     }
   }
 
   // static and dynamic common branch!
-  if (auto res = SimplifyComplexMod(lhs, rhs)) {
+  if (auto res = optim::SimplifyComplexMod(lhs, rhs)) {
     return res.value();
   }
 

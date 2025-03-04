@@ -29,6 +29,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -164,11 +165,11 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
     auto* node = expr->As<ir::Ramp>();
 
     PADDLE_ENFORCE_EQ(
-        cinn::common::IsPureMath(node->base),
+        IsPureMath(node->base),
         true,
         ::common::errors::InvalidArgument("node->base is not a pure math!"));
     PADDLE_ENFORCE_EQ(
-        cinn::common::IsPureMath(node->stride),
+        IsPureMath(node->stride),
         true,
         ::common::errors::InvalidArgument("node->stride is not a pure math!"));
     node->base = ArithSimplify(node->base);

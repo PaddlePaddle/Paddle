@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include <list>
 #include <optional>
@@ -21,8 +20,15 @@
 #include <vector>
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/optim/simplify_util.h"
 namespace cinn {
 namespace common {
+using cinn::optim::CheckPattern;
+using cinn::optim::GetFlattenExprs;
+using cinn::optim::IsNegatedIndexExpr;
+using cinn::optim::IsSumPartialBySymbol;
+using cinn::optim::ProveDivisible;
+using cinn::optim::SimplifySymbolicAdd;
 
 static void MergeMulModInsertElements(
     const std::vector<ir::IndexExpr>& elems,
