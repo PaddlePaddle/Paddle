@@ -208,7 +208,6 @@ LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
   if (fake_reduce_idx.empty()) {
     AxisTransform append_reduce_axis =
         std::make_shared<AppendAxisTransform>(reduce_axis, reduce_loop);
-    AxisTransform delete_reduce_axis = ReverseTransform(append_reduce_axis);
     auto upstream_copy = upstream;
     for (auto& route : upstream_copy.input2loop) {
       route.push_back(append_reduce_axis);
@@ -217,6 +216,9 @@ LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
         upstream_copy.loop.end(), reduce_loop.begin(), reduce_loop.end());
     result = LoopAxisMappingMergeImpl(upstream_copy, downstream, false);
     result.loop = ConcatVector(downstream.loop, reduce_loop);
+    AxisTransform delete_reduce_axis = std::make_shared<DeleteAxisTransform>(
+        ArangeVector<int64_t>(downstream.loop.size(), result.loop.size()),
+        reduce_loop);
     for (auto& route : result.loop2output) {
       route.insert(route.begin(), delete_reduce_axis);
     }
