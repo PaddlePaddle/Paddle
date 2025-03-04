@@ -50,7 +50,6 @@ class DataDependencyControlFlowBreak(DataDependencyBreak):
 
     def __init__(self, reason_str=None, file_path="", line_number=-1):
         if reason_str is None:
-
             reason_str = "OpcodeInlineExecutor want break graph when simulate control flow."
 
         super().__init__(
@@ -193,7 +192,7 @@ class FallbackError(SotErrorBase):
 # raise in inline function call strategy.
 class BreakGraphError(SotErrorBase):
     def __init__(self, reason: BreakGraphReasonBase | str = None):
-        super().__init__()
+        super().__init__(str(reason))
 
         if isinstance(reason, str):
             # if reason is a string, then create a UnspecifiedBreakReason object
