@@ -14,10 +14,10 @@
 
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/iter_simplify.h"
 #include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */

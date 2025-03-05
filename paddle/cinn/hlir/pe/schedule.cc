@@ -25,7 +25,6 @@
 #include <numeric>
 #include <utility>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/poly/isl_utils.h"

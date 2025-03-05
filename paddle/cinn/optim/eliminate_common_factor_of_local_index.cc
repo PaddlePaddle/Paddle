@@ -16,11 +16,11 @@
 
 #include <unordered_map>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/external_func_names.h"
 #include "paddle/cinn/utils/string.h"
 

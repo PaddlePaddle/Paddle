@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/ir/ir.h"
@@ -30,6 +29,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/cinn/utils/string.h"

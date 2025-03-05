@@ -25,7 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/ir_util.h"

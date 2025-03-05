@@ -24,7 +24,6 @@
 #include <numeric>
 #include <utility>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
