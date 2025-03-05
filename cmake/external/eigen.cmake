@@ -54,6 +54,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
       ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
 endif()
 
+if(MSVC OR CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  file(TO_NATIVE_PATH "${PADDLE_SOURCE_DIR}/patches/eigen/TensorRandom.h.patch"
+       tensor_random_header)
+  set(EIGEN_PATCH_COMMAND git checkout -- . && git checkout ${EIGEN_TAG} && git
+                          apply ${tensor_random_header})
+endif()
+
 set(EIGEN_INCLUDE_DIR ${SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
 if(NOT WIN32)
