@@ -1060,6 +1060,11 @@ void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                    << "]. Register failed!!! there may be a "
                       "Custom Runtime with the same name.";
     }
+    if (runtime_params.pir_default_passes != nullptr) {
+      CustomDevicePassManager::Instance()->SetCustomDevicePass(
+          *(reinterpret_cast<std::vector<std::string>*>(
+              runtime_params.pir_default_passes)));
+    }
   } else {
     LOG(WARNING) << "Skipped lib [" << dso_lib_path
                  << "]. Wrong Runtime parameters!!! please check the version "

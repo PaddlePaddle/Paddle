@@ -323,6 +323,7 @@ class PD_INFER_DECL IpuPassStrategy final : public PassStrategy {
     deleted_passes_ = other.deleted_passes_;
   }
 };
+
 #ifdef PADDLE_WITH_OPENVINO
 /// \brief List of OpenVINO subgraph passes.
 PD_INFER_DECL extern const std::vector<std::string> kOVSubgraphPasses;

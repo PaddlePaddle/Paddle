@@ -225,13 +225,16 @@ C_Status BlasAXPBY(const C_Device device,
 #define DEVICE_TYPE "FakeCPU"
 #define SUB_DEVICE_TYPE "V100"
 
+std::vector<std::string> fake_cpu_device_pass_list = {"fake_cpu_device_pass"};
+
 void InitFakeCPUDevice(CustomRuntimeParams *params) {
   params->device_type = const_cast<char *>(DEVICE_TYPE);
   params->sub_device_type = const_cast<char *>(SUB_DEVICE_TYPE);
   params->version.major = PADDLE_CUSTOM_RUNTIME_MAJOR_VERSION;
   params->version.minor = PADDLE_CUSTOM_RUNTIME_MINOR_VERSION;
   params->version.patch = PADDLE_CUSTOM_RUNTIME_PATCH_VERSION;
-
+  params->pir_default_passes =
+      reinterpret_cast<void *>(&fake_cpu_device_pass_list);
   memset(reinterpret_cast<void *>(params->interface),
          0,
          sizeof(C_DeviceInterface));

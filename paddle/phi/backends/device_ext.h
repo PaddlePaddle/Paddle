@@ -715,6 +715,7 @@ struct CustomRuntimeParams {
   // Plugin fill it
   char* sub_device_type;
 
+  void* pir_default_passes;
   char reserved[32];
 };
 

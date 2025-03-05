@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #pragma once
-
+#include <cstring>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -295,6 +296,28 @@ class DeviceManager {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+
+class CustomDevicePassManager {
+ public:
+  explicit CustomDevicePassManager(const std::vector<std::string>& passes)
+      : all_passes_(passes) {}
+  ~CustomDevicePassManager() = default;
+  static CustomDevicePassManager* Instance() {
+    std::vector<std::string> passes;
+    static CustomDevicePassManager manager(passes);
+    return &manager;
+  }
+  void SetCustomDevicePass(const std::vector<std::string>& passes) {
+    all_passes_ = passes;
+  }
+  const std::vector<std::string> GetCustomDevicePass() const {
+    return all_passes_;
+  }
+
+ private:
+  std::vector<std::string> all_passes_;
+};
+
 void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
                           const std::string& dso_lib_path,
