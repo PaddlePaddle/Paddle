@@ -23,10 +23,8 @@ import paddle
 from .opcode_translator import eval_frame_callback
 from .profiler import SotStepProfilerGuard
 from .utils import (
-    GraphLogger,
     InfoCollector,
     StepInfoManager,
-    log_do,
 )
 
 P = ParamSpec("P")
@@ -100,7 +98,6 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
             assert hasattr(
                 fn, "__code__"
             ), "Target function doesn't have code for simulating."
-            GraphLogger().clear()
             InfoCollector().clear_step_info()
             paddle.framework.core.set_eval_frame(callback)
             try:
@@ -110,7 +107,6 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
             finally:
                 paddle.framework.core.set_eval_frame(None)
 
-            log_do(1, lambda: GraphLogger().print_info())
             InfoCollector().print_step_report()
             return outs
 

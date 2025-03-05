@@ -27,11 +27,9 @@ from .envs import ENV_SOT_COLLECT_INFO
 from .utils import Singleton
 
 if TYPE_CHECKING:
-    from .exceptions import BreakGraphReasonBase
-
-
-if TYPE_CHECKING:
     import types
+
+    from .exceptions import BreakGraphReasonBase
 
 
 def try_import_graphviz():
@@ -220,9 +218,9 @@ class SubGraphRelationInfo(InfoBase):
             dot.node(
                 subgraph_id,
                 f"Subgraph {i} ({info.subgraph_name}, size={info.graph_size})",
-                shape='oval',
-                fillcolor='cyan' if info.is_first_call else None,
-                style='filled' if info.is_first_call else None,
+                shape="oval",
+                fillcolor="cyan" if info.is_first_call else None,
+                style="filled" if info.is_first_call else None,
             )
             for shape_info in info.input_shape_infos:
                 dot.edge(
@@ -281,7 +279,6 @@ class BreakGraphReasonInfo(InfoBase):
 
     @classmethod
     def summary(cls, history: list[Self]) -> str:
-
         reason_dict = {}
 
         for info in history:
@@ -306,3 +303,30 @@ class BreakGraphReasonInfo(InfoBase):
             return
 
         InfoCollector().attach(BreakGraphReasonInfo, reason)
+
+
+class SubGraphInfo(InfoBase):
+    SHORT_NAME = "subgraph_info"
+    TYPE = InfoType.E2E_INFO
+
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.clear()
+
+        self.graph, self.op_num, *_ = args
+
+    def clear(self):
+        self.graph = None
+        self.op_num = 0
+
+    def __str__(self):
+        return f"OpNum: {self.op_num}\n{self.graph}"
+
+    @classmethod
+    def summary(cls, history: list[Self]) -> str:
+        return "\n".join(
+            [
+                f"SubGraphIdx: {idx} {info}"
+                for idx, info in enumerate(map(str, history))
+            ]
+        )

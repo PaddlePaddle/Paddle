@@ -42,7 +42,6 @@ from .paddle_api_config import (
 
 if TYPE_CHECKING:
     from paddle._typing import NestedStructure
-    from paddle.framework import Program
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
@@ -327,59 +326,6 @@ def list_contain_by_id(li: list[Any], item: Any) -> int:
 def get_unbound_method(obj, name):
     # TODO(dev): Consider the case of patching methods to instances
     return getattr(obj.__class__, name)
-
-
-class GraphLogger(metaclass=Singleton):
-    graph_num: int
-    graphs: list[Program]
-    num_ops_per_graph: list[int]
-
-    def __init__(self):
-        self.clear()
-
-    def clear(self):
-        self.graph_num = 0
-        self.graphs = []
-        self.num_ops_per_graph = []
-
-    def get_graph_num(self):
-        return self.graph_num
-
-    def get_op_num(self):
-        return sum(self.num_ops_per_graph)
-
-    def add_subgraph(self, program: Program):
-        self.graph_num += 1
-        self.graphs.append(program)
-        sub_graph_op_num = len(program.global_block().ops)
-        self.num_ops_per_graph.append(sub_graph_op_num)
-
-    def add_subgraph_info(self, strs):
-        for i in range(len(self.graphs)):
-            strs.append(
-                "------------------------------------------------------"
-            )
-
-            strs.append(f"subgraph {i}, OpNum: {self.num_ops_per_graph[i]}")
-            strs.append(f"{self.graphs[i]}")
-
-    def __str__(self):
-        strs = []
-        strs.append("---------------- PaddleSOT graph info ----------------")
-        strs.append(f"SubgraphNum: {self.get_graph_num()}")
-        strs.append(f"OpNum: {self.get_op_num()}")
-
-        # We can display every subgraph info
-        log_do(5, lambda: self.add_subgraph_info(strs))
-
-        strs.append("---------------- PaddleSOT graph info ----------------")
-        return "\n".join(strs)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def print_info(self):
-        print(self)
 
 
 class SotUndefinedVar(metaclass=Singleton):

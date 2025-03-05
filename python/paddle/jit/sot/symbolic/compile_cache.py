@@ -27,11 +27,11 @@ from ..profiler import EventGuard
 from ..utils import (
     ENV_SOT_EXPORT,
     Cache,
-    GraphLogger,
     InfoCollector,
     NewSymbolHitRateInfo,
     Singleton,
     StepInfoManager,
+    SubGraphInfo,
     SubGraphRelationInfo,
     log,
     log_do,
@@ -41,6 +41,7 @@ from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
+    from paddle.framework import Program
     from paddle.static import InputSpec
 
     from .symbolic_context import SymbolicTraceContext
@@ -217,6 +218,18 @@ class FallbackWrapper:
             self.graph_size(),
         )
 
+    def collect_subgraph_info(self, program: Program):
+        if not InfoCollector().need_collect(SubGraphInfo):
+            return
+
+        InfoCollector().attach(
+            SubGraphInfo,
+            program,
+            self.graph_size(),
+            self.SIR.name,
+            self.is_first_call,
+        )
+
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
             if StepInfoManager().need_back_trace:
@@ -248,17 +261,12 @@ class FallbackWrapper:
 
             clear_eager_tensor_name(outputs)
             log_do(
-                1,
-                lambda: GraphLogger().add_subgraph(
-                    self.concrete_program.main_program
-                ),
-            )
-            log_do(
                 4,
                 lambda: print("[CompileCache] run sir forward success."),
             )
             self.collect_new_symbol_hit_rate(args, outputs)
             self.collect_subgraph_relation(args, outputs, self.partial_program)
+            self.collect_subgraph_info(self.concrete_program.main_program)
             if ENV_SOT_EXPORT.get() != "" and not self.exported:
                 export(self.SIR, ENV_SOT_EXPORT.get())
                 self.exported = True

@@ -52,6 +52,7 @@ from .info_collector import (  # noqa: F401
     CompileCountInfo,
     InfoCollector,
     NewSymbolHitRateInfo,
+    SubGraphInfo,
     SubGraphRelationInfo,
 )
 from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
@@ -65,7 +66,6 @@ from .paddle_api_config import (  # noqa: F401
 from .utils import (  # noqa: F401
     Cache,
     ConstTypes,
-    GraphLogger,
     NameGenerator,
     ResumeFnNameFactory,
     Singleton,
