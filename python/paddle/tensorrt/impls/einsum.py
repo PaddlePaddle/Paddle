@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from paddle.tensorrt.converter_utils import set_layer_name
 from paddle.tensorrt.register import converter_registry
 
 
@@ -21,5 +22,6 @@ def convert_einsum(network, paddle_op, inputs):
     equation = paddle_op.attrs().get("equation", "")
 
     layer = network.add_einsum(inputs[0], equation)
+    set_layer_name(layer, paddle_op)
     output_tensor = layer.get_output(0)
     return output_tensor

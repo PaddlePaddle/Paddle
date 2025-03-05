@@ -21,6 +21,7 @@ from paddle.tensorrt.converter_utils import (
     add_1D_constant_layer,
     get_input_constant_value,
     get_shape_tensor_element,
+    set_layer_name,
     trt_concat,
     trt_reshape,
     trt_shape,
@@ -37,6 +38,7 @@ def dropout_converter(network, paddle_op, inputs):
 
     if downgrade_in_infer == "upscale_in_train":
         shuffle_layer = network.add_shuffle(input_x)
+        set_layer_name(shuffle_layer, paddle_op)
         return shuffle_layer.get_output(0)
 
     weight_data = np.array([1 - dropout_prob]).astype("float32")
@@ -51,6 +53,7 @@ def dropout_converter(network, paddle_op, inputs):
         scale=scale_weights,
         power=power_weights,
     )
+    set_layer_name(scale_layer, paddle_op)
 
     return scale_layer.get_output(0)
 
@@ -60,7 +63,10 @@ def dropout_converter(network, paddle_op, inputs):
 )
 def bilinear_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
-    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+    input_shape_tensor = network.add_shape(input_tensor)
+    set_layer_name(input_shape_tensor, paddle_op)
+    input_shape_tensor = input_shape_tensor.get_output(0)
+
     input_rank = (
         input_shape_tensor.shape
     )  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
@@ -78,6 +84,7 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     trt_version_float = float(f"{trt_major}.{trt_minor}")
 
     resize_layer = network.add_resize(input_tensor)
+    set_layer_name(resize_layer, paddle_op)
     # Set resize mode to LINEAR unconditionally
     if trt_version_float >= 8.6:
         resize_layer.resize_mode = trt.InterpolationMode.LINEAR
@@ -130,19 +137,27 @@ def bilinear_interp_converter(network, paddle_op, inputs):
                     outsize_w = size_tensors[1]
                     outsize_tensor = network.add_concatenation(
                         [outsize_h, outsize_w]
-                    ).get_output(0)
+                    )
+                    set_layer_name(outsize_tensor, paddle_op)
+                    outsize_tensor = outsize_tensor.get_output(0)
             else:
                 size_tensor_shape = size_tensor_operand.source().shape
                 if size_tensor_shape.size >= 2:
                     outsize_h = network.add_slice(
                         size_tensor, start=[0], shape=[1], stride=[1]
-                    ).get_output(0)
+                    )
+                    set_layer_name(outsize_h, paddle_op)
+                    outsize_h = outsize_h.get_output(0)
                     outsize_w = network.add_slice(
                         size_tensor, start=[1], shape=[1], stride=[1]
-                    ).get_output(0)
+                    )
+                    set_layer_name(outsize_w, paddle_op)
+                    outsize_w = outsize_w.get_output(0)
                     outsize_tensor = network.add_concatenation(
                         [outsize_h, outsize_w]
-                    ).get_output(0)
+                    )
+                    set_layer_name(outsize_tensor, paddle_op)
+                    outsize_tensor = outsize_tensor.get_output(0)
     use_scales = True
     if outsize_tensor is not None:
         use_scales = False
@@ -181,23 +196,34 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     else:
         if outsize_tensor is not None:
             outsize_itensors = []
-            batch_dim = get_shape_tensor_element(network, input_shape_tensor, 0)
+            batch_dim = get_shape_tensor_element(
+                network,
+                input_shape_tensor,
+                0,
+                name=[paddle_op.name(), "batch_dim"],
+            )
             outsize_itensors.append(batch_dim)
             if data_format == "NCHW":
                 channel_dim = get_shape_tensor_element(
-                    network, input_shape_tensor, 1
+                    network,
+                    input_shape_tensor,
+                    1,
+                    name=[paddle_op.name(), "channel_dim"],
                 )
                 outsize_itensors.append(channel_dim)
                 outsize_itensors.append(outsize_tensor)
             elif data_format == "NHWC":
                 channel_dim = get_shape_tensor_element(
-                    network, input_shape_tensor, 3
+                    network,
+                    input_shape_tensor,
+                    3,
+                    name=[paddle_op.name(), "channel_dim"],
                 )
                 outsize_itensors.append(outsize_tensor)
                 outsize_itensors.append(channel_dim)
-            output_size_tensor = network.add_concatenation(
-                outsize_itensors
-            ).get_output(0)
+            output_size_tensor = network.add_concatenation(outsize_itensors)
+            set_layer_name(output_size_tensor, paddle_op)
+            output_size_tensor = output_size_tensor.get_output(0)
             resize_layer.set_input(1, output_size_tensor)
 
     return resize_layer.get_output(0)
@@ -210,6 +236,7 @@ def embedding_converter(network, paddle_op, inputs):
     x = inputs[0]
     weight = inputs[1]
     gather_layer = network.add_gather(weight, x, 0)
+    set_layer_name(gather_layer, paddle_op)
     return gather_layer.get_output(0)
 
 
@@ -229,22 +256,44 @@ def unbind_converter(network, paddle_op, inputs):
     new_shape_tensors = []
     for i in range(rank):
         if axis == i:
-            size_tensors.append(add_1D_constant_layer(network, 1))
+            size_tensors.append(
+                add_1D_constant_layer(
+                    network, 1, name=[paddle_op.name(), "size_tensor"]
+                )
+            )
         else:
             size_tensors.append(
-                get_shape_tensor_element(network, trt_shape(network, x), i)
+                get_shape_tensor_element(
+                    network,
+                    trt_shape(network, x, name=[paddle_op.name(), "trt_shape"]),
+                    i,
+                    name=[paddle_op.name(), f"size_tensor_{i}"],
+                )
             )
             new_shape_tensors.append(
-                get_shape_tensor_element(network, trt_shape(network, x), i)
+                get_shape_tensor_element(
+                    network,
+                    trt_shape(network, x, name=[paddle_op.name(), "trt_shape"]),
+                    i,
+                    name=[paddle_op.name(), f"new_shape_tensor_{i}"],
+                )
             )
-        start_tensors.append(add_1D_constant_layer(network, 0))
+        start_tensors.append(
+            add_1D_constant_layer(
+                network, 0, name=[paddle_op.name(), "start_tensor"]
+            )
+        )
 
-    new_shape_tensor = trt_concat(network, new_shape_tensors)
+    new_shape_tensor = trt_concat(
+        network, new_shape_tensors, name=[paddle_op.name(), "new_shape_tensor"]
+    )
     stride = trt.Dims([1] * rank)
     outputs = []
     output_size = len(paddle_op.results()[0].type().as_vec_type().as_list())
     for i in range(output_size):
-        start_tensors[axis] = add_1D_constant_layer(network, i)
+        start_tensors[axis] = add_1D_constant_layer(
+            network, i, name=[paddle_op.name(), f"start_{i}_tensor"]
+        )
         # Create Slice layer
         slice_layer = network.add_slice(
             x,
@@ -254,11 +303,13 @@ def unbind_converter(network, paddle_op, inputs):
         )
         slice_layer.set_input(1, trt_concat(network, start_tensors))
         slice_layer.set_input(2, trt_concat(network, size_tensors))
+        set_layer_name(slice_layer, paddle_op)
         shuffle_layer = trt_reshape(
             network,
             slice_layer.get_output(0),
             new_shape_tensor,
             is_shape_tensor=True,
+            name=[paddle_op.name(), f"shuffle_tensor_{i}"],
         )
         outputs.append(shuffle_layer)
     return outputs
@@ -269,7 +320,9 @@ def unbind_converter(network, paddle_op, inputs):
 )
 def nearest_interp_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
-    input_shape_tensor = network.add_shape(input_tensor).get_output(0)
+    input_shape_tensor = network.add_shape(input_tensor)
+    set_layer_name(input_shape_tensor, paddle_op)
+    input_shape_tensor = input_shape_tensor.get_output(0)
     input_rank = (
         input_shape_tensor.shape
     )  # The reason is unknown that adding this unused code make input_shape_tensor maintain the correct result.
@@ -288,6 +341,7 @@ def nearest_interp_converter(network, paddle_op, inputs):
 
     # Create Resize layer
     resize_layer = network.add_resize(input_tensor)
+    set_layer_name(resize_layer, paddle_op)
 
     if trt_version_float >= 8.6:
         if align_corners:
@@ -320,7 +374,9 @@ def nearest_interp_converter(network, paddle_op, inputs):
 
     outsize_tensor = None
     if inputs[2] is not None:
-        outsize_tensor = network.add_concatenation(inputs[2]).get_output(0)
+        outsize_tensor = network.add_concatenation(inputs[2])
+        set_layer_name(outsize_tensor, paddle_op)
+        outsize_tensor = outsize_tensor.get_output(0)
 
     scales = [1.0] * len(input_tensor.shape)
     if data_format == "NCHW":
@@ -337,17 +393,25 @@ def nearest_interp_converter(network, paddle_op, inputs):
         )
     if outsize_tensor is not None:
         outsize_itensors = []
-        batch_dim = get_shape_tensor_element(network, input_shape_tensor, 0)
+        batch_dim = get_shape_tensor_element(
+            network, input_shape_tensor, 0, name=[paddle_op.name(), "batch_dim"]
+        )
         outsize_itensors.append(batch_dim)
         if data_format == "NCHW":
             channel_dim = get_shape_tensor_element(
-                network, input_shape_tensor, 1
+                network,
+                input_shape_tensor,
+                1,
+                name=[paddle_op.name(), "channel_dim"],
             )
             outsize_itensors.append(channel_dim)
             outsize_itensors.append(outsize_tensor)
         elif data_format == "NHWC":
             channel_dim = get_shape_tensor_element(
-                network, input_shape_tensor, 3
+                network,
+                input_shape_tensor,
+                3,
+                name=[paddle_op.name(), "channel_dim"],
             )
             outsize_itensors.append(outsize_tensor)
             outsize_itensors.append(channel_dim)
@@ -371,6 +435,7 @@ def linear_interp_converter(network, paddle_op, inputs):
     out_w = paddle_op.attrs().get("out_w")
     scale_attr = paddle_op.attrs().get("scale")
     layer = network.add_resize(input_tensor)
+    set_layer_name(layer, paddle_op)
     trt_major = get_trt_version_list()[0]
     trt_minor = get_trt_version_list()[1]
     trt_version_float = float(f"{trt_major}.{trt_minor}")
@@ -421,20 +486,35 @@ def linear_interp_converter(network, paddle_op, inputs):
 
     if outsize_tensor is not None:
         outsize_itensors = []
-        input_shape = trt_shape(network, input_tensor)
-        batch_dim = get_shape_tensor_element(network, input_shape, 0)
+        input_shape = trt_shape(
+            network, input_tensor, name=[paddle_op.name(), "input_shape"]
+        )
+        batch_dim = get_shape_tensor_element(
+            network, input_shape, 0, name=[paddle_op.name(), "batch_dim"]
+        )
         outsize_itensors.append(batch_dim)
 
         if data_layout == "NCHW":
-            channel_dim = get_shape_tensor_element(network, input_shape, 1)
+            channel_dim = get_shape_tensor_element(
+                network, input_shape, 1, name=[paddle_op.name(), "channel_dim"]
+            )
             outsize_itensors.append(channel_dim)
             outsize_itensors.append(outsize_tensor)
         elif data_layout == "NHWC":
             outsize_itensors.append(outsize_tensor)
-            channel_dim = get_shape_tensor_element(network, input_shape, 2)
+            channel_dim = get_shape_tensor_element(
+                network, input_shape, 2, name=[paddle_op.name(), "channel_dim"]
+            )
             outsize_itensors.append(channel_dim)
 
-        layer.set_input(1, trt_concat(network, outsize_itensors))
+        layer.set_input(
+            1,
+            trt_concat(
+                network,
+                outsize_itensors,
+                name=[paddle_op.name(), "outsize_itensors"],
+            ),
+        )
     else:
         layer.scales = scales
 

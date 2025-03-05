@@ -17,6 +17,7 @@ import tensorrt as trt
 
 from paddle.tensorrt.converter_utils import (
     add_elementwise_layer,
+    set_layer_name,
     unary_op_converter,
 )
 from paddle.tensorrt.register import converter_registry
@@ -56,6 +57,7 @@ def not_equal_converter(network, paddle_op, inputs):
         network, paddle_op, inputs, trt.ElementWiseOperation.EQUAL
     )
     not_layer = network.add_unary(layer_output, trt.UnaryOperation.NOT)
+    set_layer_name(not_layer, paddle_op)
     layer_output = not_layer.get_output(0)
     return layer_output
 
@@ -67,6 +69,7 @@ def bitwise_not_converter(network, paddle_op, inputs):
         bitwise_not_layer = network.add_unary(
             input_tensor, trt.UnaryOperation.NOT
         )
+        set_layer_name(bitwise_not_layer, paddle_op)
         layer_output = bitwise_not_layer.get_output(0)
     else:
         neg_one_tensor_dims = trt.Dims([1] * len(input_tensor.shape))
@@ -74,13 +77,19 @@ def bitwise_not_converter(network, paddle_op, inputs):
         neg_one_weights = trt.Weights(neg_one_value)
         neg_one_tensor = network.add_constant(
             neg_one_tensor_dims, neg_one_weights
-        ).get_output(0)
+        )
+        set_layer_name(neg_one_tensor, paddle_op)
+        neg_one_tensor = neg_one_tensor.get_output(0)
         mul_neg_one = network.add_elementwise(
             input_tensor, neg_one_tensor, trt.ElementWiseOperation.PROD
-        ).get_output(0)
+        )
+        set_layer_name(mul_neg_one, paddle_op)
+        mul_neg_one = mul_neg_one.get_output(0)
         layer_output = network.add_elementwise(
             mul_neg_one, neg_one_tensor, trt.ElementWiseOperation.SUM
-        ).get_output(0)
+        )
+        set_layer_name(layer_output, paddle_op)
+        layer_output = layer_output.get_output(0)
     return layer_output
 
 

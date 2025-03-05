@@ -18,6 +18,7 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     WithFp16,
     get_trt_plugin,
+    set_layer_name,
     unary_op_converter,
 )
 from paddle.tensorrt.register import converter_registry
@@ -103,6 +104,7 @@ def roi_align_converter(network, paddle_op, inputs):
     )
     roi_align_inputs = [x, rois]
     roi_align_layer = network.add_plugin_v2(roi_align_inputs, plugin)
+    set_layer_name(roi_align_layer, paddle_op)
     return roi_align_layer.get_output(0)
 
 
@@ -175,6 +177,7 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
 
     yolo_box_inputs = [x, imgSize]
     yolo_box_layer = network.add_plugin_v2(yolo_box_inputs, plugin)
+    set_layer_name(yolo_box_layer, paddle_op)
     out0 = yolo_box_layer.get_output(0)
     out1 = yolo_box_layer.get_output(1)
     return (out0, out1)
@@ -255,4 +258,5 @@ def deformable_conv_converter(network, paddle_op, inputs):
     deformable_conv_layer = network.add_plugin_v2(
         [inputs[0], inputs[1], inputs[3]], plugin
     )
+    set_layer_name(deformable_conv_layer, paddle_op)
     return deformable_conv_layer.get_output(0)

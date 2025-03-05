@@ -339,11 +339,13 @@ def pool3d_converter(network, paddle_op, inputs):
         pool_layer.stride_nd = nv_strides
         pool_layer.padding_nd = nv_paddings
         pool_layer.average_count_excludes_padding = exclusive
+        set_layer_name(pool_layer, paddle_op)
         layer = pool_layer
     elif global_pooling:
         reduce_layer = network.add_reduce(
             input_tensor, reduce_operation, 28, True
         )
+        set_layer_name(reduce_layer, paddle_op)
         layer = reduce_layer
     else:
         plugin_fields = [
@@ -390,4 +392,5 @@ def pool3d_converter(network, paddle_op, inputs):
             plugin_name, plugin_field_collection, plugin_version
         )
         layer = network.add_plugin_v2([input_tensor], plugin)
+        set_layer_name(layer, paddle_op)
     return layer.get_output(0)
