@@ -31,9 +31,57 @@ void IsnanKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "isnan");
 }
 
+template <typename T, typename Context>
+void IsfiniteKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  auto* out_data = ctx.template Alloc<bool>(out);
+  int r = xpu::isfinite<XPUType>(ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x.data<T>()),
+                                 out_data,
+                                 x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "isfinite");
+}
+
+template <typename T, typename Context>
+void IsinfKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  auto* out_data = ctx.template Alloc<bool>(out);
+  int r = xpu::isinf<XPUType>(ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(x.data<T>()),
+                              out_data,
+                              x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "isinf");
+}
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    isnan, XPU, ALL_LAYOUT, phi::IsnanKernel, float, phi::dtype::float16) {
+PD_REGISTER_KERNEL(isnan,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::IsnanKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
+PD_REGISTER_KERNEL(isfinite,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::IsfiniteKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+PD_REGISTER_KERNEL(isinf,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::IsinfKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
