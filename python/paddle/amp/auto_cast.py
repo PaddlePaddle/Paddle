@@ -735,12 +735,13 @@ class StateDictHook:
         self._save_dtype = save_dtype
 
     def __call__(self, state_dict: _StateDict) -> None:
-        for key in state_dict:
-            param = state_dict[key]
-            if paddle.is_floating_point(param):
-                param_applied = paddle.cast(param, self._save_dtype)
-                param_applied.name = param.name
-                state_dict[key] = param_applied
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            for key in state_dict:
+                param = state_dict[key]
+                if paddle.is_floating_point(param):
+                    param_applied = paddle.cast(param, self._save_dtype)
+                    param_applied.name = param.name
+                    state_dict[key] = param_applied
 
 
 def _set_multi_precision(

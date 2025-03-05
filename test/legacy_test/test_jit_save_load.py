@@ -2296,5 +2296,42 @@ class TestLayerWithUnusedBuffer(unittest.TestCase):
         )
 
 
+class SimpleModelWithSaveDtype(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fc = paddle.nn.Linear(32, 1)
+
+    def forward(self, x):
+        return self.fc(x)
+
+
+class TestSaveDtype(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_save_dtype(self):
+        model = SimpleModelWithSaveDtype()
+        model = paddle.amp.decorate(
+            models=model, level='O2', save_dtype='float32'
+        )
+        data = np.random.random([32]).astype('float32')
+        data = paddle.to_tensor(data)
+        with paddle.amp.auto_cast(level='O2'):
+            out = model(data)
+        save_dir = os.path.join(self.temp_dir.name, "test_save_dtype")
+        path = save_dir + "/model"
+        paddle.jit.save(
+            model, path, input_spec=[InputSpec([None, 32], dtype='float32')]
+        )
+        loaded_model = paddle.jit.load(path)
+        loaded_model = paddle.amp.decorate(models=loaded_model, level='O2')
+        with paddle.amp.auto_cast(level='O2'):
+            loaded_out = loaded_model(data)
+        np.testing.assert_allclose(out.numpy(), loaded_out.numpy(), atol=1e-5)
+
+
 if __name__ == '__main__':
     unittest.main()
