@@ -15,8 +15,8 @@
 #include "paddle/cinn/backends/codegen_device_util.h"
 
 #include "paddle/cinn/backends/cuda_util.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
