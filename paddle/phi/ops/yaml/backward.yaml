@@ -1672,6 +1672,12 @@
   data_transform :
     skip_transform : index
 
+- backward_op : index_select_double_grad
+  forward : index_select_grad (Tensor x, Tensor index, Tensor grad_out, int axis) -> Tensor(grad_x)
+  args : (Tensor index, Tensor grad_x_grad, int axis)
+  output : Tensor(grad_out_grad)
+  invoke : index_select(grad_x_grad, index, axis)
+
 - backward_op : index_select_grad
   forward : index_select(Tensor x, Tensor index, int axis) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, int axis)
@@ -1685,6 +1691,7 @@
   no_need_buffer : x
   data_transform :
     skip_transform : index
+  backward: index_select_double_grad
 
 - backward_op : index_select_strided_grad
   forward : index_select_strided(Tensor x, int64_t index, int axis) -> Tensor(out)

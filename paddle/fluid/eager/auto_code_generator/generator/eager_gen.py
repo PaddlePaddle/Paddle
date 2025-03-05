@@ -1029,9 +1029,17 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         max_grad_tensor_position = -1
         for _, (_, _, pos) in backward_grad_inputs_map.items():
-            assert pos > max_fwd_input_position, AssertMessage(
-                pos, max_fwd_input_position
-            )
+            if pos <= max_fwd_input_position:
+                err_msg = AssertMessage(pos, max_fwd_input_position)
+                if IsInvokeForwardApi(
+                    self.grad_api_contents, self.forward_apis_dict
+                ):
+                    err_msg += (
+                        f"\n\nNOTE: '{self.backward_api_name}' is an invoke api, "
+                        "please ensure that the parameters from `forward` "
+                        "are placed at the front in the `args` section.\n"
+                    )
+                raise AssertionError(err_msg)
             max_grad_tensor_position = max(max_grad_tensor_position, pos)
 
         max_attr_position = -1

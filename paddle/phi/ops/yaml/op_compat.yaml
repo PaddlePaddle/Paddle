@@ -2044,6 +2044,7 @@
     out : Out
 
 - op : index_select
+  backward : index_select_grad, index_select_double_grad
   inputs :
     {x : X, index : Index}
   outputs :
