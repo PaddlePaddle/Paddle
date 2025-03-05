@@ -53,6 +53,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_group_output_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_zero_scale_to_full_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi_pass.h"
@@ -196,6 +197,8 @@ void ApplyDivideGroupOpToFusionOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  pass_manager->AddPass(
+      cinn::dialect::ir::CreateRemoveRedundantGroupOutputPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
