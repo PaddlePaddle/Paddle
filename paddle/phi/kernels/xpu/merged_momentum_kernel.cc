@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/merged_momentum_kernel.h"
+
 #include <sys/syscall.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "paddle/phi/kernels/merged_momentum_kernel.h"
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/momentum_kernel.h"
 
 namespace phi {
 
@@ -43,9 +45,9 @@ void MergedMomentumKernel(
     std::vector<DenseTensor*> velocity_out,
     std::vector<DenseTensor*> master_param_out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto lr = learning_rate[0];
   T mu = static_cast<T>(mu_in);
   int op_num = params.size();
+  int lr_len = learning_rate.size();
   PADDLE_ENFORCE_EQ(op_num,
                     params_out.size(),
                     errors::InvalidArgument(
@@ -78,11 +80,17 @@ void MergedMomentumKernel(
           "the size of Input(Grad) is %d, the size of Input(Param) is %d.",
           grad.size(),
           op_num));
+  PADDLE_ENFORCE_EQ(
+      lr_len == 1 || lr_len == op_num,
+      true,
+      errors::InvalidArgument(
+          "The len of learning_rate should be either 1 or %d.", op_num));
   std::vector<XPUType*> param_list(op_num);
   std::vector<XPUType*> velocity_list(op_num);
   std::vector<XPUType*> grad_list(op_num);
   std::vector<XPUType*> velocity_out_list(op_num);
   std::vector<XPUType*> param_out_list(op_num);
+  std::vector<const float*> lr_list(op_num);
   std::vector<int> sizes(op_num);
   std::vector<float> l2_weight_decay(op_num);
   if (op_num > 0) {
@@ -96,6 +104,9 @@ void MergedMomentumKernel(
       param_out_list[j] = reinterpret_cast<XPUType*>(params_out[j]->data<T>());
       velocity_out_list[j] =
           reinterpret_cast<XPUType*>(velocity_out[j]->data<T>());
+      if (lr_len == op_num) {
+        lr_list[j] = learning_rate[j]->data<float>();
+      }
       sizes[j] = static_cast<int>(params[j]->numel());
       if (regularization_method[j] != "l2_decay") {
         l2_weight_decay[j] = 0.0f;
@@ -116,6 +127,24 @@ void MergedMomentumKernel(
   } else {
     return;
   }
+  if (lr_len == op_num) {
+    for (int j = 0; j < op_num; j++) {
+      int r = xpu::momentum(dev_ctx.x_context(),
+                            param_list[j],
+                            velocity_list[j],
+                            grad_list[j],
+                            param_out_list[j],
+                            velocity_out_list[j],
+                            sizes[j],
+                            lr_list[j],
+                            use_nesterov,
+                            mu,
+                            l2_weight_decay[j]);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "momentum");
+    }
+    return;
+  }
+  auto lr = learning_rate[0];
   int r = xpu::merged_momentum(dev_ctx.x_context(),
                                param_list,
                                velocity_list,
@@ -129,7 +158,6 @@ void MergedMomentumKernel(
                                use_nesterov);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "merged_momentum");
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(merged_momentum,

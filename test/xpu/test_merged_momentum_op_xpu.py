@@ -38,6 +38,7 @@ class XPUTestMergedMomentumOP(XPUOpTestWrapper):
 
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
+            self.lr_shapes = [[1], [1], [1]]
             self.place = paddle.base.XPUPlace(0)
             self.seed = 1
 
@@ -47,18 +48,22 @@ class XPUTestMergedMomentumOP(XPUOpTestWrapper):
     class TestMergedMomentum1(TestMergedMomentumOp):
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 8]]
+            self.lr_shapes = [[1]]
 
     class TestMergedMomentum2(TestMergedMomentumOp):
         def set_case(self):
             self.shapes = [[3, 4], [2, 7]]
+            self.lr_shapes = [[1], [1]]
 
     class TestMergedMomentum3(TestMergedMomentumOp):
         def set_case(self):
             self.shapes = [[3, 4]]
+            self.lr_shapes = [[1]]
 
     class TestMergedMomentum4(TestMergedMomentumOp):
         def set_case(self):
             self.shapes = [[3, 4], [2, 7], [5, 6, 7], [9, 9], [10, 12]]
+            self.lr_shapes = [[1]]
 
 
 support_types = get_xpu_op_support_types('merged_momentum')
