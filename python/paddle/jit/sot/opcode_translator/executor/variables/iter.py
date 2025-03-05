@@ -232,41 +232,36 @@ class MapVariable(SequenceIterVariable):
     MapVariable holds a SequenceIterVariable and return a Iterable Variable after map function
     """
 
-    def __init__(self, func, iters, graph, tracker):
-        # iters may contain only one iter.
+    def __init__(self, fn, iters: TupleVariable, graph, tracker):
         super().__init__(iters, graph, tracker)
-        self.func = func
+        self.fn = fn
 
     def next(self):
-        values = []
-        for iter_var in self.hold:
-            next_var = iter_var.next()
-            values.append(next_var)
-        return self.func(*values)
+        return self.fn(*[iter_var.next() for iter_var in self.hold])
 
     def to_list(self) -> list:
-        lists = [iter_vars.to_list() for iter_vars in self.hold]
+        lists = [iter_var.to_list() for iter_var in self.hold]
         min_len = min(len(l) for l in lists)
         result = []
         for i in range(min_len):
-            result.append(self.func(*(l[i] for l in lists)))
+            result.append(self.fn(*(l[i] for l in lists)))
         return result
 
     def has_side_effect(self) -> bool:
-        return self.hold.has_side_effect()
+        return any(iter_var.has_side_effect() for iter_var in self.hold)
 
     def _reconstruct(self, codegen: PyCodeGen):
         if self.has_side_effect():
             super()._reconstruct(codegen)
         else:
             codegen.gen_load_global("map", push_null=True)
-            self.func.reconstruct(codegen)
+            self.fn.reconstruct(codegen)
             self.hold.reconstruct(codegen)
             codegen.gen_call_function(2)
 
     @staticmethod
     def from_iterator(
-        func,
+        fn,
         value: Sequence[VariableBase],
         graph: FunctionGraph | None,
         tracker: Tracker,
@@ -279,7 +274,7 @@ class MapVariable(SequenceIterVariable):
                 return UserDefinedIterVariable(value, graph, tracker)
             map_targets.append(iter_variable)
 
-        return MapVariable(func, map_targets, graph, tracker)
+        return MapVariable(fn, map_targets, graph, tracker)
 
 
 # what UserDefinedIterVariable holds doesn't matter, because use user defined iterator will trigger break graph

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from test_case_base import TestCaseBase, test_with_faster_guard
 
-from paddle import to_tensor
+from paddle import Tensor, to_tensor
 from paddle.jit import sot
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
@@ -100,9 +100,9 @@ def test_map_for_loop(x: list):
 
 
 @check_no_breakgraph
-def test_map_multi_input(func, tensor_, tuple_):
-    x, y, z = map(func, tensor_, tuple_)
-    return x
+def test_map_multi_input(func, a: Tensor, b: tuple[int, ...]):
+    x, y, z = map(func, a, b)
+    return x, y, z
 
 
 @check_no_breakgraph
