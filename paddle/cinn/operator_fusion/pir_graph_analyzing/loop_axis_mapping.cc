@@ -109,6 +109,9 @@ AxisTransformSimulator::AxisTransformSimulator(
   }
   target_ids_ = source_ids_;
   Simulate();
+  for (const auto& axis_id : target_ids_) {
+    out_shape_.push_back(axis_symbols_.at(axis_id));
+  }
 }
 
 std::set<std::string> AxisTransformSimulator::GetRelatedAxisIds(
@@ -200,12 +203,12 @@ void AxisTransformSimulator::Simulate() {
   }
 }
 
-AxisTransformRoute SimplifySimpleTransform(
-    const AxisTransformRoute& route,
-    const std::vector<symbol::DimExpr>& inshape) {
-  if (route.size() <= 1) return route;
+std::pair<AxisTransformRoute, std::vector<symbol::DimExpr>>
+SimplifySimpleTransform(const AxisTransformRoute& route,
+                        const std::vector<symbol::DimExpr>& inshape) {
   // 1. Simulate transform route
   AxisTransformSimulator simulator(route, inshape);
+  if (route.size() <= 1) return {route, simulator.out_shape_};
   // 2. Get Simlplified transform route
   AxisTransformRoute result;
   auto& source_ids = simulator.source_ids_;
@@ -238,7 +241,7 @@ AxisTransformRoute SimplifySimpleTransform(
       result.push_back(std::make_shared<TransposeTransform>(perm));
     }
   }
-  return result;
+  return {result, simulator.out_shape_};
 }
 
 AxisTransformRoute SimplifyContinuousReshape(const AxisTransformRoute& route) {
@@ -295,7 +298,9 @@ AxisTransformRoute SimplifyTransformRoute(
       // Do nothing.
     } else if (auto reshape_trans = std::get_if<ReshapeTransformPtr>(&trans)) {
       if (!part.empty()) {
-        result = ConcatVector(result, SimplifySimpleTransform(part, inshape));
+        const auto& simplified_part = SimplifySimpleTransform(part, inshape);
+        result = ConcatVector(result, simplified_part.first);
+        inshape = simplified_part.second;
         part.clear();
       }
       result.push_back(trans);
@@ -309,7 +314,7 @@ AxisTransformRoute SimplifyTransformRoute(
       part.push_back(trans);
     }
   }
-  result = ConcatVector(result, SimplifySimpleTransform(part, inshape));
+  result = ConcatVector(result, SimplifySimpleTransform(part, inshape).first);
   return result;
 }
 

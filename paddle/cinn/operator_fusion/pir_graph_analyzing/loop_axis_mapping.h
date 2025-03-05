@@ -156,6 +156,7 @@ class AxisTransformSimulator {
   std::set<std::string> GetRelatedAxisIds(const std::vector<std::string>& ids);
 
   const AxisTransformRoute& route_;
+  std::vector<symbol::DimExpr> out_shape_;
   std::vector<std::string> source_ids_;
   std::vector<std::string> target_ids_;
   std::unordered_map<std::string, symbol::DimExpr> axis_symbols_;
