@@ -184,8 +184,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       auto f = [](xpu::Context* ctx,
                   const T* x,
                   T* y,
-                  const std::vector<int>& xdims,
-                  const std::vector<int>& reduce_dims) {
+                  const std::vector<int64_t>& xdims,
+                  const std::vector<int64_t>& reduce_dims) {
         return xpu::reduce_max<XPUType>(ctx,
                                         reinterpret_cast<const XPUType*>(x),
                                         reinterpret_cast<XPUType*>(y),
@@ -210,8 +210,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                   const XPUType* x,
                   const XPUType* y,
                   XPUType* z,
-                  const std::vector<int>& xshape,
-                  const std::vector<int>& yshape) {
+                  const std::vector<int64_t>& xshape,
+                  const std::vector<int64_t>& yshape) {
         return xpu::broadcast_sub<XPUType>(ctx, x, y, z, xshape, yshape);
       };
       phi::XPUElementwise<T, XPUType>(
@@ -277,8 +277,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       auto f = [](xpu::Context* ctx,
                   const T* x,
                   T* y,
-                  const std::vector<int>& xdims,
-                  const std::vector<int>& reduce_dims) {
+                  const std::vector<int64_t>& xdims,
+                  const std::vector<int64_t>& reduce_dims) {
         return xpu::reduce_sum<XPUType>(ctx,
                                         reinterpret_cast<const XPUType*>(x),
                                         reinterpret_cast<XPUType*>(y),

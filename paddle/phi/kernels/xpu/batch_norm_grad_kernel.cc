@@ -36,8 +36,8 @@ static int CalculateInvBNY(xpu::Context *ctx,
                     y,
                     common::errors::InvalidArgument(
                         "X and Y should be inplaced in inplace mode"));
-  std::vector<int> tensor_shape_vec({N, C, M});
-  std::vector<int> array_shape_vec({1, C, 1});
+  std::vector<int64_t> tensor_shape_vec({N, C, M});
+  std::vector<int64_t> array_shape_vec({1, C, 1});
   // y - bias
   int r1 =
       xpu::broadcast_sub<T>(ctx, bias, y, x, array_shape_vec, tensor_shape_vec);
@@ -62,8 +62,8 @@ static int CalculateInvVar(xpu::Context *ctx,
                            T *epsilon_data,
                            T *inv_var) {
   int r1 = constant(ctx, epsilon_data, 1, epsilon);
-  std::vector<int> tensor_shape_vec({C});
-  std::vector<int> array_shape_vec({1});
+  std::vector<int64_t> tensor_shape_vec({C});
+  std::vector<int64_t> array_shape_vec({1});
   int r2 = xpu::broadcast_add<T>(
       ctx, epsilon_data, var, inv_var, array_shape_vec, tensor_shape_vec);
   int r3 = xpu::rsqrt<T>(ctx, inv_var, inv_var, C);

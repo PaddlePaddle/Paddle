@@ -150,10 +150,10 @@ void SetValueImpl(const Context& dev_ctx,
   XPUType* slice_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(slice_numels);
 
   int in_size = in_dims.size();
-  std::vector<int> starts_indices(in_size, 0);
-  std::vector<int> ends_indices(in_size, 0);
-  std::vector<int> strides_indices(in_size, 0);
-  std::vector<int> flip_axis;
+  std::vector<int64_t> starts_indices(in_size, 0);
+  std::vector<int64_t> ends_indices(in_size, 0);
+  std::vector<int64_t> strides_indices(in_size, 0);
+  std::vector<int64_t> flip_axis;
 
   for (size_t i = 0; i < RANK; ++i) {
     starts_indices[i] = 0;
@@ -193,8 +193,8 @@ void SetValueImpl(const Context& dev_ctx,
               const XPUType* x,
               const XPUType* y, /*unused*/
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& zshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& zshape) {
     return xpu::broadcast<XPUType>(ctx, x, z, xshape, zshape);
   };
 
@@ -227,8 +227,8 @@ void SetValueImpl(const Context& dev_ctx,
     }
   }
 
-  auto out_shape = common::vectorize<int>(out->dims());
-  auto slice_shape = common::vectorize<int>(slice_dims);
+  auto out_shape = common::vectorize<int64_t>(out->dims());
+  auto slice_shape = common::vectorize<int64_t>(slice_dims);
 
   if (need_flip) {
     r = xpu::flip(dev_ctx.x_context(),

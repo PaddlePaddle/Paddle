@@ -48,8 +48,8 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
 
   auto* x_d = x->data<T>();
   auto* y_d = y->data<T>();
-  std::vector<int> x_shape;
-  std::vector<int> b_shape;
+  std::vector<int64_t> x_shape;
+  std::vector<int64_t> b_shape;
   if (layout == phi::DataLayout::kNCHW) {
     x_shape.push_back(N);
     x_shape.push_back(C);

@@ -39,8 +39,8 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
   auto reduce_dims = dims.GetData();
 
-  std::vector<int> xdims = common::vectorize<int>(x.dims());
-  std::vector<int> ydims = common::vectorize<int>(out_grad.dims());
+  std::vector<int64_t> xdims = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> ydims = common::vectorize<int64_t>(out_grad.dims());
 
   int reduce_numel = 1;
   if (reduce_all) {
@@ -71,10 +71,10 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
   // use [1] to replace [], because xpu not support []
   if (xdims.size() == 0) {
-    xdims = std::vector<int>({1});
+    xdims = std::vector<int64_t>({1});
   }
   if (ydims.size() == 0) {
-    ydims = std::vector<int>({1});
+    ydims = std::vector<int64_t>({1});
   }
 
   r = xpu::broadcast_mul(

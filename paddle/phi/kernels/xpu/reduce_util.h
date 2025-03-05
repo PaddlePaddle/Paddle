@@ -25,8 +25,8 @@ struct SumFunctor {
   void operator()(const DeviceContext& ctx,
                   const X* x,
                   Y* y,
-                  const std::vector<int>& xdims,
-                  const std::vector<int>& reduce_dims) {
+                  const std::vector<int64_t>& xdims,
+                  const std::vector<int64_t>& reduce_dims) {
     using XPUType = typename XPUTypeTrait<X>::Type;
 #ifndef PADDLE_WITH_XPU_PLUGIN
     int r = xpu::reduce_sum<XPUType>(ctx,
@@ -40,8 +40,8 @@ struct SumFunctor {
         ctx,
         reinterpret_cast<const XPUType*>(x),
         reinterpret_cast<XPUType*>(y),
-        xdims,
-        reduce_dims);
+        std::vector<int>(xdims.begin(), xdims.end()),
+        std::vector<int>(reduce_dims.begin(), reduce_dims.end()));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_reduce_sum");
 #endif
   }

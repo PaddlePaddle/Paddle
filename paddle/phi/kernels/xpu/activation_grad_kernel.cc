@@ -180,11 +180,11 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
         dev_ctx.x_context(), tmp, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
-    auto x_dims = common::vectorize<int>(x->dims());
+    auto x_dims = common::vectorize<int64_t>(x->dims());
 
     // use [1] to replace [], because xpu not support []
     if (x_dims.size() == 0) {
-      x_dims = std::vector<int>({1});
+      x_dims = std::vector<int64_t>({1});
     }
     // dx.device(d) = dout * (static_cast<T>(1) / x);
     r = xpu::broadcast_div(dev_ctx.x_context(),

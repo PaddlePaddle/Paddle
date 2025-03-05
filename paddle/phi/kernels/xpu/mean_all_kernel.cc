@@ -30,10 +30,10 @@ void MeanAllKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   const T* x_data = input->data<T>();
   T* y_data = output->data<T>();
-  std::vector<int> x_shape;
+  std::vector<int64_t> x_shape;
   x_shape.push_back(1);
   x_shape.push_back(input->numel());
-  std::vector<int> rdims = {1};
+  std::vector<int64_t> rdims = {1};
   int r = xpu::reduce_mean(dev_ctx.x_context(),
                            reinterpret_cast<const XPUType*>(x_data),
                            reinterpret_cast<XPUType*>(y_data),

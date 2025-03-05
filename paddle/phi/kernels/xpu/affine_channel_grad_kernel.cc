@@ -54,9 +54,9 @@ void AffineChannelGradXPUKernel(const Context& dev_ctx,
   T* dscale_d = dscale ? dev_ctx.template Alloc<T>(dscale) : nullptr;
   T* dbias_d = dbias ? dev_ctx.template Alloc<T>(dbias) : nullptr;
 
-  std::vector<int> x_shape;
-  std::vector<int> b_shape;
-  std::vector<int> rdims;
+  std::vector<int64_t> x_shape;
+  std::vector<int64_t> b_shape;
+  std::vector<int64_t> rdims;
   if (layout == phi::DataLayout::kNCHW) {
     x_shape.push_back(N);
     x_shape.push_back(C);

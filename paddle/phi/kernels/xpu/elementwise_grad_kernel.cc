@@ -36,8 +36,8 @@ void MaximumGradKernel(const Context& dev_ctx,
               const XPUType* dz,
               XPUType* dy,
               XPUType* dx,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_max_grad<XPUType>(
         ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };
@@ -61,8 +61,8 @@ void MinimumGradKernel(const Context& dev_ctx,
               const XPUType* dz,
               XPUType* dy,
               XPUType* dx,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_min_grad<XPUType>(
         ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };

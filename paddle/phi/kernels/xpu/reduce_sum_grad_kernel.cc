@@ -37,7 +37,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data());
   auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data());
   const auto& input_dim_size = x.dims().size();
-  std::vector<int> true_dims;
+  std::vector<int64_t> true_dims;
   for (size_t i = 0; i < dims.size(); ++i) {
     if (dims[i] < 0) {
       true_dims.push_back(dims[i] + input_dim_size);
@@ -46,9 +46,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
     }
   }
 
-  std::vector<int> ydims(input_dim_size);
-  std::vector<int> xdims((input_dim_size));
-  std::set<int> dims_set(true_dims.begin(), true_dims.end());
+  std::vector<int64_t> ydims(input_dim_size);
+  std::vector<int64_t> xdims((input_dim_size));
+  std::set<int64_t> dims_set(true_dims.begin(), true_dims.end());
   for (auto i = 0; i < input_dim_size; i++) {
     xdims[i] = x.dims()[i];
     if (dims_set.find(i) != dims_set.end() || reduce_all) {
@@ -60,10 +60,10 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
   // use [1] to replace [], because xpu not support []
   if (xdims.size() == 0) {
-    xdims = std::vector<int>({1});
+    xdims = std::vector<int64_t>({1});
   }
   if (ydims.size() == 0) {
-    ydims = std::vector<int>({1});
+    ydims = std::vector<int64_t>({1});
   }
 
   if (x.dtype() != out_grad.dtype()) {

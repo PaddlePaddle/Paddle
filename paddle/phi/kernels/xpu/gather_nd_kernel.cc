@@ -54,8 +54,8 @@ void GatherNdKernel(const Context &ctx,
             remain_numel,
             y_numel));
 
-    // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int>&
-    // xshape, const std::vector<int>& yshape)
+    // int broadcast(Context* ctx, const T* x, T* y, const std::vector<int64_t>&
+    // xshape, const std::vector<int64_t>& yshape)
     int r = xpu::broadcast(ctx.x_context(),
                            reinterpret_cast<const XPUType *>(x.data<T>()),
                            reinterpret_cast<XPUType *>(out->data<T>()),

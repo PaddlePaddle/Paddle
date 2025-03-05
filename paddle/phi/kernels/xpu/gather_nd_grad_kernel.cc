@@ -69,8 +69,8 @@ void GatherNdGradKernel(const Context &ctx,
         xpu::reduce_sum(ctx.x_context(),
                         reinterpret_cast<const XPUType *>(out_grad.data<T>()),
                         reinterpret_cast<XPUType *>(x_grad->data<T>()),
-                        {remain_numel, x_numel},
-                        {0});
+                        {(int64_t)remain_numel, (int64_t)x_numel},
+                        {0LL});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     return;
   }

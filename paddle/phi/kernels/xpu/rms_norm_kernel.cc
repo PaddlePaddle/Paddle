@@ -83,8 +83,8 @@ void RmsNormKernel(const Context& dev_ctx,
     inv_var_data = inv_var->data<float>();
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }

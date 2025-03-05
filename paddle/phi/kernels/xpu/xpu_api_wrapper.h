@@ -239,8 +239,8 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
     l3_addr = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * k);
     PADDLE_ENFORCE_XDNN_NOT_NULL(l3_addr);
 
-    std::vector<int> shape = {k, m};
-    std::vector<int> axis = {1, 0};
+    std::vector<int64_t> shape = {k, m};
+    std::vector<int64_t> axis = {1, 0};
     r = xpu::transpose<XPUType>(ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -596,8 +596,8 @@ static void MatMulXPUFunction(
       XPUType* x_broadcast_data = nullptr;
       x_broadcast_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(batch_size * m * k);
       PADDLE_ENFORCE_XDNN_NOT_NULL(x_broadcast_data);
-      std::vector<int> x_shape = {1, m, k};
-      std::vector<int> new_x_shape = {batch_size, m, k};
+      std::vector<int64_t> x_shape = {1, m, k};
+      std::vector<int64_t> new_x_shape = {batch_size, m, k};
       int r = xpu::broadcast<XPUType>(
           xpu_ctx, x_data, x_broadcast_data, x_shape, new_x_shape);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
@@ -608,8 +608,8 @@ static void MatMulXPUFunction(
       XPUType* y_broadcast_data = nullptr;
       y_broadcast_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(batch_size * k * n);
       PADDLE_ENFORCE_XDNN_NOT_NULL(y_broadcast_data);
-      std::vector<int> y_shape = {1, k, n};
-      std::vector<int> new_y_shape = {batch_size, k, n};
+      std::vector<int64_t> y_shape = {1, k, n};
+      std::vector<int64_t> new_y_shape = {batch_size, k, n};
       int r = xpu::broadcast<XPUType>(
           xpu_ctx, y_data, y_broadcast_data, y_shape, new_y_shape);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");

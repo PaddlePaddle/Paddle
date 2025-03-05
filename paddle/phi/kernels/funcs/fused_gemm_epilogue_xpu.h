@@ -143,8 +143,11 @@ void ComputeFusedGemmEpilogueBackwardXPU(const phi::XPUContext& dev_ctx,
     XPUType* dbias_ptr;
     auto* dbias_tmp_ptr = dev_ctx.template Alloc<T>(dbias);
     dbias_ptr = reinterpret_cast<XPUType*>(dbias_tmp_ptr);
-    r = xpu::reduce_sum(
-        xpu_ctx, dout_fc_ptr, dbias_ptr, {info_forward.m, info_forward.n}, {0});
+    r = xpu::reduce_sum(xpu_ctx,
+                        dout_fc_ptr,
+                        dbias_ptr,
+                        {(int64_t)info_forward.m, (int64_t)info_forward.n},
+                        {0LL});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
   }
 }
