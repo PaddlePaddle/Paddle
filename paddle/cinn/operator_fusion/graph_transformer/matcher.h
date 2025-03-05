@@ -57,6 +57,36 @@ struct OnlyOneDownstreamMatcher {
   }
 };
 
+/*
+ * We must limit the output + input + shape_info number and make sure
+ * the number is smaller than 512.
+ */
+struct InputOutputMaximumConstrain {
+  const int MAX_INPUT_OUTPUT_NUMBER = 480;  // cuda only support 512
+  std::vector<pir::Value> GetInputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetInputsValue(ops), GetOutputsValue(ops));
+  }
+  std::vector<pir::Value> GetOutputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetOutputsValue(ops), GetInputsValue(ops));
+  }
+  std::vector<pir::Operation*> GetAllOps(const PatternNodePtr& lhs,
+                                         const PatternNodePtr& rhs) {
+    return UniqueVectorBySet(
+        ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
+                     GetOpsInPattern(rhs->stmt_pattern())));
+  }
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    const auto& all_ops = GetAllOps(lhs, rhs);
+    int input_number = GetInputValuesExceptMiddle(all_ops).size();
+    int output_number = GetOutputValuesExceptMiddle(all_ops).size();
+    return input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
+  }
+};
+
 template <typename StmtPattern>
 struct StmtPatternGraphMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
@@ -202,8 +232,19 @@ struct RecomputeNodeMatcher {
       return true;
     };
 
+    const auto input_output_nums_constraint = [](const PatternGraph& graph,
+                                                 const PatternNodePtr& node) {
+      return std::all_of(node->downstream().begin(),
+                         node->downstream().end(),
+                         [&](const PatternNodePtr& downstream) {
+                           return InputOutputMaximumConstrain()(
+                               graph, node, downstream);
+                         });
+    };
+
     return StmtPatternGraphMatcher<AnchorPattern>()(graph, node) &&
-           node->downstream().size() >= 1 && can_recompute_fn(node);
+           node->downstream().size() >= 1 && can_recompute_fn(node) &&
+           input_output_nums_constraint(graph, node);
   }
 };
 
@@ -299,36 +340,6 @@ struct HorizontalFusionConstrain {
     return graph.policy_manager().GetPolicy<GeneralTopoPolicy>()->CanFuse(
                lhs, rhs) &&
            IsLoopFrameworkEqual(lhs_pattern, rhs_pattern);
-  }
-};
-
-/*
- * We must limit the output + input + shape_info number and make sure
- * the number is smaller than 512.
- */
-struct InputOutputMaximumConstrain {
-  const int MAX_INPUT_OUTPUT_NUMBER = 480;  // cuda only support 512
-  std::vector<pir::Value> GetInputValuesExceptMiddle(
-      const std::vector<pir::Operation*>& ops) {
-    return VectorDiff(GetInputsValue(ops), GetOutputsValue(ops));
-  }
-  std::vector<pir::Value> GetOutputValuesExceptMiddle(
-      const std::vector<pir::Operation*>& ops) {
-    return VectorDiff(GetOutputsValue(ops), GetInputsValue(ops));
-  }
-  std::vector<pir::Operation*> GetAllOps(const PatternNodePtr& lhs,
-                                         const PatternNodePtr& rhs) {
-    return UniqueVectorBySet(
-        ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
-                     GetOpsInPattern(rhs->stmt_pattern())));
-  }
-  bool operator()(const PatternGraph& graph,
-                  const PatternNodePtr& lhs,
-                  const PatternNodePtr& rhs) {
-    const auto& all_ops = GetAllOps(lhs, rhs);
-    int input_number = GetInputValuesExceptMiddle(all_ops).size();
-    int output_number = GetOutputValuesExceptMiddle(all_ops).size();
-    return input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
   }
 };
 
