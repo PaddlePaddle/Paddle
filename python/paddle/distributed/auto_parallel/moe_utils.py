@@ -26,7 +26,8 @@ import paddle.distributed as dist
 from paddle import Tensor
 from paddle.autograd import PyLayer
 
-from .placement_type import check_placements_equal
+from .placement_type import check_placements_equal, to_dim_map
+from .static.reshard_funcs.base_reshard_func import choose_reshard_func
 from .static.reshard_funcs.nd_mesh_reshard_func import get_1D_sub_process_mesh
 
 if TYPE_CHECKING:
@@ -44,8 +45,12 @@ def _specific_alltoall_dim(
         return None
 
     mesh_dim = None
-    src_mesh = dist_tensor.process_mesh
-    src_placements = dist_tensor.placements
+    if paddle.in_dynamic_mode():
+        src_mesh = dist_tensor.process_mesh
+        src_placements = dist_tensor.placements
+    elif paddle.framework.in_pir_mode():
+        src_mesh = dist_tensor.process_mesh
+        src_placements = dist_tensor.dist_attr().placements_attr
 
     if src_mesh != mesh or src_mesh.ndim == 1:
         return None
@@ -127,6 +132,59 @@ def _dtensor_from_local(
         )
 
 
+def _pir_nd_mesh_all2all(src_value, dst_type, mesh, placements, dim):
+    """
+    Use all to all communication in nd_mesh reshard.
+    """
+    # create value on sub 1D mesh
+    sub_value = paddle._C_ops.share_data(src_value)
+    sub_mesh = get_1D_sub_process_mesh(mesh, dim)
+    sub_placements = [src_value.dist_attr().placements_attr[dim]]
+    sub_value_shape = dist.auto_parallel.api._cal_global_shape(
+        src_value._local_shape, sub_mesh, sub_placements
+    )
+    sub_value_type = paddle.pir.create_shaped_type(
+        sub_value.type(), sub_value_shape
+    )
+    sub_dims_mapping, partial_status = to_dim_map(
+        sub_placements, len(sub_value_shape)
+    )
+    sub_value_dist_attr = (
+        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            sub_mesh, sub_dims_mapping, partial_status
+        )
+    )
+    sub_value_dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+        sub_value_type, sub_value_dist_attr
+    )
+    sub_value.set_type(sub_value_dist_type)
+
+    # 1D mesh reshard
+    dst_placements = [placements[dim]]
+    sub_dst_dims_mapping, partial_status = to_dim_map(
+        dst_placements, len(sub_value_shape)
+    )
+    sub_dst_type = paddle.pir.create_shaped_type(
+        sub_value.type(), sub_value_shape
+    )
+    sub_dst_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+        sub_mesh, sub_dst_dims_mapping, partial_status
+    )
+    sub_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+        sub_dst_type, sub_dst_dist_attr
+    )
+    reshard_func = choose_reshard_func(sub_value_dist_attr, sub_dst_dist_attr)
+    out = reshard_func.reshard(
+        sub_value_dist_attr, sub_dst_dist_attr, sub_value, sub_dst_type
+    )
+
+    # set the type of the output value with global mesh
+    if out is not None:
+        out.set_type(dst_type)
+
+    return out
+
+
 class _NdMeshAlltoAll(PyLayer):
     @staticmethod
     def forward(
@@ -144,7 +202,7 @@ class _NdMeshAlltoAll(PyLayer):
         ctx.out_placements = copy.deepcopy(placements)
 
         local_shape = _cal_local_shape(
-            dist_tensor.shape, mesh, dist_tensor.placements
+            dist_tensor.shape, sub_mesh, dist_tensor.placements
         )
         out = _dtensor_from_local(
             dist_tensor._local_value(),

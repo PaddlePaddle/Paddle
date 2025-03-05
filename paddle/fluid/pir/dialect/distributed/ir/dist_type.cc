@@ -64,6 +64,7 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
         int tensor_dim =
             dynamic_cast<const phi::distributed::Shard&>(*placements[i])
                 .get_dim();
+        if (local_ddim[tensor_dim] == -1) continue;
         auto dim_size = mesh_dim.at(i);
         local_ddim[tensor_dim] =
             (local_ddim[tensor_dim] + dim_size - 1) / dim_size;
@@ -71,6 +72,7 @@ common::DDim InferLocalDDim(const common::DDim& global_ddim,
     }
   } else {
     for (size_t i = 0; i < dim_mapping.size(); ++i) {
+      if (local_ddim[i] == -1) continue;
       if (dim_mapping[i] != -1) {
         auto dim_size = mesh_dim.at(dim_mapping[i]);
         local_ddim[i] = (global_ddim[i] + dim_size - 1) / dim_size;
@@ -96,11 +98,29 @@ common::DDim InferGlobalDDim(const common::DDim& local_ddim,
                         local_ddim.size(),
                         dim_mapping.size()));
   common::DDim global_ddim(local_ddim);
-  for (size_t i = 0; i < dim_mapping.size(); ++i) {
-    if (dim_mapping[i] != -1) {
-      global_ddim[i] = local_ddim[i] * mesh_dim.at(dim_mapping[i]);
+  if (dist_attr.placements_attr().has_value()) {
+    PlacementsAttribute placements_attr = dist_attr.placements_attr().value();
+    const phi::distributed::Placements& placements =
+        placements_attr.placements();
+    for (size_t i = 0; i < placements.size(); i++) {
+      if (placements[i]->is_shard()) {
+        int tensor_dim =
+            dynamic_cast<const phi::distributed::Shard&>(*placements[i])
+                .get_dim();
+        if (global_ddim[tensor_dim] == -1) continue;
+        auto dim_size = mesh_dim.at(i);
+        global_ddim[tensor_dim] = local_ddim[tensor_dim] * dim_size;
+      }
+    }
+  } else {
+    for (size_t i = 0; i < dim_mapping.size(); ++i) {
+      if (global_ddim[i] == -1) continue;
+      if (dim_mapping[i] != -1) {
+        global_ddim[i] = local_ddim[i] * mesh_dim.at(dim_mapping[i]);
+      }
     }
   }
+
   return global_ddim;
 }
 

@@ -28,7 +28,12 @@ class TestSemiAutoParallelStaticDecorate(test_base.CommunicationTestDistBase):
 
     def test_mlp(self):
         envs_list = test_base.gen_product_envs_list(
-            {"dtype": "float32", "seed": "2023"}, {"backend": ["gpu"]}
+            {
+                "dtype": "float32",
+                "seed": "2023",
+                "FLAGS_enable_moe_utils": "true",
+            },
+            {"backend": ["gpu"]},
         )
         for envs in envs_list:
             ckpt_path_tmp = tempfile.TemporaryDirectory()

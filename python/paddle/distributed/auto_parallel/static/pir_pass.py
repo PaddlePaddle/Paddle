@@ -329,21 +329,43 @@ class ReshardPasses:
                     op.erase()
                     continue
 
-                reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
-                assert (
-                    reshard_func is not None
-                ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
-
                 paddle.pir.set_insertion_point(op)
                 ref_op_role = op.op_role
 
-                with pir_op_role_guard(ref_op_role):
-                    out_value = reshard_func.reshard(
-                        src_dist_attr,
-                        dst_dist_attr,
-                        op.operand_source(0),
-                        op.result(0).type(),
+                all_to_all_dim = (
+                    dist.auto_parallel.moe_utils._specific_alltoall_dim(
+                        var,
+                        dst_dist_attr.process_mesh,
+                        dst_dist_attr.placements_attr,
                     )
+                )
+
+                if all_to_all_dim is not None:
+                    with pir_op_role_guard(ref_op_role):
+                        out_value = (
+                            dist.auto_parallel.moe_utils._pir_nd_mesh_all2all(
+                                op.operand_source(0),
+                                op.result(0).type(),
+                                dst_dist_attr.process_mesh,
+                                dst_dist_attr.placements_attr,
+                                all_to_all_dim,
+                            )
+                        )
+                else:
+                    reshard_func = choose_reshard_func(
+                        src_dist_attr, dst_dist_attr
+                    )
+                    assert (
+                        reshard_func is not None
+                    ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
+
+                    with pir_op_role_guard(ref_op_role):
+                        out_value = reshard_func.reshard(
+                            src_dist_attr,
+                            dst_dist_attr,
+                            op.operand_source(0),
+                            op.result(0).type(),
+                        )
 
                 if out_value is not None:
                     op.result(0).replace_all_uses_with(out_value)
@@ -467,11 +489,13 @@ class RemovePasses:
                     continue
                 elif op.name() == "dist_op.dtensor_from_local":
                     dtensor_to_local_idx = idx
-                    while (
-                        reverse_block_ops[dtensor_to_local_idx].name()
-                        != "dist_op.dtensor_to_local"
-                    ):
-                        dtensor_to_local_idx += 1
+                    for i in range(idx, len(reverse_block_ops)):
+                        if (
+                            reverse_block_ops[i].name()
+                            == "dist_op.dtensor_to_local"
+                        ):
+                            dtensor_to_local_idx = i
+                            break
                     if (
                         op.dist_attr
                         and cur_rank
