@@ -604,7 +604,7 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
 
   if (FLAGS_cinn_enable_vectorize) {
     group_info->vectorize_info =
-        GetCanApplyVectorize(op_compute_bodies, group_args);
+        GetGroupVectorizeInfo(op_compute_bodies, group_args);
   }
 
   VLOG(4) << group_info->DebugPrint();

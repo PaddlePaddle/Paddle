@@ -63,7 +63,7 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
                            const std::vector<int64_t>& reduce_axis);
 
 // Check whether we can apply vectorize in this group.
-GroupVectorizeInfo GetCanApplyVectorize(
+GroupVectorizeInfo GetGroupVectorizeInfo(
     const std::vector<ir::Expr>& op_compute_bodies,
     const std::unordered_set<std::string>& group_args);
 

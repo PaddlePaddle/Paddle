@@ -160,11 +160,11 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
 }  // namespace trivial_fusion_detail
 
 struct GroupVectorizeInfo {
-  bool can_apply_vectorize{false};
+  bool meet_vectorization_condition{false};
   bool has_if_else_op{false};
   bool has_select_op{false};
   int continuous_arg_nums{0};
-  int fusion_group_arg_nums{0};
+  int group_arg_nums{0};
 };
 
 struct FusionGroupInfo {
@@ -182,10 +182,11 @@ struct FusionGroupInfo {
        << "\nreduce_axis: " << cinn::utils::Join(reduce_axis, " ")
        << "\nreduce_var_name: " << cinn::utils::Join(reduce_var_name, " ")
        << "\ncan_apply_grid_reduce: " << can_apply_grid_reduce
-       << "\ncan_apply_vectorize: " << vectorize_info.can_apply_vectorize
+       << "\nmeet_vectorization_condition: "
+       << vectorize_info.meet_vectorization_condition
        << "\nhas_select_op: " << vectorize_info.has_select_op
        << "\ncontinuous_arg_nums: " << vectorize_info.continuous_arg_nums
-       << "\nfusion_group_arg_nums: " << vectorize_info.fusion_group_arg_nums;
+       << "\ngroup_arg_nums: " << vectorize_info.group_arg_nums;
     return ss.str();
   }
 };

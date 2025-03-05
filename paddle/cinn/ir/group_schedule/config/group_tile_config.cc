@@ -19,6 +19,8 @@ namespace cinn {
 namespace ir {
 
 using TileConfig = ScheduleConfig::TileConfig;
+using GroupVectorizeInfo = hlir::framework::pir::GroupVectorizeInfo;
+
 using TileConfigMap =
     std::unordered_map<BucketInfo, TileConfig, BucketInfoHash>;
 
@@ -186,22 +188,6 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   }
 
   base_info->iter_space_type = GetIterSpaceType(group_info, reduce_dim_loc);
-
-  const int64_t iters_dim = base_info->iter_space_type.size();
-  const auto& last_dim = base_info->iter_space_type.back().first;
-  // TileFirstGeneralTactic apply Vectorize current only support [S, R] and [S]
-  if ((iters_dim == 2 && last_dim == "R") ||
-      (iters_dim == 1 && last_dim == "S")) {
-    base_info->can_apply_vectorize =
-        group_info->vectorize_info.can_apply_vectorize;
-    base_info->has_if_else_op = group_info->vectorize_info.has_if_else_op;
-    base_info->has_select_op = group_info->vectorize_info.has_select_op;
-    base_info->continuous_arg_nums =
-        group_info->vectorize_info.continuous_arg_nums;
-    base_info->fusion_group_arg_nums =
-        group_info->vectorize_info.fusion_group_arg_nums;
-  }
-
   return base_info;
 }
 
@@ -300,12 +286,14 @@ int CalculateWarpNums(const SMConfig& sm_config, int total_threads_needed) {
 }
 
 int UpdateWarpNumsInDifferentCase(
-    const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info, int warp_nums) {
+    const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& group_vectorize_info,
+    int warp_nums) {
   const auto& last_dim = base_info->iter_space_type.back().first;
-  if (base_info->has_if_else_op && last_dim == "R") {
+  if (group_vectorize_info.has_if_else_op && last_dim == "R") {
     warp_nums = Trim(warp_nums, 1, 16);
-  } else if (base_info->continuous_arg_nums !=
-                 base_info->fusion_group_arg_nums &&
+  } else if (group_vectorize_info.continuous_arg_nums !=
+                 group_vectorize_info.group_arg_nums &&
              last_dim == "S") {
     warp_nums = Trim(warp_nums, 1, 8);
   } else {
@@ -345,13 +333,14 @@ bool ReduceRegionCanVectorize(
 
 bool SpatialRegionCanVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& group_vectorize_info,
     const SMConfig& sm_config,
     const int warp_nums,
     const int factor) {
   const int64_t spatial_numel = base_info->spatial_numel;
   const int64_t reduce_numel = base_info->reduce_numel;
   const int sp_thread_num = kWarpSize * warp_nums;
-  if (base_info->has_select_op) return false;
+  if (group_vectorize_info.has_select_op) return false;
   if (CheckThreadDimensionCanVectorize(sp_thread_num, spatial_numel, factor) &&
       CheckSmUtilization(base_info, sm_config, spatial_numel, sp_thread_num)) {
     return true;
@@ -361,28 +350,29 @@ bool SpatialRegionCanVectorize(
 
 bool SpecialSpatialWithBroadcastCaseCanApplyVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& group_vectorize_info,
     const int grid_dim_x,
     const int wrap_nums_per_block) {
   if (wrap_nums_per_block == 32) {
-    if (grid_dim_x <= 512 && base_info->continuous_arg_nums <= 2 &&
-        base_info->fusion_group_arg_nums >= 9) {
+    if (grid_dim_x <= 512 && group_vectorize_info.continuous_arg_nums <= 2 &&
+        group_vectorize_info.group_arg_nums >= 9) {
       return false;
     }
 
-    if (grid_dim_x >= 10240 && base_info->continuous_arg_nums <= 2 &&
-        base_info->fusion_group_arg_nums >= 10) {
+    if (grid_dim_x >= 10240 && group_vectorize_info.continuous_arg_nums <= 2 &&
+        group_vectorize_info.group_arg_nums >= 10) {
       return false;
     }
   }
 
   if (wrap_nums_per_block == 16 && grid_dim_x >= 10240) {
-    if (base_info->continuous_arg_nums <= 2 &&
-        base_info->fusion_group_arg_nums >= 9) {
+    if (group_vectorize_info.continuous_arg_nums <= 2 &&
+        group_vectorize_info.group_arg_nums >= 9) {
       return false;
     }
 
-    if (base_info->continuous_arg_nums <= 4 &&
-        base_info->fusion_group_arg_nums >= 11) {
+    if (group_vectorize_info.continuous_arg_nums <= 4 &&
+        group_vectorize_info.group_arg_nums >= 11) {
       return false;
     }
   }
@@ -392,6 +382,7 @@ bool SpecialSpatialWithBroadcastCaseCanApplyVectorize(
 
 bool SpecialSpatialCaseCanApplyVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& group_vectorize_info,
     const int vectorize_factor,
     const int warp_nums) {
   const int64_t iters_dim = base_info->iter_space_type.size();
@@ -402,7 +393,7 @@ bool SpecialSpatialCaseCanApplyVectorize(
   int64_t grid_dim_x = spatial_numel / warp_nums / kWarpSize / vectorize_factor;
 
   if (SpecialSpatialWithBroadcastCaseCanApplyVectorize(
-          base_info, grid_dim_x, warp_nums)) {
+          base_info, group_vectorize_info, grid_dim_x, warp_nums)) {
     return true;
   }
 
@@ -413,10 +404,18 @@ bool SpecialSpatialCaseCanApplyVectorize(
 
 TileConfigMap BuildVectorizeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& group_vectorize_info,
     const common::Target& target) {
-  if (!base_info->can_apply_vectorize) return {};
+  if (!group_vectorize_info.meet_vectorization_condition) return {};
+
+  // TileFirstGeneralTactic apply Vectorize current
+  // only support [S, R] and [S]
   const int64_t iters_dim = base_info->iter_space_type.size();
   const auto& last_dim = base_info->iter_space_type.back().first;
+  if (!((iters_dim == 2 && last_dim == "R") ||
+        (iters_dim == 1 && last_dim == "S"))) {
+    return {};
+  }
 
   const std::vector<int> vectorize_factors{4, 2};
   int64_t spatial_numel = base_info->spatial_numel;
@@ -456,28 +455,32 @@ TileConfigMap BuildVectorizeConfig(
           CalculateWarpNums(sm_config, spatial_numel / vectorize_factor);
       warp_nums = Trim(warp_nums, 1, max_warp_nums);
       sp_thread_num = kWarpSize * warp_nums;
-      if (SpatialRegionCanVectorize(
-              base_info, sm_config, warp_nums, vectorize_factor)) {
+      if (SpatialRegionCanVectorize(base_info,
+                                    group_vectorize_info,
+                                    sm_config,
+                                    warp_nums,
+                                    vectorize_factor)) {
         can_vectorize = true;
         break;
       }
     }
   }
 
-  warp_nums = UpdateWarpNumsInDifferentCase(base_info, warp_nums);
+  warp_nums =
+      UpdateWarpNumsInDifferentCase(base_info, group_vectorize_info, warp_nums);
   // Deal with Special Cases
   if (can_vectorize) {
     if (!SpecialSpatialCaseCanApplyVectorize(
-            base_info, vectorize_factor, warp_nums)) {
+            base_info, group_vectorize_info, vectorize_factor, warp_nums)) {
       can_vectorize = false;
     }
   }
 
   if (!can_vectorize) {
-    base_info->can_apply_vectorize = false;
     return {};
   }
 
+  base_info->can_apply_vectorize = true;
   int64_t sp_upper_bound = base_info->spatial_numel > 1 ? kMaxNumel : 1;
   int64_t rd_upper_bound = base_info->reduce_numel > 1 ? kMaxNumel : 1;
   BucketInfo bucket_info{1, sp_upper_bound, 1, rd_upper_bound};
@@ -493,6 +496,7 @@ TileConfigMap BuildVectorizeConfig(
 
 TileConfigMap BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& vectorize_info,
     const common::Target& target) {
   const auto& last_dim = base_info->iter_space_type.back().first;
   const int sm_count = target.get_multi_processor_count();
@@ -501,7 +505,7 @@ TileConfigMap BuildPureStaticShapeConfig(
   ReduceMethod reduce_method = NoneReduceMethod();
 
   // Try to use vectorization first
-  auto config_map = BuildVectorizeConfig(base_info, target);
+  auto config_map = BuildVectorizeConfig(base_info, vectorize_info, target);
   if (!config_map.empty()) return std::move(config_map);
 
   // 1. Allocate spatial/reduce threads
@@ -745,7 +749,9 @@ BuildScheduleConfig(const std::shared_ptr<FusionGroupInfo>& group_info,
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
     VLOG(6) << "Building static sptial and static reduce config.";
     return CombineBaseInfoAndConfig(
-        BuildPureStaticShapeConfig(base_info, target), base_info);
+        BuildPureStaticShapeConfig(
+            base_info, group_info->vectorize_info, target),
+        base_info);
   } else if (base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
     VLOG(6) << "Building static sptial and dynamic reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticSpatialConfig(base_info, target),

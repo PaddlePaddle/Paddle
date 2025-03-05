@@ -454,7 +454,7 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
   return true;
 }
 
-GroupVectorizeInfo GetCanApplyVectorize(
+GroupVectorizeInfo GetGroupVectorizeInfo(
     const std::vector<ir::Expr>& op_compute_bodies,
     const std::unordered_set<std::string>& group_args) {
   bool can_vectorize = true;

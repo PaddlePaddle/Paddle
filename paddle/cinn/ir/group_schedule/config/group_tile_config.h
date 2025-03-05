@@ -41,10 +41,6 @@ struct ScheduleConfig {
     bool has_dynamic_reduce{false};
     bool can_apply_grid_reduce{false};
     bool can_apply_vectorize{false};
-    bool has_if_else_op{false};
-    bool has_select_op{false};
-    int continuous_arg_nums{0};
-    int fusion_group_arg_nums{0};
     IterSpaceType iter_space_type;
   };
 
