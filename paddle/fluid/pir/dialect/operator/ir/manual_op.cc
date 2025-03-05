@@ -3380,6 +3380,7 @@ void ExpandOp::Build(pir::Builder &builder,
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -3415,6 +3416,7 @@ void ExpandOp::Build(pir::Builder &builder,
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -3434,6 +3436,7 @@ void ExpandOp::Build(pir::Builder &builder,
       ExpandOp::InferMeta(argument_inputs, &argument_attributes);
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
