@@ -156,7 +156,7 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
              idx++) {
           auto input_type =
               vector_type[idx].isa<paddle::dialect::DenseTensorType>();
-          // We don't precess nested VectorType
+          // We don't process nested VectorType
           if (!input_type) return false;
           pir::Type input_dtype =
               vector_type[idx]

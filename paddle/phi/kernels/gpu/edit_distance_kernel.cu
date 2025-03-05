@@ -163,7 +163,7 @@ void EditDistanceKernel(const Context& ctx,
                         0,
                         stream>>>(dist, n);
 
-      // Compute the elements of distance matrix in the anti-diagonal diretion
+      // Compute the elements of distance matrix in the anti-diagonal direction
       for (int64_t slice = 2; slice < m + n + 1; ++slice) {
         int z_m = slice < m + 1 ? 0 : slice - m;
         int z_n = slice < n + 1 ? 0 : slice - n;

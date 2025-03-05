@@ -1667,11 +1667,11 @@ void GemmStridedBatched(const cublasHandle_t &cublas,
   PADDLE_ENFORCE_EQ(
       lhs_bs,
       rhs_bs,
-      ::common::errors::InvalidArgument("bs of lhs and rhs dismatch."));
+      ::common::errors::InvalidArgument("bs of lhs and rhs mismatch."));
   PADDLE_ENFORCE_EQ(
       lhs_bs,
       output_bs,
-      ::common::errors::InvalidArgument("bs of lhs and output dismatch."));
+      ::common::errors::InvalidArgument("bs of lhs and output mismatch."));
 
   // copy values of bias_data to the output_data
   if (bias_data != nullptr) {
@@ -1858,7 +1858,7 @@ void cinn_call_triangular_solve_nvgpu(void *v_args,
   PADDLE_ENFORCE_EQ(input1->type.bits,
                     input2->type.bits,
                     ::common::errors::InvalidArgument(
-                        "input1 and ipnput2's type bits is dismatch."));
+                        "input1 and input2's type bits is mismatch."));
   uint8_t bits = input1->type.bits;
   uint8_t bytes = bits / 8;
   PADDLE_ENFORCE_EQ(
@@ -2035,11 +2035,11 @@ void cinn_gpu_cublas_gemm(const std::vector<int> &attrs,
   PADDLE_ENFORCE_EQ(lhs_dim_size,
                     rhs_dim_size,
                     ::common::errors::InvalidArgument(
-                        "dimension dismatch between lhs and rhs."));
+                        "dimension mismatch between lhs and rhs."));
   PADDLE_ENFORCE_EQ(lhs_dim_size,
                     out_dim_size,
                     ::common::errors::InvalidArgument(
-                        "dimension dismatch between lhs and out."));
+                        "dimension mismatch between lhs and out."));
   PADDLE_ENFORCE_EQ(
       (lhs_dim_size == 2 || lhs_dim_size == 3),
       true,

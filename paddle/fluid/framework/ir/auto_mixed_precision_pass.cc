@@ -902,7 +902,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
     }
   }
 
-  // This code used to precess vars with the same name. Vars with the same
+  // This code used to process vars with the same name. Vars with the same
   // name should have the same data type.
   for (auto* subgraph : subgraphes_) {
     for (auto* var_node : subgraph->Nodes()) {

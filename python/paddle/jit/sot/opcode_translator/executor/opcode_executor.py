@@ -1675,7 +1675,7 @@ class OpcodeExecutorBase:
 
         if instr.argval >= 256:
             # NOTE: If the number of unpacked variables exceeds 256, python will report an error like:
-            # SyntaxError: too many expressions in star-unpacking assignmen,
+            # SyntaxError: too many expressions in star-unpacking assignment,
             # so if the number of unpacked variables exceeds 256, it will be treated as the following case.
             # a, b, *c, d = e
             front_nums = instr.arg & 0xFF

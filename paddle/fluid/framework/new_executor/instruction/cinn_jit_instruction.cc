@@ -333,7 +333,7 @@ void CinnJitInstruction::Run() {
     dev_ctx_->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
-  // 2. exexute kernel
+  // 2. execute kernel
   fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
 
   // 3. release resource
