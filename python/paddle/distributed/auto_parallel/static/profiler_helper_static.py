@@ -33,6 +33,8 @@ color_map = {
     "default": "thread_state_unknown",  # RGB: 199, 155, 125
 }
 
+ignore_job_type = ["recv_forward", "send_backward"]
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -59,6 +61,9 @@ def process_job_log(log_data, device_id, multi_machine_idx=-1):
 
     for i, match in enumerate(matches):
         job_id, job_type, micro_batch_id, job_start_time, job_end_time = match
+
+        if job_type in ignore_job_type:
+            continue
 
         if job_type != "default" and start_job_type == "":
             start_job_type = job_type
