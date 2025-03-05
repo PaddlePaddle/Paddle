@@ -14,10 +14,10 @@
 
 #include "paddle/cinn/optim/merge_block_utils.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/stmt.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {

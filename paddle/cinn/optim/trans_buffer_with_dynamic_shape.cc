@@ -17,7 +17,6 @@
 #include <numeric>
 #include <unordered_set>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
@@ -25,6 +24,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/utils/string.h"
 

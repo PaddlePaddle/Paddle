@@ -16,7 +16,8 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/merge_block_utils.h"
 
 namespace cinn {
