@@ -14,16 +14,103 @@
 
 from __future__ import annotations
 
+import os
 from contextlib import contextmanager
+from typing import Dict, List
 
 import paddle
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
+    EnvironmentVariable,
     EnvironmentVariableGuard,
     IntegerEnvironmentVariable,
     StringEnvironmentVariable,
-    StringListEnvironmentVariable,
 )
+
+
+class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
+    """
+    Environment variable parser following PEP 508 extras specification syntax.
+    https://peps.python.org/pep-0508/
+
+    Processes strings using PEP 508-style bracket notation for optional components:
+    "feat1[opt1,opt2], feat2[opt3,opt4]" -> {'feat1': ['opt1', 'opt2'], 'feat2': ['opt3', 'opt4']}
+    """
+
+    def __init__(self, name: str, default: dict[str, list[str]]):
+        super().__init__(name, default)
+        assert isinstance(default, dict), "default must be a dict"
+
+    def get(self) -> dict[str, list[str]]:
+        env_var = os.getenv(self.name)
+        if env_var is None or env_var == "":
+            return self.default
+        items = self.split_by_unbracketed_commas(env_var)
+        ret = {}
+        for item in items:
+            ret.update(self.parse_parameterized_key(item))
+        return ret
+
+    def set(self, value: dict[str, list[str]]) -> None:
+        assert isinstance(value, dict), "The input must be a dict"
+        assert all(
+            isinstance(x, str) for x in value.keys()
+        ), "Keys must be a string"
+        assert all(
+            isinstance(x, list) for x in value.values()
+        ), "Values must be a list"
+
+        env_list = []
+        for k, v in value.items():
+            env_list.append(f"{k}" + (f"[{','.join(v)}]" if len(v) else ""))
+        os.environ[self.name] = ",".join(env_list)
+
+    @staticmethod
+    def split_by_unbracketed_commas(input_str: str) -> list[str]:
+        """Split string by commas that are not enclosed in square brackets"""
+        # "feat1[opt1,opt2], feat2[opt3], feat3" -> ["feat1[opt1,opt2]", "feat2[opt3]", "feat3"]
+        bracket_depth = 0
+        split_parts = []
+        _start = 0
+
+        for _current, char in enumerate(input_str):
+            if char == "[":
+                bracket_depth += 1
+            elif char == "]":
+                bracket_depth = max(
+                    0, bracket_depth - 1
+                )  # Prevent negative depth
+
+            if char == "," and bracket_depth == 0:
+                split_parts.append(input_str[_start:_current].strip())
+                _start = _current + 1  # Skip comma
+
+        # Add remaining content after last comma
+        if remaining := input_str[_start:].strip():
+            split_parts.append(remaining)
+
+        return split_parts
+
+    @staticmethod
+    def parse_parameterized_key(input_str: str) -> dict[str, list[str]]:
+        """Parse key with parameters in brackets into a dictionary."""
+
+        start_bracket = input_str.find("[")
+        end_bracket = input_str.rfind("]")
+
+        if start_bracket == -1 or end_bracket == -1:
+            return {input_str: []}
+
+        parameter_key = input_str[:start_bracket].strip()
+
+        # Extract and clean parameters
+        parameters_str = input_str[start_bracket + 1 : end_bracket]
+        parameter_values = [
+            v.strip() for v in parameters_str.split(",") if v.strip()
+        ]
+
+        return {parameter_key: parameter_values}
+
 
 ENV_MIN_GRAPH_SIZE = IntegerEnvironmentVariable("MIN_GRAPH_SIZE", 10)
 ENV_SOT_LOG_LEVEL = IntegerEnvironmentVariable("SOT_LOG_LEVEL", 0)
@@ -52,7 +139,7 @@ ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
 ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE = BooleanEnvironmentVariable(
     "SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE", False
 )
-ENV_SOT_COLLECT_INFO = StringListEnvironmentVariable("SOT_COLLECT_INFO", [])
+ENV_SOT_COLLECT_INFO = PEP508LikeEnvironmentVariable("SOT_COLLECT_INFO", {})
 ENV_SOT_FORCE_FALLBACK_SIR_IDS = StringEnvironmentVariable(
     "SOT_FORCE_FALLBACK_SIR_IDS", ""
 )

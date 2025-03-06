@@ -41,8 +41,7 @@ from .export import export
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
-    from paddle.framework import Program
-    from paddle.static import InputSpec
+    from paddle.static import InputSpec, Program
 
     from .symbolic_context import SymbolicTraceContext
 
@@ -226,8 +225,6 @@ class FallbackWrapper:
             SubGraphInfo,
             program,
             self.graph_size(),
-            self.SIR.name,
-            self.is_first_call,
         )
 
     def __call__(self, *args, **kwargs):

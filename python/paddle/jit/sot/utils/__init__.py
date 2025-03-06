@@ -23,6 +23,7 @@ from .envs import (  # noqa: F401
     ENV_SOT_LOG_LEVEL,
     ENV_SOT_WITH_CONTROL_FLOW,
     ENV_STRICT_MODE,
+    PEP508LikeEnvironmentVariable,
     allow_dynamic_shape_guard,
     export_guard,
     faster_guard_guard,
