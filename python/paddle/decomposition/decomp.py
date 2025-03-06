@@ -1008,16 +1008,19 @@ def auto_recompute_pir_program(pir_program, is_forward_op_func=None):
     if len(outputs):
         fwd_op_end_idx = max(get_defining_op_indices(pir_program, outputs))
 
+    logger = logging.getLogger("auto-recompute")
+    logger.setLevel(logging.INFO)
+
     if is_forward_op_func is not None:
         try:
             fwd_op_end_idx = max(
                 get_forward_op_idxs(pir_program, is_forward_op_func)
             )
         except:
-            logging.info("No Forward Ops Found!")
+            logger.info("No Forward Ops Found!")
 
     if fwd_op_end_idx == -1:
-        print("Skip Recompute!")
+        logger.info("Skip Auto Recompute!")
         return pir_program
     backward_op_start_idx = fwd_op_end_idx + 1
 
