@@ -1,7 +1,18 @@
+string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+
+if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+  message("add DeepEP alltoall communication.")
+  add_subdirectory(deep_ep)
+endif()
+
 cc_library(
   process_group
   SRCS process_group.cc
   DEPS phi common xxhash)
+
+if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+  target_link_libraries(process_group deep_ep)
+endif()
 
 cc_library(
   eager_reducer

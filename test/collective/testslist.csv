@@ -16,6 +16,7 @@ test_collective_batch_isend_irecv,linux,gpu;rocm,350,DIST,../dist_test.sh,2,,htt
 test_collective_broadcast_api,linux,gpu;rocm,300,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..;FLAGS_enable_pir_api=0,
 test_collective_broadcast_object_list_api,linux,gpu;rocm,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_cpu_barrier_with_gloo,linux,gpu;rocm,300,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
+test_collective_deep_ep_alltoall_intranode,linux,gpu,400,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_global_gather,linux,gpu;rocm,200,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..;FLAGS_enable_pir_api=0,
 test_collective_global_scatter,linux,gpu;rocm,200,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..;FLAGS_enable_pir_api=0,
 test_collective_isend_irecv_api,linux,gpu;rocm,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,

@@ -150,6 +150,13 @@ set(PYBIND_SRCS
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+
+string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+  set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+  set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+  add_definitions(-DPADDLE_WITH_DEEP_EP)
+endif()
 #endif
 
 if(NOT WITH_SHARED_IR)

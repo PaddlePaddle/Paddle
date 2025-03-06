@@ -2226,6 +2226,13 @@ def get_setup_parameters():
         'paddle.api_tracer',
     ]
 
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and env_dict.get("CUDA_ARCH_BIN")
+        and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
+    ):
+        packages.extend(['paddle.distributed.communication.deep_ep'])
+
     if env_dict.get("WITH_TENSORRT") == 'ON':
         packages.extend(
             [
