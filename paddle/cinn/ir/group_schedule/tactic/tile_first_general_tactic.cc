@@ -368,7 +368,7 @@ void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   const int64_t rd_block = context_->config.tile_config.grid_reduce_num;
-  const int64_t rd_thread = 16;
+  const int64_t rd_thread = context_->config.tile_config.tree_reduce_num;
   const int cur_reduce_axis = 2;
 
   // [ R ] => [ rd_block*rd_thread, rd_inner ]

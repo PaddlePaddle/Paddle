@@ -494,6 +494,74 @@ TileConfigMap BuildVectorizeConfig(
   return {{bucket_info, tile_config}};
 }
 
+std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(int64_t reduce_numel,
+                                                         int64_t sp_thread_num,
+                                                         int64_t rd_thread_num,
+                                                         int64_t sp_block_num,
+                                                         int sm_count) {
+  float max_sm_occupacy = 0.0f;
+  int64_t best_rd_block_num = 1;
+  int64_t best_rd_thread_num = rd_thread_num;
+
+  // The basic principle for selecting rd_block_num is to choose the largest
+  // possible value as long as the total number of blocks (rd_block_num *
+  // sp_block_num) doesn't exceed the SM count.
+  //
+  // However, if the SM count is not a perfect multiple of sp_block_num, we may
+  // get an underutilized rd_block_num. To solve this problem, we use a factor
+  // to split the rd_thread_num in change of more available blocks. In this way,
+  // we would have a larger range to choose an rd_block_num that better fits
+  // into the available blocks.
+  //
+  // For example, if sm_count = 80 and sp_block_num = 64, different factors and
+  // their occupancy are:
+  //   factor  avail_blocks  sp_blocks  rd_blocks  all_blocks  occupancy
+  //        1            80         64          1          64        80%
+  //        2           160         64          2         128        80%
+  //        4           320         64          5         320       100%
+  // Therefore, the best factor = 4 and the best rd_block_num = 5.
+  //
+  // Note: a max factor of 4 should be sufficient in most cases.
+  for (int factor = 1; factor <= 4; factor *= 2) {
+    if (factor > rd_thread_num) break;
+    int64_t new_rd_thread_num = rd_thread_num / factor;
+    int64_t avail_blocks_per_sm = 1024 / (sp_thread_num * new_rd_thread_num);
+    int64_t avail_blocks = sm_count * avail_blocks_per_sm;
+
+    // First, assign all remaining available blocks to rd_block_num.
+    int64_t rd_block_num = avail_blocks / sp_block_num;
+
+    // To constrain the cost of grid-level synchronization, rd_block_num should
+    // not exceed the SM count.
+    rd_block_num = Trim(rd_block_num, 1, sm_count);
+
+    // To compensate for the block launching cost, we also require that the
+    // reduce inner loops be at least two times of the rd_block_num, and be at
+    // least 32. The constraints can be written as:
+    //   rd_inner_num * rd_block_num * rd_thread_num = reduce_numel  (Cond.0)
+    //   rd_inner_num >= rd_block_num * 2                            (Cond.1)
+    //   rd_inner_num >= 32                                          (Cond.2)
+    int64_t remain_reduce_numel = CeilDiv(reduce_numel, new_rd_thread_num);
+    int64_t limit_cond_1 = std::sqrt((remain_reduce_numel + 1) / 2.0);
+    int64_t limit_cond_2 = CeilDiv(remain_reduce_numel, 32);
+    int64_t limit = std::min(limit_cond_1, limit_cond_2);
+    if (limit > 0 && limit < rd_block_num) {
+      rd_block_num = limit;
+    }
+
+    // Find the best rd_block/thread_num with the highest SM occupacy.
+    float sm_occupacy =
+        static_cast<float>(sp_block_num * rd_block_num) / avail_blocks;
+    if (sm_occupacy > max_sm_occupacy) {
+      max_sm_occupacy = sm_occupacy;
+      best_rd_block_num = rd_block_num;
+      best_rd_thread_num = new_rd_thread_num;
+    }
+  }
+
+  return {best_rd_block_num, best_rd_thread_num};
+}
+
 TileConfigMap BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& vectorize_info,
@@ -538,21 +606,19 @@ TileConfigMap BuildPureStaticShapeConfig(
     }
   }
   spatial_numel = CeilDiv(spatial_numel, sp_thread_num);
-  reduce_numel = CeilDiv(reduce_numel, rd_thread_num);
 
   // 2. Allocate grid reduce blocks
   // Principals:
   //   1) Choose the largest reduce block number as long as the total number of
   //      blocks (rd_block * sp_block) doesn't exceed the SM count.
   //   2) Do not allocate too many reduce blocks when reduce_numel is small.
-  int64_t rd_block_num = [&]() -> int64_t {
-    if (!base_info->can_apply_grid_reduce) {
-      return 1;
-    }
-    int64_t expected = sm_count / spatial_numel;
-    int64_t limit_when_small = CeilDiv(reduce_numel, 32);
-    return FloorPow2(Trim(expected, 1, limit_when_small));
-  }();
+  int64_t rd_block_num = 1;
+  if (base_info->can_apply_grid_reduce) {
+    std::pair<int64_t, int64_t> res = FindBestReduceBlockThreadNum(
+        reduce_numel, sp_thread_num, rd_thread_num, spatial_numel, sm_count);
+    rd_block_num = res.first;
+    rd_thread_num = res.second;
+  }
 
   // 3. Allocate spatial inner loops
   // Principals:
@@ -561,7 +627,7 @@ TileConfigMap BuildPureStaticShapeConfig(
   //   2) Loops can only be assigned to either reduce or spatial, otherwise the
   //      index expression will be complex.
   int64_t sp_inner_num = [&]() -> int64_t {
-    int64_t rd_inner_num = CeilDiv(reduce_numel, rd_block_num);
+    int64_t rd_inner_num = CeilDiv(reduce_numel, rd_block_num * rd_thread_num);
     if (rd_inner_num > 1) {
       return 1;
     }
