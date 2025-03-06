@@ -201,7 +201,7 @@ __global__ void GridSample3DCudaKernel(const int nthreads,
     const int n = index / (out_d * out_h * out_w);
     const int grid_offset =
         n * grid_sN + d * grid_sD + h * grid_sH + w * grid_sW;
-    // get the corresponding input x, y, z co-ordinates from grid
+    // get the corresponding input x, y, z coordinates from grid
     T ix = grid[grid_offset];
     T iy = grid[grid_offset + grid_sCoor];
     T iz = grid[grid_offset + 2 * grid_sCoor];

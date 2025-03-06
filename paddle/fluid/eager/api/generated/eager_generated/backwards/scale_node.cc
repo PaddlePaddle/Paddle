@@ -122,7 +122,7 @@ void ScaleAPI(const paddle::Tensor& x,
       PADDLE_THROW(common::errors::Fatal(
           "Cannot convert device_context to phi::CPUContext."
           "This indicates backend mismatch."
-          "Pleas double check your expected place"));
+          "Please double check your expected place"));
     }
     ScaleDeviceDispatch<phi::CPUContext>(*dense_tensor.get(),
                                          *dev_ctx,

@@ -33,7 +33,7 @@ bool GlobalToSubMeshReshardFunction::IsSuitable(
 
   int sub_mesh_dim = SubMeshDim(in_process_mesh, out_process_mesh);
   RESHARD_SHORTCUT_IF_FALSE(sub_mesh_dim != -1);
-  // 1. the splitted dimension must be replicated
+  // 1. the split dimension must be replicated
   // 2. out mesh is the value of a certain dimension of global mesh
   // e.g. global_mesh = [[1, 2], [3, 4]], out_mesh = [1, 2] or [3, 4]
   //      global_mesh = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]

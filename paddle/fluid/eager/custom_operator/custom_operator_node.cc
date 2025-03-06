@@ -234,7 +234,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
               << " to tmp_outputs: " << grad_output_idx;
       for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
         outs[grad_output_idx]
-            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+            .emplace_back(/* init it in case of copy nullptr of shared_ptr */
                           std::make_shared<phi::DenseTensor>(
                               phi::DataType::UNDEFINED),
                           egr::Controller::Instance().GenerateUniqueName(

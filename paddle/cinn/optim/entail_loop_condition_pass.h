@@ -22,7 +22,7 @@ namespace optim {
  * Remove the IfThenElse inside indivisible loops by entailing the if-condition
  * into the loop condition.
  *
- * Traditionally, when the element count is not divisble by the block size, an
+ * Traditionally, when the element count is not divisible by the block size, an
  * IfThenElse inside the loop is needed to tell trailing blocks to break early.
  * However, the IfThenElse introduces an extra comparison in every iteration,
  * therefore heavily impacting the performance. This pass solves this problem by

@@ -82,7 +82,7 @@ class TestQuantLinearFusePass(PassAutoScanTest):
         def generate_input_x():
             return input_x
 
-        # 2. Genearate quant dequant scale and zeropoint
+        # 2. Generate quant dequant scale and zeropoint
         def generate_input_scale():
             scale = 1.0 / np.max(input_x)
             return np.array(scale).astype(np.float32)

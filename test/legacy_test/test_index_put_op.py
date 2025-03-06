@@ -30,8 +30,8 @@ def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
         return x_np
 
 
-def raw_index_put(x, indices, value, accummulate):
-    return paddle.index_put(x, indices, value, accummulate)
+def raw_index_put(x, indices, value, accumulate):
+    return paddle.index_put(x, indices, value, accumulate)
 
 
 def has_duplicate_index(indices, shapes):
