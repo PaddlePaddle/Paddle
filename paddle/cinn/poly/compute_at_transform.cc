@@ -34,7 +34,7 @@ void ComputeAtTransform::AdjustPdomain() {
 
   isl::set pdomain = ct_domain.apply(access_with_params);
 
-  // intect with the original producer domain
+  // intersect with the original producer domain
   auto pdomain_params = isl::manage(AddParamsTo(pdomain_.copy()));
   VLOG(4) << "pdomain: " << pdomain;
   VLOG(4) << "pdomain_params: " << pdomain_params;

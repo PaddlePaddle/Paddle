@@ -813,17 +813,17 @@ BuildScheduleConfig(const std::shared_ptr<FusionGroupInfo>& group_info,
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);
   if (!base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
-    VLOG(6) << "Building static sptial and static reduce config.";
+    VLOG(6) << "Building static spatial and static reduce config.";
     return CombineBaseInfoAndConfig(
         BuildPureStaticShapeConfig(
             base_info, group_info->vectorize_info, target),
         base_info);
   } else if (base_info->has_dynamic_reduce && !base_info->has_dynamic_spatial) {
-    VLOG(6) << "Building static sptial and dynamic reduce config.";
+    VLOG(6) << "Building static spatial and dynamic reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticSpatialConfig(base_info, target),
                                     base_info);
   } else if (!base_info->has_dynamic_reduce && base_info->has_dynamic_spatial) {
-    VLOG(6) << "Building dynamic sptial and static reduce config.";
+    VLOG(6) << "Building dynamic spatial and static reduce config.";
     return CombineBaseInfoAndConfig(BuildStaticReduceConfig(base_info, target),
                                     base_info);
   } else {  // (base_info->has_dynamic_reduce && base_info->has_dynamic_spatial)

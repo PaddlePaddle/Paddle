@@ -18,7 +18,7 @@ namespace cinn {
 namespace optim {
 /**
  * Deal with forOp with vectorization.
- * if vectorize factor match vectorize instruction and don't have adjaccnt
+ * if vectorize factor match vectorize instruction and don't have adjacent
  * if-block.
  *
  * e.g.

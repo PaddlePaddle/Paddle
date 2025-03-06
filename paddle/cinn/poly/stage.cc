@@ -479,7 +479,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
   }
   std::set<std::string> undo_erase_var;
   // Beyond level, if the loop is binded to certain thread/block, it will also
-  // be earsed.
+  // be erased.
   for (int i = level + 1; i < transform_domain_names.size(); i++) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
@@ -1654,7 +1654,7 @@ void Stage::CopyTransform(Stage *other, int level) {
                << ", please check.";
   }
 
-  //! When this->tensor's dim is more than other->tensor, we need to supplment
+  //! When this->tensor's dim is more than other->tensor, we need to supplement
   //! dims.
   std::vector<std::string> sup_dims;
   for (int i = target_map_dims.size(); i < this_map_dims.size(); i++) {

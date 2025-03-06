@@ -64,14 +64,14 @@ class ComputeAtReductionTactic final : public ScheduleTactic {
 
   /**
    * Get blocks in this graph to which we can fuse the current block without
-   * dependency harzards.
+   * dependency hazards.
    *
-   * A block will not cause dependency harzard with the current block if:
+   * A block will not cause dependency hazard with the current block if:
    * 1) It has no data dependency with the current block, and
-   * 2) There is no block that would cause dependency harzard when we move the
+   * 2) There is no block that would cause dependency hazard when we move the
    *    current block to the target block.
    */
-  std::vector<std::string> GetDependencyHarzardFreeBlocks(
+  std::vector<std::string> GetDependencyHazardFreeBlocks(
       ir::IRSchedule* sch, const std::string& block_id);
 
   /**
@@ -311,7 +311,7 @@ std::vector<std::string> ComputeAtReductionTactic::FindCandidateBlocks(
   // Step 1. Get the blocks to which we can do ComputeAt without dependency
   //   hazards. This ensures the fundamental correctness of ComputeAt.
   std::vector<std::string> dep_free_blocks =
-      GetDependencyHarzardFreeBlocks(sch, block_id);
+      GetDependencyHazardFreeBlocks(sch, block_id);
   if (dep_free_blocks.empty()) return {};
 
   // Step 2. Get the blocks that have equal control flow with the current block.
@@ -368,14 +368,14 @@ std::vector<std::string> ComputeAtReductionTactic::FindCandidateBlocks(
 }
 
 std::vector<std::string>
-ComputeAtReductionTactic::GetDependencyHarzardFreeBlocks(
+ComputeAtReductionTactic::GetDependencyHazardFreeBlocks(
     ir::IRSchedule* sch, const std::string& block_id) {
   std::vector<std::string> results;
   std::vector<stmt::StmtRef> stmts = sch->GetAllSchedules();
   analyzer::DataDependencyGraph dep_graph(stmts);
 
   // Find the position of the current block in the graph, then search upwards
-  // and downwards until a denepency harzard is met.
+  // and downwards until a dependency hazard is met.
   //
   // For example, in the following graph (A-E are schedule blocks, `|` denotes
   // data dependency):
@@ -390,9 +390,9 @@ ComputeAtReductionTactic::GetDependencyHarzardFreeBlocks(
   //     |            v
   //     E     Search downwards
   //
-  // C has denepency harzard with B because it directly depends on B. C also has
-  // dependency harzard with A, because if we move C to the position of A, we
-  // will violate the dependency of B->C. C is only harzard-free with D and E.
+  // C has dependency hazard with B because it directly depends on B. C also has
+  // dependency hazard with A, because if we move C to the position of A, we
+  // will violate the dependency of B->C. C is only hazard-free with D and E.
   auto this_it = std::find_if(
       stmts.begin(), stmts.end(), [&](const ir::stmt::StmtRef& stmt) {
         return stmt.as<stmt::Schedule>()->name() == block_id;

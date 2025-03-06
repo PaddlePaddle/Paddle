@@ -32,7 +32,7 @@ SYCLModule::SYCLModule(const std::string& source_code,
   PADDLE_ENFORCE_NE(
       shared_library.empty(),
       true,
-      ::common::errors::InvalidArgument("sharede library is not empty !"));
+      ::common::errors::InvalidArgument("shared library is not empty !"));
 }
 
 SYCLModule::~SYCLModule() { VLOG(3) << "destructor for SYCLModule"; }

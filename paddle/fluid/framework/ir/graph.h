@@ -64,7 +64,7 @@ namespace ir {
  *   The output/input of operator is variable and the output/input of variable
  *   is operator.
  *
- * The following data harzards in Program are addressed in the Graph:
+ * The following data hazards in Program are addressed in the Graph:
  *
  *   Write-After-Read
  *     a = op1(x)

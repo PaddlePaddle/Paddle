@@ -234,13 +234,13 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
       return;
     }
 
-    bool tensor_can_vetorize = TensorCanVectorize(node, node->indices);
-    if (node->is_addr_tensor() && tensor_can_vetorize) {
+    bool tensor_can_vectorize = TensorCanVectorize(node, node->indices);
+    if (node->is_addr_tensor() && tensor_can_vectorize) {
       vectorize_tensors_.insert(tensor->name);
       return;
     }
 
-    if (!tensor_can_vetorize && vectorize_tensors_.count(tensor->name)) {
+    if (!tensor_can_vectorize && vectorize_tensors_.count(tensor->name)) {
       vectorize_tensors_.erase(tensor->name);
       return;
     }
@@ -265,13 +265,13 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
       return;
     }
 
-    bool tensor_can_vetorize = TensorCanVectorize(node, node->indices);
-    if (node->is_addr_tensor() && tensor_can_vetorize) {
+    bool tensor_can_vectorize = TensorCanVectorize(node, node->indices);
+    if (node->is_addr_tensor() && tensor_can_vectorize) {
       vectorize_tensors_.insert(tensor->name);
       return;
     }
 
-    if (!tensor_can_vetorize && vectorize_tensors_.count(tensor->name)) {
+    if (!tensor_can_vectorize && vectorize_tensors_.count(tensor->name)) {
       vectorize_tensors_.erase(tensor->name);
       return;
     }
@@ -444,7 +444,7 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
     IRMutator::Visit(&node->value, &node->value);
   }
 
-  // forOp don't support vectorize in adjaccnt if-block.
+  // forOp don't support vectorize in adjacent if-block.
   void Visit(const ir::IfThenElse *op, Expr *expr) override {
     in_vectorize_ = false;
     ir::IRMutator<>::Visit(op, expr);

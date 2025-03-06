@@ -110,7 +110,7 @@ struct BucketInfoHash {
         bucket_info.space.size(),
         0,
         ::common::errors::InvalidArgument(
-            "Bucketinfo 's dimension number should be more than 0"));
+            "BucketInfo's dimension number should be more than 0"));
 
     std::size_t hash_past_dims = adt::hash_combine(
         std::hash<uint64_t>{}(bucket_info.space[0].lower_bound),
