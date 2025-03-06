@@ -240,6 +240,18 @@ class TestArangeImperative(unittest.TestCase):
         np.testing.assert_array_equal(x12.numpy(), x12_expected_data)
         self.assertEqual(x12.numpy().dtype, np.int64)
 
+        # [start<end step<0]
+        x13 = paddle.arange(start=0, end=10, step=-1)
+
+        x13_expected_data = np.array([])
+        np.testing.assert_array_equal(x13.numpy(), x13_expected_data)
+
+        # [start>end step>0]
+        x14 = paddle.arange(start=10, end=0, step=1)
+
+        x14_expected_data = np.array([])
+        np.testing.assert_array_equal(x14.numpy(), x14_expected_data)
+
         paddle.enable_static()
 
 

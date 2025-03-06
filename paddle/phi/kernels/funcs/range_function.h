@@ -26,18 +26,17 @@ void GetSize(T start, T end, T step, int64_t* size) {
       common::errors::InvalidArgument("The step of range op should not be 0."));
 
   if (start < end) {
-    PADDLE_ENFORCE_GT(
-        step,
-        0,
-        common::errors::InvalidArgument(
-            "The step should be greater than 0 while start < end."));
+    if (step < 0) {
+      *size = 0;
+      return;
+    }
   }
 
   if (start > end) {
-    PADDLE_ENFORCE_LT(step,
-                      0,
-                      common::errors::InvalidArgument(
-                          "The step should be less than 0 while start > end."));
+    if (step > 0) {
+      *size = 0;
+      return;
+    }
   }
 
   *size = std::is_integral<T>::value
