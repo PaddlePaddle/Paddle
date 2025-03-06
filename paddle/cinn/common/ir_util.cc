@@ -18,7 +18,6 @@
 #include <stack>
 #include <unordered_set>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/const_fold.h"
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -26,6 +25,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
@@ -259,10 +259,7 @@ void Substitute(Expr *expr, const std::map<const ir::_Var_ *, Expr> &var_map) {
 }
 
 bool is_zero(Expr v) {
-  // TODO(liujinnan): In the old simplification module, IR is converted to CAS
-  // format, so AutoSimplify is still used for CAS format, which will be
-  // completely deleted when CAS is retired.
-  v = v.is_index() ? optim::ArithSimplify(v) : AutoSimplify(v);
+  v = optim::ArithSimplify(v);
   auto *int_n = v.As<ir::IntImm>();
   auto *float_n = v.As<ir::FloatImm>();
 
@@ -277,11 +274,8 @@ Expr CastIfNeeded(Expr body, Type type) {
 }
 
 bool MathEqual(const Expr &a, const Expr &b) {
-  // TODO(liujinnan): In the old simplification module, IR is converted to CAS
-  // format, so AutoSimplify is still used for CAS format, which will be
-  // completely deleted when CAS is retired.
   auto c = a - b;
-  c = c.is_index() ? optim::ArithSimplify(c) : AutoSimplify(c);
+  c = optim::ArithSimplify(c);
   return is_zero(c);
 }
 
