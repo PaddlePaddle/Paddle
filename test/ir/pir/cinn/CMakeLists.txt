@@ -12,7 +12,7 @@ if(WITH_GPU)
   string(REPLACE ".py" "" CINN_PIR_TEST "${CINN_PIR_TEST}")
 
   list(REMOVE_ITEM CINN_PIR_TEST test_subgraph_checker test_cinn_multi_device
-       test_cinn_auto_parallel)
+       test_cinn_auto_parallel test_cinn_transpose)
   foreach(cinn_pir_test_name ${CINN_PIR_TEST})
     add_test(
       NAME ${cinn_pir_test_name}
@@ -63,6 +63,17 @@ if(WITH_GPU)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_cinn_sub_graph_stride_read
                        PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  add_test(
+    NAME test_cinn_transpose
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_enable_pir_api=1 FLAGS_prim_all=True FLAGS_check_infer_symbolic=1
+      ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_cinn_transpose.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_cinn_transpose PROPERTIES TIMEOUT 200 LABELS
+                                                      "RUN_TYPE=CINN")
 
   # add_test(
   #   NAME test_subgraph_checker

@@ -160,34 +160,24 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           << loop;
 
   bool is_positive = true;
-  int num_minus1 = 0;
-  std::vector<Expr> process_factors;
-  Expr prod_size(-1);
-  int idx_neg1 = 1;
-  for (auto factor : factors) prod_size = prod_size * Expr(factor);
-  std::for_each(factors.begin(), factors.end(), [&](int factor) {
+  int num_neg1 = 0;
+  int idx_neg1;
+  Expr prod_size(1);
+
+  for (int i = 0; i < factors.size(); ++i) {
+    int factor = factors[i];
     if (factor == -1) {
-      process_factors.push_back(optim::ArithSimplify(tot_extent / prod_size));
-      idx_neg1 = -idx_neg1;
+      idx_neg1 = i;
+      ++num_neg1;
+    } else if (factor > 0) {
+      prod_size = prod_size * Expr(factor);
     } else {
-      process_factors.push_back(Expr(factor));
-      if (idx_neg1 > 0) idx_neg1++;
+      is_positive = false;
     }
-    if (factor < 1 && factor != -1) is_positive = false;
-    if (factor == -1) ++num_minus1;
-  });
-
-  idx_neg1 = (-idx_neg1) - 1;
-
-  bool exact_split = (tot_extent == optim::ArithSimplify(process_factors[0] *
-                                                         process_factors[1]));
-  if (!exact_split && idx_neg1 <= process_factors.size()) {
-    process_factors[idx_neg1] =
-        optim::ArithSimplify(process_factors[idx_neg1] + Expr(1));
   }
 
   PADDLE_ENFORCE_LE(
-      num_minus1,
+      num_neg1,
       1,
       ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
@@ -208,6 +198,31 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           "most one '-1' and the rest of them should be positive!\n"
           "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
+
+  std::vector<Expr> process_factors;
+  for (int factor : factors) {
+    if (factor == -1) {
+      process_factors.push_back(optim::ArithSimplify(tot_extent / prod_size));
+    } else {
+      process_factors.push_back(Expr(factor));
+    }
+  }
+
+  // If there exists `-1` in factors, check exact_split by product all factors
+  // and see if it matches the original extent. Otherwise, always treat it as
+  // inexact split.
+  bool exact_split = false;
+  if (num_neg1 > 0) {
+    Expr restored_extent =
+        optim::ArithSimplify(process_factors[idx_neg1] * prod_size);
+    if (restored_extent == tot_extent) {
+      exact_split = true;
+    }
+  }
+  if (!exact_split && num_neg1 > 0) {
+    process_factors[idx_neg1] =
+        optim::ArithSimplify(process_factors[idx_neg1] + Expr(1));
+  }
 
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
