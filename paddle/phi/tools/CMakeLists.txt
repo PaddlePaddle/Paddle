@@ -7,6 +7,13 @@ endif()
 
 add_executable(print_phi_kernels print_phi_kernels.cc)
 target_link_libraries(print_phi_kernels phi common)
+
+if(WITH_GPU)
+    find_package(CUDAToolkit)
+    target_link_libraries(print_phi_kernels CUDA::cudart)
+endif()
+
+
 if(WIN32)
   target_link_libraries(print_phi_kernels shlwapi.lib)
   # In windows, some operators need to link pir, such as fused_attention

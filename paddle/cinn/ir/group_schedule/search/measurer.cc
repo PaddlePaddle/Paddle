@@ -63,6 +63,7 @@ void Measurer::Compile() {
       paddle::dialect::PdOpLowerToKernelPass(program_cloned.get(), place_));
   executor_.reset(new paddle::framework::InterpreterCore(
       place_, {"out@fetch"}, kernel_program_->block(), exe_scope_.get()));
+  LOG(INFO) << "[CPP] Kernel after Measurer compile: \n"<< *kernel_program_;
   common::PerformanceStatisticsEnd(compile_label_);
 }
 
@@ -88,6 +89,11 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
   std::vector<std::string> input_names;
   std::vector<phi::DenseTensor> input_tensors;
   for (const auto item : input_name_and_shape) {
+    LOG(INFO) << "input_name: " << item.first;
+
+    for (int i = 0; i < item.second.size(); ++i) {
+      LOG(INFO) << "dim[" << i << "]: " << item.second[i]; 
+    }
     input_names.push_back(item.first);
     auto tensor =
         executor_->local_scope()->FindVar(item.first)->Get<phi::DenseTensor>();

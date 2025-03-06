@@ -718,9 +718,9 @@ void TestPerformanceForTileConfig(int spatial_left_bound,
 
 TEST(ConfigSearcher, TestPerfDynamicDynamic) {
   constexpr int spatial_left_bound = 2;   // for full test, set it to 2
-  constexpr int spatial_right_bound = 2;  // for full test, set it to 4096
+  constexpr int spatial_right_bound = 2048;  // for full test, set it to 4096
   constexpr int reduce_left_bound = 2;    // for full test, set it to 2
-  constexpr int reduce_right_bound = 2;   // for full test, set it to 4096
+  constexpr int reduce_right_bound = 2048;   // for full test, set it to 4096
   constexpr bool is_spatial_dynamic = true;
   constexpr bool is_reduce_dynamic = true;
   bool test_single_large = false;  // To test single large area, set it to true
@@ -735,9 +735,9 @@ TEST(ConfigSearcher, TestPerfDynamicDynamic) {
 
 TEST(ConfigSearcher, TestPerfStaticDynamic) {
   constexpr int spatial_left_bound = 2;   // for full test, set it to 2
-  constexpr int spatial_right_bound = 2;  // for full test, set it to 4096
+  constexpr int spatial_right_bound = 2048;  // for full test, set it to 4096
   constexpr int reduce_left_bound = 2;    // for full test, set it to 2
-  constexpr int reduce_right_bound = 2;   // for full test, set it to 4096
+  constexpr int reduce_right_bound = 2048;   // for full test, set it to 4096
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
   bool test_single_large = false;  // To test single large area, set it to true
@@ -752,9 +752,9 @@ TEST(ConfigSearcher, TestPerfStaticDynamic) {
 
 TEST(ConfigSearcher, TestPerfDynamicStatic) {
   constexpr int spatial_left_bound = 2;   // for full test, set it to 2
-  constexpr int spatial_right_bound = 2;  // for full test, set it to 4096
+  constexpr int spatial_right_bound = 2048;  // for full test, set it to 4096
   constexpr int reduce_left_bound = 2;    // for full test, set it to 2
-  constexpr int reduce_right_bound = 2;   // for full test, set it to 4096
+  constexpr int reduce_right_bound = 2048;   // for full test, set it to 4096
   constexpr bool is_spatial_dynamic = true;
   constexpr bool is_reduce_dynamic = false;
   bool test_single_large = false;  // To test single large area, set it to true

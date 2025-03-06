@@ -52,7 +52,7 @@ endif()
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
-                  sub_graph_checker add_cinn_pass)
+                  sub_graph_checker add_cinn_pass autotuner_bindings) # schedule_config_search
   list(REMOVE_ITEM PYBIND_DEPS imperative_flag)
 endif()
 
@@ -349,6 +349,8 @@ if(WITH_PYTHON)
   endif()
 
   if(WITH_CINN)
+    message(WARNING "===================================================")
+    message(WARNING "## PYTHON_LIBRARIES = ${PYTHON_LIBRARIES}")
     target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
   endif()
 

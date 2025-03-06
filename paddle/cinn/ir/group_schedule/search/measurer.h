@@ -30,14 +30,14 @@ namespace cinn {
 namespace ir {
 namespace search {
 
-struct MeasureResult {
+struct IR_API MeasureResult {
   ::common::TimeDuration compile_time;
   ::common::TimeDuration avg_kernel_execute_time;
   ::common::TimeDuration avg_total_execute_time;
   std::string err_msg;
 };
 
-class Measurer {
+class IR_API Measurer {
  public:
   explicit Measurer(::pir::Program* program);
 

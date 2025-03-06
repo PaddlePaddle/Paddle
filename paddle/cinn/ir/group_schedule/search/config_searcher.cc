@@ -225,6 +225,22 @@ std::pair<ScoreType, CandidateType> ScheduleConfigSearcher::Search(
   return is_search_minimum ? *records_.begin() : *(records_.end()--);
 }
 
+void TunerAddConfigHelper(const CandidateType& candidate, const BucketInfo& bucket_info) {
+  auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
+  VLOG(3) << "Bucket_info.space.size is " << bucket_info.space.size();
+  if (candidate.size() != 0) {
+    ScheduleConfig::TileConfig config;
+    config.warp_num = candidate[0];
+    config.tree_reduce_num = candidate[1];
+    config.spatial_inner_num = candidate[2];
+    tile_config_database->AddConfig(
+        cinn::common::DefaultTarget(), bucket_info, config);
+    auto& schedule_config_manager = ScheduleConfigManager::Instance();
+    schedule_config_manager.AddConfigDatabase("search", tile_config_database);
+  }
+}
+
+
 }  // namespace search
 }  // namespace ir
 }  // namespace cinn

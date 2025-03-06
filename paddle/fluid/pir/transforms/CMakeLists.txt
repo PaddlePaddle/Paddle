@@ -32,9 +32,17 @@ set(transforms_deps
 
 if(WITH_CINN)
   set(transforms_deps ${transforms_deps} cinnapi)
+  set(pd_op_to_kernel_transform_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/pd_op_to_kernel_pass.cc)
+  cc_library(
+    pd_op_to_kernel_transform
+    SRCS ${pd_op_to_kernel_transform_srcs}
+    DEPS pir pir_general_functions common phi op_dialect op_dialect_vjp)
+
 endif()
 
 cc_library(
   pir_transforms
   SRCS ${transforms_srcs}
   DEPS ${transforms_deps})
+

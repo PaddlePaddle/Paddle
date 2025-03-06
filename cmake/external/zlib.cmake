@@ -22,6 +22,10 @@ set(ZLIB_ROOT
 set(ZLIB_INCLUDE_DIR
     "${ZLIB_INSTALL_DIR}/include"
     CACHE PATH "zlib include directory." FORCE)
+
+message(STATUS "set ZLIB_ROOT: ${ZLIB_ROOT}")
+message(STATUS "set ZLIB_INCLUDE_DIR: ${ZLIB_INCLUDE_DIR}")
+
 set(ZLIB_TAG v1.2.8)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/zlib)
 include_directories(${ZLIB_INCLUDE_DIR}

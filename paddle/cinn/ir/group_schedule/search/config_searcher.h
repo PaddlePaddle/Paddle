@@ -97,6 +97,8 @@ class ScheduleConfigSearcher {
   std::map<ScoreType, CandidateType> records_;
 };
 
+void TunerAddConfigHelper(const CandidateType& candidate, const BucketInfo& bucket_info);
+
 }  // namespace search
 }  // namespace ir
 }  // namespace cinn
