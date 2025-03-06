@@ -633,103 +633,29 @@ void topk_gating_softmax_kernelLauncher(const T* input,
   }
   static constexpr int WARPS_PER_TB = 4;
 
+#define LAUNCH_TOPK_GATING_SOFTMAX_HELPER(N)                             \
+  case N: {                                                              \
+    topk_gating_softmax_launcher_helper<T, N, WARPS_PER_TB>(input,       \
+                                                            finished,    \
+                                                            output,      \
+                                                            indices,     \
+                                                            source_row,  \
+                                                            num_rows,    \
+                                                            num_experts, \
+                                                            k,           \
+                                                            stream);     \
+    break;                                                               \
+  }
+
   switch (num_experts) {
-    case 2: {
-      topk_gating_softmax_launcher_helper<T, 2, WARPS_PER_TB>(input,
-                                                              finished,
-                                                              output,
-                                                              indices,
-                                                              source_row,
-                                                              num_rows,
-                                                              num_experts,
-                                                              k,
-                                                              stream);
-      break;
-    }
-    case 4: {
-      topk_gating_softmax_launcher_helper<T, 4, WARPS_PER_TB>(input,
-                                                              finished,
-                                                              output,
-                                                              indices,
-                                                              source_row,
-                                                              num_rows,
-                                                              num_experts,
-                                                              k,
-                                                              stream);
-      break;
-    }
-    case 8: {
-      topk_gating_softmax_launcher_helper<T, 8, WARPS_PER_TB>(input,
-                                                              finished,
-                                                              output,
-                                                              indices,
-                                                              source_row,
-                                                              num_rows,
-                                                              num_experts,
-                                                              k,
-                                                              stream);
-      break;
-    }
-    case 16: {
-      topk_gating_softmax_launcher_helper<T, 16, WARPS_PER_TB>(input,
-                                                               finished,
-                                                               output,
-                                                               indices,
-                                                               source_row,
-                                                               num_rows,
-                                                               num_experts,
-                                                               k,
-                                                               stream);
-      break;
-    }
-    case 32: {
-      topk_gating_softmax_launcher_helper<T, 32, WARPS_PER_TB>(input,
-                                                               finished,
-                                                               output,
-                                                               indices,
-                                                               source_row,
-                                                               num_rows,
-                                                               num_experts,
-                                                               k,
-                                                               stream);
-      break;
-    }
-    case 64: {
-      topk_gating_softmax_launcher_helper<T, 64, WARPS_PER_TB>(input,
-                                                               finished,
-                                                               output,
-                                                               indices,
-                                                               source_row,
-                                                               num_rows,
-                                                               num_experts,
-                                                               k,
-                                                               stream);
-      break;
-    }
-    case 128: {
-      topk_gating_softmax_launcher_helper<T, 128, WARPS_PER_TB>(input,
-                                                                finished,
-                                                                output,
-                                                                indices,
-                                                                source_row,
-                                                                num_rows,
-                                                                num_experts,
-                                                                k,
-                                                                stream);
-      break;
-    }
-    case 256: {
-      topk_gating_softmax_launcher_helper<T, 256, WARPS_PER_TB>(input,
-                                                                finished,
-                                                                output,
-                                                                indices,
-                                                                source_row,
-                                                                num_rows,
-                                                                num_experts,
-                                                                k,
-                                                                stream);
-      break;
-    }
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(2)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(4)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(8)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(16)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(32)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(64)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(128)
+    LAUNCH_TOPK_GATING_SOFTMAX_HELPER(256)
     default: {
       static constexpr int TPB = 256;
       if (group_moe) {
