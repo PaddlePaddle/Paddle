@@ -985,6 +985,50 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
   }
 }
 
+template <typename T,
+          typename index_t,
+          typename std::enable_if_t<std::is_same_v<phi::dtype::float16, T>>* =
+              nullptr>
+__device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
+                                                  index_t index,
+                                                  const index_t numel,
+                                                  T value) {
+#if (defined(PADDLE_WITH_HIP) || \
+     (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 700)))
+  phi::CudaAtomicAdd(tensor + index, value);
+#else
+  // Check if 32 bit aligned
+  __half* target_addr = reinterpret_cast<__half*>(tensor + index);
+  bool low_byte =
+      (reinterpret_cast<std::uintptr_t>(target_addr) % sizeof(__half2) == 0);
+
+  if (low_byte && index < (numel - 1)) {
+    __half2 value2;
+    value2.x = value.to_half();
+    value2.y = __int2half_rz(0);
+    atomicAdd(reinterpret_cast<__half2*>(target_addr), value2);
+  } else if (!low_byte && index > 0) {
+    __half2 value2;
+    value2.x = __int2half_rz(0);
+    value2.y = value.to_half();
+    atomicAdd(reinterpret_cast<__half2*>(target_addr - 1), value2);
+  } else {
+    atomicAdd(reinterpret_cast<__half*>(tensor) + index, value.to_half());
+  }
+#endif
+}
+
+template <typename T,
+          typename index_t,
+          typename std::enable_if_t<!std::is_same_v<phi::dtype::float16, T>>* =
+              nullptr>
+__device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
+                                                  index_t index,
+                                                  const index_t numel,
+                                                  T value) {
+  phi::CudaAtomicAdd(tensor + index, value);
+}
+
 template <typename T, int c_filter, bool fuse_relu_before_conv>
 __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
     const T* output_grad_data,
@@ -1011,13 +1055,13 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
   if (image_h >= output_height) {
     return;
   }
-  const int kWeightSize = c_filter * c_filter;
+  constexpr int kWeightSize = c_filter * c_filter;
   T r_weight[kWeightSize];
   const int wi_size = (output_width + dilate_width - 1) / dilate_width;
 
   for (int kernel_id = threadIdx.x; kernel_id < output_channels;
        kernel_id += blockDim.x) {
-    for (int i = 0; i < c_filter * c_filter; ++i) {
+    for (int i = 0; i < kWeightSize; ++i) {
       r_weight[i] = 0;
     }
     for (int i = threadIdx.y; i < wi_size * dilate_width; i += blockDim.y) {
@@ -1055,9 +1099,12 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradCFilterNHWC(
         }
       }
     }
-    for (int i = 0; i < c_filter * c_filter; ++i) {
-      T* weight = filter_grad_data + i * output_channels + kernel_id;
-      phi::CudaAtomicAdd(&weight[0], r_weight[i]);
+    const int numel = output_channels * kWeightSize;
+    for (int i = 0; i < kWeightSize; ++i) {
+      NoReturnAtomicAdd(filter_grad_data,
+                        i * output_channels + kernel_id,
+                        numel,
+                        r_weight[i]);
     }
   }
 }
