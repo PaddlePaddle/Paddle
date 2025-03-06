@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,47 +20,23 @@ import paddle
 from paddle import nn
 
 
-class RotaryPosEmb(nn.Layer):
+class SubGraph(nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(self, q, k, cos, sin, position_ids):
-        cos = cos.squeeze(axis=[0, 2])  # [seq_len, dim]
-        sin = sin.squeeze(axis=[0, 2])  # [seq_len, dim]
-
-        cos = cos[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
-        sin = sin[position_ids].unsqueeze(2)  # [bs, seq_len, 1, dim]
-        q_embed = (q * cos) + (self.rotate_half(q) * sin)
-        k_embed = (k * cos) + (self.rotate_half(k) * sin)
-        return q_embed, k_embed
-
-    def rotate_half(self, x):
-        """Rotates half the hidden dims of the input."""
-        x1 = x[..., : x.shape[-1] // 2]
-        x2 = x[..., x.shape[-1] // 2 :]
-        return paddle.concat([-x2, x1], axis=-1)  # shape is the same as x
+    def forward(self, x):
+        y = paddle.full([1, 32, 2, 10], 1.0, dtype="float32")
+        z = paddle.transpose(y.reshape([4, 8, 2, 10]), perm=[0, 2, 3, 1])
+        return x + z
 
 
-class TestRotaryPosEmb(unittest.TestCase):
+class TestFuldFullOps(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.prepare_data()
 
     def prepare_data(self):
-        self.q = paddle.randn([61, 2048, 8, 96], dtype="float32")
-        self.q.stop_gradient = False
-
-        self.k = paddle.randn([61, 2048, 8, 96], dtype="float32")
-        self.k.stop_gradient = False
-
-        self.cos = paddle.randn([1, 2048, 1, 96], dtype="float32")
-        self.cos.stop_gradient = False
-
-        self.sin = paddle.randn([1, 2048, 1, 96], dtype="float32")
-        self.sin.stop_gradient = False
-
-        self.position_ids = paddle.arange(end=2048, dtype="int64").unsqueeze(0)
-        self.position_ids.stop_gradient = False
+        self.x = paddle.randn([4, 2, 1, 8], dtype="float32")
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -68,10 +44,10 @@ class TestRotaryPosEmb(unittest.TestCase):
 
     def eval(self, use_cinn):
         paddle.seed(2022)
-        net = RotaryPosEmb()
+        net = SubGraph()
         net = utils.apply_to_static(net, use_cinn)
         net.eval()
-        out = net(self.q, self.k, self.cos, self.sin, self.position_ids)
+        out = net(self.x)
 
         if use_cinn:
             self.check_jit_kernel_info(net.forward)
