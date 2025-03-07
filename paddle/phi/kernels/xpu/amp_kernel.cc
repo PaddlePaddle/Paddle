@@ -46,7 +46,7 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
                              DenseTensor* out_good_steps,
                              DenseTensor* out_bad_steps) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
-  using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(found_infinite.numel(),
                     1,
@@ -72,9 +72,9 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
       VLOG(1) << "-- UpdateLossScaling: Find infinite grads. --";
       int r = 0;
       r = xpu::constant(dev_ctx.x_context(),
-                        reinterpret_cast<XPUTyp*>(out_data),
+                        reinterpret_cast<XPUType*>(out_data),
                         num,
-                        XPUTyp(0.0));
+                        XPUType(0.0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     }
   }

@@ -115,13 +115,7 @@ void ExpandKernel(const Context& ctx,
     r = xpu::broadcast<XPUType>(
         ctx.x_context(), x_data, out_data, x_shape, out_shape);
   }
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU API(broadcast) return wrong "
-                               "value[%d %s] in ExpandV2XPUKernel.",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 }
 }  // namespace phi
 

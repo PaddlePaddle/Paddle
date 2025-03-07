@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
+#include "xre/cuda_runtime_api.h"
 
 namespace phi {
 namespace backends {
@@ -116,6 +117,7 @@ inline const char* bkclGetErrorString(BKCLResult_t stat) {
 #endif
 
 inline const char* xdnnGetErrorString(int stat) {
+  // Also reused by xfa and xpudnn apis.
   switch (stat) {
     case baidu::xpu::api::Error_t::SUCCESS:
       return "XDNN_SUCCESS";
@@ -133,19 +135,31 @@ inline const char* xdnnGetErrorString(int stat) {
 }
 
 inline std::string build_xpu_error_msg(int stat) {
-  std::string msg("XPU Error <" + std::to_string(stat) + ">, ");
-  return msg + xpuGetErrorString(stat) + " ";
+  std::string error_msg = "XPU Error <" + std::to_string(stat) + ">, " +
+                          xpuGetErrorString(stat) + " ";
+  return error_msg;
 }
 
 #ifdef PADDLE_WITH_XPU_BKCL
 inline std::string build_xpu_error_msg(BKCLResult_t stat) {
-  std::string msg("BKCL Error, ");
-  return msg + bkclGetErrorString(stat) + " ";
+  std::string error_msg = "BKCL Error <" + std::to_string(stat) + ">, " +
+                          bkclGetErrorString(stat) + " ";
+  return error_msg;
 }
 #endif
 
-inline std::string build_xpu_xdnn_error_msg(int stat, std::string msg) {
-  return msg + " XDNN Error, " + xdnnGetErrorString(stat) + " ";
+inline std::string build_xdnn_error_msg(int stat, std::string msg) {
+  std::string error_msg = msg + "XDNN Error <" + std::to_string(stat) + ">, " +
+                          xdnnGetErrorString(stat) + " ";
+  return error_msg;
+}
+
+inline std::string build_runtime_error_msg() {
+  auto rt_error_code = cudaGetLastError();
+  std::string error_msg = "XPU Runtime Error <" +
+                          std::to_string(rt_error_code) + ">, " +
+                          std::string(cudaGetErrorString(rt_error_code)) + " ";
+  return error_msg;
 }
 
 namespace details {
@@ -183,25 +197,32 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
     }                                                           \
   } while (0)
 
-#define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                            \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    if (UNLIKELY(__cond__ != baidu::xpu::api::Error_t::SUCCESS)) {        \
-      auto __summary__ = common::errors::External(                        \
-          ::phi::backends::xpu::build_xpu_xdnn_error_msg(__cond__, MSG)); \
-      __THROW_ERROR_INTERNAL__(__summary__);                              \
-    }                                                                     \
+#define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                                 \
+  do {                                                                         \
+    auto __cond__ = (COND);                                                    \
+    if (UNLIKELY(__cond__ != baidu::xpu::api::Error_t::SUCCESS)) {             \
+      if (__cond__ == baidu::xpu::api::Error_t::RUNTIME_ERROR) {               \
+        auto __summary__ = common::errors::External(                           \
+            ::phi::backends::xpu::build_xdnn_error_msg(__cond__, MSG) + "\n" + \
+            ::phi::backends::xpu::build_runtime_error_msg());                  \
+        __THROW_ERROR_INTERNAL__(__summary__);                                 \
+      } else {                                                                 \
+        auto __summary__ = common::errors::External(                           \
+            ::phi::backends::xpu::build_xdnn_error_msg(__cond__, MSG));        \
+        __THROW_ERROR_INTERNAL__(__summary__);                                 \
+      }                                                                        \
+    }                                                                          \
   } while (0)
 
-#define PADDLE_ENFORCE_XDNN_NOT_NULL(ptr)                    \
-  do {                                                       \
-    if (UNLIKELY(ptr == nullptr)) {                          \
-      auto __summary__ = common::errors::External(           \
-          ::phi::backends::xpu::build_xpu_xdnn_error_msg(    \
-              baidu::xpu::api::Error_t::NO_ENOUGH_WORKSPACE, \
-              "XPU memory is not enough"));                  \
-      __THROW_ERROR_INTERNAL__(__summary__);                 \
-    }                                                        \
+#define PADDLE_ENFORCE_XDNN_NOT_NULL(ptr)                                      \
+  do {                                                                         \
+    if (UNLIKELY(ptr == nullptr)) {                                            \
+      auto __summary__ =                                                       \
+          common::errors::External(::phi::backends::xpu::build_xdnn_error_msg( \
+              baidu::xpu::api::Error_t::NO_ENOUGH_WORKSPACE,                   \
+              "XPU memory is not enough"));                                    \
+      __THROW_ERROR_INTERNAL__(__summary__);                                   \
+    }                                                                          \
   } while (0)
 #define PADDLE_ENFORCE_XRE_SUCCESS(COND)                            \
   do {                                                              \

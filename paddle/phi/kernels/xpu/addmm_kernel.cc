@@ -151,11 +151,11 @@ void AddmmKernel(const Context& dev_ctx,
       broadcast_flag = true;
       input_2d_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(x_dims[0] * y_dims[1]);
       PADDLE_ENFORCE_XDNN_NOT_NULL(input_2d_ptr);
-      int r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
-                                      input_ptr,
-                                      input_2d_ptr,
-                                      common::vectorize<int64_t>(input_dims),
-                                      {x_dims[0], y_dims[1]});
+      r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
+                                  input_ptr,
+                                  input_2d_ptr,
+                                  common::vectorize<int64_t>(input_dims),
+                                  {x_dims[0], y_dims[1]});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
     }
 

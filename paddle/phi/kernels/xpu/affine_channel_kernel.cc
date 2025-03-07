@@ -66,20 +66,10 @@ void AffineChannelXPUKernel(const Context& dev_ctx,
   int r = 0;
   r = xpu::broadcast_mul(
       dev_ctx.x_context(), x_d, scale_d, y_d, x_shape, b_shape);
-  PADDLE_ENFORCE_EQ(r,
-                    xpu::Error_t::SUCCESS,
-                    common::errors::External(
-                        "The broadcast_mul XPU OP return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
   r = xpu::broadcast_add(
       dev_ctx.x_context(), y_d, bias_d, y_d, x_shape, b_shape);
-  PADDLE_ENFORCE_EQ(r,
-                    xpu::Error_t::SUCCESS,
-                    common::errors::External(
-                        "The broadcast_add XPU OP return wrong value[%d %s]",
-                        r,
-                        XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 
 }  // namespace phi

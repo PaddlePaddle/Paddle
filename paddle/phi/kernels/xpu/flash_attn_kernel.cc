@@ -219,20 +219,20 @@ void FlashAttnUnpaddedKernel(
   // lod info, only support qlod == klod
   std::vector<int> qlod_vec(batch_size + 1, 0);
   int r = xpu_wait(ctx.x_context()->xpu_stream);
-  PADDLE_ENFORCE_EQ(r, 0, "xpu_wait failed.");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
   r = xpu_memcpy(qlod_vec.data(),
                  cu_seqlens_q.data<int>(),
                  sizeof(int32_t) * (batch_size + 1),
                  XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE_EQ(r, 0, "xpu_memcpy failed.");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
   std::vector<int> klod_vec(batch_size + 1, 0);
   r = xpu_wait(ctx.x_context()->xpu_stream);
-  PADDLE_ENFORCE_EQ(r, 0, "xpu_wait failed.");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
   r = xpu_memcpy(klod_vec.data(),
                  cu_seqlens_k.data<int>(),
                  sizeof(int32_t) * (batch_size + 1),
                  XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE_EQ(r, 0, "xpu_memcpy failed.");
+  PADDLE_ENFORCE_XPU_SUCCESS(r);
   // output: softmax_lse, 训练参数，给反向用于反向重计算的L
   bool is_cross_attn = false;
   for (int i = 0; i < batch_size + 1; ++i) {
@@ -294,7 +294,7 @@ void FlashAttnUnpaddedKernel(
                                   nullptr,
                                   nullptr,
                                   nullptr);
-    PADDLE_ENFORCE_EQ(r, 0, "xpu::qkv_attention failed.");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "qkv_attention");
   } else {
     std::vector<int> lod;
     lod.reserve(2 * batch_size + 2);
@@ -324,7 +324,7 @@ void FlashAttnUnpaddedKernel(
         qk_max_buf,
         dis_api_attn_param,
         nullptr);
-    PADDLE_ENFORCE_EQ(r, 0, "xpu::qk_attention failed.");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "qk_attention");
     r = xpu::qk_v_attention<XPUType, XPUType, XPUType, int16_t, float>(
         ctx.x_context(),
         qk_buf,
@@ -335,7 +335,7 @@ void FlashAttnUnpaddedKernel(
         nullptr,
         dis_api_attn_param,
         nullptr);
-    PADDLE_ENFORCE_EQ(r, 0, "xpu::qk_v_attention failed.");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "qk_v_attention");
   }
 #else
   api::VectorParam<int> qlod{cu_seqlens_q.data<int>(),

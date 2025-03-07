@@ -36,14 +36,14 @@ bool CheckXPUStatusFailure(T value, const std::string& msg) {
 
 template <typename T>
 bool CheckXDNNStatusSuccess(T value, const std::string& msg = "success") {
-  PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
+  PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error Test");
   return true;
 }
 
 template <typename T>
 bool CheckXDNNStatusFailure(T value, const std::string& msg) {
   try {
-    PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
+    PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error Test");
     return false;
   } catch (common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();

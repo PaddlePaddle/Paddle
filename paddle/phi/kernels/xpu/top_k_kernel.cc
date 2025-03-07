@@ -115,12 +115,7 @@ void TopkKernel(const Context& dev_ctx,
                                     trans_in_data,
                                     x_shape_host,
                                     trans_axes);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      errors::External("XPU API 1st Transpose kernel"
-                                       " returns wrong value[%d %s]!",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
     XPUType* trans_out_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_out_data);
@@ -172,23 +167,13 @@ void TopkKernel(const Context& dev_ctx,
         reinterpret_cast<XPUType*>(output_data),
         trans_out_shape_host,
         trans_back_axes);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      errors::External("XPU API 2nd Transpose kernel"
-                                       " returns wrong value[%d %s]",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     r = xpu::transpose<int64_t>(dev_ctx.x_context(),
                                 trans_idx_data,
                                 indices_data,
                                 trans_out_shape_host,
                                 trans_back_axes);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      errors::External("XPU API 3rd Transpose kernel"
-                                       " returns wrong value[%d %s]",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
   }
 }
 
