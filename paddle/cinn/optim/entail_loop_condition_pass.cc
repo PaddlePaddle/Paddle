@@ -39,7 +39,7 @@ struct LoopCondLowerboundMutator : public ir::IRMutator<> {
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
  private:
-  void Visit(const ir::_Var_* op, ir::Expr* expr) {
+  void Visit(const ir::_Var_* op, ir::Expr* expr) override {
     if (!op->is_symbolic_constant) {
       if (expr->as_var_ref() == var_) {
         *expr = extent_;
@@ -113,7 +113,7 @@ struct CommonFactorExtractor : public ir::IRMutator<> {
   int64_t GetResult() { return common_factor_ > 0 ? common_factor_ : 1; }
 
  private:
-  void Visit(const ir::Mul* op, ir::Expr* expr) {
+  void Visit(const ir::Mul* op, ir::Expr* expr) override {
     if (op->a() != var_ && op->b() != var_) {
       auto* node = expr->As<ir::Mul>();
       ir::IRMutator<>::Visit(&node->a(), &node->a());
@@ -135,6 +135,14 @@ struct CommonFactorExtractor : public ir::IRMutator<> {
     }
   }
 
+  void Visit(const ir::_Var_* op, ir::Expr* expr) override {
+    // Note: if we visit a standalone `var` that is not an operand of a Mul op,
+    // the common factor must be 1.
+    if (*expr == var_) {
+      common_factor_ = 1;
+    }
+  }
+
   ir::Expr var_;
   int64_t common_factor_{0};
 };
@@ -142,7 +150,7 @@ struct CommonFactorExtractor : public ir::IRMutator<> {
 int64_t ExtractCommonFactorOfLoopVar(const For& for_stmt) {
   CommonFactorExtractor extractor(for_stmt->loop_var());
 
-  const auto VisitFn = [&](StmtRef stmt) {
+  const auto VisitFn = [&](const StmtRef& stmt) {
     if (stmt.isa<IfThenElse>()) {
       IfThenElse if_stmt = stmt.as<IfThenElse>();
       ir::Expr condition = if_stmt->condition();
@@ -170,7 +178,7 @@ struct StridedLoopVarReplacer : public ir::IRMutator<> {
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
  private:
-  void Visit(const ir::Mul* op, ir::Expr* expr) {
+  void Visit(const ir::Mul* op, ir::Expr* expr) override {
     auto* node = expr->As<ir::Mul>();
     ir::IRMutator<>::Visit(&node->a(), &node->a());
     ir::IRMutator<>::Visit(&node->b(), &node->b());
@@ -216,7 +224,7 @@ void ReplaceWithStridedLoopVar(For for_stmt,
     }
   };
 
-  ir::stmt::Visit(for_stmt->body(), VisitFn, [](auto) {});
+  ir::stmt::Mutate(for_stmt->body(), VisitFn, [](auto) {});
 }
 
 void EntailLoopCondition(For for_stmt) {
