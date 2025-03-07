@@ -307,21 +307,21 @@ void test_backward_final_hooks() {
   eager_test::CompareTensorWithValue<float>(X, 100.0);
 }
 
-TEST(Hook_intermidiate, Sigmoid) {
+TEST(Hook_intermediate, Sigmoid) {
   // True or false represents whether to call RemoveGradientHook
   test_sigmoid(true);
   test_sigmoid(false);
 }
 
-TEST(Hook_intermidiate, ElementwiseAdd) {
+TEST(Hook_intermediate, ElementwiseAdd) {
   test_elementwiseAdd(true);
   test_elementwiseAdd(false);
 }
 
-TEST(Hook_intermidiate, Matmul_v2) {
+TEST(Hook_intermediate, Matmul_v2) {
   test_matmul(true);
   test_matmul(false);
 }
 
-TEST(Hook_intermidiate, BackwardFinal) { test_backward_final_hooks(); }
+TEST(Hook_intermediate, BackwardFinal) { test_backward_final_hooks(); }
 }  // namespace egr
