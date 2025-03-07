@@ -25,6 +25,16 @@ paddle::Tensor dtensor_to_local_ad_function(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_to_local dygraph";
+  bool rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(
+      static_cast<phi::distributed::DistTensor*>(input.impl().get())
+          ->process_mesh());
+
+  if (!rank_is_in_current_mesh) {
+    VLOG(3) << "Current rank is not in the process mesh, returning the input "
+               "directly.";
+    return input;
+  }
+
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "dtensor_to_local dygraph", phi::TracerEventType::Communication, 1);

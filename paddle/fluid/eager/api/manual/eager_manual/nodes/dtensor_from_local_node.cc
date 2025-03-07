@@ -31,6 +31,16 @@ DtensorFromLocalGradNode::operator()(
   VLOG(3) << "Running AD API GRAD: "
           << "dtensor_from_local";
 
+  bool rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(
+      static_cast<phi::distributed::DistTensor*>(grads[0][0].impl().get())
+          ->process_mesh());
+
+  if (!rank_is_in_current_mesh) {
+    VLOG(3) << "Current rank is not in the process mesh, returning the input "
+               "grads directly.";
+    return grads;
+  }
+
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.

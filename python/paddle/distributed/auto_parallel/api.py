@@ -729,7 +729,7 @@ def moe_sub_mesh_tensors(
 
 def dtensor_from_local(local_tensor, mesh, placements):
     if paddle.in_dynamic_mode():
-        if local_tensor.is_dist() is True:
+        if local_tensor.is_dist() is True and local_tensor._is_initialized():
             raise ValueError("The input should be a local tensor.")
 
         return paddle.base.core.dtensor_from_local(
