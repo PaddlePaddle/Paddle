@@ -421,11 +421,11 @@ class Pool2dOpPattern
         op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
 
     auto adaptive = op->attribute<pir::BoolAttribute>("adaptive").data();
-    // TODO(Lizexu): This piece of code exists in the old IR-TRT implementation
-    // but is not covered by unit tests, raising suspicions about its
-    // correctness. In the PIR-TRT implementation, following the same approach
-    // causes precision issues. For now, we will exclude it from entering
-    // TensorRT.
+    // TODO(lizexu123): This piece of code exists in the old IR-TRT
+    // implementation but is not covered by unit tests, raising suspicions about
+    // its correctness. In the PIR-TRT implementation, following the same
+    // approach causes precision issues. For now, we will exclude it from
+    // entering TensorRT.
     pir::Value input = op.operand_source(0);
     auto input_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto input_dims = input_type.dims();
@@ -1173,6 +1173,13 @@ class CastOpPattern : public pir::OpRewritePattern<paddle::dialect::CastOp> {
       return false;
 #endif
     }
+    if (dtype != phi::DataType::BOOL && dtype != phi::DataType::FLOAT32 &&
+        dtype != phi::DataType::FLOAT64 && dtype != phi::DataType::FLOAT16 &&
+        dtype != phi::DataType::INT32 && dtype != phi::DataType::INT64) {
+      VLOG(3) << "the cast op does not support type: "
+              << phi::DataTypeToString(dtype);
+      return false;
+    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -1691,11 +1698,45 @@ class BilinearInterpV2Pattern
       return false;
     }
 #if IS_TRT_VERSION_GE(8200)
+    // TODO(lizexu123): Starting from the size_tensor, traverse up three levels.
+    // If a pd_op.shape64 operator is found within those three levels, then
+    // allow it to enter TRT; otherwise, prohibit TRT conversion to avoid
+    // potential bugs.
     auto size_tensor = op.operand_source(2);
     if (size_tensor.impl()) {
+      auto *first_def_op = size_tensor.defining_op();
+      std::vector<std::string> upstream_op_names;
+      upstream_op_names.push_back(first_def_op->name());
+      if (first_def_op->num_operands() > 0 &&
+          first_def_op->operand_source(0).impl()) {
+        auto second_input = first_def_op->operand_source(0);
+        auto *second_def_op = second_input.defining_op();
+        upstream_op_names.push_back(second_def_op->name());
+        if (second_def_op->num_operands() > 0 &&
+            second_def_op->operand_source(0).impl()) {
+          auto third_input = second_def_op->operand_source(0);
+          auto *third_def_op = third_input.defining_op();
+          upstream_op_names.push_back(third_def_op->name());
+        }
+      }
+      bool found_shape = false;
+      for (const auto &name : upstream_op_names) {
+        if (name.find("shape64") != std::string::npos) {
+          found_shape = true;
+        }
+      }
+      if (!found_shape) {
+        VLOG(3) << "BilinearInterpV2: Upstream ops do not contain 'shape':";
+        for (const auto &name : upstream_op_names) {
+          VLOG(3) << "\t" << name;
+        }
+        return false;
+      }
+
+      // 同时检查 size_tensor 类型为 VectorType 且大小为2
       auto size_tensor_type = size_tensor.type();
       if (size_tensor_type.isa<pir::VectorType>()) {
-        auto vector_type = size_tensor.type().dyn_cast<pir::VectorType>();
+        auto vector_type = size_tensor_type.dyn_cast<pir::VectorType>();
         if (vector_type.size() == 2) {
           op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
           return true;
@@ -1711,14 +1752,12 @@ class BilinearInterpV2Pattern
     }
 #endif
     pir::Value scale_tensor = op.operand_source(3);
-
     bool has_scale_input = false;
     if (scale_tensor) {
       has_scale_input = true;
     }
-
     if (has_scale_input) {
-      VLOG(3) << "BilinearInterpV2 has scale input can not into trt,support "
+      VLOG(3) << "BilinearInterpV2 has scale input can not into trt, support "
                  "scale attribute into trt";
       return false;
     }
@@ -1760,7 +1799,6 @@ class BilinearInterpV2Pattern
         }
       }
     }
-
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -2907,6 +2945,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Dropout)
     ADD_PATTERN(Bmm)
     ADD_PATTERN(Concat)
+    ADD_PATTERN(Nonzero)
     ADD_PATTERN(Full)
     ADD_PATTERN(Fused_gemm_epilogue)
     ADD_PATTERN(Add)
@@ -2914,7 +2953,6 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Conv2d)
     ADD_PATTERN(FusedConv2dAddAct)
     ADD_PATTERN(DepthwiseConv2d)
-    ADD_PATTERN(Nonzero)
     ADD_PATTERN(Gelu)
     ADD_PATTERN(Relu6)
     ADD_PATTERN(Shape)

@@ -121,6 +121,8 @@ def arange_converter(network, paddle_op, inputs):
         network, delta, step, name=[paddle_op.name(), 'f_quotient_tensor']
     )
 
+    dtype = paddle_op.attrs().get("dtype")
+
     if start.dtype == trt.DataType.FLOAT:
         quotient_tensor = trt_cast(
             network,
@@ -150,7 +152,8 @@ def arange_converter(network, paddle_op, inputs):
     set_layer_name(fill_layer, paddle_op)
 
     output_tensor = fill_layer.get_output(0)
-    if start.dtype == trt.DataType.FLOAT:
+
+    if dtype == paddle.int64 or dtype == paddle.int32:
         output_tensor = trt_cast(
             network,
             output_tensor,

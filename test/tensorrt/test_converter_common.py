@@ -209,16 +209,36 @@ class TestBilinearOutSizeTRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+def bilinear_python_size_tensor_api(x, OutSize, SizeTensor, Scale, attrs):
+    if SizeTensor is None:
+        if SizeTensor is None:
+            if not isinstance(x, paddle.Tensor):
+                x = paddle.to_tensor(x)
+            shape_tensor = paddle.shape(x)
+            SizeTensor = [shape_tensor[2:3], shape_tensor[3:4]]
+    return _C_ops.bilinear_interp(
+        x,
+        OutSize,
+        SizeTensor,
+        Scale,
+        attrs['data_layout'],
+        attrs['out_d'],
+        attrs['out_h'],
+        attrs['out_w'],
+        attrs['scale'] if 'scale' in attrs else [],
+        attrs['interp_method'],
+        attrs['align_corners'],
+        attrs['align_mode'],
+    )
+
+
 class TestBilinearSizeTensorTRTPattern(TensorRTBaseTest):
     def setUp(self):
-        self.python_api = bilinear_python_api
+        self.python_api = bilinear_python_size_tensor_api
         self.api_args = {
             "x": np.random.random([2, 3, 6, 10]).astype("float32"),
             "OutSize": None,
-            "SizeTensor": [
-                np.array([2], dtype="int64"),
-                np.array([2], dtype="int64"),
-            ],
+            "SizeTensor": None,
             "Scale": None,
             "attrs": {
                 "data_layout": "NCHW",

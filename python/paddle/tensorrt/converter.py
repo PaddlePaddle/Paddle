@@ -257,7 +257,7 @@ class PaddleToTensorRTConverter:
                             f'{source_id} not found in value_to_trt_tensor'
                         )
 
-            if precision_mode == PrecisionMode.INT8:
+            if precision_mode.value == PrecisionMode.INT8.value:
                 set_dynamic_range(op, operands)
             trt_outs = self.convert(network, op, operands)
 
@@ -439,7 +439,7 @@ class PaddleToTensorRTConverter:
             trt.MemoryPoolType.WORKSPACE, self.trt_config.workspace_size
         )
 
-        if precision_mode == PrecisionMode.FP16:
+        if precision_mode.value == PrecisionMode.FP16.value:
             if builder.platform_has_fast_fp16:
                 config.set_flag(trt.BuilderFlag.FP16)
                 _logger.info("Run Paddle-TRT FP16 mode")
@@ -447,7 +447,7 @@ class PaddleToTensorRTConverter:
                 _logger.warning(
                     "Hardware does not support FP16. Continuing in FP32 mode."
                 )
-        elif precision_mode == PrecisionMode.BF16:
+        elif precision_mode.value == PrecisionMode.BF16.value:
             if version_list[0] >= 9:
                 if builder.platform_has_fast_bfp16 and hasattr(
                     builder, 'plateform_has_fast_bf16'
@@ -468,7 +468,7 @@ class PaddleToTensorRTConverter:
                     _logger.warning(
                         "Hardware does not support FP16. Continuing in FP32 mode."
                     )
-        elif precision_mode == PrecisionMode.INT8:
+        elif precision_mode.value == PrecisionMode.INT8.value:
             config.set_flag(trt.BuilderFlag.INT8)
             _logger.info("Run Paddle-TRT INT8 mode")
         elif self.trt_config is not None:

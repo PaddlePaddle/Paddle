@@ -99,8 +99,13 @@ class SliceOpConverter : public OpConverter {
     if (slice_inputs.find("EndsTensor") != slice_inputs.end() &&
         !op_desc.Input("EndsTensor").empty()) {  // has EndsTensor input
       for (size_t i = 0; i < axes.size(); ++i) {
-        ends_tensor[axes[i]] = GetEleTensorOfShape(
-            engine_->GetITensor(op_desc.Input("EndsTensor")[0]), i);
+        auto axis = axes[i];
+        auto input_dim = GetEleTensorOfShape(shape_tensor, axis);
+        ends_tensor[axes[i]] =
+            Min(Max(GetEleTensorOfShape(
+                        engine_->GetITensor(op_desc.Input("EndsTensor")[0]), i),
+                    Add1DConstantLayer(0)),
+                input_dim);
       }
     } else if (slice_inputs.find("EndsTensorList") != slice_inputs.end() &&
                !op_desc.Input("EndsTensorList").empty()) {

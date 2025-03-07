@@ -106,13 +106,15 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
                             yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+        self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [6, 6, 64, 64]}
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [6, 6, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -144,7 +146,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         ), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -156,11 +158,14 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             attrs, True
         ), 1e-3
 
-    def test(self):
+    def test_old_ir(self):
         # TODO(inference): fix.
         # trt6 and trt7.1 has bug.
         # trt7.2 deserialize has bug.
         self.run_test()
+
+    def test_pir(self):
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":
