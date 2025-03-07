@@ -328,7 +328,7 @@ inline ExprVec GetStridedSliceDims(
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
-    if (in_dims.at(i).isa<int64_t>() && starts.at(i).isa<int64_t>() &&
+    if (in_dims.at(axis).isa<int64_t>() && starts.at(i).isa<int64_t>() &&
         ends.at(i).isa<int64_t>() && strides.at(i).isa<int64_t>()) {
       int64_t in_dim = in_dims[axis].Get<int64_t>();
       int64_t start = starts[i].Get<int64_t>();
