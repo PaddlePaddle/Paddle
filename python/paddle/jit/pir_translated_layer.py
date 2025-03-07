@@ -279,7 +279,7 @@ def _construct_program_holders(model_path, model_filename=None):
                     else:
                         method_name.replace('model', '')
                     program, trainable = _load_pir_program(model_file_path)
-                    program_holder_dict[func_name] = _PirProgramHolder(
+                    program_holder_dict[method_name] = _PirProgramHolder(
                         program, trainable
                     )
 
