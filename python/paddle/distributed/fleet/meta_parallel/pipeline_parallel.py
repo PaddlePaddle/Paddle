@@ -319,6 +319,14 @@ class PipelineParallel(MetaParallelBase):
         self._use_batch_p2p_comm = self._strategy.hybrid_configs[
             "pp_configs"
         ].use_batch_p2p_comm
+
+        self._dynamic_shape = self._strategy.hybrid_configs[
+            'pp_configs'
+        ].enable_dynamic_shape
+        logger.info(
+            f"Pipeline scheduler is in dynamic_shape mode={self._dynamic_shape}"
+        )
+
         if self._use_batch_p2p_comm and self._overlap_p2p_comm:
             warnings.warn(
                 "non_batch_p2p_comm should be enabled when overlap_p2p_comm is activated, setting non_batch_p2p_comm=True."
@@ -383,7 +391,9 @@ class PipelineParallel(MetaParallelBase):
         )
 
         # construct pipeline meta info
-        self._p2p_helper = p2p.P2pHelper(self._using_cache)
+        self._p2p_helper = p2p.P2pHelper(
+            self._using_cache, dynamic_shape=self._dynamic_shape
+        )
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0
@@ -1872,6 +1882,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         batch_p2p_comm=self._use_batch_p2p_comm,
                         overlap_p2p_comm=True,
                     )
+
                     self.output_tensor_grads[self.num_model_chunks - 1].append(
                         output_tensor_grad
                     )
@@ -2343,6 +2354,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             get_sync_logger().info("end forward_backward_pipeline")
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
+
+        # reset dynamic meta counter
+        if self._dynamic_shape:
+            self._p2p_helper._dynamic_cnt = 0
 
         return train_loss
 

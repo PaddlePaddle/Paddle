@@ -90,6 +90,7 @@ message PpConfig {
     optional bool use_batch_p2p_comm = 9 [default = true];
     optional bool best_unbalanced_scheduler = 10 [ default = false ];
     optional bool enable_offload_queue = 11 [ default = false ];
+    optional bool enable_dynamic_shape = 12 [ default = false ];
 }
 
 message DygraphShardingConfig {
