@@ -32,32 +32,51 @@ void TopkKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto& in_dims = x.dims();
-  const T* in_data = x.data<T>();
-  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
-  T* output_data = dev_ctx.template Alloc<T>(out);
-
-  const auto& out_dims = out->dims();
-
-  PADDLE_ENFORCE_EQ(
-      sorted,
-      true,
-      errors::External(
-          "XPU API does not support unsorted topk operation currently."
-          " Operator will be supported in future update."));
   if (in_dims.size() == 0) {
     int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
                                reinterpret_cast<XPUType*>(out->data<T>()),
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-
+    dev_ctx.template Alloc<int64_t>(indices);
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
-
     return;
   }
+
+  // axis < 0, calculate the real axis
+  if (axis < 0) {
+    axis += in_dims.size();
+  }
+
+  int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
+
+  if (k_scalar.FromTensor()) {
+    auto out_dims_ = out->dims();
+    // according to axis to set K value in the dim
+    out_dims_[axis] = k;
+    out->Resize(out_dims_);
+    indices->Resize(out_dims_);
+  }
+
+  const T* in_data = x.data<T>();
+  int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+  T* output_data = dev_ctx.template Alloc<T>(out);
+
+  const auto& out_dims = out->dims();
+
+  // PADDLE_ENFORCE_EQ(
+  //     sorted,
+  //     true,
+  //     errors::External(
+  //         "XPU API does not support unsorted topk operation currently."
+  //         " Operator will be supported in future update."));
   if (axis < 0) axis += in_dims.size();
 
-  size_t k = k_scalar.to<int>();
   if (axis + 1 == in_dims.size()) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int32_t* indices_int_data =
