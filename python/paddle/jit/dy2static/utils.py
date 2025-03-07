@@ -161,6 +161,9 @@ class WeakMethod:
             raise RuntimeError("The object has been destroyed")
         return self.fn(self.__self__, *args, **kwargs)
 
+    def __deepcopy__(self, memo):
+        return WeakMethod(self.fn, memo[id(self.__self__)])
+
 
 def saw(x):
     if isinstance(x, UndefinedVar):
