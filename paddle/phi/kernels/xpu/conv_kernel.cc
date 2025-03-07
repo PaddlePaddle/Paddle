@@ -188,8 +188,13 @@ void Conv3DKernel(const Context& dev_ctx,
   // that avoids modifying the variable in the Scope.
   dev_ctx.template Alloc<T>(out);
 
-  phi::DDim in_data_dims =
-      common::slice_ddim(input.dims(), 2, input.dims().size());
+  phi::DDim in_data_dims;
+  if (data_format == "NDHWC") {
+    in_data_dims = common::slice_ddim(input.dims(), 1, input.dims().size() - 1);
+  } else {
+    in_data_dims = common::slice_ddim(input.dims(), 2, input.dims().size());
+  }
+
   phi::DDim filter_data_dims =
       common::slice_ddim(filter.dims(), 2, filter.dims().size());
   std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
