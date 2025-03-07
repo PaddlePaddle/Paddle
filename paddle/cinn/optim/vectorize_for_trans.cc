@@ -659,8 +659,10 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
                                                {ir::Expr(vectorize_factor_)},
                                                node->operation);
     Type scalar_type = local_tensor->type().ElementOf();
-    Type local_buffer_type(
-        scalar_type.type(), scalar_type.bits(), vectorize_factor_);
+    Type local_buffer_type(scalar_type.type(),
+                           scalar_type.bits(),
+                           vectorize_factor_,
+                           scalar_type.specific_type());
     std::string pre_load_buffer_name =
         "pre_load_" + common::UniqName(node->name + "_buffer");
     local_tensor.as_tensor_ref()->WithBuffer("local", pre_load_buffer_name);
