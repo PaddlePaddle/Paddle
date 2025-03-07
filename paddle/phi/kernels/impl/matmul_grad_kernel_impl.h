@@ -229,6 +229,13 @@ void MatmulGradKernel(const Context& dev_ctx,
                       bool transpose_y,
                       DenseTensor* dx,
                       DenseTensor* dy) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    phi::FullKernel<T>(
+        dev_ctx, common::vectorize(y.dims()), 0.0, y.dtype(), dy);
+
+    return;
+  }
   // get dims
   std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
   std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
