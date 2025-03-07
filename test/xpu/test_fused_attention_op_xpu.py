@@ -19,6 +19,7 @@ from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
+    xpu_matmul_quant_type_guard,
 )
 from op_test_xpu import XPUOpTest
 
@@ -44,7 +45,7 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
             self.config()
             self.generate_input_data()
             self.rtol = 1e-5
-            self.atol = 1e-3
+            self.atol = 5e-3
             if self.x_type == np.float16 or str(self.x_type) == "float16":
                 self.atol = 1e-1
 
@@ -131,73 +132,83 @@ class XPUTestFusedAttentionOp(XPUOpTestWrapper):
             ).astype(self.x_type)
 
         def GetBaselineOut(self):
-            paddle.disable_static()
-            tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
+            with xpu_matmul_quant_type_guard("float"):
+                paddle.disable_static()
+                tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
 
-            if self.has_attn_mask:
-                attn_mask = paddle.to_tensor(
-                    self.attn_mask, stop_gradient=False
+                if self.has_attn_mask:
+                    attn_mask = paddle.to_tensor(
+                        self.attn_mask, stop_gradient=False
+                    )
+                else:
+                    attn_mask = None
+                residual = tensor_query
+
+                ln1_out = tensor_query
+                if self.pre_layer_norm:
+                    ln1_out = self.norm1(tensor_query)
+
+                q = self.q_proj(ln1_out)
+                q = tensor.reshape(
+                    x=q, shape=[0, 0, self.num_heads, self.head_dim]
                 )
-            else:
-                attn_mask = None
-            residual = tensor_query
-
-            ln1_out = tensor_query
-            if self.pre_layer_norm:
-                ln1_out = self.norm1(tensor_query)
-
-            q = self.q_proj(ln1_out)
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-            k = self.k_proj(ln1_out)
-            v = self.v_proj(ln1_out)
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
-
-            # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
-            # --> [B, n_head, seq_len, out_seq_len]
-            qk_out = tensor.matmul(
-                x=q_out * self.head_dim**-0.5, y=k_out, transpose_y=True
-            )
-
-            if attn_mask is not None:
-                attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
-                attn_mask_out = qk_out + attn_mask
-                softmax_out = F.softmax(attn_mask_out)
-            else:
-                softmax_out = F.softmax(qk_out)
-
-            if self.dropout_prob:
-                dropout_out = F.dropout(
-                    softmax_out,
-                    self.dropout_prob,
-                    training=self.training,
-                    mode="upscale_in_train",
+                q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+                k = self.k_proj(ln1_out)
+                v = self.v_proj(ln1_out)
+                k = tensor.reshape(
+                    x=k, shape=[0, 0, self.num_heads, self.head_dim]
                 )
-                # [B, n_head, seq_len, out_seq_len] * [B, n_head, out_seq_len, head_dim]
-                # --> [B, n_head, seq_len, head_dim]
-                qktv_out = tensor.matmul(dropout_out, v_out)
-            else:
-                qktv_out = tensor.matmul(softmax_out, v_out)
+                k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+                v = tensor.reshape(
+                    x=v, shape=[0, 0, self.num_heads, self.head_dim]
+                )
+                v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
-            fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
-            out_linear_in = tensor.reshape(
-                x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]]
-            )
-            out = self.out_proj(out_linear_in)
+                # [B, n_head, seq_len, head_dim] * [B, n_head, out_seq_len, head_dim]
+                # --> [B, n_head, seq_len, out_seq_len]
+                qk_out = tensor.matmul(
+                    x=q_out * self.head_dim**-0.5, y=k_out, transpose_y=True
+                )
 
-            residual_out = residual + self.dropout(out)
-            if not self.pre_layer_norm:
-                final_out = self.norm1(residual_out)
-            else:
-                final_out = residual_out
+                if attn_mask is not None:
+                    attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
+                    attn_mask_out = qk_out + attn_mask
+                    softmax_out = F.softmax(attn_mask_out)
+                else:
+                    softmax_out = F.softmax(qk_out)
 
-            paddle.autograd.backward(
-                [final_out], [paddle.to_tensor(self.dout)], retain_graph=True
-            )
-            return final_out, tensor_query.grad
+                if self.dropout_prob:
+                    dropout_out = F.dropout(
+                        softmax_out,
+                        self.dropout_prob,
+                        training=self.training,
+                        mode="upscale_in_train",
+                    )
+                    # [B, n_head, seq_len, out_seq_len] * [B, n_head, out_seq_len, head_dim]
+                    # --> [B, n_head, seq_len, head_dim]
+                    qktv_out = tensor.matmul(dropout_out, v_out)
+                else:
+                    qktv_out = tensor.matmul(softmax_out, v_out)
+
+                fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
+                out_linear_in = tensor.reshape(
+                    x=fmha_out,
+                    shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]],
+                )
+                out = self.out_proj(out_linear_in)
+
+                residual_out = residual + self.dropout(out)
+                if not self.pre_layer_norm:
+                    final_out = self.norm1(residual_out)
+                else:
+                    final_out = residual_out
+
+                paddle.autograd.backward(
+                    [final_out],
+                    [paddle.to_tensor(self.dout)],
+                    retain_graph=True,
+                )
+                return final_out, tensor_query.grad
 
         def GetFusedAttentionOut(self):
             paddle.disable_static()

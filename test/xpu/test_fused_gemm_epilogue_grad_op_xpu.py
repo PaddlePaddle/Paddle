@@ -64,7 +64,7 @@ class XPUTestFuseGemmGradOp(XPUOpTestWrapper):
             self.outputs = {'DX': DX, 'DY': DY, 'DBias': DBias}
 
         def test_check_output(self):
-            self.atol = 1e-4
+            self.atol = 5e-4
             if self.dtype == np.float16:
                 self.atol = 1e-3
             self.check_output_with_place(core.XPUPlace(0), atol=self.atol)

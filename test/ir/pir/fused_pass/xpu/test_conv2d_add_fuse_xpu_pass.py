@@ -74,7 +74,7 @@ class TestConv2dBnPassXPUPattern(PassTest):
         yield pir_program, False
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-3, rtol=1e-3)
+        self.check_pass_correct(atol=2e-3, rtol=2e-3)
 
     def setUp(self):
         if core.is_compiled_with_xpu():

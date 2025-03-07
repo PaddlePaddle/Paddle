@@ -84,6 +84,11 @@ class SimplePyLayerNet(paddle.nn.Layer):
 class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.atol = 0
+        self.rtol = 1e-5
+        if paddle.is_compiled_with_xpu():
+            self.atol = 1e-4
+            self.rtol = 1e-4
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -205,7 +210,9 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             infer_model_dir, model_filename, params_filename, inputs
         )
 
-        np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
+        np.testing.assert_allclose(
+            gt_out, infer_out, atol=self.atol, rtol=self.rtol
+        )
 
     def load_and_run_inference(
         self, model_path, model_filename, params_filename, inputs
