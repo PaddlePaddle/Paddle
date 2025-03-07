@@ -22,6 +22,8 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "xpu/runtime.h"
+#include "xpu/runtime_ex.h"
 #endif
 
 namespace paddle::memory {
@@ -245,6 +247,110 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
   } else if (dst_place.GetType() == phi::AllocationType::XPU) {
     phi::XPUPlace place_dst(dst_place.GetDeviceId());
     return Copy(place_dst, dst, src_place, src, num);
+  }
+}
+
+template <>
+void Copy<phi::XPUPlace, phi::CPUPlace>(phi::XPUPlace dst_place,
+                                        void* dst,
+                                        phi::CPUPlace src_place,
+                                        const void* src,
+                                        size_t num,
+                                        void* stream) {
+  if (num <= 0) {
+    VLOG(1) << "memcpy XPU_HOST_TO_DEVICE size <= 0 (" << num << ")";
+    return;
+  }
+  // platform::MemcpySyncH2D(dst, src, num, dst_place);
+  xpu_memcpy_async(dst, src, num, XPU_HOST_TO_DEVICE, stream);
+}
+
+template <>
+void Copy<phi::CPUPlace, phi::XPUPlace>(phi::CPUPlace dst_place,
+                                        void* dst,
+                                        phi::XPUPlace src_place,
+                                        const void* src,
+                                        size_t num,
+                                        void* stream) {
+  if (num <= 0) {
+    VLOG(1) << "memcpy XPU_DEVICE_TO_HOST size <= 0 (" << num << ")";
+    return;
+  }
+  // platform::MemcpySyncD2H(dst, src, num, src_place);
+  xpu_memcpy_async(dst, src, num, XPU_DEVICE_TO_HOST, stream);
+}
+
+template <>
+void Copy<phi::XPUPlace, phi::XPUPlace>(phi::XPUPlace dst_place,
+                                        void* dst,
+                                        phi::XPUPlace src_place,
+                                        const void* src,
+                                        size_t num,
+                                        void* stream) {
+  if (num <= 0) {
+    VLOG(1) << "memcpy XPU_DEVICE_TO_DEVICE size <= 0 (" << num << ")";
+    return;
+  }
+  platform::MemcpySyncD2D(dst, dst_place, src, src_place, num);
+}
+
+// NOTE: only for (CPUPlace and XPUPlace) -> (XPUPlace).
+template <>
+void Copy<phi::XPUPlace, phi::Place>(phi::XPUPlace dst_place,
+                                     void* dst,
+                                     phi::Place src_place,
+                                     const void* src,
+                                     size_t num,
+                                     void* stream) {
+  if (src_place.GetType() == phi::AllocationType::CPU) {
+    phi::CPUPlace place_src;
+    return Copy(dst_place, dst, place_src, src, num);
+  } else if (src_place.GetType() == phi::AllocationType::XPU) {
+    phi::XPUPlace place_src(src_place.GetDeviceId());
+    return Copy(dst_place, dst, place_src, src, num);
+  }
+}
+
+// NOTE: only for (XPUPlace) -> (CPUPlace and XPUPlace).
+template <>
+void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
+                                     void* dst,
+                                     phi::XPUPlace src_place,
+                                     const void* src,
+                                     size_t num,
+                                     void* stream) {
+  if (dst_place.GetType() == phi::AllocationType::CPU) {
+    phi::CPUPlace place_dst;
+    return Copy(place_dst, dst, src_place, src, num);
+  } else if (dst_place.GetType() == phi::AllocationType::XPU) {
+    phi::XPUPlace place_dst(dst_place.GetDeviceId());
+    return Copy(place_dst, dst, src_place, src, num);
+  }
+}
+
+template <>
+void Copy<phi::Place, phi::Place>(phi::Place dst_place,
+                                  void* dst,
+                                  phi::Place src_place,
+                                  const void* src,
+                                  size_t num,
+                                  void* stream) {
+  if (dst_place.GetType() == phi::AllocationType::CPU) {
+    phi::CPUPlace place_dst;
+    if (src_place.GetType() == phi::AllocationType::XPU) {
+      phi::XPUPlace place_src(src_place.GetDeviceId());
+      return Copy(place_dst, dst, place_src, src, num);
+    } else {
+      VLOG(4) << "cannot fit into a copy stereotype, might be an error";
+    }
+  } else if (dst_place.GetType() == phi::AllocationType::XPU) {
+    phi::XPUPlace place_dst(dst_place.GetDeviceId());
+    if (src_place.GetType() == phi::AllocationType::CPU) {
+      phi::CPUPlace place_src;
+      return Copy(place_dst, dst, place_src, src, num);
+    } else {
+      VLOG(4) << "cannot fit into a copy stereotype, might be an error";
+    }
   }
 }
 

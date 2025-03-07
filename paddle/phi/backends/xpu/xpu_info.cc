@@ -10,6 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
+#ifdef PADDLE_WITH_XPU
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+
 #include <algorithm>
 #include <cstdlib>
 #include <string>
@@ -117,6 +122,9 @@ void SetXPUDeviceId(int id) {
       GetXPUDeviceCount(),
       common::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
+#ifdef PADDLE_WITH_XPU
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaSetDevice(id));
+#endif
 }
 
 static inline std::vector<std::string> Split(std::string const& original,
@@ -149,6 +157,19 @@ std::vector<int> GetXPUSelectedDevices() {
   }
   return devices;
 }
+
+#ifdef PADDLE_WITH_XPU
+std::pair<int, int> GetXpuStreamPriorityRange() {
+  int least_priority, greatest_priority;
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  return std::make_pair(least_priority, greatest_priority);
+}
+
+void XpuStreamSync(cudaStream_t stream) {
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaStreamSynchronize(stream));
+}
+#endif
 
 /**************************** Memory Management **************************/
 

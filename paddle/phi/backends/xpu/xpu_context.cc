@@ -14,6 +14,12 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 
+#ifdef PADDLE_WITH_XPU
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include "paddle/phi/core/xpu_cuda_stream.h"
+#endif
+
 #include <memory>
 
 #include "glog/logging.h"

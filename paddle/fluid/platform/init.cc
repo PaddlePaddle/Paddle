@@ -435,7 +435,7 @@ void InitMemoryMethod() {
     memory_method->allocation_deleter =
         paddle::memory::allocation::Allocator::AllocationDeleter;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
     memory_method->copy_with_stream =
         paddle::memory::Copy<phi::Place, phi::Place>;
 #endif
