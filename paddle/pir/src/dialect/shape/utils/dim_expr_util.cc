@@ -253,11 +253,9 @@ template <>
 struct IsLhsBeforeRhsStruct<Div<DimExpr>, Div<DimExpr>> {
   static bool Call(const Div<DimExpr>& lhs, const Div<DimExpr>& rhs) {
     const auto& lhs_lhs = lhs->lhs;
-    const auto& lhs_rhs = lhs->rhs;
     const auto& rhs_lhs = rhs->lhs;
-    const auto& rhs_rhs = rhs->rhs;
 
-    return IsLhsBeforeRhs(lhs_lhs, rhs_lhs) && IsLhsBeforeRhs(lhs_rhs, rhs_rhs);
+    return IsLhsBeforeRhs(lhs_lhs, rhs_lhs);
   }
 };
 
