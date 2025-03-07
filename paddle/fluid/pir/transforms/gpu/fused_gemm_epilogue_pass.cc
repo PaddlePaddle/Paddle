@@ -186,16 +186,11 @@ class FusedLinearGradSinglePattern
                        pir::PatternRewriter &rewriter) const override {
     auto dout = matmul_grad->operand_source(2);
 
-    // TODO(Pan Zhaowu): Figure out exactly why these fused kernels are perform
-    // even worse than single kernels in float32 datatype
-    /* ----------------- TEMPORARY DISABLED BECAUSE OOM ------------------
     // The datatype(without auto-promote) of matmul should not be float32 type,
     // which may cause performance issue in some cases.
     if (pir::GetDataTypeFromValue(matmul_grad.x()).isa<pir::Float32Type>()) {
       return false;
     }
-       ----------------- TEMPORARY DISABLED BECAUSE OOM ------------------
-    */
     if (pir::GetShapeFromValue(matmul_grad->operand_source(1)).size() != 2) {
       return false;
     }
