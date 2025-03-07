@@ -309,6 +309,10 @@ std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
       VLOG(4) << "Cannot transform reduce loop to different reduce axis num.";
       return std::nullopt;
     }
+    if (!ShapeProductEqual(source.loop, target.loop)) {
+      VLOG(4) << "Cannot apply append axis transform between reduce loop.";
+      return std::nullopt;
+    }
     auto get_reduce_loop = [](const LoopAxisMapping& mapping) {
       return SliceVector(mapping.loop,
                          mapping.loop.size() - mapping.reduce_axis_num,

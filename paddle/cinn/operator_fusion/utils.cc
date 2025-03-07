@@ -54,6 +54,64 @@ std::vector<int32_t> GetInt32ArrayAttributeData(
   return data;
 }
 
+std::unordered_set<pir::Operation*> GetGroupOutputOps(
+    const std::vector<pir::Operation*>& ops) {
+  const auto is_global_inplace_op =
+      [](pir::Operation* op,
+         const std::unordered_set<pir::Operation*>& ops_set) -> bool {
+    if (op->num_results() != 1 ||
+        !op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+      return false;
+    }
+    auto op_info =
+        op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+    auto input_info_list = std::get<0>(op_info);
+    auto output_info_list = std::get<2>(op_info);
+    auto inplace_info_map = std::get<3>(op_info).inplace;
+    // 1. Find which input is inplace with the output
+    std::string output_name = output_info_list.front().name;
+    std::string inplace_input_name;
+    for (const auto& [out, in] : inplace_info_map) {
+      if (out == output_name) inplace_input_name = in;
+    }
+    if (inplace_input_name.empty()) return false;
+    int inplace_input_idx = -1;
+    for (int i = 0; i < input_info_list.size(); ++i) {
+      if (input_info_list[i].name == inplace_input_name) {
+        inplace_input_idx = i;
+        break;
+      }
+    }
+    if (inplace_input_idx == -1) return false;
+    // 2. Check whether the inplace input is not the output of op in the ops_set
+    pir::Value inplace_input_value = op->operand_source(inplace_input_idx);
+    return ops_set.find(inplace_input_value.defining_op()) == ops_set.end();
+  };
+
+  auto ops_set = ToUnorderedSet(ops);
+  std::unordered_set<pir::Operation*> output_ops;
+  for (auto* op : ops) {
+    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
+      if (is_global_inplace_op(op, ops_set)) output_ops.insert(op);
+      continue;
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (!result) continue;
+      for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+           ++use_iter) {
+        auto* use_op = use_iter->owner();
+        if (ops_set.find(use_op) == ops_set.end()) {
+          output_ops.insert(op);
+          break;
+        }
+      }
+      if (output_ops.count(op)) break;
+    }
+  }
+  return output_ops;
+}
+
 std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompatibleRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("axis");

@@ -96,6 +96,9 @@ static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   return ss.str();
 }
 
+std::unordered_set<pir::Operation*> GetGroupOutputOps(
+    const std::vector<pir::Operation*>& ops);
+
 template <typename T>
 void RemoveFromVector(std::vector<T>* vec, T item) {
   auto iter = std::find(vec->begin(), vec->end(), item);

@@ -301,6 +301,11 @@ ir::Expr ReshapeLoop(const ir::Expr& root,
 
 void CheckLoopAlignment(const std::vector<ir::Expr>& roots);
 
+ir::Tensor GetOutputTensor(const ir::Expr& root);
+
+void InlineGlobalVarCompute(const std::vector<ir::Expr>& roots,
+                            const std::set<std::string>& global_var_names);
+
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework

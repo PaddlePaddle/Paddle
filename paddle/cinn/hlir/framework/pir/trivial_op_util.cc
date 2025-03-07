@@ -1095,6 +1095,85 @@ void CheckLoopAlignment(const std::vector<ir::Expr>& roots) {
   }
 }
 
+ir::Tensor GetOutputTensor(const ir::Expr& root) {
+  return (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+          ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+          ExprSetFinderUtils::ChildStores)
+      .GetSingle(root)
+      .As<ir::Store>()
+      ->tensor.as_tensor_ref();
+}
+
+ir::Expr GetComputeBody(const ir::Expr& root) {
+  const auto& compute_realize =
+      (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+       ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit)
+          .GetSingle(root);
+  const auto& compute_body =
+      (ExprSetFinderUtils::ChildStores * ExprSetFinderUtils::Store2Value)
+          .GetSingle(compute_realize);
+  return ExprTransformerUtils::SubstituteByScheduleBlockRealize(
+      compute_realize)(compute_body);
+}
+
+std::vector<ir::Var> GetOutputIters(const ir::Expr& root) {
+  ir::Expr block_realize =
+      ExprSetFinderUtils::ChildScheduleBlockRealizes(root).front();
+  const std::vector<Expr>& outer_iter_expr =
+      block_realize.As<ir::ScheduleBlockRealize>()->iter_values;
+  return ComposeUtils::ExprVec2VarVec(outer_iter_expr);
+}
+
+void InlineGlobalVarComputeImpl(const ir::Expr& global_root,
+                                const std::vector<ir::Expr>& roots) {
+  PADDLE_ENFORCE(!IsReducePattern(global_root),
+                 ::common::errors::InvalidArgument(
+                     "Can not inline global var compute for reduce pattern."));
+  auto store_indices = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                        ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                        ExprSetFinderUtils::ChildStores)
+                           .GetSingle(global_root)
+                           .As<ir::Store>()
+                           ->indices;
+  std::vector<int> var_indices_pos;
+  for (int i = 0; i < store_indices.size(); ++i) {
+    if (store_indices[i].is_var()) var_indices_pos.push_back(i);
+  }
+
+  auto target_tensor = GetOutputTensor(global_root);
+  auto target_compute_body = GetComputeBody(global_root);
+  auto target_iters = GetOutputIters(global_root);
+
+  for (auto root : roots) {
+    if (root == global_root) continue;
+    SequenceMutator(
+        ComposeUtils::GetEachTensorLoadExpr(root, target_tensor),
+        &root,
+        [&](const ir::Expr& load_expr, ir::Expr* compute_body) {
+          ComposeUtils::SubstituteTargetExprWithDestExpr(
+              load_expr,
+              ComposeUtils::SubstituteIndexVector(
+                  target_compute_body,
+                  target_iters,
+                  cinn::fusion::GatherVector(load_expr.As<ir::Load>()->indices,
+                                             var_indices_pos)),
+              compute_body);
+        });
+  }
+}
+
+void InlineGlobalVarCompute(const std::vector<ir::Expr>& roots,
+                            const std::set<std::string>& global_var_names) {
+  for (int i = 0; i < roots.size(); ++i) {
+    if (IsReducePattern(roots[i])) continue;
+    auto output_tensor_name = GetOutputTensor(roots[i])->name;
+    if (global_var_names.count(output_tensor_name)) {
+      VLOG(4) << "Inline compute of global var: " << output_tensor_name;
+      InlineGlobalVarComputeImpl(roots[i], roots);
+    }
+  }
+}
+
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework
