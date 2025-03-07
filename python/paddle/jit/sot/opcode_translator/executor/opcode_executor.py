@@ -289,7 +289,9 @@ def call_break_graph_decorator(push_n: int | Callable[[int | None], int]):
                         f"{self._code.co_name} should not break graph, but got '{e}'"
                     )
                 if isinstance(self, OpcodeExecutor):
-                    log(3, f"[BreakGraph] call function Break graph: {e}\n")
+                    log(
+                        3, f"[BreakGraph] call function Break graph:\n    {e}\n"
+                    )
                     self._break_graph_when_call(origin_stack, instr, push_n)
                     return Stop(state="BreakGraph")
                 else:

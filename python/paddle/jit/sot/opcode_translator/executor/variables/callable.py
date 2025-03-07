@@ -48,11 +48,13 @@ from ....utils import (
 )
 from ....utils.exceptions import (
     BreakGraphError,
+    BreakGraphInlineCallBreak,
     BuiltinFunctionBreak,
     DataDependencyOperationBreak,
     FallbackError,
-    InlineCallBreak,
+    FallbackInlineCallBreak,
     InnerError,
+    OtherInlineCallBreak,
     PsdbBreakReason,
     SotErrorBase,
     UnsupportedOperationBreak,
@@ -232,16 +234,22 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 f"Inline Call: {inline_executor._code.co_name.replace('<', '(').replace('>', ')')}, file {inline_executor._code.co_filename}, line {int(inline_executor._code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
-        except SotErrorBase as e:
+        except SotErrorBase as error:
             self.graph.restore_memo(checkpoint)
-            indent = " " * 4
             filename = self.value.__code__.co_filename
             lineno = self.value.__code__.co_firstlineno
             code_name = self.value.__code__.co_name
             location_info = f'File "{filename}", line {lineno}, in {code_name}'
+
+            exception_class = OtherInlineCallBreak
+            if isinstance(error, BreakGraphError):
+                exception_class = BreakGraphInlineCallBreak
+            elif isinstance(error, FallbackError):
+                exception_class = FallbackInlineCallBreak
+
             raise BreakGraphError(
-                InlineCallBreak(
-                    f"{location_info} encountered breakgraph error caused by\n{indent}{e}"
+                exception_class(
+                    f"{location_info} encountered breakgraph error caused by\n    {error}"
                 )
             )
         return output
