@@ -191,35 +191,41 @@ void BatchNormGradKernel(const Context &dev_ctx,
 
   const auto *global_mean = mean.get_ptr();
   const auto *global_var = variance.get_ptr();
+  float *global_inv_std_data = nullptr;
+  int r = 0;
+  if (use_global_stats) {
+    PADDLE_ENFORCE_NOT_NULL(
+        global_mean,
+        errors::InvalidArgument(
+            "global_mean cannot be nullptr when use_global_stats is True"));
+    PADDLE_ENFORCE_NOT_NULL(
+        global_var,
+        errors::InvalidArgument(
+            "global_var cannot be nullptr when use_global_stats is True"));
+
+    global_inv_std_data = RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());
+    float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
+    r = CalculateInvVar(dev_ctx.x_context(),
+                        global_var->data<float>(),
+                        epsilon,
+                        C,
+                        epsilon_data,
+                        global_inv_std_data);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_grad CalculateInvVar function");
+  }
+  auto *inv_std_data =
+      use_global_stats ? global_inv_std_data : saved_variance.data<float>();
+  auto *mean_data =
+      use_global_stats ? global_mean->data<float>() : saved_mean.data<float>();
 
   // TODO(guozibin): handle the situation case of N * H * W = 1
-  int r = 0;
   if (is_inplace) {
-    float *global_inv_std_data = nullptr;
-    if (use_global_stats) {
-      global_inv_std_data =
-          RAII_GUARD.alloc_l3_or_gm<float>(global_var->numel());
-      float *epsilon_data = RAII_GUARD.alloc_l3_or_gm<float>(1);
-      r = CalculateInvVar(dev_ctx.x_context(),
-                          global_var->data<float>(),
-                          epsilon,
-                          C,
-                          epsilon_data,
-                          global_inv_std_data);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r,
-                                  "batch_norm_grad CalculateInvVar function");
-    }
-
     // Here is a trick, x is a const input,
     // but trans to a non-const var, is it risky?
     float *x_fp32_data = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
     r = xpu::cast<XPUType, float>(
         dev_ctx.x_context(), x_data, x_fp32_data, x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    auto *inv_std_data =
-        use_global_stats ? global_inv_std_data : saved_variance.data<float>();
-    auto *mean_data = use_global_stats ? global_mean->data<float>()
-                                       : saved_mean.data<float>();
     r = CalculateInvBNY(dev_ctx.x_context(),
                         x_fp32_data,
                         new_scale.data<float>(),
@@ -234,49 +240,29 @@ void BatchNormGradKernel(const Context &dev_ctx,
   }
 
   bool is_nchw = data_layout == "NCHW";
-  if (use_global_stats) {
-    r = xpu::batch_norm_grad<XPUType>(dev_ctx.x_context(),
-                                      x_data,
-                                      d_y_data,
-                                      x_grad_data,
-                                      N,
-                                      C,
-                                      H,
-                                      W,
-                                      scale_data,
-                                      nullptr,
-                                      nullptr,
-                                      scale_grad_data,
-                                      bias_grad_data,
-                                      is_nchw,
-                                      global_mean->data<float>(),
-                                      global_var->data<float>(),
-                                      epsilon);
-  } else {
-    if (!x_grad) {
-      x_grad_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
-    }
-    if (!scale_grad) {
-      scale_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
-    }
-    if (!bias_grad_data) {
-      bias_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
-    }
-    r = xpu::batch_norm_grad<XPUType>(dev_ctx.x_context(),
-                                      x_data,
-                                      d_y_data,
-                                      x_grad_data,
-                                      N,
-                                      C,
-                                      H,
-                                      W,
-                                      scale_data,
-                                      saved_mean.data<float>(),
-                                      saved_variance.data<float>(),
-                                      scale_grad_data,
-                                      bias_grad_data,
-                                      is_nchw);
+  if (!x_grad) {
+    x_grad_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
   }
+  if (!scale_grad) {
+    scale_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+  }
+  if (!bias_grad_data) {
+    bias_grad_data = RAII_GUARD.alloc_l3_or_gm<float>(C);
+  }
+  r = xpu::batch_norm_grad<XPUType>(dev_ctx.x_context(),
+                                    x_data,
+                                    d_y_data,
+                                    x_grad_data,
+                                    N,
+                                    C,
+                                    H,
+                                    W,
+                                    scale_data,
+                                    mean_data,
+                                    inv_std_data,
+                                    scale_grad_data,
+                                    bias_grad_data,
+                                    is_nchw);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_grad");
 }
 
