@@ -756,3 +756,46 @@ def update_while_output_stopgradient(while_op, yield_op):
         # Set to False if stop_gradient is False
         if not stop_grad:
             while_op.result(i - 1).stop_gradient = False
+
+
+def find_index_of_yiled(value, yield_op):
+    for i, v in enumerate(yield_op.operands_source()):
+        if v.is_same(value):
+            return i
+    return -1
+
+
+def update_tuple_pop_origin_inputs(tuple_pop_outputs):
+    if tuple_pop_outputs == []:
+        return tuple_pop_outputs
+    op = tuple_pop_outputs[0][0].get_defining_op()
+    assert op.name() == "cf.tuple_pop"
+    stack_op = op.operand_source(0).get_defining_op()
+    tuple_push_inputs = stack_op.result(1).first_use().owner().operands_source()
+    tuple_push_inputs_with_if = []
+    for input in tuple_push_inputs:
+        if input.first_use().owner().name() == "cf.yield":
+            yield_op = input.first_use().owner()
+            index = find_index_of_yiled(input, yield_op)
+            assert index != -1
+            tuple_push_inputs_with_if.append(
+                yield_op.get_parent_block().parent_op.result(index)
+            )
+        else:
+            tuple_push_inputs_with_if.append(input)
+
+    # pass inlets
+    return tuple_push_inputs_with_if[1:]
+
+
+def value_in_block(value, block):
+    value_block = value.get_defining_op().get_parent_block()
+    while block.parent_op.name() != "builtin.module":
+        if block == value_block:
+            return True
+        block = block.parent_block
+    # now block is module op's block
+    if block == value_block:
+        return True
+
+    return False

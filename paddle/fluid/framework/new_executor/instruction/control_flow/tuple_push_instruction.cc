@@ -42,6 +42,8 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
         return true;
       }
     }
+  } else if (!type) {
+    return false;
   } else {
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "Only support AllocatedDenseTensorType and "

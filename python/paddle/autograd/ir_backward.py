@@ -47,7 +47,9 @@ from paddle.autograd.backward_utils import (
     some_in_set,
     update_if_output_stopgradient,
     update_no_grad_set_by_stopgradient,
+    update_tuple_pop_origin_inputs,
     update_while_output_stopgradient,
+    value_in_block,
     warning_once,
     while_prune_check,
 )
@@ -588,6 +590,16 @@ def append_backward_ops(
                     state.value_to_valuegrad[input].append([input_grad])
             i += 1
 
+    def update_if_double_grad_input_grad_map(input_grads, all_inputs):
+        assert len(input_grads) == len(
+            all_inputs
+        ), "input_grads should same to all_inputs"
+        for input, input_grad in zip(all_inputs, input_grads):
+            if isinstance(input_grad, list):
+                state.value_to_valuegrad[input].append(input_grad)
+            else:
+                state.value_to_valuegrad[input].append([input_grad])
+
     def append_yield(
         block,
         base_op,
@@ -634,7 +646,15 @@ def append_backward_ops(
                     new_value = return_map_value(
                         value, control_flow_value_to_copyvalue_map
                     )
-                    append_full_like(0.0, new_value, value, state, backward_ops)
+                    if not value_in_block(new_value, block):
+                        # new_value.defining_op is another if block's tuple_pop
+                        state.value_to_valuegrad[value] = [
+                            [paddle.pir.fake_value()]
+                        ]
+                    else:
+                        append_full_like(
+                            0.0, new_value, value, state, backward_ops
+                        )
 
                 input_grad = return_map_value(
                     state.value_to_valuegrad[value][0][0],
@@ -748,6 +768,42 @@ def append_backward_ops(
                         origin_inputs = get_real_op_inputs(op)
                         for sub_block in op.blocks():
                             build_pipe_for_block(sub_block)
+                        # only for double grad if op
+                        true_block = op.as_if_op().true_block()
+                        false_block = op.as_if_op().false_block()
+
+                        true_block_pop_inputs = []
+                        true_block_pop_input_grad_stopgradients = []
+                        if true_block.ops[0].name() == "cf.tuple_pop":
+                            for result in true_block.ops[0].results():
+                                true_block_pop_inputs.append([result])
+                                true_block_pop_input_grad_stopgradients.append(
+                                    [result.stop_gradient]
+                                )
+                        false_block_pop_inputs = []
+                        false_block_pop_input_grad_stopgradients = []
+                        if false_block.ops[0].name() == 'cf.tuple_pop':
+                            for result in false_block.ops[0].results():
+                                false_block_pop_inputs.append([result])
+                                false_block_pop_input_grad_stopgradients.append(
+                                    [result.stop_gradient]
+                                )
+
+                        if (
+                            true_block_pop_inputs != []
+                            or false_block_pop_inputs != []
+                        ):
+                            inputs = (
+                                inputs
+                                + true_block_pop_inputs
+                                + false_block_pop_inputs
+                            )
+                            input_grad_stopgradients = (
+                                input_grad_stopgradients
+                                + true_block_pop_input_grad_stopgradients
+                                + false_block_pop_input_grad_stopgradients
+                            )
+
                         with dynamic_shape_prim_vjp_guard(op, inputs):
                             input_grads = paddle.framework.core.call_vjp(
                                 op,
@@ -777,6 +833,7 @@ def append_backward_ops(
                             sub_control_flow_value_to_copyvalue_map = (
                                 control_flow_value_to_copyvalue_map.copy()
                             )
+
                             append_backward_ops(
                                 op,
                                 [input[0] for input in inputs[1:]],
@@ -801,8 +858,36 @@ def append_backward_ops(
                         )
                         for input_tuple in inputs_used_by_other_op:
                             state.value_to_valuegrad[input_tuple[0]] = []
+
                         # update input_grad map
-                        update_input_grad_map(op, input_grads, origin_inputs)
+                        if (
+                            true_block_pop_inputs != []
+                            or false_block_pop_inputs != []
+                        ):
+                            true_block_pop_inputs = (
+                                update_tuple_pop_origin_inputs(
+                                    true_block_pop_inputs
+                                )
+                            )
+                            false_block_pop_inputs = (
+                                update_tuple_pop_origin_inputs(
+                                    false_block_pop_inputs
+                                )
+                            )
+                            # delete cond inputs
+                            origin_inputs = (
+                                origin_inputs[1:]
+                                + true_block_pop_inputs
+                                + false_block_pop_inputs
+                            )
+                            update_if_double_grad_input_grad_map(
+                                input_grads, origin_inputs
+                            )
+                        else:
+                            update_input_grad_map(
+                                op, input_grads, origin_inputs
+                            )
+
                     elif op.name() == "pd_op.while":
                         origin_inputs = get_real_op_inputs(op)
                         # prepare while[cond, loop_vars, other_input] other_input's grad
@@ -938,8 +1023,11 @@ def append_backward_ops(
                     op.num_operands() == 0
                     and op.num_results() != 0
                     or op.name() == "pd_op.full_like"
+                    or op.name() == "cf.tuple_pop"
                 ):
                     for value in op.results():
+                        if value not in state.value_to_valuegrad:
+                            continue
                         if len(state.value_to_valuegrad[value]) > 1:
                             append_add_n(
                                 op,

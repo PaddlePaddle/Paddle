@@ -945,6 +945,20 @@ std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     res[i].resize(1);
     res[i][0] = pop_op.result(i - 1);
   }
+
+  // set pop op stop_gradient attribute.
+  std::vector<pir::Attribute> outs_stop_gradient;
+  for (auto i = 1u; i < op->num_operands(); ++i) {
+    auto value = op->operand_source(i);
+    auto bool_attr = value.attribute<pir::BoolAttribute>(kStopGradientAttrName);
+    outs_stop_gradient.push_back(
+        bool_attr ? bool_attr
+                  : pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+  }
+
+  pop_op->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
   return res;
 }
 
