@@ -80,7 +80,9 @@ void BindTarget(py::module *m) {
                     Target::Bit,
                     const std::vector<Target::Feature> &>())
       .def("defined", &Target::defined)
-      .def("runtime_arch", &Target::runtime_arch);
+      .def("runtime_arch", &Target::runtime_arch)
+      .def("arch_str", &Target::arch_str)
+      .def("device_name_str", &Target::device_name_str);
 
   m->def("DefaultHostTarget", &cinn::common::DefaultHostTarget)
       .def("DefaultNVGPUTarget", &cinn::common::DefaultNVGPUTarget)

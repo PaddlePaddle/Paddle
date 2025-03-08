@@ -17,13 +17,23 @@
 #include <pybind11/operators.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
+#include <pybind11/cast.h>
+#include <vector>
 
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/file_database.h"
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
+#include "paddle/cinn/ir/ir.h"
 
 
+PD_DECLARE_string(tile_config_policy);
+PD_DECLARE_string(cinn_tile_config_filename_label);
+// COMMON_DECLARE_bool(print_ir);
+PD_DECLARE_bool(cinn_measure_kernel_time);
+PHI_DECLARE_bool(enable_cinn_compile_cache);
 
 namespace cinn::pybind {
 
@@ -31,9 +41,36 @@ namespace py = pybind11;
 using namespace cinn::ir;  // NOLINT
 
 
+
 void BindTunerConfig(pybind11::module *m) {
     // 模块文档
     m->doc() = "Tuner configs and info";
+
+    py::class_<NoneReduceMethod>(*m, "NoneReduceMethod")
+        .def(py::init<>());
+    py::class_<WarpReduceMethod>(*m, "WarpReduceMethod")
+        .def(py::init<>());
+    py::class_<BlockReduceMethod>(*m, "BlockReduceMethod")
+        .def(py::init<>());
+    py::class_<DiscreteReduceMethod>(*m, "DiscreteReduceMethod")
+        .def(py::init<>());
+
+    py::class_<ScheduleConfig::TileConfig>(*m, "TileConfig")
+        .def(py::init<>())  // 默认构造函数
+        .def(py::init<int, int, int, int, int, ReduceMethod>(),  // 带参数的构造函数
+             py::arg("warp_num"),
+             py::arg("tree_reduce_num"),
+             py::arg("grid_reduce_num"),
+             py::arg("spatial_inner_num"),
+             py::arg("vectorize_factor"),
+             py::arg("reduce_method"))
+        .def_readwrite("warp_num", &ScheduleConfig::TileConfig::warp_num)
+        .def_readwrite("tree_reduce_num", &ScheduleConfig::TileConfig::tree_reduce_num)
+        .def_readwrite("grid_reduce_num", &ScheduleConfig::TileConfig::grid_reduce_num)
+        .def_readwrite("spatial_inner_num", &ScheduleConfig::TileConfig::spatial_inner_num)
+        .def_readwrite("vectorize_factor", &ScheduleConfig::TileConfig::vectorize_factor)
+        .def_readwrite("reduce_method", &ScheduleConfig::TileConfig::reduce_method);
+
 
     // 首先绑定内部的Dimension结构
     py::class_<BucketInfo::Dimension>(*m, "Dimension")
@@ -73,8 +110,13 @@ void BindTunerConfig(pybind11::module *m) {
         .def("__eq__", &BucketInfo::operator==)
         
         // 常量
-        .def_readonly_static("kMaxNumel", &BucketInfo::kMaxNumel);\
-
+        .def_readonly_static("kMaxNumel", &BucketInfo::kMaxNumel)
+        .def("__hash__", [](const BucketInfo& self) {
+            return BucketInfoHash()(self);
+        });
+    // BucketInfo Hash
+    // py::bind_map<TileConfigMap>(*m, "TileConfigMap");
+    
     // // 绑定 IterSpaceType
     // py::bind_vector<IterSpaceType>(*m, "IterSpaceType")
     //     .def(py::init<>())
@@ -131,7 +173,19 @@ void BindTunerConfig(pybind11::module *m) {
                     &ScheduleConfigManager::SetPolicy,
                     py::arg("policy"),
                     "Set the schedule policy");
-            
+
+    py::class_<FileTileConfigDatabase>(*m, "FileTileConfigDatabase")
+        .def(py::init<>())
+        .def("add_config", 
+            &FileTileConfigDatabase::AddConfig,
+            py::arg("target"),
+            py::arg("bucket_info"),
+            py::arg("config"),
+            py::arg("priority"))
+        .def("get_configs", &FileTileConfigDatabase::GetConfigs);
+    
+        
+
     // 绑定函数
     m->def("_tuner_add_config_helper", 
         &cinn::ir::search::TunerAddConfigHelper,
@@ -149,8 +203,18 @@ void BindTunerConfig(pybind11::module *m) {
               - tree_reduce_num from candidate[1]
               - spatial_inner_num from candidate[2]
         )pbdoc");
-        
+    
+    // py::module env_controller = 
+    //     m->def_submodule("EnvController", "Compiler environment variable controller");
+    // env_controller.def
 
+    m->def("_env_set_tile_config_policy",
+        [&](const std::string& policy){ FLAGS_tile_config_policy = policy;},
+        py::arg("policy")
+    );
+    m->def("_env_get_tile_config_policy",
+        [&](){ return FLAGS_tile_config_policy;}
+    );
 }
 
 }
