@@ -225,6 +225,7 @@ class FallbackWrapper:
             SubGraphInfo,
             program,
             self.graph_size(),
+            self.SIR.name,
         )
 
     def __call__(self, *args, **kwargs):

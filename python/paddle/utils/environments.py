@@ -39,17 +39,27 @@ class EnvironmentVariable(Generic[T]):
     def __init__(self, name: str, default: T):
         self.name = name
         self.default = default
+        self._last_env_value: str | None = None
         self._cached_value: T | None = None
 
-    def get_with_cache(self) -> T:
-        if self._cached_value is None:
-            self._cached_value = self.get()
+    def get(self) -> T:
+        _current_env_value = os.getenv(self.name)
+        if (
+            self._cached_value is None
+            or self._last_env_value != _current_env_value
+        ):
+            self._cached_value = self.parse_from_string()
+            self._last_env_value = _current_env_value
         return self._cached_value
 
-    def get(self) -> T:
+    def set(self, value: T) -> None:
+        os.environ[self.name] = self.convert_to_string(value)
+        self._cached_value = value
+
+    def parse_from_string(self) -> T:
         raise NotImplementedError
 
-    def set(self, value: T) -> None:
+    def convert_to_string(self, value: T) -> str:
         raise NotImplementedError
 
     def delete(self) -> None:
@@ -64,12 +74,12 @@ class StringEnvironmentVariable(EnvironmentVariable[str]):
         super().__init__(name, default)
         assert isinstance(default, str), "default must be a string"
 
-    def get(self) -> str:
+    def parse_from_string(self) -> str:
         return os.getenv(self.name, self.default)
 
-    def set(self, value: str) -> None:
+    def convert_to_string(self, value: str) -> str:
         assert isinstance(value, str), "value must be a string"
-        os.environ[self.name] = value
+        return value
 
 
 class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
@@ -77,14 +87,14 @@ class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
         super().__init__(name, default)
         assert isinstance(default, bool), "default must be a boolean"
 
-    def get(self) -> bool:
+    def parse_from_string(self) -> bool:
         default = str(self.default)
         env_str = os.getenv(self.name, default)
         return strtobool(env_str)
 
-    def set(self, value: bool) -> None:
+    def convert_to_string(self, value: bool) -> str:
         assert isinstance(value, bool), "value must be a boolean"
-        os.environ[self.name] = str(value).lower()
+        return str(value).lower()
 
     def __bool__(self) -> bool:
         raise ValueError(
@@ -100,17 +110,17 @@ class IntegerEnvironmentVariable(EnvironmentVariable[int]):
             default, bool
         ), "default must be an integer"
 
-    def get(self) -> int:
+    def parse_from_string(self) -> int:
         try:
             return int(os.getenv(self.name, str(self.default)))
         except ValueError:
             return self.default
 
-    def set(self, value: int) -> None:
+    def convert_to_string(self, value: int) -> str:
         assert isinstance(value, int) and not isinstance(
             value, bool
         ), "value must be an integer"
-        os.environ[self.name] = str(value)
+        return str(value)
 
 
 class StringListEnvironmentVariable(EnvironmentVariable[List[str]]):
@@ -118,15 +128,15 @@ class StringListEnvironmentVariable(EnvironmentVariable[List[str]]):
         super().__init__(name, default)
         assert isinstance(default, list), "default must be a list"
 
-    def get(self) -> list[str]:
+    def parse_from_string(self) -> list[str]:
         return os.getenv(self.name, ",".join(self.default)).split(",")
 
-    def set(self, value: list[str]) -> None:
+    def convert_to_string(self, value: list[str]) -> str:
         assert isinstance(value, list), "value must be a list"
         assert all(
             isinstance(x, str) for x in value
         ), "value must be a list of strings"
-        os.environ[self.name] = ",".join(value)
+        return ",".join(value)
 
 
 class EnvironmentVariableGuard(Generic[T]):

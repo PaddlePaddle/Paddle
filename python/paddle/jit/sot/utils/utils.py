@@ -125,25 +125,25 @@ class ResumeFnNameFactory(metaclass=Singleton):
 
 
 def log(level, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(*args, end="", flush=True)
 
 
 def log_do(level, fn):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         fn()
 
 
 def log_format(level, str, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(str.format(*args), end="", flush=True)
 
 
 def log_enabled(level):
-    return level <= ENV_SOT_LOG_LEVEL.get_with_cache()
+    return level <= ENV_SOT_LOG_LEVEL.get()
 
 
 def no_eval_frame(func):
