@@ -418,11 +418,11 @@ class RunnableProgram:
         )
         # Update no_need_buffer_names by rename_mapping
         for original_name, new_name in rename_mapping.items():
-            if (
-                original_name not in no_need_buffer_names
-                and new_name in no_need_buffer_names
-            ):
-                no_need_buffer_names.remove(new_name)
+            if {original_name, new_name} & set(no_need_buffer_names):
+                if original_name in no_need_buffer_names:
+                    no_need_buffer_names.remove(original_name)
+                if new_name in no_need_buffer_names:
+                    no_need_buffer_names.remove(new_name)
 
         value_program_attr = {}
         for k, ns in self.program_name_attr.items():
