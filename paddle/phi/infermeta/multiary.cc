@@ -1117,10 +1117,20 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
 
       if (target_dim_size != 1 && dim_size != 1 &&
           target_dim_size != dim_size) {
-        PADDLE_THROW(errors::InvalidArgument(
-            "BroadcastTensorsOp inputs does not satisfy bcast semantics, "
-            "please check axis = %d in reverse order",
-            index));
+        if (dim_size == -1) {
+          dim_size = target_dim_size;
+        } else if (target_dim_size == -1) {
+          target_dim_size = dim_size;
+          continue;
+        } else {
+          PADDLE_THROW(errors::InvalidArgument(
+              "BroadcastTensorsOp inputs does not satisfy bcast semantics, "
+              "please check axis = %d in reverse order, dim_size[%d] != "
+              "target_dim_size[%d]",
+              index,
+              dim_size,
+              target_dim_size));
+        }
       }
 
       // We performed bcast semantics check at python level
