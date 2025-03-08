@@ -20,6 +20,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/common/exception.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 namespace phi {
 
@@ -269,6 +270,15 @@ GPUPlace DefaultGPUPlace() {
   return GPUPlace(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::GetCurrentDeviceId());
+#else
+      0);
+#endif
+}
+
+phi::XPUPlace DefaultXPUPlace() {
+  return phi::XPUPlace(
+#ifdef PADDLE_WITH_XPU
+      phi::backends::xpu::GetXPUCurrentDeviceId());
 #else
       0);
 #endif

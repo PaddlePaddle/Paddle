@@ -261,4 +261,6 @@ PADDLE_API bool operator==(PlaceType place_type, const Place& place);
 
 PADDLE_API GPUPlace DefaultGPUPlace();
 
+PADDLE_API phi::XPUPlace DefaultXPUPlace();
+
 }  // namespace paddle

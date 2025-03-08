@@ -202,6 +202,10 @@ Place GetDefaultPlace() {
   if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
     return paddle::DefaultGPUPlace();
   }
+#elif defined(PADDLE_WITH_XPU)
+  if (phi::backends::xpu::GetXPUDeviceCount() >= 0) {
+    return paddle::DefaultXPUPlace();
+  }
 #endif
   return paddle::CPUPlace();
 }
