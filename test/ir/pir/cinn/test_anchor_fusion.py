@@ -300,6 +300,20 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
 
+    def test_broadcast_transpose(self):
+        def func(x):
+            y = x.sum(axis=0)
+            y = y.broadcast_to([128, 128])
+            y = y.transpose([1, 0])
+            y = x + y
+            return y.sum(axis=0)
+
+        def init():
+            x = paddle.rand((128, 128))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func)
+
 
 if __name__ == "__main__":
     unittest.main()
