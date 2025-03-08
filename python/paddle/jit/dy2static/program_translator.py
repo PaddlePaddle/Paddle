@@ -1304,12 +1304,14 @@ class ConcreteProgram:
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
                 from ..pir_dy2static.parameter_recorder import (
+                    _global_inplace_map,
                     _global_parameter_recorder,
                 )
 
                 all_parameters_and_buffers = _global_parameter_recorder.pop(
                     main_program
                 )
+                _global_inplace_map.pop(main_program)
                 if outputs is not None:
                     need_wrap_into_list = (
                         not isinstance(outputs, (tuple, list))
