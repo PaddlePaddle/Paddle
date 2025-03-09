@@ -185,6 +185,7 @@ class CinnJitInstruction::FnPtrImpl {
       if (static_cast<size_t>(i) < ir_dim.size() &&
           FLAGS_cinn_check_jit_instruction_shape) {
         CheckDims(ir_dim[i], dim);
+        CheckDimGTZero(dim, this->cinn_kernel_info_.fn_name);
       }
       kernel_tensor_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
@@ -222,6 +223,19 @@ class CinnJitInstruction::FnPtrImpl {
                               i,
                               second[i]));
       }
+    }
+  }
+
+  void CheckDimGTZero(const DDim& dim, const std::string& kernel_name) {
+    VLOG(3) << "Start Check that Dims is greater than zero in jit instruction.";
+    for (int i = 0; i < dim.size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          dim.at(i) >= 0,
+          true,
+          phi::errors::PreconditionNotMet("The dim of tensor MUST >= 0. "
+                                          "Jit Kernel name: %s. Tensor dim: %s",
+                                          kernel_name,
+                                          dim.to_str()));
     }
   }
 
