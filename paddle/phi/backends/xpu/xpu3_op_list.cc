@@ -1730,6 +1730,17 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64})},
       {"blha_get_max_len",
        XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
+      {"full_with_tensor",
+       XPUKernelSet({phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16,
+                     phi::DataType::FLOAT64,
+                     phi::DataType::BOOL,
+                     phi::DataType::INT8,
+                     phi::DataType::UINT8,
+                     phi::DataType::INT16,
+                     phi::DataType::INT64,
+                     phi::DataType::INT32})},
   };
 
   return s_xpu3_kernels;
