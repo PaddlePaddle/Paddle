@@ -38,7 +38,7 @@ class DistributedInputSpec(InputSpec):
         self.local_shape = local_shape
 
     @classmethod
-    def from_dtensor(cls, dtensor, name=None):
+    def from_dtensor(cls, dtensor, name=None, shape=None):
         """
         Generates a DistributedInputSpec based on dist tensor.
 
@@ -49,7 +49,7 @@ class DistributedInputSpec(InputSpec):
             A DistributedInputSpec instance generated from dtensor.
         """
         return cls(
-            shape=dtensor.shape,
+            shape=dtensor.shape if shape is None else shape,
             dtype=dtensor.dtype,
             name=name,
             stop_gradient=dtensor.stop_gradient,
