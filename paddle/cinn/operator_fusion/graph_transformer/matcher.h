@@ -62,7 +62,7 @@ struct OnlyOneDownstreamMatcher {
  * the number is smaller than 512.
  */
 struct InputOutputMaximumConstrain {
-  const int MAX_INPUT_OUTPUT_NUMBER = 480;  // cuda only support 512
+  const int MAX_INPUT_OUTPUT_NUMBER = 384;  // cuda only support 512
   std::vector<pir::Value> GetInputValuesExceptMiddle(
       const std::vector<pir::Operation*>& ops) {
     return VectorDiff(GetInputsValue(ops), GetOutputsValue(ops));
