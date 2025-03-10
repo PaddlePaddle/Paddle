@@ -512,9 +512,9 @@ std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
       }
     }
     new_axis_ids = ConcatVector(
-        new_axis_ids, SliceVector(axis_ids, cur_axis_size, axis_ids.size()));
+        new_axis_ids, SliceVector(axis_ids, in_shape.size(), axis_ids.size()));
     axis_ids = new_axis_ids;
-    cur_axis_size = out_shape.size();
+    cur_axis_size = cur_axis_size - in_shape.size() + out_shape.size();
     result.push_back(transform);
   };
 
