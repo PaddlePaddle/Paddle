@@ -53,20 +53,26 @@ struct Config {
         num_max_rdma_chunked_recv_tokens(num_max_rdma_chunked_recv_tokens) {
     EP_HOST_ASSERT(num_sms >= 0);
     EP_HOST_ASSERT(num_max_nvl_chunked_send_tokens > 0 &&
-                   num_max_nvl_chunked_recv_tokens > 0);  // NOLINT
+                   num_max_nvl_chunked_recv_tokens > 0);
     EP_HOST_ASSERT(num_max_nvl_chunked_send_tokens <
                    num_max_nvl_chunked_recv_tokens);
     EP_HOST_ASSERT(num_max_rdma_chunked_send_tokens > 0 &&
-                   num_max_rdma_chunked_recv_tokens > 0);  // NOLINT
-    EP_HOST_ASSERT(num_max_rdma_chunked_send_tokens <
-                   num_max_rdma_chunked_recv_tokens);
+                   num_max_rdma_chunked_recv_tokens > 0);
+
+    // Ceil up RDMA buffer size
     this->num_max_rdma_chunked_recv_tokens = align<int>(
         num_max_rdma_chunked_recv_tokens, num_max_rdma_chunked_send_tokens);
+    EP_HOST_ASSERT(num_max_rdma_chunked_send_tokens <
+                   num_max_rdma_chunked_recv_tokens);
+    // NOTES: this assertion is related to RDMA lazy head update, we must ensure
+    // senders always have space to push
+    EP_HOST_ASSERT(num_max_rdma_chunked_send_tokens <=
+                   num_max_rdma_chunked_recv_tokens / 2);
   }
 
   size_t get_nvl_buffer_size_hint(size_t hidden_bytes, int num_ranks) const {
     // Below are some assumptions
-    // TODO(Honqing-work): add assertions
+    // TODO(Xreki): add assertions
     constexpr int kNumMaxTopK = 128;
     constexpr int kNumMaxScales = 128;
     EP_HOST_ASSERT(num_ranks < NUM_MAX_NVL_PEERS ||
@@ -81,9 +87,11 @@ struct Config {
         num_channels * num_nvl_ranks * (2 * num_rdma_ranks + 3) * sizeof(int);
     num_bytes += num_channels * num_nvl_ranks *
                  num_max_nvl_chunked_recv_tokens * hidden_bytes;
+#ifdef PADDLE_WITH_NVSHMEM
     num_bytes += num_channels * num_nvl_ranks *
                  num_max_nvl_chunked_recv_tokens *
                  internode::get_source_meta_bytes();
+#endif
     num_bytes += num_channels * num_nvl_ranks *
                  num_max_nvl_chunked_recv_tokens * kNumMaxTopK *
                  sizeof(int64_t);
@@ -96,36 +104,43 @@ struct Config {
     return num_bytes;
   }
 
-  // size_t get_rdma_buffer_size_hint(int64_t hidden_bytes, int num_ranks) const
-  // {
-  //     // Legacy mode
-  //     if (num_ranks <= NUM_MAX_NVL_PEERS)
-  //         return 0;
+  size_t get_rdma_buffer_size_hint(int64_t hidden_bytes, int num_ranks) const {
+    // Legacy mode
+    if (num_ranks <= NUM_MAX_NVL_PEERS) return 0;
 
-  //     // Below are some assumptions
-  //     // TODO: add assertions
-  //     constexpr int kNumMaxTopK = 128;
-  //     constexpr int kNumMaxScales = 128;
-  //     EP_HOST_ASSERT(num_ranks % NUM_MAX_NVL_PEERS == 0);
-  //     EP_HOST_ASSERT(num_sms % 2 == 0);
-  //     const int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
-  //     const int num_channels = num_sms / 2;
+    // Below are some assumptions
+    // TODO(Xreki): add assertions
+    constexpr int kNumMaxTopK = 128;
+    constexpr int kNumMaxScales = 128;
+    EP_HOST_ASSERT(num_ranks % NUM_MAX_NVL_PEERS == 0);
+    EP_HOST_ASSERT(num_sms % 2 == 0);
+    const int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
+    const int num_channels = num_sms / 2;
 
-  //     size_t num_bytes = 0;
-  //     num_bytes += num_channels * num_rdma_ranks * (NUM_MAX_NVL_PEERS * 2 +
-  //     2) * 2 * sizeof(int); num_bytes += num_channels * num_rdma_ranks *
-  //     num_max_rdma_chunked_recv_tokens * hidden_bytes * 2; num_bytes +=
-  //     num_channels * num_rdma_ranks * num_max_rdma_chunked_recv_tokens *
-  //     internode::get_source_meta_bytes() * 2; num_bytes += num_channels *
-  //     num_rdma_ranks * num_max_rdma_chunked_recv_tokens * kNumMaxTopK *
-  //     sizeof(int64_t) * 2; num_bytes += num_channels * num_rdma_ranks *
-  //     num_max_rdma_chunked_recv_tokens * kNumMaxTopK * sizeof(float) * 2;
-  //     num_bytes += num_channels * num_rdma_ranks *
-  //     num_max_rdma_chunked_recv_tokens * kNumMaxScales * sizeof(float) * 2;
-  //     num_bytes += num_channels * num_rdma_ranks *
-  //     num_max_rdma_chunked_recv_tokens * sizeof(int4) * 2; num_bytes =
-  //     ((num_bytes + 127) / 128) * 128; return num_bytes;
-  // }
+    size_t num_bytes = 0;
+    num_bytes += num_channels * num_rdma_ranks * (NUM_MAX_NVL_PEERS * 2 + 2) *
+                 2 * sizeof(int);
+    num_bytes += num_channels * num_rdma_ranks *
+                 num_max_rdma_chunked_recv_tokens * hidden_bytes * 2;
+#ifdef PADDLE_WITH_NVSHMEM
+    num_bytes += num_channels * num_rdma_ranks *
+                 num_max_rdma_chunked_recv_tokens *
+                 internode::get_source_meta_bytes() * 2;
+#endif
+    num_bytes += num_channels * num_rdma_ranks *
+                 num_max_rdma_chunked_recv_tokens * kNumMaxTopK *
+                 sizeof(int64_t) * 2;
+    num_bytes += num_channels * num_rdma_ranks *
+                 num_max_rdma_chunked_recv_tokens * kNumMaxTopK *
+                 sizeof(float) * 2;
+    num_bytes += num_channels * num_rdma_ranks *
+                 num_max_rdma_chunked_recv_tokens * kNumMaxScales *
+                 sizeof(float) * 2;
+    num_bytes += num_channels * num_rdma_ranks *
+                 num_max_rdma_chunked_recv_tokens * sizeof(int4) * 2;
+    num_bytes = ((num_bytes + 127) / 128) * 128;
+    return num_bytes;
+  }
 };
 
 struct LowLatencyBuffer {
@@ -134,7 +149,6 @@ struct LowLatencyBuffer {
   void* dispatch_rdma_send_buffer = nullptr;
   void* dispatch_rdma_recv_data_buffer = nullptr;
   int* dispatch_rdma_recv_count_buffer = nullptr;
-  int* dispatch_rdma_atomic_token_counter = nullptr;
 
   void* combine_rdma_send_buffer = nullptr;
   void* combine_rdma_recv_data_buffer = nullptr;
@@ -165,7 +179,7 @@ struct LowLatencyLayout {
                    int num_ranks,
                    int num_experts) {
     const int num_scales = hidden / 128;
-    const int num_local_experts = num_experts / num_ranks;
+    // const int num_local_experts = num_experts / num_ranks;
 
     // Dispatch and combine layout:
     //  - 2 symmetric odd/even send buffer
@@ -173,7 +187,7 @@ struct LowLatencyLayout {
     //  - 2 symmetric odd/even signaling buffers
 
     // Message sizes
-    EP_HOST_ASSERT(num_scales * sizeof(float) <= hidden);
+    EP_HOST_ASSERT(num_scales * static_cast<int64_t>(sizeof(float)) <= hidden);
     size_t num_bytes_per_dispatch_msg =
         hidden + num_scales * sizeof(float) + sizeof(int4);
     size_t num_bytes_per_combine_msg =
@@ -191,7 +205,7 @@ struct LowLatencyLayout {
     total_bytes += send_buffer_bytes * 2;
 
     // Symmetric receive buffers
-    // optimize memory usages later
+    // TODO(Xreki): optimize memory usages
     size_t dispatch_recv_data_buffer_bytes = num_experts *
                                              num_max_dispatch_tokens_per_rank *
                                              num_bytes_per_dispatch_msg;
@@ -205,13 +219,9 @@ struct LowLatencyLayout {
 
     // Symmetric signaling buffers
     size_t dispatch_recv_count_buffer_bytes = num_experts * sizeof(int);
-    size_t dispatch_recv_atomic_token_counter_bytes =
-        num_local_experts * sizeof(int);
     size_t combine_recv_flag_buffer_bytes = dispatch_recv_count_buffer_bytes;
-    size_t signaling_buffer_bytes =
-        std::max(dispatch_recv_count_buffer_bytes +
-                     dispatch_recv_atomic_token_counter_bytes,
-                 combine_recv_flag_buffer_bytes);
+    size_t signaling_buffer_bytes = std::max(dispatch_recv_count_buffer_bytes,
+                                             combine_recv_flag_buffer_bytes);
     total_bytes += signaling_buffer_bytes * 2;
 
     // Assign pointers
@@ -225,10 +235,6 @@ struct LowLatencyLayout {
           advance<int*>(rdma_buffer,
                         send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
                             signaling_buffer_bytes * i),
-          advance<int*>(rdma_buffer,
-                        send_buffer_bytes * 2 + recv_buffer_bytes * 2 +
-                            signaling_buffer_bytes * i +
-                            dispatch_recv_count_buffer_bytes),
           advance(rdma_buffer, send_buffer_bytes * i),
           advance(rdma_buffer, send_buffer_bytes * 2 + recv_buffer_bytes * i),
           advance<int*>(rdma_buffer,

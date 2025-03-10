@@ -21,7 +21,11 @@ namespace deep_ep::detail {
 using ScalarType = phi::DataType;
 
 constexpr auto kInt32 = phi::DataType::INT32;
+constexpr auto kInt64 = phi::DataType::INT64;
 constexpr auto kBool = phi::DataType::BOOL;
+constexpr auto kFloat8_e4m3fn = phi::DataType::FLOAT8_E4M3FN;
+constexpr auto kBFloat16 = phi::DataType::BFLOAT16;
 constexpr auto kFloat32 = phi::DataType::FLOAT32;
 constexpr auto kByte = phi::DataType::INT8;
+
 }  // namespace deep_ep::detail

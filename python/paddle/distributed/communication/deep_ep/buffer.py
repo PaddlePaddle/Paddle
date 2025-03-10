@@ -19,11 +19,15 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import paddle
 import paddle.distributed as dist
-from paddle.base.core import Buffer as CppBuffer, Config
+from paddle.base.core import (
+    Buffer as CppBuffer,
+    Config,
+    get_low_latency_rdma_size_hint,
+)
 
 if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
@@ -37,8 +41,8 @@ class Buffer:
     """
     The core expert-parallel (EP) communication buffers for Mixture of Experts (MoE) model, which supports:
         - high-throughput intranode all-to-all (dispatch and combine, using NVLink)
-        - high-throughput internode all-to-all (dispatch and combine, using RDMA without AR)
-        - low-latency all-to-all (dispatch and combine, using RDMA, AR supported)
+        - high-throughput internode all-to-all (dispatch and combine, using RDMA and NVLink)
+        - low-latency all-to-all (dispatch and combine, using RDMA)
 
     Attributes:
         num_sms: the SMs used in high-throughput kernels.
@@ -72,7 +76,6 @@ class Buffer:
                 to the number of local experts.
         """
 
-        # TODO: argument docs
         # Initialize the CPP runtime
         self.rank = group.rank
         self.group_size = group.world_size
@@ -116,14 +119,7 @@ class Buffer:
                 # NOTES: NVSHMEM initialization requires at least 256 MiB
                 os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
 
-            # Disable PCIe relaxed ordering to avoid out-of-order messages
-            os.environ['NVSHMEM_IB_ENABLE_RELAXED_ORDERING'] = '0'
-
-            # NOTES: make sure AR (Adaptive Routing) is turned off while running normal kernels, as we cannot verify AR status in the code
-            # Synchronize using the root ID
-            nvshmem_unique_ids = [
-                None,
-            ] * self.group_size
+            nvshmem_unique_ids = []
             if (low_latency_mode and self.rank == 0) or (
                 not low_latency_mode and self.runtime.get_rdma_rank() == 0
             ):
@@ -160,6 +156,29 @@ class Buffer:
         return EventOverlap(EventHandle())
 
     @staticmethod
+    def get_low_latency_rdma_size_hint(
+        num_max_dispatch_tokens_per_rank: int,
+        hidden: int,
+        num_ranks: int,
+        num_experts: int,
+    ) -> int:
+        """
+        Get a minimum size requirement for the RDMA buffer. The size calculation will be done with BF16.
+
+        Arguments:
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            hidden: the hidden dimension of each token.
+            num_ranks: the number of EP group ranks.
+            num_experts: the number of all experts.
+
+        Returns:
+            size: the RDMA buffer size recommended.
+        """
+        return get_low_latency_rdma_size_hint(
+            num_max_dispatch_tokens_per_rank, hidden, num_ranks, num_experts
+        )
+
+    @staticmethod
     def get_dispatch_config(num_ranks: int) -> Config:
         """
         Get a recommended dispatch config.
@@ -170,12 +189,10 @@ class Buffer:
         Returns:
             config: the recommended config.
         """
-        # Intranode
-        if num_ranks <= 8:
-            return Config(Buffer.num_sms, 6, 256, 6, 128)
-
-        # Internode
         config_map = {
+            2: Config(Buffer.num_sms, 16, 256, 6, 128),
+            4: Config(Buffer.num_sms, 16, 256, 6, 128),
+            8: Config(Buffer.num_sms, 6, 256, 6, 128),
             16: Config(Buffer.num_sms, 16, 288, 20, 128),
             24: Config(Buffer.num_sms, 8, 288, 32, 128),
             32: Config(Buffer.num_sms, 8, 288, 32, 128),
@@ -200,12 +217,10 @@ class Buffer:
         Returns:
             config: the recommended config.
         """
-        # Intranode
-        if num_ranks <= 8:
-            return Config(Buffer.num_sms, 6, 256, 6, 128)
-
-        # Internode
         config_map = {
+            2: Config(Buffer.num_sms, 6, 256, 6, 128),
+            4: Config(Buffer.num_sms, 6, 256, 6, 128),
+            8: Config(Buffer.num_sms, 6, 256, 6, 128),
             16: Config(Buffer.num_sms, 2, 288, 28, 128),
             24: Config(Buffer.num_sms, 1, 288, 20, 128),
             32: Config(Buffer.num_sms, 1, 288, 20, 128),
@@ -302,7 +317,7 @@ class Buffer:
         Dispatch tokens to different ranks, both intranode and internode settings are supported.
         Intranode kernels require all the ranks should be visible via NVLink.
         Internode kernels require the ranks in a node should be visible via NVLink, while the ranks with the same GPU
-            index should be visible via RDMA. AR must be disabled.
+            index should be visible via RDMA.
 
         Arguments:
             x: `paddle.Tensor` or tuple of `paddle.Tensor`, for the first type, the shape must be `[num_tokens, hidden]`,
@@ -343,11 +358,20 @@ class Buffer:
 
         # Internode
         if self.runtime.get_num_rdma_ranks() > 1:
-            # return self.internode_dispatch(x, handle, num_tokens_per_rank, num_tokens_per_rdma_rank, is_token_in_rank, num_tokens_per_expert,
-            #                                topk_idx, topk_weights, expert_alignment, config, previous_event, async_finish, allocate_on_comm_stream)
-            # TODO: support internode dispatch
-            raise NotImplementedError(
-                'Internode dispatch is not implemented yet'
+            return self.internode_dispatch(
+                x,
+                handle,
+                num_tokens_per_rank,
+                num_tokens_per_rdma_rank,
+                is_token_in_rank,
+                num_tokens_per_expert,
+                topk_idx,
+                topk_weights,
+                expert_alignment,
+                config,
+                previous_event,
+                async_finish,
+                allocate_on_comm_stream,
             )
 
         # Launch the kernel with cached or non-cached mode
@@ -458,7 +482,7 @@ class Buffer:
             settings are supported.
         Intranode kernels require all the ranks should be visible via NVLink.
         Internode kernels require the ranks in a node should be visible via NVLink, while the ranks with the same GPU
-            index should be visible via RDMA. AR must be disabled.
+            index should be visible via RDMA.
 
         Arguments:
             x: `[num_tokens, hidden]` with `bfloat16`, the tokens to send for reducing to its original ranks.
@@ -483,10 +507,14 @@ class Buffer:
 
         # Internode
         if self.runtime.get_num_rdma_ranks() > 1:
-            # return self.internode_combine(x, handle, topk_weights, config, previous_event, async_finish, allocate_on_comm_stream)
-            # TODO: support internode combine
-            raise NotImplementedError(
-                'Internode combine is not implemented yet'
+            return self.internode_combine(
+                x,
+                handle,
+                topk_weights,
+                config,
+                previous_event,
+                async_finish,
+                allocate_on_comm_stream,
             )
 
         # NOTES: the second `_` is for the sending side, so we should use the third one
@@ -513,3 +541,375 @@ class Buffer:
             allocate_on_comm_stream,
         )
         return recv_x, recv_topk_weights, EventOverlap(event)
+
+    # noinspection PyTypeChecker
+    def internode_dispatch(
+        self,
+        x: paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor],
+        handle: tuple | None = None,
+        num_tokens_per_rank: paddle.Tensor | None = None,
+        num_tokens_per_rdma_rank: paddle.Tensor | None = None,
+        is_token_in_rank: paddle.Tensor | None = None,
+        num_tokens_per_expert: paddle.Tensor | None = None,
+        topk_idx: paddle.Tensor | None = None,
+        topk_weights: paddle.Tensor | None = None,
+        expert_alignment: int = 1,
+        config: Config | None = None,
+        previous_event: EventOverlap | None = None,
+        async_finish: bool = False,
+        allocate_on_comm_stream: bool = False,
+    ) -> tuple[
+        tuple[paddle.Tensor, paddle.Tensor] | paddle.Tensor,
+        paddle.Tensor | None,
+        paddle.Tensor | None,
+        list[int],
+        tuple,
+        EventOverlap,
+    ]:
+        """
+        Internode dispatch implementation, for more details, please refer to the `dispatch` docs.
+        Normally, you should not directly call this function.
+        """
+        assert config is not None
+
+        # Launch the kernel with cached or non-cached mode
+        x, x_scales = x if isinstance(x, tuple) else (x, None)
+        if handle is not None:
+            assert topk_idx is None and topk_weights is None
+            (
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                recv_src_meta,
+                send_rdma_head,
+                send_nvl_head,
+            ) = handle
+            num_recv_tokens = recv_src_meta.shape[0]
+            num_rdma_recv_tokens = send_nvl_head.shape[0]
+            recv_x, recv_x_scales, _, _, _, _, _, _, _, _, _, _, _, _, event = (
+                self.runtime.internode_dispatch(
+                    x,
+                    x_scales,
+                    topk_idx,
+                    topk_weights,
+                    None,
+                    None,
+                    is_token_in_rank,
+                    None,
+                    num_recv_tokens,
+                    num_rdma_recv_tokens,
+                    rdma_channel_prefix_matrix,
+                    recv_rdma_rank_prefix_sum,
+                    gbl_channel_prefix_matrix,
+                    recv_gbl_rank_prefix_sum,
+                    expert_alignment,
+                    config,
+                    getattr(previous_event, 'event', None),
+                    async_finish,
+                    allocate_on_comm_stream,
+                )
+            )
+            return (
+                (recv_x, recv_x_scales) if x_scales is not None else recv_x,
+                None,
+                None,
+                None,
+                None,
+                EventOverlap(event),
+            )
+        else:
+            assert (
+                num_tokens_per_rank is not None
+                and is_token_in_rank is not None
+                and num_tokens_per_expert is not None
+            )
+            (
+                recv_x,
+                recv_x_scales,
+                recv_topk_idx,
+                recv_topk_weights,
+                num_recv_tokens_per_expert_list,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                recv_src_meta,
+                send_rdma_head,
+                send_nvl_head,
+                event,
+            ) = self.runtime.internode_dispatch(
+                x,
+                x_scales,
+                topk_idx,
+                topk_weights,
+                num_tokens_per_rank,
+                num_tokens_per_rdma_rank,
+                is_token_in_rank,
+                num_tokens_per_expert,
+                0,
+                0,
+                None,
+                None,
+                None,
+                None,
+                expert_alignment,
+                config,
+                getattr(previous_event, 'event', None),
+                async_finish,
+                allocate_on_comm_stream,
+            )
+            handle = (
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                recv_src_meta,
+                send_rdma_head,
+                send_nvl_head,
+            )
+            return (
+                (recv_x, recv_x_scales) if x_scales is not None else recv_x,
+                recv_topk_idx,
+                recv_topk_weights,
+                num_recv_tokens_per_expert_list,
+                handle,
+                EventOverlap(event),
+            )
+
+    # noinspection PyTypeChecker
+    def internode_combine(
+        self,
+        x: paddle.Tensor,
+        handle: tuple | list,
+        topk_weights: paddle.Tensor | None = None,
+        config: Config | None = None,
+        previous_event: EventOverlap | None = None,
+        async_finish: bool = False,
+        allocate_on_comm_stream: bool = False,
+    ) -> tuple[paddle.Tensor, paddle.Tensor | None, EventOverlap]:
+        """
+        Internode combine implementation, for more details, please refer to the `combine` docs.
+        Normally, you should not directly call this function.
+        """
+        assert config is not None
+
+        # Unpack handle
+        (
+            is_combined_token_in_rank,
+            _,
+            _,
+            rdma_channel_prefix_matrix,
+            rdma_rank_prefix_sum,
+            gbl_channel_prefix_matrix,
+            gbl_rank_prefix_sum,
+            src_meta,
+            send_rdma_head,
+            send_nvl_head,
+        ) = handle
+
+        # Launch the kernel
+        combined_x, combined_topk_weights, event = (
+            self.runtime.internode_combine(
+                x,
+                topk_weights,
+                src_meta,
+                is_combined_token_in_rank,
+                rdma_channel_prefix_matrix,
+                rdma_rank_prefix_sum,
+                gbl_channel_prefix_matrix,
+                send_rdma_head,
+                send_nvl_head,
+                config,
+                getattr(previous_event, 'event', None),
+                async_finish,
+                allocate_on_comm_stream,
+            )
+        )
+        return combined_x, combined_topk_weights, EventOverlap(event)
+
+    def clean_low_latency_buffer(
+        self,
+        num_max_dispatch_tokens_per_rank: int,
+        hidden: int,
+        num_experts: int,
+    ) -> None:
+        """
+        As low-latency kernels require part of the buffer to be zero-initialized, so it is vital to clean the buffer
+            if the buffer is dirty at some time.
+        For example, after running the normal dispatch/combine, you must run this function before executing any
+            low-latency kernel.
+
+        Arguments:
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            hidden: the hidden dimension of each token.
+            num_experts: the number of all experts.
+        """
+        self.runtime.clean_low_latency_buffer(
+            num_max_dispatch_tokens_per_rank, hidden, num_experts
+        )
+
+    # noinspection PyTypeChecker
+    def low_latency_dispatch(
+        self,
+        x: paddle.Tensor,
+        topk_idx: paddle.Tensor,
+        num_max_dispatch_tokens_per_rank: int,
+        num_experts: int,
+        async_finish: bool = False,
+        return_recv_hook: bool = False,
+    ) -> tuple[
+        tuple[paddle.Tensor, paddle.Tensor],
+        paddle.Tensor,
+        tuple,
+        EventOverlap,
+        Callable,
+    ]:
+        """
+        A low-latency implementation for dispatching with IBGDA **with implicit FP8 casting**.
+        This kernel requires all the ranks (no matter intranode or internode) should be visible via RDMA
+            (specifically, IBGDA must be enabled).
+        Even for ranks in the same node, NVLink are fully disabled for simplicity.
+        Warning: as there are only two buffers, and the returned tensors reuse the buffer, you can not hold more than 2
+            low-latency kernels' result tensor at a single moment.
+
+        Arguments:
+            x: `paddle.Tensor` with `paddle.bfloat16`, shaped as `[num_tokens, hidden]`, only several hidden shapes are
+                supported. The number of tokens to be dispatched must be less than `num_max_dispatch_tokens_per_rank`.
+            topk_idx: `paddle.Tensor` with `paddle.int64`, shaped as `[num_tokens, num_topk]`, only several top-k shapes
+                are supported. `-1` indices (not selecting any expert) are supported.
+            num_max_dispatch_tokens_per_rank: the maximum number of tokens to dispatch, all the ranks must hold the same value.
+            num_experts: the number of all experts.
+            async_finish: the current stream will not wait for the communication kernels to be finished if set.
+            return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
+                but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
+                If you not set this flag, the kernel will ensure the data's arrival.
+
+        Returns:
+            recv_x: a tuple with received tokens for each expert. The first element is a `paddle.Tensor` shaped as
+                `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden]` with `paddle.float8_e4m3fn`.
+                The second tensor is the corresponding scales for the first element with shape
+                `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden // 128]` with `paddle.float32`.
+                Notice that, the last-two-dimension of the scaling tensors are in column-major for TMA compatibility.
+                Moreover, not all tokens are valid, only some of the `num_max_dispatch_tokens_per_rank * num_ranks` are,
+                as we do not synchronize CPU received count with GPU (also not incompatible with CUDA graph).
+            recv_count: a tensor shaped `[num_local_experts]` with type `paddle.int32`, indicating how many tokens each
+                expert receive. As mentioned before, all not tokens are valid in `recv_x`.
+            handle: the communication handle to be used in the `low_latency_combine` function.
+            event: the event after executing the kernel (valid only if `async_finish` is set).
+            hook: the receiving hook function (valid only if `return_recv_hook` is set).
+        """
+        (
+            packed_recv_x,
+            packed_recv_x_scales,
+            packed_recv_count,
+            packed_recv_src_info,
+            packed_recv_layout_range,
+            event,
+            hook,
+        ) = self.runtime.low_latency_dispatch(
+            x,
+            topk_idx,
+            num_max_dispatch_tokens_per_rank,
+            num_experts,
+            async_finish,
+            return_recv_hook,
+        )
+        handle = (
+            packed_recv_src_info,
+            packed_recv_layout_range,
+            num_max_dispatch_tokens_per_rank,
+            num_experts,
+        )
+        tensors_to_record = (
+            x,
+            topk_idx,
+            packed_recv_x,
+            packed_recv_x_scales,
+            packed_recv_count,
+            packed_recv_src_info,
+            packed_recv_layout_range,
+        )
+        return (
+            (packed_recv_x, packed_recv_x_scales),
+            packed_recv_count,
+            handle,
+            EventOverlap(event, tensors_to_record if async_finish else None),
+            hook,
+        )
+
+    # noinspection PyTypeChecker
+    def low_latency_combine(
+        self,
+        x: paddle.Tensor,
+        topk_idx: paddle.Tensor,
+        topk_weights: paddle.Tensor,
+        handle: tuple,
+        async_finish: bool = False,
+        return_recv_hook: bool = False,
+    ) -> tuple[paddle.Tensor, EventOverlap, Callable]:
+        """
+        A low-latency implementation for combining tokens (reduce **with weights**) with IBGDA.
+        This kernel requires all the ranks (no matter intranode or internode) should be visible via RDMA
+            (specifically, IBGDA must be enabled).
+        Even for ranks in the same node, NVLink are fully disabled for simplicity.
+        Warning: as there are only two buffers, and the returned tensors reuse the buffer, you can not hold more than 2
+            low-latency kernels' result tensor at a single moment.
+
+        Arguments:
+            x: `[num_local_experts, num_max_dispatch_tokens_per_rank * num_ranks, hidden]` with `paddle.bfloat16`,
+                the local calculated tokens to be sent to this original rank and reduced.
+            topk_idx: `[num_combined_tokens, num_topk]` with `paddle.int64`, the expert indices selected by the dispatched
+                tokens. `-1` indices (not selecting any expert) are supported. Note that, `num_combined_tokens` equals
+                to the number of dispatched tokens.
+            topk_weights: `[num_combined_tokens, num_topk]` with `paddle.float32`, the expert weights selected by the dispatched
+                tokens. The received tokens will be reduced with the weights in this tensor.
+            handle: the communication handle given by the `dispatch` function.
+            async_finish: the current stream will not wait for the communication kernels to be finished if set.
+            return_recv_hook: return a receiving hook if set. If set, the kernel will just do the RDMA request issues,
+                but **without actually receiving the data**. You must call the received hook to make sure the data's arrival.
+                If you not set this flag, the kernel will ensure the data's arrival.
+
+        Returns:
+            combined_x: the reduced token tensor, with shape `[num_combined_tokens, num_topk]` and type `paddle.bfloat16`.
+            event: the event after executing the kernel (valid only if `async_finish` is set).
+            hook: the receiving hook function (valid only if `return_recv_hook` is set).
+        """
+        (
+            src_info,
+            layout_range,
+            num_max_dispatch_tokens_per_rank,
+            num_experts,
+        ) = handle
+        combined_x, event, hook = self.runtime.low_latency_combine(
+            x,
+            topk_idx,
+            topk_weights,
+            src_info,
+            layout_range,
+            num_max_dispatch_tokens_per_rank,
+            num_experts,
+            async_finish,
+            return_recv_hook,
+        )
+        tensors_to_record = (
+            x,
+            topk_idx,
+            topk_weights,
+            src_info,
+            layout_range,
+            combined_x,
+        )
+        return (
+            combined_x,
+            EventOverlap(event, tensors_to_record if async_finish else None),
+            hook,
+        )

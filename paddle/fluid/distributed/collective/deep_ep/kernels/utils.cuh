@@ -166,9 +166,7 @@ __device__  __forceinline__ int64_t ld_volatile_global(const uint64_t *ptr) {
 #define LD_NC_FUNC "ld.volatile.global"
 #endif
 
-// `ld.global.nc.L1::no_allocate` will be translated into `LDG.E.NA.[width].CONSTANT` in SASS,
-// which does not have cache allocation, and `CONSTANT` memory does not have coherence control,
-// so we have to control them by queue semantics
+// `ld.global.nc.L1::no_allocate` will be translated into `LDG.E.NA.[width].CONSTANT` in SASS
 template <typename dtype_t>
 __device__  __forceinline__ dtype_t ld_nc_global(const dtype_t *ptr) {
     auto ret = ld_nc_global(reinterpret_cast<const typename VecInt<sizeof(dtype_t)>::vec_t*>(ptr));
@@ -252,8 +250,7 @@ __device__ __forceinline__ void st_na_release(const uint64_t *ptr, uint64_t val)
     asm volatile("st.release.gpu.global.L1::no_allocate.b64 [%0], %1;" : : "l"(ptr), "l"(val));
 }
 
-// `st.global.L1::no_allocate` will be translated into `ST.E.NA.[width]` in SASS,
-// which does not have cache allocation (obviously in L1, I guess not in L2 too)
+// `st.global.L1::no_allocate` will be translated into `ST.E.NA.[width]` in SASS
 #ifndef DISABLE_AGGRESSIVE_PTX_INSTRS
 #define ST_NA_FUNC "st.global.L1::no_allocate"
 #else
