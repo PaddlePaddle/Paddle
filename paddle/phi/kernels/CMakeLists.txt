@@ -290,6 +290,7 @@ file(
   "sparse/xpu/*.cc")
 
 if(WITH_GPU OR WITH_ROCM)
+  set(kernels_gpu_srcs "")
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
   kernel_declare("${kernel_cu}")
   collect_srcs(kernels_gpu_srcs SRCS ${kernel_gpu})
