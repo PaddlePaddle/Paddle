@@ -2412,11 +2412,10 @@ void HandleForTensorRTOp(
   std::vector<pir::Type> op_output_types;
 
   for (size_t i = 0; i < op_item->num_results(); ++i) {
-    phi::Place out_place = phi::TransToPhiPlace(kernel_key.backend());
     PushBackOutputTypes(ctx,
                         op_item,
                         op_item->result(i).type(),
-                        out_place,
+                        place,
                         kernel_key,
                         &op_output_types);
   }

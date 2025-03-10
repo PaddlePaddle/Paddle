@@ -161,8 +161,8 @@ def bilinear_interp_converter(network, paddle_op, inputs):
     use_scales = True
     if outsize_tensor is not None:
         use_scales = False
-    elif out_h > 0 and out_w > 0 and scale_attr is not None:
-        use_scales = True
+    if outsize_tensor is None and len(scale_attr) == 0:
+        use_scales = False
 
     if use_scales:
         scale_h = -1.0
@@ -225,7 +225,55 @@ def bilinear_interp_converter(network, paddle_op, inputs):
             set_layer_name(output_size_tensor, paddle_op)
             output_size_tensor = output_size_tensor.get_output(0)
             resize_layer.set_input(1, output_size_tensor)
-
+        else:
+            if data_format == "NCHW":
+                shape_layer = network.add_shape(input_tensor)
+                shape_output = shape_layer.get_output(0)
+                # Get N and C from slice_layer output
+                slice_layer = network.add_slice(
+                    shape_output, start=[0], shape=[2], stride=[1]
+                )
+                # Create H and W
+                hw_constant = network.add_constant(
+                    shape=(2,),
+                    weights=trt.Weights(
+                        np.array([out_h, out_w], dtype=np.int32)
+                    ),
+                ).get_output(0)
+                # Create output shape(NCHW)
+                concat_layer = network.add_concatenation(
+                    [slice_layer.get_output(0), hw_constant]
+                )
+                concat_layer.axis = 0
+                resize_layer.set_input(1, concat_layer.get_output(0))
+            elif data_format == "NHWC":
+                shape_layer = network.add_shape(input_tensor)
+                shape_output = shape_layer.get_output(0)
+                # Get N and C from slice_layer output
+                n_layer = network.add_slice(
+                    shape_output, start=[0], shape=[1], stride=[1]
+                )
+                c_layer = network.add_slice(
+                    shape_output, start=[3], shape=[1], stride=[1]
+                )
+                # Create H and W
+                hw_constant = network.add_constant(
+                    shape=(2,),
+                    weights=trt.Weights(
+                        np.array([out_h, out_w], dtype=np.int32)
+                    ),
+                ).get_output(0)
+                # Create output shape(NHWC)
+                concat_layer = network.add_concatenation(
+                    [n_layer.get_output(0), hw_constant, c_layer.get_output(0)]
+                )
+                concat_layer.axis = 0
+                resize_layer.set_input(1, concat_layer.get_output(0))
+            else:
+                raise NotImplementedError(
+                    "Converter for bilinear_interp not support data_format {}.",
+                    data_format,
+                )
     return resize_layer.get_output(0)
 
 

@@ -1023,7 +1023,7 @@ class SqueezeOpPattern
         int64_t s = input_var_name_shape[i];
         if (s == -1) {
           VLOG(3) << "The necessary attributes of the squeeze operator axis is "
-                     "missing. ss =====-1";
+                     "missing. ss == -1";
           return false;
         } else if (s == 1) {
           axes.push_back(s);
@@ -1034,6 +1034,18 @@ class SqueezeOpPattern
         VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
                    "missing.";
         return false;
+      }
+    } else {
+      pir::Value x = op.operand_source(0);
+      auto x_shape = pir::GetShapeFromValue(x);
+      for (auto axis : axes) {
+        if (axis < 0) axis += x_shape.size();
+        if (x_shape[axis] != 1) {
+          VLOG(3) << "Cannot squeeze dimension " << axis << " with size "
+                  << x_shape[axis]
+                  << ". Only dimensions with size 1 can be squeezed.";
+          return false;
+        }
       }
     }
 
