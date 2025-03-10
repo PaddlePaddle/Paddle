@@ -894,6 +894,7 @@ set_tests_properties(test_jit_save_load PROPERTIES TIMEOUT 100)
 set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 
 set_tests_properties(test_baddbmm_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_lu_solve_op PROPERTIES TIMEOUT 100)
 
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
