@@ -827,7 +827,11 @@ void ElementwiseKernel(const KPDevice &ctx,
                         outs->size(),
                         NumOuts));
 
+  bool have_0_size = false;
   for (int i = 0; i < outs->size(); ++i) {
+    if (outs->at(i)->numel() == 0) {
+      have_0_size = true;
+    }
     if (i > 0) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
@@ -838,6 +842,9 @@ void ElementwiseKernel(const KPDevice &ctx,
               i));
     }
     ctx.template Alloc<OutT>((*outs)[i]);
+  }
+  if (have_0_size) {
+    return;
   }
 
   ElementwiseKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
