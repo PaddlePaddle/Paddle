@@ -223,7 +223,7 @@ class FallbackWrapper:
 
         InfoCollector().attach(
             SubGraphInfo,
-            program,
+            str(program),
             self.graph_size(),
             self.SIR.name,
         )
