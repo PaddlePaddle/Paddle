@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import paddle.distributed as dist
 from paddle import base
 
 
-class TestCollectiveAllToAllSingleAPI(test_base.TestCollectiveAPIRunnerBase):
+class TestCollectiveAllToAllTensorAPI(test_base.TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -30,14 +30,14 @@ class TestCollectiveAllToAllSingleAPI(test_base.TestCollectiveAPIRunnerBase):
                 indata = convert_float_to_uint16(indata)
                 tindata = paddle.to_tensor(indata)
                 toutdata = paddle.empty_like(tindata)
-                dist.alltoall_single(toutdata, tindata)
+                dist.alltoall(toutdata, tindata)
                 return [convert_uint16_to_float(toutdata.numpy())]
             else:
                 tindata = paddle.to_tensor(indata)
                 toutdata = paddle.empty_like(indata)
-                dist.alltoall_single(toutdata, tindata)
+                dist.alltoall(toutdata, tindata)
                 return [toutdata.numpy()]
 
 
 if __name__ == "__main__":
-    test_base.runtime_main(TestCollectiveAllToAllSingleAPI, "alltoall_single")
+    test_base.runtime_main(TestCollectiveAllToAllTensorAPI, "alltoall_tensor")

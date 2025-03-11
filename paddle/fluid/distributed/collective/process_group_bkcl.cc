@@ -19,15 +19,24 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/check/bkcl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
+
+// set this flag to `true` and recompile to enable dynamic checks
+constexpr bool FLAGS_enable_bkcl_dynamic_check = false;
+
+using phi::distributed::CheckSizeOnEachRank;
 
 ProcessGroupBKCL::BKCLTask::BKCLTask(const Place& place,
                                      int rank,
@@ -378,36 +387,42 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
 
   const phi::DDim& out_dim = out_tensor->dims();
   const phi::DDim& in_dim = in_tensor.dims();
+  CheckSizeOnEachRank(out_dim, out_size_each_rank, size_);
+  CheckSizeOnEachRank(in_dim, in_size_each_rank, size_);
 
-  // XCCL only support all_to_all_single
-  PADDLE_ENFORCE_EQ(
-      in_dim[0],
-      out_dim[0],
-      common::errors::PreconditionNotMet(
-          "XPU AllToAll: input dim (%d) and output dim (%d) differ",
-          in_dim[0],
-          out_dim[0]));
-  PADDLE_ENFORCE_EQ(
-      in_dim[0] % size_,
-      0,
-      common::errors::PreconditionNotMet(
-          "XPU AllToAll: input dim (%d) not divisible by nranks (%d)",
-          in_dim[0],
-          size_));
-  int64_t size_on_each_rank = in_dim[0] / size_;
+  bool is_equal_split = true;
+
+  int64_t avg_in_size_on_each_rank = in_dim[0] / size_;
+  int64_t avg_out_size_on_each_rank = out_dim[0] / size_;
   for (size_t i = 0; i < in_size_each_rank.size(); i++) {
-    PADDLE_ENFORCE_EQ(size_on_each_rank,
-                      in_size_each_rank[i],
-                      common::errors::PreconditionNotMet(
-                          "XPU AllToAll only support all_to_all_single mode"));
-    PADDLE_ENFORCE_EQ(size_on_each_rank,
-                      out_size_each_rank[i],
-                      common::errors::PreconditionNotMet(
-                          "XPU AllToAll only support all_to_all_single mode"));
+    if (in_size_each_rank[i] != avg_in_size_on_each_rank ||
+        out_size_each_rank[i] != avg_out_size_on_each_rank) {
+      is_equal_split = false;
+      break;
+    }
   }
 
+  // AllToAllUnequalSplit requires allocating temporary memory and must use
+  // calc_stream to ensure the correct lifecycle management of the temporary
+  // tensor.
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   return Collective(
       [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        if (FLAGS_enable_bkcl_dynamic_check) {
+          phi::distributed::BKCLDynamicCheck::CheckShape(
+              *out_tensor,
+              in_tensor,
+              in_size_each_rank,
+              rank_,
+              size_,
+              comm_context->GetBKCLComm());
+        }
+
         VLOG(3) << "[bkcl_all_to_all] "
                 << "sendbuff: " << in_tensor.data()
                 << ", recvbuff: " << out_tensor->data()
@@ -415,10 +430,93 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
                 << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
                 << ", bkcl_comm: " << comm_context->GetBKCLComm()
                 << ", stream: " << stream << ", rank_in_group: " << rank_
-                << ", nranks: " << size_ << ", sync_op: " << sync_op
+                << ", nranks: " << size_ << ", out_size_each_rank: "
+                << string::join_strings(out_size_each_rank, ',')
+                << ", in_size_each_rank: "
+                << string::join_strings(in_size_each_rank, ',')
+                << ", is_equal_split: " << is_equal_split
+                << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
 
-        comm_context->AllToAll(out_tensor, in_tensor, stream);
+        if (is_equal_split) {
+          comm_context->AllToAll(out_tensor, in_tensor, stream);
+        } else {
+          int64_t in_row_size =
+              in_dim[0] == 0 ? 0 : in_tensor.numel() / in_dim[0];
+          int64_t out_row_size =
+              out_dim[0] == 0 ? 0 : out_tensor->numel() / out_dim[0];
+
+          int64_t nranks = size_;
+
+          if (in_row_size > 0 && out_row_size > 0) {
+            std::vector<int64_t> in_numel_vec(nranks);
+            std::vector<int64_t> in_offset_vec(nranks);
+            std::vector<int64_t> out_numel_vec(nranks);
+            std::vector<int64_t> out_offset_vec(nranks);
+
+            int64_t in_offset = 0;
+            int64_t out_offset = 0;
+            for (int64_t i = 0; i < nranks; i++) {
+              int64_t in_numel = in_size_each_rank[i] * in_row_size;
+              int64_t out_numel = out_size_each_rank[i] * out_row_size;
+
+              in_numel_vec[i] = in_numel;
+              in_offset_vec[i] = in_offset;
+              in_offset += in_numel;
+
+              out_numel_vec[i] = out_numel;
+              out_offset_vec[i] = out_offset;
+              out_offset += out_numel;
+            }
+
+            PADDLE_ENFORCE_GE(
+                in_tensor.place().GetDeviceId(),
+                0,
+                common::errors::PreconditionNotMet(
+                    "The all_to_all device id must greater or equal than 0."));
+            phi::XPUPlace place = in_tensor.place();
+            auto allocator = std::unique_ptr<phi::Allocator>(
+                new paddle::experimental::DefaultAllocator(place));
+            phi::DenseTensorMeta meta(phi::DataType::INT64, phi::DDim{nranks});
+
+            phi::DenseTensor in_size_tensor = {allocator.get(), meta};
+            phi::DenseTensor in_offset_tensor = {allocator.get(), meta};
+            phi::DenseTensor out_size_tensor = {allocator.get(), meta};
+            phi::DenseTensor out_offset_tensor = {allocator.get(), meta};
+
+            memory::Copy(place,
+                         in_size_tensor.data(),
+                         phi::CPUPlace(),
+                         in_numel_vec.data(),
+                         in_size_tensor.numel() * sizeof(int64_t));
+
+            memory::Copy(place,
+                         in_offset_tensor.data(),
+                         phi::CPUPlace(),
+                         in_offset_vec.data(),
+                         in_offset_tensor.numel() * sizeof(int64_t));
+
+            memory::Copy(place,
+                         out_size_tensor.data(),
+                         phi::CPUPlace(),
+                         out_numel_vec.data(),
+                         out_size_tensor.numel() * sizeof(int64_t));
+
+            memory::Copy(place,
+                         out_offset_tensor.data(),
+                         phi::CPUPlace(),
+                         out_offset_vec.data(),
+                         out_offset_tensor.numel() * sizeof(int64_t));
+
+            comm_context->AllToAllUnequalSplit(out_tensor,
+                                               in_tensor,
+                                               out_size_tensor,
+                                               out_offset_tensor,
+                                               in_size_tensor,
+                                               in_offset_tensor,
+                                               stream);
+          }
+        }
       },
       in_tensor,
       CommType::ALLTOALL,

@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ from paddle import core
 paddle.enable_static()
 
 
-class TestCollectiveAllToAllSingleAPI(TestDistBase):
+class TestCollectiveAllToAllSingleUnequalSplitAPI(TestDistBase):
     def _setup_config(self):
         pass
 
@@ -31,12 +31,12 @@ class TestCollectiveAllToAllSingleAPI(TestDistBase):
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
         "run test when having at least 2 XPUs.",
     )
-    def test_alltoall_single(self):
+    def test_alltoall_single_unequal_split(self):
         support_types = get_xpu_op_support_types('c_alltoall')
         for dtype in support_types:
             self.check_with_place(
-                "collective_alltoall_single_api_dygraph.py",
-                "alltoall_single",
+                "collective_alltoall_single_api_unequal_split_dygraph.py",
+                "alltoall_single_unequal_split",
                 static_mode="0",
                 dtype=dtype,
             )
