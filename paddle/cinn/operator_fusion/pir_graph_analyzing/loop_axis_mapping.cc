@@ -563,7 +563,7 @@ LoopAxisMapping CreateLoopAxisMappingForReshape(pir::Operation* op) {
   result.output_values.push_back(op->result(0));
   result.loop2output.resize(1);
   auto in_shape = GetCompatibleValueAllDims(op->operand_source(0));
-  auto out_shape = GetValueAllDims(op->result(0));
+  auto out_shape = GetCompatibleValueAllDims(op->result(0));
   result.loop = out_shape;
 
   if (!ShapeProductEqual(in_shape, out_shape)) {

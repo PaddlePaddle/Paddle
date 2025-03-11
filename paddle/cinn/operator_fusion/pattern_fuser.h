@@ -365,6 +365,7 @@ static bool IsLoopFrameworkEqual(const StmtPattern& lhs,
   const auto& rhs_loops = GetLoopFramework(rhs);
   VLOG(4) << "lhs " << lhs_loops.DebugStr();
   VLOG(4) << "rhs " << rhs_loops.DebugStr();
+  if (lhs_loops.loop.empty() || rhs_loops.loop.empty()) return false;
 
   // TODO(huangjiyi): support horizontal fusion without reduce dims equal.
   const auto get_reduce_loop = [](const MaybeLoopFramework& loop) {
