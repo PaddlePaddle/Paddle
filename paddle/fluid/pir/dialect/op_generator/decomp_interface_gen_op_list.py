@@ -119,6 +119,7 @@ GENERATE_IMPL_VJP = [
     'reduce_as_grad',
     'relu_grad',
     'relu6_grad',
+    'elu_grad',
     'reshape_grad',
     'roll_grad',
     'rsqrt_grad',

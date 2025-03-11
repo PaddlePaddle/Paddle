@@ -107,6 +107,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.unsqueeze",
     "pd_op.where",
     "pd_op.p_norm",
+    "pd_op.elu",
 ]
 
 
