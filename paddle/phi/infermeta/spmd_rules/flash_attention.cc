@@ -355,19 +355,15 @@ SpmdInfo FlashMaskInferSpmd(const DistMetaTensor& q,
                                     return_softmax,
                                     is_test,
                                     rng_name);
-  return {{
-              att_info.first[0],  // q_dist_attr_dst
-              att_info.first[1],  // k_dist_attr_dst
-              att_info.first[2],  // v_dist_attr_dst
-              att_info.first[4],  //
-              att_info.first[3]   //
-          },
-          {
-              att_info.second[0],  // out
-              att_info.second[1],  // softmax
-              att_info.second[2],  // softmax_lse
-              att_info.second[3]   // seed_offset
-          }};
+  return {{att_info.first[0],
+           att_info.first[1],
+           att_info.first[2],
+           att_info.first[4],
+           att_info.first[3]},
+          {att_info.second[0],
+           att_info.second[1],
+           att_info.second[2],
+           att_info.second[3]}};
 }
 
 SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
@@ -903,21 +899,15 @@ SpmdInfo FlashMaskGradInferSpmd(const DistMetaTensor& q,
                                         out_grad,
                                         dropout,
                                         causal);
-  return {{
-              att_info.first[0],  // q_dist_attr_dst
-              att_info.first[1],  // k_dist_attr_dst
-              att_info.first[2],  // v_dist_attr_dst
-              att_info.first[6],
-              att_info.first[3],
-              att_info.first[4],
-              att_info.first[5],
-              att_info.first[7],
-          },
-          {
-              att_info.second[0],  // out
-              att_info.second[1],  // softmax
-              att_info.second[2],  // softmax_lse
-          }};
+  return {{att_info.first[0],
+           att_info.first[1],
+           att_info.first[2],
+           att_info.first[6],
+           att_info.first[3],
+           att_info.first[4],
+           att_info.first[5],
+           att_info.first[7]},
+          {att_info.second[0], att_info.second[1], att_info.second[2]}};
 }
 
 }  // namespace phi::distributed
