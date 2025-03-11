@@ -596,9 +596,8 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag,
     cudaStream_t stream) {
   // VLOG(3)<<__PRETTY_FUNCTION__;
   static constexpr bool is_weight_only = !std::is_same<T, WeightType>::value;
-  const bool is_weight_only_encoder = m >= 512 ? true : false;
-  std::vector<CutlassGemmConfig> candidate_configs = get_candidate_configs(
-      sm_, group_size, is_weight_only, is_weight_only_encoder, false, false);
+  std::vector<CutlassGemmConfig> candidate_configs =
+      get_candidate_configs(sm_, group_size, is_weight_only, false, false);
 
   // Standard GEMM, so 1 "expert". We use the same function for MoE and regular
   // FFN.
