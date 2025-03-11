@@ -1529,7 +1529,10 @@ class OutputSelector:
                     return out.dtype
             return None
 
-        if all(arg is None for arg in outs):
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(out is None for out in outs):
             return outs
 
         if all(
