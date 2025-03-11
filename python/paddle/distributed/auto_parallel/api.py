@@ -3381,6 +3381,7 @@ class ShardDataloader:
             )
         # Note(lizhiyu): In dygraph mode, the flag "pin_memory" is default "True", but it decrease the speed of `AutoParallel`
         self._dataloader.pin_memory = False
+        self.iter = None
         self.dense_tensor_idx = dense_tensor_idx
 
     def _process_shard_dims(self, shard_dims):
@@ -3575,10 +3576,15 @@ class ShardDataloader:
                         f"Unsupported input_data type {type(input_data)}"
                     )
             return dist_batch_data
+        elif isinstance(batch_data, paddle.Tensor):
+            mesh, placements = self._get_mesh_and_placement(0)
+            return dtensor_from_local(batch_data, mesh, placements)
         else:
             raise ValueError(f"Unsupported batch_data type {type(batch_data)}")
 
     def __next__(self):
+        if self.iter is None:
+            self.iter = self._dataloader.__iter__()
         batch_data = next(self.iter)
         return self._get_batch(batch_data)
 
