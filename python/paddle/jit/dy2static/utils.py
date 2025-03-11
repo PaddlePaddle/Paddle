@@ -25,9 +25,9 @@ import sys
 import tempfile
 import textwrap
 import types
-import weakref
+from contextlib import contextmanager
 from importlib.machinery import SourceFileLoader
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -41,6 +41,9 @@ from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
 
 from .ast_utils import ast_to_source_code
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 __all__ = []
 
@@ -141,28 +144,6 @@ class UndefinedVar:
 class Dygraph2StaticException(Exception):
     def __init__(self, message):
         super().__init__(message)
-
-
-class WeakMethod:
-    def __init__(self, fn, instance):
-        self.fn = fn
-        self.instance = weakref.ref(instance)
-
-    @property
-    def __func__(self):
-        return self.fn
-
-    @property
-    def __self__(self):
-        return self.instance()
-
-    def __call__(self, *args, **kwargs):
-        if self.__self__ is None:
-            raise RuntimeError("The object has been destroyed")
-        return self.fn(self.__self__, *args, **kwargs)
-
-    def __deepcopy__(self, memo):
-        return WeakMethod(self.fn, memo[id(self.__self__)])
 
 
 def saw(x):
@@ -521,8 +502,6 @@ def func_to_source_code(function, dedent=True):
     """
     if isinstance(function, functools.partial):
         function = function.func
-    if isinstance(function, WeakMethod):
-        function = function.__func__
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
             f"The type of 'function' should be a function or method, but received {type(function).__name__}."
@@ -786,3 +765,53 @@ def cuda_pinned_tensors_move_to_excepted_place(inputs):
                 var = value._copy_to(expected_place, True)
                 var.stop_gradient = True
                 var._share_buffer_to(value)
+
+
+def patch_method(instance: object, name: str, new_method: Callable[..., Any]):
+    def get_original_method(instance: object, name: str):
+        """
+        There are two case we don't need to restore the method:
+        1. If the attribute is not existed
+        2. If the obj.attr.__func__ is obj.__class__.attr
+        If the method need restore, return the original method.
+        Otherwise, return None, indicating that the method can be simply deleted.
+        """
+        if not hasattr(instance, name):
+            return None
+
+        original_method = getattr(instance, name)
+        if not inspect.ismethod(original_method):
+            # obj.attr is a function or other object (not a bound method)
+            return original_method
+
+        if not hasattr(instance.__class__, name):
+            # obj.__class__ has not the same unbound method
+            return original_method
+
+        if original_method.__func__ is not getattr(instance.__class__, name):
+            # obj.attr is a bound method, but it's unbound method is
+            # different from obj.__class__.attr
+            return original_method
+        return None
+
+    original_method = get_original_method(instance, name)
+    object.__setattr__(instance, name, new_method)
+
+    def restorer(instance):
+        if original_method is None:
+            object.__delattr__(instance, name)
+        else:
+            object.__setattr__(instance, name, original_method)
+
+    return restorer
+
+
+@contextmanager
+def patch_method_guard(
+    instance: object, name: str, new_method: Callable[..., Any]
+):
+    restorer = patch_method(instance, name, new_method)
+    try:
+        yield
+    finally:
+        restorer(instance)
