@@ -49,8 +49,7 @@ std::string read_file_as_string(const std::string& file_path) {
   std::ifstream file(cinn_path + '/' + file_path);
 
   if (!file.is_open()) {
-    LOG_FIRST_N(INFO, 1) << "Unable to open file : " << cinn_path << '/'
-                         << file_path;
+    VLOG(1) << "Unable to open file : " << cinn_path << '/' << file_path;
     return "";
   }
   std::stringstream buffer;
