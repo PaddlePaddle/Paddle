@@ -1939,7 +1939,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       ::pir::Operation* op = instr_node->Operation();
       if (!calculate_stream_timer_->IsStarted() && op_name != "pd_op.feed" &&
           !op->HasAttribute("ring_id") && op_name != "pd_op.shadow_feed" &&
-          op_name != "pd_op.full_int_array") {
+          op_name != "pd_op.full" && op_name != "pd_op.full_int_array") {
         VLOG(3) << "Start calculated stream timer from op: " << op_name;
         calculate_stream_timer_->Start();
       }
