@@ -1977,6 +1977,7 @@
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
+    spmd_rule : FlashMaskInferSpmd
   kernel :
     func : flashmask_attention
     data_type : q

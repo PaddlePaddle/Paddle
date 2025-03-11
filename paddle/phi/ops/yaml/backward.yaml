@@ -1160,6 +1160,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashMaskGradInferSpmd
   kernel :
     func : flashmask_attention_grad
     data_type: q

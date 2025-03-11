@@ -335,6 +335,41 @@ SpmdInfo FlashAttInferSpmdStatic(const DistMetaTensor& q,
                            is_test);
 }
 
+SpmdInfo FlashMaskInferSpmd(const DistMetaTensor& q,
+                            const DistMetaTensor& k,
+                            const DistMetaTensor& v,
+                            const DistMetaTensor& startend_row_indices,
+                            const DistMetaTensor& fixed_seed_offset,
+                            float dropout,
+                            bool causal,
+                            bool return_softmax,
+                            bool is_test,
+                            const std::string& rng_name) {
+  auto att_info = FlashAttInferSpmd(q,
+                                    k,
+                                    v,
+                                    fixed_seed_offset,
+                                    startend_row_indices,
+                                    dropout,
+                                    causal,
+                                    return_softmax,
+                                    is_test,
+                                    rng_name);
+  return {{
+              att_info.first[0],  // q_dist_attr_dst
+              att_info.first[1],  // k_dist_attr_dst
+              att_info.first[2],  // v_dist_attr_dst
+              att_info.first[4],  //
+              att_info.first[3]   //
+          },
+          {
+              att_info.second[0],  // out
+              att_info.second[1],  // softmax
+              att_info.second[2],  // softmax_lse
+              att_info.second[3]   // seed_offset
+          }};
+}
+
 SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                                   const DistMetaTensor& k,
                                   const DistMetaTensor& v,
@@ -846,6 +881,43 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
            attn_mask_dist_attr_dst,
            out_grad_dist_attr_dst},
           {q_grad, k_grad, v_grad}};
+}
+
+SpmdInfo FlashMaskGradInferSpmd(const DistMetaTensor& q,
+                                const DistMetaTensor& k,
+                                const DistMetaTensor& v,
+                                const DistMetaTensor& startend_row_indices,
+                                const DistMetaTensor& out,
+                                const DistMetaTensor& softmax_lse,
+                                const DistMetaTensor& seed_offset,
+                                const DistMetaTensor& out_grad,
+                                float dropout,
+                                bool causal) {
+  auto att_info = FlashAttGradInferSpmd(q,
+                                        k,
+                                        v,
+                                        out,
+                                        softmax_lse,
+                                        seed_offset,
+                                        startend_row_indices,
+                                        out_grad,
+                                        dropout,
+                                        causal);
+  return {{
+              att_info.first[0],  // q_dist_attr_dst
+              att_info.first[1],  // k_dist_attr_dst
+              att_info.first[2],  // v_dist_attr_dst
+              att_info.first[6],
+              att_info.first[3],
+              att_info.first[4],
+              att_info.first[5],
+              att_info.first[7],
+          },
+          {
+              att_info.second[0],  // out
+              att_info.second[1],  // softmax
+              att_info.second[2],  // softmax_lse
+          }};
 }
 
 }  // namespace phi::distributed
