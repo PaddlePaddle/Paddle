@@ -37,13 +37,20 @@ set(NVSHMEM_INCLUDE_DIR
 
 include_directories(${NVSHMEM_INCLUDE_DIR})
 
-set(NVSHMEM_URL
-    "https://developer.download.nvidia.com/compute/redist/nvshmem/3.1.7/source/nvshmem_src_3.1.7-1.txz"
-    CACHE STRING "" FORCE)
-set(NVSHMEM_DOWNLOAD_COMMAND
-    rm -rf extern_nvshmem nvshmem_src_3.1.7-1.txz && wget
-    --no-check-certificate -q ${NVSHMEM_URL} && tar xf nvshmem_src_3.1.7-1.txz
-    && mv nvshmem_src extern_nvshmem)
+if(NVSHMEM_SRC_TAR_PATH)
+  set(NVSHMEM_DOWNLOAD_COMMAND
+      rm -rf extern_nvshmem nvshmem_src_3.1.7-1.txz && cp
+      ${NVSHMEM_SRC_TAR_PATH} . && tar xf nvshmem_src_3.1.7-1.txz && mv
+      nvshmem_src extern_nvshmem)
+else()
+  set(NVSHMEM_URL
+      "https://developer.download.nvidia.com/compute/redist/nvshmem/3.1.7/source/nvshmem_src_3.1.7-1.txz"
+      CACHE STRING "" FORCE)
+  set(NVSHMEM_DOWNLOAD_COMMAND
+      rm -rf extern_nvshmem nvshmem_src_3.1.7-1.txz && wget
+      --no-check-certificate -q ${NVSHMEM_URL} && tar xf
+      nvshmem_src_3.1.7-1.txz && mv nvshmem_src extern_nvshmem)
+endif()
 
 set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/third_party/nvshmem.patch)
 set(NVSHMEM_PATCH_COMMAND

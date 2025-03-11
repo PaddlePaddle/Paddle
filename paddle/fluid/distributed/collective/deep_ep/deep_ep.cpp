@@ -1199,15 +1199,12 @@ Buffer::internode_dispatch(
       if (std::chrono::duration_cast<std::chrono::seconds>(
               std::chrono::high_resolution_clock::now() - start_time)
               .count() > NUM_CPU_TIMEOUT_SECS) {
-        printf(
-            "Global rank: %d, num_recv_tokens: %d, num_rdma_recv_tokens: %d\n",
-            rank,
-            num_recv_tokens,
-            num_rdma_recv_tokens);
+        LOG(INFO) << "Global rank: " << rank
+                  << ", num_recv_tokens: " << num_recv_tokens
+                  << ", num_rdma_recv_tokens: " << num_rdma_recv_tokens;
         for (int i = 0; i < num_local_experts; ++i)
-          printf("moe_recv_expert_counter[%d]: %d\n",
-                 i,
-                 moe_recv_expert_counter[i]);
+          LOG(INFO) << "moe_recv_expert_counter[" << i
+                    << "]: " << moe_recv_expert_counter[i];
         throw std::runtime_error("DeepEP error: timeout (dispatch CPU)");
       }
     }

@@ -60,13 +60,3 @@ __host__ __device__ __forceinline__ void host_device_printf(const char* format, 
 #include <cuda_bf16.h>
 #include <cuda_fp8.h>
 #include <cuda_runtime.h>
-
-#ifdef PADDLE_WITH_NVSHMEM
-// clang-format off
-#include <nvshmem.h>
-#include <nvshmemx.h>
-#include <infiniband/mlx5dv.h>
-#include <non_abi/device/threadgroup/nvshmemi_common_device_defines.cuh>
-#include <device_host_transport/nvshmem_common_ibgda.h>
-// clang-format on
-#endif

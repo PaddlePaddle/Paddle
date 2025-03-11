@@ -1414,6 +1414,27 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_V3_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_V3_LIBRARIES"), libs_path)
+
+    if (
+        env_dict.get("WITH_DISTRIBUTE") == 'ON'
+        and env_dict.get("WITH_NVSHMEM") == 'ON'
+    ):
+        if len(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB")),
+            ]
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB"), libs_path)
+
     if env_dict.get("WITH_CINN") == 'ON':
         shutil.copy(
             env_dict.get("CINN_LIB_LOCATION")
