@@ -2434,16 +2434,19 @@ void IndexSelectInferMeta(const MetaTensor& x,
           "the dimension of Input(Index) is [%d].",
           index_dim,
           index_dim.size()));
-
-  PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
-
-  auto output_dim = common::vectorize(input_dim);
   if (dim < 0) {
     dim += input_dim.size();
   }
+
+  if (input_dim[dim] != 0) {
+    PADDLE_ENFORCE_EQ(index_dim[0] != 0,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The length of Input(Index) can't be 0."));
+  }
+
+  auto output_dim = common::vectorize(input_dim);
+
   output_dim[dim] = index_dim[0];
   output->set_dims(common::make_ddim(output_dim));
   output->set_dtype(x.dtype());
@@ -3668,18 +3671,23 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
           repeats_dim,
           repeats_dim.size()));
 
-  PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(RepeatsTensor) can't be 0."));
-  PADDLE_ENFORCE_NE(out,
-                    nullptr,
-                    common::errors::InvalidArgument(
-                        "repeat_interleave's output tensor can't be nullptr"));
-  if (dim < 0) {
-    dim += input_dim.size();
+  if (input_dim.size() == 1 && input_dim[0] == 0) {
+    output_dim[0] = 0;
+  } else {
+    PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The length of Input(RepeatsTensor) can't be 0."));
+    PADDLE_ENFORCE_NE(
+        out,
+        nullptr,
+        common::errors::InvalidArgument(
+            "repeat_interleave's output tensor can't be nullptr"));
+    if (dim < 0) {
+      dim += input_dim.size();
+    }
+    output_dim[dim] = -1;
   }
-  output_dim[dim] = -1;
 
   out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);

@@ -120,6 +120,10 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
                                            const DenseTensor& repeats_tensor,
                                            int dim,
                                            DenseTensor* out) {
+  if (x.numel() == 0) {
+    ctx.template Alloc<T>(out);
+    return;
+  }
   auto place = ctx.GetPlace();
   auto cpu_place = phi::CPUPlace();
 
