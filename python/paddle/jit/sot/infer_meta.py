@@ -222,8 +222,8 @@ class MetaInfo:
             value.stop_gradient,
             name,
             value.persistable,
-            value.type,
-            value.place,
+            None,  # type is not a unified attribute in dygraph and static mode.
+            None,  # We can't infer the right place in compile time.
             dist_info=dist_info,
         )
 
