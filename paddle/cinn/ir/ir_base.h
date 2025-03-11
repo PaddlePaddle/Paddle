@@ -540,6 +540,13 @@ struct IndexExpr : public IrNodeRef {
     Level2 = 2   // Top level, simplify
   };
 
+  enum class IndexType {
+    kInvalid = 0,  // invalid expr
+    kValid = 1,    // valid expr
+    kLoad = 2,     // exist Load
+    kCast = 3      // exist cast
+  };
+
   IndexExpr Normalize(OptLevel level = OptLevel::Level1) const;
 
   bool IsDynamic() const;

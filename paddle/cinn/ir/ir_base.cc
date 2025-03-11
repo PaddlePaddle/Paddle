@@ -288,12 +288,12 @@ bool Expr::is_var() const { return As<_Var_>(); }
 bool Expr::is_index() const {
   // Temporarily use `VerifyIndex`. because `get_index` depends on marking
   // `indexExpr` in For::make and sch
-  return optim::VerifyIndex(*this);
+  return optim::VerifyIndex(*this) != ir::IndexExpr::IndexType::kInvalid;
   // return get()->get_index();
 }
 
 Expr &Expr::set_index(bool flag) {
-  if (flag && !optim::VerifyIndex(*this)) {
+  if (flag && optim::VerifyIndex(*this) == ir::IndexExpr::IndexType::kInvalid) {
     PADDLE_THROW(::common::errors::InvalidType(
         "Expr: %s is not IndexExpr! cannot be set as IndexExpr.", *this));
   }
@@ -302,7 +302,7 @@ Expr &Expr::set_index(bool flag) {
 }
 
 const Expr &Expr::set_index(bool flag) const {
-  if (flag && !optim::VerifyIndex(*this)) {
+  if (flag && optim::VerifyIndex(*this) == ir::IndexExpr::IndexType::kInvalid) {
     PADDLE_THROW(::common::errors::InvalidType(
         "Expr: %s is not IndexExpr! cannot be set as IndexExpr.", *this));
   }

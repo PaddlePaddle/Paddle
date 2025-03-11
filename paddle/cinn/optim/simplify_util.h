@@ -213,12 +213,6 @@ ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
  * \return `IndexExpr` after change.
  */
 ir::IndexExpr ChangeSeqOfDivMod(const ir::IndexExpr &expr);
-enum IndexType {
-  kInvalid = 0,  // invalid expr
-  kValid = 1,    // valid expr
-  kLoad = 2,     // exist Load
-  kCast = 3      // exist cast
-};
 
 /*!
  * \brief Judge type of `expr` is valid type of `IndexExpr` or not.
@@ -229,7 +223,7 @@ enum IndexType {
  * Note: Although load and cast are also legal IndexExpr, we need to know this
  * information in some scenarios.
  */
-IndexType VerifyIndex(const ir::Expr &expr);
+ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr);
 
 /*!
  * \brief The multiplication in rhs is broken down and each sub-part is
@@ -285,5 +279,107 @@ bool CheckPattern(const ir::IndexExpr &expr,
 // TODO(liujinnan): Delete historical `simplify func` related files, temporary
 // placement of tool functions that are still in use, remove it in the future.
 bool IsPureMath(Expr expr);
+
+/*!
+ * \brief Index Token in Tokenizer and Parser
+ */
+struct IndexToken {
+  enum class TokenType {
+    kNumber,
+    kVar,
+    kPlus,
+    kMinus,
+    kMultiply,
+    kDivide,
+    kModulo,
+    kLeftParen,
+    kRightParen,
+    kEnd
+  };
+
+  TokenType type;
+  std::string value;
+
+  explicit IndexToken(TokenType t, const std::string &v = "")
+      : type(t), value(v) {}
+};
+
+/*!
+ * \brief Tokenizer for IndexExpr, split the input string into IndexToken.
+ */
+class Tokenizer {
+ public:
+  explicit Tokenizer(const std::string &in);
+  // generate IndexToken for the next `pos`. it supports the following:
+  // 1. Number: 123, 1234...
+  // 2. Variable: a, b, a_1, aa, f1...
+  // 3. Operator: +, -, *, /, %, (, )
+  // 4. Whitespace
+  IndexToken NextToken();
+
+ private:
+  const std::string &input;
+  size_t pos;
+};
+
+/*!
+ * \brief Parser for IndexExpr, parse the input string into ir::Expr.
+ */
+class Parser {
+ public:
+  explicit Parser(const std::string &input);
+  ir::Expr Parse();
+
+ private:
+  Tokenizer tokenizer;
+  IndexToken currentToken;
+  std::unordered_map<std::string, ir::Var> vars;
+
+  void Advance();
+  // Processing addition and subtraction expressions, with the lowest priority.
+  ir::Expr ParseExpression();
+  // Process multiplication, division and modulo expressions, with higher
+  // priority than addition and subtraction, and the parsing result appears as
+  // one Term. e.g. a * b + c, a * b is a Term.
+  ir::Expr ParseTerm();
+  // Process numeric, variables and brackets, with the highest priority, as
+  // parameters for each item.
+  ir::Expr ParseFactor();
+  ir::Expr GetOrCreateVar(const std::string &var_name);
+};
+
+/*!
+ * \brief Parse the expression from string to Expr.
+ * \param expr_str The expression to be checked.
+ * \return A Expr parsed from string.
+ *
+ * For example:
+ * 1. ParseExpressionFromString("a + b * c") return Add(Var(a), Mul(Var(b),
+ * Var(c)))
+ * 2. ParseExpressionFromString("a + 10") return Add(Var(a), IntImm(10)))
+ */
+ir::Expr ParseExpressionFromString(const std::string &expr_str);
+
+/*!
+ * \brief Check whether the expression matches the pattern.
+ * \param expr The expression to be checked.
+ * \param pattern_str The pattern string to be matched.
+ * \param condition A optional condition function to further check the matched
+ * \return A optional map indicating the matched variables.
+ *
+ * For example:
+ * 1. i / S0 * S0 + i % (S0 * S1) matched by a / b * b + a % (b * c)
+ *    return map = {a: i, b: S0, c: S1}
+ * 2. i / (S0 * S1) * S0 + i % (S0 * S1) / S1 matched by a / f * b + a % f / c
+ * with optional condition f = a * b, return map = {a: i, b: S0, c: S1, f: S0 *
+ * S1}
+ * 3. S0 + 5 matched by a + 5 return map = {a: S0, b: 5}
+ */
+std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
+    const ir::IndexExpr &expr,
+    const std::string &pattern_str,
+    const std::function<bool(
+        const std::unordered_map<std::string, ir::IndexExpr> &)> &condition =
+        nullptr);
 }  // namespace optim
 }  // namespace cinn
