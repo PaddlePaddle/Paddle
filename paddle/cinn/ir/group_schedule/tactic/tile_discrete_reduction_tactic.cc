@@ -13,10 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_discrete_reduction_tactic.h"
-#include "paddle/cinn/adt/adt.h"
-#include "paddle/cinn/common/integer_set.h"
-#include "paddle/cinn/common/target.h"
-#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
@@ -24,18 +20,13 @@ namespace cinn {
 namespace ir {
 
 using cinn::ir::analyzer::IsReductionSBlock;
-using BoundVariableMap = std::unordered_map<std::string, std::vector<Var>>;
 
 bool UseDiscreteDataTile(const ScheduleConfig& config) {
-  // use discrete data tile for [RS]
-  for (const auto& iter_space : config.base_info->iter_space_type) {
-    if (iter_space.first == "R") {
-      if (config.base_info->iter_space_type.back().first == "S") {
-        return true;
-      }
-    }
-  }
-  return false;
+  // use discrete data tile for [...RS]
+  auto& iter_spaces = config.base_info->iter_space_type;
+  size_t size = iter_spaces.size();
+  return size >= 2 && iter_spaces[size - 2].first == "R" &&
+         iter_spaces[size - 1].first == "S";
 }
 
 class TileDiscreteReductionTactic final : public ScheduleTactic {
@@ -61,7 +52,6 @@ class TileDiscreteReductionTactic final : public ScheduleTactic {
   bool can_apply_;
   std::vector<int32_t> vec_spatial_axis_first_;
   std::vector<int32_t> vec_spatial_axis_last_;
-  std::vector<int32_t> vec_flatten_axis_;
   std::vector<int32_t> vec_reduce_axis_;
   std::unordered_map<std::string, std::string> map_rf_block_;
   std::unordered_map<std::string, std::string> map_global_rf_block_;
@@ -87,7 +77,6 @@ void TileDiscreteReductionTactic::Init(ScheduleContext* context,
   root_node->attrs[kTileMethod] = TacticName();
 
   // reduce axes have been re-ordered to the last
-  vec_flatten_axis_.clear();
   vec_reduce_axis_.clear();
   int data_rank = context_->config.base_info->loop_ranges.size();
   int32_t reduce_start_idx =
@@ -95,8 +84,6 @@ void TileDiscreteReductionTactic::Init(ScheduleContext* context,
   for (int32_t i = 0; i < data_rank; ++i) {
     if (i >= reduce_start_idx) {
       vec_reduce_axis_.push_back(i);
-    } else {
-      vec_flatten_axis_.push_back(i);
     }
   }
   vec_spatial_axis_first_.clear();
@@ -187,22 +174,24 @@ void TileDiscreteReductionTactic::MergeReduceAxis(ir::IRSchedule* sch,
 
 void TileDiscreteReductionTactic::SplitSptialInner(
     ir::IRSchedule* sch, const std::string& block_id) {
+  const int64_t sp_thread = context_->config.tile_config.warp_num * 32 /
+                            context_->config.tile_config.tree_reduce_num;
   auto loops = sch->GetLoops(block_id);
   if (loops.size() == 3) {
-    // [S, S', R] => [S, S'(-1), S'(32), R]
-    auto split_loops = sch->Split(loops[1], std::vector<int>({-1, 32}));
-    // [S, S'(-1), S'(32), R] => [S, S'(32), R]
+    // [S, S', R] => [S, S'(-1), S'(sp_thread), R]
+    sch->Split(loops[1], std::vector<int>({-1, sp_thread}));
+    // [S, S'(-1), S'(sp_thread), R] => [S, S'(sp_thread), R]
     sch->Fuse(block_id, std::vector<int>{0, 1});
   } else if (loops.size() == 2) {
-    // [S, R] => [S(-1), S(32), R]
-    auto split_loops = sch->Split(loops[0], std::vector<int>({-1, 32}));
+    // [S, R] => [S(-1), S(sp_thread), R]
+    sch->Split(loops[0], std::vector<int>({-1, sp_thread}));
   }
 }
 
 void TileDiscreteReductionTactic::SplitReduceInner(
     ir::IRSchedule* sch, const std::string& block_id) {
   const int64_t rd_block = context_->config.tile_config.grid_reduce_num;
-  const int64_t rd_thread = 16;
+  const int64_t rd_thread = context_->config.tile_config.tree_reduce_num;
   const int cur_reduce_axis = 2;
 
   // [ R ] => [ rd_block*rd_thread, rd_inner ]
