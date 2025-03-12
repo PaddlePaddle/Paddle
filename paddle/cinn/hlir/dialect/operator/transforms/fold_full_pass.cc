@@ -49,7 +49,7 @@ class FoldFullWithReshapeOpPattern : public pir::OpRewritePattern<OPTYPE> {
         phi::IntArray(out_shape.Get(), out_shape.size()));
 
     auto new_full_op = rewriter.Build<paddle::dialect::FullOp>(attrs);
-
+    new_full_op->result(0).set_type(op->result(0).type());
     rewriter.ReplaceAllUsesWith(op->result(0), new_full_op->result(0));
     rewriter.EraseOp(op);
     if (pre_op->use_empty()) {
