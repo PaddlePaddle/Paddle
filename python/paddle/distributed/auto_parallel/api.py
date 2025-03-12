@@ -3238,24 +3238,9 @@ def unshard_dtensor(dist_tensor: Tensor) -> Tensor:
         return dist_tensor
 
     else:
-        assert isinstance(
-            dist_tensor, Variable
-        ), f"the input type of 'unshard_dtensor' should be Variable, but got [{dist_tensor}]"
-        # in static mode, 'distributed tensor' and 'dense tensor' are all
-        # Variable type, the distributed attribute is a property of the Variable.
-        # So, it's no need to convert the distributed tensor to a dense tensor.
-        # We only need to modify its distributed attribute.
-        empty_dist_attr = (
-            dist.auto_parallel.static.dist_attribute.TensorDistAttr()
+        raise NotImplementedError(
+            "`unshard_dtensor()` only supported in dynamic and pir mode."
         )
-        dist_tensor.dist_attr = empty_dist_attr
-
-        # remove the distributed tensor from dist_context
-        default_dist_ctx = get_default_distributed_context()
-        serial_tensor_id = dist_tensor.desc.original_id()
-        default_dist_ctx._dist_tensors_for_program.pop(serial_tensor_id, None)
-
-        return dist_tensor
 
 
 class ShardDataloader:

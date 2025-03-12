@@ -14,14 +14,6 @@ if((WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
-    test_semi_auto_parallel_llama_model MODULES
-    test_semi_auto_parallel_llama_model ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_semi_auto_parallel_llama_model
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
-endif()
-if((WITH_GPU) AND (LINUX))
-  py_test_modules(
     test_save_load_state_dict MODULES test_save_load_state_dict ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_save_load_state_dict
