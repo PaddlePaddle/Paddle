@@ -113,4 +113,47 @@ bool GroupNormGrad_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return GroupNormOpInferSymbolicShape(op, infer_context);
 }
+
+bool GeneralBinaryGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  if (!paddle::dialect::details::IsFakeValue(op->result(0))) {
+    SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
+  }
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    SameShapeInfer(infer_context, op->result(1), op->operand_source(1));
+  }
+  return true;
+}
+
+bool Conv2dGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return GeneralBinaryGradOpInferSymbolicShape(op, infer_context);
+}
+
+bool MatmulGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return GeneralBinaryGradOpInferSymbolicShape(op, infer_context);
+}
+
+bool DepthwiseConv2dGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return GeneralBinaryGradOpInferSymbolicShape(op, infer_context);
+}
+
+bool Pool2dGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
+  return true;
+}
+
+bool BceLossGradOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  SameShapeInfer(infer_context, op->result(0), op->operand_source(0));
+  return true;
+}
+
+bool BceLossGrad_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BceLossGradOpInferSymbolicShape(op, infer_context);
+}
 }  // namespace paddle::dialect

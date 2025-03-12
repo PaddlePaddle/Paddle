@@ -358,6 +358,7 @@
     func : matmul_grad
   composite: matmul_grad(x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad)
   backward : matmul_double_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : matmul_triple_grad
   forward : matmul_double_grad (Tensor x, Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y), Tensor(grad_grad_out)
