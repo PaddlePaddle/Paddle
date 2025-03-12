@@ -710,6 +710,10 @@ PHI_DEFINE_EXPORTED_int32(
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
 
+PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
+                         false,
+                         "CopyValueFromTensor do not deep copy, if true.");
+
 /**
  * Debug related FLAG
  * Name: sort_sum_gradient

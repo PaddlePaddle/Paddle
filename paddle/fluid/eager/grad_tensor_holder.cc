@@ -23,6 +23,8 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+COMMON_DECLARE_bool(share_tensor_for_grad_tensor_holder);
+
 namespace egr {
 
 void GradTensorHolder::SetBufferSlotRankZeros(size_t slot_id, size_t rank) {
@@ -59,8 +61,13 @@ void GradTensorHolder::CopyValueFromTensor(size_t slot_id,
   if (!fill_one) {
     paddle::Tensor& buffer_tensor = buffer_[slot_id][rank];
     if ((!buffer_tensor.defined() || !buffer_tensor.has_allocation())) {
-      // Perform deep copy here
-      buffer_tensor.copy_(t, t.place(), false);
+      if (FLAGS_share_tensor_for_grad_tensor_holder) {
+        // Share the same tensor
+        buffer_tensor.set_impl(t.impl());
+      } else {
+        // Perform deep copy here
+        buffer_tensor.copy_(t, t.place(), false);
+      }
       auto* meta = egr::EagerUtils::autograd_meta(&buffer_tensor);
       auto* origin_meta = egr::EagerUtils::nullable_autograd_meta(t);
       if (origin_meta) {
