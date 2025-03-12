@@ -2782,16 +2782,12 @@ bool InstanceNormOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
-  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({NxC})});
   }
-  if (paddle::dialect::details::IsFakeValue(op->result(2))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(2));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(2))) {
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({NxC})});
