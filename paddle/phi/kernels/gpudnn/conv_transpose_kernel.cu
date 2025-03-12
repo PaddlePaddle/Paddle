@@ -27,10 +27,10 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/phi/backends/gpu/rocm/miopen_helper.h"
+// #ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/gpu/rocm/miopen_helper1.h"
 #include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
-#else
+// #else
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif

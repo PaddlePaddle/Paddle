@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#if 1
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/storage_properties.h"
@@ -292,5 +292,5 @@ class TEST_API DenseTensor : public TensorBase,
 #include "paddle/phi/core/dense_tensor.inl"
 #endif
 };
-
+#endif
 }  // namespace phi

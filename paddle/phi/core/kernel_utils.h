@@ -302,9 +302,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   /* DeviceContext Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
-#endif
+// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+//   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
+// #endif
 #ifdef PADDLE_WITH_XPU
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif

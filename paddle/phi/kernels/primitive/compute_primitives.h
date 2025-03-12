@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
 #include <cuda_fp16.h>
 #endif
 #ifdef PADDLE_WITH_HIP

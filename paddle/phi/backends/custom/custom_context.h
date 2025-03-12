@@ -25,6 +25,13 @@ namespace Eigen {
 struct DefaultDevice;
 }  // namespace Eigen
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
+#include <cuda_runtime.h>
+#define STREAM_TYPE cudaStream_t
+#else
+#define STREAM_TYPE void*
+#endif
+
 namespace phi {
 
 class CustomContext : public DeviceContext,
@@ -37,7 +44,7 @@ class CustomContext : public DeviceContext,
   const Place& GetPlace() const override;
 
   /*! \brief  Return raw stream in the device context. */
-  void* stream() const;
+  STREAM_TYPE stream() const;
 
   /*! \brief  Return stream in the device context. */
   std::shared_ptr<phi::stream::Stream> GetStream() const;
@@ -69,6 +76,17 @@ class CustomContext : public DeviceContext,
 
   /*! \brief  Set nccl communicators. */
   void set_xccl_comm(phi::ccl::CCLComm comm);
+
+  ////////////////////////for cuda///////////////////////////////
+  int GetComputeCapability() const;
+
+  int GetSMCount() const;
+
+  int GetMaxThreadsPerBlock() const;
+
+  std::array<unsigned int, 3> GetCUDAMaxGridDimSize() const;
+
+  int GetMaxPhysicalThreadCount() const;
 
  private:
   CustomContext();

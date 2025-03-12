@@ -688,7 +688,7 @@ class CustomDevice : public DeviceInterface {
         ToCDataType(data_type),
         root,
         reinterpret_cast<C_CCLComm>(comm),
-        reinterpret_cast<C_Stream>(stream.raw_stream())));
+        reinterpret_cast<C_Stream>()));
   }
 
   void CCLReduce(void* in_data,

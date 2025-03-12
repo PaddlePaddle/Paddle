@@ -312,6 +312,7 @@ if(WIN32)
 endif()
 # in cuda9, suppress cuda warning on eigen
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
+message(STATUS "---------- CUDA Flags: ${CMAKE_CUDA_FLAGS} -----------")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
 # Set :expt-extended-lambda to enable HOSTDEVICE annotation on lambdas
@@ -335,4 +336,4 @@ endif()
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)
 mark_as_advanced(CUDA_SDK_ROOT_DIR CUDA_SEPARABLE_COMPILATION)
 
-include(thrust)
+# include(thrust)

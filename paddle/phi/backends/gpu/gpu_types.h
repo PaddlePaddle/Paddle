@@ -17,7 +17,8 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_GPGPU)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/dynload/miopen.h"

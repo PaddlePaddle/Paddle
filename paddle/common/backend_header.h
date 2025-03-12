@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,15 +13,22 @@
 // limitations under the License.
 
 #pragma once
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_GPGPU)
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
-#else
-#include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
+#include <cuda.h>
 #endif
 
-#define CUDA_KERNEL_LOOP(i, num) CUDA_KERNEL_LOOP_TYPE(i, num, int)
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#define PADDLE_CUDA_BF16
+#include <cuda_bf16.h>
+#endif
 
+#ifndef PADDLE_WITH_HIP
+#if !defined(_WIN32)
+#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x) __declspec(align(x))
+#endif
+#else
+#define PADDLE_ALIGN(x)
 #endif

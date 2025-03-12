@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/common/macros.h"
 #include "paddle/utils/test_macros.h"
 
+#define GPUContext CustomContext
+
 namespace paddle {
 enum class PlaceType;
 }

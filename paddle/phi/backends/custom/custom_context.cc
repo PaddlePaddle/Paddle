@@ -26,21 +26,49 @@ struct CustomContext::Impl {
 
   void Init() {
     phi::DeviceGuard guard(place_);
-    stream_.reset(new phi::stream::Stream());
-    stream_->Init(place_);
+    // stream_.reset(new phi::stream::Stream());
+    // stream_->Init(place_);
+    stream_ = new CUDAStream(place_);
   }
 
   const Place& GetPlace() const { return place_; }
 
-  void* stream() const {
-    return reinterpret_cast<void*>(stream_->raw_stream());
+  STREAM_TYPE stream() const {
+    return reinterpret_cast<STREAM_TYPE>(stream_->raw_stream());
   }
 
   std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
 
-  void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
-    stream_ = stream;
-  }
+  // void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+  //   stream_ = stream;
+  // }
+
+  // void InitEigenDevice() {
+  //   PADDLE_ENFORCE_NOT_NULL(
+  //       allocator_,
+  //       common::errors::InvalidArgument(
+  //           "The allocator for eigen device is nullptr. It must not be
+  //           null."));
+  //   eigen_stream_ = std::make_unique<internal::EigenGpuStreamDevice>();
+  //   eigen_stream_->Reinitialize(stream(), allocator_, place_);
+  //   eigen_device_ = new Eigen::GpuDevice(eigen_stream_.get());
+  // }
+
+  // Eigen::GpuDevice* eigen_device() {
+  //   std::call_once(flag_eigen_device_, [&]() {
+  //     if (!eigen_device_) {
+  //       if (!eigen_device_creator_)
+  //         InitEigenDevice();
+  //       else
+  //         eigen_device_ = eigen_device_creator_();
+  //     }
+  //   });
+  //   PADDLE_ENFORCE_NOT_NULL(
+  //       eigen_device_,
+  //       common::errors::InvalidArgument(
+  //           "The GPU eigen_device is nullptr. It must not be null."));
+  //   return eigen_device_;
+  // }
 
   void Wait() const { stream_->Wait(); }
 
@@ -50,16 +78,32 @@ struct CustomContext::Impl {
 
   Place place_;
 
-  std::shared_ptr<phi::stream::Stream> stream_;
+  // std::shared_ptr<phi::stream::Stream> stream_;
+  CUDAStream* stream_{nullptr};
 
   phi::ccl::CCLComm comm_;
+
+  //////////////////////
+  int compute_capability_ = 0;
+  int runtime_version_ = 0;
+  int driver_version_ = 0;
+  int multi_process_ = 0;
+  int max_threads_per_mp_ = 0;
+  int max_threads_per_block_ = 0;
+  std::array<unsigned int, 3> max_grid_dim_size_;
+
+  Eigen::GpuDevice* eigen_device_{nullptr};
+  std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
+  std::once_flag flag_eigen_device_;
+
+  std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
 void CustomContext::Init() { impl_->Init(); }
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
-void* CustomContext::stream() const { return impl_->stream(); }
+STREAM_TYPE CustomContext::stream() const { return impl_->stream(); }
 
 std::shared_ptr<phi::stream::Stream> CustomContext::GetStream() const {
   return impl_->GetStream();
@@ -69,6 +113,7 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
   impl_->SetStream(stream);
 }
 
+void CustomContext::SetStream(gpuStream_t stream) { impl_->SetStream(stream); }
 void CustomContext::Wait() const { return impl_->Wait(); }
 
 CustomContext::CustomContext(const CustomPlace& place)
@@ -85,4 +130,24 @@ phi::ccl::CCLComm CustomContext::xccl_comm() const {
 void CustomContext::set_xccl_comm(phi::ccl::CCLComm comm) {
   impl_->set_xccl_comm(comm);
 }
+
+////////////////////////for cuda///////////////////////////////
+int CustomContext::GetComputeCapability() const {
+  return impl_->compute_capability_;
+}
+
+int CustomContext::GetMaxThreadsPerBlock() const {
+  return impl_->max_threads_per_block_;
+}
+
+int CustomContext::GetSMCount() const { return impl_->multi_process_; }
+
+std::array<unsigned int, 3> CustomContext::GetCUDAMaxGridDimSize() const {
+  return impl_->max_grid_dim_size_;
+}
+
+int GPUContext::GetMaxPhysicalThreadCount() const {
+  return impl_->multi_process_ * impl_->max_threads_per_mp_;
+}
+////////////////////////for cuda///////////////////////////////
 }  // namespace phi

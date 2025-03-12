@@ -157,6 +157,15 @@ class PADDLE_API DeviceContext {
                     size_t requested_size = 0,
                     bool pinned = false) const;
 
+  template <typename T>
+  T* MyAlloc(TensorBase* tensor,
+             size_t requested_size = 0,
+             bool pinned = false) const {
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
+    return static_cast<float*>(
+        this->Alloc(tensor, dtype, requested_size, pinned));
+  };
+
   /**
    * @brief Allocate host memory for tensor.
    */
@@ -231,4 +240,7 @@ class PADDLE_API DeviceContext {
   TypeInfo<DeviceContext> type_info_{TypeInfo<DeviceContext>::kUnknownType};
 };
 
+template float* DeviceContext::MyAlloc<float>(TensorBase* tensor,
+                                              size_t requested_size,
+                                              bool pinned) const;
 }  // namespace phi
