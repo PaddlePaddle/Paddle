@@ -98,7 +98,7 @@ class TEST_API Place {
   struct TEST_API Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
-    // but now we don’t over-design.
+    // but now we don't over-design.
     uint32_t operator()(const Place& place) const;
   };
 

@@ -88,7 +88,7 @@ class KernelKey {
   struct Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
-    // but now we don’t over-design.
+    // but now we don't over-design.
     TEST_API uint32_t operator()(const KernelKey& key) const;
   };
 

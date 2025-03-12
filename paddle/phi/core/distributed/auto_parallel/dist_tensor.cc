@@ -197,7 +197,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   process_mesh_ = process_mesh;
   placements_ = placements;
   // If the dims.size() == -1, the dims=[0] by default, which is not consistent
-  // and will cause ToTensorDistAttr‘s error.
+  // and will cause ToTensorDistAttr's error.
   if (global_dims_ == DDim()) {
     global_dims_ = phi::make_ddim({});
   }

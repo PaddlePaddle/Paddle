@@ -3789,7 +3789,7 @@ bool PyramidHashOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(num_emb % rand_len,
                     0,
                     common::errors::InvalidArgument(
-                        "The PyramidHashOP’s Attr(num_emb) should mod "
+                        "The PyramidHashOP's Attr(num_emb) should mod "
                         "Attr(rand_len), but num_emb is %d, rand_len is %d",
                         num_emb,
                         rand_len));

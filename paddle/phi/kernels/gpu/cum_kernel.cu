@@ -313,7 +313,7 @@ void ScanKernel(const Context& dev_ctx,
   const T* in_data = x.data<T>();
 
   // Use thrust for parallel acceleration when the input size is equal to the
-  // length of the ‘axis’ dimension.
+  // length of the 'axis' dimension.
   if (!std::is_same<T, phi::dtype::float16>::value &&
       !std::is_same<T, phi::dtype::bfloat16>::value &&
       std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {

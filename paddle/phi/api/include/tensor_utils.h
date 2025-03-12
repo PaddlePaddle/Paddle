@@ -30,7 +30,7 @@ using Deleter = std::function<void(void*)>;
 /**
  * @brief Construct a Tensor from a buffer pointed to by `data`
  *
- * @note `from_blob` doesn’t copy or move data, Modifying the constructed tensor
+ * @note `from_blob` doesn't copy or move data, Modifying the constructed tensor
  *       is equivalent to modifying the original data.
  *
  * @param data The pointer to the memory buffer.

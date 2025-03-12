@@ -54,8 +54,8 @@ class ArgMaxOpConverter : public OpConverter {
       }
       auto squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *topk_layer->getOutput(1));
-      auto shape_tesnor = Shape(topk_layer->getOutput(1));
-      auto real_shape_tensor = Gather(shape_tesnor, gather_indices);
+      auto shape_tensor = Shape(topk_layer->getOutput(1));
+      auto real_shape_tensor = Gather(shape_tensor, gather_indices);
       squeeze_layer->setInput(1, *real_shape_tensor);
       ReplenishLayerAndOutput(
           squeeze_layer, "arg_max", {output_name}, test_mode);
