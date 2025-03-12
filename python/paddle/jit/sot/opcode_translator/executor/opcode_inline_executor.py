@@ -14,34 +14,29 @@
 
 from __future__ import annotations
 
-import contextlib
-import inspect
-import re
 import sys
 from typing import TYPE_CHECKING
 
-from ...profiler import event_register
 from ...utils import (
     BreakGraphError,
     DataDependencyControlFlowBreak,
     UnsupportedIteratorBreak,
-    log,
 )
 from ..instruction_utils import Instruction
 from .guard import StringifiedExpression, union_free_vars
 from .opcode_executor import OpcodeExecutorBase, Stop
-from .tracker import ConstTracker, DanglingTracker, DummyTracker, Tracker
+from .tracker import Tracker
 from .variables import (
-    CellVariable,
-    FunctionGlobalVariable,
     IterVariable,
     SequenceIterVariable,
     VariableBase,
 )
 
 if TYPE_CHECKING:
+    from .function_graph import FunctionGraph
     from .pycode_generator import PyCodeGen
     from .variables import FunctionVariable
+    from .virtual_frame import VirtualFrame
 
 
 class FunctionGlobalTracker(Tracker):
@@ -139,17 +134,6 @@ class FunctionClosureTracker(Tracker):
         return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
 
 
-@contextlib.contextmanager
-def signature_clear_guard(fn, name):
-    if not hasattr(fn, name):
-        yield
-    else:
-        saved_attr = getattr(fn, name)
-        delattr(fn, name)
-        yield
-        setattr(fn, name, saved_attr)
-
-
 class OpcodeInlineExecutor(OpcodeExecutorBase):
     """
     A class that represents an executor for inlined opcode operations.
@@ -161,119 +145,14 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
 
     def __init__(
         self,
-        fn_variable: FunctionVariable,
-        *args,
-        **kwargs,
+        vframe: VirtualFrame,
+        code_var: VariableBase,
+        graph: FunctionGraph,
     ):
-        self._fn_var = fn_variable
+        super().__init__(vframe, graph)
         self.return_value: VariableBase | None = None
-        self._fn_value = fn_variable.value
-        self._code_var = fn_variable.get_code()
-        super().__init__(self._code_var.value, fn_variable.graph)
+        self._code_var = code_var
         self._name = "Inline"
-        self._prepare_locals(*args, **kwargs)
-        self._prepare_closure()
-
-    def _handle_comps(self):
-        is_comp = any(
-            x in self._fn_value.__name__
-            for x in ['<listcomp>', '<dictcomp>', '<genexpr>']
-        )
-        if not is_comp:
-            return
-        pattern = r'implicit\d+'
-        for name in list(self._locals.keys()):
-            if re.match(pattern, name):
-                self._locals[name.replace('implicit', '.')] = self._locals[name]
-
-    def _prepare_locals(self, *args, **kwargs):
-        """
-        Prepare local variables for execution by adding them to the locals dictionary.
-
-        """
-        from .variables import VariableBase, VariableFactory
-
-        # temparay clear the fn.__signature__ to avoid signature check error
-        with signature_clear_guard(
-            self._fn_value, "__signature__"
-        ), signature_clear_guard(self._fn_value, "__wrapped__"):
-            sig = inspect.signature(self._fn_value)
-            bound_args = sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
-        for name, value in bound_args.arguments.items():
-            assert name in sig.parameters
-            # Convert varargs and kwargs to Variable
-            if sig.parameters[name].kind == inspect.Parameter.VAR_POSITIONAL:
-                tracker = DummyTracker(value)
-            elif sig.parameters[name].kind == inspect.Parameter.VAR_KEYWORD:
-                tracker = DummyTracker(list(value.values()))
-            # Convert default args to Variable
-            elif not isinstance(value, VariableBase):
-                tracker = ConstTracker(value)
-            else:
-                tracker = value.tracker
-            value = VariableFactory.from_value(value, self._graph, tracker)
-            self._locals[name] = value
-
-        self._handle_comps()
-
-        log(
-            5, f"[INLINE CALL] {self._code.co_name} with locals: ", self._locals
-        )
-
-    def _prepare_closure(self):
-        """
-        Prepare closure variables for execution by adding them to the closure list.
-
-        """
-        from .variables import VariableFactory
-
-        closure = self._fn_var.get_py_value().__closure__
-        for name in self._code.co_cellvars + self._code.co_freevars:
-            # create a cell for each variable.
-            self._cells[name] = CellVariable()  # put in cells.
-            if name in self._locals:
-                self._cells[name].set_value(self._locals[name])
-
-        if closure is None:
-            return
-        assert len(closure) == len(self._code.co_freevars)
-        for idx, (name, cell) in enumerate(
-            zip(self._code.co_freevars, closure)
-        ):
-            value = cell.cell_contents
-            value = VariableFactory.from_value(
-                value, self._graph, FunctionClosureTracker(self._fn_var, idx)
-            )
-            # wrapped by a CellVariable
-            if not isinstance(value, CellVariable):
-                value = CellVariable(value)
-            self._cells[name] = value
-
-    @event_register("OpcodeInlineExecutor: _prepare_virtual_env", event_level=2)
-    def _prepare_virtual_env(self):
-        """
-        Prepare the virtual environment for execution by adding variables from globals, builtins, and constants.
-
-        """
-        from .variables import VariableFactory
-
-        self._globals = FunctionGlobalVariable(
-            self._fn_var,
-            self._fn_value.__globals__,
-            self._graph,
-            DanglingTracker(),
-        )
-
-        self._builtins = self._graph._builtins
-
-        # prepare consts
-        for value in self._code.co_consts:
-            self._co_consts.append(
-                VariableFactory.from_value(
-                    value, self._graph, ConstTracker(value)
-                )
-            )
 
     def inline_call(self) -> VariableBase:
         """
@@ -292,7 +171,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         return Stop(state="Return")
 
     def RETURN_CONST(self, instr: Instruction):
-        self.return_value = self._co_consts[instr.arg]
+        self.return_value = self.vframe.consts[instr.arg]
         return Stop(state="Return")
 
     def _break_graph_when_if(self, result, instr: Instruction):
@@ -322,11 +201,14 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
             except StopIteration:
                 self.stack.pop()
                 assert isinstance(instr.jump_to, Instruction)
-                self._lasti = self.indexof(instr.jump_to)
+                self.vframe.lasti = self.indexof(instr.jump_to)
                 if sys.version_info >= (3, 12):
-                    assert self._instructions[self._lasti].opname == "END_FOR"
+                    assert (
+                        self._instructions[self.vframe.lasti].opname
+                        == "END_FOR"
+                    )
                     skip_n_instrs = 2 if sys.version_info >= (3, 13) else 1
-                    self._lasti += skip_n_instrs
+                    self.vframe.lasti += skip_n_instrs
 
         else:
             self._graph.remove_global_guarded_variable(iterator)

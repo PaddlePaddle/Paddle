@@ -52,9 +52,9 @@ class BreakpointManager(metaclass=Singleton):
         """
         self.record_event.append(event)
 
-    def add(self, file, line, coname=None, offset=None):
+    def add(self, file, line, co_name=None, offset=None):
         log(1, f"add breakpoint at {file}:{line}\n")
-        self.breakpoints.add(Breakpoint(file, line, coname, offset))
+        self.breakpoints.add(Breakpoint(file, line, co_name, offset))
 
     def addn(self, *lines):
         """
@@ -63,7 +63,7 @@ class BreakpointManager(metaclass=Singleton):
         if not isinstance(lines, (list, tuple)):
             lines = [lines]
         for line in lines:
-            file = self.cur_exe._code.co_filename
+            file = self.cur_exe.vframe.code.co_filename
             self.add(file, line)
 
     def clear(self):
@@ -87,18 +87,18 @@ class BreakpointManager(metaclass=Singleton):
         if self.activate == 0:
             return
         self.activate -= 1
-        print("current function is: ", self.cur_exe._code.co_name)
+        print("current function is: ", self.cur_exe.vframe.code.co_name)
 
     def down(self):
         if self.activate >= len(self.executors) - 1:
             return
         self.activate += 1
-        print("current function is: ", self.cur_exe._code.co_name)
+        print("current function is: ", self.cur_exe.vframe.code.co_name)
 
     def opcode(self, cur_exe=None):
         if cur_exe is None:
             cur_exe = self.cur_exe
-        instr = cur_exe._instructions[cur_exe._lasti - 1]
+        instr = cur_exe._instructions[cur_exe.vframe.lasti - 1]
         message = f"[Translate {cur_exe}]: (line {cur_exe._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {cur_exe._stack}\n"
         return message
 
@@ -107,12 +107,12 @@ class BreakpointManager(metaclass=Singleton):
         display all inline calls: backtrace.
         """
         for exe in self.executors:
-            lines, _ = inspect.getsourcelines(exe._code)
+            lines, _ = inspect.getsourcelines(exe.vframe.code)
             print(
                 "  "
-                + exe._code.co_filename
+                + exe.vframe.code.co_filename
                 + f"({exe._current_line})"
-                + f"{exe._code.co_name}()"
+                + f"{exe.vframe.code.co_name}()"
             )
             print(f"-> {lines[0].strip()}")
             print(f"-> {self.opcode(exe)}")
@@ -126,7 +126,7 @@ class BreakpointManager(metaclass=Singleton):
 
     def _dis_source_code(self):
         cur_exe = self.executors[self.activate]
-        lines, start_line = inspect.getsourcelines(cur_exe._code)
+        lines, start_line = inspect.getsourcelines(cur_exe.vframe.code)
         cur_line = cur_exe._current_line
         lines[cur_line - start_line + 1 : cur_line - start_line + 1] = (
             "  ^^^^^ HERE  \n"
@@ -142,8 +142,8 @@ class BreakpointManager(metaclass=Singleton):
         cur_exe = self.cur_exe
         print(self._dis_source_code())
 
-        print(f"\n{cur_exe._code}")
-        lasti = cur_exe._lasti
+        print(f"\n{cur_exe.vframe.code}")
+        lasti = cur_exe.vframe.lasti
         instr_str = instrs_info(
             cur_exe._instructions, lasti - 1, range, want_str=True
         )

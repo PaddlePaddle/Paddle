@@ -78,6 +78,7 @@ from ..tracker import (
     GetIterTracker,
     Tracker,
 )
+from ..virtual_frame import VirtualFrame
 from .base import VariableFactory
 from .basic import (
     ConstantVariable,
@@ -201,7 +202,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
             from ...breakpoint import BM
 
             BM.locate(BM.executors[-1])
-            BM.add(BM.cur_exe._code.co_filename, BM.cur_exe._current_line)
+            BM.add(BM.cur_exe.vframe.code.co_filename, BM.cur_exe._current_line)
             return ConstantVariable.wrap_literal(None, self.graph)
         elif self.value is psdb.breakgraph:
             raise BreakGraphError(
@@ -229,9 +230,17 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 return output
 
         try:
-            inline_executor = OpcodeInlineExecutor(self, *args, **kwargs)
+            code_var = self.get_code()
+            vframe = VirtualFrame.from_inline_call(
+                code_var.value,
+                self,
+                self.value,
+                self.graph,
+                (args, kwargs),
+            )
+            inline_executor = OpcodeInlineExecutor(vframe, code_var, self.graph)
             with EventGuard(
-                f"Inline Call: {inline_executor._code.co_name.replace('<', '(').replace('>', ')')}, file {inline_executor._code.co_filename}, line {int(inline_executor._code.co_firstlineno)}"
+                f"Inline Call: {inline_executor.vframe.code.co_name.replace('<', '(').replace('>', ')')}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
         except SotErrorBase as error:

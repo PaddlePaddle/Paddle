@@ -38,6 +38,7 @@ from ..custom_code import CustomCode
 from .function_graph import FunctionGraph
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
+from .virtual_frame import VirtualFrame
 
 if TYPE_CHECKING:
     import types
@@ -237,7 +238,8 @@ def start_translate(
         tuple[CustomCode, Guard | None]: The translated code object and its guard function, or None if translation fails.
     """
     graph = FunctionGraph(frame.f_code, frame.f_globals, **kwargs)
-    simulator = OpcodeExecutor(frame, graph)
+    vframe = VirtualFrame.from_real_frame(frame, graph)
+    simulator = OpcodeExecutor(vframe, graph)
     try:
         simulator.check_code_simulatable()
         InfoCollector().attach(CompileCountInfo, frame.f_code)
@@ -255,9 +257,9 @@ def start_translate(
             f"Found BreakGraphError raised, it should not be catch at start_translate!\n{e}"
         )
     except FallbackError as e:
-        if simulator._code in NO_FALLBACK_CODES:
+        if simulator.vframe.code in NO_FALLBACK_CODES:
             raise InnerError(
-                f"{simulator._code.co_name} should not fallback, but got '{e}'"
+                f"{simulator.vframe.code.co_name} should not fallback, but got '{e}'"
             )
         # if disable_eval_frame is True, it means we want fallback to speedup rather than error occurred
         if is_strict_mode() and e.disable_eval_frame is False:
