@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     import paddle
     from paddle.base.core import EventHandle
 
+import paddle
+
 
 class EventOverlap:
     """
@@ -59,6 +61,12 @@ class EventOverlap:
         assert self.event is not None
         self.event.current_stream_wait()
 
+    def calc_stream_wait(self, group_idx) -> None:
+        self.event.calc_stream_wait(group_idx)
+
+    def comm_stream_wait(self, group_idx) -> None:
+        self.event.comm_stream_wait(group_idx)
+
     def __enter__(self) -> Any:
         """
         Utility for overlapping and Python `with` syntax.
@@ -81,3 +89,15 @@ class EventOverlap:
         """
         if self.event is not None:
             self.event.current_stream_wait()
+
+
+def get_event_from_calc_stream(group_id: int) -> EventOverlap:
+    return EventOverlap(
+        event=paddle.base.core.get_event_handle_from_calc_stream(group_id)
+    )
+
+
+def get_event_from_comm_stream(group_id: int) -> EventOverlap:
+    return EventOverlap(
+        event=paddle.base.core.get_event_handle_from_comm_stream(group_id)
+    )

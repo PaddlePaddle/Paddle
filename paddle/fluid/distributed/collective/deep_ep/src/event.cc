@@ -12,26 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <glog/logging.h>
+#include "paddle/fluid/distributed/collective/deep_ep/event.hpp"
 #include "paddle/fluid/distributed/collective/deep_ep/include/CUDAStream.h"
-#include "paddle/fluid/distributed/collective/deep_ep/include/event_pool.h"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 
-namespace deep_ep::detail {
+namespace deep_ep {
+void EventHandle::CalcStreamWait(int context_ring_id) const {
+  CUDA_CHECK(cudaStreamWaitEvent(
+      detail::GetCalcStreamFromGroup(context_ring_id), event->cuda_event(), 0));
+}
 
-class Event {
- public:
-  Event() { cuda_event_ = EventPool::Instance().CreateCudaEventFromPool(); }
-  void record(const cudaStream_t& stream) {
-    CUDA_CHECK(cudaEventRecord(cuda_event_, stream));
-  }
+void EventHandle::CommStreamWait(int context_ring_id) const {
+  CUDA_CHECK(cudaStreamWaitEvent(
+      detail::GetCommStreamFromGroup(context_ring_id), event->cuda_event(), 0));
+}
 
-  cudaEvent_t cuda_event() const { return cuda_event_; }
+EventHandle GetEventHandleFromCalcStream(int context_ring_id) {
+  return EventHandle(detail::GetCalcStreamFromGroup(context_ring_id));
+}
 
- private:
-  cudaEvent_t cuda_event_;
-};
-
-}  // namespace deep_ep::detail
+EventHandle GetEventHandleFromCommStream(int context_ring_id) {
+  return EventHandle(detail::GetCommStreamFromGroup(context_ring_id));
+}
+}  // namespace deep_ep

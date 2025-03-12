@@ -22,7 +22,7 @@ endif()
 
 cc_library(
   deep_ep
-  SRCS deep_ep.cpp
+  SRCS deep_ep.cpp src/event_pool.cc src/event.cc src/CUDAStream.cc
   DEPS phi common deepep_kernels)
 
 set_target_properties(deep_ep PROPERTIES CUDA_SEPARABLE_COMPILATION OFF)

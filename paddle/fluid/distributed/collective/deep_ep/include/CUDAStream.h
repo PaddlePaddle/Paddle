@@ -61,4 +61,7 @@ inline void setCurrentCUDAStream(cudaStream_t stream) {
   LOG(FATAL) << "setCurrentCUDAStream is not implemented";
 }
 
+cudaStream_t GetCalcStreamFromGroup(int context_ring_id);
+
+cudaStream_t GetCommStreamFromGroup(int context_ring_id);
 }  // namespace deep_ep::detail
