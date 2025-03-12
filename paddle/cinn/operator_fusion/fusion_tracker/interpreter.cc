@@ -161,31 +161,41 @@ void RunItersTransformInstr(const std::shared_ptr<ItersTransformInstr>& instr,
 
 void RunAxisTransformInstr(const std::shared_ptr<AxisTransformInstr>& instr,
                            FusionInterpreter* interpreter) {
-  auto substitute_dimexpr_for_shape = [&](std::vector<symbol::DimExpr>& shape) {
-    for (auto& dim_expr : shape) {
-      if (dim_expr.isa<std::int64_t>()) continue;
-      symbol::DimExpr origin_dim_expr = dim_expr;
-      while (true) {
-        dim_expr = symbol::SubstituteDimExpr(
-            dim_expr, interpreter->substitute_dimexpr_map);
-        if (dim_expr == origin_dim_expr || dim_expr.isa<std::int64_t>()) break;
-        origin_dim_expr = dim_expr;
-      }
-    }
-  };
-  auto substitute_dimexpr_for_transform =
-      adt::match{[&](const AppendAxisTransformPtr& transform) {
-                   substitute_dimexpr_for_shape(transform->shape);
-                 },
-                 [&](const ReshapeTransformPtr& transform) {
-                   substitute_dimexpr_for_shape(transform->in_shape);
-                   substitute_dimexpr_for_shape(transform->out_shape);
-                 },
-                 [&](const auto& transform) {}};
+  auto substitute_dimexpr_for_shape =
+      [&](const std::vector<symbol::DimExpr>& shape) {
+        std::vector<symbol::DimExpr> result;
+        for (const auto& dim_expr : shape) {
+          symbol::DimExpr substituted = dim_expr;
+          while (true) {
+            if (substituted.isa<std::int64_t>()) break;
+            auto tmp_substituted = symbol::SubstituteDimExpr(
+                substituted, interpreter->substitute_dimexpr_map);
+            if (tmp_substituted == substituted) break;
+            substituted = tmp_substituted;
+          }
+          result.emplace_back(substituted);
+        }
+        return result;
+      };
+  auto substitute_dimexpr_for_transform = adt::match{
+      [&](const AppendAxisTransformPtr& trans) -> AxisTransform {
+        auto substituted_shape = substitute_dimexpr_for_shape(trans->shape);
+        return std::make_shared<AppendAxisTransform>(trans->axis,
+                                                     substituted_shape);
+      },
+      [&](const ReshapeTransformPtr& trans) -> AxisTransform {
+        auto substituted_in_shape =
+            substitute_dimexpr_for_shape(trans->in_shape);
+        auto substituted_out_shape =
+            substitute_dimexpr_for_shape(trans->out_shape);
+        return std::make_shared<ReshapeTransform>(substituted_in_shape,
+                                                  substituted_out_shape);
+      },
+      [&](const auto& trans) -> AxisTransform { return trans; }};
   auto axis_transform = [&](ir::Expr op_expr) -> ir::Expr {
     for (auto trans : instr->axis_transform_route_) {
-      std::visit(substitute_dimexpr_for_transform, trans);
-      op_expr = std::visit(ApplyAxisTransform(op_expr), trans);
+      auto new_trans = std::visit(substitute_dimexpr_for_transform, trans);
+      op_expr = std::visit(ApplyAxisTransform(op_expr), new_trans);
     }
     return op_expr;
   };
