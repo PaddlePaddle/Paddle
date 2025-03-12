@@ -840,7 +840,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         clip_input = paddle.distributed.reshard(
                             clip_input, g.process_mesh, clip_input.placements
                         )
-                if g.is_dist() or g.is_dense():
+
+                # 1. Inplace ops only support DistTensor and DenseTensor.
+                # 2. Inplace ops do not support 0-D tensor.
+                if (g.is_dist() or g.is_dense()) and len(g.shape) != 0:
                     g.multiply_(clip_input)
                     params_and_grads.append((p, g))
                 else:
