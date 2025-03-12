@@ -4,7 +4,7 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 MIN_GRAPH_SIZE=0 STRICT_MODE=True
-             FLAGS_cudnn_deterministic=True)
+             SOT_ENABLE_STRICT_GUARD_CHECK=True FLAGS_cudnn_deterministic=True)
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${SOT_ENVS})

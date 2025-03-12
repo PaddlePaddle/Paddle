@@ -1024,6 +1024,7 @@ function run_sot_test() {
     export MIN_GRAPH_SIZE=0
     export SOT_LOG_LEVEL=0
     export FLAGS_cudnn_deterministic=True
+    export SOT_ENABLE_STRICT_GUARD_CHECK=True
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
@@ -1054,7 +1055,7 @@ function run_sot_test() {
                 echo "skip ${PY_VERSION_NO_DOT} ${file}"
                 continue
             fi
-            echo Running:" STRICT_MODE=1 MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True python " $file
+            echo Running:" STRICT_MODE=1 MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True SOT_ENABLE_STRICT_GUARD_CHECK=True python " $file
             # run unittests
             python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
 

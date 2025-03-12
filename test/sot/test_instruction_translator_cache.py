@@ -84,12 +84,21 @@ def fake_frames() -> tuple[
 ) = fake_frames()
 
 
+class GuardCode:
+    def __init__(self, recompile):
+        self.func = lambda frame: recompile
+        self.mirror_guard = self.func
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+
 def mock_start_translate(frame: FrameType, **kwargs):
     translate_map = {
-        FRAME_1: (CustomCode(FRAME_2.f_code, False), lambda frame: True),
+        FRAME_1: (CustomCode(FRAME_2.f_code, False), GuardCode(True)),
         FRAME_3: (
             CustomCode(FRAME_4.f_code, False),
-            lambda frame: False,
+            GuardCode(False),
         ),  # Always re-compile
         FRAME_5: (CustomCode(None, False), lambda frame: True),
     }

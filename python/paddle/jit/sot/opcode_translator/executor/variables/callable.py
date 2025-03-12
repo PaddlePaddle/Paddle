@@ -519,7 +519,7 @@ class LayerVariable(CallableVariable):
         return [
             FasterStringifiedExpression(
                 f"id({{0}}) == {id(self.get_py_value())} and {{0}}.training == {self.get_py_value().training}",
-                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                paddle.framework.core.LayerMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),

@@ -24,6 +24,7 @@ from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     BreakGraphError,
     CompileCountInfo,
     FallbackError,
@@ -49,6 +50,8 @@ GuardedFunctions = List[GuardedFunction]
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
 dummy_guard.inlined_expr = "lambda frame: True"
+if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+    dummy_guard.mirror_guard = lambda frame: True
 
 
 class OpcodeExecutorCache(metaclass=Singleton):
@@ -127,10 +130,27 @@ class OpcodeExecutorCache(metaclass=Singleton):
             log(2, "[Cache]: Exceed max cache size, skip it\n")
             return CustomCode(None, False)
 
+        enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
+
         for custom_code, guard_fn in guarded_fns:
+            if enable_strict_guard:
+                mirror_guard_error = None
+                try:
+                    with EventGuard("try mirror guard"):
+                        mirror_guard_result = guard_fn.mirror_guard(frame)
+                except Exception as e:
+                    log(2, f"[Cache] Mirror guard error: {e}\n")
+                    mirror_guard_error = e
+
             try:
                 with EventGuard("try guard"):
                     guard_result = guard_fn(frame)
+                if enable_strict_guard:
+                    assert mirror_guard_result == guard_result, (
+                        "faster guard result is not equal to guard result, "
+                        f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
+                        f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                    )
                 if guard_result:
                     log(
                         2,
@@ -160,8 +180,14 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     2,
                     self.analyse_guard_error(guard_fn, frame),
                 )
-
-                continue
+                if enable_strict_guard:
+                    assert type(e) == type(mirror_guard_error) and str(
+                        e
+                    ) == str(mirror_guard_error), (
+                        "mirror guard error is not equal to guard error, "
+                        f"guard_error: {e} \n"
+                        f"mirror_guard_error: {mirror_guard_error},"
+                    )
 
         log(2, "[Cache]: all guards missed\n")
         new_custom_code, guard_fn = self.translate(frame, **kwargs)
@@ -245,6 +271,9 @@ def start_translate(
         InfoCollector().attach(CompileCountInfo, frame.f_code)
         with sot_simulation_mode_guard(True):
             new_custom_code, guard_fn = simulator.transform(frame)
+            if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+                assert guard_fn(frame)
+                assert guard_fn.mirror_guard(frame)
         if not simulator._graph.need_cache:
             return (
                 CustomCode(None, True),

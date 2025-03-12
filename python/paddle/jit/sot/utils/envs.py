@@ -129,6 +129,10 @@ ENV_SOT_ENABLE_FASTER_GUARD = BooleanEnvironmentVariable(
     "SOT_ENABLE_FASTER_GUARD",
     False,
 )
+ENV_SOT_ENABLE_STRICT_GUARD_CHECK = BooleanEnvironmentVariable(
+    "SOT_ENABLE_STRICT_GUARD_CHECK",
+    False,
+)
 ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,

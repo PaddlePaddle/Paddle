@@ -176,12 +176,9 @@ class AttributeMatchGuard : public GuardBase {
 
 class LayerMatchGuard : public GuardBase {
  public:
-  explicit LayerMatchGuard(PyObject* layer_ptr) : layer_ptr_(layer_ptr) {
-    training_ = PyObject_GetAttrString(layer_ptr, "training") == Py_True;
-  }
-
   explicit LayerMatchGuard(const py::object& layer_obj)
-      : layer_ptr_(layer_obj.ptr()), training_(layer_obj.attr("training")) {}
+      : layer_ptr_(layer_obj.ptr()),
+        training_(layer_obj.attr("training").cast<bool>()) {}
 
   bool check(PyObject* value);
 
