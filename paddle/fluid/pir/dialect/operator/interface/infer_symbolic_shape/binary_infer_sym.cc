@@ -1243,15 +1243,18 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
       residuals_shape.emplace_back(0);
     }
   }
-  if (paddle::dialect::details::IsFakeValue(op->result(1)) ||
-      residuals_shape.empty()) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-  } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    if (residuals_shape.empty()) {
+      infer_context->SetSymbolForValueByStaticShape(op->result(1));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+    }
   }
+
   symbol::DimExprBuilder builder;
   batch_dims_vec.emplace_back(builder.Min(m, n));
   infer_context->SetShapeOrDataForValue(
