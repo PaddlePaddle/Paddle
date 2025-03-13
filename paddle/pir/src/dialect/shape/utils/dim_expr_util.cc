@@ -1025,28 +1025,32 @@ struct SimplifyBroadcast {
   }
 
   bool IsLhsGreatThanRhs(const DimExpr& lhs, const DimExpr& rhs) {
-    auto LhsOperandsVisitor = common::Overloaded{
-        [&](const Mul<DimExpr>& mul) {
-          bool lhs_great_than_rhs = false;
-          for (const auto& expr : *mul.operands) {
-            if (expr == rhs)
-              lhs_great_than_rhs = true;
-            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
-              return false;
-          }
-          return lhs_great_than_rhs;
-        },
-        [&](const Add<DimExpr>& add) {
-          bool lhs_great_than_rhs = false;
-          for (const auto& expr : *add.operands) {
-            if (expr == rhs)
-              lhs_great_than_rhs = true;
-            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
-              return false;
-          }
-          return lhs_great_than_rhs;
-        },
-        [&](const auto& lhs) { return false; }};
+    auto LhsOperandsVisitor =
+        common::Overloaded{[&](const Mul<DimExpr>& mul) {
+                             bool lhs_great_than_rhs = false;
+                             for (const auto& expr : *mul.operands) {
+                               if (expr == rhs)
+                                 lhs_great_than_rhs = true;
+                               else if (!(expr.isa<std::int64_t>() &&
+                                          expr.dyn_cast<std::int64_t>() > 0) &&
+                                        !expr.isa<std::string>())
+                                 return false;
+                             }
+                             return lhs_great_than_rhs;
+                           },
+                           [&](const Add<DimExpr>& add) {
+                             bool lhs_great_than_rhs = false;
+                             for (const auto& expr : *add.operands) {
+                               if (expr == rhs)
+                                 lhs_great_than_rhs = true;
+                               else if (!(expr.isa<std::int64_t>() &&
+                                          expr.dyn_cast<std::int64_t>() > 0) &&
+                                        !expr.isa<std::string>())
+                                 return false;
+                             }
+                             return lhs_great_than_rhs;
+                           },
+                           [&](const auto& lhs) { return false; }};
     return std::visit(LhsOperandsVisitor, lhs.variant());
   }
 
