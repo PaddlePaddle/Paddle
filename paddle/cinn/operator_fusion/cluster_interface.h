@@ -23,8 +23,7 @@
 namespace cinn::fusion {
 
 inline std::vector<fusion::PatternNodePtr> ClusterOps(
-    const std::vector<fusion::PatternContent>& contents,
-    const std::vector<pir::Value>& output_values) {
+    const std::vector<fusion::PatternContent>& contents) {
   std::function<pir::Operation*(fusion::PatternContent)> func =
       [](const fusion::PatternContent& content) { return content.op; };
   const auto& origin_ops = fusion::MapVector(contents, func);
@@ -36,14 +35,10 @@ inline std::vector<fusion::PatternNodePtr> ClusterOps(
   VLOG(4) << "Input Group with size " << origin_ops.size() << " :\n"
           << fusion::OpsDebugStr(origin_ops);
 
-  std::vector<pir::Value> outputs = output_values;
   const auto& ops = [&] {
     std::vector<pir::Operation*> ops;
     for (const auto& content : contents) {
       if (content.op->name() == "cf.yield") {  // just skip cf.yield.
-        for (auto& operand : content.op->operands()) {
-          outputs.push_back(operand.source());
-        }
         continue;
       }
       ops.emplace_back(content.op);
@@ -79,7 +74,7 @@ inline std::vector<fusion::PatternNodePtr> ClusterOps(
   policy_manager.SetPolicy(iters_fusion_policy);
 
   VLOG(4) << "Start Create PatternGraph";
-  fusion::PatternGraph graph(content_without_yield, outputs, policy_manager);
+  fusion::PatternGraph graph(content_without_yield, policy_manager);
   auto result = graph.ClusterOps();
 
   VLOG(4) << "End Cluster Ops! result size:" << result.size();

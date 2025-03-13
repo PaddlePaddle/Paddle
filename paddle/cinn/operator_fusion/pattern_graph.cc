@@ -137,17 +137,20 @@ std::vector<PatternNodePtr> PatternGraph::SortByReverseTopoOrder() const {
 }
 
 void PatternGraph::SinkTrivialPattern() {
-  GraphTransformer<
-      NodePattern,
-      And<StmtPatternGraphMatcher<TrivialPattern>, OnlyOneDownstreamMatcher>,
-      MergeTrivialPatternOperation>(this);
+  GraphTransformer<NodePattern,
+                   And<StmtPatternGraphMatcher<TrivialPattern>,
+                       OnlyOneDownstreamMatcher,
+                       Not<IsOutputNodeMatcher>>,
+                   MergeTrivialPatternOperation>(this);
 
   // TODO(huangjiyi): remove sink multi downstream transpose after
   // supporting transpose plus reduce anchor fusion
-  GraphTransformer<
-      NodePattern,
-      And<StmtPatternGraphMatcher<TrivialPattern>, TransposeOpMatcher>,
-      MergeTrivialPatternOperation>(this);
+  GraphTransformer<NodePattern,
+                   And<StmtPatternGraphMatcher<TrivialPattern>,
+                       TransposeOpMatcher,
+                       OnlyOneDownstreamMatcher,
+                       Not<IsOutputNodeMatcher>>,
+                   MergeTrivialPatternOperation>(this);
 }
 
 void PatternGraph::ReduceLiftReduceTree() {
@@ -178,14 +181,15 @@ void PatternGraph::HorizontalFusion() {
 
 void PatternGraph::ReduceTreeGrown() {
   GraphTransformer<NodePattern,
-                   CanFuseReduceTreeMatcher,
+                   And<CanFuseReduceTreeMatcher, Not<IsOutputNodeMatcher>>,
                    MergeReduceTreeOperation>(this);
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  GraphTransformer<NodePattern,
-                   CanFuseReduceTreeAndTrivialMatcher,
-                   MergeReduceTreeAndTrivialOperation>(this);
+  GraphTransformer<
+      NodePattern,
+      And<CanFuseReduceTreeAndTrivialMatcher, Not<IsOutputNodeMatcher>>,
+      MergeReduceTreeAndTrivialOperation>(this);
 }
 
 void PatternGraph::LiftToAnchorPattern() {
@@ -241,16 +245,11 @@ void PatternGraph::SplitRecomputePattern() {
 }
 
 PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,
-                           const std::vector<pir::Value>& outputs,
                            const PolicyManager policy_manager)
-    : policy_manager_(policy_manager), outputs_(outputs) {
+    : policy_manager_(policy_manager) {
   std::unordered_map<pir::Operation*, PatternNodePtr> op_to_node_map;
 
-  VLOG(4) << "len(outputs) = " << outputs_.size();
-  for (const auto& v : outputs) {
-    VLOG(4) << "output is" << OpsDebugStr({v.defining_op()});
-  }
-
+  std::vector<pir::Operation*> all_ops;
   for (const auto& content : contents) {
     const auto& fusion_iters =
         iters_fusion_policy()->iters_manager()->GetItersSignature(content.op);
@@ -258,7 +257,9 @@ PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,
     op_to_node_map[content.op] = node;
     node->set_loop_axis_mapping(CreateLoopAxisMapping(content.op));
     all_pattern_nodes_.emplace(node);
+    all_ops.emplace_back(content.op);
   }
+  output_ops_ = GetGroupOutputOps(all_ops);
 
   for (const auto& content : contents) {
     PatternNodePtr cur_node = op_to_node_map[content.op];
