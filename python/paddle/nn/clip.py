@@ -240,6 +240,18 @@ def _cast_to_mp_type_if_enabled(x):
         return x
 
 
+def _can_inplace_clip_grad(grad: Tensor, clip_input: Tensor):
+    if not grad._is_initialized() or not clip_input._is_initialized():
+        return False
+
+    # 1. Inplace ops only support DistTensor and DenseTensor.
+    # 2. Inplace ops do not support 0-D tensor.
+    if (grad.is_dist() or grad.is_dense()) and len(grad.shape) != 0:
+        return True
+
+    return False
+
+
 def _squared_l2_norm(x):
     r"""
     Return the squared L2 norm of a tensor.
@@ -841,9 +853,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                             clip_input, g.process_mesh, clip_input.placements
                         )
 
-                # 1. Inplace ops only support DistTensor and DenseTensor.
-                # 2. Inplace ops do not support 0-D tensor.
-                if (g.is_dist() or g.is_dense()) and len(g.shape) != 0:
+                if _can_inplace_clip_grad(g, clip_input):
                     g.multiply_(clip_input)
                     params_and_grads.append((p, g))
                 else:
