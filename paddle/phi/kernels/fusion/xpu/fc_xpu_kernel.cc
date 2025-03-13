@@ -199,7 +199,7 @@ void FcXPUKernelImpl(const Context& ctx,
                                                   desc,
                                                   epilogue1);
 
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+      PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
     }
   }
   if (std::getenv("XPU_PADDLE_FC_BFLOAT16_XTE") == nullptr) {
@@ -280,7 +280,7 @@ void FcXPUKernelImpl(const Context& ctx,
                                                   tensor_d1,
                                                   desc,
                                                   epilogue1);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+      PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
     }
   }
 #else
