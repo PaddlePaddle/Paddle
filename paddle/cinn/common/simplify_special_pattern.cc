@@ -51,7 +51,7 @@ static void MergeMulModInsertElements(
       *has_mult = true;
       mult_exprs->emplace_back(ele);
     } else {
-      *no_opt_sum = no_opt_sum->get() ? *no_opt_sum + ele : ele;
+      *no_opt_sum = no_opt_sum->get() ? ir::Add::Make(*no_opt_sum, ele) : ele;
     }
   }
 }
