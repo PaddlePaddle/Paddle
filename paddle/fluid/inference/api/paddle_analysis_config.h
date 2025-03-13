@@ -1089,6 +1089,12 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_EnableMixedPrecisionOps(
       const std::unordered_set<std::string>& white_list);
 
+  /// \brief SparseConv(not subm) will use host buffer when true. This
+  /// may decrease the time of memory copy but increase the latency and GPU
+  /// memory cost slightly.
+  void Exp_SparseConvUsingBuffer(const std::vector<std::vector<int>>& kernels,
+                                 const std::vector<std::vector<int>>& strides);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }

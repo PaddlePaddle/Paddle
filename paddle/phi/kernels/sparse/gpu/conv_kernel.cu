@@ -23,6 +23,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
+#include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
+
 #if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
@@ -110,11 +112,23 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       x_dims, kernel_sizes, subm_paddings, dilations, subm_strides, &out_dims);
   const int in_channels = is2D ? kernel_dims[2] : kernel_dims[3];
   const int out_channels = is2D ? kernel_dims[3] : kernel_dims[4];
+
+  int* h_counter_ptr{nullptr};
+  int* h_offsets_ptr{nullptr};
+
+  phi::sparse::ConvHostBuffer& conv_host_buffer =
+      phi::sparse::ConvHostBuffer::getInstance();
   DenseTensor h_counter, h_offsets;
-  h_counter.Resize({kernel_size});
-  h_offsets.Resize({kernel_size + 1});
-  int* h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
-  int* h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
+  if (conv_host_buffer.using_buffer()) {
+    int* h_buffer_ptr = conv_host_buffer.get_host_buffer();
+    h_counter_ptr = h_buffer_ptr;
+    h_offsets_ptr = h_buffer_ptr + kernel_size;
+  } else {
+    h_counter.Resize({kernel_size});
+    h_offsets.Resize({kernel_size + 1});
+    h_counter_ptr = dev_ctx.template HostAlloc<int>(&h_counter);
+    h_offsets_ptr = dev_ctx.template HostAlloc<int>(&h_offsets);
+  }
 
   // Second algorithm:
   // https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf
@@ -142,8 +156,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         key,
         out_dims,
         out,
-        h_counter.data<int>(),
-        h_offsets.data<int>(),
+        h_counter_ptr,
+        h_offsets_ptr,
         &rulebook_len,
         &need_product_rulebook);
   }
@@ -167,9 +181,21 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                                         h_counter_ptr,
                                                         h_offsets_ptr);
     rulebook_ptr = tmp_rulebook.data<IntT>();
-
-    phi::funcs::sparse::SaveToTable(
-        dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
+    DenseTensor h_counter_tensor;
+    h_counter_tensor.Resize({kernel_size});
+    int* h_counter_tensor_ptr =
+        dev_ctx.template HostAlloc<int>(&h_counter_tensor);
+    for (int i = 0; i < kernel_size; ++i) {
+      h_counter_tensor_ptr[i] = h_counter_ptr[i];
+    }
+    phi::funcs::sparse::SaveToTable(dev_ctx,
+                                    x,
+                                    key,
+                                    tmp_rulebook,
+                                    h_counter_tensor,
+                                    out,
+                                    rulebook,
+                                    counter);
   }
 
 #if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
