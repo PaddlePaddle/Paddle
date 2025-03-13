@@ -1033,7 +1033,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
         for idx in range(len(params1)):
             np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
-    def _check_with_param_arrt(self, place, use_amp):
+    def _check_with_param_attr(self, place, use_amp):
         output1, params1 = self._momentum_optimize_dygraph(
             place=place,
             use_amp=use_amp,
@@ -1072,7 +1072,7 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)
-                self._check_with_param_arrt(place, use_amp)
+                self._check_with_param_attr(place, use_amp)
                 self._check_with_param_group(place, use_amp)
 
 

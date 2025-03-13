@@ -22,7 +22,7 @@ import paddle
 paddle.enable_static()
 
 
-class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
+class TestReshapeTransposeMatmulFusePatternCase1(PassTest):
     r'''
         x
         |
@@ -80,7 +80,7 @@ class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
         self.check_pass_correct()
 
 
-class TestReshapeTranspoeMatmulFusePatternCase2(PassTest):
+class TestReshapeTransposeMatmulFusePatternCase2(PassTest):
     r'''
             y
             |
@@ -138,7 +138,7 @@ class TestReshapeTranspoeMatmulFusePatternCase2(PassTest):
         self.check_pass_correct()
 
 
-class TestReshapeTranspoeMatmulFusePatternCase3(PassTest):
+class TestReshapeTransposeMatmulFusePatternCase3(PassTest):
     r'''
         x        y
         |        |

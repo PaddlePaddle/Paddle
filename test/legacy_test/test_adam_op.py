@@ -1341,7 +1341,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     output_static1[idx], output_static2[idx], rtol=1e-05
                 )
 
-    def _check_with_param_arrt(self, place, use_amp):
+    def _check_with_param_attr(self, place, use_amp):
         output1, params1 = self._adam_optimize_dygraph(
             place=place,
             use_amp=use_amp,
@@ -1382,7 +1382,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)
-                self._check_with_param_arrt(place, use_amp)
+                self._check_with_param_attr(place, use_amp)
                 self._check_with_param_group(place, use_amp)
 
     def test_pir_main(self):

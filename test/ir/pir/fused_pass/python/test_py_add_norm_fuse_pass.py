@@ -29,7 +29,7 @@ class TestRmsNormFusePattern(PassTest):
      |                   |       |
     pow                  |       |
      |                   |       |
-    mean     epilson     |       |
+    mean     epsilon     |       |
        \     /           |       |
         rsqrt            |       |
           |              |       |

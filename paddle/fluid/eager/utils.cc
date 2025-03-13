@@ -1056,7 +1056,7 @@ void ConvertToDistTensor(paddle::Tensor* x,
     if (!dist_ptr->skip_check_mesh() && x->dims().size() > 0) {
       // NOTE(pkuzyc): In MoE expert parallelism, the mesh of the
       // inputs and outputs of different experts are different, so
-      // skip checking mesh in the following two casees:
+      // skip checking mesh in the following two cases:
       // 1. The ``skip_check_mesh_`` flag is true. The MoE-related apis
       // sets this flag to indicate that the difference between tensor's
       // mesh is allowed.

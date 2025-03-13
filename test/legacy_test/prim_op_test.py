@@ -193,7 +193,7 @@ class OpTestUtils:
 
         assert len(api_defaults) == len(
             api_params
-        ), "Error happens. contack xiongkun03 to solve."
+        ), "Error happens. contact xiongkun03 to solve."
         inputs_sig, attrs_sig, outputs_sig = kernel_sig
         inputs_and_attrs = inputs_sig + attrs_sig
         input_arguments = [
@@ -303,7 +303,7 @@ class PrimForwardChecker:
     def init_checker(self):
         assert hasattr(
             self.op_test, 'prim_op_type'
-        ), "if you want to test comp op, please set prim_op_type with 'prim' or 'comp' in setUp function."
+        ), "If you want to test comp op, please set prim_op_type with 'prim' or 'comp' in setUp function."
         assert self.op_test.prim_op_type in [
             "comp",
             "prim",
