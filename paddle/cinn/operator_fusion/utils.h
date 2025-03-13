@@ -243,7 +243,7 @@ std::vector<T2> GatherMapValue(const std::map<T1, T2>& input,
   std::vector<T2> result;
   for (const auto& key : keys) {
     if (input.count(key)) {
-      result.push_back(input[key]);
+      result.push_back(input.at(key));
     }
   }
   return result;
@@ -512,7 +512,7 @@ std::vector<T> GatherVector(const std::vector<T>& inp,
                             std::vector<Int> gathers) {
   std::vector<T> result;
   for (auto i : gathers) {
-    result.push_back(inp[i]);
+    result.push_back(inp.at(i));
   }
   return result;
 }
@@ -550,7 +550,7 @@ std::vector<T> SliceVector(const std::vector<T>& inp, int start, int end) {
   }
   std::vector<T> result;
   for (int i = start; i < end; ++i) {
-    result.push_back(inp[i]);
+    result.push_back(inp.at(i));
   }
   return result;
 }
