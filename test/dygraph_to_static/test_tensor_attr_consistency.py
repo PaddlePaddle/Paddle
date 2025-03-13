@@ -37,7 +37,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'data',
         'data_ptr',
         'detach_',
-        'element_size',
         'fill_',
         'fill_diagonal_',
         'fill_diagonal_tensor',

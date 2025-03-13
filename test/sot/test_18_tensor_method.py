@@ -57,6 +57,7 @@ def tensor_method_property_without_breakgraph(
         + a.ndim
         + a.dim()
         + a.rank(),
+        a.element_size(),
     )
 
 
@@ -67,6 +68,7 @@ def tensor_method_property_with_breakgraph(a: paddle.Tensor, b: paddle.Tensor):
         a.tolist(),
         str(a.place),
         a.clear_gradient(),
+        a.is_dense(),
     )
 
 

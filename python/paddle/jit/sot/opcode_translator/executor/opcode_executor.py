@@ -891,6 +891,7 @@ class OpcodeExecutorBase:
             if CALL_METHOD_LAYOUT_NULL_AFTER_VALUE:
                 self.stack.push(NullVariable())
 
+    @call_break_graph_decorator(push_n=2)
     def LOAD_METHOD(self, instr: Instruction):
         method_name = self.vframe.code.co_names[instr.arg]
         self.load_method(method_name)
