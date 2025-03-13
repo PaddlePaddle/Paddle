@@ -442,142 +442,194 @@ bool IsPureMath(Expr expr) {
   return complex_nodes.empty();
 }
 
-Tokenizer::Tokenizer(const std::string &in) : input(in), pos(0) {}
+/*!
+ * \brief Index Token in Tokenizer and Parser
+ */
+struct IndexToken {
+  enum class TokenType {
+    kNumber,
+    kVar,
+    kPlus,
+    kMinus,
+    kMultiply,
+    kDivide,
+    kModulo,
+    kLeftParen,
+    kRightParen,
+    kEnd
+  };
 
-IndexToken Tokenizer::NextToken() {
-  // skip whitespace
-  while (pos < input.size() && std::isspace(input[pos])) {
-    pos++;
-  }
-  // check if we reached the end of the input
-  if (pos >= input.size()) {
-    return IndexToken(IndexToken::TokenType::kEnd);
-  }
+  TokenType type;
+  std::string value;
 
-  char c = input[pos++];
+  explicit IndexToken(TokenType t, const std::string &v = "")
+      : type(t), value(v) {}
+};
 
-  // deal with number (0, 1, 11, 123...) not support float.
-  if (std::isdigit(c)) {
-    std::string num;
-    num += c;
-    while (pos < input.size() && std::isdigit(input[pos])) {
-      num += input[pos++];
+/*!
+ * \brief Tokenizer for IndexExpr, split the input string into IndexToken.
+ */
+class Tokenizer {
+ public:
+  explicit Tokenizer(const std::string &in) : input(in), pos(0) {}
+  // generate IndexToken for the next `pos`. it supports the following:
+  // 1. Number: 123, 1234...
+  // 2. Variable: a, b, a_1, aa, f1...
+  // 3. Operator: +, -, *, /, %, (, )
+  // 4. Whitespace
+  IndexToken NextToken() {
+    // skip whitespace
+    while (pos < input.size() && std::isspace(input[pos])) {
+      pos++;
     }
-    return IndexToken(IndexToken::TokenType::kNumber, num);
-  }
-
-  // deal with variable name (a, b, a1, a123, a_1...).
-  if (std::isalpha(c) || input[pos] == '_') {
-    std::string var;
-    var += c;
-    while (pos < input.size() &&
-           (std::isalnum(input[pos]) || input[pos] == '_')) {
-      var += input[pos++];
+    // check if we reached the end of the input
+    if (pos >= input.size()) {
+      return IndexToken(IndexToken::TokenType::kEnd);
     }
-    return IndexToken(IndexToken::TokenType::kVar, var);
+
+    char c = input[pos++];
+
+    // deal with number (0, 1, 11, 123...) not support float.
+    if (std::isdigit(c)) {
+      std::string num;
+      num += c;
+      while (pos < input.size() && std::isdigit(input[pos])) {
+        num += input[pos++];
+      }
+      return IndexToken(IndexToken::TokenType::kNumber, num);
+    }
+
+    // deal with variable name (a, b, a1, a123, a_1...).
+    if (std::isalpha(c) || input[pos] == '_') {
+      std::string var;
+      var += c;
+      while (pos < input.size() &&
+             (std::isalnum(input[pos]) || input[pos] == '_')) {
+        var += input[pos++];
+      }
+      return IndexToken(IndexToken::TokenType::kVar, var);
+    }
+
+    // deal with operator {+, -, *, /, %, '(', ')'}.
+    switch (c) {
+      case '+':
+        return IndexToken(IndexToken::TokenType::kPlus);
+      case '-':
+        return IndexToken(IndexToken::TokenType::kMinus);
+      case '*':
+        return IndexToken(IndexToken::TokenType::kMultiply);
+      case '/':
+        return IndexToken(IndexToken::TokenType::kDivide);
+      case '%':
+        return IndexToken(IndexToken::TokenType::kModulo);
+      case '(':
+        return IndexToken(IndexToken::TokenType::kLeftParen);
+      case ')':
+        return IndexToken(IndexToken::TokenType::kRightParen);
+      default:
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "Tokenizer Unexpected character: %s", c));
+    }
   }
 
-  // deal with operator {+, -, *, /, %, '(', ')'}.
-  switch (c) {
-    case '+':
-      return IndexToken(IndexToken::TokenType::kPlus);
-    case '-':
-      return IndexToken(IndexToken::TokenType::kMinus);
-    case '*':
-      return IndexToken(IndexToken::TokenType::kMultiply);
-    case '/':
-      return IndexToken(IndexToken::TokenType::kDivide);
-    case '%':
-      return IndexToken(IndexToken::TokenType::kModulo);
-    case '(':
-      return IndexToken(IndexToken::TokenType::kLeftParen);
-    case ')':
-      return IndexToken(IndexToken::TokenType::kRightParen);
-    default:
-      PADDLE_THROW(::common::errors::InvalidArgument(
-          "Tokenizer Unexpected character: %s", c));
+ private:
+  const std::string &input;
+  size_t pos;
+};
+
+/*!
+ * \brief Parser for IndexExpr, parse the input string into ir::Expr.
+ */
+class Parser {
+ public:
+  explicit Parser(const std::string &input)
+      : tokenizer(input), currentToken(tokenizer.NextToken()) {}
+  ir::Expr Parse() { return ParseExpression(); }
+
+ private:
+  void Advance() { currentToken = tokenizer.NextToken(); }
+
+  // Processing addition and subtraction expressions, with the lowest priority.
+  ir::Expr ParseExpression() {
+    auto left = ParseTerm();
+
+    while (currentToken.type == IndexToken::TokenType::kPlus ||
+           currentToken.type == IndexToken::TokenType::kMinus) {
+      auto op = currentToken.type;
+      Advance();
+      auto right = ParseTerm();
+
+      if (op == IndexToken::TokenType::kPlus) {
+        left = ir::Add::Make(left, right);
+      } else {
+        left = ir::Sub::Make(left, right);
+      }
+    }
+
+    return left;
   }
-}
 
-Parser::Parser(const std::string &input)
-    : tokenizer(input), currentToken(tokenizer.NextToken()) {}
+  // Process multiplication, division and modulo expressions, with higher
+  // priority than addition and subtraction, and the parsing result appears as
+  // one Term. e.g. a * b + c, a * b is a Term.
+  ir::Expr ParseTerm() {
+    auto left = ParseFactor();
+    while (currentToken.type == IndexToken::TokenType::kMultiply ||
+           currentToken.type == IndexToken::TokenType::kDivide ||
+           currentToken.type == IndexToken::TokenType::kModulo) {
+      auto op = currentToken.type;
+      Advance();
+      auto right = ParseFactor();
 
-ir::Expr Parser::Parse() { return ParseExpression(); }
+      if (op == IndexToken::TokenType::kMultiply) {
+        left = ir::Mul::Make(left, right);
+      } else if (op == IndexToken::TokenType::kDivide) {
+        left = ir::Div::Make(left, right);
+      } else {
+        left = ir::Mod::Make(left, right);
+      }
+    }
 
-void Parser::Advance() { currentToken = tokenizer.NextToken(); }
+    return left;
+  }
 
-ir::Expr Parser::ParseExpression() {
-  auto left = ParseTerm();
+  // Process numeric, variables and brackets, with the highest priority, as
+  // parameters for each item.
+  ir::Expr ParseFactor() {
+    if (currentToken.type == IndexToken::TokenType::kNumber) {
+      int value = std::stoi(currentToken.value);
+      Advance();
+      return ir::Expr(value);
+    } else if (currentToken.type == IndexToken::TokenType::kVar) {
+      auto var_name = currentToken.value;
+      Advance();
+      return GetOrCreateVar(var_name);
+    } else if (currentToken.type == IndexToken::TokenType::kLeftParen) {
+      Advance();
+      auto expr = ParseExpression();
 
-  while (currentToken.type == IndexToken::TokenType::kPlus ||
-         currentToken.type == IndexToken::TokenType::kMinus) {
-    auto op = currentToken.type;
-    Advance();
-    auto right = ParseTerm();
+      if (currentToken.type != IndexToken::TokenType::kRightParen) {
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "Parser Expected ')', because of '(' in before."));
+      }
 
-    if (op == IndexToken::TokenType::kPlus) {
-      left = ir::Add::Make(left, right);
+      Advance();
+      return expr;
     } else {
-      left = ir::Sub::Make(left, right);
+      PADDLE_THROW(
+          ::common::errors::InvalidArgument("Parser Unexpected IndexToken"));
     }
   }
-
-  return left;
-}
-
-ir::Expr Parser::ParseTerm() {
-  auto left = ParseFactor();
-
-  while (currentToken.type == IndexToken::TokenType::kMultiply ||
-         currentToken.type == IndexToken::TokenType::kDivide ||
-         currentToken.type == IndexToken::TokenType::kModulo) {
-    auto op = currentToken.type;
-    Advance();
-    auto right = ParseFactor();
-
-    if (op == IndexToken::TokenType::kMultiply) {
-      left = ir::Mul::Make(left, right);
-    } else if (op == IndexToken::TokenType::kDivide) {
-      left = ir::Div::Make(left, right);
-    } else {
-      left = ir::Mod::Make(left, right);
+  ir::Expr GetOrCreateVar(const std::string &var_name) {
+    if (vars.find(var_name) == vars.end()) {
+      vars[var_name] = ir::Var(var_name);
     }
+    return vars[var_name];
   }
-
-  return left;
-}
-
-ir::Expr Parser::ParseFactor() {
-  if (currentToken.type == IndexToken::TokenType::kNumber) {
-    int value = std::stoi(currentToken.value);
-    Advance();
-    return ir::Expr(value);
-  } else if (currentToken.type == IndexToken::TokenType::kVar) {
-    auto var_name = currentToken.value;
-    Advance();
-    return GetOrCreateVar(var_name);
-  } else if (currentToken.type == IndexToken::TokenType::kLeftParen) {
-    Advance();
-    auto expr = ParseExpression();
-
-    if (currentToken.type != IndexToken::TokenType::kRightParen) {
-      PADDLE_THROW(::common::errors::InvalidArgument("Parser Expected ')'"));
-    }
-
-    Advance();
-    return expr;
-  } else {
-    PADDLE_THROW(
-        ::common::errors::InvalidArgument("Parser Unexpected IndexToken"));
-  }
-}
-
-ir::Expr Parser::GetOrCreateVar(const std::string &var_name) {
-  if (vars.find(var_name) == vars.end()) {
-    vars[var_name] = ir::Var(var_name);
-  }
-  return vars[var_name];
-}
+  Tokenizer tokenizer;
+  IndexToken currentToken;
+  std::unordered_map<std::string, ir::Var> vars;
+};
 
 ir::Expr ParseExpressionFromString(const std::string &expr_str) {
   Parser parser(expr_str);
