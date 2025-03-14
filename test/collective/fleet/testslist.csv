@@ -89,3 +89,5 @@ test_fleet_log,,,200,DIST,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=.
 test_dygraph_dist_save_load,LINUX,GPU,300,DIST,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_save_for_auto_infer,LINUX,GPU,400,DIST,test_runner.py,,,NVIDIA_TF32_OVERRIDE=0;FLAGS_new_executor_micro_batching=False;http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_flux,LINUX,GPU,120,DIST,test_flux.sh,2,1,http_proxy=;https_proxy=,,WITH_FLUX
+test_dualpipe.py,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_zero_bubble_utils,LINUX;APPLE,,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
