@@ -263,7 +263,7 @@ class CutlassTeller {
                         CutlassFusionType fuse_type,
                         // below two are used by cbaele
                         std::string activation1 = "identity",
-                        std::string elemenstwise_type = "elementwise_add") {
+                        std::string elementwise_type = "elementwise_add") {
     int sm_version = platform::GetGPUComputeCapability(device_id);
     int ic = kc * groups;
     if (!cutlass_sm.count(sm_version)) {
@@ -290,7 +290,7 @@ class CutlassTeller {
 
       // conv + bias + act + elementwise_op
       if (fuse_type == CutlassFusionType::cbaele &&
-          !cbaele_act_set.count(activation + "_" + elemenstwise_type + "_" +
+          !cbaele_act_set.count(activation + "_" + elementwise_type + "_" +
                                 activation1)) {
         return false;
       }
@@ -394,7 +394,7 @@ class CutlassTeller {
                         CutlassFusionType fuse_type,
                         // below two are used by cbaele
                         std::string activation1 = "identity",
-                        std::string elemenstwise_type = "elementwise_add") {
+                        std::string elementwise_type = "elementwise_add") {
     return false;
   }
   std::unordered_set<std::string> CbaAct(int device_id) { return {}; }

@@ -78,7 +78,7 @@ class AutoMixedPrecisionPass : public FusePassBase {
   mutable std::unordered_set<std::string> white_list_;
 
   // subgraph id -> pointer to subgraph
-  mutable std::vector<Graph*> subgraphes_;
+  mutable std::vector<Graph*> subgraphs_;
   // var name -> real var node
   mutable std::unordered_map<std::string, std::vector<Node*>> real_vars_;
   // subgraph id -> all op nodes in subgraph

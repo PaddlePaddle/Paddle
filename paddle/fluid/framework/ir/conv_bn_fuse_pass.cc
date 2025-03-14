@@ -124,7 +124,7 @@ void recompute_bias_and_weights(const Scope* scope,
                       true,
                       common::errors::InvalidArgument(
                           "The inverse of Fused batch norm variance "
-                          "should be finite. Found nonfinite values! "
+                          "should be finite. Found infinite values! "
                           "Please check %s ",
                           bn_variance.Name()));
   }
@@ -140,7 +140,7 @@ void recompute_bias_and_weights(const Scope* scope,
                       true,
                       common::errors::InvalidArgument(
                           "Fused batch norm bias should be "
-                          "finite. Found nonfinite values! "
+                          "finite. Found infinite values! "
                           "Please check %s and related variables.",
                           bn_variance.Name()));
   }
