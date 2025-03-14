@@ -236,8 +236,6 @@ if(WITH_ROCM)
     "gpu/lu_kernel.cu"
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
-    "gpu/put_along_axis_grad_kernel.cu"
-    "gpu/put_along_axis_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpu/cuda_gemm_kernel.cu")
 endif()

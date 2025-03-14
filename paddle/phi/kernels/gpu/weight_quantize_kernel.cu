@@ -86,11 +86,6 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 algo);
 #endif
   } else if (algo == "weight_only_int4") {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_FATAL(
-        "Weight quant gpu kernel currently don't support weight_only_int4 "
-        "algo, please use cpu version.");
-#else
     dev_ctx.template Alloc<T>(scale);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
@@ -99,6 +94,19 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  weight_shape,
                                  arch,
                                  algo);
+#ifdef PADDLE_WITH_HIP
+    DenseTensor x_int_tmp(out->type());
+    x_int_tmp.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n / 2)});
+    dev_ctx.template Alloc<int8_t>(&x_int_tmp);
+    int8_t* x_int_tmp_data = x_int_tmp.data<int8_t>();
+    int8_t* quanted_x_data = quanted_x.data<int8_t>();
+    for (int i = 0; i < out->numel(); ++i) {
+      x_int_tmp_data[i] = quanted_x_data[i];
+    }
+    std::vector<int> axis = {1, 0};
+    funcs::Transpose<Context, int8_t, 2> trans;
+    trans(dev_ctx, x_int_tmp, out, axis);
+#else
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),
                                 out->data<int8_t>(),

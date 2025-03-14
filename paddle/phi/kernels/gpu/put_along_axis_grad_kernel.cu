@@ -93,7 +93,11 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(value_grad);
     auto* grad_data = value_grad->data<T>();
     int64_t grad_size = value_grad->numel();
+#ifdef PADDLE_WITH_HIP
+    hipMemset(grad_data, 0, sizeof(T) * grad_size);
+#else
     cudaMemset(grad_data, 0, sizeof(T) * grad_size);
+#endif
     if (reduce == "assign") {
       if (index_type == DataType::INT32) {
         phi::funcs::gpu_scatter_value_grad_kernel<T, int32_t>(
