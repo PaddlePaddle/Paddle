@@ -141,6 +141,20 @@ Expr GetOriginOffsetWithVectorizeAxis(Expr offset, Var var_iter) {
   return origin_offset;
 }
 
+bool CheckoutTensorAddrLegalCastToVectorize(const std::vector<ir::Expr> &shapes,
+                                            const int vectorize_factor) {
+  int64_t nums = 1;
+  for (auto &size : shapes) {
+    auto const_val = size.As<ir::IntImm>();
+    PADDLE_ENFORCE_NOT_NULL(const_val,
+                            ::common::errors::InvalidArgument(
+                                "vectorize tiling only support static shape"));
+    nums *= const_val->value;
+  }
+  if (nums % vectorize_factor == 0) return true;
+  return false;
+}
+
 class ForOpWithMultiScheduleBlockSupportVectorize
     : public ir::IRMutator<ir::Expr *> {
  public:
@@ -394,6 +408,10 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
       vectorize_tensors_.clear();
       scalar_tensor_without_vectorize_axis_.clear();
       schedule_block_can_vectorize_ = false;
+      return false;
+    }
+
+    if (!CheckoutTensorAddrLegalCastToVectorize(tensor->shape, factor_)) {
       return false;
     }
 
