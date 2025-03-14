@@ -13,13 +13,14 @@
 # limitations under the License.
 
 include(ExternalProject)
-
-add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
-
-set(GLOG_PREFIX_DIR ${THIRD_PARTY_PATH}/glog)
-set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
+# message("PaddleSourcePath: =====", ${PADDLE_SOURCE_DIR})
+set(GLOG_PREFIX_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
+set(GLOG_INSTALL_DIR ${PADDLE_SOURCE_DIR}/third_party/install/glog)
+# set(GLOG_PREFIX_DIR ${THIRD_PARTY_PATH}/glog)
+# set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
-    "${GLOG_INSTALL_DIR}/include"
+    # "${GLOG_INSTALL_DIR}/include"
+    "${PADDLE_SOURCE_DIR}/third_party/install/glog/include"
     CACHE PATH "glog include directory." FORCE)
 set(GLOG_TAG v0.4.0)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
