@@ -234,22 +234,16 @@ void TileDiscreteReductionTactic::SplitReduceInner(
 
 void TileDiscreteReductionTactic::VariableTypeAssignment(
     ir::IRSchedule* sch, const std::string& block_id) {
-  const auto IsOutputTensor = [&](const std::string& tensor_name) -> bool {
-    return context_->output_names.count(tensor_name) > 0;
-  };
-  const auto HasConsumers = [&](const ir::Expr& block) -> bool {
-    return !ir::analyzer::GetConsumerSBlocks(block, sch->GetRootBlock(block))
-                .empty();
-  };
-
   auto block = sch->GetBlock(block_id);
-  if (!IsOutputTensor(block_id) && HasConsumers(block)) {
-    sch->SetBuffer(block, "local", false);
+  if (context_->output_names.count(block_id) > 0) {
+    sch->SetBuffer(block, "global");
+  } else {
+    sch->SetBuffer(block, "local");
   }
 
   if (map_rf_block_.count(block_id) > 0) {
     auto block = sch->GetBlock(map_rf_block_[block_id]);
-    sch->SetBuffer(block, "local", false);
+    sch->SetBuffer(block, "local");
   }
 }
 
