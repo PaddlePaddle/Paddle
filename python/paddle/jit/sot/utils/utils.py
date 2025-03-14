@@ -416,3 +416,20 @@ def get_numpy_ufuncs():
     unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
     binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
     return list(unary_ufuncs), list(binary_ufuncs)
+
+
+def get_obj_stable_repr(obj) -> str:
+    if hasattr(obj, '__qualname__'):
+        return obj.__qualname__
+    if hasattr(obj, '__name__'):
+        return obj.__name__
+
+    class_name = obj.__class__.__name__
+
+    # If module is available and not __main__, include it
+    if hasattr(obj, "__class__") and hasattr(obj.__class__, "__module__"):
+        module = obj.__class__.__module__
+        if module not in ("__main__", "builtins"):
+            return f"{module}.{class_name}()"
+
+    return f"{class_name}()"

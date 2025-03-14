@@ -36,6 +36,7 @@ from ....profiler import EventGuard
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
+    get_obj_stable_repr,
     get_static_function,
     is_break_graph_api,
     is_break_graph_tensor_methods,
@@ -802,13 +803,15 @@ class BuiltinVariable(FunctionVariable):
                     DummyTracker([self, *list(args), *list(kwargs.values())]),
                 )
 
+        def format_variable(arg):
+            if not isinstance(arg, ObjectVariable):
+                return type(arg).__name__
+            inner_type_name = arg.get_py_type().__qualname__
+            return f"ObjectVariable[{inner_type_name}]"
+
         # Break graph if neither of the above conditions is met
-        arg_types = ", ".join([type(arg).__name__ for arg in args])
-        fn_name = (
-            self.value.__name__
-            if hasattr(self.value, '__name__')
-            else self.value
-        )
+        arg_types = ", ".join([format_variable(arg) for arg in args])
+        fn_name = get_obj_stable_repr(self.value)
         raise BreakGraphError(
             BuiltinFunctionBreak(fn_name=fn_name, arg_types=arg_types)
         )
