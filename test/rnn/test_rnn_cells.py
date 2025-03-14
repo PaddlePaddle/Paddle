@@ -215,3 +215,7 @@ def load_tests(loader, tests, pattern):
                 ]:
                     suite.addTest(test_class(weight, bias, device))
     return suite
+
+
+if __name__ == "__main__":
+    unittest.main()
