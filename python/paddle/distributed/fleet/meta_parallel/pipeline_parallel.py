@@ -84,7 +84,12 @@ def _get_align_mode_scale():
 # to be replaced by real micro dataset from reader
 class FakeMicroDataset:
     def __init__(
-        self, data, is_first_stage, is_last_stage, acc_steps, micro_batch_size
+        self,
+        data,
+        is_first_stage,
+        is_last_stage,
+        acc_steps,
+        micro_batch_size,
     ):
         self._data = data
         self._index = 0

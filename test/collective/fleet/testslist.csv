@@ -67,3 +67,5 @@ test_hdfs3,LINUX,,200,EXCLUSIVE:NIGHTLY,../../legacy_test/dist_test.sh,2,,http_p
 test_fleet_checkpoint,LINUX,GPU;ROCM,200,EXCLUSIVE:NIGHTLY,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_log,,,200,DIST,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_dist_save_load,LINUX,GPU,300,DIST,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_dualpipe.py,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_zero_bubble_utils,LINUX;APPLE,,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,

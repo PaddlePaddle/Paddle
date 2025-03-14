@@ -66,19 +66,28 @@ class SendRecvMeta:
         self.has_send_meta = False
         self.has_recv_meta = False
 
-    def recv_meta(self, group, reverse=False):
+    def recv_meta(self, group, reverse=False, broadcast=False):
         if reverse:
             src_rank = _hcg._get_p2p_next_rank()
         else:
             src_rank = _hcg._get_p2p_prev_rank()
 
         data_numel = paddle.empty([1], dtype="int64")
-        paddle.distributed.recv(data_numel, src=src_rank, group=group)
+        if not broadcast:
+            src_rank = _hcg._get_p2p_prev_rank()
+            paddle.distributed.recv(data_numel, src=src_rank, group=group)
+        else:
+            paddle.distributed.broadcast(
+                data_numel, src=group.ranks[0], group=group
+            )
         data_numel = data_numel.item()
 
         data = paddle.empty([data_numel], dtype="int64")
 
-        paddle.distributed.recv(data, src=src_rank, group=group)
+        if not broadcast:
+            paddle.distributed.recv(data, src=src_rank, group=group)
+        else:
+            paddle.distributed.broadcast(data, src=group.ranks[0], group=group)
         data = data.numpy().tolist()
         # parse data
         tensor_type = data.pop(0)
@@ -116,7 +125,7 @@ class SendRecvMeta:
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
 
-    def send_meta(self, tensor, group, reverse=False):
+    def send_meta(self, tensor, group, reverse=False, broadcast=False):
         if reverse:
             dst_rank = _hcg._get_p2p_prev_rank()
         else:
@@ -128,6 +137,9 @@ class SendRecvMeta:
         elif isinstance(tensor, tuple):
             tensor_type = 1
             tensors_to_send = list(tensor)
+        elif isinstance(tensor, list):
+            tensor_type = 1
+            tensors_to_send = tensor
         else:
             raise TypeError(
                 "tensor must be paddle.Tensor or Tuple of paddle.Tensor"
@@ -153,12 +165,23 @@ class SendRecvMeta:
         data_tensor = paddle.to_tensor(data).astype("int64")
         data_numel = np.prod(data_tensor.shape)
 
-        paddle.distributed.send(
-            paddle.to_tensor(data_numel).astype("int64"),
-            dst=dst_rank,
-            group=group,
-        )
-        paddle.distributed.send(data_tensor, dst=dst_rank, group=group)
+        if not broadcast:
+            paddle.distributed.send(
+                paddle.to_tensor(data_numel).astype("int64"),
+                dst=dst_rank,
+                group=group,
+            )
+            paddle.distributed.send(data_tensor, dst=dst_rank, group=group)
+        else:
+            assert group.rank == 0
+            paddle.distributed.broadcast(
+                paddle.to_tensor(data_numel).astype("int64"),
+                src=group.ranks[0],
+                group=group,
+            )
+            paddle.distributed.broadcast(
+                data_tensor, src=group.ranks[0], group=group
+            )
 
     def _obtain_send_message(self, tensor):
         if isinstance(tensor, paddle.Tensor):
