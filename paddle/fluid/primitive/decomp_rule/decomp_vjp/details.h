@@ -3477,7 +3477,7 @@ void p_norm_grad(const Tensor& x,
           Tensor expand_shape;
           if (asvector) {
             // reduce all dimensions in forward
-            expand_shape = full<T>(std::vector<int64_t>(x.dims().size(), 1),
+            expand_shape = full<T>(std::vector<int64_t>{x.dims().size()},
                                    1,
                                    DataType::INT64,
                                    out_grad.place());
