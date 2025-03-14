@@ -64,7 +64,8 @@ ExternalProject_Add(
   SOURCE_DIR ${ROCKSDB_SOURCE_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND
-  COMMAND git checkout -- . && git checkout ${ROCKSDB_TAG}
+  COMMAND git checkout -- . && git checkout ${ROCKSDB_TAG} && git apply
+          ${PADDLE_SOURCE_DIR}/patches/rocksdb/compaction_picker_level.cc.patch
   COMMAND ${ROCKSDB_PATCH_COMMAND_ARM}
   COMMAND ${ROCKSDB_PATCH_COMMAND_GCC13}
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
