@@ -251,7 +251,9 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
     for (auto expr : exprs) {
       std::string output_var_name = GetOutputTensor(expr)->name;
       if (interpreter->global_var_names.count(output_var_name)) {
-        expr = ExprTransformerUtils::InsertIfForAppendVarsTransformer()(expr);
+        expr = ExprTransformerUtils::EliminateUselessIfTransformer()(expr);
+      } else {
+        expr = ExprTransformerUtils::RemoveAllAppendIfTransformer()(expr);
       }
       result.push_back(expr);
     }

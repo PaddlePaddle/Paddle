@@ -259,7 +259,7 @@ std::optional<ItersTransformRoute> ItersFusionPolicy::SearchItersTransformRoute(
   } else if (!squeezed_source.reduce_iter_nums && target.reduce_iter_nums) {
     // Trivial -> Reduce ItersTransform
     // Can fuse with non fake reduce dims or small inner reduce loop
-    auto [target_flatten_iters, asd] = SplitReduceIters(target);
+    auto [target_flatten_iters, _unused] = SplitReduceIters(target);
     if (!AllFirstInSecond(squeezed_source.loop_iters, target_flatten_iters)) {
       const auto reduce_dims_product =
           iters_manager_->GetReduceDimsProduct(target);

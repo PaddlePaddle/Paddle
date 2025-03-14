@@ -42,8 +42,9 @@ ir::Expr ApplyAxisTransform::operator()(const AppendAxisTransformPtr& trans) {
         cinn::common::DimExprConverter().ConvertToIrExpr(trans->shape[i]);
     append_vars.push_back(ir::Var(upper_bound, unique_var_name()));
   }
-  auto result = InsertForsTransformer(CastVector<int64_t, int32_t>(trans->axis),
-                                      append_vars)(expr_);
+  auto result = (InsertForsTransformer(
+                     CastVector<int64_t, int32_t>(trans->axis), append_vars) *
+                 InsertIfForAppendVarsTransformer(append_vars))(expr_);
   VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
   return result;
 }
