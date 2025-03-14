@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/inference/tensorrt/plugin/prelnlayernorm_shift_partition_op.h"
+#include "paddle/fluid/inference/tensorrt/plugin/preln_layernorm_shift_partition_op.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
 namespace paddle {
