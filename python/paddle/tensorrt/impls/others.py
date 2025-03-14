@@ -32,6 +32,7 @@ from paddle.tensorrt.converter_utils import (
     trt_shape,
     trt_sub,
     trt_sum,
+    trt_unsqueeze,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -239,6 +240,15 @@ def set_value_converter(network, paddle_op, inputs):
         )
 
     _logger.info(f"Set_value_op: input's dimension is {input_dims}")
+
+    decrease_axes = paddle_op.attrs()["decrease_axes"]
+    if len(decrease_axes) > 0 and len(updates.shape) != len(x.shape):
+        updates = trt_unsqueeze(
+            network,
+            updates,
+            decrease_axes,
+            name=[paddle_op.name(), 'decrease_axes'],
+        )
 
     value_rank = len(updates.shape)
     input_rank = len(x.shape)

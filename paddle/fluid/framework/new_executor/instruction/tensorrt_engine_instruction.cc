@@ -249,10 +249,9 @@ static phi::DataType TRT2PaddleDataType(nvinfer1::DataType type) {
   }
 }
 
-void TensorRTEngineInstruction::PrepareDynamicShape() {
+void TensorRTEngineInstruction::InputsCheck() {
   // get runtime input shapes and shape tensors.
   std::map<std::string, std::vector<int32_t>> runtime_input_shape;
-  std::map<std::string, std::vector<int32_t>> runtime_shape_tensor;
   const paddle::framework::Scope &scope = *(value_exec_info_->GetScope());
   pir::Value source_value = op_->operand_source(0);
   auto in_var_name = value_exec_info_->GetVarName(source_value);
@@ -269,82 +268,6 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
                         "names num(%d) in TensorRTEngineInstruction",
                         variable_array.size(),
                         input_nums_));
-
-  for (const auto &index_name_pair : input_names_) {
-    auto i = index_name_pair.first;
-    if (!variable_array[i]->IsType<phi::DenseTensor>()) {
-      PADDLE_THROW(
-          common::errors::Unimplemented("Only support Vector<DenseTensor> now "
-                                        "not support vector<%d>.",
-                                        variable_array[i]->Type()));
-    }
-    auto input_tensor = variable_array[i]->Get<phi::DenseTensor>();
-    auto name = index_name_pair.second;
-
-    VLOG(4) << "trt engine runtime input name(" << name << "), dims("
-            << input_tensor.dims() << ")";
-    auto t_shape = common::vectorize<int32_t>(input_tensor.dims());
-    runtime_input_shape.insert(std::make_pair(name, t_shape));
-    // We need collect value range for shape tensor for Paddle-TRT's use.
-    // To be noticed, this method to identify all inputs/outputs is shape
-    // tensors; After, TRT Engine gets whether it is a real shape tensor.
-    auto is_shape_tensor = true;
-    if (trt_engine_->engine()) {
-      auto *engine = trt_engine_->engine();
-#if IS_TRT_VERSION_GE(8600)
-      is_shape_tensor = engine->isShapeInferenceIO(name.c_str());
-#else
-      is_shape_tensor =
-          engine->isShapeBinding(engine->getBindingIndex(name.c_str()));
-#endif
-      if (!is_shape_tensor) {
-        runtime_shape_tensor.erase(name);
-        VLOG(4) << "trt engine runtime delete shape name(" << name << "), dims("
-                << input_tensor.dims() << ")";
-      }
-    }
-    if ((input_tensor.dtype() == phi::DataType::INT32 ||
-         input_tensor.dtype() == phi::DataType::INT64) &&
-        is_shape_tensor) {
-      std::vector<int> int32_host(input_tensor.numel());
-      paddle::platform::DeviceContextPool &pool =
-          paddle::platform::DeviceContextPool::Instance();
-
-      if (input_tensor.place().GetType() == phi::AllocationType::CPU) {
-        auto &int32_tensor = input_tensor;
-        if (input_tensor.dtype() == phi::DataType::INT64) {
-          auto *cpu_ctx = pool.Get(phi::CPUPlace());
-          int32_tensor = phi::funcs::TransDataType(
-              reinterpret_cast<const phi::CPUContext &>(*cpu_ctx),
-              input_tensor,
-              DataType::INT32);
-        }
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                int32_host.data(),
-                                phi::CPUPlace(),
-                                int32_tensor.data<int>(),
-                                int32_tensor.numel() * sizeof(int));
-      } else if (input_tensor.place().GetType() == phi::AllocationType::GPU) {
-#if defined(PADDLE_WITH_CUDA)
-        auto *dev_ctx = pool.Get(input_tensor.place());
-        auto &int32_tensor = input_tensor;
-        if (input_tensor.dtype() == phi::DataType::INT64) {
-          int32_tensor = phi::funcs::TransDataType(
-              reinterpret_cast<const phi::GPUContext &>(*dev_ctx),
-              input_tensor,
-              DataType::INT32);
-        }
-        phi::memory_utils::Copy(phi::CPUPlace(),
-                                int32_host.data(),
-                                int32_tensor.place(),
-                                int32_tensor.data<int>(),
-                                int32_tensor.numel() * sizeof(int),
-                                nullptr);
-#endif
-      }
-      runtime_shape_tensor[name] = int32_host;
-    }
-  }
 
   if (!allow_build_at_runtime_) {
     std::map<std::string, std::vector<int>> min_input_shape =
@@ -381,34 +304,8 @@ void TensorRTEngineInstruction::PrepareDynamicShape() {
     }
   } else {
     // compare runtime_input_shape and trt_engine dynamic shapes.
-    std::vector<std::string> shape_changed_name;
-    std::vector<std::string> tensor_changed_name;
-    bool is_adjusted =
-        trt_engine_->AdjustDynamicShapeRange(runtime_input_shape,
-                                             runtime_shape_tensor,
-                                             &shape_changed_name,
-                                             &tensor_changed_name);
-    if (is_adjusted) {
-      if (trt_engine_->engine()) {
-        trt_engine_->ResetContext();
-        trt_engine_->ClearTensorMap();
-      }
-      auto *anc = scope.parent();
-      while (anc && anc->parent()) {
-        anc = anc->parent();
-      }
-      if (anc == nullptr) {
-        anc = &scope;
-      }
-
-      // TODO(YuanRisheng): Rebuild TRT Engine
-      // PrepareTRTEngine(*anc, trt_engine_);
-
-      // TODO(YuanRisheng): update global shape_range
-
-      // TODO(YuanRisheng): If add use_static_engine_ attr, need support save
-      // rebuild trt_engine
-    }
+    PADDLE_THROW(common::errors::Unimplemented(
+        "PIR-TRT does not support build at runtime."));
   }
 }
 
@@ -861,7 +758,7 @@ void TensorRTEngineInstruction::Run() {
                                     "Please check your TensorRT "
                                     "in your env."));
 #endif
-  PrepareDynamicShape();
+  InputsCheck();
   RunTrt();
 }
 

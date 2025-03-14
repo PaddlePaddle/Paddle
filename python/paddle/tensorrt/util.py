@@ -282,7 +282,6 @@ def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
     # the following op needn't cast trt.Weight to ITensor, because the layer need weight as input
     forbid_cast_op = [
         "pd_op.depthwise_conv2d",
-        "pd_op.conv2d",
         "pd_op.conv2d_transpose",
         "pd_op.conv3d",
         "pd_op.conv3d_transpose",
