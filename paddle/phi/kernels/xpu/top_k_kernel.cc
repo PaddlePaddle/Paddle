@@ -33,11 +33,7 @@ void TopkKernel(const Context& dev_ctx,
 
   const auto& in_dims = x.dims();
   if (in_dims.size() == 0) {
-    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUType*>(x.data<T>()),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
-                               x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     dev_ctx.template Alloc<int64_t>(indices);
     phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
     return;
