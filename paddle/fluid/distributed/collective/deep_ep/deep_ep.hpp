@@ -24,8 +24,11 @@
 #undef NDEBUG
 #endif
 
+#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
+#endif
+#include <optional>
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/distributed/collective/deep_ep/include/types.h"
@@ -119,6 +122,7 @@ struct Buffer {
 
   int get_local_device_id() const;
 
+#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
   pybind11::bytearray get_local_ipc_handle() const;
 
   pybind11::bytearray get_local_nvshmem_unique_id() const;
@@ -127,6 +131,7 @@ struct Buffer {
             const std::vector<std::optional<pybind11::bytearray>>&
                 all_gathered_handles,
             const std::optional<pybind11::bytearray>& root_unique_id_opt);
+#endif
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<deep_ep::detail::Tensor>,
