@@ -341,6 +341,12 @@ void InferSymExprForOp(Operation* op,
     }
   }
 }
+static const std::set<std::string> skip_cache_check_op_set = {
+    // new symbol
+    "pd_op.data",
+    // unneeded to cache
+    "cinn_op.generate_shape",
+};
 
 void CacheForwardOpSymbolicShape(
     Operation* op,
@@ -356,6 +362,10 @@ void CacheForwardOpSymbolicShape(
           for (uint32_t i = 0; i < cache_result.size(); ++i) {
             if (infer_result[i] != cache_result[i]) {
               if (IsGradOp(op) && (!op->result(i) || !op->result(i).type())) {
+                continue;
+              }
+              if (skip_cache_check_op_set.find(op->name()) !=
+                  skip_cache_check_op_set.end()) {
                 continue;
               }
               LOG(WARNING) << "cached shape is not consistent with real shape";
