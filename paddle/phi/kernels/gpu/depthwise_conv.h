@@ -1301,35 +1301,53 @@ __global__ void KernelDepthwiseConvFilterGradSp(const T* output_grad_data,
           dilate_width,
           filter_grad_data);
     } else {
-      auto kernel =
-          KernelDepthwiseConvFilterGradCFilterNHWC<T,
-                                                   c_filter,
-                                                   fuse_relu_before_conv>;
       if (output_channels < SMALL_THRESHOLD) {
-        kernel = KernelDepthwiseConvFilterGradCFilterSmallChannelNHWC<
+        KernelDepthwiseConvFilterGradCFilterSmallChannelNHWC<
             T,
             c_filter,
-            fuse_relu_before_conv>;
+            fuse_relu_before_conv>(output_grad_data,
+                                   input_data,
+                                   num,
+                                   output_channels,
+                                   output_height,
+                                   output_width,
+                                   input_channels,
+                                   input_height,
+                                   input_width,
+                                   final_filter_multiplier,
+                                   filter_height,
+                                   filter_width,
+                                   h_stride,
+                                   w_stride,
+                                   padding_height,
+                                   padding_width,
+                                   dilate_height,
+                                   dilate_width,
+                                   filter_grad_data);
+      } else {
+        KernelDepthwiseConvFilterGradCFilterNHWC<T,
+                                                 c_filter,
+                                                 fuse_relu_before_conv>(
+            output_grad_data,
+            input_data,
+            num,
+            output_channels,
+            output_height,
+            output_width,
+            input_channels,
+            input_height,
+            input_width,
+            final_filter_multiplier,
+            filter_height,
+            filter_width,
+            h_stride,
+            w_stride,
+            padding_height,
+            padding_width,
+            dilate_height,
+            dilate_width,
+            filter_grad_data);
       }
-      kernel(output_grad_data,
-             input_data,
-             num,
-             output_channels,
-             output_height,
-             output_width,
-             input_channels,
-             input_height,
-             input_width,
-             final_filter_multiplier,
-             filter_height,
-             filter_width,
-             h_stride,
-             w_stride,
-             padding_height,
-             padding_width,
-             dilate_height,
-             dilate_width,
-             filter_grad_data);
     }
   }
 }
