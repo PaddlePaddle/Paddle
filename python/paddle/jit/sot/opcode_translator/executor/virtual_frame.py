@@ -18,7 +18,7 @@ import builtins
 import inspect
 import re
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from ...utils import log
 from .guard import StringifiedExpression, union_free_vars
@@ -31,11 +31,13 @@ from .tracker import (
     LocalTracker,
     Tracker,
 )
+from .variable_stack import VariableStack
 from .variables.base import VariableBase, VariableFactory
 from .variables.basic import (
     CellVariable,
     FunctionGlobalVariable,
     GlobalVariable,
+    NullVariable,
 )
 
 if TYPE_CHECKING:
@@ -110,6 +112,23 @@ def signature_clear_guard(fn, name):
         setattr(fn, name, saved_attr)
 
 
+def validate_value(value):
+    assert isinstance(
+        value, VariableBase
+    ), f"value: {value}, type should be VariableBase(or derived), but get {type(value)}"
+    assert not isinstance(value.tracker, DanglingTracker) or isinstance(
+        value, (NullVariable, CellVariable)
+    ), f"dangling variable {value} should not be pushed into stack."
+
+
+class VirtualFrameState(NamedTuple):
+    locals: dict[str, VariableBase]
+    builtins: dict[str, VariableBase]
+    cells: dict[str, VariableBase]
+    lasti: int
+    stack_data: list[VariableBase]
+
+
 class VirtualFrame:
     code: types.CodeType
     locals: dict[str, Any]  # TODO: should we use DictVariable instead of dict?
@@ -118,6 +137,7 @@ class VirtualFrame:
     consts: list[Any]
     cells: dict[str, Any]
     lasti: int
+    stack: VariableStack
 
     def __init__(self, code: types.CodeType):
         self.code = code
@@ -127,6 +147,7 @@ class VirtualFrame:
         self.cells = {}
         self.lasti = 0
         self.consts = []
+        self.stack = VariableStack(validate_value_func=validate_value)
 
     @staticmethod
     def from_real_frame(frame: types.FrameType, graph: FunctionGraph):
@@ -266,3 +287,19 @@ class VirtualFrame:
         for name in list(self.locals.keys()):
             if re.match(pattern, name):
                 self.locals[name.replace('implicit', '.')] = self.locals[name]
+
+    def get_state(self):
+        return VirtualFrameState(
+            locals=self.locals.copy(),
+            builtins=self.builtins.copy(),
+            cells=self.cells.copy(),
+            lasti=self.lasti,
+            stack_data=list(self.stack._data),
+        )
+
+    def restore_state(self, state: VirtualFrameState):
+        self.locals = state.locals
+        self.builtins = state.builtins
+        self.cells = state.cells
+        self.lasti = state.lasti
+        self.stack._data = state.stack_data

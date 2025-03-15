@@ -14,10 +14,12 @@
 
 from __future__ import annotations
 
+import dis
 import functools
 import inspect
 import itertools
 import operator
+import sys
 import types
 from functools import reduce
 from typing import (
@@ -44,6 +46,8 @@ from ....utils import (
     is_directly_run_api,
     is_not_supported_paddle_layer,
     is_paddle_api,
+    log,
+    log_do,
     magic_method_builtin_dispatch,
     map_if,
 )
@@ -241,7 +245,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
             )
             inline_executor = OpcodeInlineExecutor(vframe, code_var, self.graph)
             with EventGuard(
-                f"Inline Call: {inline_executor.vframe.code.co_name.replace('<', '(').replace('>', ')')}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
+                f"Inline Call: {inline_executor.vframe.code.co_name}, file {inline_executor.vframe.code.co_filename}, line {int(inline_executor.vframe.code.co_firstlineno)}"
             ):
                 output = inline_executor.inline_call()
         except SotErrorBase as error:
@@ -865,11 +869,33 @@ class UserDefinedGeneratorFunctionVariable(FunctionVariable):
         super().__init__(fn, graph, tracker)
 
     def call_function(self, /, *args, **kwargs):
-        iter_ = self.value(*args, **kwargs)
-        var = VariableFactory.from_value(
-            iter_, self.graph, DummyTracker([self])
+        from ..opcode_inline_executor import OpcodeInlineGeneratorExecutor
+        from .iter import GeneratorVariable
+
+        code_var = self.get_code()
+        vframe = VirtualFrame.from_inline_call(
+            code_var.value,
+            self,
+            self.value,
+            self.graph,
+            (args, kwargs),
         )
-        return var
+        log(
+            3,
+            "[Generator] Create generator variable from generator function\n",
+        )
+        log_do(3, lambda: dis.dis(code_var.value))
+        if sys.version_info >= (3, 11):
+            inline_gen_executor = OpcodeInlineGeneratorExecutor(
+                vframe, code_var, self.graph
+            )
+            return inline_gen_executor.inline_call()
+        return GeneratorVariable(
+            code_var,
+            vframe,
+            self.graph,
+            DummyTracker([self, *args, *kwargs.values()]),
+        )
 
     @property
     def main_info(self) -> dict[str, Any]:

@@ -41,6 +41,7 @@ from ...utils.magic_methods import (
 from ...utils.paddle_api_config import get_tensor_methods
 from .dispatch_functions import (
     create_raise_break_graph_handler,
+    generator_send,
     operator_in,
     operator_is_none,
     operator_is_not_none,
@@ -125,6 +126,17 @@ Dispatcher.register(
     lambda variable: variable.get_iter(),
 )
 
+Dispatcher.register(
+    next,
+    ("IterVariable",),
+    lambda var: var.next(),
+)
+
+Dispatcher.register(
+    generator_send,
+    ("IterVariable", "VariableBase"),
+    lambda var, value: var.send(value),
+)
 
 # in
 Dispatcher.register(
@@ -1303,12 +1315,6 @@ def dispatch_reduce(
             break
     return result
 
-
-Dispatcher.register(
-    next,
-    ("IterVariable",),
-    lambda var: var.next(),
-)
 
 Dispatcher.register(
     max,

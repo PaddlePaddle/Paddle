@@ -14,16 +14,27 @@
 
 from __future__ import annotations
 
+import sys
+import types
 from typing import TYPE_CHECKING, Any
 
+from paddle._typing import unreached
 from paddle.jit.sot.opcode_translator.executor.variables.base import (
     VariableBase,
 )
 
+from ....profiler import EventGuard
 from ....utils import BreakGraphError, FallbackError, UnsupportedOperationBreak
-from ..tracker import ConstTracker, DummyTracker
+from ....utils.exceptions import (
+    BreakGraphInlineCallBreak,
+    FallbackInlineCallBreak,
+    OtherInlineCallBreak,
+    SotErrorBase,
+)
+from ..tracker import ConstTracker, DummyTracker, GetAttrTracker
 from .base import VariableFactory
 from .basic import ConstantVariable
+from .callable import BuiltinVariable
 from .container import TupleVariable
 
 if TYPE_CHECKING:
@@ -32,6 +43,7 @@ if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
     from ..tracker import Tracker
+    from ..virtual_frame import VirtualFrame
 
 
 class IterVariable(VariableBase):
@@ -39,33 +51,17 @@ class IterVariable(VariableBase):
     This Variable (include subclasses) should be generated only when simulate GET_ITER opcode
     """
 
-    def __init__(
-        self, holded: list[VariableBase], graph: FunctionGraph, tracker: Tracker
-    ):
-
+    def __init__(self, graph: FunctionGraph, tracker: Tracker):
         super().__init__(graph, tracker)
-        self.holds = holded
-
-    def make_stringified_guard(self):
-        return [
-            result
-            for holded in self.holds
-            for result in holded.make_stringified_guard()
-        ]
 
     def next(self):
         raise NotImplementedError(f"Can not simulate `next` for {type(self)}")
 
+    def send(self, value: VariableBase):
+        return self.next()
+
     def get_iter(self):
         return self
-
-    def flatten_inner_vars(self) -> list[VariableBase]:
-        holded = self.holds
-        return [
-            inner_var
-            for obj in holded
-            for inner_var in obj.flatten_inner_vars()
-        ]
 
 
 class SequenceIterVariable(IterVariable):
@@ -90,9 +86,17 @@ class SequenceIterVariable(IterVariable):
     ):
         if not isinstance(holded, list):
             holded = [holded]
-        super().__init__(holded, graph, tracker)
+        super().__init__(graph, tracker)
+        self.holds = holded
         self.idx = 0
         self.graph.side_effects.record_mutable_variable(self)
+
+    def make_stringified_guard(self):
+        return [
+            guard
+            for holded in self.holds
+            for guard in holded.make_stringified_guard()
+        ]
 
     def next(self):
         holded = self.holds[0]
@@ -128,6 +132,14 @@ class SequenceIterVariable(IterVariable):
         return {
             "idx": self.idx,
         }
+
+    def flatten_inner_vars(self) -> list[VariableBase]:
+        holded = self.holds
+        return [
+            inner_var
+            for obj in holded
+            for inner_var in obj.flatten_inner_vars()
+        ]
 
 
 class EnumerateVariable(SequenceIterVariable):
@@ -295,6 +307,103 @@ class MapVariable(SequenceIterVariable):
         return MapVariable(fn, map_targets, graph, tracker)
 
 
+class GeneratorVariable(IterVariable):
+    def __init__(
+        self,
+        code_var: VariableBase,
+        vframe: VirtualFrame,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        self.code_var = code_var
+        self.vframe = vframe
+        self.shared_stack = []
+        super().__init__(graph, tracker)
+
+    def send(self, /, value: VariableBase):
+        from ..opcode_inline_executor import OpcodeInlineGeneratorExecutor
+
+        checkpoint = self.graph.save_memo()
+        frame_state = self.vframe.get_state()
+        try:
+            inline_gen_executor = OpcodeInlineGeneratorExecutor(
+                self.vframe, self.code_var, self.graph
+            )
+            if sys.version_info < (3, 10) and self.vframe.lasti == 0:
+                assert isinstance(value, ConstantVariable)
+                assert value.value is None
+            else:
+                self.vframe.stack.push(value)
+            with EventGuard(
+                f"Inline Gen Call: {inline_gen_executor.vframe.code.co_name}, file {inline_gen_executor.vframe.code.co_filename}, line {int(inline_gen_executor.vframe.code.co_firstlineno)}"
+            ):
+                output: VariableBase = inline_gen_executor.inline_call()
+                if inline_gen_executor.stop_state == "Return":
+                    raise StopIteration
+        except SotErrorBase as error:
+            self.graph.restore_memo(checkpoint)
+            self.vframe.restore_state(frame_state)
+            filename = self.code_var.value.co_filename
+            lineno = self.code_var.value.co_firstlineno
+            code_name = self.code_var.value.co_name
+            location_info = f'File "{filename}", line {lineno}, in {code_name}'
+
+            exception_class = OtherInlineCallBreak
+            if isinstance(error, BreakGraphError):
+                exception_class = BreakGraphInlineCallBreak
+            elif isinstance(error, FallbackError):
+                exception_class = FallbackInlineCallBreak
+
+            raise BreakGraphError(
+                exception_class(
+                    f"{location_info} encountered breakgraph error caused by\n    {error}"
+                )
+            )
+
+        return output
+
+    def getattr(self, name: str, default=None):
+        from ..dispatch_functions import generator_send
+
+        known_generator_attrs = {"send"}
+        if name not in known_generator_attrs:
+            raise BreakGraphError(
+                UnsupportedOperationBreak(
+                    reason_str=f"Get attribute {name} from generator is not supported."
+                )
+            )
+        if name == "send":
+            return BuiltinVariable(
+                generator_send, self.graph, GetAttrTracker(self, "send")
+            ).bind(self, "send")
+        unreached()
+
+    def get_py_value(self, allow_tensor=False):
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="Get real value from generator is not supported."
+            )
+        )
+
+    def get_py_type(self):
+        return types.GeneratorType
+
+    def next(self):
+        return self.send(ConstantVariable.wrap_literal(None, self.graph))
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "co_name": self.code_var.value.co_name,
+        }
+
+    # @VariableFactory.register_from_value()
+    # def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+    #     if inspect.isgenerator(value):
+    #         return GeneratorVariable()
+    #     return None
+
+
 # what UserDefinedIterVariable holds doesn't matter, because use user defined iterator will trigger break graph
 class UserDefinedIterVariable(IterVariable):
     def __init__(
@@ -305,7 +414,8 @@ class UserDefinedIterVariable(IterVariable):
     ):
         if not isinstance(holded, list):
             holded = [holded]
-        super().__init__(holded, graph, tracker)
+        self.holds = holded
+        super().__init__(graph, tracker)
 
     def next(self):
         raise BreakGraphError(
@@ -313,3 +423,10 @@ class UserDefinedIterVariable(IterVariable):
                 reason_str="Break graph when iterating user defined iterator"
             )
         )
+
+    def make_stringified_guard(self):
+        return [
+            guard
+            for holded in self.holds
+            for guard in holded.make_stringified_guard()
+        ]
