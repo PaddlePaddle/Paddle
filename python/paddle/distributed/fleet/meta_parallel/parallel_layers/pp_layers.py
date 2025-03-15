@@ -51,6 +51,10 @@ from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
+from ..pp_utils.forward_backward_overlap_utils import (
+    ScheduleChunk,
+)
+
 __all__ = []
 
 
@@ -913,6 +917,29 @@ class PipelineLayer(nn.Layer):
         flush_into_run_function()
         return run_function
 
+    def build_schedule_nodes(self, start, end):
+        run_function = self.run_function
+
+        def check_overlap_schedule_mode():
+            overlap_schedule_mode = False
+            for layer in run_function[start:end]:
+                if hasattr(layer, "build_schedule_node"):
+                    overlap_schedule_mode = True
+                    break
+            for layer in run_function[start:end]:
+                assert not (
+                    overlap_schedule_mode
+                    and not hasattr(layer, "build_schedule_node")
+                )
+            return overlap_schedule_mode
+
+        assert check_overlap_schedule_mode()
+        nodes = []
+        for layer in run_function[start:end]:
+            nodes.append(layer.build_schedule_node())
+        schedule_chunk = ScheduleChunk(nodes=nodes)
+        return schedule_chunk
+
     def forward_function(self, start, end):
         run_function = self.run_function
 
@@ -925,7 +952,7 @@ class PipelineLayer(nn.Layer):
 
         return execute_func
 
-    def forward(self, input, chunk_id=None):
+    def forward(self, input, chunk_id=None, overlap_schedule_mode=False):
         if chunk_id is not None:
             assert isinstance(chunk_id, int), "chunk_id should be an int"
             assert (
@@ -943,6 +970,9 @@ class PipelineLayer(nn.Layer):
             # But for interleave, self.run_function will keep updating to the target functions at every run.
             self.run_function = model_chunk.get_run_function()
 
+        if overlap_schedule_mode:
+            assert self._recompute_interval == 0
+            return self.build_schedule_nodes(0, len(self.run_function))
         if self._recompute_interval == 0:
             input = self.forward_function(0, len(self.run_function))(input)
         else:

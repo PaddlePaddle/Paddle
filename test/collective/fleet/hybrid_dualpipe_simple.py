@@ -25,6 +25,7 @@ from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
     LocalSharedLayerDesc,
     PipelineLayer,
+    ScheduleNode,
 )
 from paddle.distributed.fleet.utils.mix_precision_utils import (
     MixPrecisionLayer,
@@ -68,6 +69,9 @@ class SharedLinear(Layer):
             input = input[0]
         return paddle.matmul(input, self.weight)
 
+    def build_schedule_node(self):
+        return ScheduleNode(self.forward)
+
 
 class LinearPipe(nn.Linear):
     def forward(self, input):
@@ -75,12 +79,18 @@ class LinearPipe(nn.Linear):
             input = input[0]
         return paddle.matmul(input, self.weight)
 
+    def build_schedule_node(self):
+        return ScheduleNode(self.forward)
+
 
 class CrossEntropyLossPipe(nn.loss.CrossEntropyLoss):
     def forward(self, logits, label):
         if isinstance(logits, list):
             logits = logits[0]
         return super().forward(logits, label)
+
+    def build_schedule_node(self):
+        return ScheduleNode(self.forward)
 
 
 class SimpleNet(Layer):
@@ -118,6 +128,40 @@ class SimpleNetPipeDesc(PipelineLayer):
             ),
         ]
         super().__init__(layers=decs, loss_fn=CrossEntropyLossPipe(), **kwargs)
+
+
+class SimpleNetPipeScheduleNodeDesc(SimpleNetPipeDesc):
+    def overlapped_forward_backward(
+        self,
+        forward_chunk,  # the module of the forward chunk
+        forward_inputs,
+        forward_loss_fn_node,
+        backward_chunk,  # the module of the backward chunk, maybe not used
+        backward_loss_fn_node,
+        backward_input_grads,
+        scaler,
+    ):
+        forward_outputs = forward_chunk.forward(forward_inputs)
+        forward_outputs = (
+            [forward_outputs]
+            if isinstance(forward_outputs, paddle.Tensor)
+            else forward_outputs
+        )
+
+        if forward_loss_fn_node is not None:
+            forward_loss = forward_loss_fn_node.forward(forward_outputs)
+        else:
+            forward_loss = None
+
+        if backward_loss_fn_node is not None:
+            if scaler:
+                backward_input_grads = backward_loss_fn_node.backward(
+                    scaler=scaler
+                )
+            else:
+                backward_input_grads = backward_loss_fn_node.backward()
+        backward_input_grads = backward_chunk.backward(backward_input_grads)
+        return forward_outputs, forward_loss, backward_input_grads
 
 
 class TestDistPPTraining(unittest.TestCase):
@@ -177,11 +221,23 @@ class TestDistPPTraining(unittest.TestCase):
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
 
+        # construct model c
+        model_c = SimpleNetPipeScheduleNodeDesc(
+            num_stages=self.pipeline_parallel_size, use_dualpipev=True
+        )
+        scheduler_c, optimizer_c = self.build_optimizer(model_c)
+        model_c, optimizer_c = self.wrapper_mix_precision(model_c, optimizer_c)
+        model_c = fleet.distributed_model(model_c)
+        optimizer_c = fleet.distributed_optimizer(optimizer_c)
+
         if 0 == pp_id:
             model_b.parameters()[0].set_value(parameters[0])
+            model_c.parameters()[0].set_value(parameters[0])
         else:
             model_b.parameters()[0].set_value(parameters[1])
             model_b.parameters()[1].set_value(parameters[2])
+            model_c.parameters()[0].set_value(parameters[1])
+            model_c.parameters()[1].set_value(parameters[2])
 
         dataset = RandomDataset(5 * batch_size)
 
@@ -206,10 +262,13 @@ class TestDistPPTraining(unittest.TestCase):
 
             loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
 
-            print("loss: ", loss_a.numpy(), loss_b.numpy())
+            loss_c = model_c.train_batch([img, label], optimizer_c, scheduler_c)
+
+            print("loss: ", loss_a.numpy(), loss_b.numpy(), loss_c.numpy())
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=5e-5
             )
+            np.testing.assert_equal(loss_b.numpy(), loss_c.numpy())
 
 
 class TestDistPPDelayScaleLoss(TestDistPPTraining):
