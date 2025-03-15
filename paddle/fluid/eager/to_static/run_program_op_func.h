@@ -190,7 +190,7 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
   return res;
 }
 
-int64_t hash_with_seed(int64_t value, int64_t seed) {
+static int64_t hash_with_seed(int64_t value, int64_t seed) {
   return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
 }
 

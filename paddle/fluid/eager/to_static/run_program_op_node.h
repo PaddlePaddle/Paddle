@@ -494,13 +494,6 @@ inline void PirRunProgramAPI(
 
     details::print_collection(skip_names_set);
     interpreter_core->SetSkipGcVars(skip_names_set);
-
-    // std::set<std::string> input_vars;
-    // input_vars.insert(input_names.begin(), input_names.end());
-    // interpreter_core->SetJitInputVars(input_vars);
-
-    // cache.UpdateSkipEagerDeleteVars(
-    // program_id, global_inner_scope, false, skip_eager_delete_vars);
   } else {
     phi::RecordEvent record_event(
         "get_interpretercore_cache", phi::TracerEventType::UserDefined, 1);
@@ -516,13 +509,6 @@ inline void PirRunProgramAPI(
     details::ShareTensorsIntoScopeByValue(x, input_values, global_inner_scope);
     details::ShareTensorsIntoScopeByValue(
         params, param_values, global_inner_scope);
-    // TODO(xiongkun): new ir how to build scope.
-    // if (interpreter_core->GetVariableScope()->GetMutableScope() !=
-    // global_inner_scope) {
-    // details::BuildScopeByBlock(
-    // *interpreter_core.get(), *forward_global_block, global_inner_scope);
-    // interpreter_core->reset_scope(global_inner_scope);
-    //}
   }
 
   paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
@@ -1071,9 +1057,6 @@ inline void PirRunProgramGradAPI(
 
     if (interpreter_core->GetVariableScope()->GetMutableScope() !=
         global_inner_scope) {
-      // update scope (TODO(xiongkun): do we need this??)
-      // details::BuildScopeByBlock(
-      // *interpreter_core.get(), *backward_global_block, global_inner_scope);
       interpreter_core->reset_scope(global_inner_scope);
     }
   }

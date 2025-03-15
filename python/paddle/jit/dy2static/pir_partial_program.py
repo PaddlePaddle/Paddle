@@ -22,7 +22,7 @@ import numpy as np
 
 import paddle
 import paddle.pir.core as ir_static
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
@@ -687,10 +687,6 @@ class PartialProgramLayer:
         if parameters is not None:
             parameters[0][:] = self._params
             parameters[1][:] = self._param_values
-        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
-            self._cuda_graph_vec = self._create_cuda_graph_vec()
-        self._cuda_graph_capture_mode = ""
-        self._cuda_graph_pool_id = 0
         # Set default mode to train
         self.training = True
         self._program_extra_info = {}
@@ -724,7 +720,7 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
-        _legacy_C_ops.pir_run_program(
+        _C_ops.run_program(
             inputs,
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
@@ -736,7 +732,6 @@ class PartialProgramLayer:
                 ),
                 use_scope_cache=True,
             ),
-            self._cuda_graph_vec,
             *attrs,
         )
         restored_nest_out = self._restore_out(out_vars)
@@ -749,7 +744,7 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
-        _legacy_C_ops.pir_run_program(
+        _C_ops.run_program(
             inputs,
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
@@ -761,7 +756,6 @@ class PartialProgramLayer:
                 ),
                 use_scope_cache=True,
             ),
-            self._cuda_graph_vec,
             *attrs,
         )
         return self._outputs.quick_restore(out_vars)
@@ -847,7 +841,7 @@ class PartialProgramLayer:
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
-            train_program = self._append_backward_desc(train_program)
+            train_program = self._append_backward(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
 
@@ -978,7 +972,7 @@ class PartialProgramLayer:
         return main_program
 
     @switch_to_static_graph
-    def _append_backward_desc(
+    def _append_backward(
         self, train_runnable_program: RunnableProgram
     ) -> RunnableProgram:
         program = train_runnable_program.program
@@ -1141,16 +1135,6 @@ class PartialProgramLayer:
         for key, val in self.program.program_attr.items():
             attrs.append(key)
             attrs.append(val)
-
-        if self._cuda_graph_capture_mode:
-            attrs.extend(
-                (
-                    'cuda_graph_capture_mode',
-                    self._cuda_graph_capture_mode,
-                    'cuda_graph_pool_id',
-                    self._cuda_graph_pool_id,
-                )
-            )
         return attrs
 
     def _prepare_inputs(self, inputs):
@@ -1198,17 +1182,6 @@ class PartialProgramLayer:
             cache_key=cache_key, use_scope_cache=use_scope_cache
         )
         return [inner_scope]
-
-    def _create_cuda_graph_vec(self):
-        var = core.eager.Tensor(
-            core.VarDesc.VarType.FP32,
-            [],
-            "cuda_graph",
-            core.VarDesc.VarType.RAW,
-            True,
-        )
-        var.stop_gradient = True
-        return var
 
     def _restore_out(self, out_vars):
         """
