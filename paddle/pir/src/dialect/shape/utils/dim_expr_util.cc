@@ -88,6 +88,43 @@ struct SimplifyDoubleNeg {
       return ret_expr;
     } else if (inner_expr.Has<std::int64_t>()) {
       return -inner_expr.Get<std::int64_t>();
+    } else if (inner_expr.Has<Mul<DimExpr>>()) {
+      std::vector<DimExpr> mut_operands =
+          *inner_expr.Get<Mul<DimExpr>>().operands;
+      int minus_one_nums = 0;
+      auto it = std::remove_if(
+          mut_operands.begin(),
+          mut_operands.end(),
+          [&minus_one_nums](DimExpr x) {
+            if (x.Has<std::int64_t>() && x.Get<std::int64_t>() == -1) {
+              minus_one_nums++;
+              return true;
+            }
+            return false;
+          });
+      mut_operands.erase(it, mut_operands.end());
+      if (minus_one_nums > 0) {
+        PADDLE_ENFORCE_EQ(minus_one_nums,
+                          1,
+                          common::errors::InvalidArgument(
+                              "The number of -1 in the operands "
+                              "of Mul should be 1, but got %d , "
+                              "please check the simplify logic for Mul.",
+                              minus_one_nums));
+      } else {
+        return expr;
+      }
+      if (mut_operands.size() == 1) {
+        return mut_operands.at(0);
+      } else {
+        return Mul<DimExpr>{List<DimExpr>{mut_operands}};
+      }
+    } else if (inner_expr.Has<Div<DimExpr>>()) {
+      const auto& rhs = inner_expr.Get<Div<DimExpr>>()->rhs;
+      if (rhs.Has<std::int64_t>() && rhs.Get<std::int64_t>() == -1) {
+        return inner_expr.Get<Div<DimExpr>>()->lhs;
+      }
+      return expr;
     } else {
       return expr;
     }

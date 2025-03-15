@@ -221,6 +221,21 @@ TEST(Simplify, FoldRedundantBroadcast) {
   ASSERT_TRUE((simplify_bc == Broadcast<DimExpr>{{S0, S1}}));
 }
 
+TEST(Simplify, SimplifyDoubleNegForMulAndDiv) {
+  // Negative(Mul(S0, Negative(1))) => S0
+  DimExpr S0{"S0"};
+  DimExpr mul{Mul<DimExpr>{{S0, Negative<DimExpr>{DimExpr(1)}}}};
+  DimExpr neg_mul{Negative<DimExpr>{mul}};
+  DimExpr simplify_neg_mul = SimplifyDimExpr(neg_mul);
+  ASSERT_TRUE((simplify_neg_mul == S0));
+
+  // Negative(Div(S0, Negative(1))) => S0
+  DimExpr div{Div<DimExpr>{S0, Negative<DimExpr>{DimExpr(1)}}};
+  DimExpr neg_div{Negative<DimExpr>{div}};
+  DimExpr simplify_neg_div = SimplifyDimExpr(neg_div);
+  ASSERT_TRUE((simplify_neg_div == S0));
+}
+
 TEST(Simplify, Case1) {
   // Div(Mul(Div(Mul(Broadcast(S11, S8), Broadcast(S10, S13, S4, S7),
   // Broadcast(S12, S3, S6, S9)), S0)), 16), 49)
