@@ -1926,7 +1926,7 @@ class ShardingInfo:
         fp16_params = set()
         fp16_to_fp32 = {}
 
-        param_usage = {x: 0 for x in self.param_names}
+        param_usage = dict.fromkeys(self.param_names, 0)
         for op in block.ops:
             if is_optimize_op(op):
                 continue

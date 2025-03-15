@@ -257,10 +257,10 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             self._get_all_device_base_memory(pp_group)
         else:
             self.program_mem_usages = [
-                {type: 0 for type in types} for _ in pp_group
+                dict.fromkeys(types, 0) for _ in pp_group
             ]
             self.program_max_mem_usages = [
-                {type: 0 for type in types} for _ in pp_group
+                dict.fromkeys(types, 0) for _ in pp_group
             ]
             self.base_memory = [0 for _ in range(len(pp_group))]
 

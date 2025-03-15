@@ -327,7 +327,7 @@ class GraphPatternDetector {
 
   // Operate on the detected pattern.
   using handle_t =
-      std::function<void(const subgraph_t& /*hitted pattern*/, Graph*)>;
+      std::function<void(const subgraph_t& /*hit pattern*/, Graph*)>;
 
   void operator()(Graph* graph, handle_t handler);
 

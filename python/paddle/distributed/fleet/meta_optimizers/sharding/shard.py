@@ -100,7 +100,7 @@ class Shard:
         fp16_params = set()
         fp16_to_fp32 = {}
 
-        param_usage = {x: 0 for x in self.global_params}
+        param_usage = dict.fromkeys(self.global_params, 0)
         for op in block.ops:
             if is_optimizer_op(op):
                 continue

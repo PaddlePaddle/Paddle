@@ -32,7 +32,7 @@ namespace paddle::framework::ir {
   GET_IR_NODE(act_op);               \
   GET_IR_NODE(act_out);
 
-// Inheritent the basic information from `base_desc`, and modify some fields.
+// Inherit the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc,
     const std::string& bias,

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ruff: noqa
+# isort: skip_file
 from .parallel_layers import (  # noqa: F401
     ColumnParallelLinear,
     LayerDesc,

@@ -971,7 +971,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         remove ops and vars not needed in this worker
 
         1. prune regularization (weight decay)
-        2. prune cast_fp32_to_fp16; update amp_infine_checking
+        2. prune cast_fp32_to_fp16; update amp_inline_checking
         3. prune gradient_clip related; update global_norm_sum
         4. prune optimizer op + param + gradient
 
