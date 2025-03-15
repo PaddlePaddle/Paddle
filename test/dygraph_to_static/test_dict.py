@@ -173,21 +173,17 @@ class TestDictPop(Dy2StTestBase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        self._set_test_func()
 
-    def _set_test_func(self):
-        self.dygraph_func = paddle.jit.to_static(test_dict_pop)
+    def get_test_func(self):
+        return test_dict_pop
 
     def _run_static(self):
-        return self._run(to_static=True)
+        static_fn = paddle.jit.to_static(self.get_test_func())
+        return static_fn(self.input)
 
     def _run_dygraph(self):
-        return self._run(to_static=False)
-
-    def _run(self, to_static):
-        with enable_to_static_guard(to_static):
-            result = self.dygraph_func(self.input)
-            return result.numpy()
+        fn = self.get_test_func()
+        return fn(self.input)
 
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
@@ -201,8 +197,8 @@ class TestDictPop(Dy2StTestBase):
 
 
 class TestDictPop2(TestDictPop):
-    def _set_test_func(self):
-        self.dygraph_func = paddle.jit.to_static(test_dict_pop_2)
+    def get_test_func(self):
+        return test_dict_pop_2
 
 
 class NetWithDictPop(paddle.nn.Layer):
