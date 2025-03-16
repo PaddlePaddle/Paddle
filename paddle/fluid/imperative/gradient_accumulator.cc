@@ -77,43 +77,6 @@ static void MoveOrCopyVar(framework::Variable* dst,
   }
 }
 
-#ifdef PADDLE_WITH_XPU
-template <typename T>
-void XPUTensorAddFunctor(const phi::Place& place,
-                         const phi::DenseTensor& src,
-                         phi::DenseTensor* dst) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  phi::XPUContext* ctx = dynamic_cast<phi::XPUContext*>(
-      phi::DeviceContextPool::Instance().Get(place));
-  const XPUType* x = reinterpret_cast<const XPUType*>(src.data<T>());
-  XPUType* y = reinterpret_cast<XPUType*>(dst->mutable_data<T>(place));
-  int r = -1;
-  int numel = static_cast<int>(src.numel());
-  if (std::is_same<T, double>::value) {
-    xpu::ctx_guard RAII_GUARD(ctx->x_context());
-    float* x_cast_to_fp32 = RAII_GUARD.alloc<float>(numel);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(x_cast_to_fp32);
-    float* y_cast_to_fp32 = RAII_GUARD.alloc<float>(numel);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(y_cast_to_fp32);
-    r = xpu::cast<XPUType, float>(ctx->x_context(), x, x_cast_to_fp32, numel);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    r = xpu::cast<XPUType, float>(ctx->x_context(), y, y_cast_to_fp32, numel);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    r = xpu::add<float>(ctx->x_context(),
-                        x_cast_to_fp32,
-                        y_cast_to_fp32,
-                        y_cast_to_fp32,
-                        numel);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
-    r = xpu::cast<float, XPUType>(ctx->x_context(), y_cast_to_fp32, y, numel);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-  } else {
-    r = xpu::add<XPUType>(ctx->x_context(), x, y, y, numel);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
-  }
-}
-#endif
-
 template <typename TType>
 TType* GetInnerMutableTensor(framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<TType>();
@@ -218,6 +181,15 @@ void TensorAdd(const VarType& src, VarType* dst) {
 #endif
   }
 
+  if (phi::is_xpu_place(place)) {
+#if defined(PADDLE_WITH_XPU)
+    PADDLE_TENSOR_ADD(float, phi::XPUContext);
+    PADDLE_TENSOR_ADD(double, phi::XPUContext);
+    PADDLE_TENSOR_ADD(phi::dtype::float16, phi::XPUContext);
+    PADDLE_TENSOR_ADD(phi::dtype::bfloat16, phi::XPUContext);
+#endif
+  }
+
 #define TENSOR_ADD_EIGEN(T)                             \
   auto cpu_ctx = static_cast<phi::CPUContext*>(         \
       phi::DeviceContextPool::Instance().Get(place));   \
@@ -263,29 +235,6 @@ void TensorAdd(const VarType& src, VarType* dst) {
     PADDLE_TENSOR_ADD_CUSTOM(phi::dtype::complex<double>);
 #endif
   }
-
-#ifdef PADDLE_WITH_XPU
-  if (phi::is_xpu_place(place)) {
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
-      XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
-    } else if (data_type ==
-               framework::DataTypeTrait<phi::dtype::float16>::DataType()) {
-      XPUTensorAddFunctor<phi::dtype::float16>(place, src_tensor, dst_tensor);
-    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
-      XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
-    } else if (data_type ==
-               framework::DataTypeTrait<phi::dtype::bfloat16>::DataType()) {
-      XPUTensorAddFunctor<phi::dtype::bfloat16>(place, src_tensor, dst_tensor);
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "Gradient accumulation of data type (%s) on place (%s) is not "
-          "supported in imperative mode",
-          framework::DataTypeToString(data_type),
-          place));
-    }
-    return;
-  }
-#endif
 
   PADDLE_THROW(common::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
