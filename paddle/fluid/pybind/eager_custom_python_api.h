@@ -36,7 +36,7 @@ static PyObject *eager_api_linear(PyObject *self,
 
     tstate = PyEval_SaveThread();
 
-    if (bias.is_dist_tensor() || bias.initialized()) {
+    if (bias.is_dist_tensor() || bias.has_allocation()) {
       const phi::distributed::ProcessMesh *mesh = nullptr;
       if (InputsContainDistTensor(&mesh, x, weight, bias)) {
         ConvertAllInputsToDistTensor(mesh, x, weight, bias);

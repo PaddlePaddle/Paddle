@@ -128,8 +128,9 @@ Conv2dGradNodeFinal::operator()(
 
   auto& grad_input = returns[0][0];
   egr::AutogradMeta* grad_input_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&grad_input)
-                                  : nullptr;
+      returns[0][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&grad_input)
+          : nullptr;
   if (grad_input_autograd_meta)
     grad_input_autograd_meta->SetStopGradient(false);
   VLOG(3) << "Conv2dGradNodeFinal grad_input_autograd_meta: "
@@ -137,8 +138,9 @@ Conv2dGradNodeFinal::operator()(
 
   auto& grad_filter = returns[1][0];
   egr::AutogradMeta* grad_filter_autograd_meta =
-      returns[1][0].initialized() ? egr::EagerUtils::autograd_meta(&grad_filter)
-                                  : nullptr;
+      returns[1][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&grad_filter)
+          : nullptr;
   if (grad_filter_autograd_meta)
     grad_filter_autograd_meta->SetStopGradient(false);
   VLOG(3) << "Conv2dGradNodeFinal grad_filter_autograd_meta: "
@@ -268,14 +270,14 @@ Conv2dDoubleGradNodeFinal::operator()(
   auto& grad_input_grad = hooked_grads[0][0];
 
   paddle::optional<paddle::Tensor> grad_input_grad_optional;
-  if (grad_input_grad.initialized())
+  if (grad_input_grad.has_allocation())
     grad_input_grad_optional =
         paddle::make_optional<paddle::Tensor>(grad_input_grad);
 
   auto& grad_filter_grad = hooked_grads[1][0];
 
   paddle::optional<paddle::Tensor> grad_filter_grad_optional;
-  if (grad_filter_grad.initialized())
+  if (grad_filter_grad.has_allocation())
     grad_filter_grad_optional =
         paddle::make_optional<paddle::Tensor>(grad_filter_grad);
 
@@ -339,21 +341,23 @@ Conv2dDoubleGradNodeFinal::operator()(
 
   auto& input_grad = returns[0][0];
   egr::AutogradMeta* input_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&input_grad)
-                                  : nullptr;
+      returns[0][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&input_grad)
+          : nullptr;
   if (input_grad_autograd_meta)
     input_grad_autograd_meta->SetStopGradient(false);
 
   auto& filter_grad = returns[1][0];
   egr::AutogradMeta* filter_grad_autograd_meta =
-      returns[1][0].initialized() ? egr::EagerUtils::autograd_meta(&filter_grad)
-                                  : nullptr;
+      returns[1][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&filter_grad)
+          : nullptr;
   if (filter_grad_autograd_meta)
     filter_grad_autograd_meta->SetStopGradient(false);
 
   auto& grad_out_grad = returns[2][0];
   egr::AutogradMeta* grad_out_grad_autograd_meta =
-      returns[2][0].initialized()
+      returns[2][0].has_allocation()
           ? egr::EagerUtils::autograd_meta(&grad_out_grad)
           : nullptr;
   if (grad_out_grad_autograd_meta)

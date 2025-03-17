@@ -175,21 +175,23 @@ SyncBatchNormGradNode::operator()(
 
   auto& x_grad = returns[0][0];
   egr::AutogradMeta* x_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
-                                  : nullptr;
+      returns[0][0].has_allocation() ? egr::EagerUtils::autograd_meta(&x_grad)
+                                     : nullptr;
   if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
 
   auto& scale_grad = returns[3][0];
   egr::AutogradMeta* scale_grad_autograd_meta =
-      returns[3][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
-                                  : nullptr;
+      returns[3][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&scale_grad)
+          : nullptr;
   if (scale_grad_autograd_meta)
     scale_grad_autograd_meta->SetStopGradient(false);
 
   auto& bias_grad = returns[4][0];
   egr::AutogradMeta* bias_grad_autograd_meta =
-      returns[4][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
-                                  : nullptr;
+      returns[4][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&bias_grad)
+          : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
@@ -409,21 +411,23 @@ SyncBatchNormGradNode::operator()(
 
   auto& x_grad = returns[0][0];
   egr::AutogradMeta* x_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
-                                  : nullptr;
+      returns[0][0].has_allocation() ? egr::EagerUtils::autograd_meta(&x_grad)
+                                     : nullptr;
   if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
 
   auto& scale_grad = returns[3][0];
   egr::AutogradMeta* scale_grad_autograd_meta =
-      returns[3][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
-                                  : nullptr;
+      returns[3][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&scale_grad)
+          : nullptr;
   if (scale_grad_autograd_meta)
     scale_grad_autograd_meta->SetStopGradient(false);
 
   auto& bias_grad = returns[4][0];
   egr::AutogradMeta* bias_grad_autograd_meta =
-      returns[4][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
-                                  : nullptr;
+      returns[4][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&bias_grad)
+          : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node

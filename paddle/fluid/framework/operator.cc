@@ -135,13 +135,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     return "strings";
   } else if (var->IsType<phi::SparseCooTensor>()) {
     const phi::SparseCooTensor& tensor = var->Get<phi::SparseCooTensor>();
-    if (UNLIKELY(!tensor.initialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<phi::SparseCsrTensor>()) {
     const phi::SparseCsrTensor& tensor = var->Get<phi::SparseCsrTensor>();
-    if (UNLIKELY(!tensor.initialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));

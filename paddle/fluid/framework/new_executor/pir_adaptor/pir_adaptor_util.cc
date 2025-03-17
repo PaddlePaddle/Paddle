@@ -314,13 +314,13 @@ void DeepCopyVariable(const Variable* src_var,
     // have holder. In this case we only do set_meta but not copy Tensor.
     if (src_tensor.numel() == 0) {
       tmp_dst_tensor->set_meta(src_tensor.meta());
-      if (src_tensor.IsInitialized()) {
+      if (src_tensor.has_allocation()) {
         tmp_dst_tensor->ResetHolder(
             ::phi::memory_utils::AllocShared(src_tensor.place(), 0u));
       }
       return;
     }
-    if (!src_tensor.initialized()) {
+    if (!src_tensor.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -341,7 +341,7 @@ void DeepCopyVariable(const Variable* src_var,
       dst_t->set_meta(src_t.meta());
       return;
     }
-    if (!src_slr.initialized()) {
+    if (!src_slr.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -354,7 +354,7 @@ void DeepCopyVariable(const Variable* src_var,
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = (*dst_var)->GetMutable<phi::TensorArray>();
-    if (!src_tensor_array.initialized()) {
+    if (!src_tensor_array.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;

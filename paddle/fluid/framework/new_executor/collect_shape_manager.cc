@@ -56,8 +56,9 @@ void CollectShapeManager::CollectShapeInfo(
     }
 
     auto tensor = var->Get<phi::DenseTensor>();
-    if (!tensor.initialized() && !instr->NoNeedBuffer().count(input.first)) {
-      VLOG(3) << "input tensor is initialized: " << (tensor.initialized());
+    if (!tensor.has_allocation() && !instr->NoNeedBuffer().count(input.first)) {
+      VLOG(3) << "input tensor is has_allocation: "
+              << (tensor.has_allocation());
       VLOG(3) << "input tensor is no need buffer:"
               << instr->NoNeedBuffer().count(input.first);
       VLOG(3) << "input tensor is not initialized and not no need buffer, jump "

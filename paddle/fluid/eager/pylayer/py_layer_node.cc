@@ -61,7 +61,7 @@ GradNodePyLayer::operator()(
     if (ctx->forward_output_tensor_is_duplicable[i]) {
       PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());
       for (size_t j = 0; j < grads[i].size(); j++) {
-        if (ctx->materialize_grads && !grads[i][j].initialized()) {
+        if (ctx->materialize_grads && !grads[i][j].has_allocation()) {
           if (forward_outputs_is_dist_meta_[i][j]) {
             paddle::Tensor dist_tensor;
             dist_tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(
@@ -103,7 +103,7 @@ GradNodePyLayer::operator()(
       }
       PyTuple_SET_ITEM(backward_args, i, pylist);
     } else {
-      if (ctx->materialize_grads && !grads[i][0].initialized()) {
+      if (ctx->materialize_grads && !grads[i][0].has_allocation()) {
         if (forward_outputs_is_dist_meta_[i][0]) {
           paddle::Tensor dist_tensor;
           dist_tensor.set_impl(std::make_shared<phi::distributed::DistTensor>(

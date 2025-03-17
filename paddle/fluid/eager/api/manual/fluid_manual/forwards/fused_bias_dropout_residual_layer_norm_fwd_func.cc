@@ -45,9 +45,9 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
 
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {Residual}};
-    if (Bias.initialized()) amp_tensors_vector.push_back({Bias});
-    if (LnScale.initialized()) amp_tensors_vector.push_back({LnScale});
-    if (LnBias.initialized()) amp_tensors_vector.push_back({LnBias});
+    if (Bias.has_allocation()) amp_tensors_vector.push_back({Bias});
+    if (LnScale.has_allocation()) amp_tensors_vector.push_back({LnScale});
+    if (LnBias.has_allocation()) amp_tensors_vector.push_back({LnBias});
 
     auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(
         "fused_bias_dropout_residual_layer_norm", amp_tensors_vector);
@@ -60,21 +60,21 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
                          amp_dst_dtype,
                          "fused_bias_dropout_residual_layer_norm");
     auto NEW_Bias =
-        ((Bias.initialized())
+        ((Bias.has_allocation())
              ? egr::AmpAutoCast("Bias",
                                 Bias,
                                 amp_dst_dtype,
                                 "fused_bias_dropout_residual_layer_norm")
              : Bias);
     auto NEW_LnScale =
-        ((LnScale.initialized())
+        ((LnScale.has_allocation())
              ? egr::AmpAutoCast("LnScale",
                                 LnScale,
                                 amp_dst_dtype,
                                 "fused_bias_dropout_residual_layer_norm")
              : LnScale);
     auto NEW_LnBias =
-        ((LnBias.initialized())
+        ((LnBias.has_allocation())
              ? egr::AmpAutoCast("LnBias",
                                 LnBias,
                                 amp_dst_dtype,
@@ -93,10 +93,10 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> ins =
       {{"X", egr::EagerUtils::TrySyncToVars(X)},
        {"Residual", egr::EagerUtils::TrySyncToVars(Residual)}};
-  if (Bias.initialized()) ins["Bias"] = egr::EagerUtils::TrySyncToVars(Bias);
-  if (LnScale.initialized())
+  if (Bias.has_allocation()) ins["Bias"] = egr::EagerUtils::TrySyncToVars(Bias);
+  if (LnScale.has_allocation())
     ins["LnScale"] = egr::EagerUtils::TrySyncToVars(LnScale);
-  if (LnBias.initialized())
+  if (LnBias.has_allocation())
     ins["LnBias"] = egr::EagerUtils::TrySyncToVars(LnBias);
 
   std::map<std::string, std::vector<std::shared_ptr<egr::EagerVariable>>> outs =

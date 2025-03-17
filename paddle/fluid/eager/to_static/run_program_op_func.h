@@ -155,7 +155,7 @@ pir_filter_no_need_buffer_input_var_in_backward(
                   no_need_buffers_values.end(),
                   forward_inputs_values[i]) != no_need_buffers_values.end()) {
       auto& tensor = filter_x[i];
-      if (tensor.initialized() && tensor.is_dense_tensor()) {
+      if (tensor.has_allocation() && tensor.is_dense_tensor()) {
         auto copied_dense_tensor = std::make_shared<phi::DenseTensor>(
             *std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()));
         garbages->emplace_back(copied_dense_tensor->MoveMemoryHolder());

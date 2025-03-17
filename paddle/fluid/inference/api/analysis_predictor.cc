@@ -3249,7 +3249,7 @@ void AnalysisPredictor::RegisterOutputHook(
               auto *var = scope->FindVar(var_name);
               if (!var || !var->IsType<phi::DenseTensor>()) continue;
               auto dense_tensor = var->Get<phi::DenseTensor>();
-              if (!dense_tensor.initialized()) continue;
+              if (!dense_tensor.has_allocation()) continue;
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
               for (auto &hookfunc : this->output_hookfuncs_) {
@@ -3270,7 +3270,7 @@ void AnalysisPredictor::RegisterOutputHook(
                 auto *var = scope->FindVar(var_name);
                 if (!var || !var->IsType<phi::DenseTensor>()) continue;
                 auto dense_tensor = var->Get<phi::DenseTensor>();
-                if (!dense_tensor.initialized()) continue;
+                if (!dense_tensor.has_allocation()) continue;
                 auto tensor = paddle::Tensor(
                     std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
                 for (auto &hookfunc : this->output_hookfuncs_) {
@@ -3296,7 +3296,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
               auto *var = scope->FindVar(var_name);
               if (!var || !var->IsType<phi::DenseTensor>()) continue;
               auto dense_tensor = var->Get<phi::DenseTensor>();
-              if (!dense_tensor.initialized()) continue;
+              if (!dense_tensor.has_allocation()) continue;
               auto tensor = paddle::Tensor(
                   std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
               for (auto &hookfunc : this->input_hookfuncs_) {
@@ -3317,7 +3317,7 @@ void AnalysisPredictor::RegisterInputHook(const InputTensorHookFunc &hookfunc) {
                 auto *var = scope->FindVar(var_name);
                 if (!var || !var->IsType<phi::DenseTensor>()) continue;
                 auto dense_tensor = var->Get<phi::DenseTensor>();
-                if (!dense_tensor.initialized()) continue;
+                if (!dense_tensor.has_allocation()) continue;
                 auto tensor = paddle::Tensor(
                     std::make_shared<phi::DenseTensor>(dense_tensor), var_name);
                 for (auto &hookfunc : this->input_hookfuncs_) {

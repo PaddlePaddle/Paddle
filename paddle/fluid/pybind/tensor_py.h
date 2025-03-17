@@ -985,7 +985,7 @@ inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
 
 inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                                  py::object copy = py::none()) {
-  if (!tensor.IsInitialized()) {
+  if (!tensor.has_allocation()) {
     return py::array();
   }
   bool is_gpu_tensor = phi::is_gpu_place(tensor.place());
