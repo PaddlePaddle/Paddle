@@ -2878,6 +2878,19 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
 }
 
+void RestrictNonZeroInferMeta(const MetaTensor& condition,
+                              int64_t total_true_num,
+                              MetaTensor* out) {
+  auto rank = condition.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      common::errors::InvalidArgument(
+          "Input(Condition) should have number of dimension at least 1"));
+  out->set_dims({total_true_num, rank});
+  out->set_dtype(phi::DataType::INT64);
+}
+
 void NormInferMeta(const MetaTensor& x,
                    int axis,
                    float epsilon,

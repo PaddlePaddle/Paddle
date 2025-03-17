@@ -463,6 +463,101 @@ void SelectKernel(const KPDevice &dev_ctx,
                                    rank);
 }
 
+// SelectData = 1 then masked_select; SelectData = 0 then where_index
+template <typename MT,
+          typename InT,
+          typename OutT,
+          int SelectData,
+          typename Functor>
+void RestrictSelectKernel(const KPDevice &dev_ctx,
+                          const DenseTensor &condition,
+                          const DenseTensor &in_data,
+                          const int64_t total_true_num,
+                          DenseTensor *out,
+                          Functor func) {
+  const MT *cond_data = condition.data<MT>();
+  const int64_t numel = condition.numel();
+  auto dims = condition.dims();
+  int rank = SelectData ? 1 : dims.size();
+  const InT *in_data_ptr = SelectData ? in_data.data<InT>() : nullptr;
+  // calculate the inclusive prefix sum of "true_num_array"
+  // to get the index of "out" tensor,
+  // and the total number of cond_data[i]==true.
+  // Example:
+  // condition: F T T F F F T T
+  // before:    0 1 1 0 0 0 1 1
+  // after:     0 1 2 2 2 2 3 4
+  // out:       1 2 6 7
+  // alloc for cpu
+  using CT = int64_t;  // set Count_data Type
+  const int t_size = sizeof(CT);
+
+  const phi::GPUPlace &cuda_place = dev_ctx.GetPlace();
+  phi::CPUPlace cpu_place = phi::CPUPlace();
+
+  // 1.1 get stored data num of per block
+  const int kVecSize = 4;
+#ifdef PADDLE_WITH_XPU_KP
+  int block = 64;
+  auto stream = dev_ctx.x_context()->xpu_stream;
+  const int num_per_block = kVecSize * block;
+  const int need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, 8);
+#else
+  const int block = 256;
+  const int num_per_block = kVecSize * block;
+  const int need_grids = (numel + num_per_block - 1) / num_per_block;
+  const int grid = std::min(need_grids, 256);
+  auto stream = dev_ctx.stream();
+#endif
+  const int64_t main_offset = Floor(numel, num_per_block);
+  // 1.2 alloc tmp data for CoutBlock
+  const int size_count_block = need_grids + 1;
+  std::vector<int> dims_vec = {size_count_block * 2};
+  IntArray dims_array(dims_vec);
+  DenseTensor count_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  CT *count_data = count_mem.data<CT>();
+  // 1.3 launch CountKernl
+  GetBlockCountKernel<MT, CT, kVecSize>
+      <<<grid, block, 0, stream>>>(cond_data, count_data, numel, main_offset);
+  // 2.1 alloc cumsum data for CoutBlock prefix
+  DenseTensor cumsum_mem = phi::Empty<CT, KPDevice>(dev_ctx, dims_array);
+  CT *cumsum_data = cumsum_mem.data<CT>();
+  // 2.2 get prefix of count_data for real out_index
+  // CT total_true_num = static_cast<CT>(0);  // init
+  const int kCumVesize = 2;
+  const int block_c = 256;
+  const int main_offset_c = Floor(size_count_block, (kCumVesize * block_c));
+
+  using Add = kps::AddFunctor<CT>;
+  CumsumOneBlock<CT, CT, Add, kCumVesize><<<1, block_c, 0, stream>>>(
+      count_data, cumsum_data, size_count_block, main_offset_c, Add());
+  // 3.1 set temp ptr for in;
+  // 3.1 alloc for out
+  // 3.1.1 get true_num for gpu place the last cumsum is the true_num
+  // 3.1.2 allock for out with total_true_num
+  std::vector<int64_t> out_dim = {static_cast<int64_t>(total_true_num)};
+
+  if (SelectData == 1) {
+    out->Resize(common::make_ddim(out_dim));
+  } else if (SelectData == 0) {  // == 0 where_index
+    out_dim.push_back(static_cast<int64_t>(rank));
+    out->Resize(common::make_ddim(out_dim));
+  }
+  auto out_data = dev_ctx.template Alloc<OutT>(out);
+  // 3.2 get true data's index according to cond_data and cumsum_data
+  if (total_true_num <= 0) return;
+  SelectKernel<MT, InT, CT, OutT, Functor, kVecSize, SelectData>
+      <<<grid, block, 0, stream>>>(out_data,
+                                   cond_data,
+                                   in_data_ptr,
+                                   cumsum_data,
+                                   func,
+                                   numel,
+                                   main_offset,
+                                   rank);
+}
+
 }  // namespace funcs
 }  // namespace phi
 
