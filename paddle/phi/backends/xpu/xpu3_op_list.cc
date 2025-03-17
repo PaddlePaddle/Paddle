@@ -764,6 +764,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT32})},
+      {"grid_sampler", XPUKernelSet({phi::DataType::FLOAT32})},
       {"grid_sampler_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"group_norm_silu_xpu",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
