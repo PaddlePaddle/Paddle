@@ -132,6 +132,10 @@ void MemcpyKernel(const Context& dev_ctx,
       dev_ctx.Alloc(out, x.dtype());
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
       break;
+    case 5: /* XPUPinnedPlace */
+      dev_ctx.Alloc(out, x.dtype(), 0, true);
+      Copy(dev_ctx, x, XPUPinnedPlace(), false, out);
+      break;
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
     case 4:  // CustomPlace
       dev_ctx.Alloc(out, x.dtype());
