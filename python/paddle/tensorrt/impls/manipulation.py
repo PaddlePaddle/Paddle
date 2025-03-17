@@ -517,7 +517,6 @@ def slice_converter(network, paddle_op, inputs):
                 idx,
                 name=[paddle_op.name(), f'starts_tensor_{idx}'],
             )
-    start_tensor = trt_concat(network, starts_tensor)
 
     ends = get_input_constant_value(paddle_op, inputs, 2)
     if ends is not None:
@@ -569,36 +568,21 @@ def slice_converter(network, paddle_op, inputs):
     else:
         ends = inputs[2]
         for idx in range(len(axes)):
-            axis = axes[idx]
-            input_dim = get_shape_tensor_element(
-                network,
-                input_shape_tensor,
-                axis,
-                name=[paddle_op.name(), f'input_dim_{idx}'],
-            )
-            end_element = get_shape_tensor_element(
+            ends_tensor[axes[idx]] = get_shape_tensor_element(
                 network,
                 ends,
                 idx,
-                name=[paddle_op.name(), f'end_element_{idx}'],
+                name=[paddle_op.name(), f'ends_tensor_{idx}'],
             )
 
-            ends_tensor[axes[idx]] = trt_min(
-                network,
-                trt_max(
-                    network,
-                    end_element,
-                    add_1D_constant_layer(
-                        network, 0, name=[paddle_op.name(), 'zero_tensor_{idx}']
-                    ),
-                    name=[paddle_op.name(), 'trt_max_{idx}'],
-                ),
-                input_dim,
-                name=[paddle_op.name(), 'trt_min_{idx}'],
-            )
-    end_tensor = trt_concat(
-        network, ends_tensor, name=[paddle_op.name(), 'end_tensor']
-    )
+    start_tensor_layer = network.add_concatenation(starts_tensor)
+    start_tensor_layer.axis = 0
+    set_layer_name(start_tensor_layer, paddle_op)
+    start_tensor = start_tensor_layer.get_output(0)
+    end_tensor_layer = network.add_concatenation(ends_tensor)
+    end_tensor_layer.axis = 0
+    set_layer_name(end_tensor_layer, paddle_op)
+    end_tensor = end_tensor_layer.get_output(0)
     size_tensor = trt_sub(
         network,
         end_tensor,
@@ -629,12 +613,7 @@ def slice_converter(network, paddle_op, inputs):
             shuffle_layer = network.add_shuffle(output_tensor)
             shuffle_layer.reshape_dims = ()
         else:
-            real_size_tensor = trt_gather(
-                network,
-                size_tensor,
-                gather_indices,
-                name=[paddle_op.name(), 'real_size_tensor'],
-            )
+            real_size_tensor = trt_gather(network, size_tensor, gather_indices)
             shuffle_layer = network.add_shuffle(output_tensor)
             shuffle_layer.set_input(1, real_size_tensor)
 
