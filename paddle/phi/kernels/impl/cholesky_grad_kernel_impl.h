@@ -242,14 +242,13 @@ void CholeskyGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         bool upper,
                         DenseTensor* x_grad) {
-  auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
-
-  auto& dims = out.dims();
-  if (out.numel() == 0) {
-    x_grad->Resize(dims);
+  if (x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
+
+  auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  auto& dims = out.dims();
   int batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
