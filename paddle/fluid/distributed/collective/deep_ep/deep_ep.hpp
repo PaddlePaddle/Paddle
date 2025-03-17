@@ -24,7 +24,7 @@
 #undef NDEBUG
 #endif
 
-#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+#ifndef PADDLE_NO_PYTHON
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
 #endif
@@ -122,7 +122,7 @@ struct Buffer {
 
   int get_local_device_id() const;
 
-#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+#ifndef PADDLE_NO_PYTHON
   pybind11::bytearray get_local_ipc_handle() const;
 
   pybind11::bytearray get_local_nvshmem_unique_id() const;
