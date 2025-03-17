@@ -29,7 +29,7 @@ import paddle
 paddle.enable_static()
 
 
-class XPUTestPutAlongAxis(XPUOpTestWrapper):
+class XPUTestPutAlongAxisInt(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'put_along_axis'
 
@@ -184,70 +184,11 @@ class XPUTestPutAlongAxis(XPUOpTestWrapper):
             self.index = np.random.randint(0, 6, size=(8, 1, 12))
             self.axis = 2
 
-    class TestMeanCase1(TestXPUPutAlongAxisOpAssign):
-        def init_data(self):
-            self.in_type = self.dtype
-            self.reduce = "mean"
-            self.x_shape = (2, 2, 2)
-            self.index_type = np.int64
-            self.index = np.array([[[0, 0], [1, 0]]]).astype('int64')
-            self.axis = 1
-
-    class TestMeanCase2(TestXPUPutAlongAxisOpAssign):
-        def init_data(self):
-            self.in_type = self.dtype
-            self.reduce = "mean"
-            self.x_shape = (6, 8, 10)
-            self.index_type = np.int32
-            self.index = np.random.randint(0, 6, size=(1, 8, 10)).astype(
-                self.index_type
-            )
-            self.axis = 0
-
-    class TestMaxCase1(TestXPUPutAlongAxisOpAssign):
-        def init_data(self):
-            self.in_type = self.dtype
-            self.reduce = "amax"
-            self.x_shape = (12, 13, 10)
-            self.index_type = np.int32
-            self.index = np.array([[[7]]]).astype(self.index_type)
-            self.index = np.random.randint(0, 12, size=(12, 13, 1))
-            self.axis = 1
-
-    class TestMaxCase2(TestXPUPutAlongAxisOpAssign):
-        def init_data(self):
-            self.in_type = self.dtype
-            self.reduce = "amax"
-            self.x_shape = (16, 13, 10)
-            self.index_type = np.int32
-            self.index = np.array([[[7]]]).astype(self.index_type)
-            self.index = np.random.randint(0, 10, size=(1, 13, 1))
-            self.axis = 2
-
-    class TestMinCase1(TestXPUPutAlongAxisOpAssign):
-        def init_data(self):
-            self.in_type = self.dtype
-            self.reduce = "amin"
-            self.x_shape = (5, 5, 5)
-            self.index_type = np.int64
-            self.index = np.zeros((5, 5, 1)).astype(self.index_type)
-            self.axis = 1
-
-    class TestMinCase2(TestXPUPutAlongAxisOpAssign):
-        def init_data(self):
-            self.in_type = self.dtype
-            self.reduce = "amin"
-            self.x_shape = (12, 13, 14)
-            self.index_type = np.int32
-            self.index = np.random.randint(0, 12, size=(12, 13, 1))
-            self.axis = 2
-
 
 support_types = get_xpu_op_support_types('put_along_axis')
 for stype in support_types:
     if stype == 'int32' or stype == 'int64':
-        continue
-    create_test_class(globals(), XPUTestPutAlongAxis, stype)
+        create_test_class(globals(), XPUTestPutAlongAxisInt, stype)
 
 if __name__ == "__main__":
     unittest.main()
