@@ -784,6 +784,27 @@ class TestMeanAPI(unittest.TestCase):
         self.assertRaises(Exception, paddle.mean, x, -3)
         self.assertRaises(Exception, paddle.mean, x, 2)
 
+        with self.assertRaises(Exception) as context:
+            paddle.mean(x, axis=[0, 0])
+        self.assertTrue(
+            "Axis contains duplicate dimensions" in str(context.exception)
+        )
+        with self.assertRaises(Exception) as context:
+            paddle.mean(x, axis=(1, 1))
+        self.assertTrue(
+            "Axis contains duplicate dimensions" in str(context.exception)
+        )
+        with self.assertRaises(Exception) as context:
+            paddle.mean(x, axis=[-2, -2])
+        self.assertTrue(
+            "Axis contains duplicate dimensions" in str(context.exception)
+        )
+        with self.assertRaises(Exception) as context:
+            paddle.mean(x, axis=[0, -2])
+        self.assertTrue(
+            "Axis contains duplicate dimensions" in str(context.exception)
+        )
+
 
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
     def init_data(self):
