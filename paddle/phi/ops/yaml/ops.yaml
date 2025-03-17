@@ -1690,6 +1690,7 @@
   output : Tensor(out)
   infer_meta :
     func : ExpandInferMeta
+    local_shape: out
   kernel :
     func : expand
     data_type : x
