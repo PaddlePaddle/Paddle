@@ -29,10 +29,10 @@ void barrier(int **task_fifo_ptrs, int head, int rank, int num_ranks, cudaStream
 
 } // namespace intranode
 
-#ifdef PADDLE_WITH_NVSHMEM
 // Internode runtime
 namespace internode {
 
+#ifdef PADDLE_WITH_NVSHMEM
 std::vector<uint8_t> get_unique_id();
 
 int init(const std::vector<uint8_t> &root_unique_id_val, int rank, int num_ranks, bool low_latency_mode);
@@ -44,9 +44,15 @@ void free(void *ptr);
 void barrier();
 
 void finalize();
+#endif  // PADDLE_WITH_NVSHMEM
+
+void get_dispatch_layout(const int64_t* topk_idx,
+                         int* num_tokens_per_rank, int* num_tokens_per_rdma_rank,
+                         int* num_tokens_per_expert, bool* is_token_in_rank,
+                         int num_tokens, int num_topk, int num_ranks, int num_experts,
+                         cudaStream_t stream);
 
 } // namespace internode
-#endif  // PADDLE_WITH_NVSHMEM
 
 // Intranode kernels
 namespace intranode {
@@ -89,12 +95,6 @@ void combine(cudaDataType_t type,
 namespace internode {
 
 int get_source_meta_bytes();
-
-void get_dispatch_layout(const int64_t* topk_idx,
-                         int* num_tokens_per_rank, int* num_tokens_per_rdma_rank,
-                         int* num_tokens_per_expert, bool* is_token_in_rank,
-                         int num_tokens, int num_topk, int num_ranks, int num_experts,
-                         cudaStream_t stream);
 
 void notify_dispatch(const int* num_tokens_per_rank, int* moe_recv_counter_mapped, int num_ranks,
                      const int* num_tokens_per_rdma_rank, int* moe_recv_rdma_counter_mapped,
@@ -172,4 +172,5 @@ void combine(void* combined_x,
 
 } // namespace internode_ll
 #endif  // PADDLE_WITH_NVSHMEM
+
 } // namespace deep_ep
