@@ -2691,14 +2691,14 @@ def split_param_func(
         [gate_weight, up_weight] => [gate_weight], [up_weight]
 
     Args:
-        fused_param (_type_): len(fused_param)=1, only one weight to be splitted
+        fused_param (_type_): len(fused_param)=1, only one weight to be split
         split_nums (int, optional): split_nums. Defaults to 2.
         is_qkv (bool, optional): for attention qkv weights. Defaults to False.
         num_heads (_type_, optional): query heads. Defaults to None.
         num_key_value_heads (_type_, optional): key and value heads. Defaults to None.
 
     Returns:
-        _type_: splitted weights
+        _type_: split weights
     """
     concat_fn = paddle.concat
     split_fn = paddle.split
@@ -2746,11 +2746,11 @@ def split_mesh(global_mesh: ProcessMesh, sub_mesh_dim: int):
         sub_mesh_dim += mesh_ndim
 
     process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
-    splitted_process_ids = np.split(
+    split_process_ids = np.split(
         process_ids, mesh_shape[sub_mesh_dim], axis=sub_mesh_dim
     )
     sub_mesh_list = []
-    for sub_process_ids in splitted_process_ids:
+    for sub_process_ids in split_process_ids:
         sub_mesh_list.append(
             ProcessMesh(sub_process_ids, global_mesh.dim_names)
         )

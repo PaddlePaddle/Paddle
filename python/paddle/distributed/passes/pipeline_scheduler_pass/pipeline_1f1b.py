@@ -234,14 +234,14 @@ class Pipeline1F1BPass(PipelinePassBase):
             BACKWARD,
         ], f"job_type should be one of {[FORWARD, BACKWARD]}"
 
-        splitted_programs, __, __ = split_program(program, split_points)
+        split_programs, __, __ = split_program(program, split_points)
 
-        splitted_job_types = []
-        num_splitted_programs = len(splitted_programs)
-        for idx in range(num_splitted_programs):
-            splitted_job_types.append(f"{job_type}(chunk{idx})")
+        split_job_types = []
+        num_split_programs = len(split_programs)
+        for idx in range(num_split_programs):
+            split_job_types.append(f"{job_type}(chunk{idx})")
 
-        return splitted_job_types, splitted_programs
+        return split_job_types, split_programs
 
     def is_comm_op_valid_to_overlap(self, op):
         return (

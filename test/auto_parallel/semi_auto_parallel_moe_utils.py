@@ -44,11 +44,11 @@ class TestMoEUtils:
             dist_x, [-1, w * 2], self._mesh0, [dist.Shard(1), dist.Replicate()]
         )
 
-        splitted_np_x = np.split(np_x, 2, axis=1)
-        for i in range(len(splitted_np_x)):
-            splitted_np_x[i] = splitted_np_x[i].reshape([h // 2, w])
+        split_np_x = np.split(np_x, 2, axis=1)
+        for i in range(len(split_np_x)):
+            split_np_x[i] = split_np_x[i].reshape([h // 2, w])
         np.testing.assert_array_equal(
-            splitted_np_x[dist.get_rank()], dist_y._local_value().numpy()
+            split_np_x[dist.get_rank()], dist_y._local_value().numpy()
         )
 
         label = paddle.ones(tgt_shape, dtype=paddle.int64)
@@ -60,9 +60,9 @@ class TestMoEUtils:
         loss.backward()
 
         np_grad = np.ones(src_shape, dtype="int64")
-        splitted_np_grad = np.split(np_grad, 2, axis=1)
+        split_np_grad = np.split(np_grad, 2, axis=1)
         np.testing.assert_array_equal(
-            splitted_np_grad[dist.get_rank()],
+            split_np_grad[dist.get_rank()],
             dist_x.grad._local_value().numpy(),
         )
 
@@ -96,9 +96,9 @@ class TestMoEUtils:
         assert dist_y.placements == [dist.Shard(0), dist.Replicate()]
         assert dist_x.grad.placements == [dist.Shard(1), dist.Replicate()]
         np_grad = np.ones(src_shape, dtype="int64")
-        splitted_np_grad = np.split(np_grad, 2, axis=1)
+        split_np_grad = np.split(np_grad, 2, axis=1)
         np.testing.assert_array_equal(
-            splitted_np_grad[dist.get_rank()],
+            split_np_grad[dist.get_rank()],
             dist_x.grad._local_value().numpy(),
         )
 

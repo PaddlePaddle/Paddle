@@ -129,12 +129,12 @@ def split_program(program, op_indices):
     Split the program by op_indices.
 
     For examples, a program has 100 ops, and op_indices = [25, 60].
-    Then the program is splitted into 3 parts, containing 25, 35 and 40
+    Then the program is split into 3 parts, containing 25, 35 and 40
     ops respectively.
 
-    The return values are a tuple with 3 elements: the splitted program
-    list, the input var names of each splitted program, and the output
-    var names of each splitted program.
+    The return values are a tuple with 3 elements: the split program
+    list, the input var names of each split program, and the output
+    var names of each split program.
     """
     assert op_indices, "op_indices cannot be empty"
     op_num = len(program.global_block().ops)
@@ -152,16 +152,15 @@ def split_program(program, op_indices):
             op_indices[idx] < op_indices[idx + 1]
         ), "op_indices must be strictly sorted"
 
-    splitted_programs = []
+    split_programs = []
     for idx in range(len(op_indices) - 1):
         new_split = prune_program(program, op_indices[idx], op_indices[idx + 1])
-        splitted_programs.append(new_split)
+        split_programs.append(new_split)
 
-    num_split = len(splitted_programs)
-    input_vars = [get_inputs_of_program(p) for p in splitted_programs]
+    num_split = len(split_programs)
+    input_vars = [get_inputs_of_program(p) for p in split_programs]
     output_vars = [
-        list_to_ordered_dict(get_outputs_of_program(p))
-        for p in splitted_programs
+        list_to_ordered_dict(get_outputs_of_program(p)) for p in split_programs
     ]
     valid_output_vars = [OrderedDict() for _ in range(num_split)]
     valid_output_vars[-1] = output_vars[-1]
@@ -172,7 +171,7 @@ def split_program(program, op_indices):
                     valid_output_vars[j][in_var_name] = True
                     break
     valid_output_vars = [list(item.keys()) for item in valid_output_vars]
-    return splitted_programs, input_vars, valid_output_vars
+    return split_programs, input_vars, valid_output_vars
 
 
 class OpInOutInfo:

@@ -543,7 +543,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             process_mesh = param_dist_attr.process_mesh
             dim_mapping = param_dist_attr.dims_mapping
 
-            # NOTE all not splitted axis should be presented in mesh
+            # NOTE all not split axis should be presented in mesh
             for axis, size in enumerate(process_mesh.shape):
                 if size <= 1 or axis in dim_mapping:
                     pass

@@ -283,7 +283,7 @@ def alltoall_single(
 ) -> task:
     """
 
-    Split and Scatter the splitted input tensor to the out tensor across devices.
+    Split and Scatter the split input tensor to the out tensor across devices.
 
     Args:
         out_tensor(Tensor): The output tensor. Its data type should be the same as the input.
