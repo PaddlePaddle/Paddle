@@ -277,49 +277,59 @@ llvm::Value *CodeGenLLVM::Visit(const ir::StringImm *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Add *op) {
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '+', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '+',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Sub *op) {
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '-', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '-',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Mul *op) {
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});
-  auto *lhs = Visit(&op->a());
-  auto *rhs = Visit(&op->b());
-  return EmitBinaryOp(lhs, rhs, '*', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '*',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Div *op) {
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '/', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '/',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Mod *op) {
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '%', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '%',
+                      is_integral_type(op->type()));
 }
 
-#define __IR_EMITTER_DEFINE_CMP_VISITOR(__sop, __uop, __fop) \
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});            \
-  auto *lhs = Visit(&op->a());                               \
-  auto *rhs = Visit(&op->b());                               \
-  CHECK(op->a().type() == op->b().type());                   \
-  llvm::CmpInst::Predicate predicate;                        \
-  if (op->a().type().is_int()) {                             \
-    predicate = llvm::CmpInst::ICMP_##__sop;                 \
-  } else if (op->a().type().is_uint()) {                     \
-    predicate = llvm::CmpInst::ICMP_##__uop;                 \
-  } else /*float*/ {                                         \
-    predicate = llvm::CmpInst::FCMP_##__fop;                 \
-  }                                                          \
+#define __IR_EMITTER_DEFINE_CMP_VISITOR(__sop, __uop, __fop)     \
+  auto promote_args =                                            \
+      std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()})); \
+  auto *lhs = Visit(&promote_args.at(0));                        \
+  auto *rhs = Visit(&promote_args.at(1));                        \
+  CHECK(promote_args.at(0).type() == promote_args.at(1).type()); \
+  llvm::CmpInst::Predicate predicate;                            \
+  if (promote_args.at(0).type().is_int()) {                      \
+    predicate = llvm::CmpInst::ICMP_##__sop;                     \
+  } else if (promote_args.at(0).type().is_uint()) {              \
+    predicate = llvm::CmpInst::ICMP_##__uop;                     \
+  } else /*float*/ {                                             \
+    predicate = llvm::CmpInst::FCMP_##__fop;                     \
+  }                                                              \
   return EmitComparison(predicate, lhs, rhs, b_)
 
 llvm::Value *CodeGenLLVM::Visit(const ir::EQ *op) {
@@ -1471,8 +1481,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BufferCreate *op) {
   for (int i = 0; i < buffer_node->shape.size(); i++) {
     buffer_size = buffer_size * buffer_node->shape[i];
   }
-  ir::TryElevateInt32ToInt64({buffer_size});
-  args.push_back(Visit(&buffer_size));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({buffer_size}));
+  args.push_back(Visit(&promote_args.at(0)));
   args.push_back(ll_const_int32(32));
 
   return Call(callee, args);

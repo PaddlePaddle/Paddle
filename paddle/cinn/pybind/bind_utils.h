@@ -130,7 +130,7 @@ void DefineBinaryOpNode(py::module *m, absl::string_view node_name) {
   py::class_<BinaryOpNodeT, ir::ExprNode<NodeType>> binary_op_node(
       *m, name.c_str());
   binary_op_node.def(py::init<>())
-      .def(py::init<Type, Expr, Expr>())
+      .def(py::init<Expr, Expr>())
       .def("a_mutable",
            py::overload_cast<>(&BinaryOpNodeT::a),
            py::return_value_policy::reference)

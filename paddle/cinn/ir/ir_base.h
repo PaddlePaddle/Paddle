@@ -192,6 +192,26 @@ std::ostream& operator<<(std::ostream& os, StmtNodeTy type);
 struct Expr;
 struct IndexExpr;
 
+// When expr of type int64 exists in `expr_vec`, all int32 in `expr_vec` will be
+// promoted to int64 by inplace modification.
+void TryElevateInt32ToInt64_(std::vector<Expr>& expr_vec);  // NOLINT
+
+// When expr of type int64 exists in `expr_vec`, all int32 in `expr_vec` will be
+// promoted to int64 by returning a vector of promoted exprs.
+std::vector<Expr> TryElevateInt32ToInt64(const std::vector<Expr>& expr_vec);
+
+// If `expr` is `IndexExpr` with int64 type, it will be downgraded to int32 by
+// inplace modification.
+void ElevateInt64ToInt32_(Expr& expr);  // NOLINT
+
+// All `IndexExpr` with int64 type in `expr_vec` will be downgraded to int32 by
+// inplace modification.
+void ElevateInt64ToInt32_(std::vector<Expr>& expr_vec);  // NOLINT
+
+// All `IndexExpr` with int64 type in `expr_vec` will be downgraded to int32 by
+// returning a vector of promoted exprs.
+std::vector<Expr> ElevateInt64ToInt32(const std::vector<Expr>& expr_vec);
+
 /**
  * The base of all the nodes in the IR.
  */
@@ -599,11 +619,7 @@ struct UnaryOpNode : public ExprNode<T> {
 template <typename T>
 struct BinaryOpNode : public ExprNode<T> {
   BinaryOpNode() { operands().resize(2); }
-  BinaryOpNode(Type type, Expr a, Expr b) : ExprNode<T>(type) {
-    PADDLE_ENFORCE_EQ(
-        type.valid(),
-        true,
-        ::common::errors::InvalidArgument("The type must be valid."));
+  BinaryOpNode(Expr a, Expr b) : ExprNode<T>() {
     PADDLE_ENFORCE_EQ(
         a.defined(),
         true,
@@ -613,8 +629,10 @@ struct BinaryOpNode : public ExprNode<T> {
         true,
         ::common::errors::InvalidArgument("The object 'b' must be defined."));
     operands().resize(2);
-    this->a() = a;
-    this->b() = b;
+    auto promote_args = std::move(TryElevateInt32ToInt64({a, b}));
+    this->a() = std::move(promote_args.at(0));
+    this->b() = std::move(promote_args.at(1));
+    this->set_type(this->a().type());
   }
 
   Expr& a() { return ExprNode<T>::operand(0); }
@@ -704,10 +722,5 @@ Expr ExprNode<T>::Copy() const {
   PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
   return Expr();
 }
-
-void TryElevateInt32ToInt64(const std::vector<Expr>& expr_vec);
-
-void TryElevateInt64ToInt32(const std::vector<Expr>& expr_vec);
-
 }  // namespace ir
 }  // namespace cinn

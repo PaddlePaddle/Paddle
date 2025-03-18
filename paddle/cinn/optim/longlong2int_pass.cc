@@ -37,18 +37,14 @@ void CastVarWithBound(cinn::ir::Var& var) {  // NOLINT
   var->convert_int64_to_int32();
   auto lb = var->lower_bound;
   auto ub = var->upper_bound;
-  if (lb.defined()) ir::TryElevateInt64ToInt32({lb});
-  if (ub.defined()) ir::TryElevateInt64ToInt32({ub});
+  if (lb.defined()) ir::ElevateInt64ToInt32_(lb);
+  if (ub.defined()) ir::ElevateInt64ToInt32_(ub);
 }
 void CastBufferMeta(cinn::ir::Buffer& bf) {  // NOLINT
   if (!bf.defined()) return;
-  std::for_each(bf->shape.begin(), bf->shape.end(), [&](cinn::ir::Expr& e) {
-    ir::TryElevateInt64ToInt32({e});
-  });
-  std::for_each(bf->strides.begin(), bf->strides.end(), [&](cinn::ir::Expr& e) {
-    ir::TryElevateInt64ToInt32({e});
-  });
-  ir::TryElevateInt64ToInt32({bf->elem_offset});
+  ir::ElevateInt64ToInt32_(bf->shape);
+  ir::ElevateInt64ToInt32_(bf->strides);
+  ir::ElevateInt64ToInt32_(bf->elem_offset);
 }
 
 class CheckOverflow : public ir::stmt::StmtVisitor<> {
@@ -109,24 +105,22 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
  private:
   void Visit(const ir::_Tensor_* op, Expr* expr) override {
     auto node = expr->As<ir::_Tensor_>();
-    std::for_each(node->shape.begin(),
-                  node->shape.end(),
-                  [&](cinn::ir::Expr& e) { ir::TryElevateInt64ToInt32({e}); });
+    ir::ElevateInt64ToInt32_(node->shape);
     CastBufferMeta(node->buffer);
   }
   void Visit(const ir::Load* op, Expr* expr) override {
     auto node = expr->As<ir::Load>();
-    std::for_each(node->indices.begin(),
-                  node->indices.end(),
-                  [&](cinn::ir::Expr& e) { ir::TryElevateInt64ToInt32({e}); });
+    ir::ElevateInt64ToInt32_(node->indices);
     ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
   }
 
   void Visit(const ir::Select* op, Expr* expr) override {
     auto node = expr->As<ir::Select>();
     auto cond = node->condition;
-    if (cond.is_cmp()) {
-      ir::TryElevateInt64ToInt32({cond->operand(0), cond->operand(1)});
+    if (cond.is_cmp() && cond->operand(0).is_index() &&
+        cond->operand(1).is_index()) {
+      ir::ElevateInt64ToInt32_(cond->operands[0]);
+      ir::ElevateInt64ToInt32_(cond->operands[1]);
     }
     ir::IRMutator<>::Visit(&node->true_value, &node->true_value);
     ir::IRMutator<>::Visit(&node->false_value, &node->false_value);
@@ -149,25 +143,28 @@ class LongLong2IntExprPass : public ExprPass {
 LogicalResult LongLong2IntStmtPass::Run(ir::stmt::StmtRef stmt) {
   auto CastStore = [](StmtRef stmt) {
     Store store_stmt = stmt.as<Store>();
-    for (Expr index : store_stmt->indices()) {
-      ir::TryElevateInt64ToInt32({index});
-    }
+    auto ids = store_stmt->indices();
+    ir::ElevateInt64ToInt32_(ids);
   };
 
   auto CastIfThenElse = [](StmtRef stmt) {
     IfThenElse if_stmt = stmt.as<IfThenElse>();
     Expr cond = if_stmt->condition();
-    if (cond.is_cmp()) {
-      ir::TryElevateInt64ToInt32({cond->operand(0), cond->operand(1)});
+    if (cond.is_cmp() && cond->operand(0).is_index() &&
+        cond->operand(1).is_index()) {
+      ir::ElevateInt64ToInt32_(cond->operands[0]);
+      ir::ElevateInt64ToInt32_(cond->operands[1]);
     }
   };
 
   auto CastFor = [](StmtRef stmt) {
     For for_stmt = stmt.as<For>();
     ir::Var loop_var = for_stmt->loop_var();
+    ir::Expr loop_min = for_stmt->min();
+    ir::Expr loop_extent = for_stmt->extent();
     CastVarWithBound(loop_var);
-    ir::TryElevateInt64ToInt32({for_stmt->min()});
-    ir::TryElevateInt64ToInt32({for_stmt->extent()});
+    ir::ElevateInt64ToInt32_(loop_min);
+    ir::ElevateInt64ToInt32_(loop_extent);
   };
 
   auto CastSchedule = [](StmtRef stmt) {
@@ -178,9 +175,7 @@ LogicalResult LongLong2IntStmtPass::Run(ir::stmt::StmtRef stmt) {
     });
 
     std::vector<Expr> iter_values = schedule_stmt->iter_values();
-    std::for_each(iter_values.begin(),
-                  iter_values.end(),
-                  [&](cinn::ir::Expr& e) { ir::TryElevateInt64ToInt32({e}); });
+    ir::ElevateInt64ToInt32_(iter_values);
 
     for (auto& buffer_range : schedule_stmt->read_buffers()) {
       if (auto range = buffer_range.As<ir::_BufferRange_>()) {

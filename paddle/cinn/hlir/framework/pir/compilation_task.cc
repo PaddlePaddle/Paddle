@@ -231,6 +231,8 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
 
   ir::Module ir_module = context_->module_builder_.Build();
   ir::Module ir_moduleCX86 = context_->CX86_module_builder_.Build();
+  cinn::common::OpDataTypePromote(&ir_module);
+  cinn::common::OpDataTypePromote(&ir_moduleCX86);
   return BuildPirCINNKernelInfo(
       ir_module, ir_moduleCX86, context_->NeedCompileCX86Kernel());
 }
