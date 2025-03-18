@@ -837,7 +837,7 @@ class SymbolicVariable(VariableBase):
         self.need_guard_value = True
         log(
             3,
-            f"get_py_value from SymbolicVariable {self} caused value need guard",
+            f"get_py_value from SymbolicVariable {self} caused value need guard\n",
         )
         if isinstance(self.value, SymbolicValue):
             assert isinstance(

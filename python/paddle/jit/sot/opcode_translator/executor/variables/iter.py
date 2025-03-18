@@ -24,12 +24,15 @@ from paddle.jit.sot.opcode_translator.executor.variables.base import (
 )
 
 from ....profiler import EventGuard
-from ....utils import BreakGraphError, FallbackError, UnsupportedOperationBreak
+from ....utils import do_until_stop_iteration
 from ....utils.exceptions import (
+    BreakGraphError,
     BreakGraphInlineCallBreak,
+    FallbackError,
     FallbackInlineCallBreak,
     OtherInlineCallBreak,
     SotErrorBase,
+    UnsupportedOperationBreak,
 )
 from ..tracker import ConstTracker, DummyTracker, GetAttrTracker
 from .base import VariableFactory
@@ -56,6 +59,11 @@ class IterVariable(VariableBase):
 
     def next(self):
         raise NotImplementedError(f"Can not simulate `next` for {type(self)}")
+
+    def to_list(self):
+        raise NotImplementedError(
+            f"Can not simulate `to_list` for {type(self)}"
+        )
 
     def send(self, value: VariableBase):
         return self.next()
@@ -182,10 +190,10 @@ class EnumerateVariable(SequenceIterVariable):
     @staticmethod
     def from_iterator(value, graph: FunctionGraph | None, tracker: Tracker):
         iter_variable = value.get_iter()
-        if isinstance(iter_variable, SequenceIterVariable):
-            return EnumerateVariable(iter_variable, graph, tracker)
-        else:
+        if isinstance(iter_variable, UserDefinedIterVariable):
             return UserDefinedIterVariable(value, graph, tracker)
+        else:
+            return EnumerateVariable(iter_variable, graph, tracker)
 
 
 class ZipVariable(SequenceIterVariable):
@@ -247,7 +255,7 @@ class ZipVariable(SequenceIterVariable):
 
         for variable in value:
             iter_variable = variable.get_iter()
-            if not isinstance(iter_variable, SequenceIterVariable):
+            if isinstance(iter_variable, UserDefinedIterVariable):
                 return UserDefinedIterVariable(value, graph, tracker)
             zip_targets.append(iter_variable)
 
@@ -300,7 +308,7 @@ class MapVariable(SequenceIterVariable):
 
         for variable in value:
             iter_variable = variable.get_iter()
-            if not isinstance(iter_variable, SequenceIterVariable):
+            if isinstance(iter_variable, UserDefinedIterVariable):
                 return UserDefinedIterVariable(value, graph, tracker)
             map_targets.append(iter_variable)
 
@@ -391,6 +399,9 @@ class GeneratorVariable(IterVariable):
     def next(self):
         return self.send(ConstantVariable.wrap_literal(None, self.graph))
 
+    def to_list(self):
+        return do_until_stop_iteration(lambda: self.next())
+
     @property
     def main_info(self) -> dict[str, Any]:
         return {
@@ -416,6 +427,13 @@ class UserDefinedIterVariable(IterVariable):
             holded = [holded]
         self.holds = holded
         super().__init__(graph, tracker)
+
+    def to_list(self):
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="Break graph when iterating user defined iterator"
+            )
+        )
 
     def next(self):
         raise BreakGraphError(

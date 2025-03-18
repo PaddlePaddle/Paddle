@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import operator
 import unittest
+from functools import reduce
 
 from test_case_base import TestCaseBase
 
@@ -114,7 +116,7 @@ def simple_generator_user_with_outer_breakgraph():
     return x + y
 
 
-class TestGenerator(TestCaseBase):
+class TestGeneratorCommon(TestCaseBase):
     def test_generator_simple(self):
         self.assert_results(simple_generator_user)
 
@@ -140,6 +142,48 @@ class TestGenerator(TestCaseBase):
     @strict_mode_guard(False)
     def test_generator_simple_with_outer_breakgraph(self):
         self.assert_results(simple_generator_user_with_outer_breakgraph)
+
+
+@check_no_breakgraph
+def generator_sum():
+    return sum(i for i in range(10))
+
+
+@check_no_breakgraph
+def generator_max():
+    return max((-2) ** i for i in range(10))
+
+
+@check_no_breakgraph
+def generator_min():
+    return min((-2) ** i for i in range(10))
+
+
+@check_no_breakgraph
+def generator_reduce():
+    return reduce(operator.add, (i for i in range(10)))
+
+
+@check_no_breakgraph
+def generator_map():
+    return list(map(lambda x: x**2, (i for i in range(10))))  # noqa: C417
+
+
+class TestGeneratorDispatch(TestCaseBase):
+    def test_generator_sum(self):
+        self.assert_results(generator_sum)
+
+    def test_generator_max(self):
+        self.assert_results(generator_max)
+
+    def test_generator_min(self):
+        self.assert_results(generator_min)
+
+    def test_generator_reduce(self):
+        self.assert_results(generator_reduce)
+
+    def test_generator_map(self):
+        self.assert_results(generator_map)
 
 
 if __name__ == "__main__":

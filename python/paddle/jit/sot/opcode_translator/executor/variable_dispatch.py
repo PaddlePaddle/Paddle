@@ -30,6 +30,7 @@ from ...utils import (
     FallbackError,
     UnsupportedIteratorBreak,
     UnsupportedOperationBreak,
+    do_until_stop_iteration,
     get_numpy_ufuncs,
 )
 from ...utils.exceptions import InnerError
@@ -1274,7 +1275,7 @@ Dispatcher.register(
 
 
 @Dispatcher.register_decorator(sum)
-def dispatch_sum(
+def dispatch_sum_container_and_tensor(
     var: ContainerVariable | TensorVariable,
     start: VariableBase = None,  # type: ignore
 ):
@@ -1284,6 +1285,23 @@ def dispatch_sum(
         var.getitem(ConstantVariable.wrap_literal(i, var.graph))
         for i in range(len(var))
     ]
+    result = reduce(
+        BuiltinVariable(operator.add, var.graph, DanglingTracker()),
+        elements,
+        start,
+    )
+    return result
+
+
+@Dispatcher.register_decorator(sum)
+def dispatch_sum_iterable(
+    var: IterVariable,
+    start: VariableBase = None,  # type: ignore
+):
+    if start is None:
+        start = ConstantVariable.wrap_literal(0, var.graph)
+    call_next = BuiltinVariable(next, var.graph, DanglingTracker())
+    elements = do_until_stop_iteration(lambda: call_next(var))
     result = reduce(
         BuiltinVariable(operator.add, var.graph, DanglingTracker()),
         elements,
@@ -1308,25 +1326,55 @@ def dispatch_reduce(
         except StopIteration:
             raise InnerError("reduce() of empty iterable with no initial value")
     result = initializer
-    while True:
-        try:
-            result = func(result, iterator.next())
-        except StopIteration:
-            break
+
+    def update_result():
+        nonlocal result
+        result = func(result, iterator.next())
+
+    do_until_stop_iteration(update_result)
     return result
 
 
-Dispatcher.register(
-    max,
-    ("ListVariable",),
-    lambda var: var.max(),
-)
+@Dispatcher.register_decorator(max)
+def dispatch_max_iterable(var: ContainerVariable | IterVariable):
+    it = var.get_iter()
+    call_next = BuiltinVariable(next, var.graph, DanglingTracker())
+    try:
+        res = call_next(it)
+    except StopIteration:
+        raise InnerError("max() arg is an empty sequence")
+    call_gt = BuiltinVariable(operator.gt, var.graph, DanglingTracker())
 
-Dispatcher.register(
-    min,
-    ("ListVariable",),
-    lambda var: var.min(),
-)
+    def compare_max():
+        nonlocal res
+        item = call_next(it)
+        gt = call_gt(item, res)
+        if gt.get_py_value() is True:
+            res = item
+
+    do_until_stop_iteration(compare_max)
+    return res
+
+
+@Dispatcher.register_decorator(min)
+def dispatch_min_iterable(var: ContainerVariable | IterVariable):
+    it = var.get_iter()
+    call_next = BuiltinVariable(next, var.graph, DanglingTracker())
+    try:
+        res = call_next(it)
+    except StopIteration:
+        raise InnerError("min() arg is an empty sequence")
+    call_lt = BuiltinVariable(operator.lt, var.graph, DanglingTracker())
+
+    def compare_min():
+        nonlocal res
+        item = call_next(it)
+        lt = call_lt(item, res)
+        if lt.get_py_value() is True:
+            res = item
+
+    do_until_stop_iteration(compare_min)
+    return res
 
 
 @Dispatcher.register_decorator(max)
@@ -1450,9 +1498,9 @@ Dispatcher.register(
 )
 
 
-# any for list
+# any
 @Dispatcher.register_decorator(any)
-def dispatch_list_any(var: ContainerVariable | IterVariable):
+def dispatch_any(var: ContainerVariable | IterVariable):
     graph = var.graph
     to_bool = BuiltinVariable(bool, graph, DanglingTracker())
     it = var.get_iter()
@@ -1468,9 +1516,9 @@ def dispatch_list_any(var: ContainerVariable | IterVariable):
     return ConstantVariable(False, graph, DummyTracker([var]))
 
 
-# all for list
+# all
 @Dispatcher.register_decorator(all)
-def dispatch_list_all(var: ContainerVariable | IterVariable):
+def dispatch_all(var: ContainerVariable | IterVariable):
     graph = var.graph
     to_bool = BuiltinVariable(bool, graph, DanglingTracker())
     it = var.get_iter()
