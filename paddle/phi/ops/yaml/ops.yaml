@@ -1691,6 +1691,7 @@
   infer_meta :
     func : ExpandInferMeta
     local_shape: out
+    spmd_rule : ExpandInferSpmd
   kernel :
     func : expand
     data_type : x
