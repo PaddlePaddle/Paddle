@@ -60,6 +60,11 @@ def numpy_api_with_number_calculation(t):
     return a, b, c, d, e, f, g, h, i, j, k, l
 
 
+@check_no_breakgraph
+def numpy_bool(x: np.number):
+    return bool(x == 1)
+
+
 class TestNumpy(TestCaseBase):
     @strict_mode_guard(False)
     def test_numpy_add(self):
@@ -98,6 +103,10 @@ class TestNumpy(TestCaseBase):
     def test_numpy_api_with_number_calculation(self):
         t = paddle.to_tensor([1.0])
         self.assert_results(numpy_api_with_number_calculation, t)
+
+    def test_numpy_bool(self):
+        x = np.float32(1.0)
+        self.assert_results(numpy_bool, x)
 
 
 if __name__ == "__main__":
