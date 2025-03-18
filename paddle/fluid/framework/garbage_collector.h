@@ -73,6 +73,15 @@ class XPUGarbageCollector : public GarbageCollector {
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
 };
+
+class XPUPinnedGarbageCollector : public GarbageCollector {
+ public:
+  XPUPinnedGarbageCollector(const phi::XPUPinnedPlace &place,
+                            size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
 #endif
 
 #ifdef PADDLE_WITH_IPU

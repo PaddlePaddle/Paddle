@@ -54,6 +54,16 @@ typename Visitor::result_type VisitPlace(const phi::Place& place,
       return typename Visitor::result_type();
 #endif
     }
+    case phi::AllocationType::XPUPINNED: {
+#if defined(PADDLE_WITH_XPU)
+      phi::XPUPinnedPlace p;
+      return visitor(p);
+#else
+      PADDLE_THROW(common::errors::Unavailable(
+          ("Paddle is not compiled with XPU. Cannot visit xpu device")));
+      return typename Visitor::result_type();
+#endif
+    }
     case phi::AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU
       phi::IPUPlace p(place.GetDeviceId());

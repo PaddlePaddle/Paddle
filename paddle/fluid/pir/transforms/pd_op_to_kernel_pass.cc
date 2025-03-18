@@ -190,6 +190,7 @@ const std::unordered_map<int, phi::Place> MemcpyOpAttr2Place = {
     {2, phi::GPUPinnedPlace()},
 #elif defined(PADDLE_WITH_XPU)
     {3, phi::XPUPlace()},
+    {5, phi::XPUPinnedPlace()},
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
     {4, phi::CustomPlace()}
 #endif

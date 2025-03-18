@@ -533,6 +533,7 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
       {"gpu", phi::GPUPlace{}},
       {"gpu_pinned", phi::GPUPinnedPlace{}},
       {"xpu", phi::XPUPlace{}},
+      {"xpu_pinned", phi::XPUPinnedPlace{}},
       {"ipu", phi::IPUPlace{}},
       {":", phi::CustomPlace{}},
       {"undefined", phi::Place{}}};
