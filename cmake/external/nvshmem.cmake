@@ -52,7 +52,7 @@ else()
       nvshmem_src_3.1.7-1.txz && mv nvshmem_src extern_nvshmem)
 endif()
 
-set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/third_party/nvshmem.patch)
+set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem.patch)
 set(NVSHMEM_PATCH_COMMAND
     git init && git config user.name "PaddlePaddle" && git config user.email
     "paddle@baidu.com" && git config --add safe.directory . && git add . && git
