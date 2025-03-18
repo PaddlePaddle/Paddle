@@ -526,6 +526,9 @@ def source_include(header_file_path):
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#elif PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
