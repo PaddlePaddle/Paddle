@@ -145,6 +145,10 @@ void RoiAlignKernel(const Context& dev_ctx,
                     int sampling_ratio,
                     bool aligned,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto in_dims = x.dims();
   int batch_size = in_dims[0];
   int channels = in_dims[1];
