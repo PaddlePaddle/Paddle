@@ -24,6 +24,7 @@
 namespace cinn {
 namespace ir {
 
+// Compares two IndexExpr for equality, return true if they are equal.
 template <typename T>
 static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
   auto aPart = optim::GetFlattenExprs<T>(a);
@@ -43,6 +44,9 @@ static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
     std::vector<std::pair<ir::IndexExpr, int>> aGroup, bGroup;
 
     do {
+      // Group expressions with same length and type. Due to the existence of
+      // the commutative law, expressions may have heterogeneous
+      // representations.
       aGroup.emplace_back(aPart[i], 0);
       bGroup.emplace_back(bPart[i], 0);
       ++i;
@@ -50,7 +54,7 @@ static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
              SameTypeAndLength(aPart[i - 1], aPart[i]) == 1 &&
              SameTypeAndLength(bPart[i - 1], bPart[i]) == 1);
 
-    // compare expressions with same priority.
+    // compare all  expressions in group with same length and type.
     for (size_t k = 0; k < aGroup.size(); ++k) {
       for (auto& b : bGroup) {
         if (b.second == 0 && aGroup[k].first == b.first) {
