@@ -101,8 +101,9 @@ class ContainerVariable(VariableBase):
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             )
-        len_guard = StringifiedExpression(
+        len_guard = FasterStringifiedExpression(
             f"len({{}}) == {len(self.init_value)}",
+            paddle.framework.core.LengthMatchGuard(len(self.init_value)),
             [frame_value_tracer],
             frame_value_tracer.free_vars,
         )
