@@ -1161,51 +1161,51 @@ void matmul_grad(const Tensor& x,
   }
 
   if (x_grad) {
-    auto x_grad_mm =
-        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
-    auto x_grad_trans = x_grad_mm;
-
-    if (transpose_x) {
-      std::vector<int> reverse_perm;
-      for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
-        reverse_perm.push_back(i);
-      }
-      std::swap(reverse_perm[reverse_perm.size() - 1],
-                reverse_perm[reverse_perm.size() - 2]);
-      x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
+    Tensor x_grad_out;
+    if (!transpose_x && !transpose_y) {
+      // z = x * y     ==> dx = dz * y.T
+      x_grad_out = matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, true);
+    } else if (transpose_x && !transpose_y) {
+      // z = x.T * y   ==> dx = y * dz.T
+      x_grad_out = matmul<T>(temp_y_unsqueeze, unsqueeze_out_grad, false, true);
+    } else if (!transpose_x && transpose_y) {
+      // z = x * y.T   ==> dx = dz * y
+      x_grad_out =
+          matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, false);
+    } else {
+      // z = x.T * y.T ==> dx = y.T * dz.T
+      x_grad_out = matmul<T>(temp_y_unsqueeze, unsqueeze_out_grad, true, true);
     }
-    if (has_dynamic_shape(x.shape()) ||
-        has_dynamic_shape(x_grad_trans.shape()) ||
-        x_grad_trans.dims() != x.dims()) {
-      auto x_grad_out = reduce_as<T>(x_grad_trans, temp_x_unsqueeze);
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(x_grad_out.shape()) ||
+        x_grad_out.dims() != x.dims()) {
+      x_grad_out = reduce_as<T>(x_grad_out, temp_x_unsqueeze);
       set_output<T>(x_grad_out, x_grad);
     } else {
-      auto x_grad_out = x_grad_trans;
       set_output<T>(x_grad_out, x_grad);
     }
   }
 
   if (y_grad) {
-    auto y_grad_mm =
-        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
-    auto y_grad_trans = y_grad_mm;
-
-    if (transpose_y) {
-      std::vector<int> reverse_perm;
-      for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
-        reverse_perm.push_back(i);
-      }
-      std::swap(reverse_perm[reverse_perm.size() - 1],
-                reverse_perm[reverse_perm.size() - 2]);
-      y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
+    Tensor y_grad_out;
+    if (!transpose_x && !transpose_y) {
+      // z = x * y     ==> dy = x.T * dz
+      y_grad_out = matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, true, false);
+    } else if (transpose_x && !transpose_y) {
+      // z = x.T * y   ==> dy = x * dz
+      y_grad_out =
+          matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, false, false);
+    } else if (!transpose_x && transpose_y) {
+      // z = x * y.T   ==> dy = dz.T * x
+      y_grad_out = matmul<T>(unsqueeze_out_grad, temp_x_unsqueeze, true, false);
+    } else {
+      // z = x.T * y.T ==> dy = dz.T * x.T
+      y_grad_out = matmul<T>(unsqueeze_out_grad, temp_x_unsqueeze, true, true);
     }
-    if (has_dynamic_shape(y.shape()) ||
-        has_dynamic_shape(y_grad_trans.shape()) ||
-        y_grad_trans.dims() != y.dims()) {
-      auto y_grad_out = reduce_as<T>(y_grad_trans, temp_y_unsqueeze);
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(y_grad_out.shape()) ||
+        y_grad_out.dims() != y.dims()) {
+      y_grad_out = reduce_as<T>(y_grad_out, temp_y_unsqueeze);
       set_output<T>(y_grad_out, y_grad);
     } else {
-      auto y_grad_out = y_grad_trans;
       set_output<T>(y_grad_out, y_grad);
     }
   }
