@@ -1176,12 +1176,15 @@ phi::KernelKey GetKernelKey(
   }
 
   if (op->isa<FullWithTensorOp>()) {
-    VLOG(6) << "FullWithTensorOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
     auto dtype =
         op->attributes().at("dtype").dyn_cast<DataTypeAttribute>().data();
 
-    return {backend, phi::DataLayout::ANY, dtype};
+    phi::KernelKey res(backend, phi::DataLayout::ANY, dtype);
+    if (NeedFallBackCpu(op, kernel_fn_str, res)) {
+      res.set_backend(phi::Backend::CPU);
+    }
+    return res;
   }
 
   if (op->isa<CreateArrayOp>()) {
