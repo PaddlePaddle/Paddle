@@ -1933,6 +1933,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     temp_param_grads_half,
                     temp_scale,
                 )
+
+                # AllReduce for "bool" is not supported on XPU
+                if "xpu" in paddle.device.get_device():
+                    temp_param_grads_half = paddle.cast(
+                        temp_param_grads_half, "int32"
+                    )
+                    temp_param_grads_half = paddle.sum(temp_param_grads_half)
+                    temp_param_grads_half = paddle.cast(
+                        temp_param_grads_half, "bool"
+                    )
+
                 temp_found_inf = _C_ops.bitwise_or(
                     temp_found_inf, temp_found_inf_half
                 )
@@ -1941,6 +1952,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     temp_param_grads_fp32,
                     temp_scale,
                 )
+
+                # AllReduce for "bool" is not supported on XPU
+                if "xpu" in paddle.device.get_device():
+                    temp_found_inf_fp32 = paddle.cast(
+                        temp_found_inf_fp32, "int32"
+                    )
+                    temp_found_inf_fp32 = paddle.sum(temp_found_inf_fp32)
+                    temp_found_inf_fp32 = paddle.cast(
+                        temp_found_inf_fp32, "bool"
+                    )
+
                 temp_found_inf = _C_ops.bitwise_or(
                     temp_found_inf, temp_found_inf_fp32
                 )
