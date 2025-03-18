@@ -16,6 +16,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cufft.h>
 #include <cufftXt.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <mutex>  // NOLINT

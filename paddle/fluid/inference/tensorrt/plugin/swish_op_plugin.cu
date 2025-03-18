@@ -17,6 +17,7 @@
 #include <cassert>
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
 

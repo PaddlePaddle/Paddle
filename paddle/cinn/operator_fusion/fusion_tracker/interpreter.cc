@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/operator_fusion/fusion_tracker/interpreter.h"
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 

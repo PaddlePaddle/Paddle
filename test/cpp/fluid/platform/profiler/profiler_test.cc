@@ -15,6 +15,7 @@
 #include <set>
 #include <string>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #ifdef PADDLE_WITH_CUDA

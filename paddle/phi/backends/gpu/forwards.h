@@ -64,10 +64,10 @@ using cublasLtHandle_t = struct cublasLtContext *;
 using cusolverDnHandle_t = struct cusolverDnContext *;
 
 // Forward declaration of cuSparse types.
-// using cusparseHandle_t = struct cusparseContext *;
+using cusparseHandle_t = struct cusparseContext *;
 
 // Forward declaration of cuFFT types.
-// using cufftHandle = int;
+using cufftHandle = int;
 
 // Forward declaration of NCCL types.
 using ncclComm_t = struct ncclComm *;

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/conv_grad_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"

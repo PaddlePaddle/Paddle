@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/platform/profiler/profiler.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>

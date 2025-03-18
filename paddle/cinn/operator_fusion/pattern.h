@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <variant>
 #include <vector>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/loop_axis_mapping.h"

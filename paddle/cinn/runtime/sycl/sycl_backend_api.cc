@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 namespace cinn {

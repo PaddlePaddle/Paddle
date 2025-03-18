@@ -13,6 +13,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_HIP
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include <hip/hip_runtime.h>      // NOLINT

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle::framework {

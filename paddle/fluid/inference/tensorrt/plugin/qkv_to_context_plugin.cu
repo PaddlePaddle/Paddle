@@ -18,6 +18,7 @@
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"

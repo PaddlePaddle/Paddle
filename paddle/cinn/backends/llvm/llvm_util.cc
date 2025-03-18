@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <llvm/Support/Alignment.h>
 

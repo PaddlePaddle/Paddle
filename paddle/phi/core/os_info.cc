@@ -27,6 +27,7 @@ limitations under the License. */
 #else
 #include <unistd.h>
 #endif
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/common/thread_data_registry.h"
 

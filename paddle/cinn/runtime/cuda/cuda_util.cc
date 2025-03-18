@@ -19,6 +19,7 @@
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <cusolverDn.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>

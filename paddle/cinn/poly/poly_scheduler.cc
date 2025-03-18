@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/poly/poly_scheduler.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <deque>

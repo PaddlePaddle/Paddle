@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"

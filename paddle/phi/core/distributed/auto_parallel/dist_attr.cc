@@ -18,6 +18,7 @@ limitations under the License. */
 #include <iostream>
 #include <iterator>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 

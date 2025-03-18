@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <algorithm>
 #include "paddle/cinn/common/bfs_walker.h"

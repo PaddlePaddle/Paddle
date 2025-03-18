@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"

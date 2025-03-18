@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <unordered_set>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"

@@ -14,6 +14,7 @@
 
 #include "paddle/pir/include/core/block.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <unordered_set>
 

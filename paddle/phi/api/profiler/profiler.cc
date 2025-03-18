@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/api/profiler/common_event.h"

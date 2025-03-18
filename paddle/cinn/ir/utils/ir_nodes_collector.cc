@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/cinn/ir/intrinsic_ops.h"

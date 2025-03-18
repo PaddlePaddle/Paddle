@@ -18,6 +18,7 @@
 
 #include "butil/time.h"
 #include "bvar/latency_recorder.h"
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle {

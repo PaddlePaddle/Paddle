@@ -14,6 +14,7 @@
 
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"

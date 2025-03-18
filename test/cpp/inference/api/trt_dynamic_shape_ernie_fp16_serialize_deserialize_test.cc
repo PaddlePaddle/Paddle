@@ -20,6 +20,7 @@ limitations under the License. */
 #include <process.h>
 #endif
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

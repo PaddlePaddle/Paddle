@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/strings/strings_copy_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/all_context.h"

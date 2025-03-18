@@ -16,6 +16,7 @@
 
 #include <sstream>
 #include <vector>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/core/kernel_registry.h"

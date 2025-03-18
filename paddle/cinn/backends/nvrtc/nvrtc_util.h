@@ -17,6 +17,7 @@
 #if defined(__linux__)
 #include <sys/stat.h>
 #endif
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <string>

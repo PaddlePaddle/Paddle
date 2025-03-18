@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #endif
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"

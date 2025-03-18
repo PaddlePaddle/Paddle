@@ -14,6 +14,7 @@
 
 #pragma once
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <iostream>

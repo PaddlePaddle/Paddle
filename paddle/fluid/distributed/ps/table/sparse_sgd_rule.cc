@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/common/flags.h"

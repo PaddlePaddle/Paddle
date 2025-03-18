@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/common/layout.h"

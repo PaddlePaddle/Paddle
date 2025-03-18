@@ -15,6 +15,7 @@ limitations under the License. */
 /*
  * This file contains demo of mobilenet for onnxruntime backend.
  */
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
 
 #include <algorithm>

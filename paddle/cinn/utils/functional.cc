@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/utils/functional.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace cinn {

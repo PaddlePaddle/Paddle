@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/include/core/type_base.h"
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/pir/include/core/ir_context.h"
 

@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"

@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/common/enforce.h"

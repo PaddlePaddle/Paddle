@@ -18,6 +18,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #if !defined(_WIN32)

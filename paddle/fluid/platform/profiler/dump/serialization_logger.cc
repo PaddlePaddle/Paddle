@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/phi/core/platform/profiler/extra_info.h"

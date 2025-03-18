@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <set>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"

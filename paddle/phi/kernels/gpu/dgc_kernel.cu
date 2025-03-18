@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/dgc_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "dgc/dgc.h"

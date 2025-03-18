@@ -15,6 +15,7 @@
 
 #include <cublas_v2.h>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/common/type.h"
 

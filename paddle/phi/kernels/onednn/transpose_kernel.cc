@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/transpose_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"

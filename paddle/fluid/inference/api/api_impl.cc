@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/api/api_impl.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <memory>

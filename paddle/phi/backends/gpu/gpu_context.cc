@@ -23,6 +23,7 @@ limitations under the License. */
 #include <mutex>
 #include <unordered_map>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/exception.h"
 #include "paddle/phi/backends/context_pool.h"

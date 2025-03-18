@@ -15,6 +15,7 @@
 #include "paddle/phi/core/vocab/string_array.h"
 #include <utf8proc.h>
 #include <exception>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

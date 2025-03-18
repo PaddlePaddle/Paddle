@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/pybind/python_callable_registry.h"
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"  // For VLOG()
 
 #include "paddle/common/errors.h"

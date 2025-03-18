@@ -18,6 +18,7 @@
 #include <iostream>
 #include <thread>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/common/flags.h"

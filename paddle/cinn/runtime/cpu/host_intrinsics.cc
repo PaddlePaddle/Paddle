@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <math.h>
 

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/table.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/common/iter_simplify.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/cinn/common/integer_set.h"

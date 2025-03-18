@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/backends/codegen_gpu_dev.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <paddle/cinn/utils/string.h>
 

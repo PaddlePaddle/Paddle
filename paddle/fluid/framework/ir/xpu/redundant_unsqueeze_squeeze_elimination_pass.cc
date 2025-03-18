@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/xpu/redundant_unsqueeze_squeeze_elimination_pass.h"
 #include <string>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"

@@ -16,6 +16,7 @@
 
 #include <unordered_set>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"

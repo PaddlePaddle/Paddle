@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/unused_var_check.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <string>

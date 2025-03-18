@@ -15,6 +15,7 @@
 // TODO(yifan): Add unittest here
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

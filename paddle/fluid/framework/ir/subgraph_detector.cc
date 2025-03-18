@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle::framework::ir {

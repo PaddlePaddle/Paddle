@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/runtime/backend_api.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/arch_util.h"

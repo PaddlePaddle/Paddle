@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"

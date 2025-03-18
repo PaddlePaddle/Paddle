@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/inference/analysis/pass_result_info.h"

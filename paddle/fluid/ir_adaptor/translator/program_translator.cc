@@ -17,6 +17,7 @@
 #include <chrono>
 #include <unordered_map>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/program_desc.h"

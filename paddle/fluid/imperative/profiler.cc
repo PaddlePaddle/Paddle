@@ -17,6 +17,7 @@
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <mutex>  // NOLINT

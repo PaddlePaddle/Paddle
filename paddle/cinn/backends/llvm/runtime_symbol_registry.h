@@ -17,6 +17,7 @@
 #include <absl/strings/string_view.h>
 #include <absl/types/any.h>
 #include <absl/types/variant.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <map>

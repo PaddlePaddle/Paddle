@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/tensorrt/trt_op_marker_pass.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <bitset>
 #include <vector>

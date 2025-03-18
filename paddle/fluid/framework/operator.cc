@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <sstream>

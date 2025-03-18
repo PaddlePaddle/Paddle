@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <limits>

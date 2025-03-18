@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/runtime/flags.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <sys/stat.h>
 #include <sys/types.h>

@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <string>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/attribute_checker.h"

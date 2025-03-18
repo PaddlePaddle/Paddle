@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/runtime/hip/hip_util.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include "paddle/cinn/utils/profiler.h"
 

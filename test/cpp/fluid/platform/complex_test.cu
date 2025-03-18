@@ -14,6 +14,7 @@
 
 #include "paddle/phi/common/complex.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <thrust/complex.h>

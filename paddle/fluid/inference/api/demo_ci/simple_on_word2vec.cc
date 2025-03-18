@@ -16,6 +16,7 @@ limitations under the License. */
  * This file contains a simple demo for how to take a model for inference.
  */
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <algorithm>

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"

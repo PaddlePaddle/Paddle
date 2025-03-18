@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/cinn/ir/ir_mutator.h"

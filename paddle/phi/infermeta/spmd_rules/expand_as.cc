@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/expand_as.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"

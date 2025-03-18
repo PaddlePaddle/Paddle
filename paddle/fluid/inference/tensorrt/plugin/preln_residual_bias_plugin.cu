@@ -20,6 +20,7 @@
 #include <cub/cub.cuh>  // NOLINT
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"

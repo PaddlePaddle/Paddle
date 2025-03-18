@@ -17,6 +17,7 @@
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
 #endif
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

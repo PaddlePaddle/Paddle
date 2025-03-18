@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/tensorrt/engine.h"
 #include <NvInfer.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <string>
 

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/utils/allocator.h"

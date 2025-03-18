@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/backends/extern_func_emitter_builtin.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/cinn/backends/llvm/ir_builder_mixin.h"

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

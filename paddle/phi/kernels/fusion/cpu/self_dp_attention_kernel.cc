@@ -22,6 +22,7 @@
 #include <iostream>
 #include <new>
 #include <string>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #ifdef PADDLE_WITH_DNNL

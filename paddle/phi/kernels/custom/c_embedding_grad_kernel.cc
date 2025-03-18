@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/c_embedding_grad_kernel.h"
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/api/backward/backward_api_base.h"
 #include "paddle/phi/api/include/api.h"

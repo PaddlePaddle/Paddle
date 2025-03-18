@@ -17,6 +17,7 @@
 #include <cassert>
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trans_layernorm_op_plugin.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"

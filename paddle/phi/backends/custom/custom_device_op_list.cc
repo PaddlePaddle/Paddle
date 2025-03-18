@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/custom/custom_device_op_list.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <mutex>
 #include <string>

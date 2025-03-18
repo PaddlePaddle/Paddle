@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/data_type.h"

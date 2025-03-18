@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/ternary.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/common/ddim.h"

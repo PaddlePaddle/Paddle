@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/infermeta/spmd_rules/logsumexp.h"
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

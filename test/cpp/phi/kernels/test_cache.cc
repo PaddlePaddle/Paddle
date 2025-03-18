@@ -19,6 +19,7 @@
 
 #include "paddle/phi/kernels/autotune/cache.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 enum ConvAlgos { GEMMKernel = 0, CuDNNKernel_1 = 1, CuDNNKernel_2 = 2 };

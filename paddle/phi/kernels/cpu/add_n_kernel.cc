@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle::framework {

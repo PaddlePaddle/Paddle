@@ -16,6 +16,7 @@
 
 #include <NvInfer.h>
 #include <cuda.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <string>

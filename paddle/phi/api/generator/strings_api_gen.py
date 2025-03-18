@@ -331,6 +331,7 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 

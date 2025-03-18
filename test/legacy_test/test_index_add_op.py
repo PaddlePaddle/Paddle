@@ -197,11 +197,11 @@ class TestIndexAddFP16Op(TestIndexAddOp):
 #         self.x_type = np.float32
 #         self.index_type = np.int32
 
-    def setPlace(self):
-        self.place = []
-        self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+    # def setPlace(self):
+    #     self.place = []
+    #     self.place.append('cpu')
+    #     if paddle.is_compiled_with_cuda():
+    #         self.place.append('gpu')
 #     def setPlace(self):
 #         self.place = []
 #         if (
@@ -251,14 +251,14 @@ class TestIndexAddFP16Op(TestIndexAddOp):
 
 #         return x_grad, add_value_grad.numpy()
 
-    def run_imperative(self, device):
-        input_tensor = paddle.to_tensor(
-            self.x_np, stop_gradient=False, place=device
-        )
-        index = paddle.to_tensor(self.index_np, place=device)
-        add_value = paddle.to_tensor(
-            self.add_value_np, stop_gradient=False, place=device
-        )
+    # def run_imperative(self, device):
+    #     input_tensor = paddle.to_tensor(
+    #         self.x_np, stop_gradient=False, place=device
+    #     )
+    #     index = paddle.to_tensor(self.index_np, place=device)
+    #     add_value = paddle.to_tensor(
+    #         self.add_value_np, stop_gradient=False, place=device
+    #     )
 #     def run_imperative(self, device):
 #         paddle.device.set_device(device)
 #         input_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)

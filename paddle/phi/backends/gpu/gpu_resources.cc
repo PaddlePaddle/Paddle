@@ -37,6 +37,7 @@
 #include "paddle/phi/backends/dynload/rocsparse.h"
 #endif
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 

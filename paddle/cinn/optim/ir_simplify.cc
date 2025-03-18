@@ -16,6 +16,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <ginac/ginac.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <map>

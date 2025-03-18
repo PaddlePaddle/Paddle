@@ -17,6 +17,7 @@
 #include <mutex>
 #include <random>
 #include <unordered_set>
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/pir/include/core/ir_context.h"
 

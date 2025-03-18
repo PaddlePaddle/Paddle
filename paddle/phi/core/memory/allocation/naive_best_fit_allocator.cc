@@ -16,6 +16,7 @@
 
 #include <mutex>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"

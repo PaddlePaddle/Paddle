@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
 
 #include <cryptopp/cryptlib.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

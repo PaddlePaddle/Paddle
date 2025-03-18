@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/poly/domain_add_unit_loop_mutator.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <tuple>

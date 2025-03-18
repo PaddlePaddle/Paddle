@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/pir/transforms/onednn/operator_reshape_onednn_fuse_pass.h"
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"

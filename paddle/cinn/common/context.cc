@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/common/context.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <isl/cpp.h>
 

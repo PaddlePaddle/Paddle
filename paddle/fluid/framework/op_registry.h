@@ -24,6 +24,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"

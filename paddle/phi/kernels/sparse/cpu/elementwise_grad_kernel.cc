@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/elementwise_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"

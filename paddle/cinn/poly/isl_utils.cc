@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/poly/isl_utils.h"
 
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <isl/cpp.h>
 

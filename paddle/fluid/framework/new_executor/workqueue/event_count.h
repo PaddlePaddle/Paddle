@@ -55,6 +55,7 @@
 #include <mutex>
 #include <vector>
 
+#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/macros.h"
 
