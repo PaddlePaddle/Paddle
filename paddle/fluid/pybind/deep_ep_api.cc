@@ -59,6 +59,13 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("get_rdma_rank", &deep_ep::Buffer::get_rdma_rank)
       .def("get_root_rdma_rank", &deep_ep::Buffer::get_root_rdma_rank)
       .def("get_local_device_id", &deep_ep::Buffer::get_local_device_id)
+      .def("get_comm_stream",
+           [](deep_ep::Buffer &self) {
+             int device_id = self.get_local_device_id();
+             cudaStream_t comm_stream = self.get_comm_stream();
+             auto s = phi::Stream(reinterpret_cast<phi::StreamId>(comm_stream));
+             return phi::CUDAStream(phi::GPUPlace(device_id), s);
+           })
       .def("get_local_ipc_handle", &deep_ep::Buffer::get_local_ipc_handle)
       .def("get_local_nvshmem_unique_id",
            &deep_ep::Buffer::get_local_nvshmem_unique_id)

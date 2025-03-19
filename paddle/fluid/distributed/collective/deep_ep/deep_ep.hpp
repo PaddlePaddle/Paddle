@@ -122,6 +122,8 @@ struct Buffer {
 
   int get_local_device_id() const;
 
+  cudaStream_t get_comm_stream() const;
+
 #ifndef PADDLE_NO_PYTHON
   pybind11::bytearray get_local_ipc_handle() const;
 

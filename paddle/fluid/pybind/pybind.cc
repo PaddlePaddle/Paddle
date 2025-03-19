@@ -2469,11 +2469,25 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<phi::GPUPlace>(), py::arg("place"))
       .def(
           "start",
-          [](phi::GPUEventTimer &timer) { timer.Start(); },
+          [](phi::GPUEventTimer &timer, phi::CUDAStream *stream) {
+            if (stream == nullptr) {
+              timer.Start();
+            } else {
+              timer.Start(stream->raw_stream());
+            }
+          },
+          py::arg("stream") = nullptr,
           py::call_guard<py::gil_scoped_release>())
       .def(
           "stop",
-          [](phi::GPUEventTimer &timer) { timer.Stop(); },
+          [](phi::GPUEventTimer &timer, phi::CUDAStream *stream) {
+            if (stream == nullptr) {
+              timer.Stop();
+            } else {
+              timer.Stop(stream->raw_stream());
+            }
+          },
+          py::arg("stream") = nullptr,
           py::call_guard<py::gil_scoped_release>())
       .def("reset",
            &phi::GPUEventTimer::Reset,

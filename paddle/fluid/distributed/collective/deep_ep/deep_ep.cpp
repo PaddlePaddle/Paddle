@@ -208,6 +208,8 @@ int Buffer::get_root_rdma_rank(bool global) const {
 
 int Buffer::get_local_device_id() const { return device_id; }
 
+cudaStream_t Buffer::get_comm_stream() const { return comm_stream; }
+
 #ifndef PADDLE_NO_PYTHON
 pybind11::bytearray Buffer::get_local_ipc_handle() const {
   return {ipc_handles[nvl_rank].reserved, CUDA_IPC_HANDLE_SIZE};
