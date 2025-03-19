@@ -13,7 +13,6 @@
 // limitations under the License.
 #include <string>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/fuse_optimizer_ops_pass/fuse_optimizer_op_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"

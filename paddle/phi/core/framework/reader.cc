@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/framework/reader.h"
 #include <deque>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle::framework {

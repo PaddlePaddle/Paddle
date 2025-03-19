@@ -23,7 +23,6 @@
 #include <sstream>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
 #include "paddle/fluid/platform/enforce.h"

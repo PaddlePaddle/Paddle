@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <dlfcn.h>
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
 

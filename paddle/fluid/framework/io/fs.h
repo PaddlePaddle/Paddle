@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/io/shell.h"
 #include "paddle/utils/string/string_helper.h"

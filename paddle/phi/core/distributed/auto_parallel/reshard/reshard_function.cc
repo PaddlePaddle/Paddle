@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"

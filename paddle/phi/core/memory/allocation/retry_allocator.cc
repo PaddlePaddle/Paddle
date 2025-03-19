@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle::memory::allocation {

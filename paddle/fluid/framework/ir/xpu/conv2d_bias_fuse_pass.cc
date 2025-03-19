@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/ir/xpu/conv2d_bias_fuse_pass.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"

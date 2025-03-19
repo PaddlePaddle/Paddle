@@ -17,7 +17,6 @@
 #include <memory>
 #include <unordered_map>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"

@@ -22,7 +22,6 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/type_defs.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace cinn::adt::config {

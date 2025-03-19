@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/compat/op_utils.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

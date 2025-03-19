@@ -16,7 +16,6 @@
 
 #include <thread>
 #include "dnnl.hpp"  // NOLINT
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/common/layout.h"

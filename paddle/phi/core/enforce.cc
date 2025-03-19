@@ -20,7 +20,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"

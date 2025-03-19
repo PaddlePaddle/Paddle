@@ -17,7 +17,6 @@
 #include <cassert>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"

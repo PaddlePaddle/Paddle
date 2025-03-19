@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/tensor.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/common/int_array.h"

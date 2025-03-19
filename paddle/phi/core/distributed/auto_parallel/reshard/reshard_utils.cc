@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/device_context.h"

@@ -18,7 +18,6 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 #include <initializer_list>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/core/enforce.h"

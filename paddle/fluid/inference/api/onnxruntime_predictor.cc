@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <algorithm>

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/prune.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <queue>

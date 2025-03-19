@@ -25,7 +25,6 @@
 #include <vector>
 
 #include "gflags/gflags.h"
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/include/paddle_inference_api.h"

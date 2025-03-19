@@ -15,7 +15,6 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/common/enforce.h"

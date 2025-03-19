@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/device_code.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <sys/stat.h>
 

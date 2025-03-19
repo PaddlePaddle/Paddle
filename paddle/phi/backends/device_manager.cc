@@ -25,7 +25,6 @@
 #include <functional>
 #include <regex>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/utils/string/split.h"
 

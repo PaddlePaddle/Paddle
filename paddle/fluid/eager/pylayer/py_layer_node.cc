@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/eager/pylayer/py_layer_node.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/eager_tensor.h"

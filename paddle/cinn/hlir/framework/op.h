@@ -15,7 +15,6 @@
 #pragma once
 #include <absl/container/flat_hash_map.h>
 #include <absl/types/any.h>
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <atomic>

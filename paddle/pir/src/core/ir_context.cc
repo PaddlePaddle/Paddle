@@ -14,7 +14,6 @@
 
 #include "paddle/pir/include/core/ir_context.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <unordered_map>
 

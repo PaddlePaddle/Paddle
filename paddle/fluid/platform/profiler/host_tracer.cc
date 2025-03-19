@@ -15,7 +15,6 @@
 
 #include <sstream>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/profiler/common_event.h"

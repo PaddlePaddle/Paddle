@@ -19,7 +19,6 @@ limitations under the License. */
 #include <cstring>
 #include <numeric>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"

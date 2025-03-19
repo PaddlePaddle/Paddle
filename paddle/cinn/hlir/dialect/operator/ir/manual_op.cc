@@ -15,7 +15,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 
 #include <vector>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"

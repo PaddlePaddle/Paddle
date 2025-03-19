@@ -15,7 +15,6 @@
 #include "paddle/phi/infermeta/spmd_rules/amp_ops.h"
 
 #include <vector>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"

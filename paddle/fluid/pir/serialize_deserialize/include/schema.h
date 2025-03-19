@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"

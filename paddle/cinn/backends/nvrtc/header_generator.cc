@@ -15,7 +15,6 @@
 #include "paddle/cinn/backends/nvrtc/header_generator.h"
 
 #include <fstream>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "jitify.hpp"  // NOLINT
 #include "paddle/cinn/common/common.h"

@@ -21,7 +21,6 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/expect.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

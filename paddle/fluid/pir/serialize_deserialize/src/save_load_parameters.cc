@@ -13,7 +13,6 @@ limitations under the License. */
 #include <fstream>
 #include <numeric>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"

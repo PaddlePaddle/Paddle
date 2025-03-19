@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"

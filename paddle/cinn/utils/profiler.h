@@ -21,7 +21,6 @@
 #include <nvToolsExt.h>
 #endif
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/utils/event.h"
 

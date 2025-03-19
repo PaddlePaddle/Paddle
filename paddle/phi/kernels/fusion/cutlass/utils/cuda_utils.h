@@ -33,7 +33,6 @@
 #include <cublasLt.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <fstream>
 #include <iostream>

@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/utils/dot_lang.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <sstream>

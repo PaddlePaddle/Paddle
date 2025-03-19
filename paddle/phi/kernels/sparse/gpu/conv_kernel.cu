@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 #endif
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {

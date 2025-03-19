@@ -19,7 +19,6 @@ limitations under the License. */
 #include <limits>
 #include <regex>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_node.h"

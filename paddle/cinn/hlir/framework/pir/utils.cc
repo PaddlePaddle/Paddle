@@ -17,7 +17,6 @@
 #include <regex>
 #include <string>
 #include <unordered_map>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/common/bfs_walker.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"

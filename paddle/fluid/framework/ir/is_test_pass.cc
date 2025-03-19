@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/is_test_pass.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle::framework::ir {

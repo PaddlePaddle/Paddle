@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <utility>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 

@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/distributed/ps/service/server.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/distributed/ps/service/graph_brpc_server.h"

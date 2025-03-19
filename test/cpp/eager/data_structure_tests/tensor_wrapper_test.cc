@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/eager/utils.h"

@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/p_send_kernel.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/all_context.h"

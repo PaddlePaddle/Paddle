@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/funcs/math/sampler.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/phi/core/generator.h"

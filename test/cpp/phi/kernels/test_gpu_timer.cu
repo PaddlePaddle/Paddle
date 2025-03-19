@@ -16,7 +16,6 @@
 
 #include <functional>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"

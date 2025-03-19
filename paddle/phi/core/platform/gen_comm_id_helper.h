@@ -22,7 +22,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle {

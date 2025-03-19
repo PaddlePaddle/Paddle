@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/context_pool.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/common/memory_utils.h"

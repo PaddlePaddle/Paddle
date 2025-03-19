@@ -22,7 +22,6 @@
 
 #include <csignal>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"

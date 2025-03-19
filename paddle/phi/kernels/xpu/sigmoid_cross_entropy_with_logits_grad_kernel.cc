@@ -16,7 +16,6 @@
 
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_grad_kernel.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"

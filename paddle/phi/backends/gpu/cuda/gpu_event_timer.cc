@@ -14,7 +14,6 @@
 
 #include "paddle/phi/backends/gpu/cuda/gpu_event_timer.h"
 #include <numeric>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/context_pool.h"

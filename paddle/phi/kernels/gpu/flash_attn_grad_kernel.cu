@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
 #include <cstddef>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"

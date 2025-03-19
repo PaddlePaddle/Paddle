@@ -14,7 +14,6 @@
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
     defined(PADDLE_WITH_PSCORE)
 #pragma once
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <atomic>
 #include <functional>

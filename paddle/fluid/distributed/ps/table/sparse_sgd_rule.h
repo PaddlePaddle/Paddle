@@ -18,7 +18,6 @@
 #include <thread>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"                                  // for CHECK
 #include "paddle/fluid/distributed/common/local_random.h"  // for local_uniform_real_distribution
 #include "paddle/fluid/distributed/common/registerer.h"

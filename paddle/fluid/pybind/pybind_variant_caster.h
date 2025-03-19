@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/utils/variant.h"

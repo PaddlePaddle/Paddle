@@ -28,7 +28,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 

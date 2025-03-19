@@ -14,7 +14,6 @@
 
 #include "paddle/pir/include/core/storage_manager.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <memory>
 #include <unordered_map>

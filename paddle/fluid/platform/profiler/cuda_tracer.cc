@@ -17,7 +17,6 @@
 #include <string>
 #include <unordered_map>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
 #include "paddle/fluid/platform/profiler/cupti_data_process.h"

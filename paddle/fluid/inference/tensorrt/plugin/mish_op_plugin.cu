@@ -14,7 +14,6 @@
 
 #include <cstring>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/mish_op_plugin.h"
 

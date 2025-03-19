@@ -19,7 +19,6 @@
 #include <string>
 #include <unordered_set>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"

@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/c_embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"

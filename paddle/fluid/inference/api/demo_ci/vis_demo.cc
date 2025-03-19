@@ -16,7 +16,6 @@ limitations under the License. */
  * This file contains demo for mobilenet, se-resnext50 and ocr.
  */
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "gflags/gflags.h"

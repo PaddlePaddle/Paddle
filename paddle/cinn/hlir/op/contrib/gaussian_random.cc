@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "absl/types/variant.h"
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"

@@ -19,7 +19,6 @@ limitations under the License. */
 
 PHI_DECLARE_bool(use_stride_kernel);
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"

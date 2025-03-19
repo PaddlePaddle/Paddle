@@ -26,7 +26,6 @@
 
 #include <gloo/reduce.h>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"

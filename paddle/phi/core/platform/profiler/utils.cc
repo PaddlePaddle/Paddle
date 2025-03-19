@@ -17,7 +17,6 @@ limitations under the License. */
 #include <sstream>
 #include <vector>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 

@@ -22,7 +22,6 @@
 #include <memory>
 #include <unordered_map>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/common/ddim.h"

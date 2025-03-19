@@ -547,7 +547,6 @@ namespace {} {{
 """
 
 NODE_CC_FILE_TEMPLATE = """
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/backward/backward_api_base.h"
@@ -620,7 +619,6 @@ COMMON_DECLARE_bool(use_stride_kernel);
 
 FORWARD_H_FILE_TEMPLATE = """
 #pragma once
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/phi/api/all.h"

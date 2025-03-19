@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/var_desc.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/data_type.h"

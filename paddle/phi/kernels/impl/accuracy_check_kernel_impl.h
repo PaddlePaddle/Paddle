@@ -15,7 +15,6 @@
 #pragma once
 #include <cmath>
 #include <string>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"

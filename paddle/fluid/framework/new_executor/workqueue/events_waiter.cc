@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/new_executor/workqueue/events_waiter.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include "paddle/fluid/platform/enforce.h"

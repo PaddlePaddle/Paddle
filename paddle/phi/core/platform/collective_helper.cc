@@ -16,7 +16,6 @@
 
 #include <utility>
 #include <vector>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"

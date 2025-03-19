@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/utils/event.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>  // for GLog
 #include <unordered_map>
 

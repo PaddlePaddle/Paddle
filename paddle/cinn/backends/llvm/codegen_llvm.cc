@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <glog/stl_logging.h>
 #include <llvm/ADT/SmallVector.h>

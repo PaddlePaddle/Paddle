@@ -14,7 +14,6 @@
 
 #include <gtest/gtest.h>
 #include <vector>
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"

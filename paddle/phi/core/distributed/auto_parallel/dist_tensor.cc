@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"

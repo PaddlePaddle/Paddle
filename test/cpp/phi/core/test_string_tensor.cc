@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/api/lib/utils/allocator.h"

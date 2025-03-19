@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/core/platform/device_event_defs.h"
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle {

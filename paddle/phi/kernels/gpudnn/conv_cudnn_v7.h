@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"

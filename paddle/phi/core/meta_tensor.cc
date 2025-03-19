@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/core/meta_tensor.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"

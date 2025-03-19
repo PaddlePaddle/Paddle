@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/eager/grad_node_info.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"

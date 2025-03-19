@@ -30,7 +30,6 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi::funcs {

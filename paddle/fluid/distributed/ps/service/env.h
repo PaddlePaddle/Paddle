@@ -15,7 +15,6 @@
 #pragma once
 
 #include <arpa/inet.h>
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <netinet/in.h>
 #include <stdio.h>

@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/runtime/cpu/mkl_math.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <mkl.h>
 #include <mkl_vml_functions.h>

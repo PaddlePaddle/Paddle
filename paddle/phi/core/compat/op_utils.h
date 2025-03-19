@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"

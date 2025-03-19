@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <string>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 COMMON_DECLARE_bool(enable_pir_in_executor);

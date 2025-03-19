@@ -14,7 +14,6 @@
 
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 #include <algorithm>
 #include <cstddef>

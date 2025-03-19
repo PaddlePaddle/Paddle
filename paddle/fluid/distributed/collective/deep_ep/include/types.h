@@ -14,7 +14,6 @@
 
 #pragma once
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/collective/deep_ep/include/CUDAStream.h"
 #include "paddle/fluid/distributed/collective/deep_ep/include/ScalarType.h"

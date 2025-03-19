@@ -16,7 +16,6 @@
 
 #include <string>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/phi/kernels/funcs/jit/gen/act.h"
 #include "paddle/phi/kernels/funcs/jit/gen/jitcode.h"

@@ -15,7 +15,6 @@
 #include <map>
 #include <string>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"

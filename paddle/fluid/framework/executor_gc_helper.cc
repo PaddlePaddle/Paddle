@@ -16,7 +16,6 @@
 
 #include <string>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"

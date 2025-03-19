@@ -497,7 +497,6 @@ def source_include(header_file_path):
 
 #include <memory>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 

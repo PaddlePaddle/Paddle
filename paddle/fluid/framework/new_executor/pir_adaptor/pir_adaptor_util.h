@@ -38,7 +38,6 @@
 #include "paddle/pir/include/core/type_name.h"
 #include "paddle/pir/include/core/utils.h"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace paddle {

@@ -19,7 +19,6 @@
 #include <cstring>
 #include <iomanip>
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
 

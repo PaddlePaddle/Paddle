@@ -19,7 +19,6 @@
 #include <cuda_runtime.h>
 #include <cudnn.h>
 #include <curand.h>
-#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 #include <string>

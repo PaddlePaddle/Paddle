@@ -20,7 +20,6 @@
 #include "paddle/phi/kernels/sparse/gpu/conv_kernel_impl.cuh"
 #include "paddle/phi/kernels/sparse/gpu/sparse_conv_hashmap.cuh"
 
-#define GLOG_USE_GLOG_EXPORT
 #include "glog/logging.h"
 
 namespace phi {
