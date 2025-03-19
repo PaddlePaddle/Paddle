@@ -53,7 +53,7 @@ def operator_is_not_none(val):
     pass
 
 
-def tensor_numel(x):
+def tensor_dim(x):
     pass
 
 

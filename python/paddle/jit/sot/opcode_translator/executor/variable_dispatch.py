@@ -47,7 +47,7 @@ from .dispatch_functions import (
     operator_is_none,
     operator_is_not_none,
     operator_not_in,
-    tensor_numel,
+    tensor_dim,
 )
 from .dispatcher import Dispatcher, optional
 from .tracker import ConstTracker, DanglingTracker, DummyTracker
@@ -892,7 +892,7 @@ Dispatcher.register(
     lambda var: var.is_floating_point(),
 )
 Dispatcher.register(
-    paddle.rank,
+    tensor_dim,
     ("TensorVariable",),
     lambda var: var.ndim,
 )
@@ -1038,8 +1038,6 @@ fallback_tensor_unary_method = {
     float,
     operator.truth,
 }
-
-Dispatcher.register(tensor_numel, ("TensorVariable",), lambda x: x.numel())
 
 for unary_fn in UNARY_OPS:
     if unary_fn in fallback_tensor_unary_method:
