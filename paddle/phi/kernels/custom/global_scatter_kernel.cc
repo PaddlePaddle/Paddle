@@ -30,14 +30,11 @@ void GlobalScatterKernel(const Context& dev_ctx,
                          const DenseTensor& x_in,
                          const DenseTensor& local_count_in,
                          const DenseTensor& global_count_in,
-                         int ring_id,
-                         bool use_calc_stream,
                          DenseTensor* out) {
   auto x = &x_in;
   auto local_count = &local_count_in;
   auto global_count = &global_count_in;
 
-  const int rid = ring_id;
   auto place = dev_ctx.GetPlace();
 
   PADDLE_ENFORCE_EQ(
@@ -49,7 +46,6 @@ void GlobalScatterKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "Please use int64 type in global_count."));
 
-  auto map = distributed::ProcessGroupMapFromGid::getInstance();
   const int64_t* cpu_local_count_data;
   const int64_t* cpu_global_count_data;
   phi::DenseTensor cpu_local_count;
@@ -70,165 +66,84 @@ void GlobalScatterKernel(const Context& dev_ctx,
     global_count_len = cpu_global_count.numel();
   }
 
-  if (map->has(rid)) {
-    distributed::ProcessGroup* pg = map->get(rid);
-    auto stream =
-        reinterpret_cast<phi::CustomContext*>(pg->GetDeviceContext(place))
-            ->GetStream();
-    int nranks = pg->GetSize();
-    int rank = pg->GetRank();
-    auto in_feat = x->dims()[1];
-    auto n_expert = local_count->dims()[0] / nranks;
-    int64_t fwd_count = 0;
+  auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
+      dev_ctx.GetCommContext());
+  std::shared_ptr<phi::stream::Stream> stream;
+  stream = comm->GetStream();
 
-    for (auto i = 0; i < global_count_len; ++i) {
-      fwd_count += cpu_global_count_data[i];
-    }
-    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
-    int64_t* expert_ptr = new int64_t[n_expert * nranks];
-    expert_ptr[0] = 0;
-    auto tot_experts = n_expert * nranks;
-    for (auto i = 1; i < tot_experts; ++i) {
-      expert_ptr[i] = expert_ptr[i - 1] + cpu_local_count_data[i - 1];
-    }
+  int nranks = comm->GetSize();
+  int rank = comm->GetRank();
+  auto in_feat = x->dims()[1];
+  auto n_expert = local_count->dims()[0] / nranks;
+  int64_t fwd_count = 0;
 
-    auto recv_ptr = 0;
-    out->Resize(out_dims);
-    dev_ctx.template Alloc<T>(out);
+  for (auto i = 0; i < global_count_len; ++i) {
+    fwd_count += cpu_global_count_data[i];
+  }
+  phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+  int64_t* expert_ptr = new int64_t[n_expert * nranks];
+  expert_ptr[0] = 0;
+  auto tot_experts = n_expert * nranks;
+  for (auto i = 1; i < tot_experts; ++i) {
+    expert_ptr[i] = expert_ptr[i - 1] + cpu_local_count_data[i - 1];
+  }
 
-    for (auto i = 0; i < n_expert; ++i) {
-      for (auto j = 0; j < rank; ++j) {
-        int idx = i + j * n_expert;
-        if (cpu_global_count_data[idx]) {
-          pg->Recv(out,
-                   j,
-                   recv_ptr * in_feat,
-                   cpu_global_count_data[idx] * in_feat,
-                   /*sync_op*/ true);
-          recv_ptr += cpu_global_count_data[idx];
-        }
-      }
-      for (auto j = 0; j < nranks; ++j) {
-        if (j != rank) {
-          int idx = i + j * n_expert;
-          if (cpu_local_count_data[idx]) {
-            phi::DenseTensor tmp = *x;
-            pg->Send(tmp,
-                     j,
-                     expert_ptr[idx] * in_feat,
-                     cpu_local_count_data[idx] * in_feat,
-                     /*sync_op*/ true);
-          }
-        }
-      }
-      if (cpu_local_count_data[i + rank * n_expert]) {
-        phi::DeviceManager::GetDeviceWithPlace(place)->MemoryCopyD2D(
-            reinterpret_cast<void*>(out->data<T>() + recv_ptr * in_feat),
-            reinterpret_cast<const void*>(x->data<T>() +
-                                          expert_ptr[rank] * in_feat),
-            (cpu_local_count_data[rank] * in_feat) * phi::SizeOf(x->dtype()),
-            stream.get());
-        recv_ptr += cpu_global_count_data[rank];
-      }
-      for (auto j = rank + 1; j < nranks; ++j) {
-        int idx = i + j * n_expert;
-        if (cpu_global_count_data[idx]) {
-          pg->Recv(out,
-                   j,
-                   recv_ptr * in_feat,
-                   cpu_global_count_data[idx] * in_feat,
-                   /*sync_op*/ true);
-          recv_ptr += cpu_global_count_data[idx];
-        }
-      }
-    }
-  } else {
-    auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
-        phi::distributed::CommContextManager::GetInstance().Get(
-            std::to_string(rid)));
+  auto recv_ptr = 0;
+  auto send_buf = x->data<T>();
+  out->Resize(out_dims);
+  auto recv_buf = dev_ctx.template Alloc<T>(out);
 
-    std::shared_ptr<phi::stream::Stream> stream;
-    if (use_calc_stream) {
-      stream = dev_ctx.GetStream();
-    } else {
-      stream = comm->GetStream();
-    }
-
-    int nranks = comm->GetSize();
-    int rank = comm->GetRank();
-    auto in_feat = x->dims()[1];
-    auto n_expert = local_count->dims()[0] / nranks;
-    int64_t fwd_count = 0;
-
-    for (auto i = 0; i < global_count_len; ++i) {
-      fwd_count += cpu_global_count_data[i];
-    }
-    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
-    int64_t* expert_ptr = new int64_t[n_expert * nranks];
-    expert_ptr[0] = 0;
-    auto tot_experts = n_expert * nranks;
-    for (auto i = 1; i < tot_experts; ++i) {
-      expert_ptr[i] = expert_ptr[i - 1] + cpu_local_count_data[i - 1];
-    }
-
-    auto recv_ptr = 0;
-    auto send_buf = x->data<T>();
-    out->Resize(out_dims);
-    auto recv_buf = dev_ctx.template Alloc<T>(out);
-
-    for (auto i = 0; i < n_expert; ++i) {
-      for (auto j = 0; j < rank; ++j) {
-        int idx = i + j * n_expert;
-        if (cpu_global_count_data[idx]) {
-          phi::DeviceManager::CCLRecv(
-              place.GetDeviceType(),
-              reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
-              cpu_global_count_data[idx] * in_feat,
-              x->dtype(),
-              j,
-              comm->GetXcclComm(),
-              *stream);
-          recv_ptr += cpu_global_count_data[idx];
-        }
-      }
-      for (auto j = 0; j < nranks; ++j) {
-        if (j != rank) {
-          int idx = i + j * n_expert;
-          if (cpu_local_count_data[idx]) {
-            phi::DeviceManager::CCLSend(
-                place.GetDeviceType(),
-                const_cast<void*>(reinterpret_cast<const void*>(
-                    send_buf + expert_ptr[idx] * in_feat)),
-                cpu_local_count_data[idx] * in_feat,
-                x->dtype(),
-                j,
-                comm->GetXcclComm(),
-                *stream);
-          }
-        }
-      }
-      if (cpu_local_count_data[i + rank * n_expert]) {
-        phi::DeviceManager::GetDeviceWithPlace(place)->MemoryCopyD2D(
+  for (auto i = 0; i < n_expert; ++i) {
+    for (auto j = 0; j < rank; ++j) {
+      int idx = i + j * n_expert;
+      if (cpu_global_count_data[idx]) {
+        phi::DeviceManager::CCLRecv(
+            place.GetDeviceType(),
             reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
-            reinterpret_cast<const void*>(send_buf +
-                                          expert_ptr[rank] * in_feat),
-            (cpu_local_count_data[rank] * in_feat) * phi::SizeOf(x->dtype()),
-            stream.get());
-        recv_ptr += cpu_global_count_data[rank];
+            cpu_global_count_data[idx] * in_feat,
+            x->dtype(),
+            j,
+            comm->GetXcclComm(),
+            *stream);
+        recv_ptr += cpu_global_count_data[idx];
       }
-      for (auto j = rank + 1; j < nranks; ++j) {
+    }
+    for (auto j = 0; j < nranks; ++j) {
+      if (j != rank) {
         int idx = i + j * n_expert;
-        if (cpu_global_count_data[idx]) {
-          phi::DeviceManager::CCLRecv(
+        if (cpu_local_count_data[idx]) {
+          phi::DeviceManager::CCLSend(
               place.GetDeviceType(),
-              reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
-              cpu_global_count_data[idx] * in_feat,
+              const_cast<void*>(reinterpret_cast<const void*>(
+                  send_buf + expert_ptr[idx] * in_feat)),
+              cpu_local_count_data[idx] * in_feat,
               x->dtype(),
               j,
               comm->GetXcclComm(),
               *stream);
-          recv_ptr += cpu_global_count_data[idx];
         }
+      }
+    }
+    if (cpu_local_count_data[i + rank * n_expert]) {
+      phi::DeviceManager::GetDeviceWithPlace(place)->MemoryCopyD2D(
+          reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
+          reinterpret_cast<const void*>(send_buf + expert_ptr[rank] * in_feat),
+          (cpu_local_count_data[rank] * in_feat) * phi::SizeOf(x->dtype()),
+          stream.get());
+      recv_ptr += cpu_global_count_data[rank];
+    }
+    for (auto j = rank + 1; j < nranks; ++j) {
+      int idx = i + j * n_expert;
+      if (cpu_global_count_data[idx]) {
+        phi::DeviceManager::CCLRecv(
+            place.GetDeviceType(),
+            reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
+            cpu_global_count_data[idx] * in_feat,
+            x->dtype(),
+            j,
+            comm->GetXcclComm(),
+            *stream);
+        recv_ptr += cpu_global_count_data[idx];
       }
     }
   }

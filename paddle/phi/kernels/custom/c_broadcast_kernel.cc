@@ -28,24 +28,16 @@ namespace phi {
 template <typename T, typename Context>
 void CBroadcastKernel(const Context& dev_ctx,
                       const DenseTensor& x_in,
-                      int ring_id,
                       int root,
-                      bool use_calc_stream,
                       DenseTensor* out) {
   auto x = &x_in;
   const auto& place = dev_ctx.GetPlace();
   dev_ctx.template Alloc<T>(out);
-  int rid = ring_id;
   auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
-      phi::distributed::CommContextManager::GetInstance().Get(
-          std::to_string(rid)));
+      dev_ctx.GetCommContext());
 
   std::shared_ptr<phi::stream::Stream> stream;
-  if (use_calc_stream) {
-    stream = dev_ctx.GetStream();
-  } else {
-    stream = comm->GetStream();
-  }
+  stream = comm->GetStream();
 
   int numel = x->numel();
   auto dtype = x->dtype();

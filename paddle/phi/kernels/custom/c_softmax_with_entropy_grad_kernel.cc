@@ -31,7 +31,6 @@ void CSoftmaxWithEntropyGradKernel(const Context& dev_ctx,
                                    const DenseTensor& label_in,
                                    const DenseTensor& loss_grad_in,
                                    int64_t ignore_index,
-                                   int ring_id,
                                    int rank,
                                    int nranks,
                                    DenseTensor* logits_grad) {
