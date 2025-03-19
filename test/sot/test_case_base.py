@@ -18,7 +18,6 @@ import contextlib
 import copy
 import types
 import unittest
-from functools import wraps
 
 import numpy as np
 
@@ -35,21 +34,6 @@ def test_instruction_translator_cache_context():
     cache.clear()
     yield cache
     cache.clear()
-
-
-FASTER_GUARD_CACHE_STATE = {
-    "cache": {},
-    "translate_count": 0,
-    "code_symbolic_inputs": {},
-}
-
-
-def test_with_faster_guard(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        func(*args, **kwargs)
-
-    return impl
 
 
 class TestCaseBase(unittest.TestCase):

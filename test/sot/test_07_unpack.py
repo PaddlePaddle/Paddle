@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 
@@ -56,7 +56,6 @@ class TestUnpack(TestCaseBase):
     def test_unpack_tensor(self):
         self.assert_results(unpack_tensor, paddle.to_tensor([2, 3]))
 
-    @test_with_faster_guard
     def test_unpack_ex_tuple(self):
         self.assert_results(unpack_ex_tuple, (1, 1, paddle.to_tensor(2)))
 

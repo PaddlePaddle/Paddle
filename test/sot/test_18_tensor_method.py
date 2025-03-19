@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
@@ -100,7 +100,6 @@ class TestTensorMethod(TestCaseBase):
         y = paddle.rand([42])
         self.assert_results(tensor_method_passed_by_user, x, y.add)
 
-    @test_with_faster_guard
     def test_tensor_method_property(self):
         x = paddle.rand([42, 24], dtype='float64')
         y = paddle.rand([42, 24], dtype='float32')

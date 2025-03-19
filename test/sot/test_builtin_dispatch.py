@@ -22,7 +22,6 @@ import weakref
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
-    test_with_faster_guard,
 )
 
 import paddle
@@ -175,11 +174,9 @@ def test_builtin_type_check_eq():
 
 
 class TestBuiltinDispatch(TestCaseBase):
-    @test_with_faster_guard
     def test_dispatch_len(self):
         self.assert_results(dispatch_len, paddle.to_tensor([1, 2, 3]))
 
-    @test_with_faster_guard
     def test_dispatch_bool(self):
         self.assert_results(dispatch_bool, paddle.to_tensor([1, 2, 3]))
 
@@ -219,7 +216,6 @@ class TestBuiltinDispatch(TestCaseBase):
     def test_dispatch_float_floor(self):
         self.assert_results(dispatch_floor, 1.2)
 
-    @test_with_faster_guard
     def test_dispatch_sum(self):
         self.assert_results(test_sum_tuple, 1, 1)
         self.assert_results(test_sum_tuple, paddle.to_tensor(1), 1)

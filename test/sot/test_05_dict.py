@@ -18,7 +18,7 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
@@ -253,7 +253,6 @@ class TestDictMethods(TestCaseBase):
     def test_dict_noargs(self):
         self.assert_results(dict_no_arguments)
 
-    @test_with_faster_guard
     def test_dict_fromkeys(self):
         self.assert_results(dict_test_fromkeys, (1, 2, 3, 4))
         self.assert_results(dict_test_fromkeys, [1, 2, 3, 4])
