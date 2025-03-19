@@ -947,7 +947,23 @@ class TrtLayerAutoScanTest(AutoScanTest):
                             ]['data'].dtype
                             if not self.dynamic_shape.min_input_shape:
                                 continue
-                            for key in dynamic_shape.min_input_shape.keys():
+                            for (
+                                key
+                            ) in self.dynamic_shape.min_input_shape.keys():
+                                input_data = prog_config.get_feed_data()[key][
+                                    'data'
+                                ]
+                                input_dtype = (
+                                    input_data.dtype
+                                    if hasattr(input_data, 'dtype')
+                                    else input_data_type
+                                )
+                                input_range = (
+                                    (0.0, input_data.flat[0])
+                                    if input_dtype in ['int32', 'int64']
+                                    else None
+                                )
+
                                 input_config = Input(
                                     min_input_shape=tuple(
                                         self.dynamic_shape.min_input_shape[key]
@@ -958,7 +974,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                     max_input_shape=tuple(
                                         self.dynamic_shape.max_input_shape[key]
                                     ),
-                                    input_data_type=str(input_data_type),
+                                    input_data_type=str(input_dtype),
+                                    input_range=input_range,
                                 )
                                 inputs.append(input_config)
                             trt_config = TensorRTConfig(inputs=inputs)

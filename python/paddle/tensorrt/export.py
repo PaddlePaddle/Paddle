@@ -162,9 +162,25 @@ class Input:
             self.input_range = (
                 (0.0, 1.0) if 'float' in self.input_data_type else (1, 10)
             )
+        low, high = self.input_range
+
+        if low == high:
+            self.input_min_data = np.full(
+                self.min_input_shape, low, dtype=self.input_data_type
+            )
+            self.input_optim_data = np.full(
+                self.optim_input_shape, low, dtype=self.input_data_type
+            )
+            self.input_max_data = np.full(
+                self.max_input_shape, low, dtype=self.input_data_type
+            )
+            return (
+                self.input_min_data,
+                self.input_optim_data,
+                self.input_max_data,
+            )
 
         if 'int' in self.input_data_type:
-            low, high = self.input_range
             self.input_min_data = np.random.randint(
                 low, high, size=self.min_input_shape
             ).astype(self.input_data_type)
@@ -175,7 +191,6 @@ class Input:
                 low, high, size=self.max_input_shape
             ).astype(self.input_data_type)
         else:
-            low, high = self.input_range
             self.input_min_data = np.random.uniform(
                 low, high, size=self.min_input_shape
             ).astype(self.input_data_type)

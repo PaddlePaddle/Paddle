@@ -101,18 +101,12 @@ class TrtConvertRangeDynamicTest(TrtLayerAutoScanTest):
 
     def generate_dynamic_shape(self):
         self.dynamic_shape.min_input_shape = {
-            "start_data": [1],
-            "end_data": [1],
             "step_data": [1],
         }
         self.dynamic_shape.max_input_shape = {
-            "start_data": [1],
-            "end_data": [1],
             "step_data": [1],
         }
         self.dynamic_shape.opt_input_shape = {
-            "start_data": [1],
-            "end_data": [1],
             "step_data": [1],
         }
         return self.dynamic_shape

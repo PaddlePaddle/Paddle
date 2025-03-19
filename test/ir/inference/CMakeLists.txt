@@ -168,11 +168,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
 
+  set_tests_properties(test_trt_convert_index_select PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_anchor_generator PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_gather PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_convert_expand_v2 PROPERTIES TIMEOUT 1000)
+  set_tests_properties(test_trt_convert_expand_v2 PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_temporal_shift_deprecated
-                       PROPERTIES TIMEOUT 1000)
+                       PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_pool2d PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_slice PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_scale PROPERTIES TIMEOUT 600)

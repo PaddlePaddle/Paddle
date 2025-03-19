@@ -89,6 +89,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
             for dims in [0, 1, 2, 3, 4]:
                 for mode in ["all", "element", "channel"]:
                     for data_format in ["NCHW", "NHWC"]:
+                        self.data_format = data_format
                         if (mode == "element" or mode == "all") and dims == 0:
                             continue
                         if mode == "channel" and dims != 4:
@@ -127,68 +128,58 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
 
                         yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.dims == 0:
-                self.dynamic_shape.min_input_shape = {"input_data": []}
-                self.dynamic_shape.max_input_shape = {"input_data": []}
-                self.dynamic_shape.opt_input_shape = {"input_data": []}
-            elif self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"input_data": [16]}
-                self.dynamic_shape.max_input_shape = {"input_data": [16]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [16]}
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 3]}
-                self.dynamic_shape.max_input_shape = {"input_data": [1, 3]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [1, 3]}
-            elif self.dims == 3:
-                if attrs[0]["data_format"] == "NCHW":
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [1, 3, 16]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 3, 16]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [1, 3, 16]
-                    }
-                elif attrs[0]["data_format"] == "NHWC":
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [1, 16, 3]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 16, 3]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [1, 16, 3]
-                    }
-                else:
-                    raise AssertionError
+    def generate_dynamic_shape(self):
+        if self.dims == 0:
+            self.dynamic_shape.min_input_shape = {"input_data": []}
+            self.dynamic_shape.max_input_shape = {"input_data": []}
+            self.dynamic_shape.opt_input_shape = {"input_data": []}
+        elif self.dims == 1:
+            self.dynamic_shape.min_input_shape = {"input_data": [16]}
+            self.dynamic_shape.max_input_shape = {"input_data": [16]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [16]}
+        elif self.dims == 2:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3]}
+            self.dynamic_shape.max_input_shape = {"input_data": [1, 3]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3]}
+        elif self.dims == 3:
+            if self.data_format == "NCHW":
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 16]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 16]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 16]}
+            elif self.data_format == "NHWC":
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 16, 3]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 3]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [1, 16, 3]}
             else:
-                if attrs[0]["data_format"] == "NCHW":
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [1, 3, 16, 32]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 3, 16, 32]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [1, 3, 16, 32]
-                    }
-                elif attrs[0]["data_format"] == "NHWC":
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [1, 16, 32, 3]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 16, 32, 3]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [1, 16, 32, 3]
-                    }
-                else:
-                    raise AssertionError
+                raise AssertionError
+        else:
+            if self.data_format == "NCHW":
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 16, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 3, 16, 32]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 16, 32]
+                }
+            elif self.data_format == "NHWC":
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 16, 32, 3]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 16, 32, 3]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 16, 32, 3]
+                }
+            else:
+                raise AssertionError
+        return self.dynamic_shape
+
+    def sample_predictor_configs(
+        self, program_config, run_pir=False
+    ) -> tuple[paddle_infer.Config, list[int], float]:
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -206,32 +197,31 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

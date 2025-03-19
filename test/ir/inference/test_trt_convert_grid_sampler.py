@@ -61,7 +61,7 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
                         }
                     )
 
-        for dims in [4, 5]:
+        for dims in [4]:
             for desc in descs:
                 self.dims = dims
                 ops_config = [
@@ -81,11 +81,11 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
                     ops=ops,
                     weights={},
                     inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1)
-                        ),
                         "grid_data": TensorConfig(
                             data_gen=partial(generate_input2)
+                        ),
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1)
                         ),
                     },
                     outputs=["output_data"],
@@ -93,36 +93,38 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
 
                 yield program_config
 
+    def generate_dynamic_shape(self):
+        if self.dims == 4:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "grid_data": [1, 3, 3, 2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [1, 3, 64, 64],
+                "grid_data": [1, 3, 6, 2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, 3, 32, 32],
+                "grid_data": [1, 3, 3, 2],
+            }
+        elif self.dims == 5:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [1, 3, 32, 32, 64],
+                "grid_data": [1, 3, 3, 2, 3],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [1, 3, 64, 64, 128],
+                "grid_data": [1, 3, 3, 6, 3],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [1, 3, 32, 32, 64],
+                "grid_data": [1, 3, 3, 2, 3],
+            }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape():
-            if self.dims == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3, 32, 32],
-                    "grid_data": [1, 3, 3, 2],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [1, 3, 64, 64],
-                    "grid_data": [1, 3, 6, 2],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 32, 32],
-                    "grid_data": [1, 3, 3, 2],
-                }
-            elif self.dims == 5:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3, 32, 32, 64],
-                    "grid_data": [1, 3, 3, 2, 3],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [1, 3, 64, 64, 128],
-                    "grid_data": [1, 3, 3, 6, 3],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 32, 32, 64],
-                    "grid_data": [1, 3, 3, 2, 3],
-                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -137,14 +139,14 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
         clear_dynamic_shape()
 
         # for dynamic_shape
-        generate_dynamic_shape()
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

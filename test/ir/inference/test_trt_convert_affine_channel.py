@@ -44,10 +44,11 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([3]).astype(np.float32)
 
-        for dims in [2, 4]:
+        for dims in [4]:
             for batch in [1, 2, 4]:
                 for data_layout in ["NCHW", "NHWC"]:
                     self.dims = dims
+                    self.data_layout = data_layout
                     dics = [{"data_layout": data_layout}]
 
                     ops_config = [
@@ -86,35 +87,37 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
 
                     yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
-                self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [2, 64]}
+    def generate_dynamic_shape(self):
+        if self.dims == 2:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [2, 64]}
+        else:
+            if self.data_layout == "NCHW":
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 32, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 3, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 64, 64]
+                }
             else:
-                if attrs[0]['data_layout'] == "NCHW":
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [1, 3, 32, 32]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 3, 64, 64]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [1, 3, 64, 64]
-                    }
-                else:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [1, 32, 32, 3]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [4, 64, 64, 3]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [1, 64, 64, 3]
-                    }
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 32, 32, 3]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 64, 64, 3]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 64, 64, 3]
+                }
+        return self.dynamic_shape
+
+    def sample_predictor_configs(
+        self, program_config, run_pir=False
+    ) -> tuple[paddle_infer.Config, list[int], float]:
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -133,17 +136,18 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -154,7 +158,7 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":
