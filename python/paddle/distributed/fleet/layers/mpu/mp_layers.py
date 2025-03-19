@@ -550,7 +550,7 @@ class RowParallelLinear(paddle.nn.Layer):
         weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
-        input_is_parallel(bool): whether the input has already been splitted across the mp group.
+        input_is_parallel(bool): whether the input has already been split across the mp group.
         fuse_matmul_bias(bool): whether to fuse matmul and bias.
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
