@@ -21,44 +21,8 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/pass/utils.h"
-#ifdef PADDLE_WITH_CINN
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
-#endif
 
 namespace paddle::dialect {
-
-template <typename ConcreteOp>
-void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
-  std::vector<pir::Type> new_outputs = ConcreteOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-
-  pir::TransLayoutCallbackFn callback = nullptr;
-#ifdef PADDLE_WITH_CINN
-  auto& shape_analysis =
-      pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-  const pir::TransLayoutType trans_layout_type = [&] {
-    if (new_layout == common::DataLayout::NHWC) {
-      return pir::TransLayoutType::NCHW2NHWC;
-    }
-    if (new_layout == common::DataLayout::NHWC) {
-      return pir::TransLayoutType::NHWC2NCHW;
-    }
-    return pir::TransLayoutType::INVALID;
-  }();
-
-  if (trans_layout_type != pir::TransLayoutType::INVALID) {
-    callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
-      shape_analysis.UpdateShapeOrDataByTransLayout(value, trans_layout_type);
-    };
-  }
-#endif
-  for (auto value : RelevantOutputsImpl<ConcreteOp>(op)) {
-    pir::SetNewLayoutForValue(value, new_layout, callback);
-  }
-}
 
 template <>
 std::vector<pir::Value> RelevantInputsImpl<AddGroupNormSiluOp>(
@@ -78,25 +42,6 @@ template <>
 common::DataLayout PreferLayoutImpl<AddGroupNormSiluOp>(pir::Operation* op) {
   // Note(bukejiyu): add_group_norm_silu only supports NHWC layout now.
   return common::DataLayout::NHWC;
-}
-
-template <>
-void RewriteByLayoutImpl<AddGroupNormSiluOp>(pir::Operation* op,
-                                             common::DataLayout new_layout) {
-  op->set_attribute(
-      "data_format",
-      pir::StrAttribute::get(pir::IrContext::Instance(),
-                             common::DataLayoutToString(new_layout)));
-
-  std::vector<pir::Type> new_outputs = AddGroupNormSiluOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-
-  for (auto value : RelevantOutputsImpl<AddGroupNormSiluOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
 }
 
 template <>
@@ -157,16 +102,6 @@ bool CanBeModifiedImpl<Conv2dOp>(pir::Operation* op) {
 }
 
 template <>
-void RewriteByLayoutImpl<Conv2dOp>(pir::Operation* op,
-                                   common::DataLayout new_layout) {
-  op->set_attribute(
-      "data_format",
-      pir::StrAttribute::get(pir::IrContext::Instance(),
-                             common::DataLayoutToString(new_layout)));
-  RewriteByInfermeta<Conv2dOp>(op, new_layout);
-}
-
-template <>
 common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
@@ -223,17 +158,6 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
 }
 
 template <>
-void RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op,
-                                              common::DataLayout new_layout) {
-  op->set_attribute(
-      "data_format",
-      pir::StrAttribute::get(pir::IrContext::Instance(),
-                             common::DataLayoutToString(new_layout)));
-
-  RewriteByInfermeta<FusedConv2dAddActOp>(op, new_layout);
-}
-
-template <>
 bool CanBeModifiedImpl<FusedConv2dAddActOp>(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
@@ -256,16 +180,6 @@ bool CanBeModifiedImpl<FusedConv2dAddActOp>(pir::Operation* op) {
   }
 
   return can_be_modified;
-}
-
-template <>
-void RewriteByLayoutImpl<GroupNormOp>(pir::Operation* op,
-                                      common::DataLayout new_layout) {
-  op->set_attribute(
-      "data_format",
-      pir::StrAttribute::get(pir::IrContext::Instance(),
-                             common::DataLayoutToString(new_layout)));
-  RewriteByInfermeta<GroupNormOp>(op, new_layout);
 }
 
 template <>
@@ -323,18 +237,6 @@ bool CanBeModifiedImpl<SqueezeOp>(pir::Operation* op) {
 }
 
 template <>
-void RewriteByLayoutImpl<SiluOp>(pir::Operation* op,
-                                 common::DataLayout new_layout) {
-  RewriteByInfermeta<SiluOp>(op, new_layout);
-}
-
-template <>
-void RewriteByLayoutImpl<AddOp>(pir::Operation* op,
-                                common::DataLayout new_layout) {
-  RewriteByInfermeta<AddOp>(op, new_layout);
-}
-
-template <>
 bool CanBeModifiedImpl<AddOp>(pir::Operation* op) {
   auto concrete_op = op->dyn_cast<AddOp>();
   if (auto x = concrete_op.x(), y = concrete_op.y(); x && y) {
@@ -349,12 +251,6 @@ bool CanBeModifiedImpl<AddOp>(pir::Operation* op) {
     }
   }
   return true;
-}
-
-template <>
-void RewriteByLayoutImpl<CastOp>(pir::Operation* op,
-                                 common::DataLayout new_layout) {
-  RewriteByInfermeta<CastOp>(op, new_layout);
 }
 
 template <>
@@ -449,35 +345,6 @@ template <>
 std::vector<pir::Value> RelevantInputsImpl<Pool2dOp>(pir::Operation* op) {
   auto concrete_op = op->dyn_cast<Pool2dOp>();
   return {concrete_op.x()};
-}
-
-template <>
-void RewriteByLayoutImpl<Pool2dOp>(pir::Operation* op,
-                                   common::DataLayout new_layout) {
-  op->set_attribute(
-      "data_format",
-      pir::StrAttribute::get(pir::IrContext::Instance(),
-                             common::DataLayoutToString(new_layout)));
-
-  RewriteByInfermeta<Pool2dOp>(op, new_layout);
-}
-
-template <>
-void RewriteByLayoutImpl<MultiplyOp>(pir::Operation* op,
-                                     common::DataLayout new_layout) {
-  RewriteByInfermeta<MultiplyOp>(op, new_layout);
-}
-
-template <>
-void RewriteByLayoutImpl<AssignOp>(pir::Operation* op,
-                                   common::DataLayout new_layout) {
-  RewriteByInfermeta<AssignOp>(op, new_layout);
-}
-
-template <>
-void RewriteByLayoutImpl<SwishOp>(pir::Operation* op,
-                                  common::DataLayout new_layout) {
-  RewriteByInfermeta<SwishOp>(op, new_layout);
 }
 
 }  // namespace paddle::dialect

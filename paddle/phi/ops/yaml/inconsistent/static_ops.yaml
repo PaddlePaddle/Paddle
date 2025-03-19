@@ -77,7 +77,7 @@
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
   optional : scale, bias, reserve_space
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : beam_search_decode
   args: (Tensor ids, Tensor scores, int beam_size, int end_id)
@@ -178,7 +178,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : divide_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits : pir::BinaryElementWiseTrait
 
 - op : einsum
@@ -203,7 +203,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : elementwise_pow_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits : pir::BinaryElementWiseTrait
 
 - op : embedding
@@ -252,7 +252,7 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] moments2_max, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow, bool amsgrad = false)
@@ -353,7 +353,7 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : hash
   args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
@@ -519,7 +519,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : maximum_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits : pir::BinaryElementWiseTrait
 
 - op : memcpy
@@ -580,7 +580,7 @@
   kernel :
     func : nop
   inplace: (x -> out)
-  interfaces : paddle::dialect::ParseKernelKeyInterface
+  interfaces : paddle::dialect::ParseKernelKeyInterface, paddle::dialect::LayoutTransformationInterface
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
 
 - op : not_equal
@@ -722,7 +722,7 @@
   data_transform :
     support_trans_dtype : x, y
   inplace : (x -> out)
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   backward: remainder_grad
   traits : pir::BinaryElementWiseTrait
 

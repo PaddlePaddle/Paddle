@@ -67,61 +67,15 @@ class AutoLayoutInsertPass : public pir::Pass {
   }
 
  private:
-  void RewriteLayout(pir::Operation* op,
-                     const std::vector<pir::Value>& input_values) {  // NOLINT
-    if (op->isa<paddle::dialect::ConcatOp>() ||
-        op->isa<paddle::dialect::ArgmaxOp>()) {
-      auto layout_interface =
-          op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+  void RewriteLayout(pir::Operation* op) {
+    if (auto layout_interface =
+            op->dyn_cast<paddle::dialect::LayoutTransformationInterface>()) {
       layout_interface.RewriteByLayout(op, common::DataLayout::NHWC);
-      return;
-    }
-
-    auto InferMetaSpecificOp = [&]() {
-      // Op not implement InferMetaInterface interface, so we need to rewrite
-      // manually
-      if (op->isa<pir::CombineOp>()) {
-        auto out = op->dyn_cast<pir::CombineOp>().out();
-        std::vector<pir::Type> new_out_type;
-        for (auto v : op->operands_source()) {
-          new_out_type.push_back(v.type());
-        }
-        auto new_out_type_v =
-            pir::VectorType::get(pir::IrContext::Instance(), new_out_type);
-        out.set_type(new_out_type_v);
-      } else {
-        PADDLE_THROW(common::errors::Unimplemented(
-            "`%s` should implement InferMetaInterface interface or rewrite "
-            "manually, but not found.",
-            op->name()));
-      }
-    };
-
-    if (op->HasAttribute("data_format")) {
-      op->set_attribute("data_format", pir::StrAttribute::get(ctx_, "NHWC"));
-    }
-    auto p_attribute_map = op->attributes();
-
-    if (auto infer_meta_interface =
-            op->dyn_cast<paddle::dialect::InferMetaInterface>()) {
-      auto output_types =
-          infer_meta_interface.InferMeta(input_values, &p_attribute_map);
-      pir::TransLayoutCallbackFn callback = nullptr;
-#ifdef PADDLE_WITH_CINN
-      auto& shape_analysis =
-          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-      callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
-        shape_analysis.UpdateShapeOrDataByTransLayout(
-            value, pir::TransLayoutType::NCHW2NHWC);
-      };
-#endif
-      for (size_t i = 0; i < output_types.size(); ++i) {
-        op->result(i).set_type(output_types[i]);
-        pir::SetNewLayoutForValue(
-            op->result(i), common::DataLayout::NHWC, callback);
-      }
     } else {
-      InferMetaSpecificOp();
+      PADDLE_THROW(common::errors::Unimplemented(
+          "`%s` should implement InferMetaInterface interface or rewrite "
+          "manually, but not found.",
+          op->name()));
     }
   }
 
@@ -250,7 +204,7 @@ class AutoLayoutInsertPass : public pir::Pass {
                 "NCHW") {
           VLOG(4) << "enter NHWC op: " << op_name;
           DoTransposeOpOperand(op, builder);
-          RewriteLayout(op, op->operands_source());
+          RewriteLayout(op);
           DoTransposeOpResult(op, builder);
         }
       } else if (kOpsNchw.find(op_name) == kOpsNchw.end() &&
@@ -262,7 +216,7 @@ class AutoLayoutInsertPass : public pir::Pass {
           TransformTransposePerm(&transpose_op);
           continue;
         }
-        RewriteLayout(op, op->operands_source());
+        RewriteLayout(op);
         DoTransposeOpResult(op, builder);
       }
     }

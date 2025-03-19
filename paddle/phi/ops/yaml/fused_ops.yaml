@@ -295,6 +295,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elementwise_div
   args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
@@ -309,6 +310,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elementwise_mul
   args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
@@ -323,6 +325,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elementwise_sub
   args: (Tensor x, Tensor y, int axis = -1, str fuse_activation = "", float fuse_alpha
@@ -337,6 +340,7 @@
     data_type : x
   support_dygraph_mode : true
   traits : pir::BinaryElementWiseTrait
+  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : fused_elemwise_activation
   args: (Tensor x, Tensor y, str[] functor_list, int axis = -1, float scale = 0.0, bool save_intermediate_out
