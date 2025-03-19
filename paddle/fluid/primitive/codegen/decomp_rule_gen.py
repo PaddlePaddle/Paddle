@@ -22,7 +22,8 @@ import yaml
 
 # fmt: off
 # import from paddle/fluid/operators/generator
-sys.path.append(
+sys.path.insert(
+    0,
     str(pathlib.Path(__file__).resolve().parents[2] / 'operators/generator')
 )
 import filters as op_gen_filters
@@ -32,7 +33,8 @@ from parse_utils import to_named_dict
 from type_mapping import output_type_map
 
 # import from paddle/fluid/pir/dialect/op_generator/api_gen.py
-sys.path.append(
+sys.path.insert(
+    0,
     str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
