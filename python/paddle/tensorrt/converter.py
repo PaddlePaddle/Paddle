@@ -496,7 +496,7 @@ class PaddleToTensorRTConverter:
             int(hashlib.sha256(group_str.encode('utf-8')).hexdigest(), 16)
             % 10**8
         )
-        CACHE_ROOT = get_cache_path()
+        CACHE_ROOT = get_cache_path(self.trt_config.save_model_dir)
         CACHE_FILE = f"{CACHE_ROOT}/engine_{engine_name}_{self.engine_num}.trt"
         with open(CACHE_FILE, "wb") as f:
             f.write(trt_engine)

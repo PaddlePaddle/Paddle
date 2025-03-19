@@ -333,9 +333,12 @@ def is_shape_tensor(value):
     return total_elements <= 8 and total_elements >= 1 and is_int_dtype
 
 
-def get_cache_path():
-    home_path = os.path.expanduser("~")
-    cache_path = os.path.join(home_path, ".pp_trt_cache")
+def get_cache_path(cache_path):
+    if cache_path is not None:
+        cache_path = cache_path
+    else:
+        home_path = os.path.expanduser("~")
+        cache_path = os.path.join(home_path, ".pp_trt_cache")
 
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)

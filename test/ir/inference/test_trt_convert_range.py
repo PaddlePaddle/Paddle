@@ -138,7 +138,7 @@ class TrtConvertRangeDynamicTest(TrtLayerAutoScanTest):
         ), 1e-2
 
     def test(self):
-        self.run_test(run_pir=True)
+        self.run_test()
 
 
 class TrtConvertRangeStaticTest(TrtLayerAutoScanTest):

@@ -60,6 +60,7 @@ class TestConverterResNet50(unittest.TestCase):
             optim_input_shape=(1, 3, 224, 224),
             max_input_shape=(4, 3, 224, 224),
             input_data_type='float32',
+            name='input',
         )
         _, input_optim_data, _ = input_config.generate_input_data()
 
