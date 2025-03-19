@@ -15,6 +15,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
@@ -95,6 +96,9 @@ bool operator!=(Expr a, IndexExpr b) { return !(a == b); }
 
 bool operator==(IndexExpr a, IndexExpr b) {
   if (a.get() == b.get()) return true;
+  // Determine if there is constraint equality. For example, S0 + S1 == 960.
+  auto& constraint = common::ShapeConstraintManager::Instance();
+  if (constraint.IsEqual(a, b)) return true;
   if (a.node_type() != b.node_type()) return false;
   switch (a.node_type()) {
     case ir::IrNodeTy::IntImm: {

@@ -15,6 +15,7 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/framework/pir/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -22,6 +23,7 @@
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
@@ -83,6 +85,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     // for details.
     const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
+      auto& shape_analysis_manager =
+          ::pir::ShapeAnalysisManager::Instance().Get(
+              group_compilation_contexts[index].GetGroup()->GetParentProgram());
+      cinn::common::ShapeConstraintManager::Instance().Init(
+          shape_analysis_manager.constraints_manager().equals());
       runtime::SetArchDevice(target_, device_id);
       compilation_results[index] = Compile(&group_compilation_contexts[index]);
     };
@@ -115,6 +122,11 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
     const auto& ParallelLowering = [&]() {
       const size_t task_size = switch_group_ctxs.size();
       auto worker_fn = [&](int index) {
+        auto& shape_analysis_manager =
+            ::pir::ShapeAnalysisManager::Instance().Get(
+                switch_group_ctxs[index].GetGroup()->GetParentProgram());
+        cinn::common::ShapeConstraintManager::Instance().Init(
+            shape_analysis_manager.constraints_manager().equals());
         CompilationTask lowering_task(&switch_group_ctxs[index]);
         lowering_task.Lowering();
       };

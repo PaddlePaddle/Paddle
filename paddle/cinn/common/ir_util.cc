@@ -208,6 +208,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
       VLOG(8) << "**** expr is not index ****: " << res;
     }
   }
+  VLOG(3) << "End IndiceToAbsOffset";
 
   return res;
 }
