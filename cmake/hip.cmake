@@ -179,3 +179,7 @@ find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
 include(thrust)
+
+if(WITH_Z100)
+  add_definitions(-DCINN_WITH_Z100)
+endif()
