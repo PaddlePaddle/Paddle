@@ -998,6 +998,7 @@
     func : UnchangedInferMeta
     param : [x]
     spmd_rule : ExpandGradInferSpmd
+    local_shape : x_grad
   kernel :
     func : expand_grad
     data_type : out_grad
