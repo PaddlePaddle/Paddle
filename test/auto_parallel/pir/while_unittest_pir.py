@@ -95,7 +95,7 @@ class TestWhileDemo:
             meshes=mesh,
             shard_dims="x",
             input_keys=["inputs", "label"],
-            is_dataset_splitted=True,
+            is_dataset_split=True,
         )
         return dist_dataloader
 
