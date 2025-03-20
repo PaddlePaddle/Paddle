@@ -443,8 +443,15 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   substitute_value.resize(loops_number);
   Expr fused_expr(fused_var);
   for (int i = loops_number - 1; i > 0; i--) {
-    substitute_value[i] = Mod::Make(fused_expr, for_nodes[i]->extent);
-    fused_expr = Div::Make(fused_expr, for_nodes[i]->extent);
+    auto& extent = for_nodes[i]->extent;
+    // Note: if the loop has an extent of 0, just skip this loop, because a
+    // zero-extent loop will never be executed.
+    if (extent.is_constant() && extent.as_int64() == 0) {
+      substitute_value[i] = fused_expr;
+      continue;
+    }
+    substitute_value[i] = Mod::Make(fused_expr, extent);
+    fused_expr = Div::Make(fused_expr, extent);
   }
   substitute_value[0] = fused_expr;
 

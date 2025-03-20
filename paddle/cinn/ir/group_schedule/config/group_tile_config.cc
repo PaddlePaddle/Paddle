@@ -545,8 +545,8 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(int64_t reduce_numel,
     int64_t limit_cond_1 = std::sqrt((remain_reduce_numel + 1) / 2.0);
     int64_t limit_cond_2 = CeilDiv(remain_reduce_numel, 32);
     int64_t limit = std::min(limit_cond_1, limit_cond_2);
-    if (limit > 0 && limit < rd_block_num) {
-      rd_block_num = limit;
+    if (limit < rd_block_num) {
+      rd_block_num = std::max(limit, int64_t(1));
     }
 
     // Find the best rd_block/thread_num with the highest SM occupacy.
@@ -614,8 +614,9 @@ TileConfigMap BuildPureStaticShapeConfig(
   //   2) Do not allocate too many reduce blocks when reduce_numel is small.
   int64_t rd_block_num = 1;
   if (base_info->can_apply_grid_reduce) {
+    int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
     std::pair<int64_t, int64_t> res = FindBestReduceBlockThreadNum(
-        reduce_numel, sp_thread_num, rd_thread_num, spatial_numel, sm_count);
+        reduce_numel, sp_thread_num, rd_thread_num, sp_block_num, sm_count);
     rd_block_num = res.first;
     rd_thread_num = res.second;
   }
@@ -662,7 +663,8 @@ TileConfigMap BuildStaticSpatialConfig(
   // { warp_num, tree_reduce, grid_reduce, spatial_inner, reduce_method }
 
   if (last_dim == "R") {
-    int64_t rd_block_num = FloorPow2(sm_count / spatial_numel);
+    int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
+    int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
     collector({1, kMaxNumel, 1, 2048},
               {8, 256, 1, 1, 1, -1, BlockReduceMethod()});
@@ -679,7 +681,7 @@ TileConfigMap BuildStaticSpatialConfig(
     }
 
   } else {  // last_dim == "S"
-    int64_t sp_block_num = CeilDiv(spatial_numel, 32);
+    int64_t sp_block_num = std::max(CeilDiv(spatial_numel, 32), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {

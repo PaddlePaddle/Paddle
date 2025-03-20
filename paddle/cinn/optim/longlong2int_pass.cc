@@ -71,9 +71,10 @@ class CheckOverflow : public ir::stmt::StmtVisitor<> {
 
     if (is_overflow_) return;
 
+    int64_t prev_product = curr_product_;
     curr_product_ *= for_stmt->extent().as_int64();
     VisitBlock(for_stmt->body());
-    curr_product_ /= for_stmt->extent().as_int64();
+    curr_product_ = prev_product;
   }
 
   void VisitStmt(const Schedule& schedule_stmt) override {
