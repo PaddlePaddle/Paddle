@@ -891,7 +891,12 @@ class UserDefinedGeneratorFunctionVariable(FunctionVariable):
             inline_gen_executor = OpcodeInlineGeneratorExecutor(
                 vframe, code_var, self.graph
             )
-            return inline_gen_executor.inline_call()
+            gen = inline_gen_executor.inline_call()
+            assert isinstance(
+                gen, GeneratorVariable
+            ), f"GeneratorFunction calling result should be GeneratorVariable, but got {type(gen)}"
+            gen.tracker = DummyTracker([self, *args, *kwargs.values()])
+            return gen
         return GeneratorVariable(
             code_var,
             vframe,
