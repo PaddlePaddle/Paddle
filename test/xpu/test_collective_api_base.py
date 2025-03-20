@@ -243,7 +243,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
-                'XPUAPI_DEBUG': '0x1',
+                # 'XPUAPI_DEBUG': '0x1',
             }
 
             env1 = {
@@ -252,7 +252,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
-                'XPUAPI_DEBUG': '0x1',
+                # 'XPUAPI_DEBUG': '0x1',
             }
         # update environment
         env0.update(envs)
@@ -299,8 +299,8 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        sys.stdout.write(f'trainer 0 stdout: {tr0_out}\n')
-        sys.stdout.write(f'trainer 1 stdout: {tr1_out}\n')
+        # sys.stdout.write(f'trainer 0 stdout: {tr0_out}\n')
+        # sys.stdout.write(f'trainer 1 stdout: {tr1_out}\n')
         with open(path0, "r") as f:
             sys.stderr.write(f'trainer 0 stderr file: {f.read()}\n')
         with open(path1, "r") as f:
@@ -536,6 +536,31 @@ class TestDistBase(unittest.TestCase):
             )
             tr0_out = np.vstack(tr0_out)
             tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_unequal_split":
+            half_dim0 = input1.shape[0] // 2
+            half_dim1 = input1.shape[1] // 2
+            need_result1 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, : half_dim1 - 1].flatten(),
+                    input2[half_dim0 - 1 :, : half_dim1 - 2].flatten(),
+                ],
+                axis=0,
+            )
+            need_result2 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, half_dim1 - 1 :].flatten(),
+                    input2[half_dim0 - 1 :, half_dim1 - 2 :].flatten(),
+                ],
+                axis=0,
+            )
+            tr0_out = np.concatenate([out.flatten() for out in tr0_out])
+            tr1_out = np.concatenate([out.flatten() for out in tr1_out])
             np.testing.assert_allclose(
                 tr0_out, need_result1, rtol=1e-05, atol=1e-05
             )

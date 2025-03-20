@@ -19,6 +19,7 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace phi::distributed {
 
@@ -104,6 +105,46 @@ void BKCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
                                             XPUMemcpyKind::XPU_DEVICE_TO_HOST));
       VLOG(3) << "Dynamic check recv metadata, shape: " << in_shape_host;
       CheckShape(out_tensor, in_shape_host);
+    }
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_free(in_shape_device));
+  }
+}
+
+void BKCLDynamicCheck::CheckAlltoAllShape(
+    const std::vector<phi::DenseTensor>& out_tensor,
+    const std::vector<phi::DenseTensor>& in_tensor,
+    int cur_rank,
+    int world_size,
+    BKCLContext_t comm) {
+  int64_t first_dtype = static_cast<int64_t>(in_tensor[0].dtype());
+  constexpr int kSize = sizeof(int64_t);
+  CheckDataType(in_tensor[0], /*root_rank*/ 0, cur_rank, comm);
+  for (int rank = 0; rank < world_size; ++rank) {
+    CheckDataType(in_tensor[rank], first_dtype);
+    CheckDataType(out_tensor[rank], first_dtype);
+
+    int64_t in_shape_host = in_tensor[rank].numel();
+    int64_t* in_shape_device;
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_malloc(
+        reinterpret_cast<void**>(&in_shape_device), kSize * world_size));
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(in_shape_device + cur_rank,
+                                          &in_shape_host,
+                                          kSize,
+                                          XPUMemcpyKind::XPU_HOST_TO_DEVICE));
+    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_gather(
+        comm, in_shape_device + cur_rank, 1, in_shape_device, BKCL_INT64, 0));
+    if (rank == cur_rank) {
+      std::vector<int64_t> in_shapes_recv_host(world_size);
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+      PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(in_shapes_recv_host.data(),
+                                            in_shape_device,
+                                            kSize * world_size,
+                                            XPUMemcpyKind::XPU_DEVICE_TO_HOST));
+      VLOG(3) << "Dynamic check recv metadata, shape: "
+              << paddle::string::join_strings(in_shapes_recv_host, ',');
+      for (int out_rank = 0; out_rank < world_size; ++out_rank) {
+        CheckShape(out_tensor[out_rank], in_shapes_recv_host[out_rank]);
+      }
     }
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_free(in_shape_device));
   }

@@ -40,6 +40,7 @@ if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl
     SRCS process_group_bkcl.cc bkcl_tools.cc common.cc
+         process_group_kernel_utils.cc
     DEPS process_group phi)
 
   cc_library(

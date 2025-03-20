@@ -248,10 +248,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
   CheckTensorContiguous(in_tensor);
   CheckTensorContiguous(*out_tensor);
 
+  std::vector<int64_t> out_split_sizes;
+  std::vector<int64_t> in_split_sizes;
+  if (out_size_each_rank.empty() && in_size_each_rank.empty()) {
+    out_split_sizes =
+        std::vector<int64_t>(size_, out_tensor->dims()[0] / size_);
+    in_split_sizes = std::vector<int64_t>(size_, in_tensor.dims()[0] / size_);
+  } else {
+    out_split_sizes = out_size_each_rank;
+    in_split_sizes = in_size_each_rank;
+  }
+
   const phi::DDim& out_dim = out_tensor->dims();
   const phi::DDim& in_dim = in_tensor.dims();
-  CheckSizeOnEachRank(out_dim, out_size_each_rank, size_);
-  CheckSizeOnEachRank(in_dim, in_size_each_rank, size_);
+  CheckSizeOnEachRank(out_dim, out_split_sizes, size_);
+  CheckSizeOnEachRank(in_dim, in_split_sizes, size_);
 
   // NOTE: Since `all_to_all` needs other processes' participation, it cannot
   // simply be covered by static checks. Factors are set to 0 here to skip the
@@ -270,9 +281,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
         std::vector<size_t> send_count, recv_count;
         std::vector<phi::DataType> send_dtype, recv_dtype;
         for (auto i = 0; i < size_; i++) {
-          in_numel = in_size_each_rank[i] * in_row_size;
+          in_numel = in_split_sizes[i] * in_row_size;
           input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
-          out_numel = out_size_each_rank[i] * out_row_size;
+          out_numel = out_split_sizes[i] * out_row_size;
           output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
           in_offset += in_numel;
           out_offset += out_numel;
@@ -628,11 +639,15 @@ void ProcessGroupCustom::SyncCalcStream(const Place& place) {
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
     std::function<void(const phi::stream::Stream&)> fn,
-    const phi::DenseTensor& tensor,
+    const std::vector<phi::DenseTensor>& tensors,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  const auto& place = tensor.place();
+  PADDLE_ENFORCE_GT(
+      tensors.size(),
+      0,
+      common::errors::InvalidArgument("Num of tensors must be greater than 0"));
+  const auto& place = tensors[0].place();
   const auto& key = GetKeyFromPlace(place);
 
   phi::DeviceGuard guard(place);
@@ -655,12 +670,24 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
 
   if (!use_calc_stream) {
     if (FLAGS_use_stream_safe_cuda_allocator) {
-      memory::RecordStream(tensor.Holder(), xccl_stream.raw_stream());
+      for (size_t i = 0; i < tensors.size(); ++i) {
+        memory::RecordStream(tensors[i].Holder(), xccl_stream.raw_stream());
+      }
     }
     task->UpdateWaitChain(*comm_ctx);
   }
 
   return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
+    std::function<void(const phi::stream::Stream&)> fn,
+    const phi::DenseTensor& tensor,
+    CommType comm_type,
+    bool sync_op,
+    bool use_calc_stream) {
+  const std::vector<phi::DenseTensor> tensors = {tensor};
+  return RunFnInXCCLEnv(fn, tensors, comm_type, sync_op, use_calc_stream);
 }
 
 // TODO(sunyilun): methods below will be removed later
@@ -1056,6 +1083,86 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
             stream);
       },
       CommType::ALLTOALL);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
+    std::vector<phi::DenseTensor>* out_tensors,
+    const std::vector<phi::DenseTensor>& in_tensors,
+    bool sync_op,
+    bool use_calc_stream) {
+  CheckTensorContiguous(in_tensors);
+  CheckTensorContiguous(*out_tensors);
+  CheckTensorSamePlace(in_tensors);
+  CheckTensorSamePlace(*out_tensors);
+  phi::distributed::CommStaticCheck::CheckDataType(*out_tensors, in_tensors);
+
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(*out_tensors, device_type_),
+      true,
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
+
+  PADDLE_ENFORCE_EQ(
+      out_tensors->size(),
+      size_,
+      common::errors::InvalidArgument(
+          "Number of out tensors[%d] do not match the world size[%d].",
+          out_tensors->size(),
+          size_));
+  PADDLE_ENFORCE_EQ(
+      in_tensors.size(),
+      size_,
+      common::errors::InvalidArgument(
+          "Number of in tensors[%d] do not match the world size[%d].",
+          in_tensors.size(),
+          size_));
+
+  // NOTE: Since `all_to_all` needs other processes' participation, it cannot
+  // simply be covered by static checks. Factors are set to 0 here to skip the
+  // shape check. Its shape check will be done by dynamic checks with
+  // FLAGS_enable_xccl_dynamic_check.
+  return RunFnInXCCLEnv(
+      [&](const phi::stream::Stream& stream) {
+        auto comm_context = this->GetCommContext();
+
+        int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
+
+        std::vector<const void*> send_buf;
+        std::vector<void*> recv_buf;
+        std::vector<size_t> send_count, recv_count;
+        std::vector<phi::DataType> send_dtype, recv_dtype;
+        for (auto i = 0; i < size_; i++) {
+          in_numel = in_tensors[i].numel();
+          out_numel = (*out_tensors)[i].numel();
+          in_offset += in_numel;
+          out_offset += out_numel;
+          send_buf.push_back(in_tensors[i].data());
+          recv_buf.push_back((*out_tensors)[i].data());
+          send_count.push_back(in_numel);
+          recv_count.push_back(out_numel);
+          send_dtype.push_back(in_tensors[i].dtype());
+          recv_dtype.push_back((*out_tensors)[i].dtype());
+        }
+
+        phi::DeviceManager::CCLAllToAll(device_type_,
+                                        send_buf.data(),
+                                        send_count.data(),
+                                        send_dtype.data(),
+                                        recv_buf.data(),
+                                        recv_count.data(),
+                                        recv_dtype.data(),
+                                        rank_,
+                                        size_,
+                                        comm_context->GetXcclComm(),
+                                        stream);
+      },
+      in_tensors,
+      CommType::ALLTOALL,
+      sync_op,
+      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(

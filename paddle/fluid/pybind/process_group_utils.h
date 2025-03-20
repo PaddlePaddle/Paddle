@@ -380,5 +380,14 @@ inline std::vector<int64_t> GetDefaultSplitSizes(const phi::DenseTensor &tensor,
   return std::vector<int64_t>(world_size, tensor.dims()[0] / world_size);
 }
 
+inline std::vector<phi::DenseTensor> ToDenseTensors(
+    const std::vector<Tensor> &tensors) {
+  std::vector<phi::DenseTensor> ret;
+  for (auto &t : tensors) {
+    ret.emplace_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
+  }
+  return ret;
+}
+
 }  //  namespace pybind
 }  //  namespace paddle
