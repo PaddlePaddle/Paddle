@@ -1656,7 +1656,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::BOOL,
                      phi::DataType::FLOAT32,
                      phi::DataType::INT64})},
-      {"weight_quantize", XPUKernelSet({phi::DataType::FLOAT16})},
+      {"weight_quantize", XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::BFLOAT16})},
       {"where_grad",
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::INT64,

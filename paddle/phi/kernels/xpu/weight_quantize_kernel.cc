@@ -30,9 +30,8 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* scale) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  typedef paddle::float16 data_t;
   auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
-  const auto x_transpose = phi::Transpose<phi::dtype::float16, Context>(
+  const auto x_transpose = phi::Transpose<T, Context>(
       dev_ctx, x, std::vector<int>({1, 0}));
   int m = x_transpose.dims()[0];
   int n = x_transpose.dims()[1];
@@ -73,7 +72,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 
     int ret = baidu::xpu::xftkernel::xft_quant2d<XPUType>(
         xpu_ctx->x_context(),
-        reinterpret_cast<const XPUType*>(x_transpose.template data<data_t>()),
+        reinterpret_cast<const XPUType*>(x_transpose.template data<T>()),
         out->data<int8_t>(),
         scale->data<float>(),
         m,
@@ -103,4 +102,5 @@ PD_REGISTER_KERNEL(weight_quantize,
                    XPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
