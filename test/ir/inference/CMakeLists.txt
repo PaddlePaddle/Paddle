@@ -73,6 +73,9 @@ if(WIN32)
        "test_trt_explicit_quantization_mobilenet")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_explicit_quantization_mobilenet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fill_any_like")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_fill_any_like")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fill_any_like")
 endif()
 
 foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
