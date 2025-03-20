@@ -369,7 +369,9 @@ class TensorFunctionVariable(FunctionVariable):
     def call_function(self, /, *args, **kwargs):
         if is_break_graph_tensor_methods(self.method_name):
             raise BreakGraphError(
-                DataDependencyOperationBreak("call break_graph_tensor_method.")
+                DataDependencyOperationBreak(
+                    f"Calling `Tensor.{self.method_name}` causes breakgraph."
+                )
             )
         return self.graph.call_tensor_method(self.method_name, *args, **kwargs)
 
