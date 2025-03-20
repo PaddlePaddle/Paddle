@@ -39,8 +39,10 @@ IR_API PriorityComparisonStatus CompareDimExprPriority(const DimExpr& lhs,
 
 enum class DimExprCompareResult {
   GT,       // lhs is greater than rhs
+  GE,       // lhs is greater than or equal to rhs
   EQ,       // lhs and rhs is equal
   LT,       // lhs is less than rhs
+  LE,       // lhs is less than or equal to rhs
   UNKNOWN,  // lhs and rhs is not comparable
 };
 IR_API DimExprCompareResult Compare(const DimExpr& lhs, const DimExpr& rhs);
