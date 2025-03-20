@@ -18,6 +18,13 @@
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/common/place.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
+#include <cuda_runtime.h>
+#define STREAM_TYPE cudaStream_t
+#else
+#define STREAM_TYPE void*
+#endif
+
 namespace phi {
 
 class Device;
@@ -27,7 +34,7 @@ class Event;
 }  // namespace event
 
 namespace stream {
-using stream_t = void*;
+using stream_t = STREAM_TYPE;
 class Stream {
  public:
   enum class Priority : uint8_t {

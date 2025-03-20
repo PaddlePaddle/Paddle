@@ -17,6 +17,10 @@ limitations under the License. */
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/stream.h"
 
+#include "unsupported/Eigen/CXX11/Tensor"
+
+#include "paddle/phi/core/enforce.h"
+
 namespace phi {
 
 struct CustomContext::Impl {
@@ -26,9 +30,9 @@ struct CustomContext::Impl {
 
   void Init() {
     phi::DeviceGuard guard(place_);
-    // stream_.reset(new phi::stream::Stream());
-    // stream_->Init(place_);
-    stream_ = new CUDAStream(place_);
+    stream_.reset(new phi::stream::Stream());
+    stream_->Init(place_);
+    // stream_ = new CUDAStream(place_);
   }
 
   const Place& GetPlace() const { return place_; }
@@ -39,9 +43,9 @@ struct CustomContext::Impl {
 
   std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
 
-  // void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
-  //   stream_ = stream;
-  // }
+  void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+    stream_ = stream;
+  }
 
   // void InitEigenDevice() {
   //   PADDLE_ENFORCE_NOT_NULL(
@@ -78,8 +82,8 @@ struct CustomContext::Impl {
 
   Place place_;
 
-  // std::shared_ptr<phi::stream::Stream> stream_;
-  CUDAStream* stream_{nullptr};
+  std::shared_ptr<phi::stream::Stream> stream_;
+  // CUDAStream* stream_{nullptr};
 
   phi::ccl::CCLComm comm_;
 
@@ -96,7 +100,7 @@ struct CustomContext::Impl {
   std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   std::once_flag flag_eigen_device_;
 
-  std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
+  // std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
 void CustomContext::Init() { impl_->Init(); }
@@ -113,7 +117,7 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
   impl_->SetStream(stream);
 }
 
-void CustomContext::SetStream(gpuStream_t stream) { impl_->SetStream(stream); }
+// void CustomContext::SetStream(gpuStream_t stream) { impl_->SetStream(stream); }
 void CustomContext::Wait() const { return impl_->Wait(); }
 
 CustomContext::CustomContext(const CustomPlace& place)
