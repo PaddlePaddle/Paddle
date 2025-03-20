@@ -26,6 +26,7 @@ import paddle
 from paddle.framework import core
 
 from ....infer_meta import (
+    DistInfo,
     MetaInfo,
     SymbolicBool,
     SymbolicFloat,
@@ -482,7 +483,7 @@ class TensorVariable(VariableBase):
         # A quick check path for PIR, we don't need dtype conversion for AMP in PIR
         meta = self.origin_meta
         dtype_str, dtype_free_vars = stringify_pyobject(meta.dtype)
-        return [
+        guards = [
             # Check rank
             StringifiedExpression(
                 f"len({{}}.shape) == {len(meta.shape)}",
@@ -511,7 +512,68 @@ class TensorVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
+            # Check whether this tensor is distributed
+            StringifiedExpression(
+                f"{{}}.is_dist() is {(self.meta.dist_info is not None)!r}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
         ]
+        if self.meta.dist_info is not None:
+            tensor_dist_info = self.meta.dist_info
+            guards.extend(
+                [
+                    # check mesh shape
+                    StringifiedExpression(
+                        f"DistInfo.from_tensor({{}}).mesh.shape == {tensor_dist_info.mesh.shape}",
+                        [frame_value_tracer],
+                        union_free_vars(
+                            frame_value_tracer.free_vars,
+                            {
+                                "paddle": paddle,
+                                "DistInfo": DistInfo,
+                            },
+                        ),
+                    ),
+                    # check mesh process ids
+                    StringifiedExpression(
+                        f"DistInfo.from_tensor({{}}).mesh.process_ids == {tensor_dist_info.mesh.process_ids}",
+                        [frame_value_tracer],
+                        union_free_vars(
+                            frame_value_tracer.free_vars,
+                            {
+                                "paddle": paddle,
+                                "DistInfo": DistInfo,
+                            },
+                        ),
+                    ),
+                    # check dims mapping
+                    StringifiedExpression(
+                        f"DistInfo.from_tensor({{}}).dims_mapping == {tensor_dist_info.dims_mapping}",
+                        [frame_value_tracer],
+                        union_free_vars(
+                            frame_value_tracer.free_vars,
+                            {
+                                "paddle": paddle,
+                                "DistInfo": DistInfo,
+                            },
+                        ),
+                    ),
+                    # check local shape
+                    StringifiedExpression(
+                        f"DistInfo.from_tensor({{}}).local_shape == {tensor_dist_info.local_shape}",
+                        [frame_value_tracer],
+                        union_free_vars(
+                            frame_value_tracer.free_vars,
+                            {
+                                "paddle": paddle,
+                                "DistInfo": DistInfo,
+                            },
+                        ),
+                    ),
+                ]
+            )
+        return guards
 
     def get_iter(self):
         from .iter import SequenceIterVariable
