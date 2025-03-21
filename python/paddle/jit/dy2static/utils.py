@@ -662,9 +662,7 @@ def cinn_is_enabled(build_strategy, backend):
         return True
     if build_strategy is not None and build_strategy.build_cinn_pass:
         return True
-
-    value = os.getenv('FLAGS_use_cinn')
-    if value is not None and value.lower() in ['true', '1']:
+    if paddle.base.framework.in_cinn_mode():
         return True
     return False
 
