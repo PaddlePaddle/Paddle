@@ -3284,7 +3284,7 @@ class ShardDataloader:
         shard_dims (list|tuple|str|int]): The mesh dimension to shard the dataloader.
             Users can specify the shard_dim of each mesh or specify a single shard_dim for all meshes.
             Default: None, which means the data loader will not be split, i.e. mp.
-        is_dataset_split (bool): Whether the dataset has been splitted.
+        is_dataset_split (bool): Whether the dataset has been split.
         dense_tensor_idx (list): A paired 2D list specifies the index of the dense_tensor in the output of dataloader.
             It allows users to identify which elements within each output batch are dense_tensor.
             first dense_tensor: the dense_tensor return by dataloader.
@@ -3613,7 +3613,7 @@ def shard_dataloader(
             The mesh dimension to shard the dataloader.
             Users can specify the shard_dim of each mesh or specify a single shard_dim for all meshes.
             Default: None, which means the data loader will not be split, i.e. mp.
-        is_dataset_split (bool): Whether the dataset has been splitted, Default: False.
+        is_dataset_split (bool): Whether the dataset has been split, Default: False.
         dense_tensor_idx (list): A paired 2D list specifies the index of the dense_tensor in the output of dataloader.
             It allows users to identify which elements within each output batch are dense_tensor.
             first dense_tensor: the dense_tensor return by dataloader.
