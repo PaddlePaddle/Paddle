@@ -39,6 +39,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
@@ -151,6 +152,10 @@ void CommContextManager::CreateXCCLCommContext(
     int rank,
     int size,
     const std::string& hash_key) {
+  auto& comm_context_manager = CommContextManager::GetInstance();
+  if (comm_context_manager.Has(unique_comm_key)) {
+    return;
+  }
   phi::ccl::CCLRootId xccl_root_id;
   if (rank == 0) {
     phi::DeviceManager::CCLGetUniqueId(place.GetDeviceType(), &xccl_root_id);
@@ -170,7 +175,27 @@ void CommContextManager::CreateXCCLCommContext(
           << phi::ccl::SerializeXCCLUniqueId(xccl_root_id);
   auto xccl_comm_context =
       std::make_unique<XCCLCommContext>(place, rank, size, xccl_root_id);
-  auto& comm_context_manager = CommContextManager::GetInstance();
+  if (CommContextManager::device_id != -1) {
+    std::unique_ptr<phi::CustomContext> dev_ctx(
+
+        new phi::CustomContext(phi::CustomPlace(place)));
+    // dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
+    //     CommContextManager::device_id, dev_ctx->GetStream()));
+    // dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
+    // dev_ctx->SetZeroAllocator(
+    //     phi::memory_utils::GetZeroAllocator(CommContextManager::device_id));
+    // dev_ctx->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
+    // dev_ctx->SetPinnedAllocator(phi::memory_utils::GetPinnedAllocator());
+    // dev_ctx->PartialInitWithAllocator();
+    // auto compute_event =
+    //     phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
+    // auto comm_event =
+    //     phi::memory_utils::GetCudaEvent(CommContextManager::device_id);
+
+    xccl_comm_context->SetDevContext(std::move(dev_ctx));
+    // xccl_comm_context->SetComputeEvent(std::move(compute_event));
+    // xccl_comm_context->SetCommEvent(std::move(comm_event));
+  }
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(xccl_comm_context));
 }

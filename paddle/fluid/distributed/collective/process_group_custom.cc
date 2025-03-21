@@ -148,7 +148,6 @@ phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
     return iter->second.get();
   }
 }
-
 phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) {
   const std::string& key = GetKeyFromPlace(place);
   phi::DeviceGuard guard(place);
@@ -162,6 +161,16 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) {
       common::errors::NotFound(
           "Cannot find the XCCL communicator in this process group."));
   return iter->second->xccl_comm();
+}
+
+phi::distributed::XCCLCommContext* ProcessGroupCustom::GetOrCreateCommContext(
+    const Place& place) {
+  const std::string& key = GetKeyFromPlace(place);
+  phi::DeviceGuard guard(place);
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+    CreateXCCLEnvCache(place, key);
+  }
+  return this->GetCommContext();
 }
 
 std::string ProcessGroupCustom::GetCommName(int rank) {
@@ -603,24 +612,24 @@ void ProcessGroupCustom::CreateXCCLEnvCache(const Place& place,
 
   auto* calc_ctx = static_cast<phi::CustomContext*>(
       phi::DeviceContextPool::Instance().Get(place));
-  auto comm_ctx = std::make_unique<phi::CustomContext>(place);
-  comm_ctx->SetAllocator(
+  auto custom_context = std::make_unique<phi::CustomContext>(place);
+  custom_context->SetAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetAllocator()));
-  comm_ctx->SetHostAllocator(
+  custom_context->SetHostAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetHostAllocator()));
-  comm_ctx->SetZeroAllocator(
+  custom_context->SetZeroAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetZeroAllocator()));
-  comm_ctx->SetHostZeroAllocator(
+  custom_context->SetHostZeroAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetHostZeroAllocator()));
 
   auto xccl_comm_ctx = this->GetCommContext();
-  comm_ctx->set_xccl_comm(xccl_comm_ctx->GetXcclComm());
+  custom_context->set_xccl_comm(xccl_comm_ctx->GetXcclComm());
 
   auto xccl_event = std::make_unique<phi::event::Event>();
   xccl_event->Init(place);
   place_to_calc_event_.emplace(place_key, std::move(xccl_event));
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
-  place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
+  place_to_comm_ctx_.emplace(place_key, std::move(custom_context));
 
   // TODO(sunyilun): for compatibility, will be removed later
   std::vector<phi::CustomContext*> comm_ctx_wrapper{
@@ -632,9 +641,9 @@ void ProcessGroupCustom::SyncCalcStream(const Place& place) {
   const std::string& key = GetKeyFromPlace(place);
   auto& calc_event = place_to_calc_event_.at(key);
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
-  const auto* comm_ctx = place_to_comm_ctx_.at(key).get();
+  const auto* custom_context = place_to_comm_ctx_.at(key).get();
   calc_event->Record(calc_ctx->GetStream().get());
-  comm_ctx->GetStream()->WaitEvent(calc_event.get());
+  custom_context->GetStream()->WaitEvent(calc_event.get());
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
@@ -663,9 +672,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
   auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
 
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
-  const auto& comm_ctx = place_to_comm_ctx_.at(key);
+  const auto& custom_context = place_to_comm_ctx_.at(key);
   auto& xccl_stream =
-      use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
+      use_calc_stream ? *calc_ctx->GetStream() : *custom_context->GetStream();
   fn(xccl_stream);
 
   if (!use_calc_stream) {
@@ -674,7 +683,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
         memory::RecordStream(tensors[i].Holder(), xccl_stream.raw_stream());
       }
     }
-    task->UpdateWaitChain(*comm_ctx);
+    task->UpdateWaitChain(*custom_context);
   }
 
   return task;
