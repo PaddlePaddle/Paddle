@@ -61,7 +61,7 @@ class CustomContext : public DeviceContext,
 
   void WaitStreamCallback() const { return GetStream()->WaitCallback(); }
 
-  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Eigen::DefaultDevice* eigen_device() const;
 
   static const char* name() { return "CustomContext"; }
 
@@ -78,15 +78,38 @@ class CustomContext : public DeviceContext,
   void set_xccl_comm(phi::ccl::CCLComm comm);
 
   ////////////////////////for cuda///////////////////////////////
+  /*! \brief  Return compute capability in the device context. */
   int GetComputeCapability() const;
 
+  /*! \brief  Return the SM count in the device context */
   int GetSMCount() const;
 
+  /*! \brief  Return the Max thread num of block in the device context */
   int GetMaxThreadsPerBlock() const;
 
+  /*! \brief  Return the max grid dim size in the device context */
   std::array<unsigned int, 3> GetCUDAMaxGridDimSize() const;
 
+  /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
+
+  void SetEigenDevice(Eigen::DefaultDevice*);
+  void SetEigenDevice(std::function<Eigen::DefaultDevice*()>&&);
+
+  void SetComputeCapability(int val);
+
+  void SetMaxThreadsPerMultiProcessor(int val);
+
+  void SetMultiProcessors(int val);
+
+  void SetMaxThreadsPerBlock(int val);
+
+  void SetMaxGridDimSize(const std::array<unsigned int, 3>& val);
+
+  void SetDriverVersion(int val);
+
+  void SetRuntimeVersion(int val);
+
 
  private:
   CustomContext();
