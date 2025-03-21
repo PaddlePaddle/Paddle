@@ -258,8 +258,9 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
             )
         ]
     return [
-        StringifiedExpression(
+        FasterStringifiedExpression(
             f"{{}} == {obj_free_var_name}",
+            paddle.framework.core.ValueMatchGuard(weak_ref_obj),
             [frame_value_tracer],
             union_free_vars(
                 frame_value_tracer.free_vars,

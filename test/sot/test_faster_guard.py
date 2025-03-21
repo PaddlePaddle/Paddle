@@ -149,11 +149,6 @@ class TestFasterGuardGroup(unittest.TestCase):
         self.assertTrue(guard_group.check(1))
         self.assertFalse(guard_group.check(2))
 
-    def test_range_match_guard(self):
-        guard_range = paddle.framework.core.RangeMatchGuard(range(1, 10, 2))
-        self.assertTrue(guard_range.check(range(1, 10, 2)))
-        self.assertFalse(guard_range.check(range(11)))
-
 
 if __name__ == "__main__":
     unittest.main()

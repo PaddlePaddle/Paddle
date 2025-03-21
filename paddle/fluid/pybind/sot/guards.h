@@ -187,16 +187,6 @@ class LayerMatchGuard : public GuardBase {
   bool training_;
 };
 
-class RangeMatchGuard : public GuardGroup {
- public:
-  explicit RangeMatchGuard(const py::object& range_obj)
-      : GuardGroup({std::make_shared<TypeMatchGuard>(Py_TYPE(range_obj.ptr())),
-                    std::make_shared<AttributeMatchGuard>(range_obj, "start"),
-                    std::make_shared<AttributeMatchGuard>(range_obj, "stop"),
-                    std::make_shared<AttributeMatchGuard>(range_obj, "step")}) {
-  }
-};
-
 class InstanceCheckGuard : public GuardBase {
  public:
   explicit InstanceCheckGuard(const py::object& py_type)

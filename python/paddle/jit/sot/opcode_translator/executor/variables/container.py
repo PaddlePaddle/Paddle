@@ -728,8 +728,9 @@ class RangeVariable(ContainerVariable):
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            StringifiedExpression(
+            FasterStringifiedExpression(
                 "isinstance({0}, range)",
+                paddle.framework.core.InstanceCheckGuard(range),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             ),

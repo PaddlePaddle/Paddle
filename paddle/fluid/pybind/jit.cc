@@ -103,9 +103,6 @@ void BindGuard(pybind11::module *m) {
   py::class_<LayerMatchGuard, GuardBase, std::shared_ptr<LayerMatchGuard>>(
       *m, "LayerMatchGuard", R"DOC(LayerMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("layer_obj"));
-  py::class_<RangeMatchGuard, GuardBase, std::shared_ptr<RangeMatchGuard>>(
-      *m, "RangeMatchGuard", R"DOC(RangeMatchGuard Class.)DOC")
-      .def(py::init<const py::object &>(), py::arg("range_obj"));
   py::class_<InstanceCheckGuard,
              GuardBase,
              std::shared_ptr<InstanceCheckGuard>>(
