@@ -347,6 +347,7 @@ static const std::set<std::string> skip_cache_check_op_set = {
     "pd_op.arange",
     "pd_op.masked_select",
     "pd_op.sync_batch_norm_",
+    "pd_op.slice",
     // unneeded to cache
     "cinn_op.generate_shape",
 };
