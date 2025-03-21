@@ -27,9 +27,6 @@ os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 
 import paddle
 
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
-
 
 def generate_input_spec(rank_dtype_list):
     input_spec = []
@@ -52,7 +49,7 @@ class TestTrivialFusion(unittest.TestCase):
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec,
         )(dy_compute)
         st_out = static_compute(*inputs)

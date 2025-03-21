@@ -53,11 +53,9 @@ class TestBase(unittest.TestCase):
         if to_static:
             paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
                 net = paddle.jit.to_static(
                     net(),
-                    build_strategy=build_strategy,
+                    backend="CINN",
                     full_graph=True,
                     input_spec=self.input_specs,
                 )

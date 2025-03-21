@@ -28,9 +28,6 @@ from utils import check_jit_kernel_number
 
 import paddle
 
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
-
 
 class TestFusion(unittest.TestCase):
     def setUp(self):
@@ -44,7 +41,7 @@ class TestFusion(unittest.TestCase):
     ):
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec(),
         )(dy_compute)
         inputs = data_init()

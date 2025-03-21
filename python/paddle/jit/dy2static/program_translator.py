@@ -1613,8 +1613,6 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
-        # TODO(Aurelius84): Need a global FLAGS to enable/disable to_prim
-        enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
 
         if use_pir_api():
             concrete_program = ConcreteProgram.pir_from_func_spec(

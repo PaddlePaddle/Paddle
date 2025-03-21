@@ -170,6 +170,10 @@ def ignore_module(modules: list[ModuleType]) -> None:
 
 
 def _check_and_set_backend(backend, build_strategy):
+    if build_strategy.build_cinn_pass:
+        warnings.warn(
+            "Use `build_strategy.build_cinn_pass` to enable CINN is deprecated, please use `backend` instead."
+        )
     if backend not in ['CINN', None]:
         raise ValueError(
             f"The backend of to_static should be 'CINN' or None, but received {backend}."

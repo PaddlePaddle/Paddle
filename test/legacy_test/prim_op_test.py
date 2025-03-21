@@ -272,11 +272,14 @@ class OpTestUtils:
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+    if not paddle.framework.use_pir_api():
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.build_cinn_pass = use_cinn
+        return paddle.jit.to_static(
+            net, build_strategy=build_strategy, full_graph=True
+        )
+    backend = "CINN" if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend, full_graph=True)
 
 
 class PrimNet(paddle.nn.Layer):
