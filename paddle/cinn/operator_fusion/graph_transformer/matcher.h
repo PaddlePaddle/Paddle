@@ -136,43 +136,6 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
-struct CanFuseTrivialAndReduce {
-  bool operator()(PatternGraph graph,  // NOLINT
-                  const PatternNodePtr& upstream,
-                  const PatternNodePtr& downstream) {
-    PatternNodePtr reduce_node;
-    if (upstream->fusion_iters().reduce_iter_nums &&
-        !downstream->fusion_iters().reduce_iter_nums) {
-      reduce_node = upstream;
-    } else if (!upstream->fusion_iters().reduce_iter_nums &&
-               downstream->fusion_iters().reduce_iter_nums) {
-      reduce_node = downstream;
-    } else {
-      return true;
-    }
-    auto reduce_dims_product =
-        graph.iters_fusion_policy()->iters_manager()->GetReduceDimsProduct(
-            reduce_node->fusion_iters());
-    if (reduce_dims_product.isa<std::int64_t>()) {
-      return reduce_dims_product.dyn_cast<std::int64_t>() <= 1024 * 10;
-    } else {
-      return true;
-    }
-  }
-};
-
-struct DownstreamHasItersRelationMatcher {
-  bool operator()(PatternGraph graph, const PatternNodePtr& node) {  // NOLINT
-    return std::any_of(
-        node->downstream().begin(),
-        node->downstream().end(),
-        [&graph, &node](const PatternNodePtr& downstream) {
-          return !graph.iters_fusion_policy()->CheckItersRelation(node,
-                                                                  downstream);
-        });
-  }
-};
-
 struct CanAnchorFusionMatcher {
   bool operator()(const PatternGraph& graph,
                   const PatternNodePtr& upstream,
@@ -182,26 +145,6 @@ struct CanAnchorFusionMatcher {
            graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
                ->CanFuse(upstream, downstream);
-  }
-};
-
-struct CanFuseItersPermutationMatcher {
-  bool operator()(PatternGraph graph,  // NOLINT
-                  const PatternNodePtr& upstream,
-                  const PatternNodePtr& downstream) {
-    return StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
-                                                              upstream) &&
-           StmtPatternGraphMatcher<ItersPermutationPattern>()(graph,
-                                                              downstream) &&
-           graph.policy_manager()
-               .template GetPolicy<GeneralTopoPolicy>()
-               ->CanFuse(upstream, downstream) &&
-           graph.iters_fusion_policy()->CheckItersRelation(upstream,
-                                                           downstream) &&
-           (graph.iters_fusion_policy()->CanFuseSource2Target(downstream,
-                                                              upstream) ||
-            graph.iters_fusion_policy()->CanFuseSource2Target(upstream,
-                                                              downstream));
   }
 };
 
