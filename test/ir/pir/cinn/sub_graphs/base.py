@@ -51,7 +51,7 @@ class TestBase(unittest.TestCase):
     def train(self, net, to_static, with_prim=False, with_cinn=False):
         paddle.seed(123)
         if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
+            paddle.base.core._set_prim_all_enabled(with_prim)
             if with_cinn:
                 net = paddle.jit.to_static(
                     net(),

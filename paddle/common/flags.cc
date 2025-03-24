@@ -1675,6 +1675,8 @@ PHI_DEFINE_EXPORTED_string(
     prim_forward_blacklist,
     "",
     "It controls the forward blacklist ops not to be decomposed.");
+PHI_DEFINE_EXPORTED_bool(prim_forward, false, "enable prim_forward or not");
+PHI_DEFINE_EXPORTED_bool(prim_backward, false, "enable prim_backward or not");
 
 /**
  * Remove some redundant information when printing the pir program

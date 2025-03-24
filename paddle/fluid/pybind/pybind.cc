@@ -1151,6 +1151,8 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::SetFwdPrimEnabled);
   m.def("_is_fwd_prim_enabled",
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
+  m.def("_is_all_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsAllPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
   m.def("_is_eager_prim_enabled",
