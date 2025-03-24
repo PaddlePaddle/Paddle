@@ -52,14 +52,14 @@ def child_reader(queue):
         current_device = (
             paddle.get_device() if hasattr(paddle, "get_device") else "xpu"
         )
-        print("[Child] XPU device set to:", current_device)
+        # print("[Child] XPU device set to:", current_device)
     except Exception as e:
-        print("[Child] Exception during paddle.set_device:", e)
+        # print("[Child] Exception during paddle.set_device:", e)
         raise
 
     # Get the IPC metadata from the queue.
     ipc_meta = queue.get()
-    print("[Child] Received IPC metadata:", ipc_meta)
+    # print("[Child] Received IPC metadata:", ipc_meta)
 
     try:
         # Reconstruct the shared tensor.
@@ -67,14 +67,14 @@ def child_reader(queue):
         shared_tensor = paddle.to_tensor(
             paddle.base.core.LoDTensor._new_shared_xpu(ipc_meta)
         )
-        print(
-            "[Child] Reconstructed tensor on",
-            shared_tensor.place,
-            "with value:",
-            shared_tensor.numpy(),
-        )
+        # print(
+        #     "[Child] Reconstructed tensor on",
+        #     shared_tensor.place,
+        #     "with value:",
+        #     shared_tensor.numpy(),
+        # )
     except Exception as e:
-        print("[Child] Exception during reconstruction:", e)
+        # print("[Child] Exception during reconstruction:", e)
         raise
 
     # Verify that the content is as expected.
@@ -84,7 +84,7 @@ def child_reader(queue):
         raise ValueError(
             "Child: Reconstructed tensor does not match expected value!"
         )
-    print("[Child] Verification passed.")
+    # print("[Child] Verification passed.")
 
 
 class TestXpuIpcSharing(unittest.TestCase):
@@ -105,16 +105,16 @@ class TestXpuIpcSharing(unittest.TestCase):
         # the children will start fresh.)
         paddle.set_device("xpu")
         tensor = paddle.to_tensor(TEST_VALUE, dtype="int32").to("xpu")
-        print(
-            "[Parent] Created tensor on",
-            tensor.place,
-            "with value:",
-            tensor.cpu().numpy(),
-        )
+        # print(
+        #     "[Parent] Created tensor on",
+        #     tensor.place,
+        #     "with value:",
+        #     tensor.cpu().numpy(),
+        # )
 
         # Get the IPC metadata by calling _share_xpu on the tensor.
         ipc_meta = tensor.value().get_tensor()._share_xpu()
-        print("[Parent] IPC metadata:", ipc_meta)
+        # print("[Parent] IPC metadata:", ipc_meta)
 
         # Put the same metadata into the queue for each child.
         q.put(ipc_meta)

@@ -2097,7 +2097,22 @@ All parameter, weight, gradient are variables in Paddle.
                 paddle::memory::allocation::AllocatorFacade::Instance()
                     .GetZeroAllocator(phi::CPUPlace())
                     .get());
+            context->SetPinnedAllocator(
+                paddle::memory::allocation::AllocatorFacade::Instance()
+                    .GetAllocator(phi::XPUPinnedPlace())
+                    .get());
             return context;
+#endif
+          })
+      .def_static(
+          "create",
+          [](phi::XPUPinnedPlace &place) -> phi::DeviceContext * {
+#if !defined(PADDLE_WITH_XPU)
+            PADDLE_THROW(common::errors::PermissionDenied(
+                "Cannot use XPUPinnedPlace in CPU only version, "
+                "Please recompile or reinstall Paddle with XPU support."));
+#else
+            return new phi::XPUPinnedContext(place);
 #endif
           })
       .def_static("create",
@@ -2274,6 +2289,13 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const phi::GPUPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
+      .def("run",
+           [](OperatorBase &self,
+              const Scope &scope,
+              const phi::XPUPinnedPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
