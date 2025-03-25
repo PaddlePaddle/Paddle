@@ -132,6 +132,8 @@ static const phi::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<phi::XPUPlace>();
   } else if (py::isinstance<phi::GPUPinnedPlace>(place_obj)) {
     return place_obj.cast<phi::GPUPinnedPlace>();
+  } else if (py::isinstance<phi::XPUPinnedPlace>(place_obj)) {
+    return place_obj.cast<phi::XPUPinnedPlace>();
   } else if (py::isinstance<phi::IPUPlace>(place_obj)) {
     return place_obj.cast<phi::IPUPlace>();
   } else if (py::isinstance<phi::Place>(place_obj)) {
@@ -142,7 +144,7 @@ static const phi::Place PyObjectToPlace(const py::object &place_obj) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
         "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"
-        "CustomPlace"));
+        "XPUPinnedPlace/CustomPlace"));
   }
 }
 
@@ -186,6 +188,8 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
     SetTensorFromPyArray<phi::GPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(tensor, array, place, zero_copy);
+  } else if (phi::is_xpu_pinned_place(place)) {
+    SetTensorFromPyArray<phi::XPUPinnedPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_ipu_place(place)) {
     SetTensorFromPyArray<phi::IPUPlace>(tensor, array, place, zero_copy);
   } else if (phi::is_custom_place(place)) {
@@ -193,7 +197,8 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/"
+        "XPUPinnedPlace/IPUPlace/"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -713,6 +718,11 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
+            } else if (py::isinstance<phi::XPUPinnedPlace>(obj)) {
+              auto p = obj.cast<phi::XPUPinnedPlace *>();
+              self.SetExpectedPlace(*p);
+              VLOG(4) << "Tracer(" << &self << ")"
+                      << " set expected place " << *p;
             } else if (py::isinstance<phi::IPUPlace>(obj)) {
               auto p = obj.cast<phi::IPUPlace *>();
               self.SetExpectedPlace(*p);
@@ -731,7 +741,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(common::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, IPUPlace"
+                  "CPUPlace, IPUPlace, XPUPinnedPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -842,6 +852,7 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<phi::GPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::GPUPinnedPlace>);
+  m.def("varbase_copy", &VarBaseCopy<phi::XPUPinnedPlace>);
   m.def("varbase_copy", &VarBaseCopy<phi::CustomPlace>);
 
   m.def(

@@ -65,7 +65,6 @@ from paddle.framework import use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
 )
 
@@ -77,6 +76,11 @@ from .dy2static.program_translator import (
     StaticFunction,
     SymbolicStaticFunction,
     unwrap_decorators,
+)
+from .dy2static.utils import (
+    ENV_ENABLE_SOT,
+    Backend,
+    infer_use_cinn_backend,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
@@ -105,9 +109,6 @@ if TYPE_CHECKING:
     class _LoadOptions(TypedDict):
         model_filename: NotRequired[str]
         params_filename: NotRequired[str]
-
-
-ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
 
 _LayerT = TypeVar("_LayerT", bound=Layer)
@@ -167,19 +168,6 @@ def ignore_module(modules: list[ModuleType]) -> None:
 
     """
     add_ignore_module(modules)
-
-
-def _check_and_set_backend(backend, build_strategy):
-    if build_strategy.build_cinn_pass:
-        warnings.warn(
-            "Use `build_strategy.build_cinn_pass` to enable CINN is deprecated, please use `backend` instead."
-        )
-    if backend not in ['CINN', None]:
-        raise ValueError(
-            f"The backend of to_static should be 'CINN' or None, but received {backend}."
-        )
-    if backend == 'CINN':
-        build_strategy.build_cinn_pass = True
 
 
 class _ToStaticOptions(TypedDict):
@@ -285,6 +273,17 @@ def to_static(
     """
     property = kwargs.get("property", False)
     full_graph = kwargs.get("full_graph", None)
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
+        )
+    backend = Backend.from_arg(backend)
+    backend = (
+        Backend.CINN
+        if infer_use_cinn_backend(backend, build_strategy)
+        else Backend.PHI
+    )
 
     def decorated(python_func):
         """
@@ -322,13 +321,6 @@ def to_static(
         )
 
         return static_layer
-
-    build_strategy = build_strategy or BuildStrategy()
-    if not isinstance(build_strategy, BuildStrategy):
-        raise TypeError(
-            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
-        )
-    _check_and_set_backend(backend, build_strategy)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:

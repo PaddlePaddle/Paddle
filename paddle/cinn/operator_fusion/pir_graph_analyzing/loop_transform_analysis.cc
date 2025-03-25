@@ -624,11 +624,6 @@ std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
   }
   if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
   result = SimplifyTransformRoute(result, source.loop);
-  if (HasReshapeTransform(result)) {
-    // Temporarily disable reshape transform because of accuracy issue.
-    VLOG(4) << "Can not find valid loop transform because of reshape.";
-    return std::nullopt;
-  }
   VLOG(4) << "Found loop transform: " << result;
   return result;
 }

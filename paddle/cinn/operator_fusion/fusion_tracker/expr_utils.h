@@ -30,21 +30,6 @@ struct FusibleOp2Expr {
   }
 };
 
-struct ApplyItersTransform {
-  explicit ApplyItersTransform(const ir::Expr& expr,
-                               const ir::Expr& aligned_expr)
-      : expr_(expr), aligned_expr_(aligned_expr) {}
-  ir::Expr operator()(const IdentityItersTransform& trans) { return expr_; }
-  ir::Expr operator()(const RemoveOnesTransform& trans);
-  ir::Expr operator()(const TransposeItersTransform& trans);
-  ir::Expr operator()(const AppendItersTransform& trans);
-  ir::Expr operator()(const ReuseItersTransform& trans) { return expr_; }
-
- private:
-  ir::Expr expr_;
-  ir::Expr aligned_expr_;
-};
-
 struct ApplyAxisTransform {
   explicit ApplyAxisTransform(const ir::Expr& expr) : expr_(expr) {}
   ir::Expr operator()(const IdentityTransformPtr& trans) { return expr_; }

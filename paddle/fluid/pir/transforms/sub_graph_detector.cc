@@ -391,6 +391,18 @@ class SubgraphDetector {
     return op2subgraph_.at(op);
   }
 
+  std::vector<SubGraphPtr> GetSubgraphList() {
+    std::unordered_set<SubGraphPtr> subgraph_set;
+    std::vector<SubGraphPtr> subgraph_list;
+    for (const auto& op : sort_ops_) {
+      SubGraphPtr subgraph = GetOpSubgraph(op);
+      if (subgraph_set.count(subgraph)) continue;
+      subgraph_set.insert(subgraph);
+      subgraph_list.push_back(subgraph);
+    }
+    return subgraph_list;
+  }
+
   std::unordered_map<pir::Operation*, int> op2index_;
   std::vector<pir::Operation*> sort_ops_;
   std::unordered_map<pir::Operation*, SubGraphPtr> op2subgraph_;
@@ -543,18 +555,29 @@ void SubgraphDetector::SubgraphFusion() {
       }
     }
   }
+
+  VLOG(4) << "Merge non-related subgraphs";
+  auto subgraph_list = GetSubgraphList();
+  for (size_t i = 0; i < subgraph_list.size(); ++i) {
+    auto lhs = subgraph_list[i];
+    if (!lhs->substitute) continue;
+    for (size_t j = i + 1; j < subgraph_list.size();) {
+      auto rhs = subgraph_list[j];
+      if (lhs == rhs || !rhs->substitute || HasRoute(lhs, rhs) ||
+          HasRoute(rhs, lhs)) {
+        ++j;
+        continue;
+      }
+      MergeSource2Target(rhs, lhs);
+      subgraph_list.erase(subgraph_list.begin() + j);
+      VLOG(6) << "Merged subgraph: " << lhs->DebugStr();
+    }
+  }
 }
 
 std::vector<GroupOpsVec> SubgraphDetector::BuildGroups() {
   // 1. Get subgraph list in topo order
-  std::unordered_set<SubGraphPtr> subgraph_set;
-  std::vector<SubGraphPtr> subgraph_list;
-  for (const auto& op : sort_ops_) {
-    SubGraphPtr subgraph = GetOpSubgraph(op);
-    if (subgraph_set.count(subgraph)) continue;
-    subgraph_set.insert(subgraph);
-    subgraph_list.push_back(subgraph);
-  }
+  auto subgraph_list = GetSubgraphList();
   std::reverse(subgraph_list.begin(), subgraph_list.end());
   VLOG(6) << "Subgraphs after building groups: ";
   for (const auto& subgraph : subgraph_list) {

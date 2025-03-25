@@ -76,7 +76,7 @@ class TestLayer(unittest.TestCase):
         paddle.seed(123)
         net = LayerCase()
         if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
+            paddle.base.core._set_prim_all_enabled(with_prim)
             if with_cinn:
                 assert (
                     with_prim
