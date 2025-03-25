@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <cstddef>
 #include <cstring>
+#include <array>
 
 #ifdef __cplusplus
 extern "C" {
@@ -527,21 +528,50 @@ struct C_DeviceInterface {
    *
    * @param[size_t*]    compute_capability
    */
-  C_Status (*get_compute_capability)(size_t* compute_capability);
+  C_Status (*get_compute_capability)(const C_Device device, size_t* compute_capability);
 
   /**
    * @brief Get runtime version
    *
    * @param[size_t*]    version
    */
-  C_Status (*get_runtime_version)(size_t* version);
+  C_Status (*get_runtime_version)(const C_Device device, size_t* version);
 
   /**
    * @brief Get driver version
    *
    * @param[size_t*]    version
    */
-  C_Status (*get_driver_version)(size_t* version);
+  C_Status (*get_driver_version)(const C_Device device, size_t* version);
+
+  /**
+   * @brief Get MultiProcessors
+   *
+   * @param[size_t*]    multi_process
+   */
+  C_Status (*get_multi_process)(const C_Device device, size_t* multi_process);
+
+  /**
+   * @brief Get Max Threads Per MultiProcessor
+   *
+   * @param[size_t*]    threads_per_mp
+   */
+  C_Status (*get_max_threads_per_mp)(const C_Device device, size_t* threads_per_mp);
+
+  /**
+   * @brief Get Max Threads Per Block
+   *
+   * @param[size_t*]    threads_per_block
+   */
+  C_Status (*get_max_threads_per_block)(const C_Device device, size_t* threads_per_block);
+
+  /**
+   * @brief Get Max Grid Dim Size
+   *
+   * @param[std::array<unsigned int, 3>*]    grid_dim_size
+   */
+  C_Status (*get_max_grid_dim_size)(const C_Device device, std::array<unsigned int, 3>* grid_dim_size);
+
 
   void* reserved_info_api[8];
 

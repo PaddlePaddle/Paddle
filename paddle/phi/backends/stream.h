@@ -18,11 +18,11 @@
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/common/place.h"
 
-// ifndef STREAM_TYPE
-#if defined(PADDLE_WITH_CUDA)
-#include <cuda_runtime.h>
-#define STREAM_TYPE cudaStream_t
-#else
+#ifndef STREAM_TYPE
+// #if defined(PADDLE_WITH_CUDA)
+// #include <cuda_runtime.h>
+// #define STREAM_TYPE cudaStream_t
+// #else
 #define STREAM_TYPE void*
 #endif
 

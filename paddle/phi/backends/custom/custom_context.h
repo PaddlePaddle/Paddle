@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "unsupported/Eigen/CXX11/Tensor"
+#include "paddle/phi/backends/device_ext.h"
+#include "paddle/phi/backends/device_base.h"
 
 namespace Eigen {
 struct DefaultDevice;
@@ -93,8 +96,8 @@ class CustomContext : public DeviceContext,
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
 
-  void SetEigenDevice(Eigen::DefaultDevice*);
-  void SetEigenDevice(std::function<Eigen::DefaultDevice*()>&&);
+  void SetEigenDevice(Eigen::GpuDevice*);
+  void SetEigenDevice(std::function<Eigen::GpuDevice*()>&&);
 
   void SetComputeCapability(int val);
 
