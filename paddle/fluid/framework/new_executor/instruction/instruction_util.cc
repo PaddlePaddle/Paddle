@@ -52,7 +52,6 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #include "paddle/phi/core/platform/collective_helper.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -154,31 +153,17 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
                 .data() == false) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
-      if (FLAGS_dynamic_static_unified_comm) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<phi::DeviceContext*>(
-            static_cast<COMM_CONTEXT*>(
-                comm_context_manager.Get(std::to_string(ring_id)))
-                ->GetDevContext());
-      } else {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-        PADDLE_ENFORCE(
-            false,
-            common::errors::InvalidArgument(
-                "Custom device does not support old communication context."));
-#else
-        dev_ctx = PLATFORM_COMM_CONTEXT::Instance()
-                      .Get(ring_id, place)
-                      ->dev_context();
-#endif
-      }
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      dev_ctx = static_cast<phi::DeviceContext*>(
+          static_cast<COMM_CONTEXT*>(
+              comm_context_manager.Get(std::to_string(ring_id)))
+              ->GetDevContext());
       return dev_ctx;
     }
 
     // handle comm op
-    if (op_attributes.count("ring_id") != 0 &&
-        FLAGS_dynamic_static_unified_comm) {
+    if (op_attributes.count("ring_id") != 0) {
       int ring_id =
           op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
       const auto& comm_context_manager =

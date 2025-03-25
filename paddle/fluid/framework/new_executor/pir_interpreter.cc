@@ -81,7 +81,6 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
@@ -1213,17 +1212,11 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
         op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
             false) {
       int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
-      if (FLAGS_dynamic_static_unified_comm) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        stream = static_cast<phi::distributed::NCCLCommContext*>(
-                     comm_context_manager.Get(std::to_string(ring_id)))
-                     ->GetStream();
-      } else {
-        stream = platform::NCCLCommContext::Instance()
-                     .Get(ring_id, instr->DeviceContext().GetPlace())
-                     ->stream();
-      }
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      stream = static_cast<phi::distributed::NCCLCommContext*>(
+                   comm_context_manager.Get(std::to_string(ring_id)))
+                   ->GetStream();
     }
   }
 #endif
