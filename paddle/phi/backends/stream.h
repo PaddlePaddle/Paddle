@@ -18,12 +18,24 @@
 #include "paddle/phi/backends/callback_manager.h"
 #include "paddle/phi/common/place.h"
 
+// #ifndef STREAM_TYPE
+// // #if defined(PADDLE_WITH_CUDA)
+// // #include <cuda_runtime.h>
+// // #define STREAM_TYPE cudaStream_t
+// // #else
+// #define STREAM_TYPE void*
+// #endif
+
+#ifdef USE_CUDA_STREAM
+#include <cuda_runtime.h>  
+#endif
+
 #ifndef STREAM_TYPE
-// #if defined(PADDLE_WITH_CUDA)
-// #include <cuda_runtime.h>
-// #define STREAM_TYPE cudaStream_t
-// #else
+#ifdef USE_CUDA_STREAM
+#define STREAM_TYPE cudaStream_t
+#else
 #define STREAM_TYPE void*
+#endif
 #endif
 
 namespace phi {

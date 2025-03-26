@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
@@ -48,6 +49,8 @@ class DeviceInterface {  // Driver / Runtime
   virtual size_t GetMaxThreadsPerBlock(size_t dev_id);
 
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
+
+  virtual Eigen::GpuDevice* InitEigenDevice(size_t dev_id);
 
   // Platform
   //! Initialize

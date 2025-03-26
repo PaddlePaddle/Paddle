@@ -516,6 +516,13 @@ std::array<unsigned int, 3> DeviceManager::GetMaxGridDimSize(const Place& place)
   return dev_impl->GetMaxGridDimSize(device_id);
 }
 
+Eigen::GpuDevice* DeviceManager::InitEigenDevice(const Place& place) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->InitEigenDevice(device_id);
+}
+
 void DeviceManager::MemoryStats(const Place& place,
                                 size_t* total,
                                 size_t* free) {

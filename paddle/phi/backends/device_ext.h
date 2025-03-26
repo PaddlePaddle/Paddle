@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstring>
 #include <array>
+#include "unsupported/Eigen/CXX11/Tensor"
 
 #ifdef __cplusplus
 extern "C" {
@@ -572,6 +573,12 @@ struct C_DeviceInterface {
    */
   C_Status (*get_max_grid_dim_size)(const C_Device device, std::array<unsigned int, 3>* grid_dim_size);
 
+  /**
+   * @brief init eigen device
+   *
+   * @param[std::array<unsigned int, 3>*]    grid_dim_size
+   */
+   C_Status (*init_eigen_device)(Eigen::GpuDevice* eigen_device);
 
   void* reserved_info_api[8];
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-
+#include <complex>
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"

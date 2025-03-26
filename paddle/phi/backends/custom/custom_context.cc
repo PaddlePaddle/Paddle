@@ -20,10 +20,6 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/backends/device_manager.h"
 
-#ifndef EIGEN_DEVICE_TYPE
-#define EIGEN_DEVICE_TYPE void
-#endif
-
 namespace phi {
 
 struct CustomContext::Impl {
@@ -65,10 +61,10 @@ struct CustomContext::Impl {
   Eigen::GpuDevice* eigen_device() {
     std::call_once(flag_eigen_device_, [&]() {
       if (!eigen_device_) {
-        if (eigen_device_creator_) {
-          eigen_device_ = eigen_device_creator_();
+        if (!eigen_device_creator_) {
+          eigen_device_ = DeviceManager::InitEigenDevice(place_);
         } else {
-          // eigen_device_ = new Eigen::GpuDevice();
+          eigen_device_ = eigen_device_creator_();
         }
       }
     });
