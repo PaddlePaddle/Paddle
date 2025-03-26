@@ -751,6 +751,10 @@ std::vector<symbol::DimExpr> GetCompatibleValueAllDims(const pir::Value& value);
 symbol::DimExpr GetShapeProduct(const std::vector<symbol::DimExpr>& shape,
                                 int start,
                                 int end);
+inline symbol::DimExpr GetShapeProduct(
+    const std::vector<symbol::DimExpr>& shape) {
+  return GetShapeProduct(shape, 0, shape.size());
+}
 
 bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
                        const std::vector<symbol::DimExpr>& out_shape,

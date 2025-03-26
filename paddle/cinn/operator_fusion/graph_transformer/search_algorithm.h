@@ -70,28 +70,26 @@ struct SearchAlgorithm<NodePairPattern, GraphMatcher, GraphOperation> {
     VLOG(4) << "Create NodePairPattern algorithm.";
     graph_ = graph;
   }
-  std::optional<std::pair<PatternNodePtr, PatternNodePtr>> FindMatchedPair() {
-    for (PatternNodePtr i : graph_->all_pattern_nodes()) {
-      for (PatternNodePtr j : graph_->all_pattern_nodes()) {
-        if (i == j) continue;
-        const auto& pair = std::make_pair(i, j);
-        if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
-          visited_node_pair.insert(pair);
-          VLOG(4) << "Find Matched Node Pair: (" << i->id() << ", " << j->id()
-                  << ")";
-          return pair;
+  void operator()() {
+    std::vector<PatternNodePtr> nodes;
+    for (auto node : graph_->all_pattern_nodes()) {
+      nodes.push_back(node);
+    }
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      auto lhs = nodes[i];
+      for (size_t j = i + 1; j < nodes.size(); ++j) {
+        auto rhs = nodes[j];
+        if (GraphMatcher()(*graph_, lhs, rhs)) {
+          VLOG(4) << "Find Matched Node Pair: (" << lhs->id() << ", "
+                  << rhs->id() << ")";
+          auto merged = GraphOperation()(graph_, lhs, rhs);
+          if (merged == nullptr) continue;
+          lhs = nodes[i] = merged;
+          nodes.erase(nodes.begin() + j);
+          --j;
         }
       }
-    }
-    VLOG(4) << "Can't find matched node any more.";
-    return {};
-  }
-  void operator()() {
-    while (true) {
-      const auto& node = FindMatchedPair();
-      if (!node.has_value()) break;
-      const auto& [i, j] = node.value();
-      GraphOperation()(graph_, i, j);
     }
   }
 };

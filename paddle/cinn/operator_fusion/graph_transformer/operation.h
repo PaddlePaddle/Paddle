@@ -162,16 +162,16 @@ struct AnchorFusionOperation {
                             const PatternNodePtr& downstream) {
     bool upstream_is_anchor;
     AxisTransformRoute loop_transform;
-    auto loop_lift_transform = GetValidLoopTransformRoute(
+    auto loop_lift_transform = GetValidAdjacentLoopTransform(
         upstream->loop_axis_mapping(), downstream->loop_axis_mapping(), true);
     if (loop_lift_transform.has_value()) {
       loop_transform = loop_lift_transform.value();
       upstream_is_anchor = true;
     } else {
       auto loop_sink_transform =
-          GetValidLoopTransformRoute(upstream->loop_axis_mapping(),
-                                     downstream->loop_axis_mapping(),
-                                     false);
+          GetValidAdjacentLoopTransform(upstream->loop_axis_mapping(),
+                                        downstream->loop_axis_mapping(),
+                                        false);
       if (!loop_sink_transform.has_value()) {
         return upstream;
       }
@@ -239,29 +239,47 @@ struct SplitRecomputeOperation {
 
 struct HorizontalFusionOperation {
   PatternNodePtr operator()(PatternGraph* graph,
-                            const PatternNodePtr& i,
-                            const PatternNodePtr& j) {
-    VLOG(4) << "Start HorizontalFusionOperation";
-    PADDLE_ENFORCE_EQ(
-        GetPatternType(i->stmt_pattern()),
-        HorizontalFusionPattern::type(),
-        ::common::errors::PreconditionNotMet(
-            "The pattern of the first node should be HorizontalFusionPattern, "
-            "but got %s.",
-            GetPatternId(i->stmt_pattern())));
-    PADDLE_ENFORCE_EQ(
-        GetPatternType(j->stmt_pattern()),
-        HorizontalFusionPattern::type(),
-        ::common::errors::PreconditionNotMet(
-            "The pattern of the second node should be HorizontalFusionPattern, "
-            "but got %s.",
-            GetPatternId(j->stmt_pattern())));
-    auto merged_node = graph->MergeNode(i, j, MergePattern);
-    VLOG(4) << "MergeHorizontalPattern: \ni " << i->DebugStr() << "\nj "
-            << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
-    graph->RemoveNode(i);
-    graph->RemoveNode(j);
-    merged_node->UpdateTracker();
+                            const PatternNodePtr& lhs,
+                            const PatternNodePtr& rhs) {
+    AxisTransformRoute loop_transform;
+    bool lhs_is_anchor;
+    auto rhs_to_lhs_transform = GetValidHorizontalLoopTransform(
+        rhs->loop_axis_mapping(), lhs->loop_axis_mapping());
+    if (rhs_to_lhs_transform.has_value()) {
+      lhs_is_anchor = true;
+      loop_transform = rhs_to_lhs_transform.value();
+    } else {
+      auto lhs_to_rhs_transform = GetValidHorizontalLoopTransform(
+          lhs->loop_axis_mapping(), rhs->loop_axis_mapping());
+      if (!lhs_to_rhs_transform.has_value()) return nullptr;
+      lhs_is_anchor = false;
+      loop_transform = lhs_to_rhs_transform.value();
+    }
+    auto source = lhs_is_anchor ? rhs : lhs;
+    auto target = lhs_is_anchor ? lhs : rhs;
+    VLOG(4) << "Start HorizontalFusionOperation from " << source->id() << " to "
+            << target->id();
+    VLOG(4) << "source: \n" << source->DebugStr();
+    VLOG(4) << "target: \n" << target->DebugStr();
+    const auto merge_pattern_fn = [](const StmtPattern& source,
+                                     const StmtPattern& target) -> StmtPattern {
+      return AnchorPattern(
+          UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(target)),
+          std::make_shared<FusionTracker>(GetFusionTracker(source),
+                                          GetFusionTracker(target)),
+          HorizontalLoopAxisMappingMerge(GetPatternLoopAxisMapping(source),
+                                         GetPatternLoopAxisMapping(target)));
+    };
+    auto merged_node = graph->MergeNode(source, target, merge_pattern_fn);
+    auto source_tmp_id = GetNewTmpId(source->id());
+    merged_node->AppendInstr(std::make_shared<AxisTransformInstr>(
+        source->id(), source_tmp_id, loop_transform));
+    merged_node->AppendInstr(std::make_shared<CombineInstr>(
+        std::vector<std::string>{source_tmp_id, target->id()},
+        merged_node->id()));
+    graph->RemoveNode(source);
+    graph->RemoveNode(target);
+    VLOG(4) << "Merged: \n" << merged_node->DebugStr();
     return merged_node;
   }
 };
