@@ -14,8 +14,33 @@
 
 from paddle.base import core
 
+from .utils import *
+from .bench_func import (
+    BaseBenchFunc,
+    WeightedBenchFunc
+)
+from .candidate_generator import (
+    BaseCandidateGenerator,
+    BFGenerator,
+    # GridSearchCandidateGenerator
+)
+from .candidate_searcher import (
+    CandidateSearcher
+)
+from .ops_searcher import (
+    OpsSearcher
+)
+
+
 __all__ = []
 
 for name in dir(core.cinn.autotuner):
     globals()[name] = getattr(core.cinn.autotuner, name)
     __all__.append(name)
+
+
+
+
+
+
+
