@@ -93,11 +93,11 @@ ProcessGroupBKCL::ProcessGroupBKCL(
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_start());
 }
 
 void ProcessGroupBKCL::GroupEnd() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_end());
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(

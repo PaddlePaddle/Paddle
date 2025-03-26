@@ -36,6 +36,8 @@ from paddle.tensorrt.register import converter_registry
     "pd_op.layer_norm", trt_version="trt_version_ge=8.6"
 )
 def layernorm_converter(network, paddle_op, inputs):
+    from paddle.tensorrt.util import support_fp32_mix_precision
+
     input_a, scale, bias = inputs
 
     begin_norm_axis = paddle_op.attrs().get("begin_norm_axis", 0)
@@ -75,7 +77,7 @@ def layernorm_converter(network, paddle_op, inputs):
     layer_norm.epsilon = epsilon
     layer_norm.compute_precision = trt.float32
     set_layer_name(layer_norm, paddle_op)
-
+    support_fp32_mix_precision(paddle_op.name(), layer_norm)
     return layer_norm.get_output(0)
 
 
