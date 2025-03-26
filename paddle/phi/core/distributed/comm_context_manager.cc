@@ -214,7 +214,7 @@ void CommContextManager::CreateBKCLCommContext(
   }
   BKCLUniqueId bkcl_id;
   if (rank == 0) {
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_get_unique_id(&bkcl_id));
+    PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_get_unique_id(&bkcl_id));
   }
 
   std::string unique_key = "BKCLCommContext/" + unique_comm_key + hash_key;
