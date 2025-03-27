@@ -36,20 +36,24 @@ namespace phi {
 
 static std::vector<CutlassTileConfig> get_candidate_tiles(
     const bool is_weight_only,
-    const bool is_weight_only_encoder,
     const bool simt_configs_only,
     const int sm,
     const int group_size,
     const bool is_moe) {
   VLOG(3) << "get_candidate_tiles sm: " << sm;
-  std::vector<CutlassTileConfig> simt_configs{
-      CutlassTileConfig::CtaShape128x128x8_WarpShape64x64x8};
+  if (simt_configs_only) {
+    std::vector<CutlassTileConfig> simt_configs{
+        CutlassTileConfig::CtaShape128x128x8_WarpShape64x64x8};
+    return simt_configs;
+  } else if (!is_weight_only) {
+    std::vector<CutlassTileConfig> square_configs{
+        CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
+        CutlassTileConfig::CtaShape64x128x64_WarpShape32x64x64,
+        CutlassTileConfig::CtaShape128x128x64_WarpShape64x32x64,
+    };
+    return square_configs;
+  }
 
-  std::vector<CutlassTileConfig> square_configs{
-      CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
-      CutlassTileConfig::CtaShape64x128x64_WarpShape32x64x64,
-      CutlassTileConfig::CtaShape128x128x64_WarpShape64x32x64,
-  };
   std::vector<CutlassTileConfig> quant_B_configs_sm70{
       CutlassTileConfig::CtaShape32x128x64_WarpShape32x32x64,
       CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64,
@@ -92,33 +96,25 @@ static std::vector<CutlassTileConfig> get_candidate_tiles(
       quant_B_configs = quant_B_configs_sm70;
       break;
   }
-  const std::vector<CutlassTileConfig> allowed_quant_B_configs =
-      quant_B_configs;
-  const std::vector<CutlassTileConfig> allowed_configs =
-      is_weight_only ? allowed_quant_B_configs : square_configs;
-  return simt_configs_only ? simt_configs : allowed_configs;
+  return quant_B_configs;
 }
 
 static std::vector<CutlassGemmConfig> get_candidate_configs(
     const int sm,
     const int group_size,
     const bool is_weight_only,
-    const bool is_weight_only_encoder,
     const bool simt_configs_only,
     const bool is_moe) {
-  std::vector<CutlassTileConfig> tiles =
-      get_candidate_tiles(is_weight_only,
-                          is_weight_only_encoder,
-                          simt_configs_only,
-                          sm,
-                          group_size,
-                          is_moe);
+  std::vector<CutlassTileConfig> tiles = get_candidate_tiles(
+      is_weight_only, simt_configs_only, sm, group_size, is_moe);
 
   std::vector<CutlassGemmConfig> candidate_configs;
-  const int min_stages = 2;
+  int min_stages = 2;
   // Note(yuanlehome): max_stages must smaller than 5!
-  const int max_stages = sm >= 80 ? 4 : 2;
-
+  int max_stages = sm >= 80 ? 4 : 2;
+  if (is_moe) {
+    max_stages = 5;
+  }
   for (const auto& tile_config : tiles) {
     for (int stages = min_stages; stages <= max_stages; ++stages) {
       CutlassGemmConfig config{tile_config, SplitKStyle::NO_SPLIT_K, 1, stages};

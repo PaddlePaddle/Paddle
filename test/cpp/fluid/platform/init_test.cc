@@ -48,7 +48,7 @@ TEST(InitDevices, XPU) {
   int count = paddle::platform::GetXPUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.Size(), 1U + static_cast<unsigned>(count));
+  ASSERT_EQ(pool.Size(), 2U + static_cast<unsigned>(count));
 #endif
 }
 

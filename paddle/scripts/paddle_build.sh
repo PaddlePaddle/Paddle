@@ -1021,10 +1021,10 @@ function run_sot_test() {
     PY_VERSION_NO_DOT=$(echo $PY_VERSION | sed 's/\.//g')
 
     export STRICT_MODE=1
-    export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
     export SOT_LOG_LEVEL=0
     export FLAGS_cudnn_deterministic=True
+    export SOT_ENABLE_STRICT_GUARD_CHECK=True
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
@@ -1055,7 +1055,7 @@ function run_sot_test() {
                 echo "skip ${PY_VERSION_NO_DOT} ${file}"
                 continue
             fi
-            echo Running:" STRICT_MODE=1 COST_MODEL=False MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True python " $file
+            echo Running:" STRICT_MODE=1 MIN_GRAPH_SIZE=0 SOT_LOG_LEVEL=0 FLAGS_cudnn_deterministic=True SOT_ENABLE_STRICT_GUARD_CHECK=True python " $file
             # run unittests
             python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
 
@@ -1511,6 +1511,20 @@ function get_quickly_disable_ut() {
     fi
 }
 
+# getting multi card uts for xpu
+function get_multi_card_ut_list_for_xpu() {
+    input_file="${PADDLE_ROOT}/tools/xpu/multi_card_ut_xpu_kl3.local"
+    if [ ! -f "$input_file" ]; then
+        echo "input file not exist: $input_file"
+        exit 102
+    fi
+    multi_card_ut_list_for_xpu=$(sed 's/^/^/; s/$/$/' "$input_file" | paste -sd'|' -)
+    echo "========================================="
+    echo "The following unittests are for xpu multi card:"
+    echo ${multi_card_ut_list_for_xpu}
+    echo "========================================="
+}
+
 function card_test() {
     set -m
     case_count $1 $2
@@ -1533,12 +1547,13 @@ function card_test() {
         run_label_mode="-LE (RUN_TYPE=INFER|RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     fi
 
-    # get the CUDA device count, XPU device count is one
-    if [ "${WITH_XPU}" == "ON" ];then
-        CUDA_DEVICE_COUNT=1
-    elif [ "${WITH_ROCM}" == "ON" ];then
+    # get the CUDA device count
+    if [[ "${WITH_XPU}" == "ON" ]]; then
+        # 2 card for P800 ci
+        CUDA_DEVICE_COUNT=2
+    elif [[ "${WITH_ROCM}" == "ON" ]]; then
         CUDA_DEVICE_COUNT=$(rocm-smi -i | grep DCU | wc -l)
-    elif [ "${WITH_IPU}" == "ON" ];then
+    elif [[ "${WITH_IPU}" == "ON" ]]; then
         CUDA_DEVICE_COUNT=1
     else
         CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
@@ -1558,6 +1573,12 @@ function card_test() {
         return 0
     fi
 
+
+    # for XPU, split XPU_VISIBLE_DEVICES
+    if [[ "$WITH_XPU" == "ON" ]]; then
+        IFS=',' read -ra XPU_DEVICE_ARRAY <<< "$XPU_VISIBLE_DEVICES"
+    fi
+
     trap 'caught_error' CHLD
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
@@ -1570,18 +1591,31 @@ function card_test() {
         cuda_list=()
         for (( j = 0; j < cardnumber; j++ )); do
             if [ $j -eq 0 ]; then
-                    cuda_list=("$[i*cardnumber]")
-                else
-                    cuda_list="$cuda_list,$[i*cardnumber+j]"
+                cuda_list=("$[i*cardnumber]")
+            else
+                cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+
+        # for XPU, split XPU_VISIBLE_DEVICES
+        if [[ "$WITH_XPU" == "ON" ]]; then
+            cuda_list=()
+            for (( j = 0; j < cardnumber; j++ )); do
+                index=$((i * cardnumber + j))
+                cuda_list+=("${XPU_DEVICE_ARRAY[index]}")
+            done
+            cuda_list_str=$(IFS=,; echo "${cuda_list[*]}")
+        fi
+
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                if [ "$WITH_ROCM" == "ON" ];then
+                if [[ "$WITH_ROCM" == "ON" ]]; then
                     (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                elif [[ "$WITH_XPU" == "ON" ]]; then
+                    (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
                     (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 fi
@@ -1590,8 +1624,10 @@ function card_test() {
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                if [ "$WITH_ROCM" == "ON" ];then
+                if [[ "$WITH_ROCM" == "ON" ]]; then
                     (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                elif [[ "$WITH_XPU" == "ON" ]]; then
+                    (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
                     (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 fi
@@ -2427,7 +2463,12 @@ set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
-        test_cases=$(ctest -N -V -E "$disable_ut_quickly" -LE "(RUN_TYPE=DIST_KUNLUN)")        # cases list which would be run exclusively
+        get_multi_card_ut_list_for_xpu
+        test_cases=$(ctest -N -V -E "$disable_ut_quickly|$multi_card_ut_list_for_xpu")        # cases list which would be run exclusively
+        echo "========================================="
+        echo "RAW test cases for XPU, already EXCLUDED disable_ut and multi_card:"
+        echo ${test_cases}
+        echo "========================================="
 
         single_card_test_num=0
         while read -r line; do
@@ -2456,8 +2497,25 @@ set +x
                 single_card_tests="$single_card_tests|^$testcase$"
             fi
         done <<< "$test_cases";
-        card_test "$single_card_tests" 1 4
-        card_test "$single_card_tests_1" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using single card, part 1:"
+        echo ${single_card_tests}
+        echo "========================================="
+        card_test "${single_card_tests}" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using single card, part 2:"
+        echo ${single_card_tests_1}
+        echo "========================================="
+        card_test "${single_card_tests_1}" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using multiple cards:"
+        echo ${multi_card_ut_list_for_xpu}
+        echo "========================================="
+        card_test "${multi_card_ut_list_for_xpu}" 2 1
+
         failed_test_lists=''
         collect_failed_tests
         xputest_error=0
@@ -3717,9 +3775,6 @@ function distribute_test() {
     mkdir paddlenlp && mv Bos/* ./paddlenlp/
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
-
-    # Already disable unittests of llama2 model in current CI pipeline
-    export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
     cd ${work_dir}/PaddleNLP

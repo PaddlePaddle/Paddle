@@ -662,13 +662,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 >>> out = net(x)
         """
 
-        def rollback_impl(class_instance):
-            for name, func in class_instance._original_funcs.items():
-                setattr(class_instance, name, func.__get__(class_instance))
-
-            for sublayer in class_instance.sublayers(include_self=False):
-                rollback_impl(sublayer)
-
         if self.class_instance is None:
             return self._dygraph_function
 
@@ -683,10 +676,6 @@ class StaticFunction(Generic[_InputT, _RetT]):
         ), f"Not Found function '{fn_name}' in class '{self.class_instance.__class__}'."
         func = self.class_instance._original_funcs[fn_name]
         setattr(self.class_instance, fn_name, func.__get__(self.class_instance))
-
-        for sublayer in self.class_instance.sublayers(include_self=False):
-            rollback_impl(sublayer)
-
         return getattr(self.class_instance, fn_name)
 
     def __deepcopy__(self, memo):
@@ -1304,12 +1293,14 @@ class ConcreteProgram:
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
                 from ..pir_dy2static.parameter_recorder import (
+                    _global_inplace_map,
                     _global_parameter_recorder,
                 )
 
                 all_parameters_and_buffers = _global_parameter_recorder.pop(
                     main_program
                 )
+                _global_inplace_map.pop(main_program)
                 if outputs is not None:
                     need_wrap_into_list = (
                         not isinstance(outputs, (tuple, list))
@@ -1622,8 +1613,6 @@ class ProgramCache:
         self._recent_cache_key = None
 
     def _build_once(self, cache_key):
-        # TODO(Aurelius84): Need a global FLAGS to enable/disable to_prim
-        enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
 
         if use_pir_api():
             concrete_program = ConcreteProgram.pir_from_func_spec(
@@ -1676,8 +1665,8 @@ class ProgramCache:
                     partial_program.set_hooker(
                         PrimHooker(concrete_program.main_program, backend)
                     )
-        if use_pir_api() and core._enable_auto_recompute():
-            partial_program.add_hooker(PirAutoRecomputeHooker())
+            if use_pir_api() and core._enable_auto_recompute():
+                partial_program.add_hooker(PirAutoRecomputeHooker())
         return concrete_program, partial_program
 
     def __getitem__(self, item):

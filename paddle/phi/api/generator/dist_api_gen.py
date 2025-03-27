@@ -90,11 +90,17 @@ NCCL_COMMCONTEXT_INIT = """
     auto store = phi::distributed::CreateOrGetGlobalTCPStore();
     CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
   }}
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
+  if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
+    auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), phi::distributed::GetDefaultPlace(), rank, nranks);
+  }}
 #endif
 """
 
 SET_NCCL_COMMCONTEXT = """
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager = phi::distributed::CommContextManager::GetInstance();
   COMM_CONTEXT* comm_context = nullptr;
   if (comm_context_manager.Has(std::to_string(ring_id))) {{
@@ -107,8 +113,19 @@ SET_NCCL_COMMCONTEXT = """
             "NCCLCommContext is nullptr, collective op should "
             "has ring_id(%d) attr.",
             std::to_string(ring_id)));
-    if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
-    {{
+    #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
+        if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
+        {{
+            auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+            "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+            if (FLAGS_low_precision_op_list) {{
+            phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
+            }}
+            Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
+            auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
+            dev_context->SetCommContext(comm_context);
+        }}
+    #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
         auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
         if (FLAGS_low_precision_op_list) {{
@@ -117,7 +134,7 @@ SET_NCCL_COMMCONTEXT = """
         Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
         auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
         dev_context->SetCommContext(comm_context);
-    }}
+    #endif
   }}
 #endif
 """
@@ -1384,7 +1401,9 @@ class DistForwardAPI(ForwardAPI):
         return NCCL_COMMCONTEXT_INIT.format(self.kernel['func'][0])
 
     def generate_set_nccl_commcontext_code(self) -> str:
-        return SET_NCCL_COMMCONTEXT.format(self.kernel['func'][0], self.api)
+        return SET_NCCL_COMMCONTEXT.format(
+            self.kernel['func'][0], self.api, self.kernel['func'][0], self.api
+        )
 
     def generate_reshard_input_code(self) -> str:
         input_reshard_code = ""

@@ -26,6 +26,7 @@ from paddle.base import core, framework, unique_name
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import Variable, check_type, default_main_program
+from paddle.distributed.utils.moe_utils import get_complete_pp_mesh
 from paddle.framework import (
     LayerHelper,
     in_dynamic_mode,
@@ -237,6 +238,18 @@ def _cast_to_mp_type_if_enabled(x):
         return x.astype(DataType.FLOAT32)
     else:
         return x
+
+
+def _can_inplace_clip_grad(grad: Tensor, clip_input: Tensor):
+    if not grad._is_initialized() or not clip_input._is_initialized():
+        return False
+
+    # 1. Inplace ops only support DistTensor and DenseTensor.
+    # 2. Inplace ops do not support 0-D tensor.
+    if (grad.is_dist() or grad.is_dense()) and len(grad.shape) != 0:
+        return True
+
+    return False
 
 
 def _squared_l2_norm(x):
@@ -729,6 +742,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
+                pp_mesh = get_complete_pp_mesh(g.process_mesh)
+                if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
+                    sum_square = dist.reshard(
+                        sum_square, pp_mesh, sum_square.placements
+                    )
+
                 sum_square = dist.reshard(
                     sum_square, src_mesh, sum_square.placements
                 )
@@ -773,7 +792,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[], dtype=sum_dtype, fill_value=self.clip_norm
+            shape=[1], dtype=sum_dtype, fill_value=self.clip_norm
         )
 
         need_clip = False
@@ -821,11 +840,25 @@ class ClipGradByGlobalNorm(ClipGradBase):
                                 "Reshard a sharded tensor from a local mesh to a global mesh is not supported"
                             )
                     else:
+                        pp_mesh = get_complete_pp_mesh(g.process_mesh)
+
+                        if set(g.process_mesh.process_ids) < set(
+                            pp_mesh.process_ids
+                        ):
+                            clip_input = dist.reshard(
+                                clip_input, pp_mesh, clip_input.placements
+                            )
+
                         clip_input = paddle.distributed.reshard(
                             clip_input, g.process_mesh, clip_input.placements
                         )
-                new_grad = paddle.multiply(g, clip_input)
-                params_and_grads.append((p, new_grad))
+
+                if _can_inplace_clip_grad(g, clip_input):
+                    g.multiply_(clip_input)
+                    params_and_grads.append((p, g))
+                else:
+                    new_grad = paddle.multiply(g, clip_input)
+                    params_and_grads.append((p, new_grad))
             else:
                 params_and_grads.append((p, g))
 
@@ -1018,11 +1051,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
             )
 
         if self.should_comm_on_shard_dim and self.has_dist_param:
-            global_norm_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_dist_var, self.sharding_group.id, True, False
+            global_norm_dist_var = paddle._C_ops.all_reduce(
+                global_norm_dist_var, self.sharding_group.id, dist.ReduceOp.SUM
             )
-            global_norm_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_dist_var, self.mp_group.id, True, False
+            global_norm_dist_var = paddle._C_ops.all_reduce(
+                global_norm_dist_var, self.mp_group.id, dist.ReduceOp.SUM
             )
             if global_norm_var is None:
                 global_norm_var = global_norm_dist_var
@@ -1036,8 +1069,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 shape=[1], dtype=sum_dtype, fill_value=0.0
             )
         if self.should_comm_on_shard_dim and self.has_not_dist_param:
-            global_norm_not_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_not_dist_var, self.sharding_group.id, True, False
+            global_norm_not_dist_var = paddle._C_ops.all_reduce(
+                global_norm_not_dist_var,
+                self.sharding_group.id,
+                dist.ReduceOp.SUM,
             )
             if global_norm_var is None:
                 global_norm_var = global_norm_not_dist_var

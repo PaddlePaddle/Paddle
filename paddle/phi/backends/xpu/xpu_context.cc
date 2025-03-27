@@ -14,6 +14,12 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 
+#ifdef PADDLE_WITH_XPU
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include "paddle/phi/core/xpu_cuda_stream.h"
+#endif
+
 #include <memory>
 
 #include "glog/logging.h"
@@ -28,6 +34,10 @@
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
 #include "xpu/xdnn.h"
+
+#if !defined(PADDLE_WITH_XPU_KP) || defined(__xpu_on_host__)
+#include "unsupported/Eigen/CXX11/Tensor"
+#endif
 
 namespace xpu = baidu::xpu::api;
 
@@ -471,4 +481,21 @@ void XPUContext::AddStashedMemory(int stream, const DenseTensor& tensor) {
 }
 
 void XPUContext::Init() { impls_[0]->Init(); }
+
+#if defined(PADDLE_WITH_XPU)
+XPUPinnedContext::XPUPinnedContext() {
+  eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
+}
+
+XPUPinnedContext::XPUPinnedContext(XPUPinnedPlace place) : place_(place) {
+  eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
+}
+
+Eigen::DefaultDevice* XPUPinnedContext::eigen_device() const {
+  return eigen_device_.get();
+}
+
+const Place& XPUPinnedContext::GetPlace() const { return place_; }
+#endif
+
 }  // namespace phi

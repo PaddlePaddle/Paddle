@@ -32,6 +32,7 @@ from paddle.tensorrt.converter_utils import (
     trt_shape,
     trt_sub,
     trt_sum,
+    trt_unsqueeze,
 )
 from paddle.tensorrt.register import converter_registry
 
@@ -240,6 +241,15 @@ def set_value_converter(network, paddle_op, inputs):
 
     _logger.info(f"Set_value_op: input's dimension is {input_dims}")
 
+    decrease_axes = paddle_op.attrs()["decrease_axes"]
+    if len(decrease_axes) > 0 and len(updates.shape) != len(x.shape):
+        updates = trt_unsqueeze(
+            network,
+            updates,
+            decrease_axes,
+            name=[paddle_op.name(), 'decrease_axes'],
+        )
+
     value_rank = len(updates.shape)
     input_rank = len(x.shape)
 
@@ -313,17 +323,16 @@ def set_value_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.share_data_", trt_version="8.x")
 def share_data_converter(network, paddle_op, inputs):
     x = inputs[0]
-
     identity_layer = network.add_identity(x)
     set_layer_name(identity_layer, paddle_op)
-
     return identity_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.temporal_shift", trt_version="8.x")
 def temporal_shift_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
-    shift_ratio = paddle_op.attrs()["shift_ratio"]
+    # Add a small bias to shift_ratio to mitigate floating point precision errors
+    shift_ratio = paddle_op.attrs()["shift_ratio"] + 1e-7
     T = paddle_op.attrs()["seg_num"]
     data_format = paddle_op.attrs().get("data_format", "NCHW")
 

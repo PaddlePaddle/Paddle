@@ -213,12 +213,6 @@ ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
  * \return `IndexExpr` after change.
  */
 ir::IndexExpr ChangeSeqOfDivMod(const ir::IndexExpr &expr);
-enum IndexType {
-  kInvalid = 0,  // invalid expr
-  kValid = 1,    // valid expr
-  kLoad = 2,     // exist Load
-  kCast = 3      // exist cast
-};
 
 /*!
  * \brief Judge type of `expr` is valid type of `IndexExpr` or not.
@@ -229,7 +223,7 @@ enum IndexType {
  * Note: Although load and cast are also legal IndexExpr, we need to know this
  * information in some scenarios.
  */
-IndexType VerifyIndex(const ir::Expr &expr);
+ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr);
 
 /*!
  * \brief The multiplication in rhs is broken down and each sub-part is
@@ -285,5 +279,39 @@ bool CheckPattern(const ir::IndexExpr &expr,
 // TODO(liujinnan): Delete historical `simplify func` related files, temporary
 // placement of tool functions that are still in use, remove it in the future.
 bool IsPureMath(Expr expr);
+
+/*!
+ * \brief Parse the expression from string to Expr.
+ * \param expr_str The expression to be checked.
+ * \return A Expr parsed from string.
+ *
+ * For example:
+ * 1. ParseExpressionFromString("a + b * c") return Add(Var(a), Mul(Var(b),
+ * Var(c)))
+ * 2. ParseExpressionFromString("a + 10") return Add(Var(a), IntImm(10)))
+ */
+ir::Expr ParseExpressionFromString(const std::string &expr_str);
+
+/*!
+ * \brief Check whether the expression matches the pattern.
+ * \param expr The expression to be checked.
+ * \param pattern_str The pattern string to be matched.
+ * \param condition A optional condition function to further check the matched
+ * \return A optional map indicating the matched variables.
+ *
+ * For example:
+ * 1. i / S0 * S0 + i % (S0 * S1) matched by a / b * b + a % (b * c)
+ *    return map = {a: i, b: S0, c: S1}
+ * 2. i / (S0 * S1) * S0 + i % (S0 * S1) / S1 matched by a / f * b + a % f / c
+ * with optional condition f = a * b, return map = {a: i, b: S0, c: S1, f: S0 *
+ * S1}
+ * 3. S0 + 5 matched by a + 5 return map = {a: S0, b: 5}
+ */
+std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
+    const ir::IndexExpr &expr,
+    const std::string &pattern_str,
+    const std::function<bool(
+        const std::unordered_map<std::string, ir::IndexExpr> &)> &condition =
+        nullptr);
 }  // namespace optim
 }  // namespace cinn

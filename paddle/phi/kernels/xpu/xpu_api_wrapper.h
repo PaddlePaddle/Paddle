@@ -299,7 +299,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                                                          scale_w,
                                                          scale_x_mode,
                                                          scale_w_mode);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                        l3_addr,
@@ -348,7 +348,7 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
                                                          scale_x_mode,
                                                          scale_w_mode);
 
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_fusion");
+    PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                        x,
@@ -452,7 +452,7 @@ static void xblas_fc_batch_wrapper(xpu::Context* xpu_ctx,
       stride_y,
       x_maxptr,
       w_maxptr);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xblas_fc_batched");
+  PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_batched");
 #else
   int r = xpu::fc_batched<XPUType, XPUType, XPUType, FCT>(
       xpu_ctx,

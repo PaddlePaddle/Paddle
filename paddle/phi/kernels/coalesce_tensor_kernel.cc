@@ -301,6 +301,7 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    ALL_LAYOUT,
                    phi::CoalesceTensorKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    float,
                    double) {

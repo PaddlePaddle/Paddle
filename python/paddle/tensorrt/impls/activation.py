@@ -75,6 +75,8 @@ def relu6_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.softmax", trt_version="trt_version_ge=8.0")
 def softmax_converter(network, paddle_op, inputs):
+    from paddle.tensorrt.util import support_fp32_mix_precision
+
     input1 = inputs[0]
     input_shape = input1.shape
     input_dims = len(input_shape)
@@ -95,6 +97,7 @@ def softmax_converter(network, paddle_op, inputs):
 
     layer = network.add_softmax(input1)
     set_layer_name(layer, paddle_op)
+    support_fp32_mix_precision(paddle_op.name(), layer)
     axes = max(0, input_dims - 3)
 
     # Handle padded dimensions
@@ -489,7 +492,7 @@ def prelu_converter(network, paddle_op, inputs):
     input_dims = input.shape
     mode = paddle_op.attrs()["mode"]
     data_format = paddle_op.attrs().get("data_format", "NCHW")
-    w_dims = trt.Dims(alpha_data.numpy().shape)
+    w_dims = trt.Dims(paddle_op.operands()[1].source().shape)
     trt_w_dims = w_dims
     alpha_tensor = network.add_constant(trt_w_dims, alpha_data)
     set_layer_name(alpha_tensor, paddle_op)

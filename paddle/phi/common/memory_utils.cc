@@ -131,8 +131,6 @@ const phi::Allocator* GetHostZeroAllocator() {
   return MemoryUtils::Instance().GetHostZeroAllocator();
 }
 
-// XPUs do not have the concept of pinned memory,
-// so the get_pinned_allocator function is not set.
 std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
     int device_id) {
   return MemoryUtils::Instance().GetXpuEvent(device_id);

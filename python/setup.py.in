@@ -647,6 +647,15 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.6.1.9 | "
                     "nvidia-cusparse-cu12==12.3.1.170 "
                 ),
+                "12.6": (
+                    "nvidia-cuda-runtime-cu12==12.6.77 | "
+                    "nvidia-cudnn-cu12==9.5.1.17 | "
+                    "nvidia-cublas-cu12==12.6.4.1 | "
+                    "nvidia-cufft-cu12==11.3.0.4 | "
+                    "nvidia-curand-cu12==10.3.7.77 | "
+                    "nvidia-cusolver-cu12==11.7.1.2 | "
+                    "nvidia-cusparse-cu12==12.5.4.2 "
+                ),
             }
 
         try:
@@ -996,6 +1005,22 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     if len('${FLASHATTN_V3_LIBRARIES}') > 1:
         package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_V3_LIBRARIES}')]
         shutil.copy('${FLASHATTN_V3_LIBRARIES}', libs_path)
+
+if '${WITH_DISTRIBUTE}' == 'ON' and '${WITH_NVSHMEM}' == 'ON':
+    package_data['paddle.libs']+=[
+        os.path.basename('${NVSHMEM_BOOTSTRAP_UID_LIB}'),
+        os.path.basename('${NVSHMEM_BOOTSTRAP_MPI_LIB}'),
+        os.path.basename('${NVSHMEM_BOOTSTRAP_PMI_LIB}'),
+        os.path.basename('${NVSHMEM_BOOTSTRAP_PMI2_LIB}'),
+        os.path.basename('${NVSHMEM_TRANSPORT_IBRC_LIB}'),
+        os.path.basename('${NVSHMEM_TRANSPORT_IBGDA_LIB}'),
+    ]
+    shutil.copy('${NVSHMEM_BOOTSTRAP_UID_LIB}', libs_path)
+    shutil.copy('${NVSHMEM_BOOTSTRAP_MPI_LIB}', libs_path)
+    shutil.copy('${NVSHMEM_BOOTSTRAP_PMI_LIB}', libs_path)
+    shutil.copy('${NVSHMEM_BOOTSTRAP_PMI2_LIB}', libs_path)
+    shutil.copy('${NVSHMEM_TRANSPORT_IBRC_LIB}', libs_path)
+    shutil.copy('${NVSHMEM_TRANSPORT_IBGDA_LIB}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)

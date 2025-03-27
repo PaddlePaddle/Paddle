@@ -241,7 +241,9 @@ class RecomputeFunction(PyLayer):
                     if i in ctx.offload_indices
                     else tensors[i]
                 )
-
+                if i in ctx.offload_indices:
+                    # NOTE(zhiqiu): tensor.to(device) will set stop_gradient=True, which may break the gragh
+                    inputs[idx].stop_gradient = tensors[i].stop_gradient
             # paddle.enable_grad()
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True

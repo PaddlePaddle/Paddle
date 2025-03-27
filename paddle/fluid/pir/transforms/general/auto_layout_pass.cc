@@ -46,6 +46,7 @@ class AutoLayoutPass : public pir::Pass {
   AutoLayoutPass() : pir::Pass("auto_layout_pass", 2) {}
   void Run(pir::Operation* op) override {
     auto program = op->GetParentProgram();
+    VLOG(4) << "IR before auto layout pass: \n" << *program;
     ::pir::IrMapping ir_mapping;
     auto program_clone = program->Clone(ir_mapping);
 
@@ -57,7 +58,7 @@ class AutoLayoutPass : public pir::Pass {
     pm.AddPass(pir::CreateAutoLayoutSimplifyPass());
     pm.Run(program_clone.get());
 
-    VLOG(4) << "IR before auto layout pass: \n" << *program;
+    VLOG(4) << "IR middle auto layout pass: \n" << *program_clone;
     if (IsNeedAllTranspose(program_clone->module_op())) {
       pir::PassManager pm_(::pir::IrContext::Instance(), 2);
       pm_.AddPass(pir::CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",

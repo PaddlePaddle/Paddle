@@ -20,6 +20,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -91,9 +92,14 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
   if (value_grad) {
     value_grad->Resize(index.dims());
     dev_ctx.template Alloc<T>(value_grad);
+#ifdef PADDLE_WITH_HIP
     auto* grad_data = value_grad->data<T>();
     int64_t grad_size = value_grad->numel();
-    cudaMemset(grad_data, 0, sizeof(T) * grad_size);
+    hipMemset(grad_data, 0, sizeof(T) * grad_size);
+#else
+    // cudaMemset(grad_data, 0, sizeof(T) * grad_size);
+    phi::funcs::set_constant(dev_ctx, value_grad, 0);
+#endif
     if (reduce == "assign") {
       if (index_type == DataType::INT32) {
         phi::funcs::gpu_scatter_value_grad_kernel<T, int32_t>(

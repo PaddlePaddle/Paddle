@@ -143,15 +143,13 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   for (size_t i = 0; i < axes.size(); ++i) {
     auto out_dim = ends[i] - starts[i];
     int64_t axis = axes[i];
-    // If in_dims[axis] or ends[i] have symbol, need get Min(in_dims[axis] -
-    // start[i], ends[i] - start[i] )
+    // If in_dims[axis] or ends[i] have symbol, need get
+    // Max(Min(in_dims[axis] - start[i], ends[i] - start[i]), 0)
+    symbol::DimExprBuilder builder;
     if (!out_dim.isa<int64_t>() &&
         (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>())) {
-      symbol::List<symbol::DimExpr> min_lists{in_dims[axis] - starts[i],
-                                              out_dim};
-
       slice_dims[axis] =
-          symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+          builder.Max(builder.Min(in_dims[axis] - starts[i], out_dim), 0);
     } else {
       slice_dims[axis] = out_dim;
     }
@@ -160,9 +158,7 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
       if (out_dim.Get<int64_t>() == 1) {
         continue;
       }
-      symbol::List<symbol::DimExpr> min_lists{out_dim, in_dims[axis]};
-      slice_dims[axis] =
-          symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+      slice_dims[axis] = builder.Max(builder.Min(out_dim, in_dims[axis]), 0);
     }
   }
 
@@ -328,7 +324,7 @@ inline ExprVec GetStridedSliceDims(
 
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
-    if (in_dims.at(i).isa<int64_t>() && starts.at(i).isa<int64_t>() &&
+    if (in_dims.at(axis).isa<int64_t>() && starts.at(i).isa<int64_t>() &&
         ends.at(i).isa<int64_t>() && strides.at(i).isa<int64_t>()) {
       int64_t in_dim = in_dims[axis].Get<int64_t>();
       int64_t start = starts[i].Get<int64_t>();
@@ -411,21 +407,20 @@ inline ExprVec GetStridedSliceDims(
       }
       if (!out_dim.isa<int64_t>() &&
           (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>())) {
+        symbol::DimExprBuilder builder;
         if (strides[i].isa<int64_t>()) {
           if (stride_int64 > 0) {
-            symbol::List<symbol::DimExpr> min_lists{
-                (in_dims[axis] - starts[i] - 1 + stride_int64) / stride_int64,
-                out_dim};
-
-            slice_dims[axis] =
-                symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+            slice_dims[axis] = builder.Max(
+                builder.Min((in_dims[axis] - starts[i] - 1 + stride_int64) /
+                                stride_int64,
+                            out_dim),
+                0);
           } else {
-            symbol::List<symbol::DimExpr> min_lists{
-                (in_dims[axis] - starts[i] + 1 + stride_int64) / stride_int64,
-                out_dim};
-
-            slice_dims[axis] =
-                symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})});
+            slice_dims[axis] = builder.Max(
+                builder.Min((in_dims[axis] - starts[i] + 1 + stride_int64) /
+                                stride_int64,
+                            out_dim),
+                0);
           }
         } else {
           slice_dims[axis] = out_dim;

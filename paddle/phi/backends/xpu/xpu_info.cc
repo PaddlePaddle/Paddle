@@ -10,8 +10,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
+#ifdef PADDLE_WITH_XPU
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+
 #include <algorithm>
 #include <cstdlib>
+#include <mutex>
 #include <string>
 
 #include "glog/logging.h"
@@ -117,6 +123,9 @@ void SetXPUDeviceId(int id) {
       GetXPUDeviceCount(),
       common::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
+#ifdef PADDLE_WITH_XPU
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaSetDevice(id));
+#endif
 }
 
 static inline std::vector<std::string> Split(std::string const& original,
@@ -149,6 +158,19 @@ std::vector<int> GetXPUSelectedDevices() {
   }
   return devices;
 }
+
+#ifdef PADDLE_WITH_XPU
+std::pair<int, int> GetXpuStreamPriorityRange() {
+  int least_priority, greatest_priority;
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  return std::make_pair(least_priority, greatest_priority);
+}
+
+void XpuStreamSync(cudaStream_t stream) {
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaStreamSynchronize(stream));
+}
+#endif
 
 /**************************** Memory Management **************************/
 
@@ -200,22 +222,25 @@ void MemcpySyncD2D(void* dst,
 /**************************** Others **************************/
 
 XPUVersion get_xpu_version(int dev_id) {
-  uint64_t v = 0;
   if (dev_id == -1) {
     dev_id = GetXPUCurrentDeviceId();
   }
-  PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
-
-  if (v == K100 || v == K200) {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
-    return XPU1;
-  } else if (v < KL3_BEGIN) {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
-    return XPU2;
-  } else {
-    VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
-    return XPU3;
+  thread_local std::unordered_map<int, XPUVersion> xpu_version_map;
+  if (xpu_version_map.count(dev_id) == 0) {
+    uint64_t v = 0;
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_device_get_attr(&v, XPUATTR_MODEL, dev_id));
+    if (v == K100 || v == K200) {
+      VLOG(1) << "KUNLUN device " << dev_id << " is XPU1\n";
+      xpu_version_map[dev_id] = XPU1;
+    } else if (v < KL3_BEGIN) {
+      VLOG(1) << "KUNLUN device " << dev_id << " is XPU2\n";
+      xpu_version_map[dev_id] = XPU2;
+    } else {
+      VLOG(1) << "KUNLUN device " << dev_id << " is XPU3\n";
+      xpu_version_map[dev_id] = XPU3;
+    }
   }
+  return xpu_version_map[dev_id];
 }
 
 void set_xpu_debug_level(int level) {

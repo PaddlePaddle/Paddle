@@ -20,7 +20,7 @@ from paddle.base import core
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import EagerParamBase
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -54,7 +54,7 @@ def _npu_identity(x, format=-1):
             >>> print(y.shape)
             [1, 1, 1, 1, 16]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.npu_identity(x, format)
     else:
         check_variable_and_dtype(
@@ -88,6 +88,10 @@ def _npu_identity(x, format=-1):
 
 
 def _load_reload_impl(src_tensor, func):
+    """
+    Helper to create a new destination tensor and call 'func(dst, src)'
+    which is either offload or reload.
+    """
     if isinstance(src_tensor, EagerParamBase):
         state = copy.deepcopy(src_tensor.__dict__)
         new_param = EagerParamBase(src_tensor.shape, src_tensor.dtype, **state)
@@ -100,8 +104,19 @@ def _load_reload_impl(src_tensor, func):
 
 
 def create_async_load():
-    """Constructs a new AsyncLoad object. It is used to load/reload data asynchronously."""
+    """
+    Constructs a new AsyncLoad object.
+    It is used to load/reload data asynchronously on GPU.
+    """
     return core.AsyncLoad()
+
+
+def create_xpu_async_load():
+    """
+    Constructs a new AsyncLoad object.
+    It is used to load/reload data asynchronously on XPU.
+    """
+    return core.XpuAsyncLoad()
 
 
 def async_offload(src_tensor, async_load):
@@ -156,6 +171,7 @@ def async_offload_with_offset(
     assert len(src_tensor.shape) <= 1, "Only support 1-D tensor"
     assert len(dst_tensor.shape) <= 1, "Only support 1-D tensor"
     assert src_tensor.dtype == dst_tensor.dtype, "Only support same dtype"
+
     return async_loader.offload_with_offset(
         dst_tensor, src_tensor, dst_offset, src_offset, offload_size
     )

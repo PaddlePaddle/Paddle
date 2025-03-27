@@ -14,6 +14,7 @@
 
 from paddle import _legacy_C_ops
 from paddle.common_ops_import import check_variable_and_dtype
+from paddle.distributed import fleet
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 
@@ -277,3 +278,30 @@ def global_gather(
             },
         )
         return out
+
+
+def get_complete_pp_mesh(mesh):
+    """
+    Get complete pp mesh with given mesh.
+
+    Args:
+        mesh (Mesh): Mesh object.
+
+    Returns:
+        Mesh: Complete mesh.
+
+    """
+    process_id = mesh.process_ids[0]
+    global_mesh = fleet.auto.get_mesh()
+
+    if global_mesh and "pp" in global_mesh.dim_names:
+        pp_degree = global_mesh.get_dim_size("pp")
+        for i in range(pp_degree):
+            pp_mesh = global_mesh.get_mesh_with_dim("pp", i)
+            if process_id in pp_mesh.process_ids:
+                return pp_mesh
+        AssertionError(
+            f"Current mesh: {mesh} not found in global mesh {global_mesh}"
+        )
+    else:
+        return mesh

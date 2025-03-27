@@ -346,7 +346,7 @@ def CUDAExtension(
     # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
-    name = kwargs.get('name', None)
+    name = kwargs.pop('name', None)
     if name is None:
         name = _generate_extension_name(sources)
 

@@ -88,6 +88,43 @@ struct SimplifyDoubleNeg {
       return ret_expr;
     } else if (inner_expr.Has<std::int64_t>()) {
       return -inner_expr.Get<std::int64_t>();
+    } else if (inner_expr.Has<Mul<DimExpr>>()) {
+      std::vector<DimExpr> mut_operands =
+          *inner_expr.Get<Mul<DimExpr>>().operands;
+      int minus_one_nums = 0;
+      auto it = std::remove_if(
+          mut_operands.begin(),
+          mut_operands.end(),
+          [&minus_one_nums](DimExpr x) {
+            if (x.Has<std::int64_t>() && x.Get<std::int64_t>() == -1) {
+              minus_one_nums++;
+              return true;
+            }
+            return false;
+          });
+      mut_operands.erase(it, mut_operands.end());
+      if (minus_one_nums > 0) {
+        PADDLE_ENFORCE_EQ(minus_one_nums,
+                          1,
+                          common::errors::InvalidArgument(
+                              "The number of -1 in the operands "
+                              "of Mul should be 1, but got %d , "
+                              "please check the simplify logic for Mul.",
+                              minus_one_nums));
+      } else {
+        return expr;
+      }
+      if (mut_operands.size() == 1) {
+        return mut_operands.at(0);
+      } else {
+        return Mul<DimExpr>{List<DimExpr>{mut_operands}};
+      }
+    } else if (inner_expr.Has<Div<DimExpr>>()) {
+      const auto& rhs = inner_expr.Get<Div<DimExpr>>()->rhs;
+      if (rhs.Has<std::int64_t>() && rhs.Get<std::int64_t>() == -1) {
+        return inner_expr.Get<Div<DimExpr>>()->lhs;
+      }
+      return expr;
     } else {
       return expr;
     }
@@ -1025,28 +1062,32 @@ struct SimplifyBroadcast {
   }
 
   bool IsLhsGreatThanRhs(const DimExpr& lhs, const DimExpr& rhs) {
-    auto LhsOperandsVisitor = common::Overloaded{
-        [&](const Mul<DimExpr>& mul) {
-          bool lhs_great_than_rhs = false;
-          for (const auto& expr : *mul.operands) {
-            if (expr == rhs)
-              lhs_great_than_rhs = true;
-            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
-              return false;
-          }
-          return lhs_great_than_rhs;
-        },
-        [&](const Add<DimExpr>& add) {
-          bool lhs_great_than_rhs = false;
-          for (const auto& expr : *add.operands) {
-            if (expr == rhs)
-              lhs_great_than_rhs = true;
-            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
-              return false;
-          }
-          return lhs_great_than_rhs;
-        },
-        [&](const auto& lhs) { return false; }};
+    auto LhsOperandsVisitor =
+        common::Overloaded{[&](const Mul<DimExpr>& mul) {
+                             bool lhs_great_than_rhs = false;
+                             for (const auto& expr : *mul.operands) {
+                               if (expr == rhs)
+                                 lhs_great_than_rhs = true;
+                               else if (!(expr.isa<std::int64_t>() &&
+                                          expr.dyn_cast<std::int64_t>() > 0) &&
+                                        !expr.isa<std::string>())
+                                 return false;
+                             }
+                             return lhs_great_than_rhs;
+                           },
+                           [&](const Add<DimExpr>& add) {
+                             bool lhs_great_than_rhs = false;
+                             for (const auto& expr : *add.operands) {
+                               if (expr == rhs)
+                                 lhs_great_than_rhs = true;
+                               else if (!(expr.isa<std::int64_t>() &&
+                                          expr.dyn_cast<std::int64_t>() > 0) &&
+                                        !expr.isa<std::string>())
+                                 return false;
+                             }
+                             return lhs_great_than_rhs;
+                           },
+                           [&](const auto& lhs) { return false; }};
     return std::visit(LhsOperandsVisitor, lhs.variant());
   }
 

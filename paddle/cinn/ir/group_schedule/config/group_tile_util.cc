@@ -22,8 +22,6 @@ using hlir::framework::pir::trivial_fusion_detail::GetAllForIters;
 using hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
     ChildScheduleBlockRealizes;
 using hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
-    ChildTensorLoads;
-using hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
     ScheduleBlockRealizeIsNotInit;
 
 namespace ir {
@@ -49,6 +47,16 @@ struct VarReplacer : public ir::IRMutator<ir::Expr*> {
     }
   }
 };
+
+std::vector<ir::Expr> GetRValueLoads(ir::Expr expr_block) {
+  ir::Expr store = analyzer::GetStoreOfSBlock(expr_block);
+  auto* store_node = store.As<ir::Store>();
+  return ir::ir_utils::CollectIRNodesInOrder(
+      store_node->value, [&](const ir::Expr* x) {
+        auto* load_node = x->As<ir::Load>();
+        return load_node && load_node->tensor != store_node->tensor;
+      });
+}
 
 std::vector<int64_t> GetVarStrides(ir::Expr load_offset,
                                    const std::vector<ir::Var>& iter_vars) {
@@ -364,7 +372,7 @@ std::vector<int64_t> GetLoopStrides(const ir::Expr& body) {
     return std::distance(for_iters.begin(), it);
   };
 
-  const auto& all_loads = ChildTensorLoads(expr_block);
+  std::vector<ir::Expr> all_loads = GetRValueLoads(expr_block);
   std::vector<int64_t> loop_strides(for_iters.size());
   if (all_loads.empty()) {
     return loop_strides;
@@ -386,7 +394,7 @@ bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
   std::unordered_set<std::string> reduce_downstream_tensor_names;
 
   const auto IsReduceDownstream = [&](const ir::Expr& expr_block) {
-    for (auto& expr_load : ChildTensorLoads(expr_block)) {
+    for (auto& expr_load : GetRValueLoads(expr_block)) {
       std::string load_tensor_name = expr_load.As<ir::Load>()->name();
       if (reduce_downstream_tensor_names.count(load_tensor_name) > 0) {
         return true;

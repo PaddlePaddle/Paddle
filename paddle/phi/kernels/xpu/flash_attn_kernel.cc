@@ -16,37 +16,40 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_XPU_XRE5
+#include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/xpu/flash_attn_utils.h"
 #include "xfa/flash_api.h"
 #endif
 namespace phi {
 #ifdef PADDLE_WITH_XPU_XRE5
 template <typename T, typename Context>
-void FlashAttnKernelBase(const Context& ctx,
-                         const DenseTensor& q,
-                         const DenseTensor& k,
-                         const DenseTensor& v,
-                         const api::VectorParam<int>& lod_seqlen_q,
-                         const api::VectorParam<int>& lod_seqlen_k,
-                         const paddle::optional<DenseTensor>& fixed_seed_offset,
-                         const paddle::optional<DenseTensor>& attn_mask,
-                         const int batch_size,
-                         const Scalar& max_seqlen_q_,
-                         const Scalar& max_seqlen_k_,
-                         const int num_heads,
-                         const int num_heads_k,
-                         const int head_size,
-                         const int head_size_v,
-                         float scale,
-                         float dropout,
-                         bool causal,
-                         bool return_softmax,
-                         bool is_test,
-                         const std::string& rng_name,
-                         DenseTensor* out,
-                         DenseTensor* softmax,
-                         DenseTensor* softmax_lse,
-                         DenseTensor* seed_offset) {
+void FlashAttnKernelBase(
+    const Context& ctx,
+    const DenseTensor& q,
+    const DenseTensor& k,
+    const DenseTensor& v,
+    const api::VectorParam<int>& lod_seqlen_q,
+    const api::VectorParam<int>& lod_seqlen_k,
+    const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
+    const paddle::optional<DenseTensor>& startend_row_indices,
+    const int batch_size,
+    const Scalar& max_seqlen_q_,
+    const Scalar& max_seqlen_k_,
+    const int num_heads,
+    const int num_heads_k,
+    const int head_size,
+    const int head_size_v,
+    float scale,
+    float dropout,
+    bool causal,
+    bool return_softmax,
+    bool is_test,
+    const std::string& rng_name,
+    DenseTensor* out,
+    DenseTensor* softmax,
+    DenseTensor* softmax_lse,
+    DenseTensor* seed_offset) {
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
 
   float real_scale = scale == 0.0f ? 1.0f / std::sqrt(head_size) : scale;
@@ -79,40 +82,88 @@ void FlashAttnKernelBase(const Context& ctx,
   const XPUType* k_data = reinterpret_cast<const XPUType*>(k.data<T>());
   const XPUType* v_data = reinterpret_cast<const XPUType*>(v.data<T>());
   XPUType* out_data = reinterpret_cast<XPUType*>(out->data<T>());
-
+  int64_t fa_layout = AttnQKVLayout_t::ATTN_BLHD;
   float* softmax_lse_data = softmax_lse->data<float>();
   const float* bias_data = nullptr;
-  int64_t fa_layout = AttnQKVLayout_t::ATTN_BLHD;
-  if (attn_mask.get_ptr() != nullptr) {
-    const auto& mask_dims = attn_mask->dims();
-    if (mask_dims.size() == 3 || (mask_dims[1] == 1 && mask_dims.size() == 4)) {
-      fa_layout |= AttnQKVLayout_t::BIAS_BLL;
-    } else {
-      PADDLE_ENFORCE_EQ(mask_dims.size(),
-                        4,
-                        common::errors::InvalidArgument(
-                            "flash_attn_fwd requires mask's shape "
-                            "like [b,l,l] or [b, h, l, l]"));
+  DenseTensor downstart_row_indices, upend_row_indices, downend_row_indices,
+      upstart_row_indices;
+  void *downstart_row_indices_data = nullptr, *upend_row_indices_data = nullptr,
+       *downend_row_indices_data = nullptr, *upstart_row_indices_data = nullptr;
+  bool is_flashmask = startend_row_indices.get_ptr() != nullptr;
+  XPUStream flashmask_stream;
+  if (is_flashmask) {
+    xpu_stream_create(&flashmask_stream);
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices->dims().size(),
+        4,
+        common::errors::InvalidArgument(
+            "flashmask_attention receive startend_row_indices with dim "
+            "[batch_size, num_heads,seq_len, mask_bounds]"));
+    PADDLE_ENFORCE_EQ(startend_row_indices->dims()[3] == 1 ||
+                          startend_row_indices->dims()[3] == 2 ||
+                          startend_row_indices->dims()[3] == 4,
+                      true,
+                      common::errors::InvalidArgument(
+                          "flashmask_attention startend_row_indices "
+                          "mask_bounds must in [1,2,4]"));
+    downstart_row_indices =
+        phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {0}, {1});
+    downstart_row_indices_data = downstart_row_indices.data();
+    if (startend_row_indices->dims()[3] == 2) {
+      if (!causal) {
+        upend_row_indices =
+            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices_data = upend_row_indices.data();
+      } else {
+        downend_row_indices =
+            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices_data = downend_row_indices.data();
+      }
+    } else if (startend_row_indices->dims()[3] == 4) {
+      upend_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices_data = upend_row_indices.data();
+      downend_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices_data = downend_row_indices.data();
+      upstart_row_indices =
+          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices_data = upstart_row_indices.data();
     }
-    if (attn_mask->dtype() == phi::DataType::FLOAT32) {
-      bias_data = attn_mask->data<float>();
-    } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
-               attn_mask->dtype() == phi::DataType::BFLOAT16) {
-      float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask->numel());
-      int r = xpu::cast<XPUType, float>(
-          ctx.x_context(),
-          reinterpret_cast<const XPUType*>(attn_mask->data<T>()),
-          bias_tmp,
-          attn_mask->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      bias_data = bias_tmp;
-    } else {
-      errors::Unimplemented(
-          "Unsupported dtype for attention_mask in xpu flash attention, only "
-          "float32, float16 and "
-          "bfloat16 are supported.");
+  } else {
+    if (attn_mask.get_ptr() != nullptr) {
+      const auto& mask_dims = attn_mask->dims();
+      if (mask_dims.size() == 3 ||
+          (mask_dims[1] == 1 && mask_dims.size() == 4)) {
+        fa_layout |= AttnQKVLayout_t::BIAS_BLL;
+      } else {
+        PADDLE_ENFORCE_EQ(mask_dims.size(),
+                          4,
+                          common::errors::InvalidArgument(
+                              "flash_attn_fwd requires mask's shape "
+                              "like [b,l,l] or [b, h, l, l]"));
+      }
+      if (attn_mask->dtype() == phi::DataType::FLOAT32) {
+        bias_data = attn_mask->data<float>();
+      } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
+                 attn_mask->dtype() == phi::DataType::BFLOAT16) {
+        float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask->numel());
+        int r = xpu::cast<XPUType, float>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUType*>(attn_mask->data<T>()),
+            bias_tmp,
+            attn_mask->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+        bias_data = bias_tmp;
+      } else {
+        errors::Unimplemented(
+            "Unsupported dtype for attention_mask in xpu flash attention, only "
+            "float32, float16 and "
+            "bfloat16 are supported.");
+      }
     }
   }
+
   int fa_tgemm = get_flash_attn_tgemm<XPUType>();
   auto flash_attention_kernel =
       baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, tfloat32, int>;
@@ -123,46 +174,50 @@ void FlashAttnKernelBase(const Context& ctx,
     flash_attention_kernel =
         baidu::xpu::xfa::mha_varlen_fwd<XPUType, float, XPUTypeFP16, int>;
   }
-  int r =
-      flash_attention_kernel(ctx.x_context(),
-                             q_data,            // q
-                             k_data,            // k
-                             v_data,            // v
-                             out_data,          // out
-                             softmax_lse_data,  // softmax_lse
-                             lod_seqlen_q,      // lod_seqlens_q
-                             lod_seqlen_k,      // lod_seqlens_k
-                             max_seqlen_q,      // max_seqlen_q
-                             max_seqlen_k,      // max_seqlen_k
-                             num_heads,         // head_num
-                             num_heads_k,       // head_num_k
-                             head_size,         // head_dim
-                             real_scale,        // softmax_scale
-                             real_dropout,      // p_dropout
-                             static_cast<int32_t>(seed_offset_data[0]),  // seed
-                             causal,       // is_causal
-                             nullptr,      // attn_mask
-                             bias_data,    // bias
-                             nullptr,      // q_maxptr
-                             nullptr,      // k_maxptr
-                             nullptr,      // v_maxptr
-                             nullptr,      // o_maxptr
-                             false,        // is_qkv_fusion
-                             fa_layout,    // qkv_layout
-                             nullptr,      // alibi_slopes
-                             {},           // alibi_slopes_shape
-                             -1,           // window_size_left
-                             -1,           // window_size_right
-                             head_size_v,  // v_head_dim
-                             nullptr,      // downstart_row_indices_data
-                             nullptr,      // downend_row_indices_data
-                             nullptr,      // upstart_row_indices_data
-                             nullptr,      // upend_row_indices_data
-                             0,            // flash_mask_head_num
-                             nullptr,      // flashmask_maxmin
-                             nullptr       // side_stream
-      );
+  int r = flash_attention_kernel(
+      ctx.x_context(),
+      q_data,                                     // q
+      k_data,                                     // k
+      v_data,                                     // v
+      out_data,                                   // out
+      softmax_lse_data,                           // softmax_lse
+      lod_seqlen_q,                               // lod_seqlens_q
+      lod_seqlen_k,                               // lod_seqlens_k
+      max_seqlen_q,                               // max_seqlen_q
+      max_seqlen_k,                               // max_seqlen_k
+      num_heads,                                  // head_num
+      num_heads_k,                                // head_num_k
+      head_size,                                  // head_dim
+      real_scale,                                 // softmax_scale
+      real_dropout,                               // p_dropout
+      static_cast<int32_t>(seed_offset_data[0]),  // seed
+      causal,                                     // is_causal
+      nullptr,                                    // attn_mask
+      bias_data,                                  // bias
+      nullptr,                                    // q_maxptr
+      nullptr,                                    // k_maxptr
+      nullptr,                                    // v_maxptr
+      nullptr,                                    // o_maxptr
+      false,                                      // is_qkv_fusion
+      fa_layout,                                  // qkv_layout
+      nullptr,                                    // alibi_slopes
+      {},                                         // alibi_slopes_shape
+      -1,                                         // window_size_left
+      -1,                                         // window_size_right
+      head_size_v,                                // v_head_dim
+      (const int*)downstart_row_indices_data,     // downstart_row_indices_data
+      (const int*)downend_row_indices_data,       // downend_row_indices_data
+      (const int*)upstart_row_indices_data,       // upstart_row_indices_data
+      (const int*)upend_row_indices_data,         // upend_row_indices_data
+      is_flashmask ? startend_row_indices->dims()[1]
+                   : 0,                          // flash_mask_head_num
+      nullptr,                                   // flashmask_maxmin
+      is_flashmask ? flashmask_stream : nullptr  // side_stream
+  );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_fwd");
+  if (is_flashmask && flashmask_stream != nullptr) {
+    xpu_stream_destroy(flashmask_stream);
+  }
 }
 #else
 // use a template specialization to avoid the compilation error of r200 when
@@ -353,6 +408,7 @@ void FlashAttnUnpaddedKernel(
                          kvlod,
                          fixed_seed_offset,
                          attn_mask,
+                         paddle::none,
                          batch_size,
                          max_seqlen_q,
                          max_seqlen_k,
@@ -430,6 +486,88 @@ void FlashAttnKernel(const Context& ctx,
                          kvlod,
                          fixed_seed_offset,
                          attn_mask,
+                         paddle::none,
+                         batch_size,
+                         seqlen_q,
+                         seqlen_k,
+                         num_heads,
+                         num_heads_k,
+                         head_size,
+                         head_size_v,
+                         0.0,  // scale
+                         dropout,
+                         causal,
+                         return_softmax,
+                         is_test,
+                         rng_name,
+                         out,
+                         softmax,
+                         softmax_lse,
+                         seed_offset);
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnKernel"));
+#endif
+}
+
+template <typename T, typename Context>
+void FlashMaskKernel(const Context& ctx,
+                     const DenseTensor& q,
+                     const DenseTensor& k,
+                     const DenseTensor& v,
+                     const DenseTensor& startend_row_indices,
+                     const paddle::optional<DenseTensor>& fixed_seed_offset,
+                     float dropout,
+                     bool causal,
+                     bool return_softmax,
+                     bool is_test,
+                     const std::string& rng_name,
+                     DenseTensor* out,
+                     DenseTensor* softmax,
+                     DenseTensor* softmax_lse,
+                     DenseTensor* seed_offset) {
+#ifdef PADDLE_WITH_XPU_XRE5
+  if (return_softmax == true) {
+    PADDLE_THROW(
+        common::errors::Unimplemented("return_softmax should be false"));
+  }
+
+  // q, k, v [batch_size, seq_len, num_heads, head_dim]
+  const auto& dims = q.dims();
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+  const int64_t batch_size = dims[0];
+  const int64_t seqlen_q = dims[1];
+  const int64_t num_heads = dims[2];
+  const int64_t head_size = dims[3];
+  const int64_t seqlen_k = k.dims()[1];
+  const int64_t num_heads_k = k.dims()[2];
+  const int64_t head_size_v = v.dims()[3];
+  // lod info
+  std::vector<int> qlod_vec = {0};
+  std::vector<int> kvlod_vec = {0};
+  for (int batch_idx = 1; batch_idx <= batch_size; ++batch_idx) {
+    qlod_vec.push_back(seqlen_q * batch_idx);
+    kvlod_vec.push_back(seqlen_k * batch_idx);
+  }
+  api::VectorParam<int> qlod{
+      qlod_vec.data(), static_cast<int64_t>(qlod_vec.size()), nullptr};
+  api::VectorParam<int> kvlod{
+      kvlod_vec.data(), static_cast<int64_t>(kvlod_vec.size()), nullptr};
+
+  FlashAttnKernelBase<T>(ctx,
+                         q,
+                         k,
+                         v,
+                         qlod,
+                         kvlod,
+                         fixed_seed_offset,
+                         paddle::none,
+                         startend_row_indices,
                          batch_size,
                          seqlen_q,
                          seqlen_k,
@@ -476,5 +614,15 @@ PD_REGISTER_KERNEL(flash_attn,
                    float,
                    phi::dtype::float16) {
   kernel->InputAt(3).SetBackend(
+      phi::Backend::ALL_BACKEND);  // fixed_seed_offset
+}
+
+PD_REGISTER_KERNEL(flashmask_attention,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::FlashMaskKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(4).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

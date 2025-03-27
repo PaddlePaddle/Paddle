@@ -76,15 +76,14 @@ class TestLayer(unittest.TestCase):
         paddle.seed(123)
         net = LayerCase()
         if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
+            paddle.base.core._set_prim_all_enabled(with_prim)
             if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
+                assert (
+                    with_prim
+                ), "with_cinn=True but with_prim=False is unsupported"
+                net = paddle.jit.to_static(net, backend="CINN", full_graph=True)
             else:
-                net = paddle.jit.to_static(net, full_graph=True)
+                net = paddle.jit.to_static(net, backend=None, full_graph=True)
 
         outs = net(*self.inputs)
         loss = outs[0]

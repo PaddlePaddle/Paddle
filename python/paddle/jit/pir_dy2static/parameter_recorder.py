@@ -98,6 +98,12 @@ class InplaceMap:
             inplace_dict[var] = root_var
         return root_var
 
+    def pop(self, program):
+        key = _program_hash(program)
+        if key not in self.params_dict:
+            return
+        del self.params_dict[key]
+
     def restore_checkpoint(self, checkpoint):
         # InplaceMap is a nested effect.
         # when enter a block, we should save a checkpoint

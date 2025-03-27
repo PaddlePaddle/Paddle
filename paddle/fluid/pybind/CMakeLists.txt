@@ -148,16 +148,19 @@ set(PYBIND_SRCS
     op_callstack_utils.cc
     python_callable_registry.cc)
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+if(WITH_DISTRIBUTE)
+  set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
 
-string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
-if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
-  set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
-  set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
-  add_definitions(-DPADDLE_WITH_DEEP_EP)
+  string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+  if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+    set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+    set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+    add_definitions(-DPADDLE_WITH_DEEP_EP)
+    if(WITH_NVSHMEM)
+      set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
+    endif()
+  endif()
 endif()
-#endif
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
@@ -178,7 +181,7 @@ if(WITH_PYTHON)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl xpu_async_load)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_gloo)
@@ -731,5 +734,24 @@ if(WITH_PYTHON)
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+
+  function(install_py_pybind11_stubgen)
+    # check install
+    execute_process(
+      COMMAND
+        ${PYTHON_EXECUTABLE} "-c"
+        "import re, pybind11_stubgen; print(re.compile('/__init__.py.*').sub('',pybind11_stubgen.__file__))"
+      RESULT_VARIABLE _pybind11_stubgen_status
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(_pybind11_stubgen_status EQUAL 0)
+      return()
+    endif()
+
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
+                            pybind11-stubgen)
+  endfunction()
+
+  install_py_pybind11_stubgen()
 
 endif()

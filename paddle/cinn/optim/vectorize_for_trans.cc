@@ -141,12 +141,31 @@ Expr GetOriginOffsetWithVectorizeAxis(Expr offset, Var var_iter) {
   return origin_offset;
 }
 
+bool CheckoutTensorAddrLegalCastToVectorize(const std::vector<ir::Expr> &shapes,
+                                            const int vectorize_factor) {
+  int64_t nums = 1;
+  for (auto &size : shapes) {
+    auto const_val = size.As<ir::IntImm>();
+    PADDLE_ENFORCE_NOT_NULL(const_val,
+                            ::common::errors::InvalidArgument(
+                                "vectorize tiling only support static shape"));
+    nums *= const_val->value;
+  }
+  if (nums % vectorize_factor == 0) return true;
+  return false;
+}
+
 class ForOpWithMultiScheduleBlockSupportVectorize
     : public ir::IRMutator<ir::Expr *> {
  public:
   void operator()(ir::Expr *expr) { ir::IRMutator<>::Visit(expr, expr); }
 
  private:
+  void Visit(const ir::IfThenElse *op, Expr *expr) override {
+    have_if_then_else_op_ = true;
+    ir::IRMutator<>::Visit(op, expr);
+  }
+
   void Visit(const ir::ScheduleBlockRealize *op, Expr *expr) override {
     auto *node = expr->As<ir::ScheduleBlockRealize>();
     PADDLE_ENFORCE_NOT_NULL(
@@ -154,18 +173,18 @@ class ForOpWithMultiScheduleBlockSupportVectorize
         ::common::errors::InvalidArgument("The input expr should be a Block"));
 
     IRMutator<>::Visit(op, expr);
-    if (in_vectorize_scope) {
+    if (!have_if_then_else_op_ && in_vectorize_scope_) {
       for_op_blocks_.push_back(expr);
     }
   }
 
   void Visit(const ir::For *op, ir::Expr *expr) override {
     auto *forloop = expr->As<ir::For>();
-    if (forloop->is_vectorized()) in_vectorize_scope = true;
+    if (forloop->is_vectorized()) in_vectorize_scope_ = true;
 
     IRMutator<>::Visit(op, expr);
 
-    if (for_op_blocks_.size() > 1 && in_vectorize_scope) {
+    if (for_op_blocks_.size() > 1 && in_vectorize_scope_) {
       std::vector<Expr> stmts;
       for (auto block : for_op_blocks_) {
         Var new_iterator(
@@ -187,11 +206,12 @@ class ForOpWithMultiScheduleBlockSupportVectorize
       Expr block_expr = ir::Block::Make(stmts);
       *expr = block_expr;
     }
-    in_vectorize_scope = false;
+    in_vectorize_scope_ = false;
     for_op_blocks_.clear();
   }
 
-  bool in_vectorize_scope{false};
+  bool in_vectorize_scope_{false};
+  bool have_if_then_else_op_{false};
   std::vector<ir::Expr *> for_op_blocks_;
 };
 
@@ -388,6 +408,10 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
       vectorize_tensors_.clear();
       scalar_tensor_without_vectorize_axis_.clear();
       schedule_block_can_vectorize_ = false;
+      return false;
+    }
+
+    if (!CheckoutTensorAddrLegalCastToVectorize(tensor->shape, factor_)) {
       return false;
     }
 

@@ -22,7 +22,7 @@ import numpy as np
 
 import paddle
 import paddle.pir.core as ir_static
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
@@ -34,9 +34,9 @@ from paddle.pir import Value, fake_value, is_fake_value
 from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
+    Backend,
     auto_layout_is_enabled,
     backend_guard,
-    cinn_is_enabled,
     cse_is_enabled,
 )
 
@@ -49,6 +49,11 @@ prog_logger = TranslatorLogger()
 
 
 FAKE_VALUE_NAME = "FakeValue"
+
+
+def hash_with_seed(value, seed):
+    result = seed + 0x9E3779B9 + (value << 6) + (value >> 2)
+    return result & ((1 << 64) - 1)
 
 
 def get_value_name(value):
@@ -418,11 +423,11 @@ class RunnableProgram:
         )
         # Update no_need_buffer_names by rename_mapping
         for original_name, new_name in rename_mapping.items():
-            if (
-                original_name not in no_need_buffer_names
-                and new_name in no_need_buffer_names
-            ):
-                no_need_buffer_names.remove(new_name)
+            if {original_name, new_name} & set(no_need_buffer_names):
+                if original_name in no_need_buffer_names:
+                    no_need_buffer_names.remove(original_name)
+                if new_name in no_need_buffer_names:
+                    no_need_buffer_names.remove(new_name)
 
         value_program_attr = {}
         for k, ns in self.program_name_attr.items():
@@ -682,10 +687,6 @@ class PartialProgramLayer:
         if parameters is not None:
             parameters[0][:] = self._params
             parameters[1][:] = self._param_values
-        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
-            self._cuda_graph_vec = self._create_cuda_graph_vec()
-        self._cuda_graph_capture_mode = ""
-        self._cuda_graph_pool_id = 0
         # Set default mode to train
         self.training = True
         self._program_extra_info = {}
@@ -708,7 +709,7 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hookers = []
-        self._backend = kwargs.get('backend', None)
+        self._backend = kwargs.get('backend', Backend.PHI)
         self._grad_var_names = {}
 
     def __call__(self, inputs):
@@ -718,14 +719,19 @@ class PartialProgramLayer:
         in_vars = self._prepare_inputs(inputs)
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
-        _legacy_C_ops.pir_run_program(
-            self._valid_vars(in_vars),
+        inputs = self._valid_vars(in_vars)
+        _C_ops.run_program(
+            inputs,
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
             self._create_scope_vec(
-                program_id=self.program_id, use_scope_cache=True
+                cache_key=(
+                    hash_with_seed(
+                        self.program_id, self._calc_input_places_hash(inputs)
+                    )
+                ),
+                use_scope_cache=True,
             ),
-            self._cuda_graph_vec,
             *attrs,
         )
         restored_nest_out = self._restore_out(out_vars)
@@ -737,14 +743,19 @@ class PartialProgramLayer:
         """
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
-        _legacy_C_ops.pir_run_program(
-            self._valid_vars(inputs),
+        inputs = self._valid_vars(inputs)
+        _C_ops.run_program(
+            inputs,
             self._valid_vars(self._params),
             self._valid_vars(out_vars),
             self._create_scope_vec(
-                program_id=self.program_id, use_scope_cache=True
+                cache_key=(
+                    hash_with_seed(
+                        self.program_id, self._calc_input_places_hash(inputs)
+                    )
+                ),
+                use_scope_cache=True,
             ),
-            self._cuda_graph_vec,
             *attrs,
         )
         return self._outputs.quick_restore(out_vars)
@@ -767,18 +778,23 @@ class PartialProgramLayer:
     def add_hooker(self, hooker):
         self._hookers.append(hooker)
 
-    def _get_scope(self, program_id=None, use_scope_cache=False):
+    def _get_scope(self, cache_key=None, use_scope_cache=False):
         if not use_scope_cache:
             return core.Scope()
-        if program_id not in self._scope_cache:
-            self._scope_cache[program_id] = []
-        cached_scopes = self._scope_cache[program_id]
+        if cache_key not in self._scope_cache:
+            self._scope_cache[cache_key] = []
+        cached_scopes = self._scope_cache[cache_key]
         for scope in cached_scopes:
             if scope._can_reused:
                 return scope
         scope = core.Scope()
         cached_scopes.append(scope)
         return scope
+
+    def _calc_input_places_hash(self, inputs):
+        if not inputs:
+            return 0
+        return paddle.base.libpaddle.calc_place_hash(inputs)
 
     # whole
     @switch_to_static_graph
@@ -789,13 +805,11 @@ class PartialProgramLayer:
                 apply_general_passes(
                     forward_program,
                     enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=cinn_is_enabled(
-                        self._build_strategy, self._backend
-                    ),
+                    enable_delete_assert_op=self._backend.is_cinn(),
                 )
 
                 # if-else pass
-                if cinn_is_enabled(self._build_strategy, self._backend):
+                if self._backend.is_cinn():
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
@@ -825,7 +839,7 @@ class PartialProgramLayer:
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
-            train_program = self._append_backward_desc(train_program)
+            train_program = self._append_backward(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
 
@@ -882,18 +896,14 @@ class PartialProgramLayer:
                 apply_general_passes(
                     forward_program,
                     enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=cinn_is_enabled(
-                        self._build_strategy, self._backend
-                    ),
+                    enable_delete_assert_op=self._backend.is_cinn(),
                 )
                 apply_general_passes(
                     backward_program,
                     enable_cse=cse_is_enabled(),
-                    enable_delete_assert_op=cinn_is_enabled(
-                        self._build_strategy, self._backend
-                    ),
+                    enable_delete_assert_op=self._backend.is_cinn(),
                 )
-                if cinn_is_enabled(self._build_strategy, self._backend):
+                if self._backend.is_cinn():
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     init_backward_program_shape_analysis(
                         forward_program, backward_program
@@ -939,11 +949,13 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self) -> RunnableProgram:
-        return self._create_program()
+        with backend_guard(self._backend):
+            return self._create_program()
 
     @cached_property
     def infer_program(self) -> RunnableProgram:
-        return self._create_program(is_infer_mode=True)
+        with backend_guard(self._backend):
+            return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program, outputs):
         """
@@ -956,7 +968,7 @@ class PartialProgramLayer:
         return main_program
 
     @switch_to_static_graph
-    def _append_backward_desc(
+    def _append_backward(
         self, train_runnable_program: RunnableProgram
     ) -> RunnableProgram:
         program = train_runnable_program.program
@@ -1069,13 +1081,13 @@ class PartialProgramLayer:
         )
 
         # construct a runnable program.
-        fused_bn_add_act_pass = FullGraphPreProcessPass(
+        full_graph_pre_process_pass = FullGraphPreProcessPass(
             [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value],
-            cinn_is_enabled(self._build_strategy, self._backend),
+            self._backend.is_cinn(),
         )
         forward_index_pass = IndicesPreservePass(
             [forward_end_idx, backward_start_op_index, backward_end_op_index],
-            fused_bn_add_act_pass,
+            full_graph_pre_process_pass,
         )
 
         program = forward_index_pass(program)
@@ -1086,7 +1098,7 @@ class PartialProgramLayer:
             x_grad_value,
             p_grad_value,
             o_grad_value,
-        ) = fused_bn_add_act_pass.values
+        ) = full_graph_pre_process_pass.values
         (
             forward_end_idx,
             backward_start_op_index,
@@ -1119,16 +1131,6 @@ class PartialProgramLayer:
         for key, val in self.program.program_attr.items():
             attrs.append(key)
             attrs.append(val)
-
-        if self._cuda_graph_capture_mode:
-            attrs.extend(
-                (
-                    'cuda_graph_capture_mode',
-                    self._cuda_graph_capture_mode,
-                    'cuda_graph_pool_id',
-                    self._cuda_graph_pool_id,
-                )
-            )
         return attrs
 
     def _prepare_inputs(self, inputs):
@@ -1171,22 +1173,11 @@ class PartialProgramLayer:
             self._outputs.var_list
         )
 
-    def _create_scope_vec(self, program_id=None, use_scope_cache=False):
+    def _create_scope_vec(self, cache_key=None, use_scope_cache=False):
         inner_scope = self._get_scope(
-            program_id=program_id, use_scope_cache=use_scope_cache
+            cache_key=cache_key, use_scope_cache=use_scope_cache
         )
         return [inner_scope]
-
-    def _create_cuda_graph_vec(self):
-        var = core.eager.Tensor(
-            core.VarDesc.VarType.FP32,
-            [],
-            "cuda_graph",
-            core.VarDesc.VarType.RAW,
-            True,
-        )
-        var.stop_gradient = True
-        return var
 
     def _restore_out(self, out_vars):
         """

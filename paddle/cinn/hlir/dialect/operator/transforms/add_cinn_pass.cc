@@ -31,8 +31,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/convert_fa_to_qkvmha_pass.h"
@@ -130,7 +128,11 @@ void ApplyPdToCinnPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateReplaceZeroScaleToFullPass());
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
     defined(PADDLE_WITH_HIP)
+
+#ifndef CINN_WITH_Z100
   pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
+#endif
+
 #endif
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
@@ -201,7 +203,6 @@ void ApplyDivideGroupOpToFusionOpPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(
       cinn::dialect::ir::CreateRemoveRedundantGroupOutputPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());

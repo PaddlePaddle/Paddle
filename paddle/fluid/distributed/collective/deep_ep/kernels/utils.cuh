@@ -53,23 +53,33 @@ __device__ __forceinline__ void trap() {
 }
 
 __device__ __forceinline__ void memory_fence() {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("fence.acq_rel.sys;":: : "memory");
+#endif
 }
 
 __device__ __forceinline__ void memory_fence_gpu() {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("fence.acq_rel.gpu;":: : "memory");
+#endif
 }
 
 __device__ __forceinline__ void memory_fence_cta() {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("fence.acq_rel.cta;":: : "memory");
+#endif
 }
 
 __device__  __forceinline__ void st_relaxed_sys_global(const int *ptr, int val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.relaxed.sys.global.s32 [%0], %1;"::"l"(ptr), "r"(val) : "memory");
+#endif
 }
 
 __device__  __forceinline__ void st_release_sys_global(const int *ptr, int val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.release.sys.global.s32 [%0], %1;"::"l"(ptr), "r"(val) : "memory");
+#endif
 }
 
 __device__  __forceinline__ void st_release_cta(const int *ptr, int val) {
@@ -77,21 +87,27 @@ __device__  __forceinline__ void st_release_cta(const int *ptr, int val) {
 }
 
 __device__ __forceinline__ int ld_acquire_sys_global(const int *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     int ret;
     asm volatile("ld.acquire.sys.global.s32 %0, [%1];" : "=r"(ret) : "l"(ptr));
     return ret;
+#endif
 }
 
 __device__ __forceinline__ uint64_t ld_acquire_sys_global(const uint64_t *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     uint64_t ret;
     asm volatile("ld.acquire.sys.global.u64 %0, [%1];" : "=l"(ret) : "l"(ptr));
     return ret;
+#endif
 }
 
 __device__ __forceinline__ int ld_acquire_global(const int *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     int ret;
     asm volatile("ld.acquire.gpu.global.s32 %0, [%1];" : "=r"(ret) : "l"(ptr));
     return ret;
+#endif
 }
 
 __device__ __forceinline__ int atomic_add_release_sys_global(const int* ptr, int value) {
@@ -113,27 +129,35 @@ __device__ __forceinline__ int ld_acquire_cta(const int *ptr) {
 }
 
 __device__ __forceinline__ uint8_t ld_na_relaxed(const uint8_t *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     uint16_t ret;
     asm volatile("ld.relaxed.gpu.global.L1::no_allocate.b8 %0, [%1];" : "=h"(ret) : "l"(ptr));
     return static_cast<uint8_t>(ret);
+#endif
 }
 
 __device__ __forceinline__ uint16_t ld_na_relaxed(const uint16_t *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     uint16_t ret;
     asm volatile("ld.relaxed.gpu.global.L1::no_allocate.b16 %0, [%1];" : "=h"(ret) : "l"(ptr));
     return ret;
+#endif
 }
 
 __device__ __forceinline__ uint32_t ld_na_relaxed(const uint32_t *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     uint32_t ret;
     asm volatile("ld.relaxed.gpu.global.L1::no_allocate.b32 %0, [%1];" : "=r"(ret) : "l"(ptr));
     return ret;
+#endif
 }
 
 __device__ __forceinline__ uint64_t ld_na_relaxed(const uint64_t *ptr) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     uint64_t ret;
     asm volatile("ld.relaxed.gpu.global.L1::no_allocate.b64 %0, [%1];" : "=l"(ret) : "l"(ptr));
     return ret;
+#endif
 }
 
 __device__  __forceinline__ int ld_volatile_global(const int *ptr) {
@@ -160,15 +184,18 @@ __device__  __forceinline__ int64_t ld_volatile_global(const uint64_t *ptr) {
     return ret;
 }
 
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
+#else
+#define DISABLE_AGGRESSIVE_PTX_INSTRS
+#endif
+
 #ifndef DISABLE_AGGRESSIVE_PTX_INSTRS
 #define LD_NC_FUNC "ld.global.nc.L1::no_allocate.L2::256B"
 #else
 #define LD_NC_FUNC "ld.volatile.global"
 #endif
 
-// `ld.global.nc.L1::no_allocate` will be translated into `LDG.E.NA.[width].CONSTANT` in SASS,
-// which does not have cache allocation, and `CONSTANT` memory does not have coherence control,
-// so we have to control them by queue semantics
+// `ld.global.nc.L1::no_allocate` will be translated into `LDG.E.NA.[width].CONSTANT` in SASS
 template <typename dtype_t>
 __device__  __forceinline__ dtype_t ld_nc_global(const dtype_t *ptr) {
     auto ret = ld_nc_global(reinterpret_cast<const typename VecInt<sizeof(dtype_t)>::vec_t*>(ptr));
@@ -220,40 +247,55 @@ __device__  __forceinline__ int4 ld_nc_global(const int4 *ptr) {
 }
 
 __device__ __forceinline__ void st_na_relaxed(const uint8_t *ptr, uint8_t val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.relaxed.gpu.global.L1::no_allocate.b8 [%0], %1;" : : "l"(ptr), "h"(static_cast<uint16_t>(val)));
+#endif
 }
 
 __device__ __forceinline__ void st_na_relaxed(const uint16_t *ptr, uint16_t val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.relaxed.gpu.global.L1::no_allocate.b16 [%0], %1;" : : "l"(ptr), "h"(val));
+#endif
 }
 
 __device__ __forceinline__ void st_na_relaxed(const uint32_t *ptr, uint32_t val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.relaxed.gpu.global.L1::no_allocate.b32 [%0], %1;" : : "l"(ptr), "r"(val));
+#endif
 }
 
 __device__ __forceinline__ void st_na_relaxed(const int *ptr, int val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.relaxed.gpu.global.L1::no_allocate.b32 [%0], %1;" : : "l"(ptr), "r"(val));
+#endif
 }
 
 __device__ __forceinline__ void st_na_relaxed(const int4 *ptr, int4 val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.relaxed.gpu.global.L1::no_allocate.v4.s32 [%0], {%1, %2, %3, %4};"
             : : "l"(ptr), "r"(val.x), "r"(val.y), "r"(val.z), "r"(val.w));
+#endif
 }
 
 __device__ __forceinline__ void st_na_release(const int *ptr, int val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.release.gpu.global.L1::no_allocate.b32 [%0], %1;" : : "l"(ptr), "r"(val));
+#endif
 }
 
 __device__ __forceinline__ void st_na_release(const uint32_t *ptr, uint32_t val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.release.gpu.global.L1::no_allocate.b32 [%0], %1;" : : "l"(ptr), "r"(val));
+#endif
 }
 
 __device__ __forceinline__ void st_na_release(const uint64_t *ptr, uint64_t val) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     asm volatile("st.release.gpu.global.L1::no_allocate.b64 [%0], %1;" : : "l"(ptr), "l"(val));
+#endif
 }
 
-// `st.global.L1::no_allocate` will be translated into `ST.E.NA.[width]` in SASS,
-// which does not have cache allocation (obviously in L1, I guess not in L2 too)
+// `st.global.L1::no_allocate` will be translated into `ST.E.NA.[width]` in SASS
 #ifndef DISABLE_AGGRESSIVE_PTX_INSTRS
 #define ST_NA_FUNC "st.global.L1::no_allocate"
 #else
@@ -385,6 +427,7 @@ timeout_check(int **task_fifo_ptrs, int head, int rank, int expected, int tag = 
 template <int kNumRanks>
 __forceinline__ __device__ void
 barrier_device(int **task_fifo_ptrs, int head, int rank, int tag = 0) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
     auto thread_id = static_cast<int>(threadIdx.x);
     EP_DEVICE_ASSERT(kNumRanks <= 32);
 
@@ -394,6 +437,7 @@ barrier_device(int **task_fifo_ptrs, int head, int rank, int tag = 0) {
         atomicSub_system(task_fifo_ptrs[thread_id] + head + rank, FINISHED_SUM_TAG);
     }
     timeout_check<kNumRanks>(task_fifo_ptrs, head, rank, 0, tag);
+#endif
 }
 
 } // namespace deep_ep

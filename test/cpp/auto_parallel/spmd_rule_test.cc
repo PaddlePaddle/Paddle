@@ -1153,6 +1153,69 @@ TEST(FlashAtt, Ctor) {
   check_dim_mapping(spmd2.second[2], {0, -1, 1, -1});
 }
 
+TEST(FlashMask, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  auto build_input = [&](const std::vector<int64_t>& shape,
+                         const std::vector<int64_t>& dim_mapping) {
+    auto t_dist_attr = TensorDistAttr();
+    t_dist_attr.set_process_mesh(process_mesh);
+    t_dist_attr.set_dims_mapping(dim_mapping);
+    t_dist_attr.set_dynamic_dims(std::vector<bool>(shape.size(), false));
+    auto input =
+        phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+    return input;
+  };
+
+  // b, s, m, h
+  std::vector<int64_t> qkv_shape = {2, 256, 2, 128};
+  std::vector<int64_t> dim_mapping = {0, 1, -1, -1};
+
+  auto qkv = build_input(qkv_shape, dim_mapping);
+  auto mask = build_input({}, {});
+  auto seed_offset = build_input({}, {});
+
+  auto spmd1 = FlashMaskInferSpmd(
+      qkv, qkv, qkv, seed_offset, mask, 0.5, false, false, false, "");
+
+  EXPECT_EQ(spmd1.first.size(), static_cast<size_t>(5));
+  EXPECT_EQ(spmd1.second.size(), static_cast<size_t>(4));
+  check_dim_mapping(spmd1.first[0], {0, -1, -1, -1});
+  check_dim_mapping(spmd1.first[1], {0, -1, -1, -1});
+  check_dim_mapping(spmd1.first[2], {0, -1, -1, -1});
+  check_dim_mapping(spmd1.first[3], {});
+  check_dim_mapping(spmd1.first[4], {});
+  check_dim_mapping(spmd1.second[0], {0, -1, -1, -1});
+  check_dim_mapping(spmd1.second[1], {0, -1, -1, -1});
+  check_dim_mapping(spmd1.second[2], {0, -1, -1});
+  check_dim_mapping(spmd1.second[3], {-1});
+
+  auto out = build_input(qkv_shape, {0, -1, 1, -1});
+  auto softmax_lse = build_input({2, 2, 256}, {0, 1, -1});
+  auto out_grad = build_input(qkv_shape, {-1, -1, -1, -1});
+
+  auto spmd2 = FlashMaskGradInferSpmd(
+      qkv, qkv, qkv, mask, out, softmax_lse, seed_offset, out_grad, 0.5, false);
+
+  EXPECT_EQ(spmd2.first.size(), static_cast<size_t>(8));
+  EXPECT_EQ(spmd2.second.size(), static_cast<size_t>(3));
+
+  check_dim_mapping(spmd2.first[0], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.first[1], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.first[2], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.first[3], {});
+  check_dim_mapping(spmd2.first[4], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.first[5], {0, 1, -1});
+  check_dim_mapping(spmd2.first[6], {});
+  check_dim_mapping(spmd2.first[7], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.second[0], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.second[1], {0, -1, 1, -1});
+  check_dim_mapping(spmd2.second[2], {0, -1, 1, -1});
+}
+
 TEST(Util, Ctor) {
   // test equal test not equal
   using phi::distributed::PartialStatus;

@@ -545,8 +545,8 @@ std::pair<int64_t, int64_t> FindBestReduceBlockThreadNum(int64_t reduce_numel,
     int64_t limit_cond_1 = std::sqrt((remain_reduce_numel + 1) / 2.0);
     int64_t limit_cond_2 = CeilDiv(remain_reduce_numel, 32);
     int64_t limit = std::min(limit_cond_1, limit_cond_2);
-    if (limit > 0 && limit < rd_block_num) {
-      rd_block_num = limit;
+    if (limit < rd_block_num) {
+      rd_block_num = std::max(limit, int64_t(1));
     }
 
     // Find the best rd_block/thread_num with the highest SM occupacy.
@@ -614,8 +614,9 @@ TileConfigMap BuildPureStaticShapeConfig(
   //   2) Do not allocate too many reduce blocks when reduce_numel is small.
   int64_t rd_block_num = 1;
   if (base_info->can_apply_grid_reduce) {
+    int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
     std::pair<int64_t, int64_t> res = FindBestReduceBlockThreadNum(
-        reduce_numel, sp_thread_num, rd_thread_num, spatial_numel, sm_count);
+        reduce_numel, sp_thread_num, rd_thread_num, sp_block_num, sm_count);
     rd_block_num = res.first;
     rd_thread_num = res.second;
   }
@@ -662,7 +663,8 @@ TileConfigMap BuildStaticSpatialConfig(
   // { warp_num, tree_reduce, grid_reduce, spatial_inner, reduce_method }
 
   if (last_dim == "R") {
-    int64_t rd_block_num = FloorPow2(sm_count / spatial_numel);
+    int64_t sp_block_num = std::max(spatial_numel, int64_t(1));
+    int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
     collector({1, kMaxNumel, 1, 2048},
               {8, 256, 1, 1, 1, -1, BlockReduceMethod()});
@@ -679,18 +681,18 @@ TileConfigMap BuildStaticSpatialConfig(
     }
 
   } else {  // last_dim == "S"
-    int64_t sp_block_num = CeilDiv(spatial_numel, 32);
+    int64_t sp_block_num = std::max(CeilDiv(spatial_numel, 32), int64_t(1));
     int64_t rd_block_num = FloorPow2(sm_count / sp_block_num);
 
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
       int64_t rd_threshold = rd_block_num * min_loops * 16;
       collector({1, kMaxNumel, 1, rd_threshold},
-                {16, 16, 1, 1, 1, -1, BlockReduceMethod()});
+                {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
       collector({1, kMaxNumel, rd_threshold + 1, kMaxNumel},
-                {16, 16, rd_block_num, 1, 1, -1, BlockReduceMethod()});
+                {16, 16, rd_block_num, 1, 1, -1, DiscreteReduceMethod()});
     } else {
       collector({1, kMaxNumel, 1, kMaxNumel},
-                {16, 16, 1, 1, 1, -1, BlockReduceMethod()});
+                {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
     }
   }
 
@@ -700,98 +702,63 @@ TileConfigMap BuildStaticSpatialConfig(
 TileConfigMap BuildStaticReduceConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
-  if (base_info->reduce_numel == 1) {
-    BucketInfo bucket_info__1_1023{/* sp_lower_bound = */ 1,
-                                   /* sp_upper_bound = */ 1023,
-                                   /* rb_lower_bound = */ 1,
-                                   /* rb_upper_bound = */ 1,
-                                   /* sp_is_dynamic = */ true,
-                                   /* rb_is_dynamic = */ false};
-    TileConfig tile_config__1_1023{/* warp_num = */ -1,
-                                   /* tree_reduce_num = */ 1,
-                                   /* grid_reduce_num = */ 1,
-                                   /* spatial_inner_num = */ 1,
-                                   /* vectorize_factor = */ 1,
-                                   /* reduce_inner_num = */ -1,
-                                   NoneReduceMethod()};
-    BucketInfo bucket_info__1024_INF{/* sp_lower_bound = */ 1024,
-                                     /* sp_upper_bound = */ kMaxNumel,
-                                     /* rb_lower_bound = */ 1,
-                                     /* rb_upper_bound = */ 1,
-                                     /* sp_is_dynamic = */ true,
-                                     /* rb_is_dynamic = */ false};
-    TileConfig tile_config__1024_INF{/* warp_num = */ 32,
-                                     /* tree_reduce_num = */ 1,
-                                     /* grid_reduce_num = */ 1,
-                                     /* spatial_inner_num = */ 4,
-                                     /* vectorize_factor = */ 1,
-                                     /* reduce_inner_num = */ -1,
-                                     NoneReduceMethod()};
-    return {{bucket_info__1_1023, tile_config__1_1023},
-            {bucket_info__1024_INF, tile_config__1024_INF}};
-  } else if (base_info->reduce_numel <= 256) {
-    BucketInfo bucket_info{/* sp_lower_bound = */ 1,
-                           /* sp_upper_bound = */ kMaxNumel,
-                           /* rb_lower_bound = */ 2,
-                           /* rb_upper_bound = */ 256,
-                           /* sp_is_dynamic = */ true,
-                           /* rb_is_dynamic = */ false};
-    TileConfig tile_config{
-        /* warp_num = */ 8,
-        /* tree_reduce_num = */ 32,
-        /* grid_reduce_num = */ 1,
-        /* spatial_inner_num = */ (256 / CeilPow2(base_info->reduce_numel)),
-        /* vectorize_factor = */ 1,
-        /* reduce_inner_num = */ -1,
-        WarpReduceMethod()};
-    return {{bucket_info, tile_config}};
-  } else if (base_info->reduce_numel <= 2048) {
-    int64_t reduce_block =
-        int64_t(std::ceil(base_info->reduce_numel * 1.0 / 256.0)) * 256;
-    int64_t warp_num = reduce_block / 256;
-    int64_t reduce_inner_num = 8;
-    int64_t tree_reduce_num = reduce_block / reduce_inner_num;
-    BucketInfo bucket_info{/* sp_lower_bound = */ 1,
-                           /* sp_upper_bound = */ kMaxNumel,
-                           /* rb_lower_bound = */ 257,
-                           /* rb_upper_bound = */ 2048,
-                           /* sp_is_dynamic = */ true,
-                           /* rb_is_dynamic = */ false};
-    TileConfig tile_config{warp_num,
-                           tree_reduce_num,
-                           /* grid_reduce_num = */ 1,
-                           /* spatial_inner_num */ 1,
-                           /* vectorize_factor = */ 1,
-                           /* reduce_inner_num = */ -1,
-                           BlockReduceMethod()};
-    return {{bucket_info, tile_config}};
-  } else {
-    BucketInfo bucket_info{/* sp_lower_bound = */ 1,
-                           /* sp_upper_bound = */ kMaxNumel,
-                           /* rb_lower_bound = */ 2049,
-                           /* rb_upper_bound = */ kMaxNumel,
-                           /* sp_is_dynamic = */ true,
-                           /* rb_is_dynamic = */ false};
-    TileConfig tile_config{/* warp_num = */ 32,
-                           /* tree_reduce_num = */ 1024,
-                           /* grid_reduce_num = */ 1,
-                           /* spatial_inner_num = */ 1,
-                           /* vectorize_factor = */ 1,
-                           /* reduce_inner_num = */ -1,
-                           BlockReduceMethod()};
-    return {{bucket_info, tile_config}};
+  const auto& last_dim = base_info->iter_space_type.back().first;
+
+  TileConfigCollector collector;
+  // { sp_lower, sp_upper, rd_lower, rd_upper },
+  // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
+
+  if (last_dim == "R") {
+    if (base_info->reduce_numel <= 256) {
+      int64_t spatial_inner_num = 256 / CeilPow2(base_info->reduce_numel);
+      collector({1, kMaxNumel, 1, 256},
+                {8, 32, 1, spatial_inner_num, 1, -1, WarpReduceMethod()});
+    } else if (base_info->reduce_numel <= 2048) {
+      int64_t reduce_block = CeilDiv(base_info->reduce_numel, 256) * 256;
+      int64_t warp_num = reduce_block / 256;
+      int64_t reduce_inner_num = 8;
+      int64_t tree_reduce_num = reduce_block / reduce_inner_num;
+      collector({1, kMaxNumel, 257, 2048},
+                {warp_num, tree_reduce_num, 1, 1, 1, -1, BlockReduceMethod()});
+    } else {
+      collector({1, kMaxNumel, 2049, kMaxNumel},
+                {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+    }
+  } else {  // last_dim == "S"
+    if (base_info->reduce_numel == 1) {
+      collector({1, 1023, 1, 1}, {-1, 1, 1, 1, 1, -1, NoneReduceMethod()});
+      collector({1024, kMaxNumel, 1, 1},
+                {32, 1, 1, 4, 1, -1, NoneReduceMethod()});
+    } else if (base_info->reduce_numel <= 16) {
+      collector({1, kMaxNumel, 1, 1}, {8, 1, 1, 1, 1, -1, NoneReduceMethod()});
+    } else {
+      collector({1, kMaxNumel, 1, 1},
+                {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+    }
   }
+
+  return collector.GetResult();
 }
 
 TileConfigMap BuildDynamicShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
+  const auto& last_dim = base_info->iter_space_type.back().first;
+
   TileConfigCollector collector;
-  collector({1, kMaxNumel, 1, 256}, {8, 32, 1, 1, 1, 8, WarpReduceMethod()});
-  collector({1, kMaxNumel, 257, 2048},
-            {8, 256, 1, 1, 1, 8, BlockReduceMethod()});
-  collector({1, kMaxNumel, 2049, kMaxNumel},
-            {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+  // { sp_lower, sp_upper, rd_lower, rd_upper },
+  // { warp, rd_thread, rd_block, sp_inner, vec_factor, rd_inner, rd_method }
+
+  if (last_dim == "R") {
+    collector({1, kMaxNumel, 1, 256}, {8, 32, 1, 1, 1, 8, WarpReduceMethod()});
+    collector({1, kMaxNumel, 257, 2048},
+              {8, 256, 1, 1, 1, 8, BlockReduceMethod()});
+    collector({1, kMaxNumel, 2049, kMaxNumel},
+              {32, 1024, 1, 1, 1, -1, BlockReduceMethod()});
+  } else {  // last_dim == "S"
+    collector({1, kMaxNumel, 1, kMaxNumel},
+              {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
+  }
   return collector.GetResult();
 }
 

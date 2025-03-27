@@ -27,6 +27,11 @@ paddle::Tensor dtensor_from_local_ad_function(
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_from_local dygraph";
+  if (input.is_dist_tensor()) {
+    VLOG(3) << "Input is a distributed tensor, no need to convert.";
+    return input;
+  }
+
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "dtensor_from_local dygraph", phi::TracerEventType::Communication, 1);

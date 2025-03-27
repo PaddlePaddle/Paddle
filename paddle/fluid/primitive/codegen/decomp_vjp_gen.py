@@ -157,6 +157,7 @@ CUSTOM_VJP = [
     'softsign_grad',
     'stack_grad',
     'swish_grad',
+    'elu_grad',
     'swiglu_grad',
     'p_norm_grad',
 ]  # custom vjp list of composite op

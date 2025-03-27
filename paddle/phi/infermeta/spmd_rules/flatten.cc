@@ -68,9 +68,9 @@ std::vector<std::shared_ptr<DimTrans>> MakeFlattenDimTransReverse(
     const std::vector<int64_t>& src_shape, int start_axis, int stop_axis) {
   std::vector<std::shared_ptr<DimTrans>> ret;
 
-  std::vector<int64_t> tgt_splitted_shape;
+  std::vector<int64_t> tgt_split_shape;
   for (int i = start_axis; i <= stop_axis; i++) {
-    tgt_splitted_shape.emplace_back(src_shape[i]);
+    tgt_split_shape.emplace_back(src_shape[i]);
   }
 
   for (int64_t i = 0; i < static_cast<int64_t>(src_shape.size()); i++) {
@@ -81,7 +81,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeFlattenDimTransReverse(
           std::make_shared<InputDim>(i - (stop_axis - start_axis)));
     } else {
       ret.emplace_back(make_split(std::make_shared<InputDim>(start_axis),
-                                  tgt_splitted_shape,
+                                  tgt_split_shape,
                                   i - start_axis));
     }
   }

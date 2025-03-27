@@ -29,7 +29,6 @@ limitations under the License. */
     defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/platform/collective_helper.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -136,11 +135,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    BKCLDataType dtype = phi::ToBKCLDataType(in->dtype());
-    int64_t numel = in->numel();
-    const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
 
     auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -180,30 +175,24 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
 
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (FLAGS_dynamic_static_unified_comm) {
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm True. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(rid)));
-      comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
-          comm_context_manager.Get(std::to_string(rid)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "BKCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
-      stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has rid " << rid;
-    } else {
-      comm = platform::BKCLCommContext::Instance().Get(rid, place);
-      stream = comm->stream();
-      VLOG(3) << "old BKCLCommContext has rid " << rid;
-    }
+
+    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                      true,
+                      common::errors::InvalidArgument(
+                          "You choose to use new communication library. "
+                          "But ring_id(%d) is "
+                          "not found in comm_context_manager.",
+                          std::to_string(rid)));
+    comm_ctx = static_cast<phi::distributed::BKCLCommContext*>(
+        comm_context_manager.Get(std::to_string(rid)));
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "BKCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+    stream = comm_ctx->GetStream();
+    VLOG(3) << "new comm_context_manager has rid " << rid;
+
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
@@ -232,17 +221,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
                                                      red_type));
     }
 
-    if (comm_ctx) {
-      comm_ctx->AllReduce(out, *in, bkcl_red_type, stream);
-    } else {
-      PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(comm->comm(),
-                                                 sendbuff,
-                                                 recvbuff,
-                                                 numel,
-                                                 dtype,
-                                                 bkcl_red_type,
-                                                 stream));
-    }
+    comm_ctx->AllReduce(out, *in, bkcl_red_type, stream);
 #else
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
@@ -280,12 +259,10 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int rid = ctx.Attr<int>("ring_id");
 
-    auto place = ctx.GetPlace();
     ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
-    void* recvbuff = out->mutable_data<T>(place);
 
     auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -325,30 +302,24 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
 
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (FLAGS_dynamic_static_unified_comm) {
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm True. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(rid)));
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(rid)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
-      stream = comm_ctx->GetStream();
-      VLOG(3) << "new comm_context_manager has rid " << rid;
-    } else {
-      comm = platform::NCCLCommContext::Instance().Get(rid, place);
-      stream = comm->stream();
-      VLOG(3) << "old NCCLCommContext has rid " << rid;
-    }
+
+    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                      true,
+                      common::errors::InvalidArgument(
+                          "You choose to use new communication library. "
+                          "But ring_id(%d) is "
+                          "not found in comm_context_manager.",
+                          std::to_string(rid)));
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+        comm_context_manager.Get(std::to_string(rid)));
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+    stream = comm_ctx->GetStream();
+    VLOG(3) << "new comm_context_manager has rid " << rid;
+
     if (ctx.Attr<bool>("use_calc_stream")) {
       // should not use global ctx for calc stream.
       // auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
@@ -390,17 +361,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
                                                      red_type));
     }
 
-    if (comm_ctx) {
-      comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(sendbuff,
-                                                             recvbuff,
-                                                             numel,
-                                                             dtype,
-                                                             nccl_red_type,
-                                                             comm->comm(),
-                                                             stream));
-    }
+    comm_ctx->AllReduce(out, *in, nccl_red_type, stream);
 #else
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));

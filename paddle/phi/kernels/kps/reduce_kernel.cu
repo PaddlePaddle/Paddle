@@ -119,6 +119,16 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
+  if (x.numel() == 0 && out && out->dims().size() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
@@ -249,9 +259,16 @@ void SumRawKernel(const Context& dev_ctx,
       }
     }
     out->Resize(phi::make_ddim(out_dims));
-    dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(
-        dev_ctx, out_dims, 0, phi::CppTypeToDataType<T>::Type(), out);
+    if (x.dtype() == phi::DataType::BOOL || x.dtype() == phi::DataType::INT32) {
+      dev_ctx.template Alloc<int64_t>(out);
+      FullKernel<int64_t, Context>(
+          dev_ctx, out_dims, 0, phi::CppTypeToDataType<int64_t>::Type(), out);
+    } else {
+      dev_ctx.template Alloc<T>(out);
+      FullKernel<T, Context>(
+          dev_ctx, out_dims, 0, phi::CppTypeToDataType<T>::Type(), out);
+    }
+
     return;
   }
   if (x.numel() > std::numeric_limits<int32_t>::max()) {

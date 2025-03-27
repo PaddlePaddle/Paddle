@@ -1166,6 +1166,15 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.6.1.9 | "
                     "nvidia-cusparse-cu12==12.3.1.170 "
                 ),
+                "12.6": (
+                    "nvidia-cuda-runtime-cu12==12.6.77 | "
+                    "nvidia-cudnn-cu12==9.5.1.17 | "
+                    "nvidia-cublas-cu12==12.6.4.1 | "
+                    "nvidia-cufft-cu12==11.3.0.4 | "
+                    "nvidia-curand-cu12==10.3.7.77 | "
+                    "nvidia-cusolver-cu12==11.7.1.2 | "
+                    "nvidia-cusparse-cu12==12.5.4.2 "
+                ),
             }
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode(
@@ -1414,6 +1423,27 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_V3_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_V3_LIBRARIES"), libs_path)
+
+    if (
+        env_dict.get("WITH_DISTRIBUTE") == 'ON'
+        and env_dict.get("WITH_NVSHMEM") == 'ON'
+    ):
+        if len(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB")),
+                os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB")),
+            ]
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB"), libs_path)
+            shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB"), libs_path)
+
     if env_dict.get("WITH_CINN") == 'ON':
         shutil.copy(
             env_dict.get("CINN_LIB_LOCATION")

@@ -176,28 +176,15 @@ class AttributeMatchGuard : public GuardBase {
 
 class LayerMatchGuard : public GuardBase {
  public:
-  explicit LayerMatchGuard(PyObject* layer_ptr) : layer_ptr_(layer_ptr) {
-    training_ = PyObject_GetAttrString(layer_ptr, "training") == Py_True;
-  }
-
   explicit LayerMatchGuard(const py::object& layer_obj)
-      : layer_ptr_(layer_obj.ptr()), training_(layer_obj.attr("training")) {}
+      : layer_ptr_(layer_obj.ptr()),
+        training_(layer_obj.attr("training").cast<bool>()) {}
 
   bool check(PyObject* value);
 
  private:
   PyObject* layer_ptr_;
   bool training_;
-};
-
-class RangeMatchGuard : public GuardGroup {
- public:
-  explicit RangeMatchGuard(const py::object& range_obj)
-      : GuardGroup({std::make_shared<TypeMatchGuard>(Py_TYPE(range_obj.ptr())),
-                    std::make_shared<AttributeMatchGuard>(range_obj, "start"),
-                    std::make_shared<AttributeMatchGuard>(range_obj, "stop"),
-                    std::make_shared<AttributeMatchGuard>(range_obj, "step")}) {
-  }
 };
 
 class InstanceCheckGuard : public GuardBase {
@@ -208,6 +195,21 @@ class InstanceCheckGuard : public GuardBase {
   }
 
   ~InstanceCheckGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class NumpyDtypeMatchGuard : public GuardBase {
+ public:
+  explicit NumpyDtypeMatchGuard(const py::object& dtype)
+      : expected_(dtype.ptr()) {
+    Py_INCREF(expected_);
+  }
+
+  ~NumpyDtypeMatchGuard() override { Py_DECREF(expected_); }
 
   bool check(PyObject* value) override;
 

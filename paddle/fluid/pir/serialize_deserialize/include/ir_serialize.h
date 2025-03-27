@@ -72,7 +72,7 @@ class ProgramWriter {
                                 const AttributeMap& attr_map);
   Json WriteAttributesMapOther(const AttributeMap& attr_map);
   /** WriteAttribute is used to write attribute of op.
-   * which call writeAttr to get Derived Class‘s json object.
+   * which call writeAttr to get Derived Class's json object.
    * same as WriteType
    */
 

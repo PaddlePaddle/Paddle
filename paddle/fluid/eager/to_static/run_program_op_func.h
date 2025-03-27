@@ -155,7 +155,7 @@ pir_filter_no_need_buffer_input_var_in_backward(
                   no_need_buffers_values.end(),
                   forward_inputs_values[i]) != no_need_buffers_values.end()) {
       auto& tensor = filter_x[i];
-      if (tensor.initialized() && tensor.is_dense_tensor()) {
+      if (tensor.has_allocation() && tensor.is_dense_tensor()) {
         auto copied_dense_tensor = std::make_shared<phi::DenseTensor>(
             *std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()));
         garbages->emplace_back(copied_dense_tensor->MoveMemoryHolder());
@@ -190,7 +190,7 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
   return res;
 }
 
-int64_t hash_with_seed(int64_t value, int64_t seed) {
+static int64_t hash_with_seed(int64_t value, int64_t seed) {
   return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
 }
 

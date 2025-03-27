@@ -41,6 +41,8 @@ from .paddle_api_config import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle._typing import NestedStructure
 
 T = TypeVar("T")
@@ -125,25 +127,25 @@ class ResumeFnNameFactory(metaclass=Singleton):
 
 
 def log(level, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(*args, end="", flush=True)
 
 
 def log_do(level, fn):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         fn()
 
 
 def log_format(level, str, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(str.format(*args), end="", flush=True)
 
 
 def log_enabled(level):
-    return level <= ENV_SOT_LOG_LEVEL.get_with_cache()
+    return level <= ENV_SOT_LOG_LEVEL.get()
 
 
 def no_eval_frame(func):
@@ -416,3 +418,38 @@ def get_numpy_ufuncs():
     unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
     binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
     return list(unary_ufuncs), list(binary_ufuncs)
+
+
+def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    res = []
+    while True:
+        try:
+            res.append(fn())
+        except StopIteration:
+            break
+    return res
+
+
+def update_list_inplace(
+    original_list: list[T], new_contents: list[T]
+) -> list[T]:
+    original_list.clear()
+    original_list.extend(new_contents)
+    return original_list
+
+
+def get_obj_stable_repr(obj) -> str:
+    if hasattr(obj, '__qualname__'):
+        return obj.__qualname__
+    if hasattr(obj, '__name__'):
+        return obj.__name__
+
+    class_name = obj.__class__.__name__
+
+    # If module is available and not __main__, include it
+    if hasattr(obj, "__class__") and hasattr(obj.__class__, "__module__"):
+        module = obj.__class__.__module__
+        if module not in ("__main__", "builtins"):
+            return f"{module}.{class_name}()"
+
+    return f"{class_name}()"

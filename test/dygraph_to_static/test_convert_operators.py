@@ -39,10 +39,6 @@ class ForwardNotExist(paddle.nn.Layer):
         return 0
 
 
-net = ForwardNotExist()
-net.forward = "A string so that convert forward will fail"
-
-
 class TestConvertCall(Dy2StTestBase):
     # fallback mode will raise a InnerError, it's ok.
     @test_ast_only
@@ -54,11 +50,15 @@ class TestConvertCall(Dy2StTestBase):
         with self.assertRaises(AttributeError):
             paddle.jit.to_static(call_not_exist())
 
+        net = ForwardNotExist()
+        net.forward = "A string so that convert forward will fail"
+
         def forward_not_exist():
             return net()
 
-        with self.assertRaises(AttributeError):
-            paddle.jit.to_static(forward_not_exist)()
+        with self.assertRaises(TypeError):
+            forward_not_exist_static = paddle.jit.to_static(forward_not_exist)()
+            forward_not_exist_static()
 
     def test_callable_list(self):
         def callable_list(x, y):

@@ -33,7 +33,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
-  dev_ctx.template Alloc(x_grad, x.dtype());
+  dev_ctx.Alloc(x_grad, x.dtype());
   auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data());
   auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data());
   const auto& input_dim_size = x.dims().size();

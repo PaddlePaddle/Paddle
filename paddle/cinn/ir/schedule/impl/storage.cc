@@ -313,8 +313,10 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
       }()));
 
   auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
-  tensor.as_tensor_ref()->WithBuffer(
-      memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+  if (memory_type == "local") {
+    tensor.as_tensor_ref()->WithBuffer(
+        memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+  }
 
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {

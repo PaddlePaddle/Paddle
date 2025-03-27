@@ -639,6 +639,11 @@ def convert_conv2d(network, paddle_op, inputs):
     pre_paddings = [0, 0]
     post_paddings = [0, 0]
 
+    if isinstance(filter, trt.Weights):
+        weight_filter = filter
+    else:
+        weight_filter = trt.Weights()
+
     if len(paddings) == 2:
         pre_paddings[0] = paddings[0]
         pre_paddings[1] = paddings[1]
@@ -661,7 +666,7 @@ def convert_conv2d(network, paddle_op, inputs):
             input=input_tensor,
             num_output_maps=n_output,
             kernel_shape=nv_ksize,
-            kernel=filter,
+            kernel=weight_filter,
             bias=bias,
         )
     elif (
@@ -672,10 +677,12 @@ def convert_conv2d(network, paddle_op, inputs):
             input=input_tensor,
             num_output_maps=n_input * groups,
             kernel_shape=nv_ksize,
-            kernel=filter,
+            kernel=weight_filter,
             bias=None,
         )
 
+    if isinstance(filter, trt.ITensor):
+        layer.set_input(1, filter)
     layer.stride_nd = nv_strides
     layer.pre_padding = pre_paddings
 

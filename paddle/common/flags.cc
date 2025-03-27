@@ -710,6 +710,10 @@ PHI_DEFINE_EXPORTED_int32(
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
 
+PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
+                         false,
+                         "CopyValueFromTensor do not deep copy, if true.");
+
 /**
  * Debug related FLAG
  * Name: sort_sum_gradient
@@ -1053,7 +1057,7 @@ PHI_DEFINE_EXPORTED_bool(
  * Name: FLAGS_deny_cinn_ops
  * Since Version: 3.0 Beta
  * Value Range: bool, default=-1
- * Example: FLAGS_cinn_compile_thread_nume=8
+ * Example: FLAGS_cinn_compile_thread_num=8
  */
 PHI_DEFINE_EXPORTED_int64(
     cinn_compile_thread_num,
@@ -1267,6 +1271,23 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
                          "enable nccl debug mode to synchronize nccl comm");
 #endif
 
+/**
+ * ProcessGroupNCCL/ProcessGroupBKCL related FLAG
+ * Name: enable_nccl_dynamic_check/enable_bkcl_dynamic_check
+ * Since Version:
+ * Value Range: bool, default=false
+ */
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DEFINE_EXPORTED_bool(enable_nccl_dynamic_check,
+                         false,
+                         "enable nccl dynamic checks");
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+PHI_DEFINE_EXPORTED_bool(enable_bkcl_dynamic_check,
+                         false,
+                         "enable bkcl dynamic checks");
+#endif
+
 PHI_DEFINE_EXPORTED_bool(
     benchmark,
     false,
@@ -1344,39 +1365,6 @@ PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
 PHI_DEFINE_EXPORTED_bool(enable_fusion_result_check,
                          false,
                          "Whether enable fusion result check in cinn.");
-
-/**
- * CINN TransposeItesr transform fusion FLAG
- * Name: FLAGS_enable_transpose_iters_in_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_transpose_iters_in_fusion,
-    true,
-    "Whether enable use transpose iters transform in cinn fusion.");
-
-/**
- * CINN ReuseIters transform fusion FLAG
- * Name: FLAGS_enable_reuse_iters_in_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_reuse_iters_in_fusion,
-    true,
-    "Whether enable use reuse iters transform in cinn fusion.");
-
-/**
- * CINN AppendIters transform fusion FLAG
- * Name: FLAGS_enable_append_iters_in_fusion
- * Since Version: 3.0 beta
- * Value Range: bool, default=true
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_append_iters_in_fusion,
-    true,
-    "Whether enable use append iters transform in cinn fusion.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1671,6 +1659,8 @@ PHI_DEFINE_EXPORTED_string(
     prim_forward_blacklist,
     "",
     "It controls the forward blacklist ops not to be decomposed.");
+PHI_DEFINE_EXPORTED_bool(prim_forward, false, "enable prim_forward or not");
+PHI_DEFINE_EXPORTED_bool(prim_backward, false, "enable prim_backward or not");
 
 /**
  * Remove some redundant information when printing the pir program
@@ -1684,23 +1674,6 @@ PHI_DEFINE_EXPORTED_string(
     disable_logging_op_attr_list,
     "",
     "Remove some redundant information when printing the pir program");
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-/**
- * Communication library related FLAG
- * Name: FLAGS_dynamic_static_unified_comm
- * Since Version: 2.5
- * Value Range: bool, default=true
- * Example:
- * Note: Whether to use new communication library in auto parallel and static
- * mode. If true, it will use unified CommContextManager for communication.
- */
-PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
-                         true,
-                         "Whether to use new communication library in auto "
-                         "parallel and static mode.");
-#endif  // FLAGS_dynamic_static_unified_comm
 
 /**
  * ProcessGroupNCCL related FLAG
@@ -1872,6 +1845,20 @@ PHI_DEFINE_EXPORTED_bool(
     use_xqa_optim,
     false,
     "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
+/**
+ * Whether to use FP32 for accumulation of QK output in
+ * block_multihead_attention kernel(fp16)
+ * Name: blha_use_fp32_qk_sum Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If TRUE, FP32 will be used for accumulation of the QK output
+ * in block_multihead_attention kernel(fp16) .
+ */
+PHI_DEFINE_EXPORTED_bool(blha_use_fp32_qk_sum,
+                         false,
+                         "use FP32 for accumulation of QK output in "
+                         "block_multihead_attention kernel(fp16).");
 
 PHI_DEFINE_EXPORTED_bool(cuda_core_int8_gemm,
                          false,

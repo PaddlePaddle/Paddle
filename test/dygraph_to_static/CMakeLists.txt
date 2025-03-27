@@ -3,8 +3,8 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
-             STRICT_MODE=False)
+set(SOT_ENVS SOT_LOG_LEVEL=0 MIN_GRAPH_SIZE=0 STRICT_MODE=False
+             SOT_ENABLE_STRICT_GUARD_CHECK=True)
 
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout

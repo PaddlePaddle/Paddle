@@ -70,6 +70,7 @@ extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+extern PyTypeObject* g_xpupinnedplace_pytype;
 extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_densetensorarray_pytype;
@@ -620,6 +621,8 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
     place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::GPUPinnedPlace>();
+  } else if (PyObject_TypeCheck(obj, g_xpupinnedplace_pytype)) {
+    place = ::pybind11::handle(obj).cast<phi::XPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_customplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::CustomPlace>();
   } else {
@@ -627,7 +630,7 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
         "argument (position %d) must be "
         "one "
         "of(Place,CUDAPlace,CPUPlace,XPUPlace,CUDAPinnedPlace,"
-        "CustomPlace), "
+        "XPUPinnedPlace, CustomPlace), "
         "but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
@@ -2853,6 +2856,46 @@ PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
   return nullptr;
 }
 
+PyObject* CalcPlaceHash(PyObject* dummy, PyObject* tensors) {
+  PADDLE_ENFORCE_EQ(PyList_Check(tensors) || PyTuple_Check(tensors),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The input tensors should be a list/tuple of Tensor."));
+  std::vector<const paddle::Tensor*> tensors_vec;
+  const auto& GetSequenceItem = [](PyObject* seq, Py_ssize_t i) {
+    if (PyList_Check(seq)) {
+      return PyList_GetItem(seq, i);
+    } else {
+      return PyTuple_GetItem(seq, i);
+    }
+  };
+  const auto& GetSequenceSize = [](PyObject* seq) {
+    if (PyList_Check(seq)) {
+      return PyList_Size(seq);
+    } else {
+      return PyTuple_Size(seq);
+    }
+  };
+  for (Py_ssize_t i = 0; i < GetSequenceSize(tensors); ++i) {
+    PyObject* item = GetSequenceItem(tensors, i);
+    if (PyObject_TypeCheck(item, p_tensor_type)) {
+      tensors_vec.push_back(&(reinterpret_cast<TensorObject*>(item)->tensor));
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The input tensors should be a list of Tensor."));
+    }
+  }
+  const auto& hash_with_seed = [](int64_t value, int64_t seed) {
+    return seed + 0x9e3779b9 + (value << 6) + (value >> 2);
+  };
+  int64_t place_hash_key = 0;
+  for (const paddle::Tensor* tensor : tensors_vec) {
+    int64_t device_type = static_cast<int64_t>(tensor->place().GetType());
+    place_hash_key = hash_with_seed(place_hash_key, device_type);
+  }
+  return ToPyObject(place_hash_key);
+}
+
 /* ------------------ for auto parallel ----------------------- */
 
 static PyMethodDef EagerUtilMethods[] = {  // NOLINT
@@ -2868,6 +2911,10 @@ static PyMethodDef EagerUtilMethods[] = {  // NOLINT
      (PyCFunction)SetStaticOpArgPreCastHook,
      METH_O,
      "Set hook for pre cast a static OP argument."},
+    {"calc_place_hash",
+     (PyCFunction)CalcPlaceHash,
+     METH_O,
+     "Calculate the hash value by tensors place."},
     {nullptr, nullptr, 0, nullptr}};
 
 void BindEagerUtils(PyObject* module) {

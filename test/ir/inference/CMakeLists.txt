@@ -73,6 +73,9 @@ if(WIN32)
        "test_trt_explicit_quantization_mobilenet")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_explicit_quantization_mobilenet")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_fill_any_like")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_fill_any_like")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_fill_any_like")
 endif()
 
 foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
@@ -168,10 +171,21 @@ if(WITH_GPU AND TENSORRT_FOUND)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
 
+  set_tests_properties(test_trt_convert_index_select PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_anchor_generator PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_gather PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_convert_expand_v2 PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_temporal_shift_deprecated
+                       PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_pool2d PROPERTIES TIMEOUT 600)
   set_tests_properties(test_trt_convert_slice PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_scale PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_elementwise PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_reduce PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_convert_compare_and_logical PROPERTIES TIMEOUT
+                                                                       600)
 
   if(NOT WIN32)
 

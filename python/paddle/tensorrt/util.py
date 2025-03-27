@@ -282,7 +282,6 @@ def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
     # the following op needn't cast trt.Weight to ITensor, because the layer need weight as input
     forbid_cast_op = [
         "pd_op.depthwise_conv2d",
-        "pd_op.conv2d",
         "pd_op.conv2d_transpose",
         "pd_op.conv3d",
         "pd_op.conv3d_transpose",
@@ -334,9 +333,12 @@ def is_shape_tensor(value):
     return total_elements <= 8 and total_elements >= 1 and is_int_dtype
 
 
-def get_cache_path():
-    home_path = os.path.expanduser("~")
-    cache_path = os.path.join(home_path, ".pp_trt_cache")
+def get_cache_path(cache_path):
+    if cache_path is not None:
+        cache_path = cache_path
+    else:
+        home_path = os.path.expanduser("~")
+        cache_path = os.path.join(home_path, ".pp_trt_cache")
 
     if not os.path.exists(cache_path):
         os.makedirs(cache_path)

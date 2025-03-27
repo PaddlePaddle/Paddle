@@ -45,6 +45,8 @@ extern void *rocsolver_dso_handle;
   __macro(rocsolver_dpotrs);            \
   __macro(rocsolver_cpotrs);            \
   __macro(rocsolver_zpotrs);            \
+  __macro(rocsolver_sgetrs);            \
+  __macro(rocsolver_dgetrs);            \
   __macro(rocsolver_sgetrf);            \
   __macro(rocsolver_dgetrf);            \
   __macro(rocsolver_cgetrf);            \

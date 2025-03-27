@@ -6,6 +6,8 @@ extern "C" {
 
 #define CINN_INT32_MAX 2147483647
 #define CINN_INT32_MIN -2147483648
+#define CINN_FP32_MAX 3.40282347e+38F
+#define CINN_FP64_MAX 1.79769313486231571e+308
 
 // *************************************************************** //
 // bool unary and binary operator
@@ -466,8 +468,8 @@ __device__ inline long long int cinn_min_int64(const long long int left, const l
 #define EXPAND_REDUCE_FP32_MACRO(MACRO, ...)           \
   MACRO(sum_fp32, 0.0f, float, ##__VA_ARGS__)          \
   MACRO(prod_fp32, 1.0f, float, ##__VA_ARGS__)         \
-  MACRO(max_fp32, -3.40282e+38f, float, ##__VA_ARGS__) \
-  MACRO(min_fp32, 3.40282e+38f, float, ##__VA_ARGS__)  \
+  MACRO(max_fp32, -CINN_FP32_MAX, float, ##__VA_ARGS__) \
+  MACRO(min_fp32, CINN_FP32_MAX, float, ##__VA_ARGS__)  \
   MACRO(sum_welford_fp32, welford_fp32(0.0f, 0.0f, 0.0f), welford_fp32, ##__VA_ARGS__)
 
 __device__ inline float cinn_sum_fp32(const float left, const float right) { return left + right; }
@@ -507,8 +509,8 @@ __device__ inline float16 cinn_min_fp16(const float16 left, const float16 right)
 #define EXPAND_REDUCE_FP64_MACRO(MACRO, ...)            \
   MACRO(sum_fp64, 0.0, double, ##__VA_ARGS__)           \
   MACRO(prod_fp64, 1.0, double, ##__VA_ARGS__)          \
-  MACRO(max_fp64, -1.79769e+308, double, ##__VA_ARGS__) \
-  MACRO(min_fp64, 1.79769e+308, double, ##__VA_ARGS__)  \
+  MACRO(max_fp64, -CINN_FP64_MAX, double, ##__VA_ARGS__) \
+  MACRO(min_fp64, CINN_FP64_MAX, double, ##__VA_ARGS__)  \
   MACRO(sum_welford_fp64, welford_fp64(0.0, 0.0, 0.0), welford_fp64, ##__VA_ARGS__)
 
 __device__ inline double cinn_sum_fp64(const double left, const double right) { return left + right; }

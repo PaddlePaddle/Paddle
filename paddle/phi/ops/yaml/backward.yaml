@@ -267,6 +267,7 @@
   kernel :
     func : bce_loss_grad
   inplace : (out_grad -> input_grad)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : bicubic_interp_grad
   forward : bicubic_interp (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1) -> Tensor(output)
@@ -494,6 +495,7 @@
     func : conv2d_grad
     data_type : input
   backward : conv2d_grad_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : conv2d_grad_grad
   forward : conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
@@ -769,6 +771,7 @@
     func : depthwise_conv2d_grad
     data_type : input
   backward : depthwise_conv2d_double_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : depthwise_conv2d_transpose_grad
   forward : depthwise_conv2d_transpose(Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW") -> Tensor(out)
@@ -994,6 +997,8 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ExpandGradInferSpmd
+    local_shape : x_grad
   kernel :
     func : expand_grad
     data_type : out_grad
@@ -1160,6 +1165,7 @@
   infer_meta :
     func : FlashAttnGradInferMeta
     param : [q, k, v]
+    spmd_rule : FlashMaskGradInferSpmd
   kernel :
     func : flashmask_attention_grad
     data_type: q
@@ -2024,6 +2030,18 @@
     func : lu_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : lu_solve_grad
+  forward : lu_solve (Tensor b, Tensor lu, Tensor pivots, str trans) -> Tensor(out)
+  args : (Tensor b, Tensor lu, Tensor pivots, Tensor out, Tensor out_grad, str trans)
+  output : Tensor(b_grad), Tensor(lu_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [b, lu]
+  kernel :
+    func : lu_solve_grad
+    data_type : b
+  no_need_buffer : b
+
 - backward_op : lu_unpack_grad
   forward : lu_unpack (Tensor x, Tensor y, bool unpack_ludata = true, bool unpack_pivots = true) -> Tensor(pmat), Tensor(l), Tensor(u)
   args : (Tensor x, Tensor y, Tensor l, Tensor u, Tensor pmat, Tensor l_grad, Tensor u_grad, bool unpack_ludata, bool unpack_pivots)
@@ -2421,6 +2439,7 @@
     func : pool2d_grad
     param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool2d_double_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - backward_op : pool3d_grad
   forward : pool3d(Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(out)

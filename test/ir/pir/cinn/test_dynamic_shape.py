@@ -18,18 +18,12 @@ import unittest
 
 import numpy
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 def generate_input_spec(rank_dtype_list):
@@ -53,7 +47,7 @@ class TestTrivialFusion(unittest.TestCase):
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec,
         )(dy_compute)
         st_out = static_compute(*inputs)

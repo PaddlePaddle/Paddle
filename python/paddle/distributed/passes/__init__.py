@@ -77,6 +77,9 @@ from .auto_parallel_sharding import (  # noqa: F401
 from .auto_parallel_supplement_explicit_dependencies import (  # noqa: F401
     AutoParalSupplementDepPass,
 )
+from .auto_parallel_sync_shared_params import (  # noqa: F401
+    AutoParallelSyncSharedParamsPass,
+)
 from .cpp_pass import (  # noqa: F401
     BuildCINNPass,
     FuseAdamWPass,

@@ -86,11 +86,13 @@ Expr Cast::Make(Type t, Expr v) {
 #undef __CAST_TO_TYPE
 
   // Cast indexExpr without `cast` and `load`
-  if (optim::VerifyIndex(v) == optim::IndexType::kValid && t == Int(64)) {
+  if (optim::VerifyIndex(v) == ir::IndexExpr::IndexType::kValid &&
+      t == Int(64)) {
     v->convert_int32_to_int64();
     return v;
   }
-  if (optim::VerifyIndex(v) == optim::IndexType::kValid && t == Int(32)) {
+  if (optim::VerifyIndex(v) == ir::IndexExpr::IndexType::kValid &&
+      t == Int(32)) {
     v->convert_int64_to_int32();
     return v;
   }
@@ -133,7 +135,6 @@ void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
       true,
       ::common::errors::InvalidArgument("The second operand is not defined. "
                                         "A valid expression is required."));
-  TryElevateInt32ToInt64({a, b});
   PADDLE_ENFORCE_EQ(a.type(),
                     b.type(),
                     ::common::errors::InvalidArgument(
@@ -292,12 +293,14 @@ Expr And::Make(Expr a, Expr b) {
 }
 
 void And::Verify() const {
-  BinaryNodeVerify(a(), b(), "And");
   PADDLE_ENFORCE_EQ(
-      a().type(),
-      type_of<bool>(),
-      ::common::errors::InvalidArgument(
-          "The type of the operands of the node [And] should be bool"));
+      a()->type().is_bool(),
+      true,
+      ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
+  PADDLE_ENFORCE_EQ(
+      b()->type().is_bool(),
+      true,
+      ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
 }
 
 Expr Or::Make(Expr a, Expr b) {
@@ -306,15 +309,15 @@ Expr Or::Make(Expr a, Expr b) {
 }
 
 void Or::Verify() const {
-  BinaryNodeVerify(a(), b(), "Or");
   PADDLE_ENFORCE_EQ(
-      a().type(),
-      type_of<bool>(),
-      ::common::errors::InvalidArgument(
-          "The type of the operands of the node [Or] should be bool"));
+      a()->type().is_bool(),
+      true,
+      ::common::errors::PreconditionNotMet("The type of 'a' must be bool."));
+  PADDLE_ENFORCE_EQ(
+      b()->type().is_bool(),
+      true,
+      ::common::errors::PreconditionNotMet("The type of 'b' must be bool."));
 }
-
-Type Or::type() const { return type_; }
 
 Expr Not::Make(Expr v) {
   auto node = make_shared<Not>(v);
@@ -328,8 +331,6 @@ void Not::Verify() const {
       ::common::errors::InvalidArgument(
           "The type of the operand of the node [Not] should be bool"));
 }
-
-Type Not::type() const { return type_; }
 
 Expr Let::Make(Expr symbol, Expr body) {
   auto *n = make_shared<Let>();
@@ -346,6 +347,10 @@ Expr Let::Make(Expr symbol, Expr body) {
                           "The type of the body is not valid. "
                           "If a body is defined, it must have a valid type."));
   }
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({symbol, body}));
+  symbol = promote_args.at(0);
+  body = promote_args.at(1);
+
   n->symbol = symbol;
   n->body = body;
   n->set_type(n->symbol->type());
@@ -360,7 +365,6 @@ void Let::Verify() const {
                         "A defined symbol is required for the Let node."));
   // The default value(contained in body) is not required.
   if (body.defined()) {
-    TryElevateInt32ToInt64({symbol, body});
     PADDLE_ENFORCE_EQ(
         symbol.type(),
         body.type(),
@@ -512,7 +516,11 @@ Expr For::Make(Var loop_var,
                Expr body,
                VectorizeInfo vector_info,
                BindInfo bind_info) {
-  ir::TryElevateInt32ToInt64({loop_var, min, extent});
+  auto promote_args =
+      std::move(ir::TryElevateInt32ToInt64({loop_var, min, extent}));
+  loop_var = promote_args.at(0);
+  min = promote_args.at(1);
+  extent = promote_args.at(2);
   auto node = make_shared<For>();
 
   PADDLE_ENFORCE_EQ(
@@ -1014,14 +1022,14 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
       true,
       ::common::errors::InvalidArgument("The tensor type is not valid. "
                                         "A valid tensor type is required."));
-  const auto indices = utils::GetCompatibleStoreLoadIndices(
-      tensor.as_tensor_ref(), origin_indices);
+  auto indices = utils::GetCompatibleStoreLoadIndices(tensor.as_tensor_ref(),
+                                                      origin_indices);
   PADDLE_ENFORCE_EQ(
       !indices.empty(),
       true,
       ::common::errors::InvalidArgument("The indices should not be empty. "
                                         "At least one index is required."));
-  TryElevateInt32ToInt64(indices);
+  TryElevateInt32ToInt64_(indices);
   for (auto &idx : indices) {
     PADDLE_ENFORCE_EQ(
         idx.type().ElementOf() == Int(64) || idx.type().ElementOf() == Int(32),
@@ -1039,19 +1047,15 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
 }
 
 void Load::convert_int32_to_int64() {
-  IrNode::convert_int32_to_int64();
   for (auto &indice : indices) {
     indice->convert_int32_to_int64();
   }
-  tensor->convert_int32_to_int64();
 }
 
 void Load::convert_int64_to_int32() {
-  IrNode::convert_int64_to_int32();
   for (auto &indice : indices) {
     indice->convert_int64_to_int32();
   }
-  tensor->convert_int64_to_int32();
 }
 
 Type Load::type() const {
@@ -1222,9 +1226,12 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
   if (vs.size() == 1) return vs.front();
 
   auto *n = make_shared<Sum>();
-  TryElevateInt32ToInt64(vs);
-  auto type = vs.front().type();
-  for (auto &v : vs) {
+
+  n->operands() = vs;
+
+  TryElevateInt32ToInt64_(n->operands());
+  auto type = n->operands().front().type();
+  for (auto &v : n->operands()) {
     PADDLE_ENFORCE_EQ(v.type(),
                       type,
                       ::common::errors::InvalidArgument(
@@ -1233,9 +1240,7 @@ Expr Sum::Make(const std::vector<Expr> &vs) {
                           type.to_string().c_str(),
                           v.type().to_string().c_str()));
   }
-
-  n->operands() = vs;
-  n->set_type(vs.front()->type());
+  n->set_type(n->operands().front()->type());
 
   return Expr(n);
 }
@@ -1248,18 +1253,21 @@ Expr Product::Make(const std::vector<Expr> &vs) {
                                         "should have at least one element"));
 
   auto *n = make_shared<Product>();
-  TryElevateInt32ToInt64(vs);
-  auto type = vs.front().type();
-  for (auto &v : vs)
-    PADDLE_ENFORCE_EQ(
-        v.type(),
-        type,
-        ::common::errors::InvalidArgument("The operands' types of the node "
-                                          "[Product] don't match"));
 
   n->operands() = vs;
 
-  n->set_type(vs.front()->type());
+  TryElevateInt32ToInt64_(n->operands());
+  auto type = n->operands().front().type();
+  for (auto &v : n->operands()) {
+    PADDLE_ENFORCE_EQ(v.type(),
+                      type,
+                      ::common::errors::InvalidArgument(
+                          "The operands' types of the node [Sum] don't match. "
+                          "Expected type: %s, but got type: %s",
+                          type.to_string().c_str(),
+                          v.type().to_string().c_str()));
+  }
+  n->set_type(n->operands().front()->type());
 
   return Expr(n);
 }
@@ -1396,7 +1404,10 @@ Select::Select(Expr condition, Expr true_value, Expr false_value)
       condition(condition),
       true_value(true_value),
       false_value(false_value) {
-  TryElevateInt32ToInt64({true_value, false_value});
+  auto promote_args =
+      std::move(ir::TryElevateInt32ToInt64({true_value, false_value}));
+  true_value = promote_args.at(0);
+  false_value = promote_args.at(1);
   PADDLE_ENFORCE_EQ(true_value.type(),
                     false_value.type(),
                     ::common::errors::InvalidArgument(

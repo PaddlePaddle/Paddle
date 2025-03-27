@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import test_collective_api_base as test_base
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 import paddle.distributed as dist
@@ -25,18 +26,18 @@ class TestCollectiveAllToAllSingleAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with base.program_guard(main_prog, startup_program):
-            # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
             if indata.dtype == "bfloat16":
-                tindata = paddle.to_tensor(indata, "float32").cast("uint16")
-                toutdata = paddle.to_tensor(tindata, "float32").cast("uint16")
+                indata = convert_float_to_uint16(indata)
+                tindata = paddle.to_tensor(indata)
+                toutdata = paddle.empty_like(tindata)
                 dist.alltoall_single(toutdata, tindata)
-                return [toutdata.cast("float32").numpy()]
+                return [convert_uint16_to_float(toutdata.numpy())]
             else:
                 tindata = paddle.to_tensor(indata)
-                toutdata = paddle.to_tensor(indata)
+                toutdata = paddle.empty_like(indata)
                 dist.alltoall_single(toutdata, tindata)
                 return [toutdata.numpy()]
 
 
 if __name__ == "__main__":
-    test_base.runtime_main(TestCollectiveAllToAllSingleAPI, "alltoall")
+    test_base.runtime_main(TestCollectiveAllToAllSingleAPI, "alltoall_single")

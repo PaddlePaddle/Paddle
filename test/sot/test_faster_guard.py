@@ -15,6 +15,9 @@
 from __future__ import annotations
 
 import unittest
+from collections import OrderedDict
+
+import numpy as np
 
 import paddle
 
@@ -66,8 +69,19 @@ class TestBasicFasterGuard(unittest.TestCase):
 
     def test_length_match_guard(self):
         guard_length = paddle.framework.core.LengthMatchGuard(1)
+        # list
         self.assertTrue(guard_length.check([1]))
         self.assertFalse(guard_length.check([1, 2]))
+
+        # dict
+        order_dict = OrderedDict()
+        order_dict[1] = 2
+        self.assertTrue(guard_length.check(order_dict))
+        self.assertTrue(guard_length.check({1: 2}))
+
+        # tuple
+        self.assertTrue(guard_length.check((1,)))
+        self.assertFalse(guard_length.check((1, 2)))
 
     def test_dtype_match_guard(self):
         guard_dtype = paddle.framework.core.DtypeMatchGuard(paddle.int32)
@@ -113,6 +127,27 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertTrue(guard_id.check(layer))
         self.assertFalse(guard_id.check(paddle.nn.Linear(10, 10)))
 
+    def test_numpy_dtype_match_guard(self):
+        np_array = np.array(1, dtype=np.int32)
+        guard_numpy_dtype = paddle.framework.core.NumpyDtypeMatchGuard(
+            np_array.dtype
+        )
+        self.assertTrue(guard_numpy_dtype.check(np_array))
+        self.assertTrue(guard_numpy_dtype.check(np.array(1, dtype=np.int32)))
+        self.assertTrue(guard_numpy_dtype.check(np.int32()))
+        self.assertFalse(guard_numpy_dtype.check(np.array(1, dtype=np.int64)))
+        self.assertFalse(guard_numpy_dtype.check(np.float32()))
+        self.assertFalse(guard_numpy_dtype.check(np.bool_()))
+
+        np_bool = np.bool_(1)
+        guard_numpy_bool_dtype = paddle.framework.core.NumpyDtypeMatchGuard(
+            np_bool.dtype
+        )
+        self.assertTrue(guard_numpy_bool_dtype.check(np.bool_()))
+        self.assertTrue(
+            guard_numpy_bool_dtype.check(np.array(1, dtype=np.bool_))
+        )
+
 
 class TestFasterGuardGroup(unittest.TestCase):
     def test_guard_group(self):
@@ -136,11 +171,6 @@ class TestFasterGuardGroup(unittest.TestCase):
             )
         self.assertTrue(guard_group.check(1))
         self.assertFalse(guard_group.check(2))
-
-    def test_range_match_guard(self):
-        guard_range = paddle.framework.core.RangeMatchGuard(range(1, 10, 2))
-        self.assertTrue(guard_range.check(range(1, 10, 2)))
-        self.assertFalse(guard_range.check(range(11)))
 
 
 if __name__ == "__main__":

@@ -181,6 +181,17 @@ TEST(Simplify, ConstantMaxMin) {
   ASSERT_EQ((simplified_dim_expr2.Get<std::int64_t>()), 2);
 }
 
+TEST(Simplify, SimplifyBc) {
+  // Broadcast(S0, Add(S0, -1)) => S0
+  DimExpr S0{"S0"};
+  DimExpr add{Add<DimExpr>{{S0, Negative<DimExpr>{1}}}};
+  DimExpr bc{Broadcast<DimExpr>{{S0, add}}};
+  ASSERT_TRUE((SimplifyDimExpr(bc) != Add<DimExpr>{{S0, -1}}));
+  // TODO(ooooo): improve the simplify ability
+  DimExpr now_accept{Broadcast<DimExpr>{{Add<DimExpr>{{S0, -1}}, S0}}};
+  ASSERT_TRUE((SimplifyDimExpr(bc) == now_accept));
+}
+
 TEST(Simplify, FoldBroadcast) {
   DimExpr sym0{"S0"};
   DimExpr sym1{"S1"};
@@ -208,6 +219,21 @@ TEST(Simplify, FoldRedundantBroadcast) {
   DimExpr bc{Broadcast<DimExpr>{{S0, S0, S1, S1}}};
   DimExpr simplify_bc = SimplifyDimExpr(bc);
   ASSERT_TRUE((simplify_bc == Broadcast<DimExpr>{{S0, S1}}));
+}
+
+TEST(Simplify, SimplifyDoubleNegForMulAndDiv) {
+  // Negative(Mul(S0, Negative(1))) => S0
+  DimExpr S0{"S0"};
+  DimExpr mul{Mul<DimExpr>{{S0, Negative<DimExpr>{DimExpr(1)}}}};
+  DimExpr neg_mul{Negative<DimExpr>{mul}};
+  DimExpr simplify_neg_mul = SimplifyDimExpr(neg_mul);
+  ASSERT_TRUE((simplify_neg_mul == S0));
+
+  // Negative(Div(S0, Negative(1))) => S0
+  DimExpr div{Div<DimExpr>{S0, Negative<DimExpr>{DimExpr(1)}}};
+  DimExpr neg_div{Negative<DimExpr>{div}};
+  DimExpr simplify_neg_div = SimplifyDimExpr(neg_div);
+  ASSERT_TRUE((simplify_neg_div == S0));
 }
 
 TEST(Simplify, Case1) {

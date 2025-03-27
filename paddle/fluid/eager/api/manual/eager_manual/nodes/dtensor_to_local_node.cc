@@ -31,6 +31,11 @@ DtensorToLocalGradNode::operator()(
   VLOG(3) << "Running AD API GRAD: "
           << "dtensor_to_local";
 
+  if (grads[0][0].is_dist_tensor()) {
+    VLOG(3) << "Input grads is a distributed tensor, no need to convert.";
+    return grads;
+  }
+
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.

@@ -24,4 +24,5 @@ gather_srcs(
   dim_expr_converter.cc
   broadcast_tree.cc
   iter_simplify.cc
-  simplify_special_pattern.cc)
+  simplify_special_pattern.cc
+  shape_constraint.cc)

@@ -268,71 +268,35 @@ else()
     DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
 endif()
 
-if(WITH_XPU)
-  cc_library(
-    operator
-    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
-         infershape_utils.cc
-    DEPS op_info
-         proto_desc
-         tensor
-         scope
-         glog
-         shape_inference
-         data_transform
-         lod_tensor
-         op_kernel_type
-         op_call_stack
-         detail_op_handle
-         phi_utils
-         phi
-         common
-         op_compat_infos
-         type_info)
-elseif(WITH_NCCL OR WITH_RCCL)
-  cc_library(
-    operator
-    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
-         infershape_utils.cc
-    DEPS op_info
-         proto_desc
-         tensor
-         scope
-         glog
-         shape_inference
-         data_transform
-         lod_tensor
-         op_kernel_type
-         op_call_stack
-         detail_op_handle
-         phi_utils
-         phi
-         common
-         op_compat_infos
-         type_info
-         process_group_nccl)
-else()
-  cc_library(
-    operator
-    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
-         infershape_utils.cc
-    DEPS op_info
-         proto_desc
-         tensor
-         scope
-         glog
-         shape_inference
-         data_transform
-         lod_tensor
-         op_kernel_type
-         op_call_stack
-         detail_op_handle
-         phi_utils
-         phi
-         common
-         op_compat_infos
-         type_info)
+set(OPERETER_DEPS
+    op_info
+    proto_desc
+    tensor
+    scope
+    glog
+    shape_inference
+    data_transform
+    lod_tensor
+    op_kernel_type
+    op_call_stack
+    detail_op_handle
+    phi_utils
+    phi
+    common
+    op_compat_infos
+    type_info)
+
+if(WITH_NCCL OR WITH_RCCL)
+  set(OPERETER_DEPS ${OPERETER_DEPS} process_group_nccl)
+elseif(WITH_CUSTOM_DEVICE)
+  set(OPERETER_DEPS ${OPERETER_DEPS} process_group_custom)
 endif()
+
+cc_library(
+  operator
+  SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
+       infershape_utils.cc
+  DEPS ${OPERETER_DEPS})
 
 cc_library(version SRCS version.cc)
 

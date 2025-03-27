@@ -26,6 +26,7 @@ from paddle.base.executor import scope_guard
 from paddle.base.framework import (
     Variable,
 )
+from paddle.base.log_helper import get_logger
 from paddle.jit.api import (
     _get_function_names_from_layer,
     get_ast_static_function,
@@ -44,49 +45,12 @@ from paddle.tensorrt.util import (
     warmup_shape_infer,
 )
 
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
+
 
 class Input:
-    """
-    A class used to configure and generate random input data for different shapes and data types.
-
-    This class supports generating random input data for minimum, optimal, and maximum shapes, with configurable data types (e.g., 'int' or 'float') and value ranges.
-
-    Args:
-        warmup_data (tuple):
-            The tuple of Input data arrays (possibly different shapes).
-        min_input_shape (tuple):
-            The shape of the minimum input tensor.
-        max_input_shape (tuple):
-            The shape of the maximum input tensor.
-        optim_input_shape (tuple, optional):
-            The shape of the optimal input tensor (default is None).
-        input_data_type (str, optional):
-            The data type for the input tensors, such as 'float32' or 'int64' or 'float32' or 'int32'  (default is float32).
-        input_range (tuple, optional):
-            The range of values used to generate input data. For floats, the default range is (0.0, 1.0). For integers, the default range is (1, 10).
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-        >>> # example :
-        >>> from paddle.tensorrt.export import Input
-        >>> input = Input(
-        ...    min_input_shape=(1,100),
-        ...    optim_input_shape=(4,100),
-        ...    max_input_shape=(8,100),
-        ... )
-        >>> input = Input(
-        ...    (
-        ...     np.random.rand(1, 100),
-        ...     np.random.rand(4, 100),
-        ...     np.random.rand(8, 100),
-        ...     )
-        ... )
-        >>> input.input_data_type='int64'
-        >>> input.input_range=(1,10)
-    """
-
     def __init__(
         self,
         warmup_data: tuple[np.ndarray, ...] | None = None,
@@ -95,16 +59,73 @@ class Input:
         optim_input_shape: tuple | None = None,
         input_data_type: str | None = 'float32',
         input_range: tuple | None = None,
+        name: str | None = None,
     ) -> None:
+        """
+        A class used to configure input data for models. This class serves two purposes:
+
+        1. Random Data Generation: When no input data is supplied, it automatically generates random input data based on the specified minimum, optimal, and maximum shapes. In this mode,you can configure the data type (e.g., 'float32', 'int64', etc.) and the range of values (e.g.,(0.0, 1.0) for floats or (1, 10) for integers).
+
+        2. User-Provided Input: Alternatively, you can supply your own input data via the `warmup_data` argument. In this case, the provided data will be used directly, and the`input_data_type` and `input_range` settings will be ignored.
+
+        Args:
+            warmup_data (tuple):
+                The tuple of actual input data (for the automatic shape collection mechanism).
+            min_input_shape (tuple):
+                The shape of the minimum input tensor.
+            max_input_shape (tuple):
+                The shape of the maximum input tensor.
+            optim_input_shape (tuple):
+                The shape of the optimal input tensor.
+            input_data_type (str, optional):
+                The data type for the input tensors, such as 'float32' or 'int64' or 'float32' or 'int32'  (default is float32).
+                This option only applies when min_input_shape, optim_input_shape, and max_input_shape are provided; it does not apply to warmup_data.
+            input_range (tuple, optional):
+                The range of values used to generate input data. For floats, the default range is (0.0, 1.0). For integers, the default range is (1, 10).
+                This option only applies when min_input_shape, optim_input_shape, and max_input_shape are provided; it does not apply to warmup_data.
+            name:(str,optional):
+                The name of the input to the model.
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                >>> # example 1:
+                >>> from paddle.tensorrt.export import Input
+                >>> input_config = Input(
+                >>>     min_input_shape=(1,100),
+                >>>     optim_input_shape=(4,100),
+                >>>     max_input_shape=(8,100),
+                >>> )
+                >>> input_config.input_data_type='int64'
+                >>> input_config.input_range=(1,10)
+
+                >>> # example 2:
+                >>> from paddle.tensorrt.export import Input
+                >>> import numpy as np
+                >>> input_config = Input(
+                >>>     warmup_data=(
+                >>>         np.random.rand(1,100).astype(np.float32),
+                >>>         np.random.rand(4,100).astype(np.float32),
+                >>>         np.random.rand(8,100).astype(np.float32),
+                >>>     )
+                >>> )
+        """
         if warmup_data is not None:
             if min_input_shape or max_input_shape or optim_input_shape:
-                logging.warning(
-                    "Input data provided; min/max/optim shapes are ignored."
+                raise ValueError(
+                    "warmup data provided; min/max/optim shapes are ignored."
+                )
+            if input_data_type is not None or input_range is not None:
+                _logger.warning(
+                    "When warmup_data is provided,input_data_type and input_range are ignored."
+                    "These parameters only apply whtn generate random data using min/opt/max shapes."
                 )
         else:
             if None in (min_input_shape, max_input_shape, optim_input_shape):
                 raise ValueError(
-                    "When input_data is None, min/max/optim shapes must be specified."
+                    "When warm_data is None, min/max/optim shapes must be specified."
                 )
 
         self.warmup_data = warmup_data
@@ -113,73 +134,81 @@ class Input:
         self.optim_input_shape = optim_input_shape
         self.input_data_type = input_data_type
         self.input_range = input_range
+        self.name = name
 
     def generate_input_data(self):
         """
-        Generates random input data based on the specified shapes and data types and input_range
+        Generates random input data based on the user-specified min_input_shape, optim_input_shape, and max_input_shape, as well as the data type and input range.
 
         Returns:
             tuple(numpy.ndarray, numpy.ndarray, numpy.ndarray): A tuple containing the generated input data for the minimum, optimal, and maximum shapes.
 
         Examples:
             .. code-block:: python
-            >>> # example :
+
             >>> from paddle.tensorrt.export import Input
-            >>> input = Input(
-            ...    min_input_shape=(1,100),
-            ...    optim_input_shape=(4,100),
-            ...    max_input_shape=(8,100),
-            ... )
-            >>> input = Input(
-            ...    (
-            ...     np.random.rand(1, 100),
-            ...     np.random.rand(4, 100),
-            ...     np.random.rand(8, 100),
-            ...     )
-            ... )
+            >>> input_config = Input(
+            >>>     min_input_shape=(1,100),
+            >>>     optim_input_shape=(4,100),
+            >>>     max_input_shape=(8,100),
+            >>> )
             >>> input.input_data_type='int64'
             >>> input.input_range=(1,10)
             >>> input_min_data, input_optim_data, input_max_data = input_config.generate_input_data()
         """
         if self.warmup_data is not None:
-            return self.warmup_data
-        else:
-            if self.input_data_type is None:
-                self.input_data_type = 'float32'
+            raise RuntimeError(
+                "generate_input_data() should not be called when warmup_data is provided."
+            )
 
-            if self.input_range is None:
-                self.input_range = (
-                    (0.0, 1.0) if 'float' in self.input_data_type else (1, 10)
-                )
+        if self.input_range is None:
+            self.input_range = (
+                (0.0, 1.0) if 'float' in self.input_data_type else (1, 10)
+            )
+        low, high = self.input_range
 
-            if 'int' in self.input_data_type:
-                low, high = self.input_range
-                self.input_min_data = np.random.randint(
-                    low, high, size=self.min_input_shape
-                ).astype(self.input_data_type)
-                self.input_optim_data = np.random.randint(
-                    low, high, size=self.optim_input_shape
-                ).astype(self.input_data_type)
-                self.input_max_data = np.random.randint(
-                    low, high, size=self.max_input_shape
-                ).astype(self.input_data_type)
-            else:
-                low, high = self.input_range if self.input_range else (0, 1)
-                self.input_min_data = np.random.uniform(
-                    low, high, size=self.min_input_shape
-                ).astype(self.input_data_type)
-                self.input_optim_data = np.random.uniform(
-                    low, high, size=self.optim_input_shape
-                ).astype(self.input_data_type)
-                self.input_max_data = np.random.uniform(
-                    low, high, size=self.max_input_shape
-                ).astype(self.input_data_type)
-
+        if low == high:
+            self.input_min_data = np.full(
+                self.min_input_shape, low, dtype=self.input_data_type
+            )
+            self.input_optim_data = np.full(
+                self.optim_input_shape, low, dtype=self.input_data_type
+            )
+            self.input_max_data = np.full(
+                self.max_input_shape, low, dtype=self.input_data_type
+            )
             return (
                 self.input_min_data,
                 self.input_optim_data,
                 self.input_max_data,
             )
+
+        if 'int' in self.input_data_type:
+            self.input_min_data = np.random.randint(
+                low, high, size=self.min_input_shape
+            ).astype(self.input_data_type)
+            self.input_optim_data = np.random.randint(
+                low, high, size=self.optim_input_shape
+            ).astype(self.input_data_type)
+            self.input_max_data = np.random.randint(
+                low, high, size=self.max_input_shape
+            ).astype(self.input_data_type)
+        else:
+            self.input_min_data = np.random.uniform(
+                low, high, size=self.min_input_shape
+            ).astype(self.input_data_type)
+            self.input_optim_data = np.random.uniform(
+                low, high, size=self.optim_input_shape
+            ).astype(self.input_data_type)
+            self.input_max_data = np.random.uniform(
+                low, high, size=self.max_input_shape
+            ).astype(self.input_data_type)
+
+        return (
+            self.input_min_data,
+            self.input_optim_data,
+            self.input_max_data,
+        )
 
 
 class PrecisionMode(Enum):
@@ -244,32 +273,40 @@ class TensorRTConfig:
 
         Examples:
             .. code-block:: python
-            >>> # example :
+            >>> # example 1:
             >>> from paddle.tensorrt.export import (
-            ...    Input,
-            ...    TensorRTConfig,
-            ...    PrecisionMode,
-            ... )
-            >>> input = Input(
-            ...    min_input_shape=(1,100),
-            ...    optim_input_shape=(4,100),
-            ...    max_input_shape=(8,100),
-            ... )
-            >>> input = Input(
-            ...    (
-            ...     np.random.rand(1, 100),
-            ...     np.random.rand(4, 100),
-            ...     np.random.rand(8, 100),
-            ...     )
-            ... )
-            >>> input.input_data_type='int64'
-            >>> input.input_range=(1,10)
+            >>>    Input,
+            >>>    TensorRTConfig,
+            >>>    PrecisionMode,
+            >>> )
+            >>> input_config = Input(
+            >>>     min_input_shape=(1,100),
+            >>>     optim_input_shape=(4,100),
+            >>>     max_input_shape=(8,100),
+            >>> )
+            >>> input_config.input_data_type='int64'
+            >>> input_config.input_range=(1,10)
 
-            >>> trt_config = TensorRTConfig(inputs=[input])
+            >>> trt_config = TensorRTConfig(inputs=[input_config])
             >>> trt_config.disable_ops = ["pd_op.dropout"]
             >>> trt_config.precision_mode = PrecisionMode.FP16
             >>> trt_config.ops_run_float = "pd_op.conv2d"
-            >>> trt_config.workspace_size = 2 << 30
+            >>> trt_config.workspace_size = 1 << 32
+
+            >>> # example 2:
+            >>> from paddle.tensorrt.export import (
+            >>>     Input,
+            >>>     TensorRTConfig,
+            >>>     PrecisionMode,
+            >>> )
+            >>> input_config = Input(
+            >>>     warmup_data=(
+            >>>         np.random.rand(1,100).astype(np.float32),
+            >>>         np.random.rand(4,100).astype(np.float32),
+            >>>         np.random.rand(8,100).astype(np.float32),
+            >>>     )
+            >>> )
+            >>> trt_config = TensorRTConfig(inputs=[input_config])
         """
         # Checking Input Consistency
         has_input_data = [i.warmup_data is not None for i in inputs]
@@ -305,16 +342,26 @@ def convert_to_trt(program, trt_config, scope):
             feed_name.append(param_name)
 
     with paddle.pir_utils.IrGuard():
-        input_tuples = [i.generate_input_data() for i in trt_config.inputs]
-        # Check all inputs have same number of warmup_data samples
-        assert (
-            len({len(t) for t in input_tuples}) == 1
-        ), "All inputs must have the same number of warmup_data samples."
-        feeds = [
-            {name: t[i] for t, name in zip(input_tuples, feed_name)}
-            for i in range(len(input_tuples[0]))
-        ]
-
+        feeds = []
+        if trt_config.inputs[0].warmup_data is not None:
+            input_tuples = [inp.warmup_data for inp in trt_config.inputs]
+            # Check all inputs have the same number of warmup_data samples
+            assert len({len(t) for t in input_tuples}) == 1
+            num_samples = len(input_tuples[0])
+            for sample_idx in range(num_samples):
+                feed_dict = {}
+                for i, inp in enumerate(trt_config.inputs):
+                    name = inp.name if inp.name is not None else feed_name[i]
+                    feed_dict[name] = input_tuples[i][sample_idx]
+                feeds.append(feed_dict)
+        else:
+            input_tuples = [i.generate_input_data() for i in trt_config.inputs]
+            for i in range(len(input_tuples[0])):
+                feed_dict = {}
+                for j, inp in enumerate(trt_config.inputs):
+                    name = inp.name if inp.name is not None else feed_name[j]
+                    feed_dict[name] = input_tuples[j][i]
+                feeds.append(feed_dict)
         # run pir pass (including trt_op_marker_pass)
         program_with_pir = run_pir_pass(
             program,
@@ -583,97 +630,112 @@ def convert(model_path, config):
 
     Examples:
         .. code-block:: python
-            >>> import paddle
+
+            >>> # example 1:
+            >>> # This example takes the user-specified model input shape, and Paddle internally generates corresponding random data.
             >>> import numpy as np
-            >>> import tempfile
+            >>> import paddle
             >>> import paddle.inference as paddle_infer
-            >>> from paddle.tensorrt.export import (
-            ...      Input,
-            ...      TensorRTConfig,
-            ...      export,
-            ... )
-            >>> import os
-            >>> from paddle import nn
             >>> import paddle.nn.functional as F
+            >>> from paddle import nn
+            >>> from paddle.tensorrt.export import Input, TensorRTConfig
 
-            >>> class CumsumModel(nn.Layer):
-            ...    def __init__(self, input_dim):
-            ...        super().__init__()
-            ...        self.linear = nn.Linear(input_dim, input_dim)
+            >>> class LinearNet(nn.Layer):
+            >>>     def __init__(self, input_dim):
+            >>>         super().__init__()
+            >>>         self.linear = nn.Linear(input_dim, input_dim)
 
-            ...    def forward(self, x):
-            ...        linear_out = self.linear(x)
-            ...        relu_out = F.relu(linear_out)
-            ...        axis = paddle.full([1], 2, dtype='int64')
-            ...        out = paddle.cumsum(relu_out, axis=axis)
-            ...        return out
+            >>>     def forward(self, x):
+            >>>         return F.relu(self.linear(x))
 
-            >>> temp_dir = tempfile.TemporaryDirectory()
-            >>> save_path = os.path.join(temp_dir.name, 'tensor_axis_cumsum')
+            >>> input_dim = 3
+            >>> # 1.Instantiate the network.
+            >>> layer = LinearNet(input_dim)
 
-            >>> with paddle.pir_utils.IrGuard():
-            ...    paddle.enable_static()
-            ...    np_x = np.random.randn(9, 10, 11).astype('float32')
-            ...    main_prog = paddle.static.Program()
-            ...    startup_prog = paddle.static.Program()
-            ...    with paddle.static.program_guard(main_prog, startup_prog):
-            ...        x = paddle.static.data(
-            ...            shape=np_x.shape, name='x', dtype=np_x.dtype
-            ...        )
-            ...        model = CumsumModel(input_dim=np_x.shape[-1])
-            ...        out = model(x)
-            ...        loss = paddle.mean(out)
-            ...        sgd = paddle.optimizer.SGD(learning_rate=0.0)
-            ...        sgd.minimize(paddle.mean(out))
+            >>> save_path = "/tmp/linear_net"
+            >>> # 2.Convert dynamic graph to static graph and save as a JSON file.
+            >>> paddle.jit.save(layer, save_path, [paddle.static.InputSpec(shape=[-1, input_dim])])
 
-            ...        exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            ...        exe.run(startup_prog)
-            ...        static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+            >>> # 3.Create TensorRTConfig
+            >>> input_config = Input(
+            >>>     min_input_shape=[1, input_dim],
+            >>>     optim_input_shape=[2, input_dim],
+            >>>     max_input_shape=[4, input_dim],
+            >>>     name='x',
+            >>> )
 
-            ...        # run infer
-            ...        paddle.static.save_inference_model(
-            ...            save_path, [x], [out], exe
-            ...        )
+            >>> trt_config = TensorRTConfig(inputs=[input_config])
+            >>> trt_config.save_model_dir = "/tmp/linear_net_trt"
 
-            ...        config = paddle_infer.Config(
-            ...            save_path + '.json', save_path + '.pdiparams'
-            ...        )
-            ...        config.enable_new_ir()
-            ...        config.enable_new_executor()
-            ...        config.use_optimized_model(True)
+            >>> # 4.Perform TensorRT conversion
+            >>> program_with_trt = paddle.tensorrt.convert(save_path, trt_config)
 
-            ... # Set input
-            ...    input_config = Input(
-            ...        min_input_shape=(9, 10, 11),
-            ...        optim_input_shape=(9, 10, 11),
-            ...        max_input_shape=(9, 10, 11),
-            ...    )
-            ...    # Create a TensorRTConfig with inputs as a required field.
-            ...    trt_config = TensorRTConfig(inputs=[input_config])
+            >>> # 5.Create a Predictor and run TensorRT inference.
+            >>> config = paddle_infer.Config(
+            >>>     trt_config.save_model_dir + '.json',
+            >>>     trt_config.save_model_dir + '.pdiparams',
+            >>> )
+            >>> config.enable_use_gpu(100, 0)
+            >>> predictor = paddle_infer.create_predictor(config)
 
-            ...    trt_save_path = os.path.join(temp_dir.name, 'trt')
-            ...    trt_config.save_model_dir = trt_save_path
+            >>> input_data = np.random.randn(2, 3).astype(np.float32)
+            >>> model_input = paddle.to_tensor(input_data)
 
-            ...    program_with_trt = paddle.tensorrt.convert(save_path, trt_config)
+            >>> output_converted = predictor.run([model_input])
 
-            ...    # Create a config for inference.
-            ...    config = paddle_infer.Config(
-            ...        trt_config.save_model_dir + '.json',
-            ...        trt_config.save_model_dir + '.pdiparams',
-            ...    )
+            >>> # example 2:
+            >>> # In this example, the user specifies the actual input.
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.inference as paddle_infer
+            >>> import paddle.nn.functional as F
+            >>> from paddle import nn
+            >>> from paddle.tensorrt.export import Input, TensorRTConfig
 
-            ...    if paddle.is_compiled_with_cuda():
-            ...        config.enable_use_gpu(100, 0)
-            ...    else:
-            ...        config.disable_gpu()
-            ...    predictor = paddle_infer.create_predictor(config)
-            ...    input_names = predictor.get_input_names()
+            >>> class LinearNet(nn.Layer):
+            >>>     def __init__(self, input_dim):
+            >>>         super().__init__()
+            >>>         self.linear = nn.Linear(input_dim, input_dim)
 
-            ...    paddle.disable_static()
-            ...    for i, input_instrance in enumerate(trt_config.inputs):
-            ...        min_data, _, max_data = input_instrance.generate_input_data()
-            ...        model_inputs = paddle.to_tensor(min_data)
-            ...        output_converted = predictor.run([model_inputs])
+            >>>     def forward(self, x):
+            >>>         return F.relu(self.linear(x))
+
+            >>> input_dim = 3
+            >>> # 1.Instantiate the network.
+            >>> layer = LinearNet(input_dim)
+
+            >>> save_path = "/tmp/linear_net"
+            >>> # 2.Convert dynamic graph to static graph and save as a JSON file.
+            >>> paddle.jit.save(layer, save_path, [paddle.static.InputSpec(shape=[-1, input_dim])])
+
+            >>> # 3.Create TensorRTConfig
+            >>> input_config = Input(
+            >>>     warmup_data=(
+            >>>         np.random.rand(1,3).astype(np.float32),
+            >>>         np.random.rand(2,3).astype(np.float32),
+            >>>         np.random.rand(4,3).astype(np.float32),
+            >>>     ),
+            >>>     name='x',
+            >>> )
+
+            >>> trt_config = TensorRTConfig(inputs=[input_config])
+            >>> trt_config.save_model_dir = "/tmp/linear_net_trt"
+
+            >>> # 4.Perform TensorRT conversion
+            >>> program_with_trt = paddle.tensorrt.convert(save_path, trt_config)
+
+            >>> # 5.Create a Predictor and run TensorRT inference.
+            >>> config = paddle_infer.Config(
+            >>>     trt_config.save_model_dir + '.json',
+            >>>     trt_config.save_model_dir + '.pdiparams',
+            >>> )
+            >>> config.enable_use_gpu(100, 0)
+            >>> predictor = paddle_infer.create_predictor(config)
+
+            >>> input_data = np.random.randn(2, 3).astype(np.float32)
+            >>> model_input = paddle.to_tensor(input_data)
+
+            >>> output_converted = predictor.run([model_input])
 
     """
     if os.path.abspath(config.save_model_dir) == os.path.abspath(model_path):

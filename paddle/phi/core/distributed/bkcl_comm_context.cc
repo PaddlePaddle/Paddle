@@ -27,7 +27,7 @@ namespace distributed {
 
 BKCLCommContext::BKCLCommContext(int rank, int size, BKCLUniqueId bkcl_id)
     : CommContext(rank, size) {
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_BKCL_SUCCESS(
       bkcl_init_rank(&bkcl_comm_, rank_, size_, &bkcl_id));
 }
 
@@ -66,13 +66,13 @@ void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                              /*cur_rank*/ rank_,
                              size_,
                              phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_broadcast(bkcl_comm_,
-                                            in_tensor.data(),
-                                            out_tensor->data(),
-                                            in_tensor.numel(),
-                                            ToBKCLDataType(in_tensor.type()),
-                                            root,
-                                            stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_broadcast(bkcl_comm_,
+                                             in_tensor.data(),
+                                             out_tensor->data(),
+                                             in_tensor.numel(),
+                                             ToBKCLDataType(in_tensor.type()),
+                                             root,
+                                             stream));
 }
 
 void BKCLCommContext::AllGather(phi::DenseTensor* out_tensor,
@@ -84,12 +84,12 @@ void BKCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                                      /*cur_rank*/ rank_,
                                                      size_,
                                                      phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_gather(bkcl_comm_,
-                                             in_tensor.data(),
-                                             in_tensor.numel(),
-                                             out_tensor->data(),
-                                             ToBKCLDataType(in_tensor.type()),
-                                             stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_gather(bkcl_comm_,
+                                              in_tensor.data(),
+                                              in_tensor.numel(),
+                                              out_tensor->data(),
+                                              ToBKCLDataType(in_tensor.type()),
+                                              stream));
 }
 
 void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
@@ -102,7 +102,7 @@ void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                                       /*cur_rank*/ rank_,
                                                       size_,
                                                       phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_BKCL_SUCCESS(
       bkcl_reduce_scatter(bkcl_comm_,
                           in_tensor.data(),
                           out_tensor->data(),
@@ -119,12 +119,12 @@ void BKCLCommContext::Send(const phi::DenseTensor& in_tensor,
   phi::distributed::CommStaticCheck::CheckShape(
       in_tensor, rank_, size_, phi::AllocationType::XPU);
 
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_send(bkcl_comm_,
-                                       in_tensor.data(),
-                                       count,
-                                       peer,
-                                       ToBKCLDataType(in_tensor.dtype()),
-                                       stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_send(bkcl_comm_,
+                                        in_tensor.data(),
+                                        count,
+                                        peer,
+                                        ToBKCLDataType(in_tensor.dtype()),
+                                        stream));
   VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
           << " to " << peer;
 }
@@ -136,12 +136,12 @@ void BKCLCommContext::Recv(phi::DenseTensor* out_tensor,
   phi::distributed::CommStaticCheck::CheckShape(
       *out_tensor, rank_, size_, phi::AllocationType::XPU);
 
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_recv(bkcl_comm_,
-                                       out_tensor->data(),
-                                       count,
-                                       peer,
-                                       ToBKCLDataType(out_tensor->dtype()),
-                                       stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_recv(bkcl_comm_,
+                                        out_tensor->data(),
+                                        count,
+                                        peer,
+                                        ToBKCLDataType(out_tensor->dtype()),
+                                        stream));
   VLOG(3) << "rank " << GetRank() << " recv "
           << common::product(out_tensor->dims()) << " from " << peer;
 }
@@ -156,13 +156,13 @@ void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(bkcl_comm_,
-                                             in_tensor.data(),
-                                             out_tensor->data(),
-                                             in_tensor.numel(),
-                                             ToBKCLDataType(in_tensor.type()),
-                                             reduce_type,
-                                             stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_reduce(bkcl_comm_,
+                                              in_tensor.data(),
+                                              out_tensor->data(),
+                                              in_tensor.numel(),
+                                              ToBKCLDataType(in_tensor.type()),
+                                              reduce_type,
+                                              stream));
 }
 
 void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
@@ -174,12 +174,42 @@ void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_to_all(bkcl_comm_,
-                                             in_tensor.data(),
-                                             in_tensor.numel() / size_,
-                                             out_tensor->data(),
-                                             ToBKCLDataType(in_tensor.type()),
-                                             stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_to_all(bkcl_comm_,
+                                              in_tensor.data(),
+                                              in_tensor.numel() / size_,
+                                              out_tensor->data(),
+                                              ToBKCLDataType(in_tensor.type()),
+                                              stream));
+}
+
+void BKCLCommContext::AllToAllUnequalSplit(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const phi::DenseTensor& out_size_tensor,
+    const phi::DenseTensor& out_offset_tensor,
+    const phi::DenseTensor& in_size_tensor,
+    const phi::DenseTensor& in_offset_tensor,
+    XPUStream stream) {
+  auto in_size_ptr = const_cast<size_t*>(
+      reinterpret_cast<const size_t*>(in_size_tensor.data()));
+  auto in_offset_ptr = const_cast<size_t*>(
+      reinterpret_cast<const size_t*>(in_offset_tensor.data()));
+  auto out_size_ptr = const_cast<size_t*>(
+      reinterpret_cast<const size_t*>(out_size_tensor.data()));
+  auto out_offset_ptr = const_cast<size_t*>(
+      reinterpret_cast<const size_t*>(out_offset_tensor.data()));
+
+  PADDLE_ENFORCE_BKCL_SUCCESS(
+      bkcl_all_to_all_v(bkcl_comm_,
+                        in_tensor.data(),
+                        in_size_ptr,
+                        in_offset_ptr,
+                        ToBKCLDataType(in_tensor.type()),
+                        out_tensor->data(),
+                        out_size_ptr,
+                        out_offset_ptr,
+                        ToBKCLDataType(out_tensor->type()),
+                        stream));
 }
 
 void BKCLCommContext::Reduce(phi::DenseTensor* out_tensor,
@@ -193,21 +223,21 @@ void BKCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_reduce(bkcl_comm_,
-                                         in_tensor.data(),
-                                         out_tensor->data(),
-                                         in_tensor.numel(),
-                                         ToBKCLDataType(in_tensor.type()),
-                                         reduce_type,
-                                         root,
-                                         stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_reduce(bkcl_comm_,
+                                          in_tensor.data(),
+                                          out_tensor->data(),
+                                          in_tensor.numel(),
+                                          ToBKCLDataType(in_tensor.type()),
+                                          reduce_type,
+                                          root,
+                                          stream));
 }
 
 void BKCLCommContext::GroupStart() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_start());
 }
 void BKCLCommContext::GroupEnd() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_end());
 }
 }  // namespace distributed
 }  // namespace phi

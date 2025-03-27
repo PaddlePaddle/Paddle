@@ -41,7 +41,7 @@ class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
         super().__init__(name, default)
         assert isinstance(default, dict), "default must be a dict"
 
-    def get(self) -> dict[str, list[str]]:
+    def parse_from_string(self) -> dict[str, list[str]]:
         env_var = os.getenv(self.name)
         if env_var is None or env_var == "":
             return self.default
@@ -51,7 +51,7 @@ class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
             ret.update(self.parse_parameterized_key(item))
         return ret
 
-    def set(self, value: dict[str, list[str]]) -> None:
+    def convert_to_string(self, value: dict[str, list[str]]) -> str:
         assert isinstance(value, dict), "The input must be a dict"
         assert all(
             isinstance(x, str) for x in value.keys()
@@ -63,7 +63,8 @@ class PEP508LikeEnvironmentVariable(EnvironmentVariable[Dict[str, List[str]]]):
         env_list = []
         for k, v in value.items():
             env_list.append(f"{k}" + (f"[{','.join(v)}]" if len(v) else ""))
-        os.environ[self.name] = ",".join(env_list)
+
+        return ",".join(env_list)
 
     @staticmethod
     def split_by_unbracketed_commas(input_str: str) -> list[str]:
@@ -128,6 +129,10 @@ ENV_SOT_ENABLE_FASTER_GUARD = BooleanEnvironmentVariable(
     "SOT_ENABLE_FASTER_GUARD",
     False,
 )
+ENV_SOT_ENABLE_STRICT_GUARD_CHECK = BooleanEnvironmentVariable(
+    "SOT_ENABLE_STRICT_GUARD_CHECK",
+    False,
+)
 ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,
@@ -140,9 +145,27 @@ ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE = BooleanEnvironmentVariable(
     "SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE", False
 )
 ENV_SOT_COLLECT_INFO = PEP508LikeEnvironmentVariable("SOT_COLLECT_INFO", {})
+ENV_SOT_SERIALIZE_INFO = BooleanEnvironmentVariable("SOT_SERIALIZE_INFO", False)
+ENV_SOT_CE_DEBUG_MODE = BooleanEnvironmentVariable("SOT_CE_DEBUG_MODE", False)
 ENV_SOT_FORCE_FALLBACK_SIR_IDS = StringEnvironmentVariable(
     "SOT_FORCE_FALLBACK_SIR_IDS", ""
 )
+
+
+def update_ce_flags():
+    if not ENV_SOT_CE_DEBUG_MODE.get():
+        return
+    # Enable information collection flags to facilitate debugging and analysis
+
+    collected_info_item: dict[str, list[str]] = ENV_SOT_COLLECT_INFO.get()
+    collected_info_item.setdefault("breakgraph_reason", [])
+    collected_info_item.setdefault("subgraph_info", [])
+
+    ENV_SOT_COLLECT_INFO.set(collected_info_item)
+    ENV_SOT_SERIALIZE_INFO.set(True)
+
+
+update_ce_flags()
 
 
 @contextmanager

@@ -103,6 +103,7 @@ using paddle::dialect::DenseTensorType;
 using paddle::dialect::DistDenseTensorType;
 using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
+using paddle::dialect::PrintOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::SparseCooTensorType;
@@ -984,6 +985,11 @@ void BindOperation(py::module *m) {
                  attrs_dict[pair.first.c_str()] =
                      pair.second.dyn_cast<OperationDistAttribute>();
                } else {
+                 if (pair.second.isa<pir::FloatAttribute>()) {
+                   VLOG(2) << "The value is stored with float32 precision, "
+                              "which may cause precision issues for higher "
+                              "precision requirements.";
+                 }
                  attrs_dict[pair.first.c_str()] =
                      paddle::dialect::GetAttributeData(pair.second);
                }
@@ -1556,6 +1562,8 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("element_size",
+           [](Value self) { return phi::SizeOf(pir::GetValueDtype(self)); })
       .def("_rename", &name_analysis::RenameValue)
       .def("_has_only_one_name",
            [](Value self) -> bool {
@@ -2019,6 +2027,91 @@ std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
+void AppendPrintOp(Program *program,
+                   const pir::Value &value,
+                   int first_n,
+                   std::string message,
+                   int summarize,
+                   bool print_tensor_name,
+                   bool print_tensor_type,
+                   bool print_tensor_shape,
+                   bool print_tensor_layout,
+                   bool print_tensor_lod,
+                   std::string print_phase,
+                   bool is_forward,
+                   int start_point) {
+  std::unordered_set<std::string> print_phase_set{
+      "FORWARD", "BACKWARD", "BOTH"};
+  if (!print_phase_set.count(print_phase)) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The attribute 'print_phase' must be one of 'FORWARD', 'BACKWARD', "
+        "'BOTH' but got '%s'.",
+        print_phase));
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(paddle::dialect::PrintOp::name());
+  pir::AttributeMap attribute_map = {
+      {"first_n", Int32Attribute::get(ctx, first_n)},
+      {"message", StrAttribute::get(ctx, message)},
+      {"summarize", Int32Attribute::get(ctx, summarize)},
+      {"print_tensor_name", BoolAttribute::get(ctx, print_tensor_name)},
+      {"print_tensor_type", BoolAttribute::get(ctx, print_tensor_type)},
+      {"print_tensor_shape", BoolAttribute::get(ctx, print_tensor_shape)},
+      {"print_tensor_layout", BoolAttribute::get(ctx, print_tensor_layout)},
+      {"print_tensor_lod", BoolAttribute::get(ctx, print_tensor_lod)},
+      {"print_phase", StrAttribute::get(ctx, print_phase)},
+      {"is_forward", BoolAttribute::get(ctx, is_forward)},
+  };
+  std::vector<pir::Type> output_types{value.type()};
+  pir::Operation *operation =
+      pir::Operation::Create({value}, attribute_map, output_types, op_info);
+
+  auto block = value.defining_op()->GetParent();
+  auto position = block->begin();
+  std::advance(position, start_point);
+  if (position == block->end()) {
+    block->push_back(operation);
+  } else {
+    block->insert(position, operation);
+  }
+}
+
+void AppendPrintOps(Program *program,
+                    const std::vector<pir::Value> &values,
+                    int first_n,
+                    std::string message,
+                    int summarize,
+                    bool print_tensor_name,
+                    bool print_tensor_type,
+                    bool print_tensor_shape,
+                    bool print_tensor_layout,
+                    bool print_tensor_lod,
+                    std::string print_phase,
+                    bool is_forward,
+                    int start_point) {
+  int counter = 0;
+  std::unordered_set<pir::Value> added_values;
+  for (const auto &value : values) {
+    if (!added_values.count(value)) {
+      AppendPrintOp(program,
+                    value,
+                    first_n,
+                    message,
+                    summarize,
+                    print_tensor_name,
+                    print_tensor_type,
+                    print_tensor_shape,
+                    print_tensor_layout,
+                    print_tensor_lod,
+                    print_phase,
+                    is_forward,
+                    start_point + counter);
+      ++counter;
+      added_values.insert(value);
+    }
+  }
+}
+
 void AppendShadowOutput(Program *program,
                         const pir::Value &value,
                         const std::string &name,
@@ -2346,6 +2439,8 @@ void BindUtils(pybind11::module *m) {
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
+  m->def("append_print", AppendPrintOp);
+  m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {

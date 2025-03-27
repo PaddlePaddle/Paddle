@@ -165,7 +165,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
   }
 
   // Parallel acceleration when the input size is equal to the length of the
-  // ‘axis’ dimension.
+  // 'axis' dimension.
   // Compared to 'special case for full sort' below, the gradient calculation
   // is 10 times faster.
   if (size == in_dims[axis]) {

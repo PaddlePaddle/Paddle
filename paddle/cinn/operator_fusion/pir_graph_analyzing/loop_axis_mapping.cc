@@ -279,6 +279,7 @@ AxisTransformRoute SimplifyContinuousReshape(const AxisTransformRoute& route) {
   if (!continuous_reshape.empty()) {
     result = ConcatVector(result, simplify_reshape(continuous_reshape));
   }
+  if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
   return result;
 }
 
@@ -315,6 +316,7 @@ AxisTransformRoute SimplifyTransformRoute(
     }
   }
   result = ConcatVector(result, SimplifySimpleTransform(part, inshape).first);
+  if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
   return result;
 }
 
@@ -462,25 +464,25 @@ LoopAxisMapping CreateLoopAxisMappingForBroadcast(pir::Operation* op) {
   const auto& out_shape = GetCompatibleValueAllDims(output_value);
   std::vector<int64_t> broadcast_axes;
   std::vector<int64_t> input_keepdims;
-  int i = 0, j = 0;
-  while (i < in_shape.size() && j < out_shape.size()) {
+  int i = in_shape.size() - 1, j = out_shape.size() - 1;
+  while (i >= 0 && j >= 0) {
     if (in_shape[i] == out_shape[j]) {
-      ++i;
-      ++j;
+      --i;
+      --j;
       continue;
     } else if (in_shape[i] == symbol::DimExpr(1)) {
-      input_keepdims.push_back(i++);
-      broadcast_axes.push_back(j++);
+      input_keepdims.insert(input_keepdims.begin(), i--);
+      broadcast_axes.insert(broadcast_axes.begin(), j--);
     } else {
-      broadcast_axes.push_back(j++);
+      broadcast_axes.insert(broadcast_axes.begin(), j--);
     }
   }
   // each axis in input shape must be 1 or equal to output shape
-  if (i < in_shape.size()) {
+  if (i >= 0) {
     result.input2loop[0].push_back(UnsupportedTransform::InstancePtr());
   } else {
-    while (j < out_shape.size()) {
-      broadcast_axes.push_back(j++);
+    while (j >= 0) {
+      broadcast_axes.insert(broadcast_axes.begin(), j--);
     }
     if (!input_keepdims.empty()) {
       result.input2loop[0].push_back(std::make_shared<DeleteAxisTransform>(
@@ -563,7 +565,7 @@ LoopAxisMapping CreateLoopAxisMappingForReshape(pir::Operation* op) {
   result.output_values.push_back(op->result(0));
   result.loop2output.resize(1);
   auto in_shape = GetCompatibleValueAllDims(op->operand_source(0));
-  auto out_shape = GetValueAllDims(op->result(0));
+  auto out_shape = GetCompatibleValueAllDims(op->result(0));
   result.loop = out_shape;
 
   if (!ShapeProductEqual(in_shape, out_shape)) {

@@ -105,6 +105,9 @@ def _apply_collective_grads_eager(
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
 
+    if len(grad_vars) == 0:
+        return
+
     coalesced_grads_and_vars = build_groups(grad_vars, bucket_size)
 
     nranks = (

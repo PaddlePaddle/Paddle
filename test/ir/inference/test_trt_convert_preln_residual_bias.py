@@ -131,28 +131,24 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
 
                         yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "inputX_data": [4, 128, 768],
+            "inputY_data": [4, 128, 768],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "inputX_data": [4, 128, 768],
+            "inputY_data": [4, 128, 768],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "inputX_data": [4, 128, 768],
+            "inputY_data": [4, 128, 768],
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "inputX_data": [4, 128, 768],
-                "inputY_data": [4, 128, 768],
-                "Bias": [768],
-                "Scale": [768],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "inputX_data": [4, 128, 768],
-                "inputY_data": [4, 128, 768],
-                "Bias": [768],
-                "Scale": [768],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "inputX_data": [4, 128, 768],
-                "inputY_data": [4, 128, 768],
-                "Bias": [768],
-                "Scale": [768],
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -170,17 +166,18 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         ]
         # for static_shape, fall back to base fused op
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2  # atol=1e-2 while rtol is 1e-8
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-2  # atol=1e-2 while rtol is 1e-8
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-2  # atol=1e-2 while rtol is 1e-8
 
         # just support dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -195,7 +192,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":
