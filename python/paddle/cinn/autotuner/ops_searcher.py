@@ -155,7 +155,7 @@ class OpsSearcher:
         autotuner.tuner_config._env_set_tile_config_policy("search")
         best = candidate_searcher.search()
         best_score = best[0] / graph_num
-        best_candidate = json.dump(utils.candidate_join(
+        best_candidate = json.dumps(utils.candidate_join(
             self.candidate_generator.param_names(), best[1]
         ), indent=4)
                     
