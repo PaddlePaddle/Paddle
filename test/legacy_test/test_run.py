@@ -21,6 +21,8 @@ import unittest
 from os import listdir
 from os.path import isfile, join
 
+import paddle
+
 pyname = 'train.py'
 colpyfile = '''# train.py for unittest
 import os
@@ -64,6 +66,16 @@ class Collective_Test(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp_dir.name, pyname)
         write_file(self.path, colpyfile)
+        # special for XPU
+        if paddle.core.is_compiled_with_xpu():
+            # only 2 cards available in xpu ci
+            xpu_devices = os.environ.get('XPU_VISIBLE_DEVICES')
+            if xpu_devices is not None:
+                self.device_two = xpu_devices
+            else:
+                raise AssertionError("XPU_VISIBLE_DEVICES not found in env")
+        else:
+            self.device_two = "0,1"
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -89,21 +101,28 @@ class Collective_Test(unittest.TestCase):
 
     def test_collective_2(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = f"--job_id test2 --devices 0,1,2 --log_dir {log_dir.name}"
+        if paddle.core.is_compiled_with_xpu():
+            args = f"--job_id test2 --devices {self.device_two} --log_dir {log_dir.name}"
+        else:
+            args = f"--job_id test2 --devices 0,1,2 --log_dir {log_dir.name}"
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
 
         c = get_files(log_dir.name, 'test2')
-        self.assertTrue(len(c) == 4)
+        if paddle.core.is_compiled_with_xpu():
+            # only 2 cards available in xpu ci
+            self.assertTrue(len(c) == 3)
+        else:
+            self.assertTrue(len(c) == 4)
         log_dir.cleanup()
 
     def test_collective_3(self):
         log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
-        args = "--job_id test3 --devices 0,1 --log_dir {} --master 127.0.0.1:{} --nnodes 2"
-        p1 = self.pdrun(args.format(log_dir.name + "/1", port))
-        p2 = self.pdrun(args.format(log_dir.name + "/2", port))
+        args = "--job_id test3 --devices {} --log_dir {} --master 127.0.0.1:{} --nnodes 2"
+        p1 = self.pdrun(args.format(self.device_two, log_dir.name + "/1", port))
+        p2 = self.pdrun(args.format(self.device_two, log_dir.name + "/2", port))
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
@@ -125,8 +144,12 @@ class Collective_Test(unittest.TestCase):
                 '{"tuner_save_path":"parallel_strategy.pkl","tuner_load_path":"parallel_strategy.pkl","tuner_run_mode":"tuner_and_run"}'
             )
         port = random.randrange(6000, 8000)
-        args = "--job_id test4 --devices 0,1 --log_dir {} --auto_parallel_config {}"
-        p1 = self.pdrun(args.format(log_dir.name + "/1", config_path))
+        args = (
+            "--job_id test4 --devices {} --log_dir {} --auto_parallel_config {}"
+        )
+        p1 = self.pdrun(
+            args.format(self.device_two, log_dir.name + "/1", config_path)
+        )
         p1.wait()
         self.assertTrue(p1.poll() == 0)
 
