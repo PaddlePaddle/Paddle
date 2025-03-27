@@ -1470,7 +1470,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2,
+      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
@@ -1754,7 +1754,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2,
+      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
