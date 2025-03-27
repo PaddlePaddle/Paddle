@@ -63,14 +63,14 @@ __global__ void ArgCUDAKernel(const int64_t height,     // n * h
                               const T init,
                               const T* in,
                               IndType* out) {
-  typedef cub::BlockReduce<KeyValuePair<int, T>, BlockDim> BlockReduce;
+  typedef cub::BlockReduce<KeyValuePair<int64_t, T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
 
-  for (int idx = blockIdx.x; idx < height; idx += gridDim.x) {
-    KeyValuePair<int, T> kv_pair = {-1, init};
-    int h = idx / post_size;
-    int w = idx % post_size;
-    for (int k = threadIdx.x; k < width; k += blockDim.x) {
+  for (int64_t idx = blockIdx.x; idx < height; idx += gridDim.x) {
+    KeyValuePair<int64_t, T> kv_pair = {-1, init};
+    int64_t h = idx / post_size;
+    int64_t w = idx % post_size;
+    for (int64_t k = threadIdx.x; k < width; k += blockDim.x) {
       kv_pair =
           reducer({k, in[h * width * post_size + k * post_size + w]}, kv_pair);
     }
