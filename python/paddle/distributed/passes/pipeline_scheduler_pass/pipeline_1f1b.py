@@ -162,6 +162,7 @@ class Pipeline1F1BPass(PipelinePassBase):
     def _op_cost(self, op):
         handwritten_cost_map = {
             "c_allreduce_sum": 0,
+            "all_reduce": 0,
             "elementwise_add": 40,
             "split": 76,
             "transpose2": 40,
@@ -199,7 +200,10 @@ class Pipeline1F1BPass(PipelinePassBase):
 
         try:
             time = calc_time_by_cost_model(op)
-            if op.type == "c_allreduce_sum":
+            if op.type == "c_allreduce_sum" or (
+                op.type == "all_reduce"
+                and op.attr("reduce_type") == paddle.distributed.ReduceOp.SUM
+            ):
                 time *= 8
             return time
         except Exception as e:
@@ -245,7 +249,14 @@ class Pipeline1F1BPass(PipelinePassBase):
 
     def is_comm_op_valid_to_overlap(self, op):
         return (
-            op.type == "c_allreduce_sum"
+            (
+                op.type == "c_allreduce_sum"
+                or (
+                    op.type == "all_reduce"
+                    and op.attr("reduce_type")
+                    == paddle.distributed.ReduceOp.SUM
+                )
+            )
             and op.dist_attr.execution_stream
             == AutoParallelStreamType.CALC_STREAM.value
         )
