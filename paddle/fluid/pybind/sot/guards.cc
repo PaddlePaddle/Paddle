@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include <Python.h>
 #include <frameobject.h>
+#include "pybind11/numpy.h"
 
 #if !defined(PyObject_CallOneArg) && !PY_3_9_PLUS
 static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
@@ -131,6 +132,22 @@ bool LayerMatchGuard::check(PyObject* value) {
 
 bool InstanceCheckGuard::check(PyObject* value) {
   return PyObject_IsInstance(value, expected_);
+}
+
+bool NumpyDtypeMatchGuard::check(PyObject* value) {
+  if (value == nullptr) {
+    return false;
+  }
+
+  // TODO(dev): encountered a compilation error: "declared with greater
+  // visibility than the type of its field", so had to put the conversion here
+  py::dtype expected_dtype = py::cast<py::dtype>(expected_);
+
+  if (py::isinstance<py::array>(value)) {
+    return py::cast<py::array>(value).dtype().is(expected_dtype);
+  }
+
+  return expected_dtype.equal(py::handle(value).get_type());
 }
 
 #endif

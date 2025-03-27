@@ -1331,16 +1331,20 @@ class NumpyNumberVariable(NumpyVariable):
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
-        dtype_guard = StringifiedExpression(
+        dtype_guard = FasterStringifiedExpression(
             f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            paddle.framework.core.NumpyDtypeMatchGuard(
+                self.get_py_value().dtype
+            ),
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),
         )
 
         return [
             dtype_guard,
-            StringifiedExpression(
+            FasterStringifiedExpression(
                 f"{{}} == {NumpyVariable.format_number(self.get_py_value())}",
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars, {"np": np}),
             ),
