@@ -59,6 +59,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
@@ -3476,6 +3477,22 @@ static PyObject* tensor_method__set_impl(TensorObject* self,
 }
 
 #if defined(PADDLE_WITH_CUDA)
+static PyObject* tensor_method__record_stream(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4)
+      << "Running in tensor_method__record_stream: record stream for Tensor.";
+  auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (tensor) {
+    const auto& device_id = paddle::platform::GetCurrentDeviceId();
+    auto stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+    memory::RecordStream(tensor->Holder(), stream);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
@@ -3810,6 +3827,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #if defined(PADDLE_WITH_CUDA)
+    {"_record_stream",
+     (PyCFunction)(void (*)())tensor_method__record_stream,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS,
