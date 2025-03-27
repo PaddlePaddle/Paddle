@@ -3776,9 +3776,6 @@ function distribute_test() {
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
 
-    # Already disable unittests of llama2 model in current CI pipeline
-    export FLAGS_dynamic_static_unified_comm=True
-
     echo "Start LLM Test"
     cd ${work_dir}/PaddleNLP
     # Disable Test: test_gradio

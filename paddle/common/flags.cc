@@ -1691,23 +1691,6 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Remove some redundant information when printing the pir program");
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-/**
- * Communication library related FLAG
- * Name: FLAGS_dynamic_static_unified_comm
- * Since Version: 2.5
- * Value Range: bool, default=true
- * Example:
- * Note: Whether to use new communication library in auto parallel and static
- * mode. If true, it will use unified CommContextManager for communication.
- */
-PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
-                         true,
-                         "Whether to use new communication library in auto "
-                         "parallel and static mode.");
-#endif  // FLAGS_dynamic_static_unified_comm
-
 /**
  * ProcessGroupNCCL related FLAG
  * Name: enable_async_trace
