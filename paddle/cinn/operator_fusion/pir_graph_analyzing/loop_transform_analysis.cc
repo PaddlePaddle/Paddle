@@ -747,18 +747,30 @@ std::optional<AxisTransformRoute> GetValidHorizontalLoopTransform(
   VLOG(4) << "Try to get valid horizontal loop transform route.";
   auto loop_transform = GetHorizontalLoopTransform(source, target);
   if (loop_transform == std::nullopt) return std::nullopt;
+  const auto reduce_dims_product =
+      GetShapeProduct(target.loop,
+                      target.loop.size() - target.reduce_axis_num,
+                      target.loop.size());
   if (source.reduce_axis_num == 0 && target.reduce_axis_num > 0 &&
       !HasSharedInputValues(source, target)) {
     // Disable horizontal fusion between trivial and reduce without
     // shared inputs when reduce axis num is large.
-    const auto reduce_dims_product =
-        GetShapeProduct(target.loop,
-                        target.loop.size() - target.reduce_axis_num,
-                        target.loop.size());
     if (reduce_dims_product.isa<std::int64_t>() &&
         reduce_dims_product.dyn_cast<std::int64_t>() > 1024) {
       VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
               << reduce_dims_product.dyn_cast<std::int64_t>();
+      return std::nullopt;
+    }
+  }
+  if (!reduce_dims_product.isa<std::int64_t>()) {
+    const auto [shared_inputs, _unused] =
+        SplitFirstWhetherInSecond(source.input_values, target.input_values);
+    int input_nums = source.input_values.size() + target.input_values.size();
+    if (static_cast<float>(shared_inputs.size()) / input_nums < 1. / 6 &&
+        input_nums - shared_inputs.size() > 4) {
+      // Disable horizontal fusion with dynamic shape when shared input values
+      // are less than 1/3 per input while non shared input nums more than 4.
+      VLOG(4) << "Can not fuse with dynamic shape when shared inputs are few. ";
       return std::nullopt;
     }
   }
