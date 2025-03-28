@@ -523,6 +523,13 @@ Eigen::GpuDevice* DeviceManager::InitEigenDevice(const Place& place) {
   return dev_impl->InitEigenDevice(device_id);
 }
 
+void DeviceManager::DestoryEigenDevice(const Place& place, Eigen::GpuDevice* eigen_device) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->DestoryEigenDevice(device_id, eigen_device); 
+}
+
 void DeviceManager::MemoryStats(const Place& place,
                                 size_t* total,
                                 size_t* free) {

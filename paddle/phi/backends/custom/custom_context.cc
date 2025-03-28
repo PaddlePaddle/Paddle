@@ -28,10 +28,10 @@ struct CustomContext::Impl {
   ~Impl() {
     phi::DeviceGuard guard(place_);
     if (owned_) {
-      DestroyInternalEigenDevice();
+      DeviceManager::DestoryEigenDevice(place_, eigen_device_);
     }
     if (stream_owned_ && stream_) {
-      delete stream_;
+      stream_->Destroy();
     }
   }
 
@@ -85,13 +85,6 @@ struct CustomContext::Impl {
         common::errors::InvalidArgument(
             "The custom eigen_device is nullptr. It must not be null."));
     return eigen_device_;
-  }
-
-  void DestroyInternalEigenDevice() {
-    if (eigen_device_ != nullptr) {
-      delete eigen_device_;
-      eigen_device_ = nullptr;
-    }
   }
 
   void Wait() const { stream_->Wait(); }

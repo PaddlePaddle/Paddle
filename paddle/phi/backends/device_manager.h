@@ -185,6 +185,8 @@ class DeviceManager {
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
 
   static Eigen::GpuDevice* InitEigenDevice(const Place& place);
+  
+  static void DestoryEigenDevice(const Place& place, Eigen::GpuDevice* eigen_device);
 
   static void MemoryStats(const Place& place, size_t* total, size_t* free);
 

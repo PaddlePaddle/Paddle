@@ -576,9 +576,17 @@ struct C_DeviceInterface {
   /**
    * @brief init eigen device
    *
-   * @param[std::array<unsigned int, 3>*]    grid_dim_size
+   * @param[Eigen::GpuDevice*]    eigen_device
    */
-   C_Status (*init_eigen_device)(Eigen::GpuDevice* eigen_device);
+  C_Status (*init_eigen_device)(const C_Device device, Eigen::GpuDevice* eigen_device);
+
+  /**
+   * @brief init eigen device
+   *
+   * @param[Eigen::GpuDevice*]    eigen_device
+   */
+  C_Status (*destory_eigen_device)(const C_Device device, Eigen::GpuDevice* eigen_device);
+   
 
   void* reserved_info_api[8];
 

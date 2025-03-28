@@ -46,22 +46,22 @@ size_t DeviceInterface::GetDriverVersion(size_t dev_id) {
   return 0;
 }
 
-size_t DeviceInterface::GetMultiProcessors(size_t dev_id)  {
+size_t DeviceInterface::GetMultiProcessors(size_t dev_id) {
   VLOG(10) << Type() << " get multiprocessors " << 0;
   return 0;
 }
 
-size_t DeviceInterface::GetMaxThreadsPerMultiProcessor(size_t dev_id)  {
+size_t DeviceInterface::GetMaxThreadsPerMultiProcessor(size_t dev_id) {
   VLOG(10) << Type() << " get max threads per multiprocessor " << 0;
   return 0;
 }
 
-size_t DeviceInterface::GetMaxThreadsPerBlock(size_t dev_id)  {
+size_t DeviceInterface::GetMaxThreadsPerBlock(size_t dev_id) {
   VLOG(10) << Type() << " get max threads per block " << 0;
   return 0;
 }
 
-std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id)  {
+std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
   VLOG(10) << Type() << " get max grid dim size [" 
          << 0 << ", " 
          << 0 << ", " 
@@ -69,9 +69,13 @@ std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id)  {
   return {0, 0, 0};;
 }
 
-Eigen::GpuDevice* DeviceInterface::InitEigenDevice(size_t dev_id)  {
+Eigen::GpuDevice* DeviceInterface::InitEigenDevice(size_t dev_id) {
   VLOG(10) << Type() << " init eigen device ";
   return 0;
+}
+
+void DeviceInterface::DestoryEigenDevice(size_t dev_id, Eigen::GpuDevice* eigen_device) {
+  VLOG(10) << Type() << " destory eigen device ";
 }
 
 // device manage

@@ -616,13 +616,23 @@ class CustomDevice : public DeviceInterface {
   }
 
   Eigen::GpuDevice* InitEigenDevice(size_t dev_id) override {
+    const auto device = &devices_pool[dev_id];
     Eigen::GpuDevice* eigen_device = nullptr;
-    if (pimpl_->get_max_threads_per_block) {
+    if (pimpl_->init_eigen_device) {
       // void* raw_ptr = reinterpret_cast<void*>(&eigen_device);
-      pimpl_->init_eigen_device(eigen_device);
+      pimpl_->init_eigen_device(device, eigen_device);
     }
     VLOG(10) << Type() << " init eigen device ";
     return eigen_device;
+  }
+
+  void DestoryEigenDevice(size_t dev_id, Eigen::GpuDevice* eigen_device) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destory_eigen_device) {
+      // void* raw_ptr = reinterpret_cast<void*>(&eigen_device);
+      pimpl_->destory_eigen_device(device, eigen_device);
+    }
+    VLOG(10) << Type() << " destory eigen device ";
   }
 
   C_CCLReduceOp ToXCCLReduceOp(ccl::CCLReduceOp reduce_op) {

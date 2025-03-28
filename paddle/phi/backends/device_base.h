@@ -52,6 +52,8 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual Eigen::GpuDevice* InitEigenDevice(size_t dev_id);
 
+  virtual void DestoryEigenDevice(size_t dev_id, Eigen::GpuDevice* eigen_device);
+
   // Platform
   //! Initialize
   virtual void Initialize();
