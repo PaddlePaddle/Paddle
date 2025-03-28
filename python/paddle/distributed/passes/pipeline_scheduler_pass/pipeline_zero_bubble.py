@@ -28,10 +28,6 @@ from ..pass_utils import (
 )
 from .pipeline_pass_base import PipelinePassBase
 
-FORWARD = "forward"
-BACKWARD = "backward"
-OPT = "optimizer"
-
 logger = get_logger(logging.INFO)
 
 
@@ -78,29 +74,29 @@ class PipelineZeroBubblePipelinePass(PipelineZeroBubbleBase):
 
         forward_micro_batch_id = 0
         for _ in range(micro_batch_in_warmup):
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         backward_micro_batch_id = 0
         for _ in range(pp_stage):
-            backward_b_job = core.Job(BACKWARD + "_b")
+            backward_b_job = core.Job(self.BACKWARD + "_b")
             backward_b_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_b_job)
             backward_micro_batch_id += 1
 
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         for _ in range(micro_batch_in_zero_bubble):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
 
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
 
@@ -108,31 +104,31 @@ class PipelineZeroBubblePipelinePass(PipelineZeroBubbleBase):
             backward_micro_batch_id += 1
 
         for _ in range(micro_batch_in_warmup - 1):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
             backward_micro_batch_id += 1
 
         if pp_stage > 0:
-            backward_b_job = core.Job(BACKWARD + "_b")
+            backward_b_job = core.Job(self.BACKWARD + "_b")
             backward_b_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_b_job)
 
-            backward_w_job = core.Job(BACKWARD + "_w")
+            backward_w_job = core.Job(self.BACKWARD + "_w")
             backward_w_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_w_job)
         else:
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
         backward_micro_batch_id += 1
 
         for i in range(pp_stage):
-            backward_w_job = core.Job(BACKWARD + "_w")
+            backward_w_job = core.Job(self.BACKWARD + "_w")
             backward_w_job.set_micro_batch_id(i)
             job_list.append(backward_w_job)
 
-        opt_job = core.Job(OPT)
+        opt_job = core.Job(self.OPT)
         opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
@@ -224,7 +220,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             job.set_micro_batch_id(job_info["micro_batch"])
             job_list.append(job)
 
-        opt_job = core.Job(OPT)
+        opt_job = core.Job(self.OPT)
         opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
 
