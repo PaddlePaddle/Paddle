@@ -52,8 +52,8 @@
 	ignore = dirty
 [submodule "third_party/eigen3"]
 	path = third_party/eigen3
-	# url = https://gitlab.com/libeigen/eigen.git
-	# ignore = dirty
+	url = https://gitlab.com/libeigen/eigen.git
+	ignore = dirty
 [submodule "third_party/snappy"]
 	path = third_party/snappy
 	url = https://github.com/google/snappy.git
