@@ -33,6 +33,7 @@ from .basic import (  # noqa: F401
     ObjectVariable,
     ParameterVariable,
     SliceVariable,
+    SuperVariable,
     SymbolicVariable,
     TensorVariable,
 )

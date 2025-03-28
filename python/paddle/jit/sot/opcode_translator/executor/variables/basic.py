@@ -50,6 +50,7 @@ from ....utils import (
 )
 from ....utils.envs import ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE
 from ....utils.exceptions import (
+    HasNoAttributeError,
     InnerError,
     UnsupportedPaddleAPIBreak,
 )
@@ -79,7 +80,7 @@ from .base import VariableBase, VariableFactory
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
-    from .callable import FunctionVariable
+    from .callable import ClassVariable, FunctionVariable
 
 
 FP_DTYPE_ABBRS = {
@@ -766,14 +767,14 @@ class TensorVariable(VariableBase):
 
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         elif name in get_tensor_methods():
             from .callable import TensorFunctionVariable
 
             fn_var = TensorFunctionVariable(
                 name, graph=self.graph, tracker=DanglingTracker()
             )
-            return fn_var.bind(self, name)
+            return fn_var.bind_dangling_fn(self, name)
         else:
             raise BreakGraphError(
                 UnsupportedPaddleAPIBreak(fn_name=f"Tensor.{name}")
@@ -1122,6 +1123,84 @@ class ObjectVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value
+
+
+class SuperVariable(VariableBase):
+    """
+    Enhanced support for `super()` calls in Python.
+    The `super()` function facilitates method delegation to parent classes
+    following the method resolution order (MRO).
+
+    Args:
+        obj(Any): The object to be wrapped.
+        graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker(Tracker): The Tracker object that tracks the information of this variable.
+    """
+
+    def __init__(self, cls: ClassVariable, obj: VariableBase, graph, tracker):
+        super().__init__(graph, tracker)
+        self.cls = cls
+        self.obj = obj
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        if printable(self.obj):
+            return {
+                "value": f"super({self.cls.get_py_value().__name__}, {self.obj})"
+            }
+        return {"value": f"super({self.cls.get_py_value().__name__}, self)"}
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        cls = self.cls.get_py_value()
+        obj = self.obj.get_py_value()
+        return super(cls, obj)
+
+    @check_guard
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
+        guards = []
+        if self.cls.tracker.need_guard():
+            guards.extend(self.cls.make_stringified_guard())
+        if self.obj.tracker.need_guard():
+            guards.extend(self.obj.make_stringified_guard())
+        return guards
+
+    def getattr(self, name: str, default=None) -> VariableBase:
+        from .callable import FunctionVariable
+
+        mro = VariableFactory.from_value(
+            self.cls.get_py_value().__mro__,
+            self.graph,
+            GetAttrTracker(self.cls, "__mro__"),
+        )
+        # `__mro__` contains currently class, so remove it
+        super_mro = mro.get_wrapped_items()[1:]
+
+        for super_cls in super_mro:
+            if not super_cls.hasattr(name):
+                continue
+            attr = super_cls.getattr(name)
+            if isinstance(attr, FunctionVariable):
+                attr = attr.bind(self.obj, name)
+            return attr
+
+        raise HasNoAttributeError(
+            f"{self.obj.__class__.__name__} {self} has no attribute {name}"
+        )
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if not isinstance(value, super):
+            return None
+        cls = VariableFactory.from_value(
+            value.__thisclass__, graph, DanglingTracker()
+        )
+        obj = VariableFactory.from_value(
+            value.__self__, graph, DanglingTracker()
+        )
+        super_var = SuperVariable(cls, obj, graph, tracker)
+        cls.tracker = GetAttrTracker(super_var, "__thisclass__")
+        obj.tracker = GetAttrTracker(super_var, "__self__")
+        return super_var
 
 
 class SliceVariable(VariableBase):
