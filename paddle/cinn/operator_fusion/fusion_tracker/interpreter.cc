@@ -184,15 +184,6 @@ void RunAxisTransformInstr(const std::shared_ptr<AxisTransformInstr>& instr,
   interpreter->scope[instr->target_] = new_pattern;
 }
 
-void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
-                     FusionInterpreter* interpreter) {
-  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
-    new_pattern->Extend(DoPadding(fusion_op, instr->padding_pos_));
-  }
-  interpreter->scope[instr->result_] = new_pattern;
-}
-
 void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
                     FusionInterpreter* interpreter) {
   using namespace cinn::hlir::framework::pir::trivial_fusion_detail;  // NOLINT
@@ -239,9 +230,6 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
       case T_TmpTransform:
         RunTmpTransformInstr(
             dynamic_cast_instr_with_err<TmpTransformInstr>(instr), this);
-        break;
-      case T_Padding:
-        RunPaddingInstr(dynamic_cast_instr_with_err<PaddingInstr>(instr), this);
         break;
       case T_Return:
         RunReturnInstr(dynamic_cast_instr_with_err<ReturnInstr>(instr), this);

@@ -50,9 +50,6 @@ std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops);
 
 std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs);
 
-std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
-                                 const std::vector<int>& padding_pos);
-
 std::vector<ir::Tensor> GetOutputTensors(const ir::Expr& op_expr);
 
 }  // namespace cinn::fusion

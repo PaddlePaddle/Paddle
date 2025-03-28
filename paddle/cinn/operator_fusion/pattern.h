@@ -207,20 +207,6 @@ struct AnchorPattern : public PatternBase {
   DEFINE_PATTERN_STATIC_ATTR(Anchor);
 };
 
-struct HorizontalFusionPattern : public PatternBase {
-  struct PaddingStmtPattern;
-  explicit HorizontalFusionPattern(
-      const std::vector<PaddingStmtPattern>& patterns,
-      const FusionTrackerPtr& tracker)
-      : PatternBase(UniqueId(), tracker), padding_patterns_(patterns) {}
-  DEFINE_PATTERN_STATIC_ATTR(Horizontal);
-
-  std::vector<PaddingStmtPattern> padding_patterns_;
-
-  std::vector<pir::Operation*> ops() const;
-  void update_tracker() const;
-};
-
 struct UnsupportedPattern : public PatternBase {
   explicit UnsupportedPattern(const std::vector<pir::Operation*>& ops,
                               const FusionTrackerPtr& tracker)
@@ -233,50 +219,7 @@ using StmtPattern = std::variant<TrivialPattern,
                                  ReduceTreePattern,
                                  ReduceTreePlusTrivialPattern,
                                  AnchorPattern,
-                                 HorizontalFusionPattern,
                                  UnsupportedPattern>;
-
-static std::string GetPatternId(const StmtPattern& s);
-static std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
-
-struct HorizontalFusionPattern::PaddingStmtPattern {
-  StmtPattern pattern;
-  std::vector<int> padding_pos;
-  PaddingStmtPattern(const StmtPattern& pattern,
-                     const std::vector<int>& padding_pos)
-      : pattern(pattern), padding_pos(padding_pos) {}
-};
-
-inline void HorizontalFusionPattern::update_tracker() const {
-  std::vector<std::string> tmp_names;
-  for (int i = 0; i < padding_patterns_.size(); i++) {
-    auto padding_pattern = padding_patterns_[i];
-    std::string tmp_name = "tmp_" + std::to_string(i);
-    tmp_names.emplace_back(tmp_name);
-    tracker_->append(
-        std::make_shared<PaddingInstr>(GetPatternId(padding_pattern.pattern),
-                                       tmp_name,
-                                       padding_pattern.padding_pos));
-  }
-  tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
-}
-
-inline std::vector<pir::Operation*> HorizontalFusionPattern::ops() const {
-  std::vector<pir::Operation*> result;
-  for (const auto& pattern : padding_patterns_) {
-    auto ops = GetOpsInPattern(pattern.pattern);
-    ExtendVector(&result, ops);
-  }
-  return result;
-}
-
-static std::string StmtPatternDebugStr(const StmtPattern& stmt) {
-  std::stringstream ss;
-  auto all_ops = GetOpsInPattern(stmt);
-  ss << "StmtPattern, size " << all_ops.size() << " :\n";
-  ss << OpsDebugStr(all_ops);
-  return ss.str();
-}
 
 static PatternType GetPatternType(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.type(); }, s);
@@ -334,6 +277,14 @@ static std::unordered_set<pir::Value> GetPatternInputValues(
 
 static void PatternUpdateTracker(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { impl.update_tracker(); }, pattern);
+}
+
+static std::string StmtPatternDebugStr(const StmtPattern& stmt) {
+  std::stringstream ss;
+  auto all_ops = GetOpsInPattern(stmt);
+  ss << "StmtPattern, size " << all_ops.size() << " :\n";
+  ss << OpsDebugStr(all_ops);
+  return ss.str();
 }
 
 }  // namespace cinn::fusion
