@@ -29,7 +29,7 @@ jobs:
           workflow-name: approval
 
       - name: Display Required Approvers
-        if: steps.check-bypass.outputs.bypass == 'false'
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           git switch -c test
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
