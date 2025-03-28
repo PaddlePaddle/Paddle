@@ -249,7 +249,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         CINN_NOT_IMPLEMENTED;
       },
       [&](common::NVGPUArch) {
-        call_kernel = runtime::intrinsic::call_cuda_kernel;
+        // TODO(liangshuhao): when cooperative group is supported, change the
+        // second call to `call_cuda_cooperative_kernel`.
+        call_kernel = func->temp_spaces.empty()
+                          ? runtime::intrinsic::call_cuda_kernel
+                          : runtime::intrinsic::call_cuda_kernel;
       },
       [&](common::HygonDCUArchHIP) {
         call_kernel = runtime::intrinsic::call_hip_kernel;
