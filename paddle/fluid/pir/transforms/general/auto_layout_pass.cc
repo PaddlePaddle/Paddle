@@ -112,13 +112,21 @@ class AutoLayoutPass : public pir::Pass {
     }
     VLOG(4) << "end IsNeedAllTranspose"
             << " conv_count_: " << conv_count_
-            << " transpose_count_: " << transpose_count_;
-    return conv_count_ > transpose_count_;
+            << " transpose_count_: " << transpose_count_
+            << " transpose_scale_ * transpose_count_: "
+            << transpose_scale_ * transpose_count_ << std::endl;
+
+    return conv_count_ > transpose_scale_ * transpose_count_;
   }
 
  private:
   int conv_count_ = 0;
   int transpose_count_ = 0;
+  // Due to the current transpose performance issues, our single explicit
+  // transpose does not perform better than cudnn, and there are interruptions
+  // in the network due to operators that do not support NHWC. So we set the
+  // scale to 1.3 temporarily.
+  float transpose_scale_ = 1.3;
 };
 }  // namespace
 namespace pir {
