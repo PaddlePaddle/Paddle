@@ -1050,11 +1050,21 @@ void Load::convert_int32_to_int64() {
   for (auto &indice : indices) {
     indice->convert_int32_to_int64();
   }
+  if (auto tensor_ = tensor.As<ir::_Tensor_>()) {
+    for (auto shape : tensor_->shape) {
+      shape->convert_int32_to_int64();
+    }
+  }
 }
 
 void Load::convert_int64_to_int32() {
   for (auto &indice : indices) {
     indice->convert_int64_to_int32();
+  }
+  if (auto tensor_ = tensor.As<ir::_Tensor_>()) {
+    for (auto shape : tensor_->shape) {
+      shape->convert_int64_to_int32();
+    }
   }
 }
 

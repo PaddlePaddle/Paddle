@@ -457,6 +457,7 @@ void SimplifyUnitBlock(Expr* expr) { SimplifyUnitBlockMutator()(expr); }
 void SimplifyLogical(Expr* expr) { SimplifyLogicalMutator()(expr); }
 
 Expr ArithSimplify(const Expr& u) {
+  VLOG(3) << "Begin ArithSimplify " << u;
   if (!u.is_index()) return u;
   auto copied = ir_utils::IRCopy(u);
   return copied.as_index().Normalize();
