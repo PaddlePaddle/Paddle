@@ -25,9 +25,18 @@ namespace phi {
 struct CustomContext::Impl {
   explicit Impl(const CustomPlace& place) : place_(place) {}
 
-  ~Impl() {}
+  ~Impl() {
+    phi::DeviceGuard guard(place_);
+    if (owned_) {
+      DestroyInternalEigenDevice();
+    }
+    if (stream_owned_ && stream_) {
+      delete stream_;
+    }
+  }
 
   void Init() {
+    owned_ = true;
     phi::DeviceGuard guard(place_);
     stream_.reset(new phi::stream::Stream());
     stream_->Init(place_);
@@ -38,17 +47,19 @@ struct CustomContext::Impl {
     max_threads_per_mp_ = DeviceManager::GetMaxThreadsPerMultiProcessor(place_);
     max_threads_per_block_ = DeviceManager::GetMaxThreadsPerBlock(place_);
     max_grid_dim_size_ = DeviceManager::GetMaxGridDimSize(place_);
+    eigen_device_ = DeviceManager::InitEigenDevice(place_);
   }
 
   const Place& GetPlace() const { return place_; }
 
-  STREAM_TYPE stream() const {
-    return reinterpret_cast<STREAM_TYPE>(stream_->raw_stream());
+  phi::stream::stream_t stream() const {
+    return reinterpret_cast<phi::stream::stream_t>(stream_->raw_stream());
   }
 
   std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
 
   void SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+    stream_owned_ = true;
     stream_ = stream;
   }
 
@@ -62,6 +73,7 @@ struct CustomContext::Impl {
     std::call_once(flag_eigen_device_, [&]() {
       if (!eigen_device_) {
         if (!eigen_device_creator_) {
+          // use default initial
           eigen_device_ = DeviceManager::InitEigenDevice(place_);
         } else {
           eigen_device_ = eigen_device_creator_();
@@ -73,6 +85,13 @@ struct CustomContext::Impl {
         common::errors::InvalidArgument(
             "The custom eigen_device is nullptr. It must not be null."));
     return eigen_device_;
+  }
+
+  void DestroyInternalEigenDevice() {
+    if (eigen_device_ != nullptr) {
+      delete eigen_device_;
+      eigen_device_ = nullptr;
+    }
   }
 
   void Wait() const { stream_->Wait(); }
@@ -88,6 +107,8 @@ struct CustomContext::Impl {
   phi::ccl::CCLComm comm_;
 
   //////////////////////
+  bool owned_{false};
+  bool stream_owned_{false};
   int compute_capability_ = 0;
   int runtime_version_ = 0;
   int driver_version_ = 0;
@@ -107,7 +128,7 @@ void CustomContext::Init() { impl_->Init(); }
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
-STREAM_TYPE CustomContext::stream() const { return impl_->stream(); }
+phi::stream::stream_t CustomContext::stream() const { return impl_->stream(); }
 
 std::shared_ptr<phi::stream::Stream> CustomContext::GetStream() const {
   return impl_->GetStream();

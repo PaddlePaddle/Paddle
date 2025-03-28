@@ -112,5 +112,8 @@ void BatchFCCUDAKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    batch_fc, GPU, ALL_LAYOUT, phi::BatchFCCUDAKernel, float, double) {}
+PD_REGISTER_PLUGIN_KERNEL(
+    batch_fc, GPGPU, ALL_LAYOUT, phi::BatchFCCUDAKernel, float, double) {}
+
+// PD_REGISTER_KERNEL(
+//     batch_fc, GPU, ALL_LAYOUT, phi::BatchFCCUDAKernel, float, double) {}

@@ -48,4 +48,5 @@ void L1NormGradKernel(const Context& dev_ctx,
       dev, dx_eigen, d_out_eigen, x_eigen, x_dsize);
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(l1_norm, GPU, ALL_LAYOUT, phi::L1NormKernel, float) {}
+PD_REGISTER_PLUGIN_KERNEL(l1_norm, GPGPU, ALL_LAYOUT, phi::L1NormKernel, float) {}
+// PD_REGISTER_KERNEL(l1_norm, GPU, ALL_LAYOUT, phi::L1NormKernel, float) {}

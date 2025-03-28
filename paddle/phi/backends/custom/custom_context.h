@@ -47,7 +47,7 @@ class CustomContext : public DeviceContext,
   const Place& GetPlace() const override;
 
   /*! \brief  Return raw stream in the device context. */
-  STREAM_TYPE stream() const;
+  phi::stream::stream_t stream() const;
 
   /*! \brief  Return stream in the device context. */
   std::shared_ptr<phi::stream::Stream> GetStream() const;

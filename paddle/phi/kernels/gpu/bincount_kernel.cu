@@ -151,8 +151,8 @@ void BincountKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bincount,
-                   GPU,
+PD_REGISTER_PLUGIN_KERNEL(bincount,
+                   GPGPU,
                    ALL_LAYOUT,
                    phi::BincountKernel,
                    float,
@@ -161,3 +161,14 @@ PD_REGISTER_KERNEL(bincount,
                    int64_t) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
+
+// PD_REGISTER_KERNEL(bincount,
+//                    GPU,
+//                    ALL_LAYOUT,
+//                    phi::BincountKernel,
+//                    float,
+//                    double,
+//                    int,
+//                    int64_t) {
+//   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+// }
