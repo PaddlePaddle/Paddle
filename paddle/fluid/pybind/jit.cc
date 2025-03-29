@@ -108,6 +108,11 @@ void BindGuard(pybind11::module *m) {
              std::shared_ptr<InstanceCheckGuard>>(
       *m, "InstanceCheckGuard", R"DOC(InstanceCheckGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("isinstance_obj"));
+  py::class_<NumpyDtypeMatchGuard,
+             GuardBase,
+             std::shared_ptr<NumpyDtypeMatchGuard>>(
+      *m, "NumpyDtypeMatchGuard", R"DOC(NumpyDtypeMatchGuard Class.)DOC")
+      .def(py::init<const py::object &>(), py::arg("dtype"));
 
   m->def(
       "merge_guard",

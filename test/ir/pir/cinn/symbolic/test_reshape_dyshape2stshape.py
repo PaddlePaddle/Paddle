@@ -54,7 +54,11 @@ class TestSigmoid(unittest.TestCase):
                     full_graph=True,
                 )
             else:
-                net = paddle.jit.to_static(net, full_graph=True)
+                net = paddle.jit.to_static(
+                    net,
+                    backend=None,
+                    full_graph=True,
+                )
         paddle.seed(123)
         outs = net(*self.inputs)
         return outs

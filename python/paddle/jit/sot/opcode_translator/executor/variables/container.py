@@ -438,7 +438,7 @@ class ListVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(f"attribute {name} for list is not implemented")
 
@@ -491,7 +491,7 @@ class TupleVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(
                 f"attribute {name} for tuple is not implemented"
@@ -1013,7 +1013,7 @@ class DictVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(f"attribute {name} for dict is not implemented")
 

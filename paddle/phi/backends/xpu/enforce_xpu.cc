@@ -164,7 +164,7 @@ inline std::string build_xpu_error_msg(int stat) {
 }
 
 #ifdef PADDLE_WITH_XPU_BKCL
-inline std::string build_xpu_error_msg(BKCLResult_t stat) {
+inline std::string build_bkcl_error_msg(BKCLResult_t stat) {
   std::string error_msg = "BKCL Error <" + std::to_string(stat) + ">, " +
                           bkclGetErrorString(stat) + " ";
   return error_msg;
@@ -192,13 +192,13 @@ inline std::string build_runtime_error_msg() {
 }
 
 #ifdef PADDLE_WITH_XPU_BKCL
-std::string get_xpu_error_msg(BKCLResult_t stat) {
+std::string get_bkcl_error_msg(BKCLResult_t stat) {
   std::string error_msg;
   if (stat == BKCLResult_t::BKCL_RUNTIME_ERROR) {
-    error_msg = ::phi::backends::xpu::build_xpu_error_msg(stat) + "\n" +
+    error_msg = ::phi::backends::xpu::build_bkcl_error_msg(stat) + "\n" +
                 ::phi::backends::xpu::build_runtime_error_msg();
   } else {
-    error_msg = ::phi::backends::xpu::build_xpu_error_msg(stat);
+    error_msg = ::phi::backends::xpu::build_bkcl_error_msg(stat);
   }
   return error_msg;
 }

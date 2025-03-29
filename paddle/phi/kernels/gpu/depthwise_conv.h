@@ -63,7 +63,7 @@ struct DWConvParams {
     return false;
   }
 
-  // Use cudnn for NHWC and NCHW FP16.
+  // Check if use cudnn for NHWC and NCHW FP16.
   template <typename Context>
   bool UseCudnnDepthwise(const Context& dev_ctx,
                          const DenseTensor& input,
@@ -93,10 +93,23 @@ struct DWConvParams {
     if (is_dilated() || is_strided()) {
       return false;
     }
-    // TODO(Dmovic): Channel greater than 32, need benchmarks.
-    const int input_channels =
-        (data_format_ != "NHWC" ? input.dims()[1] : input.dims()[3]);
-    if (input_channels < 32) {
+    // Make sure square filter.
+    const int ksize_height = filter.dims()[2];
+    const int ksize_width = filter.dims()[3];
+    if (ksize_height != ksize_width) {
+      return false;
+    }
+    // For 1/3/5 filter。
+    if (ksize_height != 1 && ksize_height != 3 && ksize_height != 5) {
+      return false;
+    }
+    // Use cudnn for nhwc fp16.
+    if (data_format_ == "NHWC") {
+      return true;
+    }
+    // TODO(Dmovic): Data format here is NCHW, enable when channel
+    // greater than 32, need benchmarks.
+    if (input.dims()[1] < 32) {
       return false;
     }
     return true;

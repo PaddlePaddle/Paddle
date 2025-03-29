@@ -25,11 +25,9 @@ enum InstructionType {
   T_Return,
   T_InitPattern,
   T_TrivialInline,
-  T_ReshapeAlign,
   T_TmpTransform,
   T_TrivialLoopAlign,
   T_AxisTransform,
-  T_Padding
 };
 
 struct FusionInstruction {
@@ -213,24 +211,6 @@ struct AxisTransformInstr : public FusionInstruction {
 
   virtual std::string DebugStr() const {
     return "AxisTransformInstr || " + source_ + " => " + target_;
-  }
-};
-
-struct PaddingInstr : public FusionInstruction {
-  PaddingInstr(const std::string& target,
-               const std::string& result,
-               const std::vector<int>& padding_pos)
-      : target_(target), result_(result), padding_pos_(padding_pos) {}
-  virtual InstructionType type() const { return T_Padding; }
-  virtual FusionInstrPtr Clone() {
-    return std::make_shared<PaddingInstr>(*this);
-  }
-  std::string target_;
-  std::string result_;
-  std::vector<int> padding_pos_;
-
-  virtual std::string DebugStr() const {
-    return "PaddingInstr || " + target_ + " => " + result_;
   }
 };
 

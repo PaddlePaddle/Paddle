@@ -34,7 +34,7 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedOperationBreak,
 )
-from ..tracker import ConstTracker, DummyTracker, GetAttrTracker
+from ..tracker import ConstTracker, DanglingTracker, DummyTracker
 from .base import VariableFactory
 from .basic import ConstantVariable
 from .callable import BuiltinVariable
@@ -382,8 +382,8 @@ class GeneratorVariable(IterVariable):
             )
         if name == "send":
             return BuiltinVariable(
-                generator_send, self.graph, GetAttrTracker(self, "send")
-            ).bind(self, "send")
+                generator_send, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, "send")
         unreached()
 
     def get_py_value(self, allow_tensor=False):

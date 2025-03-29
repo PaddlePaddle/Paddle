@@ -204,6 +204,10 @@ std::vector<Expr> TryElevateInt32ToInt64(const std::vector<Expr>& expr_vec);
 // inplace modification.
 void ElevateInt64ToInt32_(Expr& expr);  // NOLINT
 
+// If `expr` is `IndexExpr` with int64 type, it will be downgraded to int32 by
+// by returning a expr of promoted expr.
+Expr ElevateInt64ToInt32(const Expr& expr);  // NOLINT
+
 // All `IndexExpr` with int64 type in `expr_vec` will be downgraded to int32 by
 // inplace modification.
 void ElevateInt64ToInt32_(std::vector<Expr>& expr_vec);  // NOLINT

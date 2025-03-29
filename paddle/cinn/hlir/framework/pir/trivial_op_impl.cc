@@ -560,7 +560,7 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
         std::transform(all_iters.begin(),
                        all_iters.end(),
                        std::back_inserter(group_info->loop_ranges),
-                       [](const ir::Var var) {
+                       [&](const ir::Var var) {
                          VLOG(4) << "Var is : : " << var;
                          VLOG(4) << "Var->upper_bound: " << var->upper_bound;
                          if (var->upper_bound.is_constant()) {
@@ -568,6 +568,15 @@ std::shared_ptr<FusionGroupInfo> GetFusionGroupInfo(
                          } else {
                            return (int64_t)-1;
                          }
+                       });
+        std::transform(all_iters.begin(),
+                       all_iters.end(),
+                       std::back_inserter(group_info->loop_ranges_expr),
+                       [](const ir::Var var) {
+                         VLOG(4) << "Var is : : " << var;
+                         VLOG(4)
+                             << "Var->upper_bound_sym: " << var->upper_bound;
+                         return var->upper_bound;
                        });
         std::vector<ir::Var> reduce_iters = fusion::FilterVector(
             all_iters, [](const ir::Var& var) { return var->is_reduce_axis; });

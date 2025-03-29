@@ -37,9 +37,8 @@ COMMON_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(enable_async_trace);
 COMMON_DECLARE_bool(eager_communication_connection);
+COMMON_DECLARE_bool(enable_nccl_dynamic_check);
 
-// set this flag to `true` and recompile to enable dynamic checks
-constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 constexpr int64_t kWaitBlockTImeout = 10;
 
 namespace paddle::distributed {

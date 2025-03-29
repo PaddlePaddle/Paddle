@@ -17,6 +17,8 @@ from __future__ import annotations
 import unittest
 from collections import OrderedDict
 
+import numpy as np
+
 import paddle
 
 
@@ -124,6 +126,27 @@ class TestBasicFasterGuard(unittest.TestCase):
         layer.eval()
         self.assertTrue(guard_id.check(layer))
         self.assertFalse(guard_id.check(paddle.nn.Linear(10, 10)))
+
+    def test_numpy_dtype_match_guard(self):
+        np_array = np.array(1, dtype=np.int32)
+        guard_numpy_dtype = paddle.framework.core.NumpyDtypeMatchGuard(
+            np_array.dtype
+        )
+        self.assertTrue(guard_numpy_dtype.check(np_array))
+        self.assertTrue(guard_numpy_dtype.check(np.array(1, dtype=np.int32)))
+        self.assertTrue(guard_numpy_dtype.check(np.int32()))
+        self.assertFalse(guard_numpy_dtype.check(np.array(1, dtype=np.int64)))
+        self.assertFalse(guard_numpy_dtype.check(np.float32()))
+        self.assertFalse(guard_numpy_dtype.check(np.bool_()))
+
+        np_bool = np.bool_(1)
+        guard_numpy_bool_dtype = paddle.framework.core.NumpyDtypeMatchGuard(
+            np_bool.dtype
+        )
+        self.assertTrue(guard_numpy_bool_dtype.check(np.bool_()))
+        self.assertTrue(
+            guard_numpy_bool_dtype.check(np.array(1, dtype=np.bool_))
+        )
 
 
 class TestFasterGuardGroup(unittest.TestCase):

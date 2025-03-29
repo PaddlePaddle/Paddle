@@ -21,10 +21,6 @@ from ..pass_base import register_pass
 from ..pass_utils import _program_for_fthenb_and_1f1b
 from .pipeline_pass_base import PipelinePassBase
 
-FORWARD = "forward"
-BACKWARD = "backward"
-OPT = "optimizer"
-
 logger = get_logger(logging.INFO)
 
 
@@ -48,29 +44,29 @@ class PipelineEager1F1BPass(PipelinePassBase):
 
         forward_micro_batch_id = 0
         for _ in range(micro_batch_in_warmup):
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         backward_micro_batch_id = 0
         for _ in range(micro_batch_in_1f1b):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
             backward_micro_batch_id += 1
-            forward_job = core.Job(FORWARD)
+            forward_job = core.Job(self.FORWARD)
             forward_job.set_micro_batch_id(forward_micro_batch_id)
             job_list.append(forward_job)
             forward_micro_batch_id += 1
 
         for _ in range(micro_batch_in_warmup):
-            backward_job = core.Job(BACKWARD)
+            backward_job = core.Job(self.BACKWARD)
             backward_job.set_micro_batch_id(backward_micro_batch_id)
             job_list.append(backward_job)
             backward_micro_batch_id += 1
 
-        opt_job = core.Job(OPT)
+        opt_job = core.Job(self.OPT)
         job_list.append(opt_job)
         return job_list
 
@@ -78,7 +74,7 @@ class PipelineEager1F1BPass(PipelinePassBase):
         # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         # TODO: More function will be added later. Now it uses the same logic as FTthenB and 1F1B.
-        types = [FORWARD, BACKWARD, OPT]
+        types = [self.FORWARD, self.BACKWARD, self.OPT]
         sub_program_list = _program_for_fthenb_and_1f1b(
             program, enable_send_recv_overlap
         )

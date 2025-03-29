@@ -430,6 +430,14 @@ def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
     return res
 
 
+def update_list_inplace(
+    original_list: list[T], new_contents: list[T]
+) -> list[T]:
+    original_list.clear()
+    original_list.extend(new_contents)
+    return original_list
+
+
 def get_obj_stable_repr(obj) -> str:
     if hasattr(obj, '__qualname__'):
         return obj.__qualname__

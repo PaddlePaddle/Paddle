@@ -183,16 +183,24 @@ detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
   std::string cond_str = Predicate2String(predicate);
   // replace '-' with 'NEG'
   size_t pos = cond_str.find("-", 0);
-  const std::string replacement = "NEG";
+  const std::string replacement_neg = "NEG";
   while (pos != std::string::npos) {
-    cond_str.replace(pos, 1, replacement);
-    pos = cond_str.find("-", pos + replacement.length());
+    cond_str.replace(pos, 1, replacement_neg);
+    pos = cond_str.find("-", pos + replacement_neg.length());
+  }
+
+  // replace '!' with 'NOT'
+  pos = cond_str.find("!", 0);
+  const std::string replacement_not = "NOT";
+  while (pos != std::string::npos) {
+    cond_str.replace(pos, 1, replacement_not);
+    pos = cond_str.find("!", pos + replacement_not.length());
   }
   VLOG(3) << "predicate string: " << cond_str;
   // NOTE(chenxi67): The kernel name is too long to be supported in cuda12.3 so
   // we need to curtail it.
   const std::string new_fn_name = CurTailFnName(fn_name);
-  return new_fn_name + "__COND_" + cond_str + "__kernel";
+  return new_fn_name + "_COND_" + cond_str + "__kernel";
 }
 
 void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
@@ -249,7 +257,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         CINN_NOT_IMPLEMENTED;
       },
       [&](common::NVGPUArch) {
-        call_kernel = runtime::intrinsic::call_cuda_kernel;
+        // TODO(liangshuhao): when cooperative group is supported, change the
+        // second call to `call_cuda_cooperative_kernel`.
+        call_kernel = func->temp_spaces.empty()
+                          ? runtime::intrinsic::call_cuda_kernel
+                          : runtime::intrinsic::call_cuda_kernel;
       },
       [&](common::HygonDCUArchHIP) {
         call_kernel = runtime::intrinsic::call_hip_kernel;
@@ -258,19 +270,33 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         call_kernel = runtime::intrinsic::call_sycl_kernel;
       });
   // TODO(Dmovic): use new ir when backend update done.
+  // Author(liujinnan): Copy args instead of use func args directly in host
+  // func. because after longlong2int pass, some type of loweredfunc args may be
+  // changed to int32, it cause compile error when lower to LLVM IR.
+  std::vector<ir::Expr> kernel_args_int64 = {
+      ir::ir_utils::IRCopy(func_node->cuda_axis_info.grid_dim(0)),
+      ir::ir_utils::IRCopy(func_node->cuda_axis_info.grid_dim(1)),
+      ir::ir_utils::IRCopy(func_node->cuda_axis_info.grid_dim(2)),
+      ir::ir_utils::IRCopy(func_node->cuda_axis_info.block_dim(0)),
+      ir::ir_utils::IRCopy(func_node->cuda_axis_info.block_dim(1)),
+      ir::ir_utils::IRCopy(func_node->cuda_axis_info.block_dim(2)),
+      ir::ir_utils::IRCopy(shared_mem_bytes.value()),
+      cinn::common::make_const(Int(64), 0) /* enable TryElevateInt32ToInt64 */};
+  ir::TryElevateInt32ToInt64(kernel_args_int64);
+
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),
                      call_kernel.value(),
                      {kernel_ptr,
                       kernel_args_,
                       kernel_args_num_,
-                      func_node->cuda_axis_info.grid_dim(0),   // grid_x
-                      func_node->cuda_axis_info.grid_dim(1),   // grid_y
-                      func_node->cuda_axis_info.grid_dim(2),   // grid_z
-                      func_node->cuda_axis_info.block_dim(0),  // block_x
-                      func_node->cuda_axis_info.block_dim(1),  // block_y
-                      func_node->cuda_axis_info.block_dim(2),  // block_z
-                      shared_mem_bytes.value(),                // shared_mem
+                      kernel_args_int64.at(0),  // grid_x
+                      kernel_args_int64.at(1),  // grid_y
+                      kernel_args_int64.at(2),  // grid_z
+                      kernel_args_int64.at(3),  // block_x
+                      kernel_args_int64.at(4),  // block_y
+                      kernel_args_int64.at(5),  // block_z
+                      kernel_args_int64.at(6),  // shared_mem
                       kernel_stream_},
                      {},
                      ir::CallType::Extern,
@@ -361,7 +387,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessArgs(
 #else
       CINN_NOT_IMPLEMENTED
 #endif
-      ir::Expr let_symbol = ir::Expr(args[i].var_arg());
+      ir::Expr let_symbol = ir::ir_utils::IRCopy(args[i].var_arg());
       let_symbol->set_type(type_of<int64_t>());
       ir::stmt::StmtRef stmt =
           ir::stmt::Let(let_symbol, call_get_value_in_kernel_args);

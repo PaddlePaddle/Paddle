@@ -1,0 +1,37 @@
+name: Approval
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  BRANCH: ${{ github.base_ref }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  token: ${{ vars.ACTION_GITHUB_TOKEN }}
+
+jobs:
+  check-approvers:
+    name: Check approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 10
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: approval
+
+      - name: Display Required Approvers
+        if: steps.check-bypass.outputs.can-skip != 'true'
+        run: |
+          git switch -c test
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git fetch upstream $BRANCH
+          bash ci/check_approval.sh

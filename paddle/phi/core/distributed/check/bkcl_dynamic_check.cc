@@ -44,7 +44,7 @@ void BKCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(
       dtype_device, &dtype_host, kSize, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
 
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_broadcast(
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_broadcast(
       comm, dtype_device, dtype_device, 1, BKCL_INT64, root_rank, 0));
 
   if (root_rank == cur_rank) {
@@ -89,14 +89,14 @@ void BKCLDynamicCheck::CheckShape(const phi::DenseTensor& out_tensor,
                                           &in_shape_host,
                                           kSize,
                                           XPUMemcpyKind::XPU_HOST_TO_DEVICE));
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_reduce(comm,
-                                           in_shape_device,
-                                           in_shape_device,
-                                           1,
-                                           BKCL_INT64,
-                                           BKCL_ADD,
-                                           rank,
-                                           0));
+    PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_reduce(comm,
+                                            in_shape_device,
+                                            in_shape_device,
+                                            1,
+                                            BKCL_INT64,
+                                            BKCL_ADD,
+                                            rank,
+                                            0));
     if (rank == cur_rank) {
       PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
       PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(&in_shape_host,
@@ -131,7 +131,7 @@ void BKCLDynamicCheck::CheckAlltoAllShape(
                                           &in_shape_host,
                                           kSize,
                                           XPUMemcpyKind::XPU_HOST_TO_DEVICE));
-    PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_gather(
+    PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_gather(
         comm, in_shape_device + cur_rank, 1, in_shape_device, BKCL_INT64, 0));
     if (rank == cur_rank) {
       std::vector<int64_t> in_shapes_recv_host(world_size);

@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/collective/process_group_bkcl.h"
 
 #include "paddle/common/errors.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/process_group_kernel_utils.h"
@@ -31,11 +32,10 @@
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #include "paddle/utils/string/string_helper.h"
 
+COMMON_DECLARE_bool(enable_bkcl_dynamic_check);
+
 namespace paddle {
 namespace distributed {
-
-// set this flag to `true` and recompile to enable dynamic checks
-constexpr bool FLAGS_enable_bkcl_dynamic_check = false;
 
 using phi::distributed::CheckSizeOnEachRank;
 
@@ -93,11 +93,11 @@ ProcessGroupBKCL::ProcessGroupBKCL(
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_start());
 }
 
 void ProcessGroupBKCL::GroupEnd() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_end());
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(

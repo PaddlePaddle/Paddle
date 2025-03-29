@@ -202,4 +202,19 @@ class InstanceCheckGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class NumpyDtypeMatchGuard : public GuardBase {
+ public:
+  explicit NumpyDtypeMatchGuard(const py::object& dtype)
+      : expected_(dtype.ptr()) {
+    Py_INCREF(expected_);
+  }
+
+  ~NumpyDtypeMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
 #endif
