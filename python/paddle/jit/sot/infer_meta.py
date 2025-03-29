@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
 from functools import cached_property
 from typing import TypeVar
 
@@ -100,6 +101,13 @@ class DistInfo:
             value.dist_attr().process_mesh,
             value.dist_attr().dims_mapping,
             value._local_shape,
+        )
+
+    def __deepcopy__(self, memo):
+        return DistInfo(
+            mesh=copy.deepcopy(self.mesh),
+            dims_mapping=copy.deepcopy(self.dims_mapping),
+            local_shape=copy.deepcopy(self.local_shape),
         )
 
     def __repr__(self) -> str:
@@ -269,6 +277,18 @@ class MetaInfo:
     def guard_str(self):
         shape = self.shape_with_special_symbol(SymbolicInt())
         return f"({shape}, {self.dtype}, {self.stop_gradient})"
+
+    def __deepcopy__(self, memo):
+        return MetaInfo(
+            list(self.shape),
+            self.dtype,
+            self.stop_gradient,
+            self.name,
+            self.persistable,
+            self.type,
+            self.place,
+            dist_info=copy.deepcopy(self.dist_info),
+        )
 
     def __repr__(self):
         return meta_str(self.shape, self.dtype, self.stop_gradient)
@@ -541,6 +561,9 @@ class SpecialInferMeta(metaclass=Singleton):
 
 
 class InferMetaCache(Cache, metaclass=Singleton):
+    def __init__(self):
+        super().__init__(copy=True)
+
     def key_fn(
         self, func, *args, **kwargs
     ):  # args & kwargs have transformed to MetaInfo
@@ -556,6 +579,9 @@ class InferMetaCache(Cache, metaclass=Singleton):
 
 
 class LayerInferMetaCache(Cache, metaclass=Singleton):
+    def __init__(self):
+        super().__init__(copy=True)
+
     def key_fn(self, layer, *args, **kwargs):
         params = [
             MetaInfo.from_value(x)
