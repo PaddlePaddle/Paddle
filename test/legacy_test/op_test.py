@@ -416,6 +416,11 @@ def auto_parallel_test_guard(test_info_path, generated_test_file_path):
 
 
 class OpTest(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__class__.use_custom_device = True
+        self.place = paddle.CustomPlace("GPGPU", 0)
+
     @classmethod
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''

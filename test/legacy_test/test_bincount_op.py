@@ -143,15 +143,15 @@ class TestBincountOp(OpTest):
     def setUp(self):
         self.op_type = "bincount"
         self.python_api = paddle.bincount
-        self.set_gpu()
+        # self.set_gpu()
         self.init_test_case()
         self.inputs = {"X": self.np_input}
         self.attrs = {"minlength": self.minlength}
         self.outputs = {"Out": self.Out}
 
-    def set_gpu(self):
-        self.__class__.use_custom_device = True
-        self.place = paddle.CustomPlace("GPGPU", 0)
+    # def set_gpu(self):
+    #     self.__class__.use_custom_device = True
+    #     self.place = paddle.CustomPlace("GPGPU", 0)
 
     def init_test_case(self):
         self.minlength = 0
