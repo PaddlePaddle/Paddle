@@ -1339,6 +1339,11 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
+    if env_dict.get("WITH_FLAGCX") == 'ON':
+        package_data['paddle.libs'] += [
+            ('libflagcx' if os.name != 'nt' else 'flagcx') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("FLAGCX_LIB"), libs_path)
     if env_dict.get("WITH_SHARED_PHI") == "ON":
         package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix

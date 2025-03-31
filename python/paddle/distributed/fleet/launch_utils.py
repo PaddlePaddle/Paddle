@@ -1937,6 +1937,7 @@ def check_backend(backend):
         'auto',
         'heter',
         'xccl',
+        'flagcx',
     ]:
         raise ValueError(
             "paddle.distributed initialize error, "
@@ -1955,6 +1956,12 @@ def check_backend(backend):
         raise ValueError(
             "paddle.distributed initialize error, "
             "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
+        )
+
+    if backend == 'flagcx' and not framework.core.is_compiled_with_flagcx():
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "your paddle is not compiled with flagcx but you assign 'flagcx' as backend."
         )
 
 
