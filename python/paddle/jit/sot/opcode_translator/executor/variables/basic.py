@@ -58,6 +58,7 @@ from ..dispatch_functions import tensor_dim
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
     object_equal_stringified_guard,
     stringify_pyobject,
@@ -459,6 +460,32 @@ class TensorVariable(VariableBase):
 
     def _reconstruct(self, codegen: PyCodeGen):
         codegen.gen_load_fast(self.out_var_name)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        assert paddle.framework.use_pir_api(), "Only support PIR"
+        expr_node = self.tracker.guard_tree_expr_node()
+        meta = self.origin_meta
+        return [
+            # Check shape
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ShapeMatchGuard(meta.shape),
+                expr_node,
+            ),
+            # Check dtype
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.DtypeMatchGuard(meta.dtype),
+                expr_node,
+            ),
+            # Check stop_gradient
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(meta.stop_gradient),
+                paddle.framework.core.AttributeExprNode(
+                    expr_node, "stop_gradient"
+                ),
+            ),
+            # TODO(zrr1999): add dist_info check
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
