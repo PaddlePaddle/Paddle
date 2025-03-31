@@ -42,6 +42,8 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...symbolic_shape import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_GUARD_TREE,
+    ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -317,12 +319,23 @@ class FunctionGraph:
     @property
     @event_register("guard_nodes")
     def guard_nodes(self) -> list[paddle.framework.core.GuardNode]:
+        enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
+        enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
+
+        if not enable_strict_guard and not enable_guard_tree:
+            return []
         guard_nodes: list[paddle.framework.core.GuardNode] = []
+
         with EventGuard("guard_fn: find vars and make faster guard"):
-            for variable in find_traceable_vars(
-                self.input_variables + list(self._global_guarded_variables)
-            ):
-                guard_nodes.extend(variable.make_faster_guard())
+            try:
+                for variable in find_traceable_vars(
+                    self.input_variables + list(self._global_guarded_variables)
+                ):
+                    guard_nodes.extend(variable.make_faster_guard())
+            except NotImplementedError as e:
+                log(2, f"[Guard] make faster guard nodes error: {e}\n")
+                # TODO(zrr1999): empty list means that some tracker.make_faster_guard is not implemented.
+                return []
         return guard_nodes
 
     @property

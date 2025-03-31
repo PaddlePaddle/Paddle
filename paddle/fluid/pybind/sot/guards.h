@@ -348,6 +348,11 @@ class GuardTree {
                 guard_nodes_list) {
     for (size_t index = 0; index < guard_nodes_list.size(); ++index) {
       const auto& guard_nodes = guard_nodes_list[index];
+      if (guard_nodes.empty()) {
+        // TODO(zrr1999): empty guard nodes means that some
+        // tracker.make_faster_guard is not implemented.
+        continue;
+      }
       for (size_t i = 1; i < guard_nodes.size(); ++i) {
         guard_nodes[i - 1]->next_guard_nodes.push_back(guard_nodes[i]);
       }

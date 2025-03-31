@@ -154,14 +154,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         else:
             if enable_strict_guard:
                 guard_tree = paddle.framework.core.GuardTree(guard_nodes_list)
-                try:
-                    cache_index = guard_tree.lookup(frame)
-                except NotImplementedError as e:
-                    log(
-                        2,
-                        "[Cache] Strict guard is enabled, but guard tree lookup is not implemented, skip it\n",
-                    )
-                    cache_index = None
+                cache_index = guard_tree.lookup(frame)
 
             for index, (custom_code, guard_fn) in enumerate(guarded_fns):
                 if enable_strict_guard:
@@ -311,7 +304,7 @@ def start_translate(
         simulator.check_code_simulatable()
         InfoCollector().attach(CompileCountInfo, frame.f_code)
         with sot_simulation_mode_guard(True):
-            new_custom_code, guard_fn, guard_nodes = simulator.transform(frame)
+            new_custom_code, guard_fn = simulator.transform(frame)
             if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
                 assert guard_fn(frame)
                 assert guard_fn.mirror_guard(frame)
@@ -321,6 +314,7 @@ def start_translate(
                 None,
                 None,
             )
+        guard_nodes = simulator.guard_nodes
         return new_custom_code, guard_fn, guard_nodes
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:

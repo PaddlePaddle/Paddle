@@ -1945,7 +1945,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 return (
                     CustomCode(self.new_code, self.new_code is None),
                     self.guard_fn,
-                    self.guard_nodes,
                 )
         self.run()
         if self.new_code is self.empty_code:
@@ -1953,7 +1952,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return (
             CustomCode(self.new_code, self.new_code is None),
             self.guard_fn,
-            self.guard_nodes,
         )
 
     def cleanup(self):
