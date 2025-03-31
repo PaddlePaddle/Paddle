@@ -141,6 +141,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     fusion_group_info->can_apply_grid_reduce = false;
   }
 
+  if (!target_.get_supports_cooperative_launch()) {
+    fusion_group_info->can_apply_grid_reduce = false;
+  }
+
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower OpFusion");
     VLOG(3) << "OpFusion tensor-buffer map check succeed";
