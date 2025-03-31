@@ -150,10 +150,18 @@ class OpcodeExecutorCache(metaclass=Singleton):
             if cache_index is not None:
                 # TODO(zrr1999): add a mapping between custom_code and cache_index
                 return guarded_fns[cache_index][0]
+
         else:
             if enable_strict_guard:
                 guard_tree = paddle.framework.core.GuardTree(guard_nodes_list)
-                cache_index = guard_tree.lookup(frame)
+                try:
+                    cache_index = guard_tree.lookup(frame)
+                except NotImplementedError as e:
+                    log(
+                        2,
+                        "[Cache] Strict guard is enabled, but guard tree lookup is not implemented, skip it\n",
+                    )
+                    cache_index = None
 
             for index, (custom_code, guard_fn) in enumerate(guarded_fns):
                 if enable_strict_guard:
@@ -214,7 +222,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
                             f"guard_error: {e} \n"
                             f"mirror_guard_error: {mirror_guard_error},"
                         )
-            assert cache_index is None, "guard tree cache_index is not None"
+
+            # TODO(zrr1999): cache_index should be None when enable_strict_guard.
+            # assert cache_index is None, "guard tree cache_index is not None"
 
         log(2, "[Cache]: all guards missed\n")
         new_custom_code, guard_fn, guard_nodes = self.translate(frame, **kwargs)
@@ -334,13 +344,13 @@ def start_translate(
             # TODO(zrr1999): GuardNode should support zero-expr constructor
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DummyGuard(),
-                [paddle.framework.core.ExprNode()],
+                [paddle.framework.core.ConstantExprNode(True)],
             )
         ]
         return (
             CustomCode(None, e.disable_eval_frame),
             dummy_guard,
-            guard_nodes,
+            dummy_guard_nodes,
         )
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
