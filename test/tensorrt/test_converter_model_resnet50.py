@@ -66,6 +66,7 @@ class TestConverterResNet50(unittest.TestCase):
 
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.disable_passes = ['dead_code_elimination_pass']
 
         output_var = program.list_vars()[-1]
 
@@ -108,6 +109,7 @@ class TestConverterResNet50(unittest.TestCase):
 
         # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.disable_passes = ['dead_code_elimination_pass']
 
         output_var = program.list_vars()[-1]
 
@@ -163,6 +165,7 @@ class TestConverterResNet50(unittest.TestCase):
             input_data_type='float32',
         )
         trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.disable_passes = ['dead_code_elimination_pass']
         trt_config.save_model_dir = trt_save_path
         trt_config.precision_mode = PrecisionMode.INT8
         convert(save_path, trt_config)

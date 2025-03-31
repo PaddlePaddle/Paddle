@@ -52,19 +52,10 @@ def map_dtype(pd_dtype):
         raise TypeError(f"Unsupported dtype: {pd_dtype}")
 
 
-def all_ops_into_trt(program):
+def support_constant_folding_pass(program):
     for op in program.global_block().ops:
-        if (
-            op.name() == "pd_op.fetch"
-            or op.name() == "pd_op.data"
-            or op.name().split('.')[0] == "builtin"
-        ):
-            continue
-        if op.has_attr("__l_trt__") is False:
+        if op.name() == "pd_op.while" or op.name() == "pd_op.if":
             return False
-        if op.attrs()["__l_trt__"] is False:
-            return False
-    _logger.info("All ops convert to trt.")
     return True
 
 
@@ -107,7 +98,7 @@ def run_pir_pass(program, disable_passes=[], scope=None, precision_mode=None):
     # run other passes
     pm.clear()
     passes = []
-    if all_ops_into_trt(program):
+    if support_constant_folding_pass(program):
         # only run constant_folding_pass when all ops into trt
         passes.append(
             {
@@ -117,17 +108,18 @@ def run_pir_pass(program, disable_passes=[], scope=None, precision_mode=None):
                 }
             }
         )
-
+        passes.append(
+            {
+                'dead_code_elimination_pass': {
+                    "__place__": place,
+                    "__param_scope__": scope,
+                }
+            }
+        )
         passes.append({'conv2d_add_fuse_pass': {}})
     passes.append({'trt_op_marker_pass': {}})  # for op that created by pass
     _add_pass_(pm, passes, disable_passes)
     pm.run(program)
-
-    # delete unused op
-    for op in program.global_block().ops:
-        if op.name() == "builtin.constant" or op.name() == "builtin.parameter":
-            if op.results()[0].use_empty():
-                program.global_block().remove_op(op)
 
     return program
 
@@ -282,6 +274,7 @@ def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
     # the following op needn't cast trt.Weight to ITensor, because the layer need weight as input
     forbid_cast_op = [
         "pd_op.depthwise_conv2d",
+        "pd_op.conv2d",
         "pd_op.conv2d_transpose",
         "pd_op.conv3d",
         "pd_op.conv3d_transpose",

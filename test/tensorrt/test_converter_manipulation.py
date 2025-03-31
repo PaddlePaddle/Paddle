@@ -1101,5 +1101,41 @@ class TestIndexPutCase2TRTPattern(TensorRTBaseTest):
         self.check_trt_result(precision_mode="fp16")
 
 
+class TestUnsqueezeTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = paddle.unsqueeze
+        self.api_args = {
+            "x": np.random.random([5, 10]).astype("float32"),
+            "axis": 0,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {}
+        self.opt_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_marker(expected_result=False)
+
+
+def unsqueeze_inplace_wrapper(x, axis):
+    return _C_ops.unsqueeze_(x, axis)
+
+
+class TestUnsqueeze_TRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = unsqueeze_inplace_wrapper
+        self.api_args = {
+            "x": np.random.random([5, 10]).astype("float32"),
+            "axis": 0,
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {}
+        self.opt_shape = {}
+        self.max_shape = {}
+
+    def test_trt_result(self):
+        self.check_marker(expected_result=False)
+
+
 if __name__ == '__main__':
     unittest.main()
