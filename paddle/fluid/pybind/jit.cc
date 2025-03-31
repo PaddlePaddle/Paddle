@@ -125,6 +125,9 @@ void BindGuard(pybind11::module *m) {
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));
+  py::class_<DummyGuard, GuardBase, std::shared_ptr<DummyGuard>>(
+      *m, "DummyGuard", R"DOC(DummyGuard Class.)DOC")
+      .def(py::init<>());
 
   m->def(
       "merge_guard",
