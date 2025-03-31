@@ -66,6 +66,7 @@ from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
     object_equal_stringified_guard,
     union_free_vars,
@@ -176,6 +177,12 @@ class FunctionVariable(CallableVariable):
         )
 
     make_stringified_guard = object_equal_stringified_guard
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
 
 class UserDefinedFunctionVariable(FunctionVariable):
@@ -343,6 +350,12 @@ class PaddleApiVariable(FunctionVariable):
         }
 
     make_stringified_guard = object_equal_stringified_guard
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
 
 class TensorFunctionVariable(FunctionVariable):
@@ -530,6 +543,12 @@ class LayerVariable(CallableVariable):
             ),
         ]
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
 
 class ContainerLayerVariable(LayerVariable):
     def __init__(
@@ -596,6 +615,12 @@ class ContainerLayerVariable(LayerVariable):
         else:
             return super().make_stringified_guard()
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     @property
     def main_info(self) -> dict[str, Any]:
         return {
@@ -645,6 +670,12 @@ class PaddleLayerVariable(LayerVariable):
             )
         else:
             return super().make_stringified_guard()
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -961,6 +992,12 @@ class ClassVariable(CallableVariable):
         return new_object_variable
 
     make_stringified_guard = object_equal_stringified_guard
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
