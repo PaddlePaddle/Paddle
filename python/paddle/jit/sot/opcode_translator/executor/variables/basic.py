@@ -479,19 +479,21 @@ class TensorVariable(VariableBase):
             # Check shape
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ShapeMatchGuard(meta.shape),
-                expr_node,
+                [expr_node],
             ),
             # Check dtype
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DtypeMatchGuard(meta.dtype),
-                expr_node,
+                [expr_node],
             ),
             # Check stop_gradient
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ValueMatchGuard(meta.stop_gradient),
-                paddle.framework.core.AttributeExprNode(
-                    expr_node, "stop_gradient"
-                ),
+                [
+                    paddle.framework.core.AttributeExprNode(
+                        expr_node, "stop_gradient"
+                    )
+                ],
             ),
             # TODO(zrr1999): add dist_info check
         ]
@@ -1013,6 +1015,9 @@ class SymbolicVariable(VariableBase):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        if self.need_guard_value:
+            return super().make_faster_guard()
         raise NotImplementedError(
             f"{self.__class__.__name__}.make_faster_guard is not implemented"
         )

@@ -104,9 +104,11 @@ class SequenceIterVariable(IterVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        return [
+            guard
+            for holded in self.holds
+            for guard in holded.make_faster_guard()
+        ]
 
     def make_stringified_guard(self):
         return [
@@ -451,9 +453,11 @@ class UserDefinedIterVariable(IterVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        return [
+            guard
+            for holded in self.holds
+            for guard in holded.make_faster_guard()
+        ]
 
     def make_stringified_guard(self):
         return [

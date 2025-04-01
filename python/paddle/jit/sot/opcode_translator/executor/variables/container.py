@@ -733,9 +733,16 @@ class RangeVariable(ContainerVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(range),
+                [frame_value_tracer],
+            ),
+            *self.start.make_faster_guard(),
+            *self.stop.make_faster_guard(),
+            *self.step.make_faster_guard(),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
