@@ -152,6 +152,18 @@ bool NumpyDtypeMatchGuard::check(PyObject* value) {
   return expected_dtype.equal(py::handle(value).get_type());
 }
 
+bool NumPyArrayValueMatchGuard::check(PyObject* value) {
+  if (value == nullptr) {
+    return false;
+  }
+
+  py::object py_value = py::cast<py::object>(value);
+  return py::cast<py::object>(expected_)
+      .attr("__eq__")(py_value)
+      .attr("all")()
+      .cast<bool>();
+}
+
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
 
 PyObject* LocalVarExprNode::eval(FrameProxy* frame) {

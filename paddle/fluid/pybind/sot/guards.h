@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/sot/macros.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/pybind.h"
+#include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
 namespace py = pybind11;
@@ -220,6 +221,21 @@ class NumpyDtypeMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class NumPyArrayValueMatchGuard : public GuardBase {
+ public:
+  explicit NumPyArrayValueMatchGuard(const py::object& array)
+      : expected_(array.ptr()) {
+    Py_INCREF(expected_);
+  }
+
+  ~NumPyArrayValueMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
 class GuardTreeNode {};
 
 class AttributeExprNode;
@@ -328,4 +344,5 @@ class GuardTree {
 };
 
 std::string guard_tree_to_str(const GuardTree& guard_tree);
+
 #endif

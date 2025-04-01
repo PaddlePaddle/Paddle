@@ -148,6 +148,50 @@ class TestBasicFasterGuard(unittest.TestCase):
             guard_numpy_bool_dtype.check(np.array(1, dtype=np.bool_))
         )
 
+    def test_numpy_array_match_guard(self):
+        np_array = paddle.framework.core.NumPyArrayValueMatchGuard(
+            np.array([1, 2, 3])
+        )
+        self.assertTrue(np_array.check(np.array([1, 2, 3])))
+        self.assertFalse(np_array.check(np.array([4, 5, 6])))
+
+        np_array_all_one = paddle.framework.core.NumPyArrayValueMatchGuard(
+            np.array([1, 1, 1])
+        )
+        self.assertTrue(np_array_all_one.check(np.array([1, 1, 1])))
+        self.assertFalse(np_array_all_one.check(np.array([1, 2, 3])))
+        self.assertTrue(np_array_all_one.check(np.array([1, 1, 1], dtype=bool)))
+        self.assertTrue(np_array_all_one.check(np.array([True, True, True])))
+        self.assertTrue(np_array_all_one.check(np.array([1, 1, 1], dtype=int)))
+
+        np_bool_array = paddle.framework.core.NumPyArrayValueMatchGuard(
+            np.array([True, False, True])
+        )
+        self.assertTrue(np_bool_array.check(np.array([True, False, True])))
+        self.assertFalse(np_bool_array.check(np.array([True, True, True])))
+        self.assertFalse(np_bool_array.check(np.array([False, False, False])))
+        self.assertFalse(np_bool_array.check(np.array([1, 2, 3])))
+        self.assertTrue(np_bool_array.check(np.array([True, False, 1])))
+        self.assertFalse(np_bool_array.check(np.array([1, 2, 3], dtype=bool)))
+        self.assertFalse(np_bool_array.check(np.array([1, 2, 3], dtype=int)))
+
+        np_bool_array_all_true = (
+            paddle.framework.core.NumPyArrayValueMatchGuard(
+                np.array([True, True, True])
+            )
+        )
+        self.assertTrue(
+            np_bool_array_all_true.check(np.array([True, True, True]))
+        )
+        self.assertFalse(
+            np_bool_array_all_true.check(np.array([True, False, True]))
+        )
+        self.assertFalse(
+            np_bool_array_all_true.check(np.array([False, False, False]))
+        )
+        self.assertFalse(np_bool_array_all_true.check(np.array([1, 2, 3])))
+        self.assertTrue(np_bool_array_all_true.check(np.array([True, True, 1])))
+
 
 class TestFasterGuardGroup(unittest.TestCase):
     def test_guard_group(self):
