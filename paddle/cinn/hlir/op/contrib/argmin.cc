@@ -103,7 +103,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmin(
     const framework::NodeAttr &attrs,
     const std::vector<Tensor> &inputs,
     const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
   int axis;
   bool keep_dims = false;
@@ -170,10 +170,10 @@ CINN_REGISTER_HELPER(argmin_ops) {
       .describe("This operator implements the op argmin.")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForArgmin)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForArgmin)
       .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kReduction)
       .set_support_level(4);
 
   return true;
