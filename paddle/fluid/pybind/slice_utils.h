@@ -65,6 +65,12 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
 template <typename T>
 inline void CheckTensorIndexValue(const phi::DenseTensor* x,
                                   const int64_t dim_len) {
+  // skip check if strides are not all 1
+  for (auto i = 0; i < x->strides().size(); i++) {
+    if (x->strides()[i] != 1) {
+      return;
+    }
+  }
   T value = static_cast<T>(0);
   int64_t x_numel = x->numel();
   if (!(x->place().GetType() == phi::AllocationType::CPU)) {
