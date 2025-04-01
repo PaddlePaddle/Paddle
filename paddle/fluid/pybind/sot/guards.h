@@ -277,6 +277,21 @@ class ConstantExprNode : public ExprNode {
  private:
   PyObject* value_ptr_;
 };
+class ExternVarExprNode : public ExprNode {
+ public:
+  explicit ExternVarExprNode(const std::string& var_name,
+                             const py::object& value_obj)
+      : value_ptr_(value_obj.ptr()), var_name_(var_name) {
+    Py_INCREF(value_ptr_);
+  }
+
+  ~ExternVarExprNode() { Py_DECREF(value_ptr_); }
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  PyObject* value_ptr_;
+  std::string var_name_;
+};
 
 class LocalVarExprNode : public ExprNode {
  public:
@@ -326,16 +341,16 @@ class ItemExprNode : public ExprNode {
 class GuardNode : public GuardTreeNode {
  public:
   std::shared_ptr<GuardBase> guard;
-  std::shared_ptr<ExprNode> expr;
+  std::vector<std::shared_ptr<ExprNode>> exprs;
   std::vector<std::shared_ptr<GuardNode>> next_guard_nodes;
   // return_cache_index is used to record the index of the guard list
   std::optional<int> return_cache_index;
   GuardNode(std::shared_ptr<GuardBase> guard,
-            std::shared_ptr<ExprNode> expr,
+            std::vector<std::shared_ptr<ExprNode>> exprs,
             std::vector<std::shared_ptr<GuardNode>> next_guard_nodes,
             std::optional<int> return_cache_index)
       : guard(guard),
-        expr(expr),
+        exprs(exprs),
         next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
 

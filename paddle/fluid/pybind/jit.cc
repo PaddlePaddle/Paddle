@@ -155,11 +155,11 @@ void BindGuardTree(pybind11::module *m) {
   py::class_<GuardNode, std::shared_ptr<GuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
       .def(py::init<const std::shared_ptr<GuardBase> &,
-                    const std::shared_ptr<ExprNode> &,
+                    const std::vector<std::shared_ptr<ExprNode>> &,
                     const std::vector<std::shared_ptr<GuardNode>> &,
                     const std::optional<int> &>(),
            py::arg("guard"),
-           py::arg("expr"),
+           py::arg("exprs"),
            py::arg("next_guard_nodes") = py::list(),
            py::arg("return_cache_index") = py::none())
       .def_property(
@@ -185,6 +185,12 @@ void BindGuardTree(pybind11::module *m) {
   py::class_<ConstantExprNode, ExprNode, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("value_ptr"));
+
+  py::class_<ExternVarExprNode, ExprNode, std::shared_ptr<ExternVarExprNode>>(
+      *m, "ExternVarExprNode", R"DOC(ExternVarExprNode Class.)DOC")
+      .def(py::init<const std::string &, const py::object &>(),
+           py::arg("var_name"),
+           py::arg("value_ptr"));
 
   py::class_<LocalVarExprNode, ExprNode, std::shared_ptr<LocalVarExprNode>>(
       *m, "LocalVarExprNode", R"DOC(LocalVarExprNode Class.)DOC")
