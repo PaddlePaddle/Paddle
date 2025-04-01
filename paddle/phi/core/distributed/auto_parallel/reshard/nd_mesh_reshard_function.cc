@@ -186,7 +186,6 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       if (in_mesh_axis != out_mesh_axis || out->value().has_allocation() != tmp_result.value().has_allocation()) {
         SetValue(x, tmp_result.value());
         SetDistProps(x, real_out_dist_attr);
-        out = x;
       } else {
         SetDistProps(out, backup_dist);
       }
