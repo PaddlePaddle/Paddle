@@ -33,14 +33,13 @@
 #include <limits>
 
 #include "paddle/common/hostdevice.h"
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
-
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 7050
 #define PADDLE_CUDA_FP16

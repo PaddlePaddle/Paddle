@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#if 1
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/custom/custom_context.h"
-#include "paddle/phi/backends/gpu/gpu_helper.h"
 #else
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)

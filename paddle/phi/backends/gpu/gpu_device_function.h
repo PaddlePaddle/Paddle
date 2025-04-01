@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
- defined(PADDLE_WITH_GPGPU)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/backends/gpu/rocm/rocm_device_function.h"

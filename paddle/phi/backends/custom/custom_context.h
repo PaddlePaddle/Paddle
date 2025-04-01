@@ -28,13 +28,6 @@ namespace Eigen {
 struct DefaultDevice;
 }  // namespace Eigen
 
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
-// #include <cuda_runtime.h>
-// #define STREAM_TYPE cudaStream_t
-// #else
-// #define STREAM_TYPE void*
-// #endif
-
 namespace phi {
 
 class CustomContext : public DeviceContext,

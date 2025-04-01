@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
 using gpuStream_t = cudaStream_t;
 #endif

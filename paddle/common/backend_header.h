@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_GPGPU)
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda.h>
 #endif
 
