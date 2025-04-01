@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/pir.h"
-#include "paddle/fluid/pybind/pir_utils.h"
 
 #include <Python.h>
 #include <algorithm>
@@ -26,6 +25,7 @@
 #include <utility>
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -61,6 +61,7 @@
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -93,6 +94,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/specify_input_dynamic_dim_util.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #endif
@@ -3287,6 +3289,122 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
            }
            return flag;
          });
+#ifdef PADDLE_WITH_CINN
+  m->def(
+      "bind_symbolic_constraints",
+      [](pir::Program *program, const py::handle &constraints) -> void {
+        // Check input is sequence
+        PADDLE_ENFORCE_EQ(
+            py::isinstance<py::sequence>(constraints),
+            true,
+            common::errors::InvalidArgument(
+                "constraints for SOT symbolic variables must be a sequence."));
+
+        const py::sequence constraints_seq =
+            py::cast<py::sequence>(constraints);
+        if (py::len(constraints_seq) == 0) {
+          return;
+        }
+
+        // Process constraints
+        std::vector<std::tuple<std::string,
+                               std::tuple<int64_t,
+                                          std::optional<int64_t>,
+                                          std::optional<int64_t>>>>
+            raw_constraints;
+
+        for (size_t idx = 0; idx < constraints_seq.size(); ++idx) {
+          const auto &constraint = constraints_seq[idx];
+
+          // Check constraint item is tuple
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::tuple>(constraint),
+              true,
+              common::errors::InvalidArgument("Constraint[%zu] must be a tuple "
+                                              "of (name, dimension_triplet).",
+                                              idx));
+
+          const py::tuple constraint_tuple = py::cast<py::tuple>(constraint);
+
+          // Check tuple has 2 elements
+          PADDLE_ENFORCE_EQ(
+              constraint_tuple.size(),
+              2,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu] must have exactly 2 elements (got %zu).",
+                  idx,
+                  constraint_tuple.size()));
+
+          // Check and get input spec name
+          const py::handle name_handle = constraint_tuple[0];
+
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::str>(name_handle),
+              true,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][0] must be a string (got %s)",
+                  idx,
+                  py::str(name_handle.get_type()).cast<std::string>().c_str()));
+          const std::string input_spec_name =
+              py::cast<std::string>(name_handle);
+
+          // Check and get dimension triplet
+          const py::handle triplet_handle = constraint_tuple[1];
+          PADDLE_ENFORCE_EQ(py::isinstance<py::tuple>(triplet_handle),
+                            true,
+                            common::errors::InvalidArgument(
+                                "Constraint[%zu][1] must be a tuple.", idx));
+
+          const py::tuple triplet = py::cast<py::tuple>(triplet_handle);
+          PADDLE_ENFORCE_EQ(
+              triplet.size(),
+              3,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][1] must have 3 elements (got %zu).",
+                  idx,
+                  triplet.size()));
+
+          // Validate and convert elements
+          auto convert_optional = [idx](const py::handle &h,
+                                        int pos) -> std::optional<int64_t> {
+            if (h.is_none()) return std::nullopt;
+
+            PADDLE_ENFORCE_EQ(
+                py::isinstance<py::int_>(h),
+                true,
+                "Constraint[%zu][1][%d] must be int or None (got %s).",
+                idx,
+                pos,
+                py::str(h.get_type()).cast<std::string>().c_str());
+            return py::cast<int64_t>(h);
+          };
+
+          // Check dim_idx
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::int_>(triplet[0]),
+              true,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][1][0] (dim_idx) must be int (got %s).",
+                  idx,
+                  py::str(triplet[0].get_type()).cast<std::string>().c_str()));
+          const int64_t dim_idx = py::cast<int64_t>(triplet[0]);
+
+          // Convert min/max with position info
+          std::optional<int64_t> min_val = convert_optional(triplet[1], 1);
+          std::optional<int64_t> max_val = convert_optional(triplet[2], 2);
+
+          // Add to constraints
+          raw_constraints.emplace_back(
+              std::move(input_spec_name),
+              std::make_tuple(dim_idx, min_val, max_val));
+        }
+
+        ::cinn::dialect::ir::SpecifyInputDynamicDimFromPython(program,
+                                                              raw_constraints);
+      },
+      py::arg("program"),
+      py::arg("constraints").noconvert());
+#endif
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>

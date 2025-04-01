@@ -381,10 +381,10 @@ class TensorVariable(VariableBase):
         dynamic_axes: list[int] = []
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
             dynamic_axes = self.analyse_dynamic_axes(tracker)
-        self.meta = self.meta.with_dynamic_axes(dynamic_axes)
-        self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
+        self.meta = self.meta.with_dynamic_axes(self.var_name, dynamic_axes)
+        self.origin_meta = self.meta
 
     def analyse_dynamic_axes(self, tracker: Tracker):
         from ..executor_cache import OpcodeExecutorCache
@@ -520,13 +520,20 @@ class TensorVariable(VariableBase):
             ),
             # Check each dim except dynamic dim
             *[
-                StringifiedExpression(
-                    f"{{}}.shape[{i}] == {meta.shape[i]}",
-                    [frame_value_tracer],
-                    union_free_vars(frame_value_tracer.free_vars),
+                (
+                    StringifiedExpression(
+                        f"{{}}.shape[{i}] == {meta.shape[i]}",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                    if not isinstance(meta.shape[i], SymbolicInt)
+                    else StringifiedExpression(
+                        f"{{}}.shape[{i}] >= 2",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
                 )
                 for i in range(len(meta.shape))
-                if not isinstance(meta.shape[i], SymbolicInt)
             ],
             # Check dtype
             StringifiedExpression(
@@ -1022,14 +1029,21 @@ class SymbolicVariable(VariableBase):
 
         if self.need_guard_value:
             return super().make_stringified_guard()
-        return [
+        guards = [
             FasterStringifiedExpression(
                 f"id(type({{}})) == {id(self.get_py_type())}",
                 paddle.core.TypeMatchGuard(self.get_py_type()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
+            # TODO: replace it with FasterStringifiedExpression
+            StringifiedExpression(
+                "{} >= 2",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
         ]
+        return guards
 
     @staticmethod
     def should_create_symbolic_variable(
@@ -1037,6 +1051,9 @@ class SymbolicVariable(VariableBase):
         tracker: Tracker,
         symbolic_inputs: dict[str, dict[int, int] | None],
     ):
+        # The behavior specializes for 0 and 1, so we just ignore them here.
+        if value < 2:
+            return False
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:

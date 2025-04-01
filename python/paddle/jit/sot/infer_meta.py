@@ -35,6 +35,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     convert_to_dims_mapping,
 )
 from paddle.framework import use_pir_api
+from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
 from .utils import (
@@ -126,6 +127,7 @@ class MetaInfo:
         persistable,
         type,
         place,
+        spec_name=None,
         dist_info=None,
     ):
         assert (
@@ -139,6 +141,7 @@ class MetaInfo:
         self.dtype = dtype
         self.stop_gradient = stop_gradient
         self.dist_info = dist_info
+        self.spec_name = spec_name
 
     def shape_with_special_symbol(
         self, dynamic_symbol: DynamicSymbolT = -1
@@ -148,7 +151,7 @@ class MetaInfo:
             for dim in self.shape
         ]
 
-    def with_dynamic_axes(self, dynamic_axes: list[int]) -> MetaInfo:
+    def with_dynamic_axes(self, name: str, dynamic_axes: list[int]) -> MetaInfo:
         shape = [
             SymbolicInt() if i in dynamic_axes else dim
             for i, dim in enumerate(self.shape)
@@ -165,6 +168,7 @@ class MetaInfo:
             self.persistable,
             self.type,
             self.place,
+            spec_name=name,
             dist_info=self.dist_info,
         )
 
@@ -222,6 +226,7 @@ class MetaInfo:
             tensor.persistable,
             tensor.type,
             tensor.place,
+            None,
             dist_info=dist_info,
         )
 
@@ -242,6 +247,7 @@ class MetaInfo:
             value.persistable,
             None,  # type is not a unified attribute in dygraph and static mode.
             None,  # We can't infer the right place in compile time.
+            None,  # there's no spec_name specified when from_value.
             dist_info=dist_info,
         )
 
@@ -270,8 +276,12 @@ class MetaInfo:
                 local_shape=self.dist_info.local_shape,
             )
         else:
-            return paddle.static.InputSpec(
-                shape, dtype=self.dtype, stop_gradient=self.stop_gradient
+            return ConstrainedInputSpec(
+                self.dynamic_axes,
+                shape,
+                dtype=self.dtype,
+                name=self.spec_name,
+                stop_gradient=self.stop_gradient,
             )
 
     def guard_str(self):
@@ -287,6 +297,7 @@ class MetaInfo:
             self.persistable,
             self.type,
             self.place,
+            self.spec_name,
             dist_info=copy.deepcopy(self.dist_info),
         )
 
@@ -597,3 +608,13 @@ class LayerInferMetaCache(Cache, metaclass=Singleton):
 
     def value_fn(self, layer, *args, **kwargs):
         return infer_meta_for_layer(layer, *args, **kwargs)
+
+
+class ConstrainedInputSpec(InputSpec):
+    def __init__(self, dynamic_axes: list[int], *args, **kwargs):
+        self.ranges: list[tuple[int, int | None, int | None]] = (
+            []
+        )  # (idx of dim, min, max)
+        super().__init__(*args, **kwargs)
+        for i in dynamic_axes:
+            self.ranges.append((i, 2, None))
