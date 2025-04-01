@@ -1530,6 +1530,11 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_V3_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_V3_LIBRARIES"), libs_path)
+        if len(env_dict.get("FLASHMASK_V2_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHMASK_V2_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHMASK_V2_LIBRARIES"), libs_path)
 
     if (
         env_dict.get("WITH_DISTRIBUTE") == 'ON'
