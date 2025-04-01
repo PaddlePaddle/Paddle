@@ -17,7 +17,8 @@
 #pragma once
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_CUDA)
+
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #else
 #include <hip/hip_runtime.h>
@@ -30,9 +31,7 @@
 #include <vector>
 
 #include "glog/logging.h"
-// #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-// #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/enforce.h"
 
 // CUDA performs better when thread_per_block is between [64, 512]

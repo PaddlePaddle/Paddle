@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>  // NOLINT
 
 #include "paddle/phi/common/bfloat16.h"

@@ -87,15 +87,14 @@ struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
   }
 };
 
-template <typename T, typename Context>
-void AbsGradKernelImpl(const Context& dev_ctx,
+template <typename T>
+void AbsGradKernelImpl(const GPUContext& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& dout,
                        DenseTensor* dx) {
   std::vector<const DenseTensor*> ins = {&x, &dout};
   std::vector<DenseTensor*> outs = {dx};
-  // dev_ctx.MyAlloc<float>(dx);
-  // dev_ctx.Alloc<float>(dx);
+  dev_ctx.Alloc<T>(dx);
   AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
   phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
 }
