@@ -33,7 +33,7 @@
 #include <limits>
 
 #include "paddle/common/hostdevice.h"
-#if defined(PADDLE_WITH_CUDA)
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
 

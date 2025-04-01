@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/phi/kernels/dot_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -55,19 +56,6 @@ void DotKernel(const Context& dev_ctx,
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
-
-// PD_REGISTER_PLUGIN_KERNEL(dot,
-//                    GPU,
-//                    ALL_LAYOUT,
-//                    phi::DotKernel,
-//                    float,
-//                    double,
-//                    int,
-//                    int64_t,
-//                    complex64,
-//                    complex128,
-//                    phi::dtype::float16,
-//                    phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(dot,
                    GPU,

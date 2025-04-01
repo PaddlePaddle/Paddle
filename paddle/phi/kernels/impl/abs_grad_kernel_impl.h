@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+
 namespace phi {
 
 #if defined(__NVCC__)

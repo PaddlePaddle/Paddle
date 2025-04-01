@@ -44,9 +44,9 @@
 #define VecSizeM 256
 #define VecSizeS 128
 #else
+
 #define KPStream gpuStream_t
 #define KPDevice phi::GPUContext
-#endif
 #define _ptr_
 #define __simd__
 
