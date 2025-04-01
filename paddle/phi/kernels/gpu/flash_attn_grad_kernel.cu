@@ -26,6 +26,9 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+#ifdef PADDLE_WITH_FLASHATTN_V3
+#include "paddle/phi/kernels/gpu/flash_attn_v3_grad_kernel.h"
+#endif
 
 COMMON_DECLARE_bool(cudnn_deterministic);
 COMMON_DECLARE_int32(flash_attn_version);
@@ -623,7 +626,7 @@ void FlashAttnGradBaseKernel(
   const float softmax_unscale = std::sqrt(head_size);
 
   int version =
-      FLAGS_flash_attn_version == 3 &&
+      FLAGS_flash_attn_version == 3 && !FLAGS_cudnn_deterministic &&
               (head_size == 64 || head_size == 128 || head_size == 256)
           ? FLAGS_flash_attn_version
           : 2;
@@ -789,73 +792,22 @@ void FlashAttnGradBaseKernel(
           "FlashMask or Dense Mask is unsupported in FlashAttention V3"));
     }
 
-    bool deterministic = FLAGS_cudnn_deterministic ? true : false;
-    succ = phi::dynload::flash_attn_v3_bwd(
-        dout.data(),
-        q.data(),
-        k.data(),
-        v.data(),
-        out.data(),
-        params.softmax_d.data(),
-        softmax_lse.data(),
-        params.softmax_lse_log2.data(),
-        params.rng_state.data(),
-        kdq->data(),
-        kdk->data(),
-        kdv->data(),
-        params.dq_accum.data(),
-        params.batch_size,
-        params.max_seqlen_q,
-        params.max_seqlen_k,
-        params.seqlen_q_rounded,
-        params.seqlen_k_rounded,
-        params.num_heads,
-        params.num_heads_k,
-        params.head_size,
-        params.head_size_rounded,
-        params.dropout,
-        params.softmax_scale,
-        softmax_unscale,
-        params.causal,
-        params.is_bf16,
-        num_splits,
-        deterministic,
-        stream,
-        params.seed,
-        params.offset,
-        params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-        params.attn_mask_tensor ? params.mask_dims.data() : nullptr,
-        is_flashmask ? downstart_row_indices_data : nullptr,
-        is_flashmask ? downend_row_indices_data : nullptr,
-        is_flashmask ? upend_row_indices_data : nullptr,
-        is_flashmask ? upstart_row_indices_data : nullptr,
-        is_flashmask ? flashmask_maxmin.data() : nullptr,
-        is_flashmask ? params.startend_row_indices_dims.data() : nullptr,
-        q.strides()[0],
-        k.strides()[0],
-        v.strides()[0],
-        q.strides()[1],
-        k.strides()[1],
-        v.strides()[1],
-        q.strides()[2],
-        k.strides()[2],
-        v.strides()[2],
-        out.strides()[0],
-        out.strides()[1],
-        out.strides()[2],
-        kdq->strides()[0],
-        kdk->strides()[0],
-        kdv->strides()[0],
-        kdq->strides()[1],
-        kdk->strides()[1],
-        kdv->strides()[1],
-        kdq->strides()[2],
-        kdk->strides()[kdk->strides().size() - 2],
-        kdv->strides()[kdv->strides().size() - 2],
-        dout.strides()[0],
-        dout.strides()[1],
-        dout.strides()[2],
-        params.dq_semaphore.data());
+    FlashAttnV3GradKernel<T, Context>(ctx,
+                                      q,
+                                      k,
+                                      v,
+                                      out,
+                                      softmax_lse,
+                                      dout,
+                                      params.softmax_scale,
+                                      causal,
+                                      -1,   // window_size_left
+                                      -1,   // window_size_right
+                                      0.f,  // softcap
+                                      0,    // sm_margin
+                                      dq,
+                                      dk,
+                                      dv);
 #else
     RaiseNotSupportedError(3);
 #endif
@@ -925,20 +877,22 @@ void FlashAttnGradBaseKernel(
         dout.strides()[0]);
   }
 #endif
-  CheckFlashAttnStatus(succ);
-  if (!is_mha) {
-    if (dk) {
-      if (dk->meta().is_contiguous())
-        phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
-      else
-        kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, dk);
-    }
+  if (version != 3) {
+    CheckFlashAttnStatus(succ);  // umiswing: no return status in fa3
+    if (!is_mha) {
+      if (dk) {
+        if (dk->meta().is_contiguous())
+          phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
+        else
+          kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, dk);
+      }
 
-    if (dv) {
-      if (dv->meta().is_contiguous())
-        phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
-      else
-        kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, dv);
+      if (dv) {
+        if (dv->meta().is_contiguous())
+          phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
+        else
+          kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, dv);
+      }
     }
   }
 #else

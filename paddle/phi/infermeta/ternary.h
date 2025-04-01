@@ -162,6 +162,12 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
                                     const MetaTensor& softmax_lse,
                                     MetaTensor* reduced_scores);
 
+void FlashAttnV3InferMeta(const MetaTensor& q,
+                          const MetaTensor& k,
+                          const MetaTensor& v,
+                          MetaTensor* out,
+                          MetaTensor* softmax_lse);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
