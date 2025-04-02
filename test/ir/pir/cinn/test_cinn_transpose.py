@@ -100,6 +100,29 @@ class TestTranspose(unittest.TestCase):
 
         self.eval(func, [x])
 
+    def test_reshape_0312(self):
+        def func(x, y):
+            y = y.reshape([64, 14, 14, 128])
+            y = y.transpose([0, 3, 1, 2])
+            return x + y
+
+        x = paddle.uniform([64, 128, 14, 14])
+        y = paddle.uniform([64, 14 * 14, 128])
+
+        self.eval(func, [x, y])
+
+    def test_slice_reshape_021(self):
+        def func(x, y):
+            x = x[:, 64:192]
+            x = x.reshape([64, 128, 14 * 14])
+            x = x.transpose([0, 2, 1])
+            return x + y
+
+        x = paddle.uniform([64, 256, 14, 14])
+        y = paddle.uniform([64, 14 * 14, 128])
+
+        self.eval(func, [x, y])
+
     def test_small_0231_dynshape(self):
         def func(x):
             return x.transpose([0, 2, 3, 1]) + 1
@@ -118,9 +141,10 @@ class TestTranspose(unittest.TestCase):
 
         self.eval(func, [x], [x_spec])
 
-    def test_all_permuted_3210_dynshape(self):
+    def test_reshape_021_dynshape(self):
         def func(x):
-            x = x.transpose([3, 2, 1, 0])
+            x = x.reshape([0, -1, paddle.shape(x)[3]])
+            x = x.transpose([0, 2, 1])
             return x * (x + 1)
 
         x = paddle.uniform([32, 14, 14, 128])
