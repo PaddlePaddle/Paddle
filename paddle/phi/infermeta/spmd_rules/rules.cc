@@ -85,6 +85,11 @@ PD_REGISTER_SPMD_RULE(
 
 // elementwise unary rule
 PD_REGISTER_SPMD_RULE(
+    abs,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
     assign,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
