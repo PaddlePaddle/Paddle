@@ -3577,6 +3577,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [arr]
+    spmd_rule : TakeAlongAxisGradInferSpmd
   kernel :
     func : take_along_axis_grad
   backward : take_along_axis_double_grad

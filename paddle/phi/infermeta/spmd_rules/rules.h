@@ -80,6 +80,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/squared_l2_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/squeeze.h"
 #include "paddle/phi/infermeta/spmd_rules/stack.h"
+#include "paddle/phi/infermeta/spmd_rules/take_along_axis.h"
 #include "paddle/phi/infermeta/spmd_rules/tile.h"
 #include "paddle/phi/infermeta/spmd_rules/topk.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
