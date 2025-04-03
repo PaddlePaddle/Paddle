@@ -183,23 +183,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       // should ExecutionContext for calc stream.
       stream = ctx.cuda_device_context().stream();
     }
-    auto *out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<phi::TensorArray>()) {
-      PADDLE_ENFORCE_EQ(
-          dynamic_shape,
-          false,
-          common::errors::InvalidArgument("Dynamic shape for send/recv not "
-                                          "support DenseTensorArray for now."));
-      auto out_array = out_var->GetMutable<phi::TensorArray>();
-      for (size_t idx = 0; idx < out_array->size(); ++idx) {
-        VLOG(3) << "DenseTensorArray: idx(" << idx << ")";
-        auto out = &out_array->at(idx);
-        ctx.cuda_device_context().Alloc<T>(out);
-        auto numel = out->numel();
-        comm_ctx->Recv(out, numel, peer, stream);
-      }
-      return;
-    }
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
     auto out = ctx.Output<phi::DenseTensor>("Out");
