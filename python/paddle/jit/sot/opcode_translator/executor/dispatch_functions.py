@@ -14,6 +14,8 @@
 
 # This file stores the customized function that will be called by the dispatch mechanism.
 
+from __future__ import annotations
+
 from ...utils import BreakGraphError, BreakGraphReasonBase, FallbackError
 
 
