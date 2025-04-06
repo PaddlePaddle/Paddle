@@ -25,7 +25,7 @@ class TestDistTRT(unittest.TestCase):
         self.script = "test_trt_c_allreduce_infer_script.py"
 
     def init_case(self):
-        self.op_type = "c_allreduce_sum"
+        self.op_type = "all_reduce"
         self.target_value = 4.0
         self.precision = "fp16"
 
