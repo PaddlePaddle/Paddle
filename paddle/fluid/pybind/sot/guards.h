@@ -238,11 +238,7 @@ class NumPyArrayValueMatchGuard : public GuardBase {
 
 class PyObjMatchGuard : public GuardBase {
  public:
-  explicit PyObjMatchGuard(const py::object& obj) : expected_(obj.ptr()) {
-    Py_INCREF(expected_);
-  }
-
-  ~PyObjMatchGuard() override { Py_DECREF(expected_); }
+  explicit PyObjMatchGuard(const py::object& obj) : expected_(obj.ptr()) {}
 
   bool check(PyObject* value) override;
 

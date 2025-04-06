@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import unittest
+import weakref
 from collections import OrderedDict
 
 import numpy as np
@@ -196,16 +197,14 @@ class TestBasicFasterGuard(unittest.TestCase):
         def test_func():
             return 1 + 1
 
-        guard_object = paddle.framework.core.PyObjMatchGuard(test_func)
+        weak_ref_obj = weakref.ref(test_func)
+
+        guard_object = paddle.framework.core.PyObjMatchGuard(weak_ref_obj)
         self.assertTrue(guard_object.check(test_func))
         self.assertFalse(guard_object.check(lambda x: x == 1))
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
-        del test_func
-
-        def test_func():
-            return 1 + 1
-
+        del weak_ref_obj
         self.assertFalse(guard_object.check(test_func))
 
 
