@@ -173,7 +173,11 @@ bool PyObjMatchGuard::check(PyObject* value) {
     return false;
   }
 
-  return PyObject_Equal(expected_, value);
+#if PY_3_9_PLUS
+  return PyObject_Equal(PyObject_CallNoArgs(expected_), value);
+#else
+  return PyObject_Equal(PyObject_CallObject(expected_, NULL), value);
+#endif
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
