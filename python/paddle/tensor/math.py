@@ -8932,3 +8932,41 @@ def cartesian_prod(x: Sequence[Tensor], name: str | None = None) -> Tensor:
 
     coordinates = paddle.stack(paddle.meshgrid(x), axis=-1)
     return paddle.reshape(coordinates, [-1, len(x)])
+
+
+def cauchy_(
+    x: paddle.Tensor,
+    loc: Numeric = 0,
+    scale: Numeric = 1,
+    name: str | None = None,
+) -> paddle.Tensor:
+    """Fills the tensor with numbers drawn from the Cauchy distribution.
+
+    Args:
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
+        loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
+        scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor: input tensor with numbers drawn from the Cauchy distribution.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.randn([3, 4])
+            >>> x.cauchy_(1, 2)
+            >>> # doctest: +SKIP('random check')
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 3.80087137,  2.25415039,  2.77960515,  7.64125967],
+             [ 0.76541221,  2.74023032,  1.99383152, -0.12685823],
+             [ 1.45228469,  1.76275957, -4.30458832, 34.74880219]])
+
+    """
+    x.normal_()
+    loc = paddle.to_tensor(loc).astype(x.dtype)
+    half = paddle.to_tensor(0.5).astype(x.dtype)
+    x.subtract_(half).scale_(np.pi).tan_().scale_(scale).add_(loc)
+    return x
