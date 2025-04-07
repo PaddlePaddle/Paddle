@@ -16,7 +16,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle.distributed.communication import stream
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+)
+from paddle.distributed.communication.serialization_utils import (
+    convert_object_to_tensor,
+)
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -101,3 +109,33 @@ def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task | None:
 
     """
     return send(tensor, dst, group, sync_op=False)
+
+
+def send_object_list(object_list, dst=None, group=None, group_dst=None):
+    group = _get_global_group() if group is None else group
+    if _warn_cur_rank_not_in_group(group):
+        return
+    if group_dst is not None:
+        if dst is not None:
+            raise ValueError(
+                "Cannot specify both 'dst' and 'group_dst' arguments."
+            )
+        else:
+            dst = group.get_global_rank(group_dst)
+    else:
+        if dst is None:
+            dst = 0
+
+    tensor_list, size_list = zip(
+        *[convert_object_to_tensor(obj) for obj in object_list]
+    )
+    size_list_values = [size.item() for size in size_list]
+
+    object_sizes_tensor = paddle.to_tensor(size_list_values, dtype='int64')
+
+    send(object_sizes_tensor, dst=dst, group=group)
+    if len(tensor_list) == 1:
+        object_tensor = tensor_list[0]
+    else:
+        object_tensor = paddle.concat(tensor_list)
+    send(object_tensor, dst=dst, group=group)

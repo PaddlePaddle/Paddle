@@ -16,7 +16,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle.distributed.communication import stream
+from paddle.distributed.communication.group import (
+    _get_global_group,
+    _warn_cur_rank_not_in_group,
+)
+from paddle.distributed.communication.serialization_utils import (
+    convert_tensor_to_object,
+)
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -102,3 +110,39 @@ def irecv(
             >>> # [7, 8, 9] (2 GPUs)
     """
     return recv(tensor, src, group, sync_op=False)
+
+
+def recv_object_list(object_list, src=None, group=None, group_src=None):
+    group = _get_global_group() if group is None else group
+    if _warn_cur_rank_not_in_group(group):
+        return
+    if group_src is not None:
+        if src is not None:
+            raise ValueError(
+                "Cannot specify both 'src' and 'group_src' arguments."
+            )
+        else:
+            src = group.get_global_rank(group_src)
+    else:
+        if src is None:
+            src = 0
+
+    object_sizes_tensor = paddle.empty((len(object_list),), dtype='int64')
+
+    # Receive object sizes
+    rank_sizes = recv(object_sizes_tensor, src=src, group=group)
+
+    # Tensor to receive serialized objects into.
+    object_tensor = paddle.empty(
+        ((paddle.sum(object_sizes_tensor).view("int64")),),
+        dtype=paddle.uint8,
+    )
+
+    recv(object_tensor, src=src, group=group)
+
+    # Deserialize objects using their stored sizes.
+    offset = 0
+    for i, obj_size in enumerate(object_sizes_tensor):
+        obj_view = object_tensor[offset : offset + obj_size]
+        offset += obj_size
+        object_list[i] = convert_tensor_to_object(obj_view, obj_size)

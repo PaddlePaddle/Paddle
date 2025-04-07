@@ -93,11 +93,13 @@ from .communication import (  # noqa: F401
     is_initialized,
     isend,
     recv,
+    recv_object_list,
     reduce,
     reduce_scatter,
     scatter,
     scatter_object_list,
     send,
+    send_object_list,
     stream,
     wait,
 )

@@ -91,6 +91,15 @@ class Group:
         else:
             return -1
 
+    def get_global_rank(self, rank: int) -> int | Literal[-1]:
+        """
+        Get the global rank of a process within a group.
+        """
+        if self.is_member():
+            return self.ranks[rank]
+        else:
+            return -1
+
     def __repr__(self) -> str:
         debug_str = (
             f"rank: {self.rank}, nranks: {self.nranks}, id: {self.id}, ranks: "
