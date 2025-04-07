@@ -523,6 +523,10 @@ def nonzero(x: Tensor, as_tuple=False):
              [3]])
 
     """
+    list_out = []
+    shape = x.shape
+    rank = len(shape)
+
     if in_dynamic_or_pir_mode():
         outs = _C_ops.nonzero(x)
     else:
@@ -554,9 +558,13 @@ def nonzero(x: Tensor, as_tuple=False):
 
     if not as_tuple:
         return outs
+    elif rank == 1:
+        return (outs,)
     else:
-        rank = x.ndim
-        list_out = [outs[:, i] for i in range(rank)]
+        for i in range(rank):
+            list_out.append(
+                paddle.slice(outs, axes=[1], starts=[i], ends=[i + 1])
+            )
         return tuple(list_out)
 
 
