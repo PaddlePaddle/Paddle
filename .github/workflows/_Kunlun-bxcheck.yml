@@ -260,7 +260,7 @@ jobs:
 
     - name: Run test
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c -x 'bash ${ci_scripts}/kunlun_test.sh'
+        docker exec -t ${{ env.container_name }} /bin/bash -c -x  'bash ${ci_scripts}/kunlun_test.sh'
 
     # - name: Terminate and delete the container
     #   if: always()
