@@ -104,16 +104,14 @@ jobs:
         echo $GITHUB_ENV
         echo ${{ github.env }}
         docker exec -t ${container_name} /bin/bash -c '
-        echo "aa=123" >> $GITHUB_ENV
-        echo "bb=456" >> ${{ github.env }}
+        echo "aa=123" >> ~/.bashrc
         '
 
     - name: Build
       run: |
-        echo $GITHUB_ENV
-        echo ${{ github.env }}
+        docker exec -t ${container_name} /bin/bash -c '
         echo $aa
-        echo $bb
+        '
 
     # - name: Terminate and delete the container
     #   if: always()
