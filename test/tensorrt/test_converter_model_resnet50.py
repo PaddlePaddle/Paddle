@@ -188,8 +188,10 @@ class TestConverterResNet50(unittest.TestCase):
         )
 
     def test_paddle_to_tensorrt_conversion_r50_use_cuda_graph(self):
+        # Step1: get program and init fake inputs
         program, scope, param_dict = get_r50_program()
 
+        # Set input
         input_config = Input(
             min_input_shape=(1, 3, 224, 224),
             optim_input_shape=(1, 3, 224, 224),
@@ -199,11 +201,16 @@ class TestConverterResNet50(unittest.TestCase):
         )
         _, input_optim_data, _ = input_config.generate_input_data()
 
+        # Create a TensorRTConfig with inputs as a required field.
         trt_config = TensorRTConfig(inputs=[input_config])
+        trt_config.disable_passes = ['dead_code_elimination_pass']
+
         # use_cuda_graph: True
         trt_config.use_cuda_graph = True
 
         output_var = program.list_vars()[-1]
+
+        # get original results(for tests only)
 
         output_expected = predict_program(
             program, {"input": input_optim_data}, [output_var]
@@ -212,11 +219,7 @@ class TestConverterResNet50(unittest.TestCase):
         program_with_trt = convert_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
-        # warm up
-        predict_program(
-            program_with_trt, {"input": input_optim_data}, [output_var]
-        )
-
+        # Step6: run inference(converted_program)
         output_converted = predict_program(
             program_with_trt, {"input": input_optim_data}, [output_var]
         )
@@ -224,6 +227,7 @@ class TestConverterResNet50(unittest.TestCase):
         output_expected = standardize(output_expected[0])
         output_trt = standardize(output_converted[0])
 
+        # Check that the results are close to each other within a tolerance of 1e-3
         np.testing.assert_allclose(
             output_expected,
             output_trt,
