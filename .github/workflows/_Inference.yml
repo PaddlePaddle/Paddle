@@ -107,6 +107,7 @@ jobs:
         echo "aa=123" >> ~/.bashrc
         source ~/.bashrc
         bb=456
+        export cc=789
         '
 
     - name: Build
@@ -114,6 +115,7 @@ jobs:
         docker exec -t ${container_name} /bin/bash -c '
         echo $aa
         echo $bb
+        echo $cc
         '
 
     # - name: Terminate and delete the container
