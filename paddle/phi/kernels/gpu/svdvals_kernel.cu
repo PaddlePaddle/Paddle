@@ -202,7 +202,8 @@ void SvdvalsKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument("Cols of X must be greater than 0."));
   int k = std::min(rows, cols);
-  int batches = static_cast<int>(X.numel() / (rows * cols));
+  int batches = 1;
+  for (int i = 0; i < dims.size() - 2; i++) batches *= dims[i];
   PADDLE_ENFORCE_GT(
       batches,
       0,
