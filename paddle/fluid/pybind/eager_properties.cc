@@ -464,14 +464,15 @@ int tensor_properties_set_batch_dim(TensorObject* self,
         "the "
         "option of `WITH_DISTRIBUTE=ON`."));
 #endif
-  } else {
+  } else if (self->tensor.is_dense_tensor()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
 
     dense_tensor->set_batch_dim(batch_dim);
     return 0;
+  } else {
+    return 0;
   }
-  return -1;
 
   EAGER_CATCH_AND_THROW_RETURN_NEG
 }
@@ -480,6 +481,7 @@ PyObject* tensor_properties_get_batch_dim(TensorObject* self, void* closure) {
   EAGER_TRY
 
   if (self->tensor.is_dist_tensor()) {
+    VLOG(6) << "come here 1";
 #ifdef PADDLE_WITH_DISTRIBUTE
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
@@ -491,10 +493,14 @@ PyObject* tensor_properties_get_batch_dim(TensorObject* self, void* closure) {
         "the "
         "option of `WITH_DISTRIBUTE=ON`."));
 #endif
-  } else {
+  } else if (self->tensor.is_dense_tensor()) {
+    VLOG(6) << "come here 2";
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     return ToPyObject(dense_tensor->batch_dim());
+  } else {
+    VLOG(6) << "come here 3";
+    return ToPyObject(0);
   }
 
   RETURN_PY_NONE

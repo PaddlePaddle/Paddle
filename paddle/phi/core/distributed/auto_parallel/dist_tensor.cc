@@ -262,10 +262,7 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
   global_dims_ = dims;
 }
 
-void DistTensor::set_batch_dim(int64_t batch_dim) {
-  // dist_attr_.set_batch_dim(batch_dim);
-  batch_dim_ = batch_dim;
-}
+void DistTensor::set_batch_dim(int64_t batch_dim) { batch_dim_ = batch_dim; }
 
 void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
   if (this->initialized()) {
