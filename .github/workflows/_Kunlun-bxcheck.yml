@@ -77,8 +77,7 @@ jobs:
       run: |
         container_name=${TASK}-$(date +%s)
         echo "container_name=${container_name}" >> ${{ github.env }}
-        # docker run --privileged -d -t --name ${container_name} \
-        docker run -d -t --name ${container_name} \
+        docker run --privileged -d -t --name ${container_name} \
           -v ${{ github.workspace }}/../../../../.cache:/root/.cache \
           -v ${{ github.workspace }}/../../../../.ccache:/root/.ccache \
           -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
@@ -117,7 +116,7 @@ jobs:
           -e no_proxy \
           -e http_proxy \
           -e https_proxy \
-          -w ${{ github.workspace }} --network host ${docker_image}
+          -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
     - name: Build
       env:
@@ -257,7 +256,7 @@ jobs:
           -e http_proxy \
           -e https_proxy \
           -e GITHUB_API_TOKEN \
-          -w ${{ github.workspace }} --network host ${docker_image}
+          -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
     - name: Run test
       run: |
