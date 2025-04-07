@@ -1042,7 +1042,7 @@ def launch() -> None:
 
                 log_str = "Peek Memory Info Summary:\n"
                 for node, peek_memory in per_node_peek_memory_info.items():
-                    mem_info_str = f"Memory Value: {peek_memory}"
+                    mem_info_str = f"Memory Peek Usage: {peek_memory}"
                     log_str += f"Node: {node} | {mem_info_str}\n"
                 log_str = log_str[:-1]
                 for sub_log_str in log_str.split("\n"):
@@ -1093,7 +1093,9 @@ def launch() -> None:
                     node,
                     trainable_params,
                 ) in per_node_trainable_params_info.items():
-                    params_info_str = f"Params Value: {trainable_params}"
+                    params_info_str = (
+                        f"Number of Parameters: {trainable_params}"
+                    )
                     log_str += f"Node: {node} | {params_info_str}\n"
                 log_str = log_str[:-1]
                 for sub_log_str in log_str.split("\n"):
