@@ -28,8 +28,6 @@ from .process_group import get_process_group
 def is_collective_comm_op(op):
     comm_list = [
         "c_allreduce_sum",
-        "c_allreduce_min",
-        "c_allreduce_prod",
         "all_gather",
         "all_reduce",
         "broadcast",

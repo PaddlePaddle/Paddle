@@ -29,12 +29,14 @@ from paddle.framework import core
 from ....infer_meta import (
     DistInfo,
     MetaInfo,
+)
+from ....symbolic.statement_ir import Symbol
+from ....symbolic_shape import (
     SymbolicBool,
     SymbolicFloat,
     SymbolicInt,
     SymbolicValue,
 )
-from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
@@ -876,18 +878,18 @@ class SymbolicVariable(VariableBase):
     SymbolicVariable is a subclass of VariableBase used to wrap a symbolic value.
 
     Args:
-        value_or_meta (int | SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
+        value_or_meta (SymbolicInt | MetaInfo): The symbolic value  to be wrapped or metadata.
         graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
         tracker (Tracker): The Tracker object that tracks the information of this variable.
     """
 
     var_name_generator = NameGenerator("symint_")
-    value: int | SymbolicValue
+    value: SymbolicValue
     mutable_attrs = ["need_guard_value"]
 
     def __init__(
         self,
-        value_or_meta: int | SymbolicInt | MetaInfo,
+        value_or_meta: SymbolicInt | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -898,6 +900,9 @@ class SymbolicVariable(VariableBase):
             self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
         else:
+            assert isinstance(
+                value_or_meta, SymbolicInt
+            ), f"Unsupported type {type(value_or_meta)} for SymbolicVariable"
             self.value = value_or_meta
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
@@ -947,37 +952,21 @@ class SymbolicVariable(VariableBase):
             3,
             f"get_py_value from SymbolicVariable {self} caused value need guard\n",
         )
-        if isinstance(self.value, SymbolicValue):
-            assert isinstance(
-                self.tracker, SymbolicOperationTracker
-            ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
-            inputs = self.tracker.inputs
-            assert len(inputs) >= 1
-            input_values = [x.get_py_value() for x in inputs]
-            value = getattr(input_values[0], self.tracker.method_name)(
-                *input_values[1:]
+        if self.value.is_backed():
+            return self.value.get_example_value()
+        inputs = self.tracker.inputs
+        input_values = [x.get_py_value() for x in inputs]
+        if not isinstance(self.tracker, SymbolicOperationTracker):
+            raise BreakGraphError(
+                DataDependencyOperationBreak(
+                    f"SymbolicVariable.get_py_value() got {self.tracker}. May be a symbol from a inner tensor."
+                )
             )
-            # TODO(SigureMo): A Temporary solution for the case that the method is not implemented.
-            # e.g. In user code, we have `1 * 0.1`, the lhs is a SymbolicVariable, and the rhs is a float.
-            # We trace the method `__mul__` from the lhs, but actually, python use `float.__rmul__`,
-            # `int.__mul__(float)` is not implemented. So we get NotImplemented here.
-            # We need to find a better way to handle this case.
-            if isinstance(value, type(NotImplemented)):
-                reversed_method = method_to_reverse_method(
-                    self.tracker.method_name
-                )
-                if reversed_method is None:
-                    raise InnerError(
-                        f"Unsupported method {self.tracker.method_name} for SymbolicVariable"
-                    )
-                value = getattr(input_values[1], reversed_method)(
-                    input_values[0], *input_values[2:]
-                )
-            self.value = value
-            assert isinstance(
-                self.value, (bool, int, float)
-            ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(self.value)}"
-        return self.value
+        value = self.tracker.op(*input_values)
+        assert isinstance(
+            value, (bool, int, float)
+        ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
+        return value
 
     def get_py_type(self):
         if isinstance(self.value, int):
@@ -1105,11 +1094,19 @@ class SymbolicVariable(VariableBase):
             tensor_call_shape_var = graph.call_paddle_api(
                 paddle.shape, tensor_var
             )
-            return graph.call_symbolic_method(
+            tensor_dim_var = graph.call_tensor_method(
                 "__getitem__",
                 tensor_call_shape_var,
                 ConstantVariable.wrap_literal(shape_idx, graph),
             )
+            sym_var_tracker = (
+                tracker
+                if tensor_var.tracker.is_traceable()
+                else DummyTracker([tensor_dim_var])
+            )
+            sym_var = SymbolicVariable(value, graph, sym_var_tracker)
+            graph.add_alias(tensor_dim_var, sym_var)
+            return sym_var
         if type(value) is not int:
             return None
         if not tracker.is_traceable():
@@ -1124,7 +1121,7 @@ class SymbolicVariable(VariableBase):
         if SymbolicVariable.should_create_symbolic_variable(
             value, tracker, symbolic_inputs
         ):
-            return SymbolicVariable(value, graph, tracker)
+            return SymbolicVariable(SymbolicInt(value), graph, tracker)
         return None
 
 

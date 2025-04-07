@@ -1985,15 +1985,17 @@ void ScatterInferMeta(const MetaTensor& x,
             "Input(Updates)'s shape is %d.",
             ref_dims.size(),
             updates_dims.size()));
-    PADDLE_ENFORCE_LE(
-        index_dims[0],
-        updates_dims[0],
-        common::errors::InvalidArgument(
-            "The first dimension size of Input(Index) should be no greater "
-            "than Input(Updates), but received first dimension size of "
-            "Input(Index) is %d, Input(Updates) is  %d.",
-            index_dims[0],
-            updates_dims[0]));
+    if (index_dims[0] != -1 && updates_dims[0] != -1) {
+      PADDLE_ENFORCE_LE(
+          index_dims[0],
+          updates_dims[0],
+          common::errors::InvalidArgument(
+              "The first dimension size of Input(Index) should be no greater "
+              "than Input(Updates), but received first dimension size of "
+              "Input(Index) is %d, Input(Updates) is  %d.",
+              index_dims[0],
+              updates_dims[0]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         (ref_dims.size() - 1 == updates_dims.size()),

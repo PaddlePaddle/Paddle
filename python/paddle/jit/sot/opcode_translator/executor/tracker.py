@@ -28,6 +28,7 @@ from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ...utils.magic_methods import BinaryOp, UnaryOp
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
 
@@ -131,9 +132,9 @@ class SymbolicOperationTracker(Tracker):
         inputs (list[VariableBase]): The input variables associated with the generated variables.
     """
 
-    def __init__(self, inputs: Sequence[VariableBase], method_name: str):
+    def __init__(self, inputs: Sequence[VariableBase], op: UnaryOp | BinaryOp):
         super().__init__(inputs)
-        self.method_name = method_name
+        self.op = op
 
     def gen_instructions(self, codegen: PyCodeGen):
         raise InnerError("SymbolicOperationTracker has no instructions")

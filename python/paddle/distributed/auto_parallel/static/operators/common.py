@@ -513,16 +513,6 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
 
     allreduce_type = "c_allreduce_sum"
     need_scale = dist_ctx.gradient_scale
-    scale_using_allreduce_avg = dist_ctx.gradient_scale_using_allreduce_avg
-
-    # With nccl_version > 2.10.00, we can use c_allreduce_avg to replace c_allreduce_sum and eliminate the scale op.
-    if (
-        need_scale
-        and scale_using_allreduce_avg
-        and int(paddle.version.nccl()) > 21000
-    ):
-        allreduce_type = "c_allreduce_avg"
-        need_scale = False
 
     for group in groups:
         group_size = len(group.ranks)
