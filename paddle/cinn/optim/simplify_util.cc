@@ -662,5 +662,29 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
 
   return std::nullopt;
 }
+
+ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
+  // return expr if expr is not a division or modulo
+  if (expr.node_type() != ir::IrNodeTy::Div &&
+      expr.node_type() != ir::IrNodeTy::Mod)
+    return expr;
+
+  common::cas_intervals_t var_intervals =
+      common::CollectVarIntervalsOfExprs({expr});
+  common::SymbolicExprAnalyzer ana(var_intervals);
+  // Because the SymbolicExprAnalyzer bound result is [lower, upper), `ProveLE`
+  // is used here instead of `ProveLT`.
+  auto canBeSimplified =
+      ana.ProveLE(ana.UpperBound(expr.operand(0)), expr.operand(1));
+
+  if (canBeSimplified.value_or(false)) {
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::IndexExpr(0);
+    } else if (expr.node_type() == ir::IrNodeTy::Mod) {
+      return expr.operand(0);
+    }
+  }
+  return expr;
+}
 }  // namespace optim
 }  // namespace cinn

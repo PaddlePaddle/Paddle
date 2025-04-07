@@ -54,6 +54,10 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/xpu_async_load.h"
 #endif
 
+#if defined(PADDLE_WITH_FLAGCX)
+#include "paddle/fluid/distributed/collective/process_group_flagcx.h"
+#endif
+
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
 namespace paddle::pybind {
@@ -80,6 +84,10 @@ std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
 using ProcessGroupGloo = paddle::distributed::ProcessGroupGloo;
 using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
+#endif
+
+#if defined(PADDLE_WITH_FLAGCX)
+using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
 static UNUSED void *use_ccl_comm_func =
@@ -1502,6 +1510,20 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>())
       .def_static("create_default_device",
                   &ProcessGroupGloo::createDefaultDevice,
+                  py::call_guard<py::gil_scoped_release>());
+#endif
+
+#if defined(PADDLE_WITH_FLAGCX)
+  py::class_<ProcessGroupFlagcx, std::shared_ptr<ProcessGroupFlagcx>>(
+      *m, "ProcessGroupFlagcx", ProcessGroup)
+      .def_static("create",
+                  distributed::ProcessGroupFlagcx::CreateProcessGroupFlagcx,
+                  py::arg("store"),
+                  py::arg("rank"),
+                  py::arg("world_size"),
+                  py::arg("group_id") = 0,
+                  py::arg("timeout") = 30 * 60 * 1000,
+                  py::arg("nccl_comm_init_option") = 0,
                   py::call_guard<py::gil_scoped_release>());
 #endif
 

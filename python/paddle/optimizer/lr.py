@@ -2131,7 +2131,7 @@ class CyclicLR(LRScheduler):
 
     It has been proposed in `Cyclic Learning Rates for Training Neural Networks <https://arxiv.org/abs/1506.01186>`_.
 
-    According to the paper, the cyclic learning rate schedule has three build-in scale methods:
+    According to the paper, the cyclic learning rate schedule has three built-in scale methods:
 
     * "triangular": A basic triangular cycle without any amplitude scaling.
     * "triangular2": A basic triangular cycle that reduce initial amplitude by half each cycle.
@@ -2154,7 +2154,7 @@ class CyclicLR(LRScheduler):
         mode (str, optional): one of 'triangular', 'triangular2' or 'exp_range'.
             If scale_fn is specified, this argument will be ignored. Default: 'triangular'
         exp_gamma (float): Constant in 'exp_range' scaling function: exp_gamma**iterations. Used only when mode = 'exp_range'. Default: 1.0
-        scale_fn (function, optional): A custom scaling function, which is used to replace three build-in methods.
+        scale_fn (function, optional): A custom scaling function, which is used to replace three built-in methods.
             It should only have one argument. For all x >= 0, 0 <= scale_fn(x) <= 1.
             If specified, then 'mode' will be ignored. Default: None
         scale_mode (str, optional): One of 'cycle' or 'iterations'. Defines whether scale_fn is evaluated on cycle

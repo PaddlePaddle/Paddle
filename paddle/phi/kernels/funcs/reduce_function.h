@@ -1357,11 +1357,10 @@ void ReduceKernelImpl(const Context& dev_ctx,
                       const std::vector<int64_t>& dims,
                       bool keep_dim,
                       bool reduce_all) {
-  PADDLE_ENFORCE_GE(input.numel(),
+  PADDLE_ENFORCE_GT(input.numel(),
                     0,
                     common::errors::InvalidArgument(
-                        "The input size (numel) of reduce op should be larger "
-                        "than or equal to 0"));
+                        "Tensor need be reduced must not empty."));
 
   dev_ctx.template Alloc<OutT>(output);
 

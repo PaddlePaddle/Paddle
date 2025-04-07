@@ -788,12 +788,12 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0, 0], [1, 1]])
+        expect_out = np.array([0, 1, 0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
@@ -803,12 +803,12 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0], [1]])
+        expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
 

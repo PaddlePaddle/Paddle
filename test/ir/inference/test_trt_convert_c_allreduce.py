@@ -51,21 +51,6 @@ class TestMin(TestDistTRT):
         self.precision = "int8"
 
 
-# class TestMax(TestDistTRT):
-#
-#    def init_case(self):
-#        self.op_type = "c_allreduce_max"
-#        self.target_value = 2.
-#        self.precision = "fp16"
-#
-#
-# class TestProd(TestDistTRT):
-#
-#    def init_case(self):
-#        self.op_type = "c_allreduce_prod"
-#        self.target_value = 2.
-#        self.precision = "fp16"
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

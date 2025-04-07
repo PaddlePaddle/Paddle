@@ -534,7 +534,7 @@ def auto_recompute(
         | required_bw_value_nodes
         | unclaimed_value_nodes
     ):
-        if value_node in outputs or not value_node.initialized():
+        if not value_node.initialized():
             continue
 
         if value_node.get_defining_op().name() == "builtin.combine":

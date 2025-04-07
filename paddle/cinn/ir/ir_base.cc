@@ -526,9 +526,15 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
       auto rhs = Simplify(expr.operand(1), level);
       auto res =
           optim::ConstructIndexExprByNodeType(expr.node_type(), lhs, rhs);
-      if (level == IndexExpr::OptLevel::Level2 &&
-          expr.node_type() == ir::IrNodeTy::Add)
+      if (level >= IndexExpr::OptLevel::kLevel2 &&
+          expr.node_type() == ir::IrNodeTy::Add) {
         res = common::MergeMulMod(res);
+      }
+      if (level == IndexExpr::OptLevel::kLevel3 &&
+          (expr.node_type() == ir::IrNodeTy::Div ||
+           expr.node_type() == ir::IrNodeTy::Mod)) {
+        res = optim::BoundSimplify(res);
+      }
       return res;
     }
     default:

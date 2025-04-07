@@ -41,6 +41,20 @@ class TestCollectiveAllToAllSingleUnequalSplitAPI(TestDistBase):
                 dtype=dtype,
             )
 
+    @unittest.skipIf(
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
+        "run test when having at least 2 XPUs.",
+    )
+    def test_alltoall_single_unequal_split_empty(self):
+        support_types = get_xpu_op_support_types('c_alltoall')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_alltoall_single_api_unequal_split_empty_dygraph.py",
+                "alltoall_single_unequal_split_empty",
+                static_mode="0",
+                dtype=dtype,
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

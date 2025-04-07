@@ -126,6 +126,7 @@ DEFINE_GENERAL_PATTERN(Asin, paddle::dialect::AsinOp)
 DEFINE_GENERAL_PATTERN(Acos, paddle::dialect::AcosOp)
 DEFINE_GENERAL_PATTERN(Atan, paddle::dialect::AtanOp)
 DEFINE_GENERAL_PATTERN(ShuffleChannel, paddle::dialect::ShuffleChannelOp)
+DEFINE_GENERAL_PATTERN(Meshgrid, paddle::dialect::MeshgridOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -927,10 +928,16 @@ class UnsqueezeOpPattern
         dynamic_dims.push_back(i);
       }
     }
-    if (dynamic_dims.size() > 1) {
-      VLOG(3) << "Currently we don't support unsqueeze with more than one "
-                 "dynamic dims";
-      return false;
+    if (dynamic_dims.size() == 0) {
+      std::vector<int64_t> axes;
+      for (auto &axis_ele : axis.AsVector()) {
+        axes.push_back(axis_ele.dyn_cast<pir::Int64Attribute>().data());
+      }
+      if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+        VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                   "supported in static shape";
+        return false;
+      }
     }
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -967,10 +974,16 @@ class Unsqueeze_OpPattern
         dynamic_dims.push_back(i);
       }
     }
-    if (dynamic_dims.size() > 1) {
-      VLOG(3) << "Currently we don't support unsqueeze with more than one "
-                 "dynamic dims";
-      return false;
+    if (dynamic_dims.size() == 0) {
+      std::vector<int64_t> axes;
+      for (auto &axis_ele : axis.AsVector()) {
+        axes.push_back(axis_ele.dyn_cast<pir::Int64Attribute>().data());
+      }
+      if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+        VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                   "supported in static shape";
+        return false;
+      }
     }
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -1953,8 +1966,12 @@ class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
     pir::Value x = op.operand_source(0);
     int rank = 1;
     auto x_type = x.type();
-    if (x_type.isa<pir::VectorType>()) {
-      rank = x_type.dyn_cast<pir::VectorType>().size();
+    if (x_type.isa<pir::VectorType>() &&
+        x_type.dyn_cast<pir::VectorType>().size() > 0) {
+      auto vec_type = x_type.dyn_cast<pir::VectorType>();
+      auto tensor_element =
+          vec_type.data()[0].dyn_cast<paddle::dialect::DenseTensorType>();
+      rank = tensor_element.dims().size();
     } else {
       auto x_shape = pir::GetShapeFromValue(x);
       rank = x_shape.size();
@@ -3004,6 +3021,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Acos)
     ADD_PATTERN(Atan)
     ADD_PATTERN(ShuffleChannel)
+    ADD_PATTERN(Meshgrid)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif

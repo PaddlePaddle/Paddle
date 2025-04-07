@@ -19,9 +19,6 @@ import types
 from typing import TYPE_CHECKING, Any
 
 from paddle._typing import unreached
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
 from ....profiler import EventGuard
 from ....utils import do_until_stop_iteration
@@ -35,7 +32,10 @@ from ....utils.exceptions import (
     UnsupportedOperationBreak,
 )
 from ..tracker import ConstTracker, DanglingTracker, DummyTracker
-from .base import VariableFactory
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import ConstantVariable
 from .callable import BuiltinVariable
 from .container import TupleVariable
