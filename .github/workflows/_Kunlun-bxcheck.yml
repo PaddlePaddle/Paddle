@@ -64,7 +64,7 @@ jobs:
         PADDLE_VERSION: 0.0.0
         WITH_TESTING: "ON"
         WITH_DISTRIBUTE: "ON"
-        PY_VERSION: 3.10
+        PY_VERSION: "3.10"
         XPU_VISIBLE_DEVICES: "0,1"
         CUDA_VERSION:
         CUDNN_VERSION:
@@ -197,7 +197,7 @@ jobs:
         PADDLE_VERSION: 0.0.0
         WITH_TESTING: "ON"
         WITH_DISTRIBUTE: "ON"
-        PY_VERSION: 3.10
+        PY_VERSION: "3.10"
         XPU_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
         CUDA_VISIBLE_DEVICES: ${{ env.CUDA_VISIBLE_DEVICES }}
         CUDA_VERSION:
