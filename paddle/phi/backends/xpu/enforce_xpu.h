@@ -29,7 +29,7 @@ namespace xpu {
 
 std::string get_xpu_error_msg(int error_code);
 #ifdef PADDLE_WITH_XPU_BKCL
-std::string get_xpu_error_msg(BKCLResult_t stat);
+std::string get_bkcl_error_msg(BKCLResult_t stat);
 #endif
 std::string get_xdnn_error_msg(int error_code, std::string msg);
 std::string get_xblas_error_msg(int error_code, std::string msg);
@@ -46,20 +46,14 @@ struct ExternalApiType {};
     static constexpr Type kSuccess = success_value;   \
   }
 
-// Existing specializations for XPU
+// Existing specializations for XPU api
 DEFINE_EXTERNAL_API_TYPE(int, XPU_SUCCESS);
-#ifdef PADDLE_WITH_XPU_BKCL
-DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
-#endif
-// Added specialization for cudaError_t to support CUDA errors in XPU
-// enforcement.
-#ifdef PADDLE_WITH_XPU
+// Added specialization for cudaError_t to support CUDA api
 DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
-#endif
 #undef DEFINE_EXTERNAL_API_TYPE
 }  // namespace details
 
-// return code type int for xpu api, type BKCLResult_t for bkcl api
+// return code type int for xpu api, type cudaError_t for cuda api
 #define PADDLE_ENFORCE_XPU_SUCCESS(COND)                      \
   do {                                                        \
     auto __cond__ = (COND);                                   \
@@ -74,6 +68,20 @@ DEFINE_EXTERNAL_API_TYPE(cudaError_t, cudaSuccess);
       __THROW_ERROR_INTERNAL__(__summary__);                  \
     }                                                         \
   } while (0)
+
+// return type BKCLResult_t
+#ifdef PADDLE_WITH_XPU_BKCL
+#define PADDLE_ENFORCE_BKCL_SUCCESS(COND)                     \
+  do {                                                        \
+    auto __cond__ = (COND);                                   \
+    if (UNLIKELY(__cond__ != BKCLResult_t::BKCL_SUCCESS)) {   \
+      std::string error_msg =                                 \
+          ::phi::backends::xpu::get_bkcl_error_msg(__cond__); \
+      auto __summary__ = common::errors::External(error_msg); \
+      __THROW_ERROR_INTERNAL__(__summary__);                  \
+    }                                                         \
+  } while (0)
+#endif
 
 #define PADDLE_ENFORCE_XDNN_SUCCESS(COND, MSG)                     \
   do {                                                             \

@@ -282,7 +282,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                        x->numel(),
                        false,
                        inverse_scale,
-                       0.0);
+                       0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
         r = xpu::cast(dev_ctx.x_context(),
@@ -297,7 +297,7 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                            x->numel(),
                            false,
                            inverse_scale,
-                           0.0);
+                           0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       }
     }

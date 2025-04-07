@@ -386,6 +386,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("place"),
            py::arg("zero_copy") = false)
       .def("set",
+           SetTensorFromPyArray<phi::XPUPinnedPlace>,
+           py::arg("array"),
+           py::arg("place"),
+           py::arg("zero_copy") = false)
+      .def("set",
            SetTensorFromPyArray<phi::GPUPinnedPlace>,
            py::arg("array"),
            py::arg("place"),
@@ -395,7 +400,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
         Args:
           array (numpy.ndarray): The shape where the DenseTensor is to be set.
-          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|XPUPinnedPlace): The place where the
           Tensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.

@@ -36,6 +36,13 @@ if(WITH_NCCL OR WITH_RCCL)
 
 endif()
 
+if(WITH_FLAGCX)
+  cc_library(
+    process_group_flagcx
+    SRCS process_group_flagcx.cc common.cc
+    DEPS process_group phi)
+endif()
+
 if(WITH_XPU_BKCL)
   cc_library(
     process_group_bkcl

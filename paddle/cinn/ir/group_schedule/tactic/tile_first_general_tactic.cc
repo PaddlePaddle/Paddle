@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
-#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 namespace cinn {
 namespace ir {
@@ -62,7 +61,7 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
  private:
   void MergeFlattenAxis(ir::IRSchedule* sch, const std::string& block_id);
   void MergeReduceAxis(ir::IRSchedule* sch, const std::string& block_id);
-  void VariableTypeAssignment(ir::IRSchedule* sch, const std::string& block_id);
+  void SetBufferType(ir::IRSchedule* sch, const std::string& block_id);
   void SetReduceType(ir::IRSchedule* sch, const std::string& block_id);
 
  private:
@@ -71,6 +70,7 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
   std::vector<int32_t> vec_flatten_axis_;
   std::vector<int32_t> vec_reduce_axis_;
   std::unordered_map<std::string, std::string> map_rf_block_;
+  std::unordered_map<std::string, std::string> map_global_rf_block_;
 };
 
 void TileFirstGeneralTactic::Init(ScheduleContext* context,
@@ -103,6 +103,7 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context,
     }
   }
   map_rf_block_.clear();
+  map_global_rf_block_.clear();
 }
 
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
@@ -165,7 +166,6 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
           << sch->GetModule().GetExprs().front();
 
   // Split reduce axes -> [rd_loop, rd_block, rd_thread]
-  std::string global_rf_block;
   if (vec_reduce_axis_.size() > 0) {
     auto loops = sch->GetLoops(block_id);
     sch->Split(loops[current_reduce_axis], {rd_loop, rd_block * rd_thread});
@@ -174,8 +174,7 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
     sch->Reorder({loops[current_reduce_axis + 1], loops[current_reduce_axis]});
 
     loops = sch->GetLoops(block_id);
-    if (IsReductionSBlock(sch->GetBlock(block_id)) &&
-        ir::GetLoopExtent(loops[current_reduce_axis]) != 1) {
+    if (IsReductionSBlock(sch->GetBlock(block_id))) {
       ir::Expr rf_tensor =
           sch->FactorizeReduction(loops[current_reduce_axis],
                                   /* rf_axis = */ 0,
@@ -196,8 +195,9 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
             sch->FactorizeReduction(loops[current_reduce_axis],
                                     /* rf_axis = */ 0,
                                     /* with_write_back_block_init = */ false);
-        global_rf_block = rf_tensor.as_tensor_ref()->name;
-        rf_tensor.as_tensor_ref()->WithBuffer("global", "_" + global_rf_block);
+        std::string tensor_name = rf_tensor.as_tensor()->name;
+        map_global_rf_block_[block_id] = tensor_name;
+        rf_tensor.as_tensor()->WithBuffer("global", "_" + tensor_name);
       }
     }
   }
@@ -234,13 +234,13 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   if (map_rf_block_.count(block_id) > 0) {
     DoBind(sch->GetLoops(map_rf_block_[block_id]));
   }
-  if (!global_rf_block.empty()) {
-    DoBind(sch->GetLoops(global_rf_block));
+  if (map_global_rf_block_.count(block_id) > 0) {
+    DoBind(sch->GetLoops(map_global_rf_block_[block_id]));
   }
   VLOG(4) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetModule().GetExprs().front();
 
-  VariableTypeAssignment(sch, block_id);
+  SetBufferType(sch, block_id);
   SetReduceType(sch, block_id);
 }
 
@@ -271,8 +271,8 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
   }
 }
 
-void TileFirstGeneralTactic::VariableTypeAssignment(
-    ir::IRSchedule* sch, const std::string& block_id) {
+void TileFirstGeneralTactic::SetBufferType(ir::IRSchedule* sch,
+                                           const std::string& block_id) {
   auto block = sch->GetBlock(block_id);
   if (context_->output_names.count(block_id) > 0) {
     sch->SetBuffer(block, "global");
@@ -290,6 +290,12 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
                                            const std::string& block_id) {
   if (IsReductionSBlock(sch->GetBlock(block_id))) {
     auto block = sch->GetBlock(block_id)
+                     .As<ir::ScheduleBlockRealize>()
+                     ->schedule_block.As<ir::ScheduleBlock>();
+    block->reduce_method = context_->config.tile_config.reduce_method;
+  }
+  if (map_global_rf_block_.count(block_id) > 0) {
+    auto block = sch->GetBlock(map_global_rf_block_[block_id])
                      .As<ir::ScheduleBlockRealize>()
                      ->schedule_block.As<ir::ScheduleBlock>();
     block->reduce_method = context_->config.tile_config.reduce_method;
@@ -427,8 +433,7 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
   sch->Reorder({loops[threads_axis], loops[loop_axis]});
   threads_axis = 1;
   loops = sch->GetLoops(block_id);
-  if (IsReductionSBlock(sch->GetBlock(block_id)) &&
-      ir::GetLoopExtent(loops[threads_axis]) != 1) {
+  if (IsReductionSBlock(sch->GetBlock(block_id))) {
     ir::Expr rf_tensor =
         sch->FactorizeReduction(loops[threads_axis],
                                 /* rf_axis = */ 0,
@@ -528,7 +533,7 @@ void TileFirstGeneralTactic::ApplyVectorize(ir::IRSchedule* sch,
         sch, &map_rf_block_, block_id, rd_thread, vectorize_factor);
   }
 
-  VariableTypeAssignment(sch, block_id);
+  SetBufferType(sch, block_id);
   SetReduceType(sch, block_id);
   return;
 }

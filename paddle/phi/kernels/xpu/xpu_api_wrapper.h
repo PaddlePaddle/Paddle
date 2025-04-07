@@ -324,6 +324,80 @@ static void xblas_fc_wrapper(xpu::Context* ctx,
 #endif
   } else {
 #ifdef PADDLE_WITH_XPU_XRE5
+    if constexpr (std::is_same<XPUTypeBF16, XPUType>::value) {
+      if (std::getenv("XPU_PADDLE_FC_BFLOAT16_XTE") != nullptr) {
+        const int MAXPTR_N = ctx->max_ptr_size();
+        int x_len = m * k;
+        XPUTypeFP16* x_fp16 = nullptr;
+        x_fp16 = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(x_len);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(x_fp16);
+        int w_len = k * n;
+        XPUTypeFP16* w_fp16 = nullptr;
+        w_fp16 = RAII_GUARD.alloc_l3_or_gm<XPUTypeFP16>(w_len);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(w_fp16);
+
+        float* xte_scale_x = nullptr;
+        float* xte_scale_w = nullptr;
+        xte_scale_x = RAII_GUARD.alloc_l3_or_gm<float>(1);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(xte_scale_x);
+        xte_scale_w = RAII_GUARD.alloc_l3_or_gm<float>(1);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(xte_scale_w);
+
+        float* xte_x_maxptr = nullptr;
+        float* xte_w_maxptr = nullptr;
+        if (x_maxptr == nullptr) {
+          xte_x_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
+          PADDLE_ENFORCE_XDNN_NOT_NULL(xte_x_maxptr);
+          int r = xpu::findmax(ctx, x, xte_x_maxptr, x_len);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
+          r = xpu::cast_te(ctx, x, xte_x_maxptr, x_fp16, xte_scale_x, x_len);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
+        } else {
+          r = xpu::cast_te(ctx, x, x_maxptr, x_fp16, xte_scale_x, x_len);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
+        }
+        if (w_maxptr == nullptr) {
+          xte_w_maxptr = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
+          PADDLE_ENFORCE_XDNN_NOT_NULL(xte_w_maxptr);
+          r = xpu::findmax(ctx, w, xte_w_maxptr, w_len);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_findmax");
+          r = xpu::cast_te(ctx, w, xte_w_maxptr, w_fp16, xte_scale_w, w_len);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
+        } else {
+          r = xpu::cast_te(ctx, w, w_maxptr, w_fp16, xte_scale_w, w_len);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_cast_te");
+        }
+
+        r = xblas::
+            fc_fusion<XPUTypeFP16, XPUTypeFP16, XPUTypeBF16, XPUTypeFP16>(
+                ctx,
+                x_fp16,
+                w_fp16,
+                y,
+                m,
+                n,
+                k,
+                x_trans,
+                w_trans,
+                x_maxptr ? x_maxptr : xte_x_maxptr,
+                w_maxptr ? w_maxptr : xte_w_maxptr,
+                y_maxptr,
+                ldx,
+                ldw,
+                ldy,
+                alpha,
+                beta,
+                bias,
+                act,
+                xte_scale_x,
+                xte_scale_w,
+                scale_x_mode,
+                scale_w_mode);
+
+        PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
+        return;
+      }
+    }
     r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(ctx,
                                                          x,
                                                          w,

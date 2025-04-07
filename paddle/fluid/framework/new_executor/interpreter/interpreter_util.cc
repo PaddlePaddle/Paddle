@@ -39,9 +39,14 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/memory/stats.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/distributed/collective/process_group.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
+#else
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#endif
 #endif
 
 #ifdef PADDLE_WITH_DNNL
@@ -49,6 +54,7 @@
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
@@ -869,13 +875,31 @@ void BuildOpFuncList(const phi::Place& place,
             op_func_node.phi_kernel_->GetKernelRegisteredType() ==
                 phi::KernelRegisteredType::FUNCTION) {
           VLOG(6) << op_type << " run function kernel";
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
           auto attrs = op->Attrs();
           if (attrs.find("ring_id") != attrs.end()) {
             auto ring_id_attr = attrs.at("ring_id");
             int ring_id = PADDLE_GET(int, ring_id_attr);
             auto map = distributed::ProcessGroupMapFromGid::getInstance();
             if (map->has(ring_id)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+              auto original_stream =
+                  static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
+              distributed::ProcessGroup* pg = map->get(ring_id);
+              auto comm_context =
+                  static_cast<paddle::distributed::ProcessGroupCustom*>(pg)
+                      ->GetOrCreateCommContext(place);
+              dev_ctx =
+                  static_cast<phi::distributed::XCCLCommContext*>(comm_context)
+                      ->GetDevContext();
+              dev_ctx->SetCommContext(comm_context);
+              // set stream
+              static_cast<phi::CustomContext*>(dev_ctx)->SetStream(
+                  original_stream);
+              // todo  set allocator in custom device
+#else
+
               auto original_stream =
                   static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
               distributed::ProcessGroup* pg = map->get(ring_id);
@@ -897,6 +921,7 @@ void BuildOpFuncList(const phi::Place& place,
                           place,
                           static_cast<phi::GPUContext*>(dev_ctx)->stream())
                       .get());
+#endif
             } else {
               VLOG(3) << "ring_id " << ring_id
                       << " not found in ProcessGroupMapFromGid ";

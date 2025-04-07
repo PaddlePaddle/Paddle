@@ -687,12 +687,12 @@ TileConfigMap BuildStaticSpatialConfig(
     if (rd_block_num > 1 && base_info->can_apply_grid_reduce) {
       int64_t rd_threshold = rd_block_num * min_loops * 16;
       collector({1, kMaxNumel, 1, rd_threshold},
-                {16, 16, 1, 1, 1, -1, BlockReduceMethod()});
+                {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
       collector({1, kMaxNumel, rd_threshold + 1, kMaxNumel},
-                {16, 16, rd_block_num, 1, 1, -1, BlockReduceMethod()});
+                {16, 16, rd_block_num, 1, 1, -1, DiscreteReduceMethod()});
     } else {
       collector({1, kMaxNumel, 1, kMaxNumel},
-                {16, 16, 1, 1, 1, -1, BlockReduceMethod()});
+                {16, 16, 1, 1, 1, -1, DiscreteReduceMethod()});
     }
   }
 

@@ -228,6 +228,10 @@ __device__ inline int FN_INT32(mod)(int a, int b) {
   if ((res != 0) && ((b ^ res) < 0)) res += b;
   return res;
 }
+__device__ inline int FN_INT32(exp)(int a) {
+  float res = exp(__int2float_rd(a));
+  return __float2int_rn(res);
+}
 
 // *************************************************************** //
 
@@ -246,6 +250,10 @@ __device__ inline long long int FN_INT64(mod)(long long int a, long long int b) 
   long long int res = a % b;
   if ((res != 0) && ((b ^ res) < 0)) res += b;
   return res;
+}
+__device__ inline long long int FN_INT64(exp)(long long int a) {
+  double res = exp(__ll2double_rd(a));
+  return __double2ll_rn(res);
 }
 
 __device__ inline long long int FN_INT64(pow)(long long int a, long long int b) {

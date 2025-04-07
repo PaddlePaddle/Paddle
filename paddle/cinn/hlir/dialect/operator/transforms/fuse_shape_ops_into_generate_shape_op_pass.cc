@@ -46,10 +46,55 @@ namespace {
 using ShapeOrDataDimExprs4ValueT =
     std::function<symbol::ShapeOrDataDimExprs(pir::Value)>;
 
+bool IsRootValueForSlice(
+    pir::Value value,
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
+  if (!value || !value.type()) {
+    return false;
+  }
+  if (!value.dyn_cast<pir::OpResult>()) {
+    return false;
+  }
+  pir::Operation* owner = value.defining_op();
+  if (!owner->isa<paddle::dialect::SliceOp>()) {
+    return false;
+  }
+  const auto& value_shape = ShapeOrDataDimExprs4Value(value);
+  if (!value_shape.data().has_value()) {
+    return false;
+  }
+  if (value_shape.data().value().size() != 1) {
+    return false;
+  }
+  const auto& slice_in = ShapeOrDataDimExprs4Value(owner->operand_source(0));
+  if (!slice_in.data().has_value()) {
+    return true;
+  }
+  const auto& slice_start_data =
+      ShapeOrDataDimExprs4Value(owner->operand_source(1)).data().value();
+  const auto& slice_end_data =
+      ShapeOrDataDimExprs4Value(owner->operand_source(2)).data().value();
+
+  bool starts_ends_all_int =
+      std::all_of(slice_start_data.begin(),
+                  slice_start_data.end(),
+                  [](const symbol::DimExpr& e) { return e.isa<int64_t>(); }) &&
+      std::all_of(slice_end_data.begin(),
+                  slice_end_data.end(),
+                  [](const symbol::DimExpr& e) { return e.isa<int64_t>(); });
+  if (!starts_ends_all_int) {
+    return true;
+  }
+  return false;
+}
+
 std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
     pir::Value shape,
     const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value) {
   std::vector<pir::Value> ret{};
+  if (IsRootValueForSlice(shape, ShapeOrDataDimExprs4Value)) {
+    return ret;
+  }
   const auto& Emplace = [&](pir::Value value) {
     if (std::find(ret.begin(), ret.end(), value) != ret.end()) return;
     ret.emplace_back(value);
@@ -80,6 +125,10 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
   // each dim_expr, which is automatically in next step.
   const auto& NeedTrackUpstream = [&](pir::Value value) -> bool {
     const auto& sym_shape = ShapeOrDataDimExprs4Value(value);
+    if (sym_shape.isa<symbol::TensorShapeOrDataDimExprs>() &&
+        IsRootValueForSlice(value, ShapeOrDataDimExprs4Value)) {
+      return false;
+    }
     return std::visit(MayContainDimData, sym_shape.variant());
   };
   const auto& ForEachInputDimTensor =
@@ -418,6 +467,14 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
 
     // all user op's output should has no data of shape expr
     pir::Value output = op->result(0);
+    auto ShapeOrDataDimExprs4Value =
+        [&shape_analysis](
+            pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+      return shape_analysis.GetShapeOrDataForValue(value);
+    };
+    if (IsRootValueForSlice(output, ShapeOrDataDimExprs4Value)) {
+      return false;
+    }
     if (output.use_empty()) return false;
     for (auto iter = output.use_begin(); iter != output.use_end(); ++iter) {
       auto* user = iter->owner();
@@ -443,7 +500,9 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
         GetOutOfRewrittenGenerateShapeOp(
             op->result(0), &rewriter, ShapeOrDataDimExprs4Value);
     if (!opt_generated_shape.has_value()) {
-      LOG(WARNING) << "Create GenerateShapeOp Failed.";
+      LOG(WARNING) << "Create GenerateShapeOp Failed." << op->name() << "["
+                   << op->id() << "] with ShapeOrDataDimExprs: "
+                   << shape_analysis.GetShapeOrDataForValue(op->result(0));
       return;
     }
 

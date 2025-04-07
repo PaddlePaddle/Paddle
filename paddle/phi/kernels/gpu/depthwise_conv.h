@@ -29,6 +29,95 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
+#include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
+
+namespace phi {
+// To determine use cudnn or not.
+struct DWConvParams {
+  bool has_fuse_relu_;
+  std::string data_format_;
+  std::vector<int> strides_;
+  std::vector<int> dilations_;
+
+  DWConvParams(const bool has_fuse_relu,
+               const std::string& data_format,
+               const std::vector<int>& strides,
+               const std::vector<int>& dilations)
+      : has_fuse_relu_(has_fuse_relu),
+        data_format_(data_format),
+        strides_(strides),
+        dilations_(dilations) {}
+
+  bool is_strided() const {
+    for (const auto& stride : strides_) {
+      if (stride != 1) return true;
+    }
+    return false;
+  }
+
+  bool is_dilated() const {
+    for (const auto& dilation : dilations_) {
+      if (dilation != 1) return true;
+    }
+    return false;
+  }
+
+  // Check if use cudnn for NHWC and NCHW FP16.
+  template <typename Context>
+  bool UseCudnnDepthwise(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& filter) const {
+    // No fuse supported yet.
+    if (has_fuse_relu_) {
+      return false;
+    }
+    // Tensor Core introduced from Volta GPUs.
+    if (!IsVoltaOrLater(dev_ctx)) {
+      return false;
+    }
+    // Cudnn enable
+    if (!dynload::HasCUDNN()) {
+      return false;
+    }
+    // Only support FP16.
+    if (input.type() != phi::DataType::FLOAT16 &&
+        filter.type() != phi::DataType::FLOAT16) {
+      return false;
+    }
+    // Only support depthwise 2D.
+    if (input.dims().size() != 4) {
+      return false;
+    }
+    // No dilation and stride.
+    if (is_dilated() || is_strided()) {
+      return false;
+    }
+    // Make sure square filter.
+    const int ksize_height = filter.dims()[2];
+    const int ksize_width = filter.dims()[3];
+    if (ksize_height != ksize_width) {
+      return false;
+    }
+    // For 1/3/5/7 filter。
+    if (ksize_height != 1 && ksize_height != 3 && ksize_height != 5 &&
+        ksize_height != 7) {
+      return false;
+    }
+    // Use cudnn for nhwc fp16.
+    if (data_format_ == "NHWC") {
+      return true;
+    }
+    // TODO(Dmovic): Data format here is NCHW, enable when channel
+    // greater than 32, need benchmarks.
+    if (input.dims()[1] < 32) {
+      return false;
+    }
+    return true;
+  }
+};
+
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
