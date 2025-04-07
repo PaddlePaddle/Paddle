@@ -224,6 +224,11 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                 )(res)
 
             assert isinstance(res, (ConstantVariable, SymbolicVariable))
+            # NOTE(SigureMo): force to constant to trigger fallback to static dim
+            # to align with old behavior. In next PR we will support guard value
+            # with constraint.
+            if isinstance(res, SymbolicVariable):
+                res = res.to_constant()
             is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:

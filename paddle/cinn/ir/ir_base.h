@@ -554,14 +554,18 @@ struct IndexExpr : public IrNodeRef {
    * Level2: Each factor in the expression is attempted to be simplified with
    * the other factors
    *   e.g. x / 2 * 2 + y / 2 + 5 + x % 2 ==> y / 2 + x + 5
+   * Level3: Simplify with boundary.
+   *   e.g. x % S0 ==> x if x < S0
+   *        x / S0 ==> 0 if x < S0
    *
    * Note: Because IndexExpr is generated in order, Short operand is at the
    * end of the expression, so Level1 is usually used.
    */
   enum class OptLevel {
-    Level0 = 0,  // TODO(liujinnan): Only constant folding is performed
-    Level1 = 1,  // Constant folding and sequential simplification are performed
-    Level2 = 2   // Top level, simplify
+    kLevel0 = 0,  // TODO(liujinnan): Only constant folding is performed
+    kLevel1 = 1,
+    kLevel2 = 2,
+    kLevel3 = 3  // Top level, simplify
   };
 
   enum class IndexType {
@@ -571,7 +575,7 @@ struct IndexExpr : public IrNodeRef {
     kCast = 3      // exist cast
   };
 
-  IndexExpr Normalize(OptLevel level = OptLevel::Level1) const;
+  IndexExpr Normalize(OptLevel level = OptLevel::kLevel1) const;
 
   bool IsDynamic() const;
 

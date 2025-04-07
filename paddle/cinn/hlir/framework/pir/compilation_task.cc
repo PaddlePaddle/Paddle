@@ -157,8 +157,25 @@ void UnifyBroadcastGroupFuncArgs(
   };
 
   const auto& UpdateAllFuncArgs = [&](GroupCompilationContext& context) {
+    std::unordered_map<std::string, cinn::common::Type> old_type_map;
     for (ir::LoweredFunc& func : context.lowered_funcs_) {
+      old_type_map.clear();
+      // record old func arg type.
+      for (auto& old_arg : func->args) {
+        if (old_arg.is_var() && old_arg.var_arg()->is_symbolic_constant) {
+          old_type_map[old_arg.name()] = old_arg.var_arg()->type();
+        }
+      }
+      // update func args.
       func->args = new_args_vec;
+      // reset arg type to old type.
+      for (auto& new_arg : func->args) {
+        if (new_arg.is_var() && new_arg.var_arg()->is_symbolic_constant &&
+            old_type_map.count(new_arg.name())) {
+          new_arg.set_var(ir::ir_utils::IRCopy(new_arg.var_arg()));
+          new_arg.var_arg()->set_type(old_type_map[new_arg.name()]);
+        }
+      }
     }
   };
 

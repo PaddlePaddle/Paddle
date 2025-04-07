@@ -542,6 +542,20 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 tr1_out, need_result2, rtol=1e-05, atol=1e-05
             )
+        elif col_type == "alltoall_single_unequal_split_empty":
+            none_shape = list(input1.shape)
+            none_shape[0] = 0
+
+            need_result1 = np.empty(none_shape, dtype=input1.dtype)
+            need_result2 = input2
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
         elif col_type == "alltoall_unequal_split":
             half_dim0 = input1.shape[0] // 2
             half_dim1 = input1.shape[1] // 2
@@ -561,6 +575,20 @@ class TestDistBase(unittest.TestCase):
             )
             tr0_out = np.concatenate([out.flatten() for out in tr0_out])
             tr1_out = np.concatenate([out.flatten() for out in tr1_out])
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_unequal_split_empty":
+            none_shape = list(input1.shape)
+            none_shape[0] = 0
+
+            need_result1 = input2
+            need_result2 = np.empty(none_shape, dtype=input1.dtype)
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
             np.testing.assert_allclose(
                 tr0_out, need_result1, rtol=1e-05, atol=1e-05
             )

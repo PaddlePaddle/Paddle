@@ -32,6 +32,7 @@ from .basic import (  # noqa: F401
     NumpyVariable,
     ObjectVariable,
     ParameterVariable,
+    PlaceVariable,
     SliceVariable,
     SuperVariable,
     SymbolicVariable,

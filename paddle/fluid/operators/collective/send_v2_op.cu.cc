@@ -168,22 +168,6 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    auto* x_var = ctx.InputVar("X");
-    if (x_var->IsType<phi::TensorArray>()) {
-      PADDLE_ENFORCE_EQ(
-          dynamic_shape,
-          false,
-          common::errors::InvalidArgument("Dynamic shape for send/recv not "
-                                          "support phi::TensorArray for now."));
-      auto& x_array = x_var->Get<phi::TensorArray>();
-      for (size_t idx = 0; idx < x_array.size(); idx++) {
-        VLOG(3) << "DenseTensorArray: idx(" << idx << ")";
-        auto& x = x_array.at(idx);
-        int numel = x.numel();
-        comm_ctx->Send(x, numel, peer, stream);
-      }
-      return;
-    }
     auto x = ctx.Input<phi::DenseTensor>("X");
     int numel = x->numel();
 

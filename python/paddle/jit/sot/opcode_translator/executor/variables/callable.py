@@ -29,9 +29,6 @@ from typing import (
 )
 
 import paddle
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -84,7 +81,10 @@ from ..tracker import (
     Tracker,
 )
 from ..virtual_frame import VirtualFrame
-from .base import VariableFactory
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import (
     ConstantVariable,
     ObjectVariable,

@@ -35,7 +35,7 @@ jobs:
         git config --unset http.https://github.com/.extraheader
         git submodule foreach --recursive sh -c "git config --local --unset-all 'http.https://github.com/.extraheader'"
         git submodule foreach --recursive sh -c "git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'"
-        git switch develop
+        git switch ${{ github.event.pull_request.base.ref }}
         set +e
         git branch -D test
         set -e
@@ -73,7 +73,7 @@ jobs:
         python ${bos_file} Paddle.tar.gz paddle-github-action/PR/Paddle/${PR_ID}/${COMMIT_ID}
         rm Paddle.tar.gz
         cd -
-        git switch develop
+        git switch ${{ github.event.pull_request.base.ref }}
         git branch -D test
         git gc
 

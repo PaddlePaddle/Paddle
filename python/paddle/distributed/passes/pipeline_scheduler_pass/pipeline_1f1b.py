@@ -16,7 +16,6 @@ import logging
 
 import paddle
 from paddle.base import core
-from paddle.distributed.auto_parallel.static.cost import calc_time_by_cost_model
 from paddle.framework import (
     _current_expected_place_ as _get_device,
 )
@@ -25,7 +24,6 @@ from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
 from ..pass_utils import (
     AutoParallelStreamType,
-    _add_event_dependency,
     forward_complete_op_role,
     split_program,
 )
@@ -110,99 +108,6 @@ class Pipeline1F1BPass(PipelinePassBase):
         opt_job.set_micro_batch_id(0)
         job_list.append(opt_job)
         return job_list
-
-    def _multistreaming_for_overlapping(self, programs, job_type):
-        num_programs = len(programs)
-        higher_stream_priority = -1
-        for program_id, program in enumerate(programs):
-            last_op = program.global_block().ops[-1]
-            if self.is_comm_op_valid_to_overlap(last_op):
-                # TODO(Ruibiao): Assign different stream to FORWARD and BACKWARD CommOps,
-                # and set a lower priority for FORWARD Comm stream. It can reduce the
-                # impact of FORWARD Comm on BACKWARD Comp. Now the default stream priority
-                # in standalone executor is already the lowest priority (corresponding to
-                # 0 in V100), cannot set a lower one. Maybe we need to support setting
-                # default stream for executor.
-                last_op.dist_attr.execution_stream = (
-                    AutoParallelStreamType.MP_STREAM.value
-                )
-                last_op.dist_attr.stream_priority = higher_stream_priority
-                # Add cross-program event dependency
-                prior_op_input_arg_names = last_op.input_arg_names
-                prior_op_output_arg_names = last_op.output_arg_names
-                for i in range(program_id + 1, num_programs):
-                    posterior_ops = programs[i].global_block().ops
-                    num_posterior_ops = len(posterior_ops)
-                    for op_id in range(num_posterior_ops):
-                        posterior_op = posterior_ops[op_id]
-                        posterior_op_input_arg_names = (
-                            posterior_op.input_arg_names
-                        )
-                        posterior_op_output_arg_names = (
-                            posterior_op.output_arg_names
-                        )
-                        if (
-                            set(prior_op_input_arg_names)
-                            & set(posterior_op_output_arg_names)
-                            or set(prior_op_output_arg_names)
-                            & set(posterior_op_input_arg_names)
-                            or set(prior_op_output_arg_names)
-                            & set(posterior_op_output_arg_names)
-                        ):
-                            _add_event_dependency(last_op, posterior_op)
-
-    # TODO(Ruibiao): The cost here is just the experience value for a specific task (GPT-3-6.7B-MP2-PP4).
-    # A more general cost estimation scheme is required.
-    def _op_cost(self, op):
-        handwritten_cost_map = {
-            "c_allreduce_sum": 0,
-            "all_reduce": 0,
-            "elementwise_add": 40,
-            "split": 76,
-            "transpose2": 40,
-            "fused_softmax_mask_upper_triangle": 94,
-            "layer_norm": 55,
-            "gelu": 180,
-            "dropout": 160,
-            "c_identity": 0,
-            "recv_v2": 0,
-        }
-
-        op_type = op.type
-        if op_type in handwritten_cost_map.keys():
-            return handwritten_cost_map[op_type]
-
-        if op_type == "matmul_v2":
-            var_name = op.output_arg_names[0]
-            shape = op.block._var_recursive(var_name).shape
-            if shape == (1, 1024, 6144):
-                return 399
-            elif shape == (1, 16, 1024, 1024):
-                return 112
-            elif shape == (1, 16, 1024, 128):
-                return 95
-            elif shape == (1, 1024, 4096):
-                return 244
-
-        if op_type == "scale":
-            var_name = op.output_arg_names[0]
-            shape = op.block._var_recursive(var_name).shape
-            if shape == (1, 16, 1024, 128):
-                return 20
-            if shape == (1, 16, 1024, 1024):
-                return 90
-
-        try:
-            time = calc_time_by_cost_model(op)
-            if op.type == "c_allreduce_sum" or (
-                op.type == "all_reduce"
-                and op.attr("reduce_type") == paddle.distributed.ReduceOp.SUM
-            ):
-                time *= 8
-            return time
-        except Exception as e:
-            logger.info(f"The cost of {op} is unknown since {e!r}.")
-            return 0.0
 
     def _partial_programs(self, program):
         raise NotImplementedError("pipeline_1f1b_pass() only support PIR now.")

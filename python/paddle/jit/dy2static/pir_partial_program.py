@@ -664,17 +664,27 @@ class PartialProgramLayer:
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[Tensor]|None): All trainable parameters included in the program. Default None.
+        constraints(list[tuple[str, int|None, int|None]]): A list to specify the constraints of the program. Default None.
 
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
 
     def __init__(
-        self, main_program, inputs, outputs, parameters=None, **kwargs
+        self,
+        main_program,
+        inputs,
+        outputs,
+        parameters=None,
+        *,
+        constraints=None,
+        **kwargs,
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs)
+        # Avoid mutable default argument pitfall (new list per instance)
+        self._constraints = constraints if constraints is not None else []
         self._params, self._param_values = (
             parameters if parameters is not None else ([], [])
         )
@@ -807,10 +817,13 @@ class PartialProgramLayer:
                     enable_cse=cse_is_enabled(),
                     enable_delete_assert_op=self._backend.is_cinn(),
                 )
-
                 # if-else pass
                 if self._backend.is_cinn():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -904,11 +917,16 @@ class PartialProgramLayer:
                     enable_delete_assert_op=self._backend.is_cinn(),
                 )
                 if self._backend.is_cinn():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                     init_backward_program_shape_analysis(
                         forward_program, backward_program
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -1290,5 +1308,6 @@ def partial_program_from(
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
+        constraints=concrete_program.constraints,
         **concrete_program.kwargs,
     )

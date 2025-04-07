@@ -152,6 +152,20 @@ class TestHorizontalFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
 
+    def test_reduce_horizontal_fusion(self):
+        def func(x):
+            a = paddle.sum(x, axis=[0], keepdim=True)
+            a = paddle.reshape(a, [6])
+            b = paddle.sum(x, axis=[0], keepdim=True)
+            b = paddle.reshape(b, [6])
+            return a, b
+
+        def init():
+            x = paddle.rand((2, 2, 3))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
 
 if __name__ == "__main__":
     unittest.main()

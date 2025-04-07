@@ -149,7 +149,10 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 elif "@GRAD":
                     idx_last_grad_allreduce = idx
 
-        if op.type == "c_allreduce_max":
+        if (
+            op.type == "all_reduce"
+            and op.desc.attr("op_type") == paddle.distributed.ReduceOp.MAX
+        ):
             idx_gradient_clip_allreduce = idx
 
     for op in block.ops:
