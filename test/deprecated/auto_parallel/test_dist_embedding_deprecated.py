@@ -83,7 +83,7 @@ class TestDistPNorm(unittest.TestCase):
             assert op_types == [
                 'reshape2',
                 'c_embedding',
-                'c_allreduce_sum',
+                'all_reduce',
                 'reduce_mean',
                 'fill_constant',
                 'reduce_mean_grad',
