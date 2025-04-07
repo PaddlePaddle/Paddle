@@ -122,7 +122,7 @@ jobs:
           -e https_proxy \
           -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
-    - name: Build
+    - name: Run build
       env:
         work_dir: ${{ github.workspace }}
         PADDLE_ROOT: ${{ github.workspace }}
@@ -131,6 +131,7 @@ jobs:
         apt install ninja-build -y
         ulimit -n 102400
         . ../../../proxy
+        git config --global --add safe.directory ${{ github.workspace }}
         bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} kunlun
         EXCODE=$?
         exit $EXCODE
