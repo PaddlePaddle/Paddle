@@ -58,7 +58,7 @@ void CConcatKernel(const Context& dev_ctx,
   phi::DDim temp_out_dims = x->dims();
   temp_out_dims[0] *= nranks;
   temp_out.Resize(temp_out_dims);
-  dev_ctx.template Alloc(&temp_out, x->dtype());
+  dev_ctx.Alloc(&temp_out, x->dtype());
 
   XPUStream stream = nullptr;
   phi::distributed::BKCLCommContext* comm_ctx = nullptr;
@@ -86,7 +86,7 @@ void CConcatKernel(const Context& dev_ctx,
 
   phi::funcs::ConcatFunctor<phi::XPUContext, T> functor;
   out->Resize(out_dims);
-  dev_ctx.template Alloc(out, x->dtype());
+  dev_ctx.Alloc(out, x->dtype());
   functor(dev_ctx, inputs, axis, out);
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(

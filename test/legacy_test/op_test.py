@@ -610,6 +610,27 @@ class OpTest(unittest.TestCase):
             or self.is_bf16_compared_with_fp32()
         )
 
+    def is_0size_test(self):
+        def numel(shape):
+            numel = 1
+            for i in shape:
+                numel = numel * i
+            return numel
+
+        for name, item in self.inputs.items():
+            if isinstance(item, (list, tuple)):
+                for tup in item:
+                    if (
+                        len(tup) > 1
+                        and hasattr(tup[1], "shape")
+                        and numel(tup[1].shape) == 0
+                    ):
+                        return True
+            else:
+                if numel(item.shape) == 0:
+                    return True
+        return False
+
     def enable_cal_ref_output(self):
         self.is_calc_ref = True
 
@@ -2999,6 +3020,9 @@ class OpTest(unittest.TestCase):
                     ),
                 )
             else:
+                if a.size == 0:
+                    self.assertTrue(b.size == 0)
+                    return
                 # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
                 # max_relative_error is 1e-7. According to the value of np.abs(a), we
                 # change np.abs(a) to achieve dynamic threshold. For example, if
@@ -3134,7 +3158,9 @@ class OpTest(unittest.TestCase):
         max_relative_error,
         atol,
     ):
-        if user_defined_grads is None and self.is_compared_with_fp32():
+        if (
+            user_defined_grads is None and self.is_compared_with_fp32()
+        ) or self.is_0size_test():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
@@ -3398,7 +3424,11 @@ class OpTest(unittest.TestCase):
             )
             tensor_ndim = len(tensor_to_check.shape())
             # for 0D Tensor, it's additional case for OP, so not raise error
-            if tensor_ndim > 0 and tensor_size < 100:
+            if (
+                tensor_ndim > 0
+                and tensor_size < 100
+                and not self.is_0size_test()
+            ):
                 self.__class__.input_shape_is_large = False
 
         if type(output_names) is not list:

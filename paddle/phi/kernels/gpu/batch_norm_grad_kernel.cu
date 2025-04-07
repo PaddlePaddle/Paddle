@@ -699,7 +699,10 @@ void BatchNormGradFunctor(const Context &ctx,
       mode_ = miopenBNSpatial;
     }
 #elif CUDNN_VERSION_MIN(7, 0, 1)
-    if (FLAGS_cudnn_batchnorm_spatial_persistent) {
+    // CUDNN_BATCHNORM_SPATIAL_PERSISTENT will cause precision issues in NCHW
+    // format.
+    if (data_layout == DataLayout::kNHWC &&
+        FLAGS_cudnn_batchnorm_spatial_persistent) {
       mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
     } else if (H == 1 && W == 1) {
       mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;

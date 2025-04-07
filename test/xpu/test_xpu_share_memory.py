@@ -65,7 +65,7 @@ def child_reader(queue):
         # Reconstruct the shared tensor.
         # (Note: _new_shared_xpu is a private API; adjust accordingly for your version.)
         shared_tensor = paddle.to_tensor(
-            paddle.base.core.LoDTensor._new_shared_xpu(ipc_meta)
+            paddle.base.core.DenseTensor._new_shared_xpu(ipc_meta)
         )
         # print(
         #     "[Child] Reconstructed tensor on",

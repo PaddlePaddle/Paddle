@@ -68,6 +68,60 @@ AxisTransformRoute GetLoopLiftRoute(const LoopAxisMapping& upstream,
   return SimplifyTransformRoute(result, downstream.loop);
 }
 
+bool HasSharedInput(const LoopAxisMapping& lhs, const LoopAxisMapping& rhs) {
+  return AnyFirstInSecond(lhs.input_values, rhs.input_values);
+}
+
+std::optional<AxisTransformRoute> GetHorizontalLoopTransform(
+    const LoopAxisMapping& source, const LoopAxisMapping& target) {
+  AxisTransformRoute result;
+  if (!HasSharedInput(source, target)) {
+    std::vector<int64_t> source_one_dims;
+    std::vector<int64_t> target_one_dims;
+    for (int i = 0, j = 0; i < source.loop.size() || j < target.loop.size();) {
+      if (j >= target.loop.size()) {
+        source_one_dims.push_back(i++);
+      } else if (i >= source.loop.size()) {
+        target_one_dims.push_back(j++);
+      } else if (source.loop[i] == target.loop[j]) {
+        ++i;
+        ++j;
+      } else if (source.loop[i] == symbol::DimExpr(1)) {
+        source_one_dims.push_back(i++);
+      } else if (target.loop[j] == symbol::DimExpr(1)) {
+        target_one_dims.push_back(j++);
+      } else {
+        // TODO(huangjiyi): Decide whether to support reshape transform
+        // in horizontal fusion without shared input
+        return std::nullopt;
+      }
+    }
+    if (!source_one_dims.empty()) {
+      result.push_back(std::make_shared<DeleteAxisTransform>(
+          source_one_dims, GatherVector(source.loop, source_one_dims)));
+    }
+    if (!target_one_dims.empty()) {
+      result.push_back(std::make_shared<AppendAxisTransform>(
+          target_one_dims, GatherVector(target.loop, target_one_dims)));
+    }
+    if (result.empty()) {
+      result.push_back(IdentityTransform::InstancePtr());
+    }
+    return result;
+  }
+  for (size_t i = 0; i < source.input_values.size(); ++i) {
+    auto indices = FindPosInVector(target.input_values, source.input_values[i]);
+    for (auto idx : indices) {
+      AxisTransformRoute route =
+          ConcatVector(source.loop2input[i], target.input2loop[idx]);
+      if (HasUnsupportedTransform(route)) continue;
+      if (route.size() < result.size() || result.empty()) result = route;
+    }
+  }
+  if (result.empty()) return std::nullopt;
+  return SimplifyTransformRoute(result, source.loop);
+}
+
 LoopAxisMapping LoopAxisMappingMergeImpl(const LoopAxisMapping& upstream,
                                          const LoopAxisMapping& downstream,
                                          bool upstream_is_anchor) {
@@ -288,19 +342,58 @@ LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
   return result;
 }
 
+bool IsAdjacentRelation(const LoopAxisMapping& lhs,
+                        const LoopAxisMapping& rhs) {
+  return AnyFirstInSecond(lhs.output_values, rhs.input_values) ||
+         AnyFirstInSecond(rhs.output_values, lhs.input_values);
+}
+
+LoopAxisMapping HorizontalLoopAxisMappingMerge(const LoopAxisMapping& source,
+                                               const LoopAxisMapping& target) {
+  PADDLE_ENFORCE(
+      !IsAdjacentRelation(source, target),
+      ::common::errors::InvalidArgument(
+          "Patterns to be merged in horizontal fusion cannot be adjacent."));
+  LoopAxisMapping result;
+  auto loop_transform = GetHorizontalLoopTransform(source, target);
+  PADDLE_ENFORCE(loop_transform.has_value(),
+                 ::common::errors::InvalidArgument(
+                     "Can not find valid horizontal loop transform."));
+  auto reverse_loop_transform = ReverseTransformRoute(loop_transform.value());
+  result.input_values = ConcatVector(source.input_values, target.input_values);
+  result.output_values =
+      ConcatVector(source.output_values, target.output_values);
+  for (const auto& transform : source.input2loop) {
+    result.input2loop.push_back(
+        ConcatVector(transform, loop_transform.value()));
+  }
+  result.input2loop = ConcatVector(result.input2loop, target.input2loop);
+  for (const auto& transform : source.loop2output) {
+    result.loop2output.push_back(
+        ConcatVector(reverse_loop_transform, transform));
+  }
+  result.loop2output = ConcatVector(result.loop2output, target.loop2output);
+  result.outputs_use_count = source.outputs_use_count;
+  for (const auto& [output, use_count] : target.outputs_use_count) {
+    result.outputs_use_count[output] = use_count;
+  }
+  result.loop = target.loop;
+  result.reduce_axis_num =
+      std::max(source.reduce_axis_num, target.reduce_axis_num);
+  result.SimplifyForwardMapping();
+  result.SetReverseMapping();
+  return result;
+}
+
 std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
-    const LoopAxisMapping& upstream,
-    const LoopAxisMapping& downstream,
-    bool upstream_is_anchor) {
-  VLOG(4) << "Try to get valid loop transform route "
-          << (upstream_is_anchor ? "from downstream to upstream."
-                                 : "from upstream to downstream.");
-  auto source = upstream_is_anchor ? downstream : upstream;
-  auto target = upstream_is_anchor ? upstream : downstream;
+    const LoopAxisMapping& source,
+    const LoopAxisMapping& target,
+    const AxisTransformRoute& loop_transform_route) {
   VLOG(4) << "Source loop: [" << cinn::utils::Join(source.loop, ", ")
           << "], reduce_axis_num: " << source.reduce_axis_num;
   VLOG(4) << "Target loop: [" << cinn::utils::Join(target.loop, ", ")
           << "], reduce_axis_num: " << target.reduce_axis_num;
+  VLOG(4) << "Loop transform route: " << loop_transform_route;
   if (source.reduce_axis_num > 0 && target.reduce_axis_num == 0) {
     VLOG(4) << "Cannot transform reduce loop to trivial loop.";
     return std::nullopt;
@@ -328,11 +421,6 @@ std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
     }
   }
   bool rr_fusion = source.reduce_axis_num > 0 && target.reduce_axis_num > 0;
-
-  const auto& loop_transform_route =
-      upstream_is_anchor ? GetLoopLiftRoute(upstream, downstream)
-                         : GetLoopSinkRoute(upstream, downstream);
-  VLOG(4) << "Loop transform route: " << loop_transform_route;
 
   size_t id = 0;
   auto unique_id = [&]() { return "I" + std::to_string(id++); };
@@ -602,7 +690,31 @@ std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
     result.push_back(
         std::make_shared<DeleteAxisTransform>(reduce_axis, reduce_shape));
   }
-  if (source.reduce_axis_num == 0 && target.reduce_axis_num > 0) {
+
+  if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
+  result = SimplifyTransformRoute(result, source.loop);
+  VLOG(4) << "Found loop transform: " << result;
+  return result;
+}
+
+std::optional<AxisTransformRoute> GetValidAdjacentLoopTransform(
+    const LoopAxisMapping& upstream,
+    const LoopAxisMapping& downstream,
+    bool upstream_is_anchor) {
+  VLOG(4) << "Try to get valid loop transform route "
+          << (upstream_is_anchor ? "from downstream to upstream."
+                                 : "from upstream to downstream.");
+  auto source = upstream_is_anchor ? downstream : upstream;
+  auto target = upstream_is_anchor ? upstream : downstream;
+
+  const auto& loop_transform_route =
+      upstream_is_anchor ? GetLoopLiftRoute(upstream, downstream)
+                         : GetLoopSinkRoute(upstream, downstream);
+  auto result =
+      GetValidLoopTransformRoute(source, target, loop_transform_route);
+
+  if (result.has_value() && source.reduce_axis_num == 0 &&
+      target.reduce_axis_num > 0) {
     // Check whether reduce trivial fusion with larger reduce dims.
     const auto& reduce_to_trivial_route =
         upstream_is_anchor ? GetLoopSinkRoute(target, source)
@@ -622,10 +734,47 @@ std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
       }
     }
   }
-  if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
-  result = SimplifyTransformRoute(result, source.loop);
-  VLOG(4) << "Found loop transform: " << result;
   return result;
+}
+
+bool HasSharedInputValues(const LoopAxisMapping& lhs,
+                          const LoopAxisMapping& rhs) {
+  return AnyFirstInSecond(lhs.input_values, rhs.input_values);
+}
+
+std::optional<AxisTransformRoute> GetValidHorizontalLoopTransform(
+    const LoopAxisMapping& source, const LoopAxisMapping& target) {
+  VLOG(4) << "Try to get valid horizontal loop transform route.";
+  auto loop_transform = GetHorizontalLoopTransform(source, target);
+  if (loop_transform == std::nullopt) return std::nullopt;
+  const auto reduce_dims_product =
+      GetShapeProduct(target.loop,
+                      target.loop.size() - target.reduce_axis_num,
+                      target.loop.size());
+  if (source.reduce_axis_num == 0 && target.reduce_axis_num > 0 &&
+      !HasSharedInputValues(source, target)) {
+    // Disable horizontal fusion between trivial and reduce without
+    // shared inputs when reduce axis num is large.
+    if (reduce_dims_product.isa<std::int64_t>() &&
+        reduce_dims_product.dyn_cast<std::int64_t>() > 1024) {
+      VLOG(4) << "Can not fuse trivial to reduce with large reduce dims: "
+              << reduce_dims_product.dyn_cast<std::int64_t>();
+      return std::nullopt;
+    }
+  }
+  if (!reduce_dims_product.isa<std::int64_t>()) {
+    const auto [shared_inputs, _unused] =
+        SplitFirstWhetherInSecond(source.input_values, target.input_values);
+    int input_nums = source.input_values.size() + target.input_values.size();
+    if (static_cast<float>(shared_inputs.size()) / input_nums < 1. / 6 &&
+        input_nums - shared_inputs.size() > 4) {
+      // Disable horizontal fusion with dynamic shape when shared input values
+      // are less than 1/3 per input while non shared input nums more than 4.
+      VLOG(4) << "Can not fuse with dynamic shape when shared inputs are few. ";
+      return std::nullopt;
+    }
+  }
+  return GetValidLoopTransformRoute(source, target, loop_transform.value());
 }
 
 }  // namespace cinn::fusion

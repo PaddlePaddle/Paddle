@@ -120,12 +120,7 @@ class TestLlamaAuto:
         self.init_dist_env()
 
     def init_dist_env(self):
-        order = ["dp", "pp", "mp"]
-        dp_degree = self.dp
-        mp_degree = self.mp
-        pp_degree = self.pp
-        degree = [dp_degree, pp_degree, mp_degree]
-        mesh_dims = list(filter(lambda x: x[1] > 1, list(zip(order, degree))))
+        mesh_dims = [("pp", self.pp), ("dp", self.dp), ("mp", self.mp)]
         if not mesh_dims:
             mesh_dims = [("dp", 1)]
         dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
@@ -212,6 +207,7 @@ class TestLlamaAuto:
                 strategy.pipeline.accumulate_steps = (
                     self.gradient_accumulation_steps
                 )
+                strategy.pipeline.pp_degree = self.pp
                 strategy.pipeline.micro_batch_size = micro_bsz
                 strategy.pipeline.schedule_mode = self.schedule_mode
                 strategy.pipeline.vpp_degree = self.config.virtual_pp_degree

@@ -203,7 +203,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
     optim::SimplifyCast(&indice_cast);
     res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indice_cast);
     if (res.is_index()) {
-      res = res.as_index().Normalize(ir::IndexExpr::OptLevel::Level2);
+      res = res.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel2);
     } else {
       VLOG(8) << "**** expr is not index ****: " << res;
     }

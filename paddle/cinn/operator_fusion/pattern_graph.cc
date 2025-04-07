@@ -160,24 +160,6 @@ void PatternGraph::ReduceLiftReduceTree() {
       LiftReduceToReduceTreeOperation>(this);
 }
 
-void PatternGraph::HorizontalFusion() {
-  GraphTransformer<NodePattern,
-                   Or<StmtPatternGraphMatcher<TrivialPattern>,
-                      StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>,
-                      StmtPatternGraphMatcher<ReducePattern>,
-                      StmtPatternGraphMatcher<ReduceTreePattern>,
-                      StmtPatternGraphMatcher<AnchorPattern>>,
-                   LiftToHorizontalFusionPatternOperation>(this);
-
-  GraphTransformer<NodePairPattern,
-                   And<HorizontalFusionConstrain,
-                       InputOutputMaximumConstrain,
-                       HorizontalCheckMiddleOutputVar>,  // Avoid two many
-                                                         // inputs and
-                                                         // outputs.
-                   HorizontalFusionOperation>(this);
-}
-
 void PatternGraph::ReduceTreeGrown() {
   GraphTransformer<NodePattern,
                    And<CanFuseReduceTreeMatcher, Not<IsOutputNodeMatcher>>,
@@ -207,6 +189,12 @@ void PatternGraph::AnchorFusion() {
 void PatternGraph::SplitRecomputePattern() {
   GraphTransformer<NodePattern, RecomputeNodeMatcher, SplitRecomputeOperation>(
       this);
+}
+
+void PatternGraph::HorizontalFusion() {
+  GraphTransformer<NodePairPattern,
+                   And<HorizontalFusionConstrain, InputOutputMaximumConstrain>,
+                   HorizontalFusionOperation>(this);
 }
 
 PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,

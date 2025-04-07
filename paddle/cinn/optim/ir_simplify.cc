@@ -209,19 +209,23 @@ struct SimplifyLoadStoreMutator : public ir::IRMutator<ir::Expr*> {
   }
 };
 
-struct SimplifyLogicalMutator : public ir::ExprMutator<> {
-  void operator()(Expr* expr) { ir::ExprMutator<>::Visit(expr, expr); }
+struct SimplifyLogicalMutator : public ir::IRMutator<> {
+  void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
-#define DEFINE_VISIT_CMP_OP(OpType, Method)                         \
-  void Visit(const ir::OpType* op, Expr* expr) override {           \
-    VLOG(7) << "Begin Visit Cmp op: " << *expr;                     \
-    auto* node = expr->As<ir::OpType>();                            \
-    ir::ExprMutator<>::Visit(&node->a(), &node->a());               \
-    ir::ExprMutator<>::Visit(&node->b(), &node->b());               \
-    if (node->a().is_constant() && node->b().is_constant())         \
-      if (node->a().get_constant() Method node->b().get_constant()) \
-        *expr = Expr(true);                                         \
-    VLOG(7) << "End Visit Cmp op: " << *expr;                       \
+#define DEFINE_VISIT_CMP_OP(OpType, Method)                           \
+  void Visit(const ir::OpType* op, Expr* expr) override {             \
+    VLOG(7) << "Begin Visit Cmp op: " << *expr;                       \
+    auto* node = expr->As<ir::OpType>();                              \
+    ir::IRMutator<>::Visit(&node->a(), &node->a());                   \
+    ir::IRMutator<>::Visit(&node->b(), &node->b());                   \
+    if (node->a().is_constant() && node->b().is_constant()) {         \
+      if (node->a().get_constant() Method node->b().get_constant()) { \
+        *expr = Expr(true);                                           \
+      } else {                                                        \
+        *expr = Expr(false);                                          \
+      }                                                               \
+    }                                                                 \
+    VLOG(7) << "End Visit Cmp op: " << *expr;                         \
   }
   DEFINE_VISIT_CMP_OP(LE, <=)
   DEFINE_VISIT_CMP_OP(LT, <)
@@ -235,13 +239,13 @@ struct SimplifyLogicalMutator : public ir::ExprMutator<> {
   void Visit(const ir::And* op, Expr* expr) override {
     VLOG(7) << "Begin Visit And op: " << *expr;
     auto* node = expr->As<ir::And>();
-    ir::ExprMutator<>::Visit(&node->a(), &node->a());
+    ir::IRMutator<>::Visit(&node->a(), &node->a());
     if (common::IsZero(node->a())) {
       *expr = Expr(false);
       VLOG(7) << "End Visit And op: " << *expr;
       return;
     }
-    ir::ExprMutator<>::Visit(&node->b(), &node->b());
+    ir::IRMutator<>::Visit(&node->b(), &node->b());
     if (common::IsZero(node->b())) {
       VLOG(7) << "End Visit And op: " << *expr;
       *expr = Expr(false);
@@ -255,13 +259,13 @@ struct SimplifyLogicalMutator : public ir::ExprMutator<> {
   void Visit(const ir::Or* op, Expr* expr) override {
     VLOG(7) << "Begin Visit Or op: " << *expr;
     auto* node = expr->As<ir::Or>();
-    ir::ExprMutator<>::Visit(&node->a(), &node->a());
+    ir::IRMutator<>::Visit(&node->a(), &node->a());
     if (common::IsOne(node->a())) {
       *expr = Expr(true);
       VLOG(7) << "End visit Or op: " << *expr;
       return;
     }
-    ir::ExprMutator<>::Visit(&node->b(), &node->b());
+    ir::IRMutator<>::Visit(&node->b(), &node->b());
     if (common::IsOne(node->b())) {
       *expr = Expr(true);
       VLOG(7) << "End visit Or op: " << *expr;
@@ -276,7 +280,7 @@ struct SimplifyLogicalMutator : public ir::ExprMutator<> {
     VLOG(7) << "Begin Visit Not op: " << *expr;
     auto* node = expr->As<ir::Not>();
     auto v = node->v();
-    ir::ExprMutator<>::Visit(&v, &v);
+    ir::IRMutator<>::Visit(&v, &v);
     switch (v.node_type()) {
       case ir::IrNodeTy::IntImm:
       case ir::IrNodeTy::UIntImm:
@@ -338,10 +342,10 @@ struct SimplifyIfThenElseMutator : public ir::ExprMutator<> {
   }
 };
 
-struct SimplifySelectMutator : public ir::ExprMutator<> {
-  void operator()(Expr* x) { ir::ExprMutator<>::Visit(x, x); }
+struct SimplifySelectMutator : public ir::IRMutator<> {
+  void operator()(Expr* x) { ir::IRMutator<>::Visit(x, x); }
 
-  using ir::ExprMutator<>::Visit;
+  using ir::IRMutator<>::Visit;
 
   void Visit(const Select* op, Expr* expr) override {
     auto* node = expr->As<ir::Select>();
@@ -457,6 +461,7 @@ void SimplifyUnitBlock(Expr* expr) { SimplifyUnitBlockMutator()(expr); }
 void SimplifyLogical(Expr* expr) { SimplifyLogicalMutator()(expr); }
 
 Expr ArithSimplify(const Expr& u) {
+  VLOG(3) << "Begin ArithSimplify " << u;
   if (!u.is_index()) return u;
   auto copied = ir_utils::IRCopy(u);
   return copied.as_index().Normalize();

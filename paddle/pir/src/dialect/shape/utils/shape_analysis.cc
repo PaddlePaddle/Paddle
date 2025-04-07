@@ -892,6 +892,13 @@ void ShapeConstraintIRAnalysis::SetInputDynamicDimSpec(
   input_dynamic_dim_spec_ = input_dynamic_dim_spec;
 }
 
+void ShapeConstraintIRAnalysis::AppendInputDynamicDimSpec(
+    const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
+  input_dynamic_dim_spec_.insert(input_dynamic_dim_spec_.end(),
+                                 input_dynamic_dim_spec.begin(),
+                                 input_dynamic_dim_spec.end());
+}
+
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
   static ShapeAnalysisManager instance;
   return instance;
