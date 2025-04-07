@@ -25,14 +25,14 @@ class TestDistTRT(unittest.TestCase):
         self.script = "test_trt_c_allreduce_infer_script.py"
 
     def init_case(self):
-        self.op_type = "c_allreduce_sum"
+        self.reduce_type = paddle.distributed.ReduceOp.SUM
         self.target_value = 4.0
         self.precision = "fp16"
 
     def test_run(self):
         env = dict(os.environ)
         env["CUDA_VISIBLE_DEVICES"] = "0,1"
-        cmd = f"python -u -m paddle.distributed.fleet.launch --gpus 0,1 {self.script} {self.op_type} {self.precision}"
+        cmd = f"python -u -m paddle.distributed.fleet.launch --gpus 0,1 {self.script} {self.reduce_type} {self.precision}"
         cmd = cmd.split(" ")
 
         local_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, env=env)
@@ -46,7 +46,7 @@ class TestDistTRT(unittest.TestCase):
 
 class TestMin(TestDistTRT):
     def init_case(self):
-        self.op_type = "c_allreduce_min"
+        self.reduce_type = paddle.distributed.ReduceOp.MIN
         self.target_value = 2.0
         self.precision = "int8"
 
