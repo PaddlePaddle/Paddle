@@ -99,8 +99,9 @@ struct DWConvParams {
     if (ksize_height != ksize_width) {
       return false;
     }
-    // For 1/3/5 filter。
-    if (ksize_height != 1 && ksize_height != 3 && ksize_height != 5) {
+    // For 1/3/5/7 filter。
+    if (ksize_height != 1 && ksize_height != 3 && ksize_height != 5 &&
+        ksize_height != 7) {
       return false;
     }
     // Use cudnn for nhwc fp16.

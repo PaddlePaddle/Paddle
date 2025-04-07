@@ -1980,6 +1980,18 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_unpadded_grad
 
+- op : flash_attn_v3
+  args : (Tensor q, Tensor k, Tensor v, Tensor q_v_, Tensor q_descale_, Tensor k_descale_, Tensor v_descale_, float softmax_scale, bool is_causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa_, int sm_margin)
+  output : Tensor(out), Tensor(softmax_lse)
+  optional : q_v_, q_descale_, k_descale_, v_descale_
+  infer_meta :
+    func : FlashAttnV3InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_v3
+    data_type : q
+  backward : flash_attn_v3_grad
+
 - op : flash_attn_varlen_qkvpacked
   args : (Tensor qkv, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, Scalar max_seqlen_q, Scalar max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true)
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
@@ -3497,35 +3509,6 @@
     func : mode
   backward : mode_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
-
-- op : moe_dispatch
-  args : (Tensor X, Tensor gating_output, int moe_topk = 2, bool group_moe = false, bool topk_only_mode = false)
-  output : Tensor(permute_input), Tensor(token_nums_per_expert), Tensor(permute_indices_per_token), Tensor(expert_scales_float), Tensor(top_k_indices)
-  infer_meta :
-    func : MoeDispatchInferMeta
-  kernel :
-    func : moe_dispatch
-    data_type : X
-
-- op : moe_ffn
-  args : (Tensor permute_input, Tensor token_nums_per_expert, Tensor ffn1_weight, Tensor ffn2_weight, Tensor ffn1_bias, Tensor ffn1_scale, Tensor ffn2_scale, str quant_method)
-  output : Tensor(ffn_out)
-  infer_meta :
-    func : MoeFFNInferMeta
-  kernel :
-    func : moe_ffn
-    data_type : permute_input
-  optional : ffn1_bias, ffn1_scale, ffn2_scale
-
-- op : moe_reduce
-  args : (Tensor ffn_out, Tensor expert_scales_float, Tensor permute_indices_per_token, Tensor top_k_indices, Tensor ffn2_bias, bool norm_topk_prob = false, float routed_scaling_factor = 1.0)
-  output : Tensor(output)
-  infer_meta :
-    func : MoeReduceInferMeta
-  kernel :
-    func : moe_reduce
-    data_type : ffn_out
-  optional : ffn2_bias
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)

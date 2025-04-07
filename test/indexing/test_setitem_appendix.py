@@ -194,10 +194,6 @@ class TestSetitemDygraphAdvancedIndex(unittest.TestCase):
         self.accuracy_check(x, y)
 
 
-@unittest.skipIf(
-    paddle.core.is_compiled_with_xpu(),
-    "There are some bugs on XPU.",
-)
 class TestSetitemDygraphCombinedIndex(unittest.TestCase):
     def accuracy_check(self, numpy_array, paddle_t):
         np.testing.assert_allclose(numpy_array, paddle_t.numpy())

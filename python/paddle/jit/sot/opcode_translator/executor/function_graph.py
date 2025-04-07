@@ -39,8 +39,10 @@ from ...infer_meta import (
 from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, StatementIR, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
+from ...symbolic_shape import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_GUARD_TREE,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -58,7 +60,7 @@ from ...utils.exceptions import (
     SotExtraInfo,
 )
 from ..instruction_utils import get_instructions
-from .guard import Guard, StringifiedExpression, make_guard
+from .guard import Guard, StringifiedExpression, make_faster_guard, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
 from .pycode_generator import PyCodeGen
 from .side_effects import (
@@ -316,6 +318,15 @@ class FunctionGraph:
     @property
     @event_register("guard_fn")
     def guard_fn(self) -> Guard:
+        if ENV_SOT_ENABLE_GUARD_TREE.get():
+            guard_nodes: list[paddle.framework.core.GuardNode] = []
+            with EventGuard("guard_fn: find vars and make faster guard"):
+                for variable in find_traceable_vars(
+                    self.input_variables + list(self._global_guarded_variables)
+                ):
+                    guard_nodes.extend(variable.make_faster_guard())
+            return make_faster_guard(guard_nodes)
+
         with switch_symbol_registry():
             guards: list[StringifiedExpression] = []
             with EventGuard("guard_fn: find vars and make stringified guard"):
@@ -517,6 +528,27 @@ class FunctionGraph:
             **kwargs,
         )
 
+    def call_symbolic_api(
+        self,
+        op: Callable[..., Any],
+        *args: VariableBase,
+        **kwargs: VariableBase,
+    ):
+        assert op in SYMBOLIC_UNARY_OPS + SYMBOLIC_BINARY_OPS
+        log(3, f"call symbolic api : {op.__name__}", "\n")
+
+        def message_handler(*args, **kwargs):
+            return f"Call operator error: {op.__name__}"
+
+        return inner_error_default_handler(self.symbolic_call, message_handler)(
+            InferMetaCache(),
+            self.sir_ctx.call_API,
+            op,
+            True,
+            *args,
+            **kwargs,
+        )
+
     def call_tensor_method(
         self, method_name: str, *args: VariableBase, **kwargs
     ):
@@ -535,28 +567,6 @@ class FunctionGraph:
             self.sir_ctx.call_METHOD,
             method_name,
             False,
-            *args,
-            **kwargs,
-        )
-
-    def call_symbolic_method(
-        self, method_name: str, *args: VariableBase, **kwargs
-    ):
-        """
-        call symbolic method, start symbolic trace.
-
-        Args:
-            method_name: symbolic method name
-        """
-
-        def message_handler(*args, **kwargs):
-            return f"Call symbolic_method error: Symbolic.{method_name}, may be not a valid operator api?"
-
-        return inner_error_default_handler(self.symbolic_call, message_handler)(
-            InferMetaCache(),
-            self.sir_ctx.call_METHOD,
-            method_name,
-            True,
             *args,
             **kwargs,
         )
@@ -788,6 +798,24 @@ class FunctionGraph:
             tracker = DummyTracker(list(args) + list(kwargs.values()))
 
         return VariableFactory.from_value(outputs, self, tracker)
+
+    def add_alias(
+        self,
+        src: TensorVariable | SymbolicVariable,
+        dst: TensorVariable | SymbolicVariable,
+    ):
+        """
+        Add an alias like `dst = src`
+        """
+        alias_fn = lambda x: x
+        alias_fn.__name__ = "__sir_alias__"
+        inputs_arg_pack = ([src], {})
+        self.sir_ctx.call_API(
+            alias_fn,
+            convert_to_symbol(inputs_arg_pack),
+            convert_to_symbol(dst),
+            [],
+        )
 
     @staticmethod
     def get_opcode_executor_stack():

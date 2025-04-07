@@ -16,6 +16,8 @@ import unittest
 
 import test_communication_api_base as test_base
 
+import paddle
+
 
 class TestCommunicationStreamSendRecvAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
@@ -26,7 +28,11 @@ class TestCommunicationStreamSendRecvAPI(test_base.CommunicationTestDistBase):
             "dtype": "float32",
             "seeds": str(self._seeds),
         }
+        backend_list = ["nccl"]
+        if paddle.base.core.is_compiled_with_flagcx():
+            backend_list.append("flagcx")
         self._changeable_envs = {
+            "backend": backend_list,
             "sync_op": ["True", "False"],
             "use_calc_stream": ["True", "False"],
         }
