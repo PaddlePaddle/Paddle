@@ -263,6 +263,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 outputs={'out': g},
                 attrs={
                     'ring_id': ring_id,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
@@ -339,6 +340,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         outputs={'out': grad},
                         attrs={
                             'ring_id': ring_id,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Backward,
                         },
                     )
