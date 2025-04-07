@@ -48,7 +48,7 @@ jobs:
         git checkout test
         git pull upstream $BRANCH --no-edit
 
-    - name: Check docker image and run container
+    - name: Check docker image and run  container
       env:
         work_dir: ${{ github.workspace }}
         PADDLE_ROOT: ${{ github.workspace }}
