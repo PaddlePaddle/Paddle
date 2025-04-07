@@ -128,6 +128,14 @@ void MappingTargetExprToDestExprMutator::Visit(const ir::Reduce* reduce,
   }
 }
 
+void MappingTargetExprToDestExprMutator::Visit(const ir::_Var_* var, Expr* op) {
+  if (source_.is_var() && source_.as_var_ref()->name == var->name) {
+    *op = dest_;
+  } else {
+    IRMutator::Visit(var, op);
+  }
+}
+
 bool CheckIterEq(const std::vector<ir::Var>& up_iter,
                  const std::vector<ir::Var>& down_iter) {
   if (up_iter.size() != down_iter.size()) return false;
@@ -722,6 +730,14 @@ ExprTransformer RemoveForTransformer(int axis) {
         (ExprSetFinderUtils::ChildScheduleBlockRealizes *
          ExprSetFinderUtils::ScheduleBlockRealizeIsInit),
         RemoveVarInScheduleBlockRealize(iters[axis], ir::Expr(0)));
+    // Remove var in append if
+    auto loop_var = target_for.As<ir::For>()->loop_var;
+    auto realizes = (ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                     ExprSetFinderUtils::ScheduleBlockRealizeNotRoot)(copied);
+    for (auto& realize : realizes) {
+      ComposeUtils::MappingTargetExprToDestExprMutator(loop_var,
+                                                       ir::Expr(0))(&realize);
+    }
     return copied;
   };
   return ExprTransformer(f);

@@ -32,7 +32,7 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
-#include "paddle/cinn/optim/realize_welford_pass.h"
+#include "paddle/cinn/optim/realize_composite_reduce_pass.h"
 #include "paddle/cinn/optim/rearrange_load_instruction_pass.h"
 #include "paddle/cinn/optim/reindex_transpose_buffer_pass.h"
 #include "paddle/cinn/optim/remove_schedule_block_pass.h"
@@ -72,10 +72,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   {
     FuncPassManager func_pass_manager;
-    func_pass_manager.AddPass(CreateRealizeWelfordPass());
+    func_pass_manager.AddPass(CreateRealizeCompositeReducePass());
     func_pass_manager.AddPass(CreateReindexTransposeBufferPass());
     func_pass_manager.Run(copied);
-    VLOG(4) << "After Optimize RealizeWelford and ReindexTransposeBuffer: "
+    VLOG(4) << "After Optimize CustomizedReduce and ReindexTransposeBuffer: "
             << copied;
   }
 

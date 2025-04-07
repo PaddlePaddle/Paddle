@@ -112,6 +112,24 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int shared_memory_bytes,
                            void* stream);
 
+/**
+ * Call a CUDA compiled kernel with cooperative groups.
+ *
+ * @param kernel_fn the compiled PTX kernel.
+ * @param args an array of cinn_pod_value_ts(consists of scalars and buffers).
+ */
+void cinn_call_cuda_cooperative_kernel(void* kernel_fn,
+                                       void* v_args,
+                                       int num_args,
+                                       int grid_x,
+                                       int grid_y,
+                                       int grid_z,
+                                       int block_x,
+                                       int block_y,
+                                       int block_z,
+                                       int shared_memory_bytes,
+                                       void* stream);
+
 void cinn_call_cublas(void* v_args,
                       int num_args,
                       bool trans_a,

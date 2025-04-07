@@ -41,7 +41,11 @@ class TestConv2dTRTPattern(TensorRTBaseTest):
         self.min_shape = {"x": [1, 3, 8, 8]}
         self.opt_shape = {"x": [2, 3, 8, 8]}
         self.max_shape = {"x": [10, 3, 8, 8]}
-        self.disable_passes = ['constant_folding_pass', 'conv2d_add_fuse_pass']
+        self.disable_passes = [
+            'constant_folding_pass',
+            'conv2d_add_fuse_pass',
+            'dead_code_elimination_pass',
+        ]
 
     def test_trt_result_fp16(self):
         self.check_trt_result(precision_mode="fp16")
@@ -62,7 +66,11 @@ class TestConv2dPaddingAlgorithmTRTPattern(TensorRTBaseTest):
         self.min_shape = {"x": [1, 3, 8, 8]}
         self.opt_shape = {"x": [2, 3, 8, 8]}
         self.max_shape = {"x": [10, 3, 8, 8]}
-        self.disable_passes = ['constant_folding_pass', 'conv2d_add_fuse_pass']
+        self.disable_passes = [
+            'constant_folding_pass',
+            'conv2d_add_fuse_pass',
+            'dead_code_elimination_pass',
+        ]
 
     def test_trt_result(self):
         self.check_trt_result()
@@ -81,7 +89,11 @@ class TestConv2dPaddingTRTPattern(TensorRTBaseTest):
         self.min_shape = {"x": [1, 3, 8, 8]}
         self.opt_shape = {"x": [2, 3, 8, 8]}
         self.max_shape = {"x": [10, 3, 8, 8]}
-        self.disable_passes = ['constant_folding_pass', 'conv2d_add_fuse_pass']
+        self.disable_passes = [
+            'constant_folding_pass',
+            'conv2d_add_fuse_pass',
+            'dead_code_elimination_pass',
+        ]
 
     def test_trt_result(self):
         self.check_trt_result()
@@ -489,7 +501,7 @@ class TestFusedConv2dAddActTRTPattern(TensorRTBaseTest):
         self.min_shape = {"x": [1, 3, 8, 8]}
         self.opt_shape = {"x": [2, 3, 8, 8]}
         self.max_shape = {"x": [10, 3, 8, 8]}
-        self.disable_passes = []
+        self.disable_passes = ['dead_code_elimination_pass']
 
     def test_trt_result_fp16(self):
         self.check_trt_result(precision_mode="fp16")

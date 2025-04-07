@@ -139,6 +139,11 @@ void SetValueImpl(const Context& dev_ctx,
   int r = XPU_SUCCESS;
   out->Resize(in.dims());
   dev_ctx.template Alloc<T>(out);
+
+  if (in.numel() == 0) {
+    return;
+  }
+
   r = xpu::copy(dev_ctx.x_context(),
                 reinterpret_cast<const XPUType*>(in.data<T>()),
                 reinterpret_cast<XPUType*>(out->data<T>()),

@@ -79,6 +79,7 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   void Visit(const ir::For* for_node, Expr* op) override;
   void Visit(const ir::Block* block_node, Expr* op) override;
   void Visit(const ir::ScheduleBlockRealize* realize, Expr* op) override;
+  void Visit(const ir::_Var_* var, Expr* op) override;
 
  private:
   ir::Expr source_;

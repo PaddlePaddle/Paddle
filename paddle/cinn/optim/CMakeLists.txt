@@ -23,7 +23,7 @@ gather_srcs(
   replace_const_param_to_integer.cc
   lower_intrin.cc
   cast_bool_to_int8.cc
-  realize_welford_pass.cc
+  realize_composite_reduce_pass.cc
   remove_schedule_block_pass.cc
   replace_cross_block_reduction.cc
   replace_cross_thread_reduction.cc

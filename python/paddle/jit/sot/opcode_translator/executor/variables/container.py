@@ -20,9 +20,6 @@ from functools import reduce
 from typing import TYPE_CHECKING, Any
 
 import paddle
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
 from ....utils import ConstTypes
 from ....utils.exceptions import FallbackError, InnerError
@@ -42,7 +39,10 @@ from ..tracker import (
     GetIterTracker,
     Tracker,
 )
-from .base import VariableFactory
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import ConstantVariable
 from .callable import BuiltinVariable, UserDefinedFunctionVariable
 
@@ -348,7 +348,7 @@ class ListVariable(ContainerVariable):
         permutation = list(range(self.proxy.length))
         permutation.sort(
             key=lambda x: key.get_py_value()(
-                Dispatcher.call(operator.getitem, self, x).value
+                Dispatcher.call(operator.getitem, self, x).get_py_value()
             ),
             reverse=reverse.get_py_value(),
         )
@@ -438,7 +438,7 @@ class ListVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(f"attribute {name} for list is not implemented")
 
@@ -491,7 +491,7 @@ class TupleVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(
                 f"attribute {name} for tuple is not implemented"
@@ -1013,7 +1013,7 @@ class DictVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(f"attribute {name} for dict is not implemented")
 

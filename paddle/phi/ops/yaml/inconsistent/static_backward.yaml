@@ -470,18 +470,6 @@
   output : Tensor(in_grad)
   invoke : print(out_grad, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward)
 
-- backward_op : push_box_sparse
-  forward : pull_box_sparse (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1) -> Tensor[](out){ids.size()}
-  args : (Tensor[] ids, Tensor[] out_grad_in, bool is_sparse = false, bool is_distributed = false, int size = 1)
-  output : Tensor[](out_grad_out){out_grad_in.size()}
-  infer_meta :
-    func : UnchangedMultiInferMeta
-    param : [out_grad_in]
-  kernel :
-    func : push_box_sparse
-    data_type : out_grad_in
-  inplace : (out_grad_in -> out_grad_out)
-
 - backward_op : remainder_grad
   forward : remainder (Tensor x, Tensor y) -> Tensor(out)
   args : (Tensor x, Tensor y, Tensor out_grad)

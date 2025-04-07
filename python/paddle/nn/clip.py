@@ -1051,11 +1051,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
             )
 
         if self.should_comm_on_shard_dim and self.has_dist_param:
-            global_norm_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_dist_var, self.sharding_group.id, True, False
+            global_norm_dist_var = paddle._C_ops.all_reduce(
+                global_norm_dist_var, self.sharding_group.id, dist.ReduceOp.SUM
             )
-            global_norm_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_dist_var, self.mp_group.id, True, False
+            global_norm_dist_var = paddle._C_ops.all_reduce(
+                global_norm_dist_var, self.mp_group.id, dist.ReduceOp.SUM
             )
             if global_norm_var is None:
                 global_norm_var = global_norm_dist_var
@@ -1069,8 +1069,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 shape=[1], dtype=sum_dtype, fill_value=0.0
             )
         if self.should_comm_on_shard_dim and self.has_not_dist_param:
-            global_norm_not_dist_var = paddle._C_ops.c_allreduce_sum(
-                global_norm_not_dist_var, self.sharding_group.id, True, False
+            global_norm_not_dist_var = paddle._C_ops.all_reduce(
+                global_norm_not_dist_var,
+                self.sharding_group.id,
+                dist.ReduceOp.SUM,
             )
             if global_norm_var is None:
                 global_norm_var = global_norm_not_dist_var

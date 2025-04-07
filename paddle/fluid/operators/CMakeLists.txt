@@ -50,7 +50,7 @@ if(WITH_IPU)
     add_subdirectory(ipu)
 endif()
 
-SET(OP_HEADER_DEPS xxhash executor)
+SET(OP_HEADER_DEPS xxhash)
 
 if (WITH_GPU)
     if (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)

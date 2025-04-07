@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import (
     OP_ROLE_KEY,
     OpRole,
@@ -182,12 +183,12 @@ class FP16Utils:
             # this allreduce communication should not overlap with calc
             block._insert_op_without_sync(
                 update_loss_scaling_op_idx,
-                type='c_allreduce_max',
-                inputs={'X': inf_var_int32},
-                outputs={'Out': inf_var_int32},
+                type='all_reduce',
+                inputs={'x': inf_var_int32},
+                outputs={'out': inf_var_int32},
                 attrs={
                     'ring_id': ring_id,
-                    'use_calc_stream': True,
+                    'op_type': paddle.distributed.ReduceOp.MAX,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
@@ -249,12 +250,12 @@ class FP16Utils:
                 continue
             block._insert_op_without_sync(
                 update_loss_scaling_op_idx,
-                type='c_allreduce_max',
-                inputs={'X': inf_var_int32},
-                outputs={'Out': inf_var_int32},
+                type='all_reduce',
+                inputs={'x': inf_var_int32},
+                outputs={'out': inf_var_int32},
                 attrs={
                     'ring_id': ring_id,
-                    'use_calc_stream': True,
+                    'op_type': paddle.distributed.ReduceOp.MAX,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
