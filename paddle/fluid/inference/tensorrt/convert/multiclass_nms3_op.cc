@@ -137,6 +137,10 @@ class MultiClassNMS3OpConverter : public OpConverter {
         nvinfer1::Weights{
             nvinfer1::DataType::kINT32, static_cast<void*>(index.data()), 1});
 
+    SupportFP32MixPrecision(rois_num_name, op_desc.Type(), batch_nms_layer);
+    SupportFP32MixPrecision(output_name, op_desc.Type(), nms_concat_layer);
+    SupportFP32MixPrecision(index_name, op_desc.Type(), constant_layer);
+
     ReplenishLayerAndOutput(
         batch_nms_layer, "multiclass_nms3", {rois_num_name}, test_mode);
     ReplenishLayerAndOutput(
