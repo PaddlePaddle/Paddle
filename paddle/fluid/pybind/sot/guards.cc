@@ -173,10 +173,23 @@ bool PyObjMatchGuard::check(PyObject* value) {
     return false;
   }
 
-#if PY_3_9_PLUS
-  return PyObject_Equal(PyObject_CallNoArgs(expected_), value);
+#if PY_3_13_PLUS
+  PyObject* referent = NULL;
+  int get_ref_result = PyWeakref_GetRef(expected_, &referent);
+  if (get_ref_result == -1) {
+    // error
+    PyErr_Print();
+    return false;
+  }
+  if (get_ref_result == 0) {
+    // is dead
+    return false;
+  }
+  bool res = PyObject_Equal(value, referent);
+  Py_DECREF(referent);
+  return res;
 #else
-  return PyObject_Equal(PyObject_CallObject(expected_, NULL), value);
+  return PyObject_Equal(value, PyWeakref_GetObject(expected_));
 #endif
 }
 
