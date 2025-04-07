@@ -105,12 +105,15 @@ jobs:
         echo ${{ github.env }}
         docker exec -t ${container_name} /bin/bash -c '
         echo "aa=123" >> ~/.bashrc
+        source ~/.bashrc
+        bb=456
         '
 
     - name: Build
       run: |
         docker exec -t ${container_name} /bin/bash -c '
         echo $aa
+        echo $bb
         '
 
     # - name: Terminate and delete the container
