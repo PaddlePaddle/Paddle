@@ -348,44 +348,45 @@ def _run_dygraph(instance, input, program_holder):
         input_tensor_names.append(tensor.name)
         input_tensors.append(tensor)
 
-    persistable_tensors = []
-    origin_persistable_var_name = [
-        program_holder._suffix_varname_dict[var_name]
-        for var_name in program_holder.persistable_names
-    ]
-    for var_name in origin_persistable_var_name:
-        dy_var_name = instance._persistable_var_name_dict[var_name]
-        if dy_var_name in instance._parameters:
-            persistable_tensors.append(instance._parameters[dy_var_name])
-        elif dy_var_name in instance._buffers:
-            persistable_tensors.append(instance._buffers[dy_var_name])
-        else:
-            raise ValueError(
-                f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
-            )
+    if not hasattr(instance, "layer"):
+        persistable_tensors = []
+        origin_persistable_var_name = [
+            program_holder._suffix_varname_dict[var_name]
+            for var_name in program_holder.persistable_names
+        ]
+        for var_name in origin_persistable_var_name:
+            dy_var_name = instance._persistable_var_name_dict[var_name]
+            if dy_var_name in instance._parameters:
+                persistable_tensors.append(instance._parameters[dy_var_name])
+            elif dy_var_name in instance._buffers:
+                persistable_tensors.append(instance._buffers[dy_var_name])
+            else:
+                raise ValueError(
+                    f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
+                )
 
-    from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
+        from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
 
-    inputs = program_holder.input_vars
-    outputs = program_holder.output_vars
-    parameters = (persistable_tensors, program_holder.persistable_vars)
+        inputs = program_holder.input_vars
+        outputs = program_holder.output_vars
+        parameters = (persistable_tensors, program_holder.persistable_vars)
 
-    layer = PartialProgramLayer(
-        program_holder.infer_program,
-        inputs,
-        outputs,
-        parameters,
-    )
-    instance.layer = layer
+        layer = PartialProgramLayer(
+            program_holder.infer_program,
+            inputs,
+            outputs,
+            parameters,
+        )
+        instance.layer = layer
     if instance._is_test:
-        layer.training = False
+        instance.layer.training = False
     else:
         if not program_holder.support_train:
             raise ValueError(
                 "The model is not trainable, please check model_file of jit.save."
             )
         else:
-            layer.training = True
+            instance.layer.training = True
 
     return instance.layer(input_tensors)
 
