@@ -1000,6 +1000,37 @@ class TestMeanOp_ZeroSize2(OpTest):
             )
 
 
+class TestMeanOp_ZeroSize3(OpTest):
+    def setUp(self):
+        self.op_type = 'mean'
+        self.python_api = paddle.mean
+        self.init_prim_type()
+        self.dtype = 'float64'
+        self.shape = [2, 0, 4]
+        self.axis = 1
+        self.keepdim = False
+        self.set_attrs()
+
+        self.inputs = {'X': np.array([], dtype=self.dtype).reshape(self.shape)}
+        self.outputs = {
+            'Out': np.mean(
+                self.inputs["X"], axis=self.axis, keepdims=self.keepdim
+            )
+        }
+
+    def set_attrs(self):
+        pass
+
+    def init_prim_type(self):
+        self.prim_op_type = "prim"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, equal_nan=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

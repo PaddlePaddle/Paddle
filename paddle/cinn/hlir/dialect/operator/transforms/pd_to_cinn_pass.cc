@@ -170,6 +170,53 @@ class ReduceMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
   }
 };
 
+template <typename SOURCE_OP, typename TARGET_OP>
+class ArgMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
+ public:
+  using pir::OpRewritePattern<SOURCE_OP>::OpRewritePattern;
+
+  bool Match(SOURCE_OP op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied && IsDefinedBy<FullOp>(op, 1);
+  }
+
+  void Rewrite(SOURCE_OP op, pir::PatternRewriter &rewriter) const override {
+    const FullOp full_op = CastDefinedTo<FullOp>(op, 1);
+
+    const int64_t axis_value =
+        full_op.attribute("value")
+            .template dyn_cast<paddle::dialect::ScalarAttribute>()
+            .data()
+            .to<int64_t>();
+    const bool flatten = op.attribute("flatten")
+                             .template dyn_cast<::pir::BoolAttribute>()
+                             .data();
+    const bool keepdim = op.attribute("keepdims")
+                             .template dyn_cast<::pir::BoolAttribute>()
+                             .data();
+    const auto &dtype =
+        op.attribute("dtype")
+            .template dyn_cast<paddle::dialect::DataTypeAttribute>()
+            .data();
+
+    // The argmin/argmax has exactly one axis and is only effective when the
+    // `flatten` attr is false.
+    std::vector<int64_t> axis;
+    if (!flatten) {
+      axis = {axis_value};
+    }
+
+    auto cinn_op =
+        rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keepdim, dtype);
+
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_op.result(0));
+    rewriter.EraseOp(op);
+    if (full_op->use_empty()) {
+      rewriter.EraseOp(full_op);
+    }
+  }
+};
+
 class ProdOpPattern : public pir::OpRewritePattern<paddle::dialect::ProdOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::ProdOp>::OpRewritePattern;
@@ -1328,6 +1375,12 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
                                cinn::dialect::ReduceMinOp>>(context);
   ps.Add<ReduceMinMaxOpPattern<paddle::dialect::MaxOp,
                                cinn::dialect::ReduceMaxOp>>(context);
+  ps.Add<
+      ArgMinMaxOpPattern<paddle::dialect::ArgminOp, cinn::dialect::ArgminOp>>(
+      context);
+  ps.Add<
+      ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
+      context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);

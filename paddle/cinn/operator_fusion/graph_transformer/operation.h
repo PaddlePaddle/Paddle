@@ -129,20 +129,6 @@ struct LiftReduceToReduceTreeOperation {
   }
 };
 
-struct LiftToHorizontalFusionPatternOperation {
-  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    auto origin_name = node->id();
-    node->set_stmt_pattern(HorizontalFusionPattern(
-        {typename HorizontalFusionPattern::PaddingStmtPattern(
-            node->stmt_pattern(), {})},
-        std::make_shared<FusionTracker>(
-            GetFusionTracker(node->stmt_pattern()))));
-    VLOG(4) << "Make CopyInstr: " << origin_name << " -> " << node->id();
-    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
-    return node;
-  }
-};
-
 struct LiftToAnchorPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     std::string origin_name = node->id();

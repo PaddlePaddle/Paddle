@@ -57,7 +57,6 @@ struct PatternNode {
     }
     ss << "\nOps in pattern:" << std::endl;
     ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
-    ss << "Loop Framework is: " << GetLoopFramework(this->stmt_pattern()).loop;
     ss << "\nLoop Mapping is: " << loop_axis_mapping().DebugStr();
     return ss.str();
   }

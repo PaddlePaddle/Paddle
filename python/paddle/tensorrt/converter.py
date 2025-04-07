@@ -586,7 +586,41 @@ class PaddleToTensorRTConverter:
                 if op.results()[0].use_empty():
                     self.program.global_block().remove_op(op)
             if op.name() == "builtin.constant":
+                # builtin.constant can't be saved/loaded, we need del it
                 if op.results()[0].use_empty():
+                    self.program.global_block().remove_op(op)
+                else:
+                    constant_result = op.results()[0]
+                    constant_value_name = op.attrs()["value"]
+                    out_dtype = np.dtype(
+                        paddle.pir.core._PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[
+                            constant_result.dtype
+                        ]
+                    )
+                    tensor_data = self.scope.var(
+                        constant_value_name
+                    ).get_tensor()
+                    constant_array = np.array(
+                        tensor_data, dtype=out_dtype
+                    ).tolist()
+
+                    # convert builtin.constant to pd_op.full_int_array/full and then delete it
+                    with paddle.pir.core.program_guard(self.program):
+                        paddle.base.libpaddle.pir.reset_insertion_point_to_start()
+                        if len(constant_array) == 1:
+                            full_value = paddle._C_ops.full(
+                                [1],
+                                constant_array[0],
+                                constant_result.dtype,
+                                paddle.CUDAPlace(0),
+                            )
+                        else:
+                            full_value = paddle._C_ops.full_int_array(
+                                constant_array,
+                                constant_result.dtype,
+                                paddle.CUDAPlace(0),
+                            )
+                    op.replace_all_uses_with([full_value])
                     self.program.global_block().remove_op(op)
 
         # Call clear_shape_info to clear the previous shape information

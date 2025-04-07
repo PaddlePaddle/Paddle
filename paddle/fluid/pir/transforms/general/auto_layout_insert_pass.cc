@@ -68,9 +68,28 @@ class AutoLayoutInsertPass : public pir::Pass {
 
  private:
   void RewriteLayout(pir::Operation* op) {
+    // If op already register LayoutTransformationInterface, use it to rewrite.
+    // if not, maybe it is a new operator. If it has a UnaryElementWiseTrait or
+    // BinaryElementWiseTrait, then use input operands to rewrite the Layout.
     if (auto layout_interface =
             op->dyn_cast<paddle::dialect::LayoutTransformationInterface>()) {
       layout_interface.RewriteByLayout(op, common::DataLayout::NHWC);
+    } else if (op->HasTrait<pir::UnaryElementWiseTrait>() ||
+               op->HasTrait<pir::BinaryElementWiseTrait>()) {
+      pir::TransLayoutCallbackFn callback = nullptr;
+#ifdef PADDLE_WITH_CINN
+      auto& shape_analysis =
+          pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+      callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
+        shape_analysis.UpdateShapeOrDataByTransLayout(
+            value, pir::TransLayoutType::NCHW2NHWC);
+      };
+#endif
+      for (size_t i = 0; i < op->results().size(); ++i) {
+        op->result(i).set_type(op->operands_source().at(i).type());
+        pir::SetNewLayoutForValue(
+            op->result(i), common::DataLayout::NHWC, callback);
+      }
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "`%s` should implement InferMetaInterface interface or rewrite "
@@ -149,7 +168,7 @@ class AutoLayoutInsertPass : public pir::Pass {
   }
 
   // return true if op is need to be skipped
-  bool SkipSpecialOp(const pir::Operation& op) {
+  bool SkipUnsupportedOp(const pir::Operation& op) {
     // Skip special ops.
     if (op.operands().size() == 0) return true;
     if (op.HasTrait<pir::ImmutableLayoutTrait>()) return true;
@@ -178,22 +197,22 @@ class AutoLayoutInsertPass : public pir::Pass {
       }
       return is_broadcast;
     }
-    // After all OPs that support Layout conversion register
-    // `LayoutTransformationInterface`, Uncomment the following line. return
-    // !op.HasInterface<paddle::dialect::LayoutTransformationInterface>();
-    return false;
+    // if op not has UnaryElementWiseTrait and BinaryElementWiseTrait. And there
+    // is no LayoutTransformationInterface, which means that this operator
+    // cannot be taken over by AutoLayoutPass. We need to skip it.
+    return !op.HasInterface<paddle::dialect::LayoutTransformationInterface>();
   }
 
   void TransferLayout(pir::Builder builder, pir::Block* block) {
     for (auto&& op_item : *block) {
-      if (SkipSpecialOp(op_item)) continue;
+      if (SkipUnsupportedOp(op_item)) continue;
       auto op = &op_item;
       auto op_name = op->name();
 
       // NHWC ops branch, Only support
       // conv2d、fused_conv2d_add_act、conv2d_transpose now, it will add white
       // list later.
-      if (kOpsNhwc_.find(op_name) != kOpsNhwc_.end()) {
+      if (kOpsNhwc_.count(op_name)) {
         auto layout_interface =
             op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
         common::DataLayout new_layout = layout_interface.PreferLayout(op);
@@ -207,9 +226,22 @@ class AutoLayoutInsertPass : public pir::Pass {
           RewriteLayout(op);
           DoTransposeOpResult(op, builder);
         }
-      } else if (kOpsNchw.find(op_name) == kOpsNchw.end() &&
-                 kOpsWithAxis.find(op_name) == kOpsWithAxis.end() &&
+      } else if (!kOpsNchw.count(op_name) && !kOpsWithAxis.count(op_name) &&
                  IsInsertTransposeOpBefore(op)) {
+        // TODO(liujinnan):
+        // 1. Hide the special judgment method in PreferLayout of
+        // LayoutTransformationInterface.
+        // 2. Here we should do detailed experiments (`NHWC` vs `T
+        // + NCHW + T`) to determine whether to change the layout of pool2d. For
+        // example, when `hw` is large, it tends to be NCHW, and when `c` is
+        // large, it tends to be NHWC. Here, a temporary solution is to keep
+        // nchw when the pool type is maxpool.
+        if (auto pool2d_op = op->dyn_cast<paddle::dialect::Pool2dOp>()) {
+          if (pool2d_op.attribute("pooling_type")
+                  .dyn_cast<pir::StrAttribute>()
+                  .AsString() == "max")
+            continue;
+        }
         VLOG(4) << "enter NCHW op: " << op_name;
         DoTransposeOpOperand(op, builder);
         if (auto transpose_op = op->dyn_cast<paddle::dialect::TransposeOp>()) {
@@ -235,37 +267,32 @@ class AutoLayoutInsertPass : public pir::Pass {
 
   void DoTransposeOpOperand(pir::Operation* op,
                             pir::Builder& builder) {  // NOLINT
-    builder.set_insertion_point(op);
-
-    // For conv2d, only transpose the input.
-    if (op->isa<paddle::dialect::Conv2dOp>() ||
-        op->isa<paddle::dialect::Conv2dTransposeOp>()) {
-      auto inp = op->operand(0);
-      if (!JudgeValue(inp.source())) return;
+    auto InsertTranspose = [&](pir::OpOperand* operand) {
       auto transpose_op = builder.Build<paddle::dialect::TransposeOp>(
-          inp.source(), kNchw2Nhwc_);
+          operand->source(), kNchw2Nhwc_);
       transpose_op->set_attribute(
           "source",
           pir::StrAttribute::get(transpose_op->ir_context(),
                                  "auto_layout_pass"));
       pir::SetNewLayoutForValue(transpose_op->result(0),
                                 common::DataLayout::NHWC);
-      inp.set_source(transpose_op->result(0));
+      operand->set_source(transpose_op->result(0));
+    };
+
+    builder.set_insertion_point(op);
+    // For conv2d, only transpose the input.
+    if (op->isa<paddle::dialect::Conv2dOp>() ||
+        op->isa<paddle::dialect::Conv2dTransposeOp>()) {
+      auto inp = op->operand(0);
+      if (!JudgeValue(inp.source())) return;
+      InsertTranspose(&inp);
       return;
     }
 
     for (auto& operand : op->operands()) {
       if (!JudgeValue(operand.source())) continue;
       // Can be optimize with cache when not eliminate the transpose op.
-      auto transpose_op = builder.Build<paddle::dialect::TransposeOp>(
-          operand.source(), kNchw2Nhwc_);
-      transpose_op->set_attribute(
-          "source",
-          pir::StrAttribute::get(transpose_op->ir_context(),
-                                 "auto_layout_pass"));
-      pir::SetNewLayoutForValue(transpose_op->result(0),
-                                common::DataLayout::NHWC);
-      operand.set_source(transpose_op->result(0));
+      InsertTranspose(&operand);
     }
   }
   void DoTransposeOpResult(pir::Operation* op,
@@ -295,6 +322,7 @@ const std::set<std::string> kOpsNchw = {"pd_op.max_pool2d_with_index",
                                         "pd_op.fractional_max_pool2d",
                                         "pd_op.unpool3d",
                                         "pd_op.unpool",
+                                        // "pd_op.pool2d",
                                         "pd_op.correlation",
                                         "pd_op.depthwise_conv2d",
                                         "pd_op.grid_sample",
