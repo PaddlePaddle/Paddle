@@ -43,20 +43,21 @@ void LapackSVD(const T* x_data, T* eigenvalues_data, int rows, int cols) {
   std::vector<int> iwork(8 * mn);
   int info = 0;
 
-  phi::funcs::lapackSvd<T>(jobz,
-                           rows,
-                           cols,
-                           a,
-                           lda,
-                           eigenvalues_data,
-                           nullptr,
-                           1,
-                           nullptr,
-                           1,
-                           work.data(),
-                           lwork,
-                           iwork.data(),
-                           &info);
+  phi::funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
+                                                rows,
+                                                cols,
+                                                a,
+                                                lda,
+                                                eigenvalues_data,
+                                                nullptr,
+                                                1,
+                                                nullptr,
+                                                1,
+                                                work.data(),
+                                                lwork,
+                                                nullptr,
+                                                iwork.data(),
+                                                &info);
 
   if (info < 0) {
     PADDLE_THROW(common::errors::InvalidArgument(
