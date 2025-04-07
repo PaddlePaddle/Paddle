@@ -1,0 +1,123 @@
+name: PR-CI-Inference
+
+on:
+  workflow_call:
+
+env:
+  dockerfile: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
+  docker_image: 0ca5c4c33a67
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  ci_scripts: ${{ github.workspace }}/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-bypass:
+    name: Check bypass for Kunlun
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'inference'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build
+    needs: check-bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
+    env:
+      TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_build
+    runs-on:
+      group: CPU-infer
+
+    steps:
+    - name: Check docker image and run container
+      env:
+        work_dir: ${{ github.workspace }}
+        PADDLE_ROOT: ${{ github.workspace }}
+        FLAGS_fraction_of_gpu_memory_to_use: "0.15"
+        CTEST_OUTPUT_ON_FAILURE: 1
+        CTEST_PARALLEL_LEVEL: 4
+        WITH_GPU: "ON"
+        WITH_AVX: "ON"
+        WITH_TESTING: "OFF"
+        COVERALLS_UPLOAD: "ON"
+        PADDLE_VERSION: 0.0.0
+        CUDA_VISIBLE_DEVICES: "0,1"
+        GIT_PR_ID: ${{ github.event.pull_request.number }}
+        INFERENCE_DEMO_INSTALL_DIR: /root/.cache/inference_demo
+        WITH_PYTHON: "OFF"
+        PY_VERSION: "3.10"
+        WITH_ONNXRUNTIME: "ON"
+        WITH_UNITY_BUILD: "ON"
+        WITH_NVCC_LAZY: "OFF"
+        PYTHON_ABI: cp310-cp310
+        CACHE_DIR: /root/.cache/inference
+        CCACHE_DIR: /root/.ccache/inference
+        CCACHE_MAXSIZE: 150G
+        CCACHE_LIMIT_MULTIPLE: "0.8"
+      run: |
+        container_name=${TASK}-$(date +%s)
+        echo "container_name=${container_name}" >> ${{ github.env }}
+        docker run -d -t --name ${container_name} \
+        -v "/home/data/cfs:/home/data/cfs" \
+        -v "/home/data/cfs/.cache:/root/.cache" \
+        -v "/home/data/cfs/.ccache:/root/.ccache" \
+        -v "/home/data/cfs/.ccache/inference:/root/.ccache/inference" \
+        -v "/dev/shm:/dev/shm" \
+        -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+        -e BRANCH \
+        -e PR_ID \
+        -e COMMIT_ID \
+        -e work_dir \
+        -e PADDLE_ROOT \
+        -e FLAGS_fraction_of_gpu_memory_to_use \
+        -e CTEST_OUTPUT_ON_FAILURE \
+        -e CTEST_PARALLEL_LEVEL \
+        -e WITH_GPU \
+        -e WITH_AVX \
+        -e CUDA_VISIBLE_DEVICES \
+        -e INFERENCE_DEMO_INSTALL_DIR \
+        -e WITH_PYTHON \
+        -e WITH_ONNXRUNTIME \
+        -e WITH_NVCC_LAZY \
+        -e PYTHON_ABI \
+        -e COVERALLS_UPLOAD \
+        -e GIT_PR_ID \
+        -e PADDLE_VERSION \
+        -e WITH_TESTING \
+        -e PY_VERSION \
+        -e WITH_UNITY_BUILD \
+        -e CACHE_DIR \
+        -e CCACHE_DIR \
+        -e CCACHE_MAXSIZE \
+        -e CCACHE_LIMIT_MULTIPLE \
+        -e GITHUB_ENV \
+        -e ci_scripts \
+        -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
+
+    - name: Build
+      run: |
+        echo $GITHUB_ENV
+        echo ${{ github.env }}
+        docker exec -t ${container_name} /bin/bash -c '
+        echo "aa=123" >> $GITHUB_ENV
+        echo "bb=456" >> ${{ github.env }}
+        '
+
+    - name: Build
+      run: |
+        echo $GITHUB_ENV
+        echo ${{ github.env }}
+        echo $aa
+        echo $bb
+
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+    #     docker stop ${container_name}
+    #     docker rm ${container_name}
