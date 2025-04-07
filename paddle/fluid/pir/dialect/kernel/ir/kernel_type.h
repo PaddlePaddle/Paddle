@@ -36,21 +36,6 @@ class AllocatedDenseTensorType
         ctx, place, type);
   }
 
-  // just change place
-  static AllocatedDenseTensorType get(pir::IrContext *ctx,
-                                      const phi::Place &place,
-                                      AllocatedDenseTensorType allocated_type) {
-    dialect::DenseTensorType dense_tensor_type =
-        dialect::DenseTensorType::get(ctx,
-                                      allocated_type.dtype(),
-                                      allocated_type.dims(),
-                                      allocated_type.data_layout(),
-                                      allocated_type.lod(),
-                                      allocated_type.offset());
-    return pir::TypeManager::template get<AllocatedDenseTensorType>(
-        ctx, place, dense_tensor_type);
-  }
-
   static AllocatedDenseTensorType get(pir::IrContext *ctx,
                                       const phi::Place &place,
                                       const pir::Type &dtype,

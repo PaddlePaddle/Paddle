@@ -259,21 +259,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
   }
 }
-/*
-bool TensorToDenseTensor(phi::DenseTensor *input,
-                               const phi::Place &place,
-                               phi::DenseTensor *out) {
-  if (input->place() == place){
-    out = input;
-  }else{
-    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-    auto dev_ctx = pool.Get(input->place());
-    phi::Copy<CONTEXT>(dev_ctx, *input, place, false, out);
-  }
 
-  return true;
-}
- */
 bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
                                phi::DenseTensor *t,
                                const phi::Place &place) {
@@ -1849,6 +1835,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
 bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                                 framework::Scope *scope) {
+  VLOG(3) << "Predictor::set_feed";
   if (load_pir_model_) {
     PADDLE_ENFORCE_EQ(inputs.size(),
                       pir_feeds_.size(),

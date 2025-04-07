@@ -221,8 +221,7 @@ void PhiKernelInstruction::Run() {
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
   }
-  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel in " << place
-          << std::endl;
+  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel in " << place;
   {
     phi::RecordEvent record_event(kernel_name_ + " kernel launch",
                                   phi::TracerEventType::StaticKernelLaunch,

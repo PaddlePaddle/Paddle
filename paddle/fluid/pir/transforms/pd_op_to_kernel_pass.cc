@@ -3092,7 +3092,6 @@ void AddShadowFeedOpForDataOrFeed(
 */
 void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
                                           pir::IrContext* ctx) {
-  std::vector<pir::Operation*> nouse_shadowfeed;
   for (auto it = block->begin(); it != block->end(); ++it) {
     if (it->isa<PhiKernelOp>() &&
         (it->dyn_cast<PhiKernelOp>().op_name() == "pd_op.shadow_feed")) {
@@ -3112,38 +3111,16 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
           VLOG(6) << next_op;
           VLOG(6) << "==>";
 
-          if (is_memcpy_d2h) {
-            // cpu place don't need shadow_feed
-            // remove shadow feed and memcpy op
-            shadow_value = it->operand_source(0);
-            next_op->result(0).ReplaceAllUsesWith(shadow_value);
-            block->erase(next_op->operator pir::Block::ConstIterator());
-            nouse_shadowfeed.push_back(it);
-          } else {
-            auto out_place = next_op->result(0)
-                                 .type()
-                                 .dyn_cast<AllocatedDenseTensorType>()
-                                 .place();
-            auto kernel_key = next_op->dyn_cast<PhiKernelOp>().kernel_key();
-            kernel_key.set_backend(TransToPhiBackend(out_place));
-            it->set_attribute(
-                "dst_place_type",
-                pir::Int32Attribute::get(ctx, 1));  // device place
-            auto out_type = AllocatedDenseTensorType::get(
-                ctx,
-                out_place,
-                it->result(0).type().dyn_cast<AllocatedDenseTensorType>());
-            it->set_attribute(
-                "kernel_key",
-                KernelAttribute::get(pir::IrContext::Instance(), kernel_key));
-            it->result(0).set_type(out_type);
+          // remove memcpy op
+          next_op->result(0).ReplaceAllUsesWith(shadow_value);
+          block->erase(next_op->operator pir::Block::ConstIterator());
 
-            VLOG(6) << *it;
-
-            // remove memcpy op
-            next_op->result(0).ReplaceAllUsesWith(shadow_value);
-            block->erase(next_op->operator pir::Block::ConstIterator());
-          }
+          // set dst_place_type for shadow_feed, 0 for cpu_place, 1 for
+          // gpu_place
+          int dst_place_type = is_memcpy_d2h ? 0 : 1;
+          it->set_attribute("dst_place_type",
+                            pir::Int32Attribute::get(ctx, dst_place_type));
+          VLOG(6) << *it;
         }
       }
 
@@ -3195,10 +3172,6 @@ void RemoveRedundantMemcpyAfterShadowFeed(pir::Block* block,
         }
       }
     }
-  }
-
-  for (auto iter : nouse_shadowfeed) {
-    block->erase(iter->operator pir::Block::ConstIterator());
   }
 }
 
