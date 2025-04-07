@@ -150,7 +150,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
 
-  VLOG(6) << "After Step1 shard to replicated: dist_attr of dst_tensor: "
+  VLOG(6) << "After step1 shard to replicated: dist_attr of dst_tensor: "
           << dst_tensor->dist_attr().to_string();
 
   // 2. change all the partial status to replicated status if needed
@@ -197,7 +197,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       SetDistProps(dst_tensor, real_out_dist_attr);
     }
   }
-  VLOG(6) << "After Step2 partial to replicated: dist_attr of dst_tensor: "
+  VLOG(6) << "After step2 partial to replicated: dist_attr of dst_tensor: "
           << dst_tensor->dist_attr().to_string();
 
   // 3. Change replicated to partial
@@ -237,7 +237,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       SetDistProps(dst_tensor, real_out_dist_attr);
     }
   }
-  VLOG(6) << "After Step3 replicated to partial: dist_attr of dst_tensor: "
+  VLOG(6) << "After step3 replicated to partial: dist_attr of dst_tensor: "
           << dst_tensor->dist_attr().to_string();
 
   // 4. Change replicated/partial to shard
@@ -294,7 +294,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
   VLOG(6)
-      << "After Step4 replicated/partial to shard: dist_attr of dst_tensor: "
+      << "After step4 replicated/partial to shard: dist_attr of dst_tensor: "
       << dst_tensor->dist_attr().to_string();
 }
 
