@@ -1652,21 +1652,6 @@ void BindValue(py::module *m) {
           return phi::vectorize(GetValueDims(self)).size();
         }
       });
-  .def("batch_dim", [](Value self) -> int32_t {
-    auto op_result = self.dyn_cast<OpResult>();
-    pir::Operation *operation = op_result.owner();
-    if (self.type().isa<SparseCooTensorType>() &&
-        operation->name() == "pd_op.sparse_coo_tensor_sp") {
-      std::vector<Value> sources = operation->operands_source();
-      Value non_zero_indices = sources[1];
-      return phi::vectorize(GetValueDims(non_zero_indices))[0];
-    } else if (self.type().isa<SparseCsrTensorType>()) {
-      PADDLE_THROW(common::errors::InvalidType(
-          "SparseCsrTensor is unsupported in pir mode."));
-    } else {
-      return 0;
-    }
-  });
 }
 
 void BindOpOperand(py::module *m) {
