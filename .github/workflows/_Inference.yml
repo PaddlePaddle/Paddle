@@ -105,9 +105,13 @@ jobs:
         echo ${{ github.env }}
         docker exec -t ${container_name} /bin/bash -c '
         echo "aa=123" >> ~/.bashrc
+        echo "export bb=456" >> ~/.bashrc
+        echo $aa
+        echo $bb
+        echo +++++
         source ~/.bashrc
-        bb=456
-        export cc=789
+        echo $aa
+        echo $bb
         '
 
     - name: Build
@@ -115,7 +119,10 @@ jobs:
         docker exec -t ${container_name} /bin/bash -c '
         echo $aa
         echo $bb
-        echo $cc
+        echo +++++
+        source ~/.bashrc
+        echo $aa
+        echo $bb
         '
 
     # - name: Terminate and delete the container
