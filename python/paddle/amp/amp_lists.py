@@ -136,19 +136,3 @@ def black_list() -> dict[str, dict[str, set[str]]]:
         },
     }
     return black_list
-
-
-def black_list_copy_3() -> dict[str, dict[str, set[str]]]:
-    black_list = {
-        "float16": {
-            "OD": set(),
-            "O1": FP16_BLACK_LIST | EXTRA_BLACK_LIST,
-            "O2": EXTRA_BLACK_LIST,
-        },
-        "bfloat16": {
-            "OD": set(),
-            "O1": BF16_BLACK_LIST | EXTRA_BLACK_LIST,
-            "O2": EXTRA_BLACK_LIST,
-        },
-    }
-    return black_list

@@ -23,7 +23,7 @@ jobs:
   build:
     name: Coverage build
     runs-on:
-      group: CPU-test
+      group: GZ_BD-CPU
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can_skip }}
 
@@ -333,10 +333,10 @@ jobs:
           exit ${{ env.COVERAGE_EXIT_CODE }}
         fi
 
-    # - name: Terminate and delete the container
-    #   if: always()
-    #   run: |
-    #     set +e
-    #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-    #     docker stop ${{ env.container_name }}
-    #     docker rm ${{ env.container_name }}
+    - name: Terminate and delete the container
+      if: always()
+      run: |
+        set +e
+        docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        docker stop ${{ env.container_name }}
+        docker rm ${{ env.container_name }}

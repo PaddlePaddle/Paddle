@@ -45,20 +45,6 @@ if [ "$4" == "coverage" ]; then
     echo "::endgroup::"
 fi
 
-if [ "$4" == "kunlun" ]; then
-    export PATH=/usr/local/bin:${PATH}
-    ln -sf $(which python3.10) /usr/local/bin/python
-    ln -sf $(which pip3.10) /usr/local/bin/pip
-    echo "::group::Installing python dependencies"
-    pip3.10 install --upgrade pip
-    pip3.10 install -r "/paddle/python/requirements.txt"
-    pip3.10  install -r "/paddle/python/unittest_py/requirements.txt"
-    echo "::endgroup::"
-    # if [ "$WITH_CINN" == "ON" ];then
-    #     export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
-    # fi
-fi
-
 function run_setup(){
     startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build

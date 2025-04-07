@@ -176,20 +176,6 @@ def _in_amp_guard() -> bool:
         return False
 
 
-def _in_amp_guard_copy() -> bool:
-    """
-    Judge whether current code block is in `amp_guard` context.
-    """
-    tracer = _dygraph_tracer()
-    if tracer:
-        if tracer._amp_level == core.AmpLevel.O1:
-            return True
-        else:
-            return False
-    else:
-        return False
-
-
 def _in_pure_fp16_guard() -> bool:
     tracer = _dygraph_tracer()
     return tracer and tracer._amp_level == core.AmpLevel.O2

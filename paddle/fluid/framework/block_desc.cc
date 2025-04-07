@@ -139,10 +139,6 @@ void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
   need_update_ = true;
   ops_.emplace_front(std::move(op_desc));
 }
-void BlockDesc::PrependAllocatedOp_copy(std::unique_ptr<OpDesc> &&op_desc) {
-  need_update_ = true;
-  ops_.emplace_front(std::move(op_desc));
-}
 
 OpDesc *BlockDesc::InsertOp(size_t index) {
   need_update_ = true;
