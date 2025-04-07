@@ -95,8 +95,6 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& src_dist_attr = src_tensor.dist_attr();
   int64_t first_diff_axis =
       FindFirstDiffShardAxis(src_dist_attr, dst_dist_attr);
-  // VLOG(3) << "shape: ["
-  // <<str_join(common::vectorize<int64_t>(src_tensor.dims())) << "] "
 
   VLOG(3) << "\nsrc_dist_attr: [" << src_dist_attr.to_string() << "] "
           << "\ndst_dist_attr: [" << dst_dist_attr.to_string() << "] "
@@ -107,25 +105,16 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   SetValue(dst_tensor, src_tensor.value());
   SetDistProps(dst_tensor, src_tensor.dims(), src_dist_attr);
-  VLOG(3) << "src_tensor has_allocation:" << src_tensor.value().has_allocation()
-          << " capacity: " << src_tensor.value().capacity();
-  VLOG(3) << "dst_tensor has_allocation:"
-          << dst_tensor->value().has_allocation()
-          << " capacity: " << dst_tensor->value().capacity();
   const auto& process_mesh = dst_dist_attr.process_mesh();
-  // 1. change all the shard status to replicated status
+
+  // 1. change shard status to replicated status
   for (int64_t i = first_diff_axis; i >= 0; --i) {
     int64_t in_mesh_axis = src_dist_attr.dims_mapping()[i];
     int64_t out_mesh_axis = dst_dist_attr_orig.dims_mapping()[i];
     if (in_mesh_axis == -1 || in_mesh_axis == out_mesh_axis) {
       continue;
-      VLOG(3) << "Step1: SKIP shard to replicated on axis " << i
-              << ". in_mesh_axis: " << in_mesh_axis
-              << " , out_mesh_axis: " << out_mesh_axis;
     } else {
-      VLOG(3) << "Step1: shard to replicated on axis " << i
-              << ". in_mesh_axis: " << in_mesh_axis
-              << " , out_mesh_axis: " << out_mesh_axis;
+      VLOG(3) << "Step1: shard to replicated on axis " << i;
       // 1.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(dst_tensor->dist_attr());
       std::vector<int64_t> real_dims_mapping =
@@ -161,7 +150,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     }
   }
 
-  VLOG(3) << "---- After Step1 shard to replicated: dst_dist_attr: "
+  VLOG(6) << "After Step1 shard to replicated: dist_attr of dst_tensor: "
           << dst_tensor->dist_attr().to_string();
 
   // 2. change all the partial status to replicated status if needed
@@ -177,7 +166,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           dst_dist_attr_orig.is_shard(partial_dim)) {
         continue;
       }
-      VLOG(3) << "Step2: partial to replicated. axis " << partial_dim;
+      VLOG(3) << "Step2: partial to replicated on axis " << partial_dim;
       // 2.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(dst_tensor->dist_attr());
       real_out_dist_attr.clean_partial_dims({partial_dim});
@@ -208,8 +197,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       SetDistProps(dst_tensor, real_out_dist_attr);
     }
   }
-
-  VLOG(3) << "---- After Step2 partial to replicated: dst_dist_attr: "
+  VLOG(6) << "After Step2 partial to replicated: dist_attr of dst_tensor: "
           << dst_tensor->dist_attr().to_string();
 
   // 3. Change replicated to partial
@@ -220,8 +208,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       if (in_partial_status.count(kv.first) != 0) {
         continue;
       }
-      VLOG(3) << "Step3: replicated to partial. Partial status mesh axis "
-              << kv.first;
+      VLOG(3) << "Step3: replicated to partial on axis " << kv.first;
       // 3.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(dst_tensor->dist_attr());
       real_out_dist_attr.set_partial_status(std::vector<int64_t>{kv.first});
@@ -250,7 +237,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       SetDistProps(dst_tensor, real_out_dist_attr);
     }
   }
-  VLOG(3) << "---- After Step3 replicated to partial: dst_dist_attr: "
+  VLOG(6) << "After Step3 replicated to partial: dist_attr of dst_tensor: "
           << dst_tensor->dist_attr().to_string();
 
   // 4. Change replicated/partial to shard
@@ -259,15 +246,12 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     int64_t out_mesh_axis = dst_dist_attr_orig.dims_mapping()[i];
     if (out_mesh_axis == -1 || in_mesh_axis == out_mesh_axis) {
       continue;
-      VLOG(3) << "Step4: SKIP replicated/partial to shard on axis " << i
-              << ". in_mesh_axis: " << in_mesh_axis
-              << " , out_mesh_axis: " << out_mesh_axis;
     } else {
       const auto& in_partial_status = dst_tensor->dist_attr().partial_status();
       bool is_partial = in_partial_status.count(out_mesh_axis) != 0;
+      VLOG(3) << "Step4: replicated/partial to shard on axis " << out_mesh_axis
+              << "; partial state :" << is_partial;
 
-      VLOG(3) << "Step4: replicated/partial to shard. out_mesh axis : "
-              << out_mesh_axis << "; partial state :" << is_partial;
       // 4.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(dst_tensor->dist_attr());
       std::vector<int64_t> real_dims_mapping =
@@ -297,9 +281,6 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       // 4.5 Change from replicated to shard
       DistTensor tmp_result;
       SetDistProps(dst_tensor, in_one_dim_dist_attr);
-      VLOG(3) << "Step4: dst_tensor has_allocation:"
-              << dst_tensor->value().has_allocation()
-              << " capacity: " << dst_tensor->value().capacity();
       if (is_partial) {
         PToSReshardFunction func;
         func.Eval(dev_ctx, *dst_tensor, out_one_dim_dist_attr, &tmp_result);
@@ -312,10 +293,9 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       SetDistProps(dst_tensor, real_out_dist_attr);
     }
   }
-  VLOG(3) << "---- After Step4 replicated/partial to shard: dst_dist_attr: "
-          << dst_tensor->dist_attr().to_string();
-  VLOG(3) << "---- Final: dst_dist_attr: "
-          << dst_tensor->dist_attr().to_string();
+  VLOG(6)
+      << "After Step4 replicated/partial to shard: dist_attr of dst_tensor: "
+      << dst_tensor->dist_attr().to_string();
 }
 
 bool CrossNdMeshReshardFunction::IsSuitable(
