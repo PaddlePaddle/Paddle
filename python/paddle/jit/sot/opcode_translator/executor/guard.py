@@ -286,7 +286,7 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
         return [
             FasterStringifiedExpression(
                 f"{obj_free_var_name}() is not None and {{}} == {obj_free_var_name}()",
-                paddle.framework.core.PyObjMatchGuard(self.get_py_value()),
+                paddle.framework.core.WeakRefMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(
                     frame_value_tracer.free_vars,

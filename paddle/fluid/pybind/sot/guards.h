@@ -236,13 +236,13 @@ class NumPyArrayValueMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class PyObjMatchGuard : public GuardBase {
+class WeakRefMatchGuard : public GuardBase {
  public:
-  explicit PyObjMatchGuard(const py::object& obj) {
+  explicit WeakRefMatchGuard(const py::object& obj) {
     expected_ = PyWeakref_NewRef(obj.ptr(), nullptr);
   }
 
-  ~PyObjMatchGuard() override { PyObject_ClearWeakRefs(expected_); }
+  ~WeakRefMatchGuard() override { PyObject_ClearWeakRefs(expected_); }
 
   bool check(PyObject* value) override;
 

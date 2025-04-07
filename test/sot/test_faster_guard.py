@@ -196,7 +196,7 @@ class TestBasicFasterGuard(unittest.TestCase):
         def test_func():
             return 1 + 1
 
-        guard_object = paddle.framework.core.PyObjMatchGuard(test_func)
+        guard_object = paddle.framework.core.WeakRefMatchGuard(test_func)
         self.assertTrue(guard_object.check(test_func))
         self.assertFalse(guard_object.check(lambda x: x == 1))
         self.assertFalse(guard_object.check(1))
