@@ -34,15 +34,18 @@ if [ "$4" == "py3" ]; then
 fi
 
 if [ "$4" == "kunlun" ]; then
-    PATH=/usr/local/bin:${PATH}
+    export PATH=/usr/local/bin:${PATH}
     ln -sf $(which python3.10) /usr/local/bin/python
     ln -sf $(which pip3.10) /usr/local/bin/pip
-    pip3.10 install --upgrade pip
 
     echo "::group::Installing python dependencies"
+    pip3.10 install --upgrade pip
     pip3.10 install -r "${work_dir}/python/requirements.txt"
     pip3.10 install -r "${work_dir}/python/unittest_py/requirements.txt"
     echo "::endgroup::"
+    # if [ "$WITH_CINN" == "ON" ];then
+    #     export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
+    # fi
 fi
 
 function run_setup(){
