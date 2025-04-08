@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import paddle
 from paddle.common_ops_import import check_variable_and_dtype
 from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
-    AllreduceSumOpCost,
+    AllReduceOpCost,
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
@@ -248,8 +249,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )[0]
         attrs = {"use_calc_stream": True, "use_model_parallel": True}
         var_names = serial_op.output("Out")
-        c_allreduce_sum_desc_mapping = build_comm_desc_from_dist_op(
-            "c_allreduce_sum",
+        all_reduce_sum_desc_mapping = build_comm_desc_from_dist_op(
+            "all_reduce",
             dist_op,
             ctx,
             var_names,
@@ -258,10 +259,10 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )
 
         comm_op_cost_list = build_comm_costs_from_descs(
-            AllreduceSumOpCost,
+            AllReduceOpCost,
             ctx,
             processes,
-            c_allreduce_sum_desc_mapping,
+            all_reduce_sum_desc_mapping,
             cluster,
         )
 
@@ -510,23 +511,23 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         naive_copy_op_dist_attr_for_program(c_embedding_op, src_op, ctx)
 
         # use_model_parallel
-        c_allreduce_sum_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [Out_var]},
-            outputs={'Out': [Out_var]},
+        all_reduce_sum_op = main_block.append_op(
+            type='all_reduce',
+            inputs={'x': [Out_var]},
+            outputs={'out': [Out_var]},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
-        c_allreduce_sum_op._set_attr(
+        all_reduce_sum_op._set_attr(
             'op_namescope', '/' + ParallelMode.TensorParallel
         )
         # allreduce
         set_comm_op_dist_attr_for_program(
-            c_allreduce_sum_op,
+            all_reduce_sum_op,
             op_dist_attr.process_mesh,
             out_var_dist_attr,
             ctx,

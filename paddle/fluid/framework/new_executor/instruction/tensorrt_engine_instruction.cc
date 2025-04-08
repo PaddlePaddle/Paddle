@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/phi/common/data_type.h"
@@ -40,6 +41,11 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto engine_serialized_path = op_attributes.at("engine_serialized_data")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
+
+  refit_params_path_ = op_attributes.at("refit_params_path")
+                           .dyn_cast<pir::StrAttribute>()
+                           .AsString();
+
   workspace_size_ =
       op_attributes.at("workspace_size").dyn_cast<pir::Int64Attribute>().data();
   allow_build_at_runtime_ = op_attributes.at("allow_build_at_runtime")
@@ -52,6 +58,7 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   for (size_t i = 0; i < output_names_attrs.size(); ++i) {
     auto output_name =
         output_names_attrs[i].dyn_cast<pir::StrAttribute>().AsString();
+
     if (output_name != "") {
       output_names_[i] = output_name;
     }
@@ -90,6 +97,35 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   std::vector<int> min_input_shape_vector;
   std::vector<int> max_input_shape_vector;
   std::vector<int> opt_input_shape_vector;
+
+  if (op_attributes.find("refit_param_names") != op_attributes.end()) {
+    auto refit_param_name_attr = op_attributes.at("refit_param_names")
+                                     .dyn_cast<pir::ArrayAttribute>()
+                                     .AsVector();
+    for (const auto &attr : refit_param_name_attr) {
+      refit_param_names_.push_back(
+          attr.dyn_cast<pir::StrAttribute>().AsString());
+    }
+  }
+
+  if (op_attributes.find("refit_param_names2trt_names") !=
+      op_attributes.end()) {
+    // refit_param_names2trt_names:["batch_norm2d_0.b_0:CONSTANT:batch_norm2d_0.b_0","batch_norm2d_0.b_0:SHIFT:270_pd_op.batch_norm_->batch_norm_layer(269)"]
+    auto refit_mapping_attrs = op_attributes.at("refit_param_names2trt_names")
+                                   .dyn_cast<pir::ArrayAttribute>()
+                                   .AsVector();
+    for (const auto &attr : refit_mapping_attrs) {
+      std::string mapping_str = attr.dyn_cast<pir::StrAttribute>().AsString();
+      size_t pos1 = mapping_str.find(':');
+      size_t pos2 = mapping_str.find(':', pos1 + 1);
+      if (pos1 != std::string::npos && pos2 != std::string::npos) {
+        std::string param_name = mapping_str.substr(0, pos1);
+        std::string role = mapping_str.substr(pos1 + 1, pos2 - pos1 - 1);
+        std::string layer_name = mapping_str.substr(pos2 + 1);
+        refit_param_names2trt_names_[param_name][role] = layer_name;
+      }
+    }
+  }
 
   auto dynamic_shape_names_attrs = op_attributes.at("dynamic_shape_names")
                                        .dyn_cast<pir::ArrayAttribute>()
@@ -168,6 +204,47 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
       params, paddle::platform::NaiveLogger::Global());
   auto engine_data = ReadBinaryFileToString(engine_serialized_path);
   trt_engine_->Deserialize(engine_data);
+
+  size_t len = refit_param_names_.size();
+  if (!refit_params_path_.empty() && len > 0) {
+    VLOG(6) << "Start refit process for TensorRT engine with " << len
+            << " parameters";
+    auto scope = value_exec_info_->GetScope();
+    trt_engine_->SetScope(scope);
+    std::vector<std::string> param_names = refit_param_names_;
+    std::sort(param_names.begin(), param_names.end());
+
+    std::vector<phi::DenseTensor *> tensor_out;
+    for (size_t i = 0; i < len; ++i) {
+      auto *tensor_temp = new phi::DenseTensor();
+      tensor_temp->Resize({1});
+      phi::DataType type_data = phi::DataType::FLOAT32;
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(phi::CPUPlace());
+      dev_ctx->Alloc(tensor_temp, type_data);
+      tensor_out.push_back(tensor_temp);
+    }
+
+    pir::LoadCombineFunction(
+        refit_params_path_, param_names, &tensor_out, false, place);
+
+    for (size_t i = 0; i < param_names.size(); ++i) {
+      const std::string &param_name = param_names[i];
+      PADDLE_ENFORCE_EQ(
+          trt_engine_->SetRefitWeights(
+              refit_param_names2trt_names_, param_name, *tensor_out[i]),
+          true,
+          common::errors::InvalidArgument(
+              std::string("Failed to set refit weights for") + param_name));
+    }
+    PADDLE_ENFORCE_EQ(
+        trt_engine_->FinalizeRefit(),
+        true,
+        common::errors::InvalidArgument("Failed to finalize refit process,some "
+                                        "weights have not been updated."));
+    VLOG(6) << "Finish tensorrt refit";
+  }
 
   VLOG(6) << "Finish build engine for: " << op_name_;
 

@@ -63,22 +63,23 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
 }
 
 template <typename T>
-inline void CheckTensorIndexValue(const phi::DenseTensor* x,
+inline void CheckTensorIndexValue(const paddle::Tensor& x,
                                   const int64_t dim_len) {
   // skip check if strides are not all 1
-  for (auto i = 0; i < x->strides().size(); i++) {
-    if (x->strides()[i] != 1) {
+  for (auto i = 0; i < x.strides().size(); i++) {
+    if (x.strides()[i] != 1) {
       return;
     }
   }
   T value = static_cast<T>(0);
-  int64_t x_numel = x->numel();
-  if (!(x->place().GetType() == phi::AllocationType::CPU)) {
+  int64_t x_numel = x.numel();
+  if (!(x.place().GetType() == phi::AllocationType::CPU)) {
+    auto ten = (*static_cast<phi::DenseTensor*>(x.impl().get()));
     phi::DenseTensor cpu_x;
-    framework::TensorCopy(*x, phi::CPUPlace(), &cpu_x);
+    framework::TensorCopy(ten, phi::CPUPlace(), &cpu_x);
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    const phi::DeviceContext* dev_ctx = pool.Get(x->place());
+    const phi::DeviceContext* dev_ctx = pool.Get(x.place());
     dev_ctx->Wait();
 #endif
     for (int i = 0; i < x_numel; i++) {
@@ -99,7 +100,7 @@ inline void CheckTensorIndexValue(const phi::DenseTensor* x,
 
   } else {
     for (int i = 0; i < x_numel; i++) {
-      value = x->data<T>()[i];
+      value = x.data<T>()[i];
       PADDLE_ENFORCE_EQ(
           -dim_len <= value && value < dim_len,
           true,
@@ -391,21 +392,18 @@ static void ParseIndex(const paddle::Tensor& tensor,
                                 current_dim));
         } else if (slice_tensor.dtype() == phi::DataType::INT64 ||
                    slice_tensor.dtype() == phi::DataType::INT32) {
-          // valid_index is the number of dimensions exclude None index
-          const int valid_indices = size - none_axes->size() - ell_count;
+          // check if current slice_tensor is valid
           PADDLE_ENFORCE_EQ(
-              valid_indices <= rank,
+              current_dim + 1 <= rank,
               true,
               common::errors::InvalidArgument(
                   "Too many indices (%d) for tensor of dimension %d.",
-                  valid_indices,
+                  current_dim + 1,
                   rank));
-          auto ten =
-              (*static_cast<phi::DenseTensor*>(slice_tensor.impl().get()));
           if (slice_tensor.dtype() == phi::DataType::INT32) {
-            CheckTensorIndexValue<int32_t>(&ten, dim_len);
+            CheckTensorIndexValue<int32_t>(slice_tensor, dim_len);
           } else if (slice_tensor.dtype() == phi::DataType::INT64) {
-            CheckTensorIndexValue<int64_t>(&ten, dim_len);
+            CheckTensorIndexValue<int64_t>(slice_tensor, dim_len);
           }
         }
         *has_advanced_index = true;
