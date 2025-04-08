@@ -253,7 +253,8 @@ class ShardingGradView:
         tmp_grad = self._slice_grad_from_buffer()
         tmp_grad.get_tensor()._set_dims(self._param.shape)
         if not self._use_main_grad:
-            self._param._copy_gradient_from(tmp_grad)
+            # self._param._copy_gradient_from(tmp_grad)
+            self._param._local_value()._copy_gradient_from(tmp_grad)
         else:
             self._param.main_grad = tmp_grad
 
@@ -261,7 +262,8 @@ class ShardingGradView:
         param_shape = self._param.shape
         stop_gradient = self._param.stop_gradient
         self._param.stop_gradient = True
-        self._param.flatten_()
+        # self._param.flatten_()
+        self._param._local_value().flatten_()
         paddle.assign(
             self._param,
             self._param_buffer._slice(
@@ -272,7 +274,8 @@ class ShardingGradView:
         self._param.stop_gradient = stop_gradient
         self._param_buffer._slice(
             self._index, self._index + self._param._numel()
-        )._share_buffer_to(self._param)
+        )._share_buffer_to(self._param._local_value())
+        # )._share_buffer_to(self._param)
 
     def fill_slice_param(self, slice_param):
         slice_begin = self._param_begin

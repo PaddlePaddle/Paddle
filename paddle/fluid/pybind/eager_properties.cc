@@ -30,6 +30,9 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/memcpy.h"
 
@@ -489,6 +492,27 @@ PyObject* tensor_properties_get_placements(TensorObject* self, void* closure) {
     RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_placements(TensorObject* self,
+                                     PyObject* value,
+                                     void* closure) {
+  EAGER_TRY
+  if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    dist_tensor->set_placements(CastPyArg2VectorOfPlacement(value, 0));
+#else
+    PADDLE_THROW(common::errors::Unavailable(
+        "The `placements()` property of (Dist)Tensor is not supported in the "
+        "current PaddlePaddle, please recompile and installPaddlePaddle with "
+        "the "
+        "option of `WITH_DISTRIBUTE=ON`."));
+#endif
+  }
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
 }
 
 PyDoc_STRVAR(tensor_num_shard__doc__,  // NOLINT
@@ -1008,7 +1032,7 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr},
     {"placements",
      (getter)tensor_properties_get_placements,
-     nullptr,
+     (setter)tensor_properties_set_placements,
      tensor_placements__doc__,
      nullptr},
     {"num_shard",

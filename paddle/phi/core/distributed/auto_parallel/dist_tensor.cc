@@ -256,6 +256,10 @@ void DistTensor::unsafe_set_dims(const DDim& dims) {
   global_dims_ = dims;
 }
 
+void DistTensor::set_placements(Placements placements) {
+  placements_ = placements;
+}
+
 void DistTensor::unsafe_set_dist_attr(const TensorDistAttr& dist_attr) {
   if (this->initialized()) {
     VLOG(6) << "You try to set an initialized DistTensor's dist attr. "
