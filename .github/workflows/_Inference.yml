@@ -245,7 +245,7 @@ jobs:
     - name: Download paddle.tar.gz
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        set +e
+        set -x
         # rm -rf * .[^.]*
         # set -e
         # echo "Downloading build.tar.gz"
@@ -276,7 +276,8 @@ jobs:
 
     - name: Test go inference api
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c -x'
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        set -x
         cat ~/.bashrc
         source ~/.bashrc
         source ${ci_scripts}/utils.sh
@@ -288,7 +289,7 @@ jobs:
 
     - name: Check approvals of unittest
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c -x'
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ~/.bashrc
         source ${ci_scripts}/utils.sh
         init
