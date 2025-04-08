@@ -569,7 +569,7 @@ void matmul_double_grad(const Tensor& x,
       if (!x_grad_reduce_dims.empty()) {
         dx = sum<T>(dx, IntArray(x_grad_reduce_dims), dy.dtype(), true);
       }
-      reshape<T>(dx, IntArray(tx_dims));
+      dx = reshape<T>(dx, IntArray(tx_dims));
     }
 
     if (y_grad) {
@@ -588,7 +588,7 @@ void matmul_double_grad(const Tensor& x,
       if (!y_grad_reduce_dims.empty()) {
         dy = sum<T>(dy, IntArray(y_grad_reduce_dims), dy.dtype(), true);
       }
-      reshape<T>(dy, IntArray(ty_dims));
+      dy = reshape<T>(dy, IntArray(ty_dims));
     }
   }
 
