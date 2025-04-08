@@ -172,7 +172,7 @@ jobs:
       group: Inference-P4
 
     steps:
-    - name: Check docker image and run container
+    - name: Check docker image and run  container
       env:
         work_dir: ${{ github.workspace }}
         PADDLE_ROOT: ${{ github.workspace }}
