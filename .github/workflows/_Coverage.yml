@@ -5,7 +5,7 @@ on:
 
 env:
   Dockerfile: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
-  docker_image: c0a57218f232
+  docker_image: 5a60bb165c34
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
