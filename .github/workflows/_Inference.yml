@@ -242,25 +242,25 @@ jobs:
         -e GITHUB_API_TOKEN \
         -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
-    # - name: Download paddle.tar.gz
-    #   run: |
-    #     docker exec -t ${{ env.container_name }} /bin/bash -c '
-    #     set +e
-    #     rm -rf * .[^.]*
-    #     set -e
-    #     echo "Downloading build.tar.gz"
-    #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-    #     # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/72104/ab479cde046b10ac7f6f511b118b7381ab1ecd6d/build.tar.gz --no-check-certificate
-    #     echo "Extracting build.tar.gz"
-    #     tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
-    #     rm build.tar.gz
-    #     export PATH=$(pwd)/run_env:${PATH}
-    #     echo 'export PATH=$(pwd)/run_env:${PATH}' >> ~/.bashrc
-    #     echo "::group::Install dependencies"
-    #     . ../../../proxy
-    #     pip install -r "python/unittest_py/requirements.txt"
-    #     echo "::endgroup::"
-    #     '
+    - name: Download paddle.tar.gz
+      run: |
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        set +e
+        # rm -rf * .[^.]*
+        # set -e
+        # echo "Downloading build.tar.gz"
+        # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+        # # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/72104/ab479cde046b10ac7f6f511b118b7381ab1ecd6d/build.tar.gz --no-check-certificate
+        # echo "Extracting build.tar.gz"
+        # tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
+        # rm build.tar.gz
+        export PATH=$(pwd)/run_env:${PATH}
+        echo 'export PATH=$(pwd)/run_env:${PATH}' >> ~/.bashrc
+        echo "::group::Install dependencies"
+        . ../../../proxy
+        pip install -r "python/unittest_py/requirements.txt"
+        echo "::endgroup::"
+        '
 
     - name: Test fluid library for inference
       run: |
