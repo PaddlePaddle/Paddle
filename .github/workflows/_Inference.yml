@@ -172,7 +172,7 @@ jobs:
       group: Inference-P4
 
     steps:
-    - name: Check docker image and run  container
+    - name: Check docker image and run container
       env:
         work_dir: ${{ github.workspace }}
         PADDLE_ROOT: ${{ github.workspace }}
@@ -249,12 +249,13 @@ jobs:
         rm -rf * .[^.]*
         set -e
         echo "Downloading build.tar.gz"
-        # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-        wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/72104/ab479cde046b10ac7f6f511b118b7381ab1ecd6d/build.tar.gz --no-check-certificate
-        echo "Extracting build.tar.gz"
-        tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
-        rm build.tar.gz
+        # # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+        # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/72104/ab479cde046b10ac7f6f511b118b7381ab1ecd6d/build.tar.gz --no-check-certificate
+        # echo "Extracting build.tar.gz"
+        # tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
+        # rm build.tar.gz
         export PATH=$(pwd)/run_env:${PATH}
+        echo 'export PATH=$(pwd)/run_env:${PATH}' >> ~/.bashrc
         echo "::group::Install dependencies"
         . ../../../proxy
         pip install -r "python/unittest_py/requirements.txt"
@@ -264,6 +265,7 @@ jobs:
     - name: Test fluid library for inference
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        source ~/.bashrc
         source ${ci_scripts}/utils.sh
         test_fluid_lib
         '
@@ -271,6 +273,7 @@ jobs:
     - name: Test go inference api
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        source ~/.bashrc
         source ${ci_scripts}/utils.sh
         test_go_inference_api
         '
@@ -278,6 +281,7 @@ jobs:
     - name: Check approvals of unittest
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        source ~/.bashrc
         source ${ci_scripts}/utils.sh
         check_approvals_of_unittest 3
         '
