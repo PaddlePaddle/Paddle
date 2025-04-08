@@ -248,7 +248,7 @@ int GetXPUDeviceTotalMemory(int dev_id) {
   xpumlMemory_t dev_mem_info;
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
-  return dev_mem_info.totalGlobalMemory / 1e6;  // MiB
+  return dev_mem_info.totalGlobalMemory / 1024 / 1024;  // MB
 }
 
 int GetXPUDeviceUsedMemory(int dev_id) {
@@ -262,7 +262,7 @@ int GetXPUDeviceUsedMemory(int dev_id) {
   xpumlMemory_t dev_mem_info;
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
-  return dev_mem_info.usedGlobalMemory / 1e6;  // MiB
+  return dev_mem_info.usedGlobalMemory / 1024 / 1024;  // MB
 }
 
 XPUVersion get_xpu_version(int dev_id) {
