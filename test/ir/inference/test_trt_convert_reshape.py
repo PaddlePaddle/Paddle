@@ -386,15 +386,9 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
                 "reshape_input": [1, 2, 12, 6]
             }
         elif self.dims == 3:
-            self.dynamic_shape.min_input_shape = {
-                "reshape_input": [1, 8, 18]
-            }
-            self.dynamic_shape.max_input_shape = {
-                "reshape_input": [4, 8, 18]
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "reshape_input": [1, 8, 18]
-            }
+            self.dynamic_shape.min_input_shape = {"reshape_input": [1, 8, 18]}
+            self.dynamic_shape.max_input_shape = {"reshape_input": [4, 8, 18]}
+            self.dynamic_shape.opt_input_shape = {"reshape_input": [1, 8, 18]}
         elif self.dims == 2:
             self.dynamic_shape.min_input_shape = {"reshape_input": [1, 144]}
             self.dynamic_shape.max_input_shape = {"reshape_input": [4, 144]}
