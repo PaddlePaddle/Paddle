@@ -228,19 +228,12 @@ class AutoLayoutInsertPass : public pir::Pass {
         }
       } else if (!kOpsNchw.count(op_name) && !kOpsWithAxis.count(op_name) &&
                  IsInsertTransposeOpBefore(op)) {
-        // TODO(liujinnan):
-        // 1. Hide the special judgment method in PreferLayout of
-        // LayoutTransformationInterface.
-        // 2. Here we should do detailed experiments (`NHWC` vs `T
-        // + NCHW + T`) to determine whether to change the layout of pool2d. For
-        // example, when `hw` is large, it tends to be NCHW, and when `c` is
-        // large, it tends to be NHWC. Here, a temporary solution is to keep
-        // nchw when the pool type is maxpool.
-        if (auto pool2d_op = op->dyn_cast<paddle::dialect::Pool2dOp>()) {
-          if (pool2d_op.attribute("pooling_type")
-                  .dyn_cast<pir::StrAttribute>()
-                  .AsString() == "max")
-            continue;
+        // TODO(liujinnan): Remove the list and set the CanBeModified method for
+        // all ops.
+        if (op_name == "pd_op.pool2d" || op_name == "pd_op.reshape") {
+          auto layout_interface =
+              op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+          if (!layout_interface.CanBeModified(op)) continue;
         }
         VLOG(4) << "enter NCHW op: " << op_name;
         DoTransposeOpOperand(op, builder);
@@ -268,6 +261,21 @@ class AutoLayoutInsertPass : public pir::Pass {
   void DoTransposeOpOperand(pir::Operation* op,
                             pir::Builder& builder) {  // NOLINT
     auto InsertTranspose = [&](pir::OpOperand* operand) {
+      // if operand defining op is reshape op, try to rewrite reshape op
+      if (operand->source().defining_op<paddle::dialect::ReshapeOp>()) {
+        auto reshape_op = operand->source()
+                              .defining_op()
+                              ->dyn_cast<paddle::dialect::ReshapeOp>();
+        auto layout_interface =
+            reshape_op
+                ->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+        if (layout_interface.CanBeModified(reshape_op)) {
+          layout_interface.RewriteByLayout(reshape_op,
+                                           common::DataLayout::NHWC);
+          operand->set_source(reshape_op->result(0));
+          return;
+        }
+      }
       auto transpose_op = builder.Build<paddle::dialect::TransposeOp>(
           operand->source(), kNchw2Nhwc_);
       transpose_op->set_attribute(
@@ -282,7 +290,8 @@ class AutoLayoutInsertPass : public pir::Pass {
     builder.set_insertion_point(op);
     // For conv2d, only transpose the input.
     if (op->isa<paddle::dialect::Conv2dOp>() ||
-        op->isa<paddle::dialect::Conv2dTransposeOp>()) {
+        op->isa<paddle::dialect::Conv2dTransposeOp>() ||
+        op->isa<paddle::dialect::DepthwiseConv2dOp>()) {
       auto inp = op->operand(0);
       if (!JudgeValue(inp.source())) return;
       InsertTranspose(&inp);
@@ -328,9 +337,9 @@ const std::set<std::string> kOpsNchw = {"pd_op.max_pool2d_with_index",
                                         "pd_op.grid_sample",
                                         "pd_op.shuffle_channel",
                                         "cf.yield",
-                                        "pd_op.reshape",
+                                        // "pd_op.reshape",
                                         "pd_op.instance_norm",
-                                        //  "pd_op.batch_norm_",
+                                        // "pd_op.batch_norm_",
                                         "pd_op.bilinear_interp",
                                         "pd_op.shape",
                                         "pd_op.shape64",

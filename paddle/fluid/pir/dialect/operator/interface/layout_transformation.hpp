@@ -200,6 +200,7 @@ OVERLOAD_REWRITE_BY_LAYOUT(ArgmaxOp);
 
 class Pool2dOp;
 OVERLOAD_RELEVANT_INPUTS(Pool2dOp);
+OVERLOAD_PREFER_LAYOUT(Pool2dOp);
 
 }  // namespace dialect
 }  // namespace paddle
