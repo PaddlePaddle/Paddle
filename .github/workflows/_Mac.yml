@@ -33,7 +33,6 @@ jobs:
         WITH_TESTING: "ON"
         WITH_INFERENCE_API_TEST: "OFF"
         INSTALL_PREFIX: "/Users/paddle/CI_install_path"
-        WITH_TESTING: "ON"
         PYTHON_ABI: "cp39-cp39"
         PY_VERSION: 3.9
         WITH_AVX: "OFF"
