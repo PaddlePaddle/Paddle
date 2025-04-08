@@ -16,13 +16,13 @@ defaults:
     shell: bash
 
 jobs:
-  check-bypass:
-    name: Check bypass for Kunlun
-    uses: ./.github/workflows/check-bypass.yml
-    with:
-      workflow-name: 'inference'
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
+  # check-bypass:
+  #   name: Check bypass for Kunlun
+  #   uses: ./.github/workflows/check-bypass.yml
+  #   with:
+  #     workflow-name: 'inference'
+  #   secrets:
+  #     github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # build:
   #   name: Build
@@ -245,7 +245,6 @@ jobs:
     - name: Download paddle.tar.gz
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        set -x
         # rm -rf * .[^.]*
         # set -e
         # echo "Downloading build.tar.gz"
@@ -255,8 +254,7 @@ jobs:
         # tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
         # rm build.tar.gz
         export PATH=$(pwd)/run_env:${PATH}
-        echo "export PATH=$(pwd)/run_env:${PATH}" >> ~/.bashrc
-        cat ~/.bashrc
+        echo "export PATH=${PATH}" >> ~/.bashrc
         echo "::group::Install dependencies"
         . ../../../proxy
         pip install -r "python/unittest_py/requirements.txt"
@@ -278,7 +276,6 @@ jobs:
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         set -x
-        cat ~/.bashrc
         source ~/.bashrc
         source ${ci_scripts}/utils.sh
         init
