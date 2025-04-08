@@ -169,7 +169,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_test
     runs-on:
-      group: P4-1
+      group: Inference-P4
 
     steps:
     - name: Check docker image and run container
