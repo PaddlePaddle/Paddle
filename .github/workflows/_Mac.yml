@@ -6,6 +6,34 @@ on:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  work_dir: "/Users/paddle/workspace"
+  PADDLE_ROOT: "/Users/paddle/workspace"
+  MACOSX_DEPLOYMENT_TARGET: 10.11
+  PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
+  PADDLE_VERSION: 0.0.0
+  COVERALLS_UPLOAD: "OFF"
+  WITH_DEB: "OFF"
+  RUN_TEST: "OFF"
+  WITH_DISTRIBUTE: "ON"
+  WITH_FLUID_ONLY: "ON"
+  WITH_TESTING: "ON"
+  WITH_INFERENCE_API_TEST: "OFF"
+  INSTALL_PREFIX: "/Users/paddle/CI_install_path"
+  PYTHON_ABI: "cp39-cp39"
+  PY_VERSION: 3.9
+  WITH_AVX: "OFF"
+  WITH_ARM: "ON"
+  PROC_RUN: 8
+  WITH_CACHE: "ON"
+  NIGHTLY_MODE: "OFF"
+  GIT_PR_ID: ${{ github.event.pull_request.number }}
+  PRECISION_TEST: "OFF"
+  CI_SKIP_CPP_TEST: "OFF"
+  WITH_ONNXRUNTIME: "OFF"
+  WITH_TENSORRT: "OFF"
+  GENERATOR: "Ninja"
+  WITH_SHARED_PHI: "ON"
 
 defaults:
   run:
@@ -18,35 +46,6 @@ jobs:
 
     steps:
     - name: Check environment
-      env:
-        BRANCH: ${{ github.event.pull_request.base.ref }}
-        work_dir: "/Users/paddle/workspace"
-        PADDLE_ROOT: "/Users/paddle/workspace"
-        MACOSX_DEPLOYMENT_TARGET: 10.11
-        PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
-        PADDLE_VERSION: 0.0.0
-        COVERALLS_UPLOAD: "OFF"
-        WITH_DEB: "OFF"
-        RUN_TEST: "OFF"
-        WITH_DISTRIBUTE: "ON"
-        WITH_FLUID_ONLY: "ON"
-        WITH_TESTING: "ON"
-        WITH_INFERENCE_API_TEST: "OFF"
-        INSTALL_PREFIX: "/Users/paddle/CI_install_path"
-        PYTHON_ABI: "cp39-cp39"
-        PY_VERSION: 3.9
-        WITH_AVX: "OFF"
-        WITH_ARM: "ON"
-        PROC_RUN: 8
-        WITH_CACHE: "ON"
-        NIGHTLY_MODE: "OFF"
-        GIT_PR_ID: ${{ github.event.pull_request.number }}
-        PRECISION_TEST: "OFF"
-        CI_SKIP_CPP_TEST: "OFF"
-        WITH_ONNXRUNTIME: "OFF"
-        WITH_TENSORRT: "OFF"
-        GENERATOR: "Ninja"
-        WITH_SHARED_PHI: "ON"
       run: |
         [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
         [ -d "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
