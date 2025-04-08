@@ -282,8 +282,9 @@ inline T AmpAutoCast(const std::string& input_name,
                      const phi::DataType& dst_dtype,
                      const std::string& op_name,
                      bool trace_backward = true) {
-  VLOG(1) << "AMP AmpAutoCasts: op_name(" << op_name << ")input(" << input_name
-          << ") dst_dtype(" << phi::DataTypeToString(dst_dtype) << ").";
+  VLOG(6) << "AMP AmpAutoCasts:"
+          << " input(" << input_name << ") dst_dtype("
+          << phi::DataTypeToString(dst_dtype) << ").";
 
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
@@ -315,7 +316,7 @@ inline T AmpAutoCast(const std::string& input_name,
     }
   }
   if (NeedCast(input, dst_dtype)) {
-    VLOG(1)<<op_name << " Input : " << input.impl() << "NeedCast "<< phi::DataTypeToString(dst_dtype);
+    VLOG(6) << "Input : " << input.impl() << "NeedCast";
     return Cast(input, dst_dtype, trace_backward);
   }
   return input;

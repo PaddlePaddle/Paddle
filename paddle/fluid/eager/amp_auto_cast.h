@@ -65,7 +65,9 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
                                   const paddle::Tensor& input,
                                   const phi::DataType& dst_dtype,
                                   std::string op_name) {
-  VLOG(1) << "AMP AmpAutoCasts:"<< op_name << " input(" << input_name << ") dst_dtype("<< phi::DataTypeToString(dst_dtype) << ").";
+  VLOG(6) << "AMP AmpAutoCasts:"
+          << " input(" << input_name << ") dst_dtype("
+          << phi::DataTypeToString(dst_dtype) << ").";
 
   if (op_name == "fused_softmax_mask" && input_name == "Mask" &&
       input.dtype() == phi::DataType::FLOAT32) {
@@ -99,8 +101,6 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
     paddle::framework::AttributeMap cast_attrs = {
         {"in_dtype", paddle::framework::TransToProtoVarType(input.dtype())},
         {"out_dtype", paddle::framework::TransToProtoVarType(dst_dtype)}};
-      VLOG(1) <<" OP "<<op_name<< "AMP Cast input(" << input_name << ") to dtype("
-              << phi::DataTypeToString(dst_dtype) << ").";
     return cast_dygraph_function(input, cast_attrs);
   }
   return input;
