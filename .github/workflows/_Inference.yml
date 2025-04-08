@@ -31,7 +31,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_build
     runs-on:
-      group: GZ_BD-CPU
+      group: CPU-infer
 
     steps:
     - name: Check docker image and run container
