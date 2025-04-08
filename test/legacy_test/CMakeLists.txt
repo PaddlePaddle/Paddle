@@ -77,7 +77,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
 
@@ -619,8 +618,6 @@ if(WITH_DISTRIBUTE)
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps11")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
   endif()
 
   if(NOT APPLE)
@@ -694,11 +691,6 @@ if(WITH_DISTRIBUTE)
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
   endif()
-endif()
-
-if(WITH_HETERPS)
-  set_tests_properties(test_dist_fleet_ps11 PROPERTIES LABELS "RUN_TYPE=GPUPS")
-  set_tests_properties(test_dist_fleet_ps12 PROPERTIES LABELS "RUN_TYPE=GPUPS")
 endif()
 
 if(WIN32)

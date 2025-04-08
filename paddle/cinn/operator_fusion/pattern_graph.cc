@@ -160,25 +160,6 @@ void PatternGraph::ReduceLiftReduceTree() {
       LiftReduceToReduceTreeOperation>(this);
 }
 
-void PatternGraph::HorizontalFusion() {
-  GraphTransformer<NodePattern,
-                   Or<StmtPatternGraphMatcher<TrivialPattern>,
-                      StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>,
-                      StmtPatternGraphMatcher<ReducePattern>,
-                      StmtPatternGraphMatcher<ReduceTreePattern>,
-                      StmtPatternGraphMatcher<ItersPermutationPattern>,
-                      StmtPatternGraphMatcher<AnchorPattern>>,
-                   LiftToHorizontalFusionPatternOperation>(this);
-
-  GraphTransformer<NodePairPattern,
-                   And<HorizontalFusionConstrain,
-                       InputOutputMaximumConstrain,
-                       HorizontalCheckMiddleOutputVar>,  // Avoid two many
-                                                         // inputs and
-                                                         // outputs.
-                   HorizontalFusionOperation>(this);
-}
-
 void PatternGraph::ReduceTreeGrown() {
   GraphTransformer<NodePattern,
                    And<CanFuseReduceTreeMatcher, Not<IsOutputNodeMatcher>>,
@@ -205,38 +186,15 @@ void PatternGraph::AnchorFusion() {
                    AnchorFusionOperation>(this);
 }
 
-void PatternGraph::LiftToItersPermutationPattern() {
-  GraphTransformer<NodePattern,
-                   Or<StmtPatternGraphMatcher<TrivialPattern>,
-                      StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>,
-                      StmtPatternGraphMatcher<ReducePattern>,
-                      StmtPatternGraphMatcher<ReduceTreePattern>>,
-                   LiftToItersPermutationPatternOperation>(this);
-}
-
-void PatternGraph::LimitedAnchorFusion() {
-  iters_fusion_policy()
-      ->DisableStrategy(ItersTransformType::ReuseIters)
-      ->DisableStrategy(ItersTransformType::AppendIters);
-
-  GraphTransformer<
-      ReverseTopoNodePairPattern,
-      And<CanFuseItersPermutationMatcher, InputOutputMaximumConstrain>,
-      FuseItersPermutatioOperation>(this);
-}
-
-void PatternGraph::ItersPermutationFusion() {
-  iters_fusion_policy()->EnableAllStrategies();
-
-  GraphTransformer<
-      ReverseTopoNodePairPattern,
-      And<CanFuseItersPermutationMatcher, InputOutputMaximumConstrain>,
-      FuseItersPermutatioOperation>(this);
-}
-
 void PatternGraph::SplitRecomputePattern() {
   GraphTransformer<NodePattern, RecomputeNodeMatcher, SplitRecomputeOperation>(
       this);
+}
+
+void PatternGraph::HorizontalFusion() {
+  GraphTransformer<NodePairPattern,
+                   And<HorizontalFusionConstrain, InputOutputMaximumConstrain>,
+                   HorizontalFusionOperation>(this);
 }
 
 PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,
@@ -246,9 +204,7 @@ PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,
 
   std::vector<pir::Operation*> all_ops;
   for (const auto& content : contents) {
-    const auto& fusion_iters =
-        iters_fusion_policy()->iters_manager()->GetItersSignature(content.op);
-    PatternNodePtr node = std::make_shared<PatternNode>(content, fusion_iters);
+    PatternNodePtr node = std::make_shared<PatternNode>(content);
     op_to_node_map[content.op] = node;
     node->set_loop_axis_mapping(CreateLoopAxisMapping(content.op));
     all_pattern_nodes_.emplace(node);

@@ -313,5 +313,16 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
     const std::function<bool(
         const std::unordered_map<std::string, ir::IndexExpr> &)> &condition =
         nullptr);
+
+/*!
+ * \brief Simplify IndexExpr with bound information.
+ * For example:
+ *        x % S0 ==> x if x < S0
+ *        x / S0 ==> 0 if x < S0
+ *
+ * \param expr The `IndexExpr` to be simplified.
+ * \return `IndexExpr` after simplification.
+ */
+ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr);
 }  // namespace optim
 }  // namespace cinn

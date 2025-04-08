@@ -195,6 +195,9 @@ void InitTensorWithNumpyValue(TensorObject* self,
   } else if (phi::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
+  } else if (phi::is_xpu_pinned_place(place)) {
+    SetTensorFromPyArray<phi::XPUPinnedPlace>(
+        impl_ptr, array, place, zero_copy);
   } else if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
@@ -209,7 +212,8 @@ void InitTensorWithNumpyValue(TensorObject* self,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/"
+        "CUDAPinnedPlace/XPUPinnedPlace/CustomPlace"));
   }
 }
 

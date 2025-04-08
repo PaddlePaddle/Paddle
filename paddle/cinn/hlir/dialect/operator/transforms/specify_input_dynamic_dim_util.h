@@ -25,6 +25,14 @@ void SpecifyInputDynamicDim(
     const std::vector<pir::InputDynamicDimSpec>& input_dynamic_dim_spec);
 void SpecifyInputDynamicDimFromFile(pir::Program* program,
                                     std::string filepath);
+
+void SpecifyInputDynamicDimFromPython(
+    pir::Program* program,
+    const std::vector<std::tuple<
+        std::string,
+        std::tuple<int64_t, std::optional<int64_t>, std::optional<int64_t>>>>&
+        raw_constraints);
+
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn

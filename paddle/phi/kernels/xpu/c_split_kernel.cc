@@ -59,7 +59,7 @@ void CSplitKernel(const Context& dev_ctx,
 
   dims[dims_size - 1] /= nranks;
   out->Resize(dims);
-  dev_ctx.template Alloc(out, x.dtype());
+  dev_ctx.Alloc(out, x.dtype());
 
   std::vector<XPUType*> output_list(nranks, nullptr);
   output_list.at(rank) = reinterpret_cast<XPUType*>(out->data<T>());

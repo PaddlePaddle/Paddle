@@ -263,6 +263,7 @@ gray_list = {
     'c_identity',
     'c_concat',
     'c_allreduce_sum',
+    'all_reduce',
     'concat',
     'split',
     'fused_feedforward',

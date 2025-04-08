@@ -28,9 +28,6 @@ from .process_group import get_process_group
 def is_collective_comm_op(op):
     comm_list = [
         "c_allreduce_sum",
-        "c_allreduce_min",
-        "c_allreduce_max",
-        "c_allreduce_prod",
         "all_gather",
         "all_reduce",
         "broadcast",
@@ -104,7 +101,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
             new_tensor_shape.append(val)
     tensor_size = functools.reduce(operator.mul, new_tensor_shape, 1)
     tensor_bytes = tensor_size * get_dtype_bytes(tensor.dtype)
-    if "c_allreduce" in comm_op_type:
+    if "c_allreduce" in comm_op_type or "all_reduce" in comm_op_type:
         comm_volume = 2 * tensor_bytes
     elif "all_gather" in comm_op_type:
         comm_volume = tensor_bytes
