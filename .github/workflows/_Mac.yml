@@ -24,7 +24,7 @@ jobs:
         work_dir: "/Users/paddle/workspace"
         PADDLE_ROOT: "/Users/paddle/workspace"
         MACOSX_DEPLOYMENT_TARGET: 10.11
-        export PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
+        PADDLE_DEV_NAME: "paddlepaddle/paddle:dev"
         PADDLE_VERSION: 0.0.0
         COVERALLS_UPLOAD: "OFF"
         WITH_DEB: "OFF"
