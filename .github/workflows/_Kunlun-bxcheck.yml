@@ -75,8 +75,6 @@ jobs:
         CCACHE_MAXSIZE: 150G
         CCACHE_LIMIT_MULTIPLE: 0.8
         no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
-        # http_proxy: $(cat ${{ github.workspace }}/../../../kunlun_proxy)
-        # https_proxy: $(cat ${{ github.workspace }}/../../../kunlun_proxy)
         GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         container_name=${TASK}-$(date +%s)
@@ -103,23 +101,15 @@ jobs:
           -e CUDNN_VERSION \
           -e WITH_XPU_BKCL \
           -e WITH_XPU_XRE5 \
-          -e PREC_SUFFIX \
-          -e WITH_UNITY_BUILD \
-          -e PROC_RUN \
-          -e FLAGS_enable_eager_mode \
-          -e WITH_TENSORRT \
-          -e GENERATOR \
           -e WITH_INFERENCE_API_TEST \
           -e CACHE_DIR \
           -e CCACHE_DIR \
           -e CCACHE_MAXSIZE \
           -e CCACHE_LIMIT_MULTIPLE \
-          -e GITHUB_ENV \
           -e ci_scripts \
           -e WITH_AVX \
           -e no_proxy \
-          -e http_proxy \
-          -e https_proxy \
+          -e GITHUB_API_TOKEN \
           -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
     - name: Run build
@@ -128,8 +118,6 @@ jobs:
         PADDLE_ROOT: ${{ github.workspace }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c -x '
-        apt install ninja-build -y
-        ulimit -n 102400
         . ../../../proxy
         git config --global --add safe.directory ${{ github.workspace }}
         git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
@@ -153,7 +141,7 @@ jobs:
         fi
         cd ${{ github.workspace }}/..
         tar --use-compress-program="pigz" -cpPf build.tar.gz ./Paddle
-        source /home/opt/deck/1.0/etc/bashrc
+        # source /home/opt/deck/1.0/etc/bashrc
         python3 ${bos_file} build.tar.gz paddle-github-action/PR/kunlun-bxcheck/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         cd ${{ github.workspace }}/dist
         python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/kunlun-bxcheck/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
@@ -246,21 +234,12 @@ jobs:
           -e WITH_XPU_XRE5 \
           -e CACHE_DIR \
           -e CCACHE_DIR \
-          -e PREC_SUFFIX \
-          -e WITH_UNITY_BUILD \
-          -e PROC_RUN \
-          -e FLAGS_enable_eager_mode \
-          -e WITH_TENSORRT \
-          -e GENERATOR \
           -e WITH_INFERENCE_API_TEST \
           -e CCACHE_MAXSIZE \
           -e CCACHE_LIMIT_MULTIPLE \
-          -e GITHUB_ENV \
           -e ci_scripts \
           -e WITH_AVX \
           -e no_proxy \
-          -e http_proxy \
-          -e https_proxy \
           -e GITHUB_API_TOKEN \
           -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 

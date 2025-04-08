@@ -34,6 +34,10 @@ if [ "$4" == "py3" ]; then
 fi
 
 if [ "$4" == "kunlun" ]; then
+    echo "::group::Installing ninja-build"
+    apt install ninja-build -y
+    echo "::endgroup::"
+    ulimit -n 102400
     export PATH=/usr/local/bin:${PATH}
     ln -sf $(which python3.10) /usr/local/bin/python
     ln -sf $(which pip3.10) /usr/local/bin/pip
