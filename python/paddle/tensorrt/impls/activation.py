@@ -494,15 +494,19 @@ def prelu_converter(network, paddle_op, inputs):
     data_format = paddle_op.attrs().get("data_format", "NCHW")
     w_dims = trt.Dims(paddle_op.operands()[1].source().shape)
     trt_w_dims = w_dims
+
     alpha_tensor = network.add_constant(trt_w_dims, alpha_data)
     set_layer_name(alpha_tensor, paddle_op)
     alpha_tensor = alpha_tensor.get_output(0)
+
     alpha_dims = alpha_tensor.shape
     real_alpha_tensor = alpha_tensor
+
     if len(alpha_dims) != len(input_dims):
         reshape_layer = network.add_shuffle(alpha_tensor)
         set_layer_name(reshape_layer, paddle_op)
         c = alpha_dims[0]
+
         n_tensor = add_1D_constant_layer(
             network, [1], name=[paddle_op.name(), "n_tensor"]
         )
@@ -516,6 +520,7 @@ def prelu_converter(network, paddle_op, inputs):
                 [1] * (len(input_dims) - 2),
                 name=[paddle_op.name(), "hw_tensor"],
             )
+
         if data_format == "NCHW":
             if hw_tensor:
                 shape_tensor = trt_concat(
@@ -524,12 +529,10 @@ def prelu_converter(network, paddle_op, inputs):
                     name=[paddle_op.name(), "shape_tensor"],
                 )
             else:
-                shape_tensor = (
-                    trt_concat(
-                        network,
-                        [n_tensor, c_tensor],
-                        name=[paddle_op.name(), "shape_tensor"],
-                    ),
+                shape_tensor = trt_concat(
+                    network,
+                    [n_tensor, c_tensor],
+                    name=[paddle_op.name(), "shape_tensor"],
                 )
         else:
             if hw_tensor:
@@ -544,8 +547,10 @@ def prelu_converter(network, paddle_op, inputs):
                     [n_tensor, c_tensor],
                     name=[paddle_op.name(), "shape_tensor"],
                 )
+
         reshape_layer.set_input(1, shape_tensor)
         real_alpha_tensor = reshape_layer.get_output(0)
+
     layer = network.add_parametric_relu(input, real_alpha_tensor)
     set_layer_name(layer, paddle_op)
     return layer.get_output(0)
