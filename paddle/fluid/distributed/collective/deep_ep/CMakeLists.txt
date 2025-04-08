@@ -4,6 +4,8 @@ if(WITH_NVSHMEM)
   set(CMAKE_CUDA_FLAGS
       "${CMAKE_CUDA_FLAGS} -rdc=true --ptxas-options=--register-usage-level=10,--warn-on-local-memory-usage"
   )
+  string(REPLACE "-gencode arch=compute_80,code=sm_80" "" CMAKE_CUDA_FLAGS
+                 "${CMAKE_CUDA_FLAGS}")
 
   set(DEEPEP_KERNEL_SRCS kernels/intranode.cu kernels/runtime.cu
                          kernels/internode.cu kernels/internode_ll.cu)

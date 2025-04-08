@@ -35,8 +35,8 @@ class TensorRTEngineOp
  public:
   using Op::Op;
   static const char *name() { return "pd_op.tensorrt_engine"; }
-  static const char *attributes_name[13];
-  static constexpr uint32_t attributes_num = 13;
+  static const char *attributes_name[16];
+  static constexpr uint32_t attributes_num = 16;
   static OpInfoTuple GetOpInfo();
 
   static void Build(pir::Builder &builder,             // NOLINT

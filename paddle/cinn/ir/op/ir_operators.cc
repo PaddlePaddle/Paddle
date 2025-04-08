@@ -102,7 +102,9 @@ Expr BitwiseOrCallImpl(common::UnknownArch,
 }
 
 Expr BitwiseOrCallImpl(common::X86Arch, const Target &target, Expr a, Expr b) {
-  return lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
+  c->set_type(a.type());
+  return c;
 }
 
 Expr BitwiseOrCallImpl(common::ARMArch, const Target &target, Expr a, Expr b) {
@@ -176,7 +178,9 @@ Expr BitwiseAndCallImpl(common::UnknownArch,
 }
 
 Expr BitwiseAndCallImpl(common::X86Arch, const Target &target, Expr a, Expr b) {
-  return lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
+  c->set_type(a.type());
+  return c;
 }
 
 Expr BitwiseAndCallImpl(common::ARMArch, const Target &target, Expr a, Expr b) {
@@ -250,7 +254,9 @@ Expr BitwiseXorCallImpl(common::UnknownArch,
 }
 
 Expr BitwiseXorCallImpl(common::X86Arch, const Target &target, Expr a, Expr b) {
-  return lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
+  c->set_type(a.type());
+  return c;
 }
 
 Expr BitwiseXorCallImpl(common::ARMArch, const Target &target, Expr a, Expr b) {
@@ -321,7 +327,9 @@ Expr BitwiseNotCallImpl(common::UnknownArch, const Target &target, Expr a) {
 }
 
 Expr BitwiseNotCallImpl(common::X86Arch, const Target &target, Expr a) {
-  return lang::CallExtern("bitwise_not", {a}, {{"vectorizable", false}});
+  Expr c = lang::CallExtern("bitwise_not", {a}, {{"vectorizable", false}});
+  c->set_type(a->type());
+  return c;
 }
 
 Expr BitwiseNotCallImpl(common::ARMArch, const Target &target, Expr a) {
