@@ -13,6 +13,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <xpu/xpuml.h>
 #endif
 
 #include <algorithm>
@@ -49,6 +50,8 @@ class XPUContext;
 
 namespace backends {
 namespace xpu {
+
+static std::once_flag xpuml_init_flag;
 
 /**************************** Version Management **************************/
 
@@ -220,6 +223,46 @@ void MemcpySyncD2D(void* dst,
 }
 
 /**************************** Others **************************/
+
+int GetXPUDeviceUtilizationRate(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+  xpumlDevice_t dev_handle;
+  int ret = xpumlDeviceGetHandleByIndex(dev_id, &dev_handle);
+  printf("dev %d Get Index return %d\n", dev_id, ret);
+  xpumlUtilization_t dev_util;
+  ret = xpumlDeviceGetUtilizationRates(dev_handle, &dev_util);
+  printf("Get Utilization return %d\n", ret);
+  return dev_util.xpu;
+}
+
+int GetXPUDeviceTotalMemory(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+
+  xpumlDevice_t dev_handle;
+  xpumlDeviceGetHandleByIndex(dev_id, &dev_handle);
+  xpumlMemory_t dev_mem_info;
+  xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info);
+  return dev_mem_info.totalGlobalMemory / 1e6;  // MiB
+}
+
+int GetXPUDeviceUsedMemory(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+
+  xpumlDevice_t dev_handle;
+  xpumlDeviceGetHandleByIndex(dev_id, &dev_handle);
+  xpumlMemory_t dev_mem_info;
+  xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info);
+  return dev_mem_info.usedGlobalMemory / 1e6;  // MiB
+}
 
 XPUVersion get_xpu_version(int dev_id) {
   if (dev_id == -1) {
