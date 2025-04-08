@@ -1035,7 +1035,6 @@ class ShardingPass(PassBase):
                 ):
                     cur_group.is_in_local_shard = True
                     assert ops[i + 1].type in [
-                        "c_allreduce_avg",
                         "c_allreduce_sum",
                     ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
@@ -1237,7 +1236,7 @@ class ShardingPass(PassBase):
         grad_comm_op_to_stream_idx = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
-                if op.type in ["c_allreduce_avg", "c_allreduce_sum"]:
+                if op.type in ["c_allreduce_sum"]:
                     continue
                 stream_idx = reduce_op_count % self.grad_comm_stream_num
                 grad_comm_op_to_stream_idx[op] = stream_idx
@@ -1291,7 +1290,6 @@ class ShardingPass(PassBase):
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
                     assert next_op.type in [
-                        "c_allreduce_avg",
                         "c_allreduce_sum",
                     ]
                     assert next_op.output("Out")[0] == reduce_varname

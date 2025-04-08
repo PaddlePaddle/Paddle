@@ -348,7 +348,7 @@ class ListVariable(ContainerVariable):
         permutation = list(range(self.proxy.length))
         permutation.sort(
             key=lambda x: key.get_py_value()(
-                Dispatcher.call(operator.getitem, self, x).value
+                Dispatcher.call(operator.getitem, self, x).get_py_value()
             ),
             reverse=reverse.get_py_value(),
         )

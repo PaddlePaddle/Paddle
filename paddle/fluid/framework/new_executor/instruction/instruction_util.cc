@@ -107,8 +107,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (phi::is_gpu_place(place) || phi::is_custom_place(place) ||
-      phi::is_xpu_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_custom_place(place)) {
     VLOG(6) << "Parse DeviceContext for " << op_name
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {

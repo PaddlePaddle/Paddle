@@ -244,6 +244,8 @@ inline double FN_FP64(cbrt)(double x) { return cbrt(x); }
 
 inline double FN_FP64(pow)(double x, double y) { return pow(x, y); }
 
+inline double FN_FP64(atan)(double x) { return atan(x); }
+
 #undef FN_FP64
 
 #define FN_INT32(func) cinn_host_##func##_int32
@@ -302,6 +304,7 @@ CINN_REGISTER_HELPER(host_intrinsics) {
   REGISTER_EXTERN_FUNC_1_IN_1_OUT(func__, host_target, double, double);
 
   REGISTER_EXTERN_FUNC_1_IN_1_OUT_FP64(cinn_host_cbrt_fp64);
+  REGISTER_EXTERN_FUNC_1_IN_1_OUT_FP64(cinn_host_atan_fp64);
 
 #undef REGISTER_EXTERN_FUNC_1_IN_1_OUT_FP64
 
