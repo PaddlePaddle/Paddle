@@ -405,13 +405,13 @@ class ShardingPass(PassBase):
                 for i, sharding_info in enumerate(self.sharding_infos):
                     new_op = main_block._insert_op(
                         idx + i + 1,
-                        type='c_allreduce_sum',
-                        inputs={'X': [sum_op_output]},
-                        outputs={'Out': [sum_op_output]},
+                        type='all_reduce',
+                        inputs={'x': [sum_op_output]},
+                        outputs={'out': [sum_op_output]},
                         attrs={
                             'ring_id': sharding_info.group.id,
                             'op_namescope': "/gradient_clip_model_parallelism",
-                            'use_calc_stream': True,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
@@ -535,9 +535,16 @@ class ShardingPass(PassBase):
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if _is_param_grad_allreduce_op(op, main_block):
-                if op.type == "c_allreduce_sum" or (
-                    op.type == "reduce"
-                    and op.attr("reduce_type") == dist.ReduceOp.SUM
+                if (
+                    op.type == "c_allreduce_sum"
+                    or (
+                        op.type == "all_reduce"
+                        and op.attr("reduce_type") == dist.ReduceOp.SUM
+                    )
+                    or (
+                        op.type == "reduce"
+                        and op.attr("reduce_type") == dist.ReduceOp.SUM
+                    )
                 ):
                     reduce_op_type = "reduce"
                     reduce_type = dist.ReduceOp.SUM
@@ -1036,7 +1043,13 @@ class ShardingPass(PassBase):
                     cur_group.is_in_local_shard = True
                     assert ops[i + 1].type in [
                         "c_allreduce_sum",
-                    ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                    ] or (
+                        ops[i + 1].type == 'all_reduce'
+                        and ops[i + 1].attr('reduce_type')
+                        in [
+                            paddle.distributed.ReduceOp.SUM,
+                        ]
+                    ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
                         ops[i + 1].output_arg_names[0] == grad_name
                     ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
@@ -1236,7 +1249,13 @@ class ShardingPass(PassBase):
         grad_comm_op_to_stream_idx = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
-                if op.type in ["c_allreduce_sum"]:
+                if op.type in ["c_allreduce_sum"] or (
+                    op.type == 'all_reduce'
+                    and op.attr('reduce_type')
+                    in [
+                        paddle.distributed.ReduceOp.SUM,
+                    ]
+                ):
                     continue
                 stream_idx = reduce_op_count % self.grad_comm_stream_num
                 grad_comm_op_to_stream_idx[op] = stream_idx
@@ -1291,7 +1310,13 @@ class ShardingPass(PassBase):
                     next_op = ops[idx + 1]
                     assert next_op.type in [
                         "c_allreduce_sum",
-                    ]
+                    ] or (
+                        next_op.type == 'all_reduce'
+                        and next_op.attr('reduce_type')
+                        in [
+                            paddle.distributed.ReduceOp.SUM,
+                        ]
+                    )
                     assert next_op.output("Out")[0] == reduce_varname
                     # FIXME hybrid sharding-dp support multi comm & stream in feature
                     # next_op._set_attr("ring_id", comm_group.id)
