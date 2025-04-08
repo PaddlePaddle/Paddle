@@ -282,14 +282,8 @@ inline T AmpAutoCast(const std::string& input_name,
                      const phi::DataType& dst_dtype,
                      const std::string& op_name,
                      bool trace_backward = true) {
-  VLOG(6) << "AMP AmpAutoCasts:"
-          << " input(" << input_name << ") dst_dtype("
-          << phi::DataTypeToString(dst_dtype) << ").";
-  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-       op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
-      input_name != "x") {
-    return input;
-  }
+  VLOG(1) << "AMP AmpAutoCasts: op_name(" << op_name << ")input(" << input_name
+          << ") dst_dtype(" << phi::DataTypeToString(dst_dtype) << ").";
 
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
@@ -308,9 +302,20 @@ inline T AmpAutoCast(const std::string& input_name,
         return input;
       }
     }
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
+    }
+  } else if (dst_dtype == phi::DataType::BFLOAT16) {
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
+    }
   }
   if (NeedCast(input, dst_dtype)) {
-    VLOG(6) << "Input : " << input.impl() << "NeedCast";
+    VLOG(1)<<op_name << " Input : " << input.impl() << "NeedCast "<< phi::DataTypeToString(dst_dtype);
     return Cast(input, dst_dtype, trace_backward);
   }
   return input;
