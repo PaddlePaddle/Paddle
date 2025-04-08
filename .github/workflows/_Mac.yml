@@ -6,7 +6,6 @@ on:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
-  ci_scripts: ${{ github.workspace }}/ci
 
 defaults:
   run:
@@ -73,6 +72,7 @@ jobs:
         exit $EXCODE
 
     - name: Test with mac python3.9
+      run: |
         bash ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} ${PROC_RUN:-""}
         EXCODE=$?
         exit $EXCODE

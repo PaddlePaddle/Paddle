@@ -24,11 +24,11 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: clone
 
-  # Py3:
-  #   uses: ./.github/workflows/_Py3.yml
-  #   needs: Clone
-
   mac:
     name: PR-CI-Mac
     uses: ./.github/workflows/_Mac.yml
     needs: clone
+
+  # Py3:
+  #   uses: ./.github/workflows/_Py3.yml
+  #   needs: Clone
