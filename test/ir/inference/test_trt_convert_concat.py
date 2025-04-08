@@ -100,29 +100,12 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         ]
                         dics_inputs = [
                             {
-                                "concat_input1": TensorConfig(
-                                    data_gen=partial(
-                                        generate_input1, dics, batch
-                                    )
-                                ),
-                                "concat_input2": TensorConfig(
-                                    data_gen=partial(
-                                        generate_input2, dics, batch
-                                    )
-                                ),
-                                "concat_input3": TensorConfig(
-                                    data_gen=partial(
-                                        generate_input3, dics, batch
-                                    )
-                                ),
                                 "AxisTensor": TensorConfig(
                                     data_gen=partial(generate_weight1, dics)
                                 ),
-                            },
-                            {
-                                "concat_input1": TensorConfig(
+                                "concat_input3": TensorConfig(
                                     data_gen=partial(
-                                        generate_input1, dics, batch
+                                        generate_input3, dics, batch
                                     )
                                 ),
                                 "concat_input2": TensorConfig(
@@ -130,9 +113,26 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                                         generate_input2, dics, batch
                                     )
                                 ),
+                                "concat_input1": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input1, dics, batch
+                                    )
+                                ),
+                            },
+                            {
                                 "concat_input3": TensorConfig(
                                     data_gen=partial(
                                         generate_input3, dics, batch
+                                    )
+                                ),
+                                "concat_input2": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input2, dics, batch
+                                    )
+                                ),
+                                "concat_input1": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input1, dics, batch
                                     )
                                 ),
                             },
@@ -298,6 +298,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                     "concat_input2": [24],
                     "concat_input3": [24],
                 }
+        return self.dynamic_shape
 
     def sample_predictor_configs(
         self, program_config, run_pir=False
@@ -322,7 +323,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         ]
         if not run_pir:
             # for static_shape
-            clear_dynamic_shape()
+            clear_dynamic_shape(attrs)
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
             program_config.set_input_type(np.float32)
             yield self.create_inference_config(), generate_trt_nodes_num(

@@ -47,13 +47,13 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
                         "str_value": str_value,
                         "value": value,
                         "dtype": dtype,
+                        "shape": [2, 3, 4],
                     },
                     {"axis": -1},
                 ]
                 for mode in ["ShapeTensor", "ShapeTensorList"]:
                     self.mode = mode
                     if mode == "ValueTensor":
-                        dics[0]["shape"] = [2, 3, 4]
                         ops_config = [
                             {
                                 "op_type": "fill_constant",
@@ -96,20 +96,42 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
                                 "op_attrs": {},
                             },
                             {
-                                "op_type": "split",
+                                "op_type": "slice",
                                 "op_inputs": {
-                                    "X": ["shape_data"],
+                                    "Input": ["shape_data"],
                                 },
-                                "op_outputs": {
-                                    "Out": [
-                                        "split_shape_data_0",
-                                        "split_shape_data_1",
-                                        "split_shape_data_2",
-                                    ]
-                                },
+                                "op_outputs": {"Out": ["split_shape_data_0"]},
                                 "op_attrs": {
-                                    "axis": 0,
-                                    "num": 3,
+                                    "axes": [0],
+                                    "starts": [0],
+                                    "ends": [1],
+                                    "decrease_axis": [],
+                                },
+                            },
+                            {
+                                "op_type": "slice",
+                                "op_inputs": {
+                                    "Input": ["shape_data"],
+                                },
+                                "op_outputs": {"Out": ["split_shape_data_1"]},
+                                "op_attrs": {
+                                    "axes": [0],
+                                    "starts": [1],
+                                    "ends": [2],
+                                    "decrease_axis": [],
+                                },
+                            },
+                            {
+                                "op_type": "slice",
+                                "op_inputs": {
+                                    "Input": ["shape_data"],
+                                },
+                                "op_outputs": {"Out": ["split_shape_data_2"]},
+                                "op_attrs": {
+                                    "axes": [0],
+                                    "starts": [2],
+                                    "ends": [3],
+                                    "decrease_axis": [],
                                 },
                             },
                             {

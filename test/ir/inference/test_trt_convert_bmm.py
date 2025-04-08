@@ -53,11 +53,11 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
-                            "input1_data": TensorConfig(
-                                data_gen=partial(generate_input, input1_shape)
-                            ),
                             "input2_data": TensorConfig(
                                 data_gen=partial(generate_input, input2_shape)
+                            ),
+                            "input1_data": TensorConfig(
+                                data_gen=partial(generate_input, input1_shape)
                             ),
                         },
                         outputs=["output_data"],
