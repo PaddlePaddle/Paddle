@@ -49,7 +49,7 @@ jobs:
       run: |
         [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
         [ -d "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
-
+        cd $work_dir
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         tar xf Paddle.tar.gz --strip-components=1
 
