@@ -27,3 +27,8 @@ jobs:
   # Py3:
   #   uses: ./.github/workflows/_Py3.yml
   #   needs: Clone
+
+  mac:
+    name: PR-CI-Mac
+    users: ./.github/workflows/_Mac.yml
+    needs: clone
