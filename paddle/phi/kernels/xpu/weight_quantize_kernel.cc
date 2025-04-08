@@ -35,9 +35,8 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   int n = x.dims()[1];
   scale->Resize({static_cast<int64_t>(n)});
 
-
   dev_ctx.template Alloc<float>(scale);
-  // auto scale = paddle::full({m}, -1, paddle::DataType::FLOAT32, x.place());
+
   if (algo == "weight_only_int8") {
     out->Resize({static_cast<int64_t>(k), static_cast<int64_t>(n)});
     dev_ctx.template Alloc<int8_t>(out);
