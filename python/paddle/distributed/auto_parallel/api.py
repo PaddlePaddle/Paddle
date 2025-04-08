@@ -1388,6 +1388,108 @@ class _ShardOptimizer(Optimizer):
             param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
 
+    def _apply_optimize(
+        self, loss, startup_program, params_grads, param_group_idx=0
+    ):
+        fuse_allreduce_in_opt = False
+        fuse_reducescatter_in_opt = False
+        if os.getenv("FLAGS_fuse_allreduce_in_opt") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            fuse_allreduce_in_opt = True
+        if os.getenv("FLAGS_fuse_reducescatter_in_opt") in [
+            'True',
+            'true',
+            '1',
+        ]:
+            fuse_reducescatter_in_opt = True
+
+        assert not (
+            fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+        ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+        # `FLAGS_fuse_allreduce_in_opt` = True
+        def fuse_allreduce_on_grad(p_and_g):
+            new_p_and_g = []
+            for p, g in p_and_g:
+                new_g = g
+                new_placements = copy.deepcopy(g.placements)
+                for idx, placement in enumerate(g.placements):
+                    if placement.is_partial():
+                        new_placements[idx] = dist.Replicate()
+
+                if g.placements != new_placements:
+                    new_g = dist.reshard(g, g.process_mesh, new_placements)
+                new_p_and_g.append((p, new_g))
+
+            return new_p_and_g
+
+        # `FLAGS_fuse_reducescatter_in_opt` = True
+        def get_shard_dim(len, shard_dims):
+            for idx in range(len):
+                if idx not in shard_dims:
+                    return idx
+            return -1
+
+        def fuse_reducescatter_on_grad(p_and_g):
+            new_p_and_g = []
+            for p, g in p_and_g:
+                new_placements = copy.deepcopy(g.placements)
+                new_g = g
+                shard_dims = {}
+
+                # Record shard dims
+                for placement in g.placements:
+                    if placement.is_shard():
+                        dim = placement.get_dim()
+                        shard_dims[dim] = 1
+
+                # Try to shard on sharding axis
+                dim = get_shard_dim(len(g._local_shape), shard_dims)
+                if dim != -1:
+                    shard_dims[dim] = 1
+                    new_placements[self._sharding_axis] = dist.Shard(dim)
+
+                # Try shard other dim
+                for idx, placement in enumerate(g.placements):
+                    if idx == self._sharding_axis:
+                        continue
+                    if placement.is_shard():
+                        continue
+                    dim = get_shard_dim(len(g._local_shape), shard_dims)
+                    if dim != -1:
+                        shard_dims[dim] = 1
+                        new_placements[idx] = dist.Shard(dim)
+                    else:
+                        new_placements[idx] = dist.Replicate()
+
+                if g.placements != new_placements:
+                    new_g = dist.reshard(g, g.process_mesh, new_placements)
+
+                new_p_and_g.append((p, new_g))
+
+            return new_p_and_g
+
+        if paddle.in_dynamic_mode():
+            if fuse_allreduce_in_opt:
+                with paddle.static.program_guard(
+                    paddle.static.default_main_program(),
+                    paddle.static.default_startup_program(),
+                ):
+                    params_grads = fuse_allreduce_on_grad(params_grads)
+            elif fuse_reducescatter_in_opt:
+                with paddle.static.program_guard(
+                    paddle.static.default_main_program(),
+                    paddle.static.default_startup_program(),
+                ):
+                    params_grads = fuse_reducescatter_on_grad(params_grads)
+
+        return super()._apply_optimize(
+            loss, startup_program, params_grads, param_group_idx=0
+        )
+
     def __getattr__(self, item):
         if "_inner_opt" in self.__dict__:
             if item == "_inner_opt":
