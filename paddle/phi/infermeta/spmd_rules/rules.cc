@@ -365,6 +365,10 @@ PD_REGISTER_SPMD_RULE(
 
 // elementwise binary rule
 PD_REGISTER_SPMD_RULE(
+    atan2,
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
+PD_REGISTER_SPMD_RULE(
     add,
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
@@ -710,6 +714,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
 
+// argmin
+PD_REGISTER_SPMD_RULE(
+    argmin,
+    PD_INFER_SPMD(phi::distributed::ArgMinInferSpmdBase),
+    PD_INFER_SPMD(phi::distributed::ArgMinInferSpmdReverseBase));
 // unbind
 PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),

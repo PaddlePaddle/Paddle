@@ -12,6 +12,7 @@
   output : Tensor(out)
   infer_meta :
     func : RealAndImagInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : abs
     data_type : x
@@ -305,6 +306,7 @@
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
+    spmd_rule : ArgMinInferSpmdDynamic
   kernel :
     func : argmin
     data_type : x
@@ -450,6 +452,7 @@
   output : Tensor(out)
   infer_meta :
     func : Atan2InferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : atan2
   backward : atan2_grad
@@ -569,6 +572,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : bernoulli
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -688,6 +692,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_or
     backend : x
@@ -712,6 +717,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_xor
     backend : x
@@ -1030,6 +1036,7 @@
   output : Tensor (out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : conj
   backward : conj_grad
@@ -1477,6 +1484,7 @@
     func : UnchangedInferMeta
   kernel :
     func : digamma
+    spmd_rule : ElementwiseUnaryInferSpmd
   inplace: (x -> out)
   backward : digamma_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
@@ -1607,6 +1615,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule: ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : elu
@@ -1682,6 +1691,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : erf
   inplace : (x -> out)
@@ -1694,6 +1704,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : erfinv
   inplace : (x -> out)
@@ -1731,6 +1742,7 @@
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
+    spmd_rule : ExpandAsInferSpmd
     local_shape: out
   kernel :
     func : expand_as
@@ -1919,6 +1931,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : fill
@@ -2058,6 +2071,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : floor
   inplace : (x -> out)
@@ -2939,6 +2953,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : lgamma
   inplace: (x -> out)
@@ -3063,6 +3078,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMetaCheckAxis
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : log_softmax
     data_type : x
@@ -3140,6 +3156,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : logit
@@ -3153,6 +3170,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : logsigmoid
   backward : logsigmoid_grad
@@ -3509,6 +3527,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : mish
@@ -3682,6 +3701,7 @@
   output : Tensor(out)
   infer_meta :
     func : NonZeroInferMeta
+    spmd_rule : NonZeroInferSpmd
   kernel :
     func : nonzero
     data_type: condition
@@ -3847,6 +3867,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : poisson
   backward : poisson_grad
@@ -4089,6 +4110,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : reciprocal
   inplace : (x -> out)
@@ -4320,6 +4342,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : round
@@ -4650,6 +4673,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sign
   backward : sign_grad
@@ -4720,6 +4744,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : softplus
@@ -4732,6 +4757,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : softshrink
@@ -4744,6 +4770,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : softsign
@@ -4888,6 +4915,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : stanh
@@ -4965,6 +4993,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : swish
@@ -5039,6 +5068,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : tanh_shrink
   backward : tanh_shrink_grad
@@ -5084,6 +5114,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : thresholded_relu
@@ -5228,6 +5259,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : trunc
   inplace: (input -> out)

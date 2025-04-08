@@ -258,6 +258,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMeta
+    spmd_rule : ReductionMinInferSpmdDynamic
   kernel :
     func : min
   backward : min_grad
