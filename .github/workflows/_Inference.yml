@@ -255,7 +255,7 @@ jobs:
         # tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
         # rm build.tar.gz
         export PATH=$(pwd)/run_env:${PATH}
-        echo 'export PATH=$(pwd)/run_env:${PATH}' >> ~/.bashrc
+        echo "export PATH=$(pwd)/run_env:${PATH}" >> ~/.bashrc
         cat ~/.bashrc
         echo "::group::Install dependencies"
         . ../../../proxy
