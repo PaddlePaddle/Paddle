@@ -48,6 +48,24 @@ class TestSemiAutoParallelShardingStage1:
         self.bias = linear.bias.numpy()
 
     def test_pure_sharding_stage_1(self):
+        paddle.distributed.auto_parallel.set_mesh(self._mesh)
+        paddle.seed(self._seed)
+        linear = paddle.nn.Linear(10, 10)
+        batch = paddle.rand(shape=[10, 10])
+        # shard the input by sharding degree
+        batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
+        # shard optimizer with stage 1 fn
+        opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+        opt = dist.shard_optimizer(opt, dist.ShardingStage1("dp", self._mesh))
+        for _ in range(5):
+            loss = linear(batch)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+        self.check_tensor_eq(self.weight, linear.weight.numpy())
+        self.check_tensor_eq(self.bias, linear.bias.numpy())
+
+    def test_sharding_fuse_allreduce_in_opt(self):
         os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'true'
         paddle.distributed.auto_parallel.set_mesh(self._mesh)
         paddle.seed(self._seed)
@@ -67,7 +85,7 @@ class TestSemiAutoParallelShardingStage1:
         self.check_tensor_eq(self.bias, linear.bias.numpy())
         os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'false'
 
-    def test_sharding_fuse_allreduce_in_opt(self):
+    def test_sharding_fuse_reducescatter_in_opt(self):
         os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'true'
         paddle.distributed.auto_parallel.set_mesh(self._mesh)
         paddle.seed(self._seed)
