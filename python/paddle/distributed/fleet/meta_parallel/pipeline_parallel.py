@@ -1403,7 +1403,7 @@ class P2PAsyncHandle:
     forward_handle_wait_fn: Callable
     forward_async_comm_fn: Callable
     backward_handle_wait_fn: Callable
-    backwatd_async_comm_fn: Callable
+    backward_async_comm_fn: Callable
 
     # outputs
     next_forward_virtual_pp_rank = None
@@ -1427,13 +1427,13 @@ class P2PAsyncHandle:
     def backward_handle_wait(self):
         self.backward_handle_wait_fn()
 
-    def backwatd_async_comm(self, input_tensor_grad):
+    def backward_async_comm(self, input_tensor_grad):
         (
             self.next_backward_virtual_pp_rank,
             self.output_tensor_grad,
             self.recv_next,
             self.out_bwd_wait_handles,
-        ) = self.backwatd_async_comm_fn(input_tensor_grad=input_tensor_grad)
+        ) = self.backward_async_comm_fn(input_tensor_grad=input_tensor_grad)
 
 
 class PipelineParallelWithInterleave(PipelineParallel):
@@ -1815,7 +1815,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             )
 
             if p2p_async_handle is not None:
-                p2p_async_handle.backwatd_async_comm(input_tensor_grad)
+                p2p_async_handle.backward_async_comm(input_tensor_grad)
                 return
             else:
                 return output_tensor, input_tensor_grad
@@ -2347,7 +2347,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         for req in bwd_wait_handles:
                             req.wait()
 
-                def backwatd_async_comm(
+                def backward_async_comm(
                     backward_micro_step_id, input_tensor_grad
                 ):
                     if (
@@ -2437,7 +2437,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         backward_handle_wait, bwd_wait_handles=bwd_wait_handles
                     ),
                     partial(
-                        backwatd_async_comm,
+                        backward_async_comm,
                         backward_micro_step_id=backward_micro_step_id,
                     ),
                 )
