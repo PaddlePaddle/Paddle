@@ -252,10 +252,11 @@ jobs:
         # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/72104/ab479cde046b10ac7f6f511b118b7381ab1ecd6d/build.tar.gz --no-check-certificate
         echo "Extracting build.tar.gz"
-        tar  --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
+        tar --use-compress-program="pigz -1" -xpf build.tar.gz --strip-components=1
         rm build.tar.gz
         export PATH=$(pwd)/run_env:${PATH}
         echo "::group::Install dependencies"
+        . ../../../proxy
         pip install -r "python/unittest_py/requirements.txt"
         echo "::endgroup::"
         '
