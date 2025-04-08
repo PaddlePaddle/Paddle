@@ -53,14 +53,14 @@ _supported_optimizer_type = [
 FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
     # amp_level == 'o2' or 'o3'
     {  # only MP
-        "forward": ["matmul_v2", "all_reduce", "elementwise_add"],
+        "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
     },
     {  # MP + SP
         "forward": ["matmul_v2", "reduce_scatter", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
             "all_gather",
             "matmul_v2_grad",
@@ -68,10 +68,10 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         ],
     },
     {  # DP + MP
-        "forward": ["matmul_v2", "all_reduce", "elementwise_add"],
+        "forward": ["matmul_v2", "c_allreduce_sum", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
             "matmul_v2_grad",
         ],
@@ -80,9 +80,9 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         "forward": ["matmul_v2", "reduce_scatter", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
             "all_gather",
             "matmul_v2_grad",
@@ -91,14 +91,14 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
     },
     # amp_level == 'o1'
     {
-        "forward": ["matmul_v2", "all_reduce", "cast", "elementwise_add"],
+        "forward": ["matmul_v2", "c_allreduce_sum", "cast", "elementwise_add"],
         "backward": ["elementwise_add_grad", "matmul_v2_grad"],
     },
     {
         "forward": ["matmul_v2", "reduce_scatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
             "all_gather",
             "all_gather",
@@ -106,10 +106,10 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         ],
     },
     {
-        "forward": ["matmul_v2", "all_reduce", "cast", "elementwise_add"],
+        "forward": ["matmul_v2", "c_allreduce_sum", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
             "matmul_v2_grad",
         ],
@@ -118,9 +118,9 @@ FUSED_LINEAR_SOURCE_PATTERNS_LIST = [
         "forward": ["matmul_v2", "reduce_scatter", "cast", "elementwise_add"],
         "backward": [
             "elementwise_add_grad",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
-            "c_allreduce_sum",
+            "all_reduce",
             "scale",
             "all_gather",
             "matmul_v2_grad",
