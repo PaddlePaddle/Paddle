@@ -29,6 +29,7 @@ from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
 )
+from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
@@ -579,6 +580,36 @@ def monkey_patch_tensor():
         if device is None and dtype is None and blocking is None:
             return self
 
+        def is_cuda_place(place: PlaceLike):
+            return isinstance(place, core.CUDAPlace) or (
+                isinstance(place, Place) and place.is_gpu_place()
+            )
+
+        def get_device_id(place: PlaceLike):
+            if isinstance(
+                place,
+                (
+                    core.CUDAPlace,
+                    core.XPUPlace,
+                    core.IPUPlace,
+                    core.CustomPlace,
+                ),
+            ):
+                return place.get_device_id()
+            elif isinstance(place, Place):
+                if place.is_gpu_place():
+                    return place.gpu_device_id()
+                elif place.is_xpu_place():
+                    return place.xpu_device_id()
+                elif place.is_ipu_place():
+                    return place.ipu_device_id()
+                elif place.is_custom_place():
+                    return place.custom_device_id()
+            else:
+                raise ValueError(
+                    f"Invalid place: {place}, only support getting device id from CUDAPlace/XPUPlace/IPUPlace/CustomPlace"
+                )
+
         if device is not None:
             if isinstance(device, str):
                 device = paddle.device._convert_to_place(device)
@@ -613,7 +644,13 @@ def monkey_patch_tensor():
             if dtype is None:
                 dtype = t.dtype
             # 1. gpu place need to determine whether the memory is sufficient for allocation.
-            if t.place.is_gpu_place():
+            if t.place.is_gpu_place() and (
+                # NOTE: Only copy memory when place or device id is different,
+                # otherwise, it may frequently call GpuMemGetInfo in
+                # core.gpu_memory_available, leading to abnormal overhead.
+                not is_cuda_place(device)
+                or t.place.gpu_device_id() != get_device_id(device)
+            ):
                 proto_dtype = framework.convert_to_proto_type(dtype)
                 size_dtype = core.size_of_dtype(proto_dtype)
                 # Note(weilong wu): Paddle GPU minimum memory allocation unit is 256 bytes,
@@ -624,7 +661,7 @@ def monkey_patch_tensor():
                 )
                 gpu_memory_available = core.gpu_memory_available()
                 if gpu_memory_available < waiting_alloc_memory:
-                    # Copy Tensor to cpu
+                    # Copy Tensor to cpu if needed
                     t_used = t._copy_to(paddle.CPUPlace(), blocking)
                     # Release memory of t
                     t._clear()
@@ -634,7 +671,7 @@ def monkey_patch_tensor():
             else:
                 t_used = t
 
-            # 2. cast Tensor to dtype
+            # 2. cast Tensor to dtype if needed
             if dtype is not None and dtype != t_used.dtype:
                 with paddle.base.framework._dygraph_place_guard(
                     place=t_used.place
@@ -643,23 +680,17 @@ def monkey_patch_tensor():
             else:
                 t_casted = t_used
 
-            # 3. Copy casted Tensor(in CPU or GPU) to device
+            # 3. Copy casted Tensor(in CPU or GPU) to device if needed
             if device is not None and not t_casted.place._equals(device):
                 new_t = t_casted._copy_to(device, blocking)
             else:
                 new_t = t_casted
 
-            # 4. Share Tensor to origin Tensor
-            dst_tensor = t.value().get_tensor()
-            src_tensor = new_t.value().get_tensor()
-            dst_tensor._share_data_with(src_tensor)
-
-            return t
+            return new_t
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
-
     @overload
     def to(
         self: Tensor, device: PlaceLike, blocking: bool | None = ...
