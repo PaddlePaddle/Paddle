@@ -20,7 +20,7 @@ jobs:
     steps:
     - name: Check environment
       env:
-        BRANCH: ${{ github.event.client_payload.branch }}
+        BRANCH: ${{ github.event.pull_request.base.ref }}
         work_dir: "/Users/paddle/workspace"
         PADDLE_ROOT: "/Users/paddle/workspace"
         MACOSX_DEPLOYMENT_TARGET: 10.11
