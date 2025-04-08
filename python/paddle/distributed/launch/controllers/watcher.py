@@ -25,7 +25,7 @@ class Watcher:
     def __init__(self, ctx):
         self.ctx = ctx
 
-        self.interval = 5
+        self.interval = 1800
 
         self.gpu_util = []
 
