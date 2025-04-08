@@ -126,7 +126,7 @@ jobs:
     - name: Build
       if: steps.check-bypass.outputs.can_skip != 'true'
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        docker exec -t ${{ env.container_name }}  /bin/bash -c '
         mkdir -p /home/data/cfs/.cache/coverage
         mkdir -p /home/data/cfs/.ccache/coverage
         . ../../../proxy
