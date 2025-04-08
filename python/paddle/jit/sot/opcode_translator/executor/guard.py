@@ -284,8 +284,9 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     if support_weak_ref(weak_ref_obj):
         weak_ref_obj = weakref.ref(self.get_py_value())
         return [
-            StringifiedExpression(
+            FasterStringifiedExpression(
                 f"{obj_free_var_name}() is not None and {{}} == {obj_free_var_name}()",
+                paddle.framework.core.WeakRefMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(
                     frame_value_tracer.free_vars,

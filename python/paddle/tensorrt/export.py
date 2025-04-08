@@ -240,6 +240,7 @@ class TensorRTConfig:
         optimization_level: int | None = 3,
         disable_passes: list = [],
         workspace_size: int | None = 1 << 30,
+        refit_params_path: str | None = None,
     ) -> None:
         """
         A class for configuring TensorRT optimizations.
@@ -261,13 +262,14 @@ class TensorRTConfig:
                 - PrecisionMode.BFP16: 16-bit Brain Floating Point precision. Only supported in TensorRT versions greater than 9.0.
             ops_run_float (str|list, optional):
                 A set of operation names that should be executed using FP32 precision regardless of the `tensorrt_precision_mode` setting.
-                The directory where the optimized model will be saved (default is None).
             optimization_level (int, optional):
                 Set TensorRT optimization level (default is 3). Only supported in TensorRT versions greater than 8.6.
             disable_passes : (str|list, optional):
                 A list of string representing the names of pass that should not be used for origin program (default is []).
             workspace_size (int, optional):
                 Specifies the maximum GPU memory (in bytes) that TensorRT can use for the optimization process (default is 1 << 30).
+            refit_params_path(str, optional):
+                The path to the weights that need to be refitted.
         Returns:
             None
 
@@ -323,6 +325,7 @@ class TensorRTConfig:
         self.disable_passes = disable_passes
         self.optimization_level = optimization_level
         self.workspace_size = workspace_size
+        self.refit_params_path = refit_params_path
         paddle.framework.set_flags(
             {'FLAGS_trt_min_group_size': min_subgraph_size}
         )
@@ -761,8 +764,10 @@ def convert(model_path, config):
             raise ValueError(
                 f"Unsupported extension {ext}. Only support json/pdmodel"
             )
+        params_path = os.path.join(model_dir, model_prefix + '.pdiparams')
     else:
         model_prefix = model_path
+        params_path = model_prefix + '.pdiparams'
         if os.path.exists(model_prefix + '.json'):
             is_json = True
         elif os.path.exists(model_prefix + '.pdmodel'):
@@ -771,6 +776,11 @@ def convert(model_path, config):
             raise ValueError(
                 f"No valid model file found in the directory '{model_path}'. Expected either 'json' or 'pdmodel'. Please ensure that the directory contains one of these files."
             )
+
+    if not os.path.exists(params_path):
+        raise ValueError(
+            f"Parameters file '{params_path}' not found. Please ensure the weights file exists in the model directory."
+        )
 
     if is_json:
         with paddle.pir_utils.IrGuard():

@@ -316,6 +316,30 @@ Tensor ReduceMin(const Tensor& A,
                 output_name);
 }
 
+Tensor Argmax(const Tensor& A,
+              const std::vector<int>& axes,
+              const bool keep_dims,
+              const std::string& output_name) {
+  return Reduce(A,
+                axes,
+                lang::Argmax,
+                keep_dims,
+                lang::min_value(A->type()),
+                output_name);
+}
+
+Tensor Argmin(const Tensor& A,
+              const std::vector<int>& axes,
+              const bool keep_dims,
+              const std::string& output_name) {
+  return Reduce(A,
+                axes,
+                lang::Argmin,
+                keep_dims,
+                lang::max_value(A->type()),
+                output_name);
+}
+
 Tensor ReduceAll(const Tensor& A,
                  const std::vector<int>& axes,
                  const bool keep_dims,

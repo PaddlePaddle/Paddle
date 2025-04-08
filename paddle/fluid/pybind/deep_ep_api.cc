@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <Python.h>
+#include "pybind11/functional.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_DEEP_EP

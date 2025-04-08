@@ -136,18 +136,6 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 }
 
 bool IsCommunicationOp(const OperatorBase* op) {
-  const std::string& op_name = op->Type();
-  const std::set<std::string> special_comm_op_set = {
-      "send",
-      "recv",
-      "send_v2",
-      "recv_v2",
-  };
-  const std::string communication_op_prefix = "c_";
-  if (op_name.find(communication_op_prefix) != std::string::npos ||
-      special_comm_op_set.count(op_name)) {
-    return true;
-  }
   if (op->HasAttr("ring_id")) {
     return true;
   }
@@ -162,20 +150,6 @@ bool IsCommunicationOp(const Instruction& instr) {
 }
 
 bool IsCommunicationOp(const ::pir::Operation* op) {
-  std::string op_name = op->name();
-  if (op->attributes().count("op_name")) {
-    op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  }
-  const std::set<std::string> special_comm_op_set = {
-      paddle::dialect::SendV2Op::name(),
-      paddle::dialect::RecvV2Op::name(),
-  };
-  const std::string communication_op_prefix = "c_";
-  if (op_name.find(communication_op_prefix) != std::string::npos ||
-      special_comm_op_set.count(op_name)) {
-    return true;
-  }
   if (op->attributes().count("ring_id") != 0) {
     return true;
   }
