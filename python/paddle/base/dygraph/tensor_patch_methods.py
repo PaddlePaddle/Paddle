@@ -691,6 +691,7 @@ def monkey_patch_tensor():
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
+
     @overload
     def to(
         self: Tensor, device: PlaceLike, blocking: bool | None = ...
