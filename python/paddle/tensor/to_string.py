@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 import numpy as np
@@ -422,7 +423,13 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
         from paddle.distributed import Replicate, reshard
 
         placements = [Replicate() for _ in range(tensor.process_mesh.ndim)]
-        global_tensor = reshard(tensor, tensor.process_mesh, placements)
+        if os.environ.get("FLAGS_disable_dp_batch_spmd") == "1":
+            global_tensor = tensor._local_value()
+            logging.warning(
+                "FLAGS_disable_dp_batch_spmd is set to 1. Tensor may be unbalanced — only the local tensor will be returned."
+            )
+        else:
+            global_tensor = reshard(tensor, tensor.process_mesh, placements)
 
         data = _format_dense_tensor(global_tensor, indent)
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, process_mesh={process_mesh}, placements={placements}, GlobalDenseTensor=\n{indent}{data})"
