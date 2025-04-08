@@ -41,6 +41,7 @@ jobs:
         git config pull.rebase false
         git checkout test
         echo "Pull upstream develop"
+        . ../../../proxy
         git pull upstream develop --no-edit
 
     - name: Check bypass
