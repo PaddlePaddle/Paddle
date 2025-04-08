@@ -246,7 +246,7 @@ struct IsListLhsBeforeListRhsStruct {
       if (lhs_operands->at(i) == rhs_operands->at(i)) continue;
       return IsLhsBeforeRhs(lhs_operands->at(i), rhs_operands->at(i));
     }
-    return true;
+    return false;
   }
 };
 
@@ -340,7 +340,7 @@ struct SortOperands {
         true,
         common::errors::InvalidArgument("input op is empty, please check!"));
     for (std::size_t i = 0; i < operands->size() - 1; ++i) {
-      if (!IsLhsBeforeRhs(operands->at(i), operands->at(i + 1))) {
+      if (IsLhsBeforeRhs(operands->at(i + 1), operands->at(i))) {
         return false;
       }
     }
