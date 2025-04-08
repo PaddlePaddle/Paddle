@@ -197,6 +197,7 @@ class TestFusedLinerPromotion(unittest.TestCase):
         self.assertEqual(
             len(fused_gemm_epilogue_ops),
             len(origin_fused_gemm_epilogue_ops) + 2,
+            f"fused_gemm_epilogue_ops: {fused_gemm_epilogue_ops}, origin_fused_gemm_epilogue_ops: {origin_fused_gemm_epilogue_ops}",
         )
 
 

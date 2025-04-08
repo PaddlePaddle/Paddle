@@ -404,7 +404,7 @@ class TestDistMatmulReshard(unittest.TestCase):
             "fill_constant",
             "reduce_mean_grad",
             "matmul_v2_grad",
-            "all_reduce",
+            "c_allreduce_sum",
             "scale",
             "c_allreduce_sum",
             "assign",
