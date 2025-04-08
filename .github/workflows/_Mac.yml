@@ -34,6 +34,7 @@ env:
   WITH_TENSORRT: "OFF"
   GENERATOR: "Ninja"
   WITH_SHARED_PHI: "ON"
+  env_var: ${{ vars.ASD }}
 
 defaults:
   run:
@@ -54,7 +55,7 @@ jobs:
         tar xf Paddle.tar.gz --strip-components=1
 
         echo 123
-        echo ${{ env.ASD }}
+        echo $env_var
         echo 456
 
         git config --global user.name "PaddleCI"
