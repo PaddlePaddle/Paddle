@@ -76,6 +76,11 @@ jobs:
         CCACHE_LIMIT_MULTIPLE: 0.8
         no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
         GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        WITH_GPU: "OFF"
+        WITH_COVERAGE: "OFF"
+        WITH_MKL: "ON"
+        WITH_CACHE: "ON"
+        RUN_TEST: "ON"
       run: |
         container_name=${TASK}-$(date +%s)
         echo "container_name=${container_name}" >> ${{ github.env }}
@@ -110,6 +115,11 @@ jobs:
           -e WITH_AVX \
           -e no_proxy \
           -e GITHUB_API_TOKEN \
+          -e WITH_GPU \
+          -e WITH_COVERAGE \
+          -e WITH_MKL \
+          -e WITH_CACHE \
+          -e RUN_TEST \
           -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
     - name: Run build
