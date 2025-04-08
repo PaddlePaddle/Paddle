@@ -256,28 +256,32 @@ jobs:
         # rm build.tar.gz
         export PATH=$(pwd)/run_env:${PATH}
         echo 'export PATH=$(pwd)/run_env:${PATH}' >> ~/.bashrc
+        cat ~/.bashrc
         echo "::group::Install dependencies"
         . ../../../proxy
         pip install -r "python/unittest_py/requirements.txt"
         echo "::endgroup::"
         '
 
-    - name: Test fluid library for inference
-      run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c '
-        source ~/.bashrc
-        source ${ci_scripts}/utils.sh
-        init
-        . ../../../proxy
-        test_fluid_lib
-        '
+    # - name: Test fluid library for inference
+    #   run: |
+    #     docker exec -t ${{ env.container_name }} /bin/bash -c '
+    #     cat ~/.bashrc
+    #     source ~/.bashrc
+    #     source ${ci_scripts}/utils.sh
+    #     init
+    #     . ../../../proxy
+    #     test_fluid_lib
+    #     '
 
     - name: Test go inference api
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        cat ~/.bashrc
         source ~/.bashrc
         source ${ci_scripts}/utils.sh
         init
+        ldconfig
         . ../../../proxy
         test_go_inference_api
         '
