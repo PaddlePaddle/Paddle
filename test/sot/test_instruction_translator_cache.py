@@ -101,28 +101,34 @@ def mock_start_translate(frame: FrameType, **kwargs):
             CustomCode(FRAME_2.f_code, False),
             GuardCode(True),
             # TODO(zrr1999): GuardNode should support zero-expr constructor
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.DummyGuard(),
-                [paddle.framework.core.ConstantExprNode(True)],
-            ),
+            [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(True)],
+                )
+            ],
         ),
         FRAME_3: (
             CustomCode(FRAME_4.f_code, False),
             GuardCode(False),
             # TODO(zrr1999): GuardNode should support zero-expr constructor
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.DummyGuard(),
-                [paddle.framework.core.ConstantExprNode(False)],
-            ),
+            [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(False)],
+                )
+            ],
         ),  # Always re-compile
         FRAME_5: (
             CustomCode(None, False),
             lambda frame: True,
             # TODO(zrr1999): GuardNode should support zero-expr constructor
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.DummyGuard(),
-                [paddle.framework.core.ConstantExprNode(True)],
-            ),
+            [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(True)],
+                )
+            ],
         ),
     }
     return translate_map[frame]
