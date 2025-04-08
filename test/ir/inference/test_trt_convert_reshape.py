@@ -294,6 +294,9 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
 
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
         # for dynamic_shape
         self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
@@ -402,6 +405,10 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
 
         # for dynamic_shape
         self.generate_dynamic_shape(attrs)
