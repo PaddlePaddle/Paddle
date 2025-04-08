@@ -276,7 +276,7 @@ jobs:
 
     - name: Test go inference api
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        docker exec -t ${{ env.container_name }} /bin/bash -c -x'
         cat ~/.bashrc
         source ~/.bashrc
         source ${ci_scripts}/utils.sh
@@ -288,7 +288,7 @@ jobs:
 
     - name: Check approvals of unittest
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        docker exec -t ${{ env.container_name }} /bin/bash -c -x'
         source ~/.bashrc
         source ${ci_scripts}/utils.sh
         init
