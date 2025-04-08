@@ -143,6 +143,8 @@ class ScheduleNode:
 
         if not isinstance(self.inputs, (tuple, list)):
             inputs = (self.inputs,)
+        else:
+            inputs = self.inputs
         grad = tuple([e.grad if e is not None else None for e in inputs])
         self._reset_states()
 
