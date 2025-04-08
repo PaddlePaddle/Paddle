@@ -35,6 +35,11 @@ from paddle.base.log_helper import get_logger
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+from paddle.base.libpaddle.pir import (
+    get_attrs_map_json,
+    get_inputs_type_json,
+    get_outputs_type_json,
+)
 
 version = trt.__version__
 version_list = list(map(int, version.split('.')))
@@ -1157,3 +1162,49 @@ def set_layer_name(layer, second_param):
                 f"({', '.join(input_ids)})"
             )
             layer.name = formatted_name
+
+
+def generic_plugin_converter(network, paddle_op, inputs, extra_attrs=None):
+    op_name = paddle_op.name()
+
+    if extra_attrs is not None:
+        attrs_map_info = get_attrs_map_json(extra_attrs)
+    else:
+        attrs_map_info = get_attrs_map_json(paddle_op)
+
+    input_type_info = get_inputs_type_json(paddle_op)
+    output_type_info = get_outputs_type_json(paddle_op)
+
+    plugin_fields = [
+        trt.PluginField(
+            "op_name",
+            np.array(list(op_name), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+        trt.PluginField(
+            "attrs_map_info",
+            np.array(list(attrs_map_info), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+        trt.PluginField(
+            "inputs_type_info",
+            np.array(list(input_type_info), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+        trt.PluginField(
+            "outputs_type_info",
+            np.array(list(output_type_info), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+    ]
+
+    plugin_field_collection = trt.PluginFieldCollection(plugin_fields)
+
+    plugin_name = "pir_generic_plugin"
+    plugin_version = "1"
+    plugin = get_trt_plugin(
+        plugin_name, plugin_field_collection, plugin_version
+    )
+
+    layer = network.add_plugin_v2(inputs, plugin)
+    return layer
