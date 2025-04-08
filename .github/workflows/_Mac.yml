@@ -54,7 +54,7 @@ jobs:
         tar xf Paddle.tar.gz --strip-components=1
 
         echo 123
-        echo ${{ secrets.ASD }}
+        echo ${{ env.ASD }}
         echo 456
 
         git config --global user.name "PaddleCI"
