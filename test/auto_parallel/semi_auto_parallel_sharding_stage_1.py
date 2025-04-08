@@ -66,7 +66,7 @@ class TestSemiAutoParallelShardingStage1:
         self.check_tensor_eq(self.bias, linear.bias.numpy())
 
     def test_sharding_fuse_allreduce_in_opt(self):
-        os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'true'
+        os.environ['FLAGS_fuse_allreduce_in_opt'] = 'true'
         paddle.distributed.auto_parallel.set_mesh(self._mesh)
         paddle.seed(self._seed)
         linear = paddle.nn.Linear(10, 10)
@@ -83,7 +83,7 @@ class TestSemiAutoParallelShardingStage1:
             opt.clear_grad()
         self.check_tensor_eq(self.weight, linear.weight.numpy())
         self.check_tensor_eq(self.bias, linear.bias.numpy())
-        os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'false'
+        os.environ['FLAGS_fuse_allreduce_in_opt'] = 'false'
 
     def test_sharding_fuse_reducescatter_in_opt(self):
         os.environ['FLAGS_fuse_reducescatter_in_opt'] = 'true'
