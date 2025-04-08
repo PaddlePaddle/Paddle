@@ -21,7 +21,6 @@ from .common import (
     conv2d_transpose,
     conv3d,
     conv3d_transpose,
-    data_norm,
     deform_conv2d,
     embedding,
     fc,
