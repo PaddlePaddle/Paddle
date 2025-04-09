@@ -168,9 +168,8 @@ __device__ inline double FN_FP64(rcp)(double x) {
   __device__ inline TYPENAME operator+(const TYPENAME& a, const TYPENAME& b) { \
     DTYPE delta = b.mean - a.mean;                             \
     DTYPE weight = a.weight + b.weight;                        \
-    DTYPE mean, m2;                                            \
-    mean = a.mean + delta * RCP_FUNC(weight);                  \
-    m2 = a.m2 + delta * (b.mean - mean);                       \
+    DTYPE mean = a.mean + delta * RCP_FUNC(weight);            \
+    DTYPE m2 = a.m2 + delta * (b.mean - mean);                 \
     return {mean, m2, weight};                                 \
   }
 
@@ -207,9 +206,6 @@ EXPAND_WELFORD_MACRO(fp64, double)
     __device__ explicit operator ITYPE() { return index; } \
   };
 
-// comparison operator for argidx, no need to compare the index for serialized reduction
-// for example, in spatial inner loop. Therefore, when a == b, return a
-// since we know for sure that a.index < b.index
 // TODO(heqianyue): improve the memory access pattern, make it SoA layout
 #define ARGIDX_COMBINE_MACRO(TYPENAME) \
   __device__ TYPENAME cinn_min_##TYPENAME(TYPENAME a, TYPENAME b) { \
@@ -522,27 +518,28 @@ __device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
   EXPAND_ARGIDX_OP_MACRO(MACRO, u8,   CINN_UINT8_MIN, CINN_UINT8_MAX, INAME)
 
 #define EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(MACRO) \
-  EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int, i32)        \
+  EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int, i32)   \
   EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int64_t, i64)
 
 // *************************************************************** //
 // reduce operator, need `--expt-relaxed-constexpr` option to call std function in device kernel
-#define EXPAND_REDUCE_INT32_MARCO(MARCO, ...)       \
-  MARCO(sum_int32, 0, int, ##__VA_ARGS__)           \
-  MARCO(prod_int32, 1, int, ##__VA_ARGS__)          \
-  MARCO(max_int32, CINN_INT32_MIN, int, ##__VA_ARGS__) \
+#define EXPAND_REDUCE_INT32_MARCO(MARCO, ...)           \
+  MARCO(sum_int32, 0, int, ##__VA_ARGS__)               \
+  MARCO(prod_int32, 1, int, ##__VA_ARGS__)              \
+  MARCO(max_int32, CINN_INT32_MIN, int, ##__VA_ARGS__)  \
   MARCO(min_int32, CINN_INT32_MAX, int, ##__VA_ARGS__)
 
 // parallel reduction template for welford variance type reduction
 #define WELFORD_PARALLEL_COMBINE_MACRO(DTYPE, TYPE_SUFFIX)       \
-__device__ inline welford_##TYPE_SUFFIX cinn_sum_welford_##TYPE_SUFFIX(welford_##TYPE_SUFFIX left, welford_##TYPE_SUFFIX right) { \
-  DTYPE delta = right.mean - left.mean; \
-  DTYPE weight = left.weight + right.weight; \
-  DTYPE w2_over_w = left.weight == right.weight ? (DTYPE)0.5 : right.weight * cinn_nvgpu_rcp_##TYPE_SUFFIX(weight); \
-  DTYPE mean = left.mean + delta * w2_over_w;                       \
-  DTYPE m2 = left.m2 + right.m2 + delta * delta * left.weight * w2_over_w; \
-  return {mean, m2, weight};  \
-}
+  __device__ inline welford_##TYPE_SUFFIX cinn_sum_welford_##TYPE_SUFFIX(welford_##TYPE_SUFFIX a, welford_##TYPE_SUFFIX b) {  \
+    DTYPE delta = b.mean - a.mean;                                                                                            \
+    DTYPE weight = a.weight + b.weight;                                                                                       \
+    DTYPE w2_over_w = b.weight * cinn_nvgpu_rcp_##TYPE_SUFFIX(weight);                                                        \
+    w2_over_w = weight == 0 ? (DTYPE)0 : w2_over_w;                                                                           \
+    DTYPE mean = a.mean + delta * w2_over_w;                                                                                  \
+    DTYPE m2 = a.m2 + b.m2 + delta * delta * a.weight * w2_over_w;                                                            \
+    return {mean, m2, weight};                                                                                                \
+  }
 
 __device__ inline int cinn_sum_int32(const int left, const int right) { return left + right; }
 __device__ inline int cinn_prod_int32(const int left, const int right) { return left * right; }
