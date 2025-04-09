@@ -1453,7 +1453,7 @@ class _ShardOptimizer(Optimizer):
                 new_placements = copy.deepcopy(grad.placements)
                 new_grad = grad
                 tensor_shape = grad._local_shape
-                shard_dims_set = {}
+                shard_dims_set = set()
 
                 # 1. `shard_dims_set` records dims marked as shard in placement.
                 for placement in grad.placements:
@@ -1490,7 +1490,7 @@ class _ShardOptimizer(Optimizer):
                         grad, grad.process_mesh, new_placements
                     )
 
-                new_params_grads.append((grad, new_grad))
+                new_params_grads.append((param, new_grad))
 
         return new_params_grads
 
