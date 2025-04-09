@@ -47,11 +47,11 @@ jobs:
     steps:
     - name: Check environment
       run: |
+        cd ${work_dir}
         [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
         [ -d "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
-        cd $work_dir
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-        tar xf Paddle.tar.gz --strip-components=1
+        tar xf Paddle.tar.gz && cd Paddle
 
         git config --global user.name "PaddleCI"
         git config --global user.email "paddle_ci@example.com"
@@ -66,15 +66,14 @@ jobs:
 
     - name: Build with mac python3.9
       run: |
-        pwd
-        cd ${work_dir}
-        ls
+        cd ${work_dir}/Paddle
         bash ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
         EXCODE=$?
         exit $EXCODE
 
     - name: Test with mac python3.9
       run: |
+        cd ${work_dir}/Paddle
         bash ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} ${PROC_RUN:-""}
         EXCODE=$?
         exit $EXCODE
