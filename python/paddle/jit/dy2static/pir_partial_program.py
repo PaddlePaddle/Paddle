@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import itertools
-import os
 from functools import cached_property
 from typing import TYPE_CHECKING
 
@@ -40,6 +39,7 @@ from .utils import (
     backend_guard,
     compose_guards,
     cse_is_enabled,
+    train_guard,
 )
 
 if TYPE_CHECKING:
@@ -723,22 +723,7 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
 
-        # AutoLayoutPass may change layout of bn to NHWC, if not enable `FLAGS_cudnn_batchnorm_spatial_persistent`, it will revert to NCHW. So if the user does not set this Flag, we set it to True.
-        guard_creators = []
-        if (
-            auto_layout_is_enabled()
-            and not self._backend.is_cinn()
-            and paddle.is_compiled_with_cuda()
-            and os.getenv("FLAGS_cudnn_batchnorm_spatial_persistent") is None
-        ):
-            guard_creators.append(
-                lambda: paddle.base.framework.flag_guard(
-                    "FLAGS_cudnn_batchnorm_spatial_persistent",
-                    True,
-                )
-            )
-
-        with compose_guards(*guard_creators)():
+        with compose_guards(*train_guard(self._backend))():
             _C_ops.run_program(
                 inputs,
                 self._valid_vars(self._params),
@@ -765,23 +750,7 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
 
-        guard_creators = []
-
-        # AutoLayoutPass may change layout of bn to NHWC, if not enable `FLAGS_cudnn_batchnorm_spatial_persistent`, it will revert to NCHW. So if the user does not set this Flag, we set it to True.
-        if (
-            auto_layout_is_enabled()
-            and not self._backend.is_cinn()
-            and paddle.is_compiled_with_cuda()
-            and os.getenv("FLAGS_cudnn_batchnorm_spatial_persistent") is None
-        ):
-            guard_creators.append(
-                lambda: paddle.base.framework.flag_guard(
-                    "FLAGS_cudnn_batchnorm_spatial_persistent",
-                    True,
-                )
-            )
-
-        with compose_guards(*guard_creators)():
+        with compose_guards(*train_guard(self._backend))():
             _C_ops.run_program(
                 inputs,
                 self._valid_vars(self._params),
@@ -859,8 +828,7 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
-            # TODO(liujinnan) When CINN can perfectly handle Layout conversion, remove the judgment of whether to enable CINN.
-            if auto_layout_is_enabled() and not self._backend.is_cinn():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(infer_program.program)
@@ -875,8 +843,7 @@ class PartialProgramLayer:
             train_program.apply_dist_pass_for_origin_program()
 
             # Author(liujinnan): auto_layout_pass should be applied to the original_program, before append backward. So we put it here.
-            # TODO(liujinnan) When CINN can perfectly handle Layout conversion, remove the judgment of whether to enable CINN.
-            if auto_layout_is_enabled() and not self._backend.is_cinn():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
