@@ -801,18 +801,23 @@ def GenDistBranch(args, op_info):
         if name == "learning_rate":
             extra_call = "CopyLeafOpToMesh(learning_rate_, op_mesh);"
             break
+
     merge_input_meshes = ""
     if (
         op_info.class_name == 'CheckFiniteAndUnscale_Op'
         or op_info.class_name == 'UpdateLossScaling_Op'
     ):
         merge_input_meshes = "op_mesh = CreateGlobalMesh(input_values);"
+
     if op_info.class_name == 'CheckFiniteAndUnscale_Op':
         extra_call = "CopyLeafOpToMesh(scale_, op_mesh);"
+
     dist_branch_str = TEMPLATE.format(merge_input_meshes, extra_call)
     infer_spmd_args_list = []
+    batch_dim_args_list = []
     spmd_input_value_num = 0
     map_input_idx = {}
+
     # Prepare inputs_meta_tensor & attributes for infer spmd
     for spmd_arg_idx, name in enumerate(op_info.spmd_params):
         # is input
@@ -826,6 +831,7 @@ def GenDistBranch(args, op_info):
     for(auto& sub_ir_tensor: {name}.data()) {{
       vec_dist_meta_{name}.push_back(CvtToDistMetaTensor(sub_ir_tensor.dyn_cast<DistDenseTensorType>()));
     }}"""
+
                 dist_branch_str += TEMPLATE.format(name=name)
                 infer_spmd_args_list.append("vec_dist_meta_" + name)
             # is a Tensor
@@ -841,6 +847,7 @@ def GenDistBranch(args, op_info):
                     TEMPLATE = """
     auto dist_meta_{name} = CvtToDistMetaTensor({name}_.type().dyn_cast<DistDenseTensorType>());"""
                     dist_branch_str += TEMPLATE.format(name=name)
+
                 infer_spmd_args_list.append("dist_meta_" + name)
             spmd_input_value_num += 1
             map_input_idx[input_index] = spmd_arg_idx
@@ -854,6 +861,7 @@ def GenDistBranch(args, op_info):
                     attr_type = op_info.mutable_attribute_type_list[attr_index]
                     if attr_type[0] == "paddle::dialect::IntArrayAttribute":
                         infer_spmd_args_list[-1] = name + ".GetData()"
+
     spmd_rule_func = op_info.spmd_rule_func
     if spmd_rule_func is None:
         spmd_rule_func = "VariadicReplicatedInferSpmdDynamic"
@@ -862,6 +870,25 @@ def GenDistBranch(args, op_info):
     DebugInfoForInferSpmd("{op_name}", spmd_info);
     PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
         "Size of spmd_info.first for op[{op_name}]is unexpected."));
+
+    if (FLAGS_disable_dp_batch_spmd) {{
+        std::vector<int64_t> input_batch_dim;
+        for (size_t i = 0;i < spmd_info.first.size(); i++) {{
+            auto input_value = input_values[i];
+            if (input_value.type().isa<paddle::dialect::DenseTensorType>()) {{
+                auto op = input_value.defining_op();
+                if (op->name() == "builtin.parameter" &&
+                    op->HasAttribute(kAttrIsPersistable)) {{
+                    input_batch_dim.push_back(-1);
+                }} else {{
+                    input_batch_dim.push_back(0);
+                }}
+            }} else {{
+                input_batch_dim.push_back(0);
+            }}
+        }}
+        phi::distributed::DisableDpSpmd(&spmd_info, input_batch_dim);
+    }}
 """
     dist_branch_str += TEMPLATE.format(
         spmd_func=spmd_rule_func,

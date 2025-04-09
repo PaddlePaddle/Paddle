@@ -17,6 +17,30 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.io import BatchSampler, DataLoader, Dataset
+
+
+class MyLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = paddle.nn.Linear(2, 2, bias_attr=False)
+
+    def forward(self, x):
+        x = paddle.sum(x, axis=0)
+        return x
+
+
+class RandomDataset(Dataset):
+    def __init__(self):
+        super().__init__()
+
+    def __getitem__(self, index):
+        input = np.random.uniform(size=[2, 2]).astype("float32")
+        label = np.random.randint(0, 2, size=[]).astype("int64")
+        return input, label
+
+    def __len__(self):
+        return 100
 
 
 class TestDisableDPSpmd:
@@ -49,9 +73,38 @@ class TestDisableDPSpmd:
         assert linear.weight.batch_dim == -1
         assert linear.weight.placements[0] == dist.Replicate()
 
+    def test_disable_dp_spmd_case3(self):
+        dataset = RandomDataset()
+        sampler = BatchSampler(
+            dataset,
+            batch_size=2,
+        )
+        dataloader = DataLoader(
+            dataset,
+            batch_sampler=sampler,
+        )
+        dist_dataloader = dist.shard_dataloader(
+            dataloader, shard_dims=[0, 0], meshes=[self._mesh, self._mesh]
+        )
+
+        def loss_fn(x, label):
+            return paddle.mean(x)
+
+        model = MyLayer()
+        model = dist.to_static(model, dist_dataloader, loss_fn)
+        model.train()
+
+        program = model._engine._pir_dist_main_progs["train"]
+        for op in program.global_block().ops:
+            print(op.name())
+            if op.name() == "pd_op.sum":
+                out = op.result(0)
+                assert out.placements[0] == dist.Shard(0)
+
     def run_test_case(self):
         self.test_disable_dp_spmd_case1()
         self.test_disable_dp_spmd_case2()
+        self.test_disable_dp_spmd_case3()
 
 
 if __name__ == "__main__":
