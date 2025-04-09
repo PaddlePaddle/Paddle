@@ -164,12 +164,6 @@ jobs:
       group: Kunlun
 
     steps:
-    - name: Determine the runner
-      run: |
-        runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
-        echo $runner_name
-        source ${ci_scripts}/utils.sh
-        determine_kunlun_runner ${runner_name}
 
     - name: Download build.tar.gz
       run: |
@@ -177,6 +171,13 @@ jobs:
         wget -q --no-proxy https://xly-devops.bj.bcebos.com/PR/kunlun-bxcheck/72068/87508f657757b8e3334f9ac995241a7b392e7aca/build.tar.gz --no-check-certificate
         tar --use-compress-program="pigz" --strip-components=1 -xf build.tar.gz
         rm build.tar.gz
+
+    - name: Determine the runner
+      run: |
+        runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
+        echo $runner_name
+        source ${ci_scripts}/utils.sh
+        determine_kunlun_runner ${runner_name}
 
     - name: Check docker image and run container
       env:
