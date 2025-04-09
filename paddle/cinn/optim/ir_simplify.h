@@ -185,6 +185,12 @@ void SimplifyUnitBlock(Expr *expr);
 
 void SimplifyLogical(Expr *expr);
 
-Expr ArithSimplify(const Expr &u);
+void SimplifyNoPureMath(Expr *expr,
+                        const ir::IndexExpr::OptLevel &opt_level =
+                            ir::IndexExpr::OptLevel::kLevel1);
+
+Expr ArithSimplify(const Expr &u,
+                   const ir::IndexExpr::OptLevel &opt_level =
+                       ir::IndexExpr::OptLevel::kLevel1);
 }  // namespace optim
 }  // namespace cinn
