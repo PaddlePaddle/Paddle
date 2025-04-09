@@ -76,18 +76,14 @@ jobs:
         CCACHE_LIMIT_MULTIPLE: 0.8
         no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
         GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        WITH_GPU: "OFF"
-        WITH_COVERAGE: "OFF"
-        WITH_MKL: "ON"
-        WITH_CACHE: "ON"
-        RUN_TEST: "ON"
+        home_dir: ${{ github.workspace }}/../../../..
       run: |
         container_name=${TASK}-$(date +%s)
         echo "container_name=${container_name}" >> ${{ github.env }}
         docker run --privileged -d -t --name ${container_name} \
-          -v ${{ github.workspace }}/../../../../.cache:/root/.cache \
-          -v ${{ github.workspace }}/../../../../.ccache:/root/.ccache \
-          -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+          -v $home_dir/.cache:/root/.cache \
+          -v $home_dir/.ccache:/root/.ccache \
+          -v $home_dir:$home_dir \
           -e BRANCH \
           -e PR_ID \
           -e COMMIT_ID \
@@ -115,11 +111,6 @@ jobs:
           -e WITH_AVX \
           -e no_proxy \
           -e GITHUB_API_TOKEN \
-          -e WITH_GPU \
-          -e WITH_COVERAGE \
-          -e WITH_MKL \
-          -e WITH_CACHE \
-          -e RUN_TEST \
           -w ${{ github.workspace }} --network host ${docker_image} /bin/bash
 
     - name: Run build
