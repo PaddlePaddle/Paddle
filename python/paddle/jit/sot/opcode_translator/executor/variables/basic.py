@@ -1401,9 +1401,22 @@ class NumpyVariable(VariableBase):
         tracker: The Tracker object that tracks the information of this variable.
     """
 
-    def __init__(self, value, graph, tracker):
+    var_name_generator = NameGenerator("np_var_")
+    value: np.ndarray
+    mutable_attrs = ["meta"]
+
+    def __init__(self, value_or_meta, graph, tracker):
         super().__init__(graph, tracker)
-        self.value = value
+        self.var_name = self.var_name_generator.next()
+        self.graph.side_effects.record_mutable_variable(self)
+
+        if isinstance(value_or_meta, MetaInfo):
+            # TODO(wangmingkai02): self.value
+            self.value = None
+            self.meta = value_or_meta
+        else:
+            self.value = value_or_meta
+            self.meta = MetaInfo.from_tensor(paddle.to_tensor(self.value))
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -1411,6 +1424,12 @@ class NumpyVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value
+
+    def get_py_type(self):
+        return np.ndarray
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
 
     @staticmethod
     def format_dtype(dtype: np.dtype):
@@ -1433,6 +1452,15 @@ class NumpyVariable(VariableBase):
         if isinstance(value, np.ndarray):
             return NumpyArrayVariable(value, graph, tracker)
         return None
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("numpy")
+        codegen.gen_call_method(0)
 
 
 class NumpyNumberVariable(NumpyVariable):

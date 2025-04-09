@@ -28,6 +28,8 @@ from typing import (
     Callable,
 )
 
+import numpy as np
+
 import paddle
 
 from .... import psdb
@@ -35,6 +37,7 @@ from ....profiler import EventGuard
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
+    ENV_SOT_TRACE_NUMPY,
     get_obj_stable_repr,
     get_static_function,
     is_break_graph_api,
@@ -852,6 +855,42 @@ class FunctoolsLruCacheWrapperVariable(FunctionVariable):
         if isinstance(value, functools._lru_cache_wrapper):
             return FunctoolsLruCacheWrapperVariable(value, graph, tracker)
         return None
+
+
+class NumpyApiVariable(FunctionVariable):
+    """
+    NumpyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
+
+    Args:
+        fn (Callable[..., Any]): The numpy API to be wrapped.
+        graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker(Tracker): The Tracker object that tracks the information of this variable.
+    """
+
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        # TODO(wangmingkai02): judge whether this is a break api
+        assert self.value is np.add, "Only support numpy.add api currently."
+        return self.graph.call_numpy_api(paddle.add, *args, **kwargs)
+
+    @VariableFactory.register_from_value(successor="BuiltinVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        # TODO(wangmingkai02): support other numpy api.
+        if ENV_SOT_TRACE_NUMPY.get() and callable(value) and value is np.add:
+            return NumpyApiVariable(value, graph, tracker)
+        return None
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "name": self.value.__name__,
+        }
+
+    make_stringified_guard = object_equal_stringified_guard
 
 
 class UserDefinedGeneratorFunctionVariable(FunctionVariable):
