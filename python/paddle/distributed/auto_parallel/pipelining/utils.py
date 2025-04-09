@@ -1,0 +1,170 @@
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Callable, Dict, List, Tuple, Union
+
+import paddle
+from paddle.distributed import fleet
+
+logger = logging.getLogger(__name__)
+
+
+def detach_and_requires_grad(x):
+    o = x.detach()
+    o.stop_gradient = False
+    return o
+
+
+def detach_and_keep_grad(x):
+    o = x.detach_()
+    o.stop_gradient = x.stop_gradient
+    return o
+
+
+def flatten_args(args):
+    """
+    Flatten the args into a list form.
+    """
+    flat_args = []
+
+    def extract_tensor_args(a):
+        nonlocal flat_args
+        flat_args.append(a)
+        return a
+
+    paddle.utils.map_structure(
+        extract_tensor_args,
+        args,
+    )
+
+    return flat_args
+
+
+class PipeliningShapeError(RuntimeError):
+    """Shape mismatch between configured and runtime values."""
+
+
+def validate_tensor_metadata(desc, expected, given):
+    if not expected.shape == given.shape:
+        raise PipeliningShapeError(
+            f"{desc} has a shape mismatch: expected {expected.shape} actual {given.shape}"
+        )
+    if not expected.dtype == given.dtype:
+        raise PipeliningShapeError(
+            f"{desc} has a dtype mismatch: expected {expected.dtype} actual {given.dtype}"
+        )
+
+
+def validate_tensors_metadata(
+    desc,
+    expected_tensors: list[paddle.Tensor] | tuple[paddle.Tensor, ...],
+    actual_tensors: list[paddle.Tensor] | tuple[paddle.Tensor, ...],
+):
+    if len(expected_tensors) != len(actual_tensors):
+        raise PipeliningShapeError(
+            f"{desc}: Number of values ({len(actual_tensors)}) does not match expected number ({len(expected_tensors)})"
+        )
+    for i in range(len(expected_tensors)):
+        validate_tensor_metadata(
+            f"{desc}: value {i}", expected_tensors[i], actual_tensors[i]
+        )
+
+
+NestedStruct = Union[List[Any], Tuple[Any, ...], Dict[Any, Any]]
+
+
+def any_map_structure(
+    fn: Callable[[Any], Any], structures: NestedStruct
+) -> NestedStruct:
+    """
+    Apply `fn` to each entry in `structures` and return a new structure with the same shape.
+    """
+    if isinstance(structures, (list, tuple)):
+        return type(structures)(
+            [any_map_structure(fn, item) for item in structures]
+        )
+    elif isinstance(structures, dict):
+        return {
+            key: any_map_structure(fn, value)
+            for key, value in structures.items()
+        }
+    else:
+        return fn(structures)
+
+
+def any_map_structure_only(
+    type_: Any, fn: Callable[[Any], Any], structure: NestedStruct
+) -> NestedStruct:
+    """
+    Apply `fn` to each entry which matches `type_` in `structure` and return a new structure with the same shape.
+    """
+    if isinstance(structure, (list, tuple)):
+        return type(structure)(
+            [any_map_structure_only(type_, fn, item) for item in structure]
+        )
+    elif isinstance(structure, dict):
+        return {
+            key: any_map_structure_only(type_, fn, value)
+            for key, value in structure.items()
+        }
+    else:
+        return fn(structure) if isinstance(structure, type_) else structure
+
+
+class TensorMeta:
+    def __init__(self, tensor: paddle.Tensor):
+        self.shape = tensor.shape
+        self.dtype = tensor.dtype
+        self.placements = None if not tensor.is_dist() else tensor.placements
+
+    def __repr__(self):
+        return f"TensorMeta(shape={self.shape}, dtype={self.dtype}, placements={self.placements})"
+
+
+def get_pp_mesh(pp_idx=0, pp_dim_names="pp"):
+    """
+    Get the mesh of the {pp_idx}th PipelineStage.
+    """
+    mesh = fleet.auto.get_mesh()
+    assert (
+        mesh is not None
+    ), "the mesh is None, please call fleet.auto.set_mesh first."
+    if "pp" in mesh.dim_names:
+        mesh = mesh.get_mesh_with_dim("pp", pp_idx)
+    else:
+        logger.warning(
+            f"The dim name of pp {pp_dim_names} not exist in global mesh {mesh}"
+        )
+    return mesh
+
+
+def friendly_debug_info(v):
+    """
+    Helper function to print out debug info in a friendly way.
+    """
+    if isinstance(v, paddle.Tensor):
+        return f"Tensor({v.shape}, stop_gradient={v.stop_gradient}, dtype={v.dtype})"
+    else:
+        return str(v)
+
+
+def map_debug_info(a):
+    """
+    Helper function to apply `friendly_debug_info` to items in `a`.
+    `a` may be a list, tuple, or dict.
+    """
+    return any_map_structure(friendly_debug_info, a)
