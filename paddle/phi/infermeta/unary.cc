@@ -6012,7 +6012,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   std::vector<int64_t> dim_out;
   if (algo == "weight_only_int8" || algo == "llm.int8") {  // NOLINT
     dim_out = std::vector<int64_t>({x_dims[1], x_dims[0]});
-  } else if (algo == "weight_only_int4") {
+  } else if (algo == "weight_only_int4" || algo == "w4a8") {
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
