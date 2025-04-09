@@ -1392,14 +1392,15 @@ class _ShardOptimizer(Optimizer):
         '''
         In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
         Below are 2 methods to modify grad partial state by fusing comms before optimize:
-            1) Fuse allreduce: Change all partial state in placements to replicate via `allreduce` comms,
+            1) FLAGS_fuse_reducescatter_in_opt: Change all partial state in placements to replicate
+               via `allreduce` comms,
                 e.g.
                     a) sharding_axis = 0, tensor rank = 2,
                        placements: [partial, shard(0), partial] -> [replicate, shard(0), replicate].
 
-            2) Fuse reduce_scatter: Keep shard states in placements unchanged, transform others to `shard(dim)`
-               states via `reduce_scatter` comms if possible, or replicate states otherwise. In particular,
-               the `placement[sharding_axis]` should be `shard(0)` if possible.
+            2) FLAGS_fuse_reducescatter_in_opt: Keep shard states in placements unchanged, transform others
+               to `shard(dim)` states via `reduce_scatter` comms if possible, or replicate states otherwise.
+               In particular, the `placement[sharding_axis]` should be `shard(0)` if possible.
                 e.g.
                     a) sharding_axis = 0, tensor rank = 2,
                        placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
