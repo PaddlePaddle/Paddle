@@ -264,7 +264,7 @@ EOF
 
     # run go test
     cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
-    bash test_action.sh
+    bash test.sh
     EXIT_CODE=$?
     if [[ "$EXIT_CODE" != "0" ]]; then
         exit 8;
