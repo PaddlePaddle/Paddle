@@ -2669,7 +2669,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 class OffloadQueue(queue.Queue):
     def __init__(self, offload=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        logger.info(f"Using OffloadQueue: {offload}")
         self.offload = offload
 
     def put(self, tensor, *args, **kwargs):
