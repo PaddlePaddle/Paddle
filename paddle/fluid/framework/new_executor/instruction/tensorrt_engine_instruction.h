@@ -57,6 +57,7 @@ class TensorRTEngineInstruction : public InstructionBase {
                         int* runtime_batch);
   std::unique_ptr<paddle::platform::TensorRTEngine> trt_engine_;  // not owned
   int64_t workspace_size_;
+  bool use_cuda_graph_;
   bool allow_build_at_runtime_;
   std::unordered_map<int, std::string>
       input_names_;  // Only record input name that is not empty
