@@ -1458,7 +1458,7 @@ class NumpyNumberVariable(NumpyVariable):
 
         dtype_guard = FasterStringifiedExpression(
             f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
-            paddle.framework.core.NumpyDtypeMatchGuard(
+            paddle.framework.core.NumPyDtypeMatchGuard(
                 self.get_py_value().dtype
             ),
             [frame_value_tracer],
@@ -1498,7 +1498,7 @@ class NumpyArrayVariable(NumpyVariable):
 
         dtype_guard = FasterStringifiedExpression(
             f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
-            paddle.framework.core.NumpyDtypeMatchGuard(
+            paddle.framework.core.NumPyDtypeMatchGuard(
                 self.get_py_value().dtype
             ),
             [frame_value_tracer],

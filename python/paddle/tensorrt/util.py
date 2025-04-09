@@ -14,6 +14,7 @@
 
 import logging
 import os
+from enum import Enum
 
 import numpy as np
 
@@ -30,6 +31,14 @@ from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+
+
+class RefitRole(Enum):
+    SHIFT = "SHIFT"
+    SCALE = "SCALE"
+    CONSTANT = "CONSTANT"
+    BIAS = "BIAS"
+    KERNEL = "KERNEL"
 
 
 def map_dtype(pd_dtype):
@@ -260,6 +269,46 @@ class TensorRTConstantManager:
         return self.constant_dict[name]
 
 
+class RefitManager:
+    _instance = None
+
+    def __new__(cls, trt_config=None):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+            cls._instance.trt_weights_dict = {}
+            cls._instance.refit_param_names2trt_names = {}
+        return cls._instance
+
+    def set_trt_weight_tensor(self, name, trt_weights):
+        self.trt_weights_dict[name] = trt_weights
+
+    def get_trt_weight_tensor(self, name):
+        return self.trt_weights_dict[name]
+
+    def set_mapping(self, param_name, layer_name, role):
+        if isinstance(role, RefitRole):
+            role = role.value
+        if param_name not in self.refit_param_names2trt_names:
+            self.refit_param_names2trt_names[param_name] = {}
+        self.refit_param_names2trt_names[param_name][role] = layer_name
+
+    def get_mapping(self, param_name, role=None):
+        if param_name in self.refit_param_names2trt_names:
+            if role is None:
+                return self.refit_param_names2trt_names[param_name]
+            if isinstance(role, RefitRole):
+                role = role.value
+            if role in self.refit_param_names2trt_names[param_name]:
+                return self.refit_param_names2trt_names[param_name][role]
+            else:
+                return None
+        else:
+            return None
+
+    def get_all_mappings(self):
+        return self.refit_param_names2trt_names
+
+
 # In TensorRT FP16 inference, this function sets the precision of specific
 # operators to FP32, ensuring numerical accuracy for these operations.
 def support_fp32_mix_precision(op_type, layer, trt_config=None):
@@ -270,7 +319,7 @@ def support_fp32_mix_precision(op_type, layer, trt_config=None):
         layer.precision = trt.DataType.FLOAT
 
 
-def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
+def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name=None):
     # the following op needn't cast trt.Weight to ITensor, because the layer need weight as input
     forbid_cast_op = [
         "pd_op.depthwise_conv2d",
@@ -290,9 +339,10 @@ def weight_to_tensor(network, paddle_value, trt_tensor, use_op_name):
     ]
     if use_op_name in forbid_cast_op:
         return trt_tensor
-    input_shape = paddle_value.shape
-    if type(trt_tensor) == trt.Weights:
-        return network.add_constant(input_shape, trt_tensor).get_output(0)
+    if isinstance(trt_tensor, trt.Weights):
+        input_shape = paddle_value.shape
+        constant_layer = network.add_constant(input_shape, trt_tensor)
+        return constant_layer.get_output(0)
     return trt_tensor
 
 

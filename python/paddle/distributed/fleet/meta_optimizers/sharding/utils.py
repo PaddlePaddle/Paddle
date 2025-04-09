@@ -167,9 +167,16 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 ):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
-        elif op.type == "c_allreduce_sum" or (
-            op.type == "reduce"
-            and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+        elif (
+            op.type == "c_allreduce_sum"
+            or (
+                op.type == "all_reduce"
+                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+            )
+            or (
+                op.type == "reduce"
+                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+            )
         ):
             if not op.all_attrs()["use_calc_stream"]:
                 var_name = op.desc.input_arg_names()[0]
@@ -517,12 +524,12 @@ def insert_fused_allreduce_ops(
     for fused_var in fused_vars:
         block._insert_op_without_sync(
             insert_idx + insert_num,
-            type='c_allreduce_sum',
-            inputs={'X': fused_var},
-            outputs={'Out': fused_var},
+            type='all_reduce',
+            inputs={'x': fused_var},
+            outputs={'out': fused_var},
             attrs={
                 'ring_id': ring_id,
-                'use_calc_stream': use_calc_stream,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )
