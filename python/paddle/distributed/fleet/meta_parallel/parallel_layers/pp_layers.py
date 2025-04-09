@@ -1017,7 +1017,7 @@ class PipelineLayer(nn.Layer):
 
         return execute_func
 
-    def forward(self, input, chunk_id=None, overlap_schedule_mode=False):
+    def update_run_function(self, chunk_id):
         if chunk_id is not None:
             assert isinstance(chunk_id, int), "chunk_id should be an int"
             assert (
@@ -1035,9 +1035,15 @@ class PipelineLayer(nn.Layer):
             # But for interleave, self.run_function will keep updating to the target functions at every run.
             self.run_function = model_chunk.get_run_function()
 
-        if overlap_schedule_mode:
-            assert self._recompute_interval == 0
-            return self.build_schedule_nodes(0, len(self.run_function))
+    def get_schedule_chunk(self, chunk_id):
+        self.update_run_function(chunk_id)
+
+        assert self._recompute_interval == 0
+        return self.build_schedule_nodes(0, len(self.run_function))
+
+    def forward(self, input, chunk_id=None):
+        self.update_run_function(chunk_id)
+
         if self._recompute_interval == 0:
             input = self.forward_function(0, len(self.run_function))(input)
         else:
