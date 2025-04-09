@@ -23,7 +23,7 @@ _PRUNE_HISTORY_FUNC = []
 
 
 def log_pruned_info(cur_cfg, pruned_reason, tuner_cfg):
-    pruned_strategy = "DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}".format(
+    pruned_strategy = "DP{}_MP{}_PP{}_VPP{}_Sharding{}_Stage{}_MBS{}_Recompute_{}_Granularity_{}_AccSteps_{}".format(
         cur_cfg["dp_degree"],
         cur_cfg["mp_degree"],
         cur_cfg["pp_degree"],
@@ -33,6 +33,7 @@ def log_pruned_info(cur_cfg, pruned_reason, tuner_cfg):
         cur_cfg["micro_batch_size"],
         cur_cfg["use_recompute"],
         cur_cfg["recompute_granularity"],
+        cur_cfg["acc_steps"],
     )
     if "refined_recompute" in tuner_cfg:
         for key in tuner_cfg["refined_recompute"]:
@@ -994,15 +995,16 @@ def prune_by_acc_steps_history(
     cur_step_remainder = cur_cfg["acc_steps"] % pp_degree
 
     if (
-        tuner_cfg.get("refined_recompute", None)
-        and tuner_cfg.get("recompute_granularity", None) == "full"
+        tuner_cfg.get("refined_recompute", None) is not None
+        and cur_cfg.get("recompute_granularity", None) == "full"
     ):
         cur_refined_recompute_conf = tuple(
             cur_cfg[key] for key in tuner_cfg["refined_recompute"]
         )
         rr = tuner_cfg.get("refined_recompute")
         compare = copy.deepcopy(rr)
-        compare.append("acc_steps")
+        compare.extend(['acc_steps', 'global_batch_size'])
+
         cfgs = same_cfgs_beside(compare, cur_cfg, history_cfgs)
         if cfgs:
             for cfg in cfgs:
@@ -1021,7 +1023,6 @@ def prune_by_acc_steps_history(
                         + ", ".join(f"{key}={cfg[key]}" for key in rr)
                         + ") already OOM."
                     )
-
                     log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
                     cur_cfg["max_mem_usage"] = "OOM"
                     return True
