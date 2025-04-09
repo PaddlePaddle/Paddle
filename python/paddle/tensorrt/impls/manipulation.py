@@ -21,6 +21,7 @@ from paddle.tensorrt.converter_utils import (
     build_start_tensor,
     cast_tensor,
     fix_negative_indices,
+    generic_plugin_converter,
     get_axes_for_reduce_op,
     get_input_constant_value,
     get_shape_tensor_element,
@@ -1387,108 +1388,117 @@ def pad_converter(network, paddle_op, inputs):
 @converter_registry.register("pd_op.pad3d", trt_version="8.x")
 def pad3d_converter(network, paddle_op, inputs):
     input_tensor, paddings = inputs
-
     value = paddle_op.attrs().get("pad_value", 0.0)
     padding_mode = paddle_op.attrs().get("mode", "constant")
-    input_dim = len(input_tensor.shape)
-    pad_size = paddings.shape[0]
-    assert (
-        input_dim * 2 - 4 == pad_size
-    ), f"Expected paddings size is {input_dim * 2 - 4}, but received {pad_size}."
-
-    shuffle_index = [4, 2, 0, 5, 3, 1]
-    shuffle_inputs = [
-        get_shape_tensor_element(
-            network,
-            paddings,
-            shuffle_index[i],
-            name=[paddle_op.name(), f'shuffle_inputs_{i}'],
-        )
-        for i in range(pad_size)
-    ]
-    paddings = trt_concat(
-        network, shuffle_inputs, name=[paddle_op.name(), 'paddings']
-    )
-
-    pre_zeros = add_1D_constant_layer(
-        network, [0, 0], name=[paddle_op.name(), 'pre_zeros']
-    )
-    start_slice1 = [0]
-    start_slice2 = [3]
-    size_slice = [3]
-    stride_slice = [1]
-    pre_pad = network.add_slice(
-        paddings, start_slice1, size_slice, stride_slice
-    )
-    set_layer_name(pre_pad, paddle_op)
-    pre_pad = pre_pad.get_output(0)
-    pre_pad = trt_concat(
-        network, [pre_zeros, pre_pad], name=[paddle_op.name(), 'pre_pad']
-    )
-    post_pad = network.add_slice(
-        paddings, start_slice2, size_slice, stride_slice
-    )
-    set_layer_name(post_pad, paddle_op)
-    post_pad = post_pad.get_output(0)
-    post_pad = trt_concat(
-        network, [pre_zeros, post_pad], name=[paddle_op.name(), 'post_pad']
-    )
-
-    zeros = add_1D_constant_layer(
-        network, [0] * input_dim, name=[paddle_op.name(), 'zeros']
-    )
-
-    start = trt_sub(network, zeros, pre_pad, name=[paddle_op.name(), 'start'])
-    total_padding = trt_sum(
-        network, pre_pad, post_pad, name=[paddle_op.name(), 'total_padding']
-    )
-    input_shape = trt_shape(
-        network, input_tensor, name=[paddle_op.name(), 'input_shape']
-    )
-    size = trt_sum(
-        network, input_shape, total_padding, name=[paddle_op.name(), 'size']
-    )
-
-    # Add slice layer
-    stride = [1] * input_dim
-    dummy = stride
-    slice_layer = network.add_slice(input_tensor, dummy, dummy, stride)
-    slice_layer.set_input(1, start)
-    slice_layer.set_input(2, size)
-    set_layer_name(slice_layer, paddle_op)
-
-    # Set padding mode
-    if padding_mode == "constant":
-        slice_layer.mode = trt.SampleMode.FILL
-        if value != 0.0:
-            if input_tensor.dtype in (
-                trt.DataType.FLOAT,
-                trt.DataType.HALF,
-                trt.DataType.INT8,
-            ):
-                fill_value = add_1D_constant_layer(
-                    network,
-                    value,
-                    dtype=np.float32,
-                    name=[paddle_op.name(), 'fill_value'],
-                )
-            else:
-                value_int = int(value)
-                fill_value = add_1D_constant_layer(
-                    network,
-                    value_int,
-                    dtype=np.int32,
-                    name=[paddle_op.name(), 'fill_value'],
-                )
-            slice_layer.set_input(4, fill_value)
-    elif padding_mode == "reflect":
-        slice_layer.mode = trt.SampleMode.REFLECT
-    elif padding_mode == "replicate":
-        slice_layer.mode = trt.SampleMode.CLAMP
+    data_format = paddle_op.attrs().get("data_format")
+    if padding_mode == "circular" or data_format == "NDHWC":
+        attrs = paddle_op.attrs()
+        value_attr = get_input_constant_value(paddle_op, inputs, 1)
+        attrs["paddings"] = value_attr
+        layer = generic_plugin_converter(network, paddle_op, inputs, attrs)
+        return layer.get_output(0)
     else:
-        raise ValueError(f"Unsupported padding mode: {padding_mode}")
+        input_dim = len(input_tensor.shape)
+        pad_size = paddings.shape[0]
+        assert (
+            input_dim * 2 - 4 == pad_size
+        ), f"Expected paddings size is {input_dim * 2 - 4}, but received {pad_size}."
 
-    return slice_layer.get_output(0)
+        shuffle_index = [4, 2, 0, 5, 3, 1]
+        shuffle_inputs = [
+            get_shape_tensor_element(
+                network,
+                paddings,
+                shuffle_index[i],
+                name=[paddle_op.name(), f'shuffle_inputs_{i}'],
+            )
+            for i in range(pad_size)
+        ]
+        paddings = trt_concat(
+            network, shuffle_inputs, name=[paddle_op.name(), 'paddings']
+        )
+
+        pre_zeros = add_1D_constant_layer(
+            network, [0, 0], name=[paddle_op.name(), 'pre_zeros']
+        )
+        start_slice1 = [0]
+        start_slice2 = [3]
+        size_slice = [3]
+        stride_slice = [1]
+        pre_pad = network.add_slice(
+            paddings, start_slice1, size_slice, stride_slice
+        )
+        set_layer_name(pre_pad, paddle_op)
+        pre_pad = pre_pad.get_output(0)
+        pre_pad = trt_concat(
+            network, [pre_zeros, pre_pad], name=[paddle_op.name(), 'pre_pad']
+        )
+        post_pad = network.add_slice(
+            paddings, start_slice2, size_slice, stride_slice
+        )
+        set_layer_name(post_pad, paddle_op)
+        post_pad = post_pad.get_output(0)
+        post_pad = trt_concat(
+            network, [pre_zeros, post_pad], name=[paddle_op.name(), 'post_pad']
+        )
+
+        zeros = add_1D_constant_layer(
+            network, [0] * input_dim, name=[paddle_op.name(), 'zeros']
+        )
+
+        start = trt_sub(
+            network, zeros, pre_pad, name=[paddle_op.name(), 'start']
+        )
+        total_padding = trt_sum(
+            network, pre_pad, post_pad, name=[paddle_op.name(), 'total_padding']
+        )
+        input_shape = trt_shape(
+            network, input_tensor, name=[paddle_op.name(), 'input_shape']
+        )
+        size = trt_sum(
+            network, input_shape, total_padding, name=[paddle_op.name(), 'size']
+        )
+
+        # Add slice layer
+        stride = [1] * input_dim
+        dummy = stride
+        slice_layer = network.add_slice(input_tensor, dummy, dummy, stride)
+        slice_layer.set_input(1, start)
+        slice_layer.set_input(2, size)
+        set_layer_name(slice_layer, paddle_op)
+
+        # Set padding mode
+        if padding_mode == "constant":
+            slice_layer.mode = trt.SampleMode.FILL
+            if value != 0.0:
+                if input_tensor.dtype in (
+                    trt.DataType.FLOAT,
+                    trt.DataType.HALF,
+                    trt.DataType.INT8,
+                ):
+                    fill_value = add_1D_constant_layer(
+                        network,
+                        value,
+                        dtype=np.float32,
+                        name=[paddle_op.name(), 'fill_value'],
+                    )
+                else:
+                    value_int = int(value)
+                    fill_value = add_1D_constant_layer(
+                        network,
+                        value_int,
+                        dtype=np.int32,
+                        name=[paddle_op.name(), 'fill_value'],
+                    )
+                slice_layer.set_input(4, fill_value)
+        elif padding_mode == "reflect":
+            slice_layer.mode = trt.SampleMode.REFLECT
+        elif padding_mode == "replicate":
+            slice_layer.mode = trt.SampleMode.CLAMP
+        else:
+            raise ValueError(f"Unsupported padding mode: {padding_mode}")
+
+        return slice_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.numel", trt_version="8.x")

@@ -206,14 +206,14 @@ class InstanceCheckGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class NumpyDtypeMatchGuard : public GuardBase {
+class NumPyDtypeMatchGuard : public GuardBase {
  public:
-  explicit NumpyDtypeMatchGuard(const py::object& dtype)
+  explicit NumPyDtypeMatchGuard(const py::object& dtype)
       : expected_(dtype.ptr()) {
     Py_INCREF(expected_);
   }
 
-  ~NumpyDtypeMatchGuard() override { Py_DECREF(expected_); }
+  ~NumPyDtypeMatchGuard() override { Py_DECREF(expected_); }
 
   bool check(PyObject* value) override;
 
@@ -229,6 +229,20 @@ class NumPyArrayValueMatchGuard : public GuardBase {
   }
 
   ~NumPyArrayValueMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class WeakRefMatchGuard : public GuardBase {
+ public:
+  explicit WeakRefMatchGuard(const py::object& obj) {
+    expected_ = PyWeakref_NewRef(obj.ptr(), nullptr);
+  }
+
+  ~WeakRefMatchGuard() override { PyObject_ClearWeakRefs(expected_); }
 
   bool check(PyObject* value) override;
 

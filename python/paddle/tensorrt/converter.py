@@ -46,6 +46,8 @@ from .impls.stat import *  # noqa: F403
 from .impls.vision import *  # noqa: F403
 from .register import converter_registry
 from .util import (
+    RefitManager,
+    RefitRole,
     TensorRTConfigManager,
     TensorRTConstantManager,
     get_cache_path,
@@ -71,14 +73,15 @@ class PaddleToTensorRTConverter:
         self.scope = scope
         self.program = paddle_program
         self.trt_config = trt_config
-        constant_manager = TensorRTConstantManager()
+        self.constant_manager = TensorRTConstantManager()
+        self.refit_manager = RefitManager()
         params = paddle_program.global_block().all_parameters()
         param_dict = {}
         # save parameters
         for v in params:
             name = v.get_defining_op().attrs()["parameter_name"]
             weight_tensor = self.scope.var(name).get_tensor()
-            constant_manager.set_constant_value(name, weight_tensor, v)
+            self.constant_manager.set_constant_value(name, weight_tensor, v)
 
         self.input_info = {}
         self.trt_output_value_map = {}
@@ -151,7 +154,7 @@ class PaddleToTensorRTConverter:
         max_value_map = {}
         input_names = []
         new_input_values = []
-        constant_manager = TensorRTConstantManager()
+        refit_param_name = []
         precision_mode = PrecisionMode.FP32
         if self.trt_config is not None:
             precision_mode = self.trt_config.precision_mode
@@ -174,22 +177,50 @@ class PaddleToTensorRTConverter:
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.parameter":
                 param_name = defining_op.attrs()["parameter_name"]
+                refit_param_name.append(param_name)
                 weight = trt.Weights(
-                    constant_manager.get_constant_value(param_name)
+                    self.constant_manager.get_constant_value(param_name)
                 )
-                value_to_trt_tensor[value.id] = weight
+                if self.trt_config.refit_params_path:
+                    paddle_shape = value.shape
+                    trt_shape = trt.Dims(paddle_shape)
+                    constant_layer = network.add_constant(trt_shape, weight)
+                    constant_layer.name = param_name
+                    value_to_trt_tensor[value.id] = constant_layer.get_output(0)
+                    self.refit_manager.set_trt_weight_tensor(
+                        constant_layer.get_output(0).name, weight
+                    )
+                    self.refit_manager.set_mapping(
+                        param_name, param_name, RefitRole.CONSTANT
+                    )
+                else:
+                    value_to_trt_tensor[value.id] = weight
             elif defining_op.name() == "builtin.constant":
                 constant_value_name = defining_op.attrs()["value"]
                 constant_tensor = self.scope.var(
                     constant_value_name
                 ).get_tensor()
-                constant_manager.set_constant_value(
+                self.constant_manager.set_constant_value(
                     constant_value_name, constant_tensor, value
                 )
                 constant_tensor = trt.Weights(
-                    constant_manager.get_constant_value(constant_value_name)
+                    self.constant_manager.get_constant_value(
+                        constant_value_name
+                    )
                 )
-                value_to_trt_tensor[value.id] = constant_tensor
+                if self.trt_config.refit_params_path:
+                    paddle_shape = value.shape
+                    trt_shape = trt.Dims(paddle_shape)
+                    constant_layer = network.add_constant(
+                        trt_shape, constant_tensor
+                    )
+                    constant_layer.name = constant_value_name
+                    value_to_trt_tensor[value.id] = constant_layer.get_output(0)
+                    self.refit_manager.set_trt_weight_tensor(
+                        constant_layer.get_output(0).name, constant_tensor
+                    )
+                else:
+                    value_to_trt_tensor[value.id] = constant_tensor
             else:
                 shape = value.shape
                 dtype = map_dtype(value.dtype.name)
@@ -423,6 +454,8 @@ class PaddleToTensorRTConverter:
             }
 
         config = builder.create_builder_config()
+        if self.trt_config and self.trt_config.refit_params_path:
+            config.set_flag(trt.BuilderFlag.REFIT)
         config.add_optimization_profile(profile)
         if version_list[0] > 8 or (
             version_list[0] == 8 and version_list[1] >= 6
@@ -491,6 +524,12 @@ class PaddleToTensorRTConverter:
         trt_params.min_shape_tensor = min_value_map
         trt_params.max_shape_tensor = max_value_map
         trt_params.optim_shape_tensor = opt_value_map
+        if self.trt_config.refit_params_path:
+            trt_params.refit_params_path = self.trt_config.refit_params_path
+            trt_params.refit_param_name = refit_param_name
+            trt_params.refit_param_names2trt_names = (
+                self.refit_manager.get_all_mappings()
+            )
         group_str = str(group_op)
         engine_name = (
             int(hashlib.sha256(group_str.encode('utf-8')).hexdigest(), 16)

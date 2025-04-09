@@ -229,5 +229,64 @@ class TestGroupNormNCHWFP16TRTPattern(TensorRTBaseTest):
         self.check_trt_result(precision_mode="fp16")
 
 
+def layer_norm_wrapper(x, weight, bias):
+    normalized_shape = x.shape[1:]
+    begin_norm_axis = 1
+    epsilon = 1e-5
+    return paddle._C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+
+
+def layer_norm_wrapper_1(x, weight, bias):
+    weight = paddle.to_tensor(weight)
+    bias = paddle.to_tensor(bias)
+    normalized_shape = x.shape[1:]
+    begin_norm_axis = 1
+    epsilon = 1e-5
+    return paddle._C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+
+
+class TestLayerNormTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper
+        normalized_shape = [3, 4, 5]
+        normalized_size = np.prod(normalized_shape)
+        self.api_args = {
+            "x": np.random.random([2, 3, 4, 5]).astype("float32"),
+            "weight": np.random.random([normalized_size]).astype("float32"),
+            "bias": np.random.random([normalized_size]).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x", "weight", "bias"]}
+        self.min_shape = {"x": [1, 3, 4, 5]}
+        self.opt_shape = {"x": [2, 3, 4, 5]}
+        self.max_shape = {"x": [4, 3, 4, 5]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+    def test_fp16_trt_result(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
+class TestLayerNorm2DTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_1
+        normalized_size = 128
+        self.api_args = {
+            "x": np.random.random([2, 128]).astype("float32"),
+            "weight": np.random.random([normalized_size]).astype("float32"),
+            "bias": np.random.random([normalized_size]).astype("float32"),
+        }
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 128]}
+        self.opt_shape = {"x": [2, 128]}
+        self.max_shape = {"x": [4, 128]}
+
+    def test_trt_result(self):
+        self.check_trt_result()
+
+    def test_fp16_trt_result(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
 if __name__ == '__main__':
     unittest.main()
