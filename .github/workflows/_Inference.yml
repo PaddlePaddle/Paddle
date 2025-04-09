@@ -245,7 +245,7 @@ jobs:
     - name: Download paddle.tar.gz
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        # rm -rf * .[^.]*
+        # rm -rf  * .[^.]*
         # set -e
         # echo "Downloading build.tar.gz"
         # # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/inference/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
