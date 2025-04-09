@@ -760,12 +760,10 @@ def auto_layout_guard(backend):
     return None
 
 
-"""
-train_guard is the guard method before program execution, which can integrate and add various guards.
-"""
-
-
 def train_guard(backend):
+    """
+    train_guard is the guard method before program execution, which can integrate and add various guards.
+    """
     guard_creators = []
 
     # Add auto layout guard if conditions are met
