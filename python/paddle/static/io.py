@@ -116,7 +116,6 @@ def _clone_var_in_block(block, var):
             shape=var.shape,
             dtype=var.dtype,
             type=var.type,
-            lod_level=var.lod_level,
             persistable=True,
         )
     else:
