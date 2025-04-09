@@ -143,6 +143,7 @@ class TestCommOpCost(unittest.TestCase):
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             paddle.float32,
             [1, 32 * (10**6)],
+            {"reduce_type": paddle.distributed.ReduceOp.SUM},
         )
         allreduce_sum_op_cost = AllReduceOpCost(
             op_desc=allreduce_sum_op_desc, comm_context=comm_context
