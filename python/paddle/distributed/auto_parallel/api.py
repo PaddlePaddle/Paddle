@@ -1454,9 +1454,7 @@ class _ShardOptimizer(Optimizer):
 
                 # Try shard other dim
                 for idx, placement in enumerate(g.placements):
-                    if idx == self._sharding_axis:
-                        continue
-                    if placement.is_shard():
+                    if idx == self._sharding_axis or placement.is_shard():
                         continue
                     dim = get_shard_dim(len(g._local_shape), shard_dims)
                     if dim != -1:
@@ -1474,17 +1472,9 @@ class _ShardOptimizer(Optimizer):
 
         if paddle.in_dynamic_mode():
             if fuse_allreduce_in_opt:
-                with paddle.static.program_guard(
-                    paddle.static.default_main_program(),
-                    paddle.static.default_startup_program(),
-                ):
-                    params_grads = fuse_allreduce_on_grad(params_grads)
+                params_grads = fuse_allreduce_on_grad(params_grads)
             elif fuse_reducescatter_in_opt:
-                with paddle.static.program_guard(
-                    paddle.static.default_main_program(),
-                    paddle.static.default_startup_program(),
-                ):
-                    params_grads = fuse_reducescatter_on_grad(params_grads)
+                params_grads = fuse_reducescatter_on_grad(params_grads)
 
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx=0
