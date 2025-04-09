@@ -172,7 +172,7 @@ jobs:
     #     tar --use-compress-program="pigz" --strip-components=1 -xpf build.tar.gz
     #     rm build.tar.gz
 
-    - name: Determine the runner
+    - name: Determine  the runner
       run: |
         runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
         echo $runner_name
