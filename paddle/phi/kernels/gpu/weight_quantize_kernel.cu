@@ -46,7 +46,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 static_cast<int>(x.dims()[1])};
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
-        (arch == 89) || (arch == 90)),
+       (arch == 89) || (arch == 90)),
       true,
       phi::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86, 89, 90."));
