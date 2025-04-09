@@ -138,43 +138,42 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
             yield program_config
 
-    def generate_dynamic_shape(self, attrs):
-        if self.num_input == 0:
-            self.dynamic_shape.min_input_shape = {
-                "roi_align_input": [1, 256, 32, 32],
-                "ROIs": [3, 4],
-                "RoisNum": [1],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "roi_align_input": [1, 256, 64, 64],
-                "ROIs": [3, 4],
-                "RoisNum": [1],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "roi_align_input": [1, 256, 64, 64],
-                "ROIs": [3, 4],
-                "RoisNum": [1],
-            }
-        elif self.num_input == 1:
-            self.dynamic_shape.min_input_shape = {
-                "roi_align_input": [1, 256, 32, 32],
-                "ROIs": [3, 4],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "roi_align_input": [1, 256, 64, 64],
-                "ROIs": [3, 4],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "roi_align_input": [1, 256, 64, 64],
-                "ROIs": [3, 4],
-            }
-        return self.dynamic_shape
-
     def sample_predictor_configs(
-        self, program_config, run_pir=False
+        self, program_config
     ) -> Generator[
         Any, Any, tuple[paddle_infer.Config, list[int], float] | None
     ]:
+        def generate_dynamic_shape(attrs):
+            if self.num_input == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "roi_align_input": [1, 256, 32, 32],
+                    "ROIs": [3, 4],
+                    "RoisNum": [1],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4],
+                    "RoisNum": [1],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4],
+                    "RoisNum": [1],
+                }
+            elif self.num_input == 1:
+                self.dynamic_shape.min_input_shape = {
+                    "roi_align_input": [1, 256, 32, 32],
+                    "ROIs": [3, 4],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4],
+                }
+
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -197,18 +196,17 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        if not run_pir:
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-5
-            self.trt_param.precision = paddle_infer.PrecisionType.Half
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-3
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
-        self.generate_dynamic_shape(attrs)
+        generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -230,7 +228,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test(run_pir=True)
+        self.run_test()
 
 
 if __name__ == "__main__":
