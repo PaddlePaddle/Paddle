@@ -49,8 +49,8 @@ void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
   int lda = m;
-  int ldu = 1;
-  int ldv = 1;
+  int ldu = m;
+  int ldv = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -124,8 +124,8 @@ void GesvdjBatchedSvdvals<double>(const phi::GPUContext& dev_ctx,
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
   int lda = m;
-  int ldu = 1;
-  int ldv = 1;
+  int ldu = m;
+  int ldv = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -220,8 +220,8 @@ void SvdvalsKernel(const Context& dev_ctx,
 
   GesvdjBatchedSvdvals<T>(dev_ctx,
                           batches,
-                          cols,
                           rows,
+                          cols,
                           k,
                           dev_ctx.template Alloc<T>(&x_tmp),
                           S_out,
