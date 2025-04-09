@@ -2,7 +2,7 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# You may obtain a copy of the License at\
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
@@ -47,6 +47,7 @@ class TestConverterDummy(unittest.TestCase):
         trt_config.precision_mode = PrecisionMode.FP16
         trt_config.ops_run_float = "pd_op.add"
         trt_config.optimization_level = 5
+        trt_config.disable_passes = ['dead_code_elimination_pass']
 
         output_var = program.list_vars()[-1]
 
@@ -87,6 +88,7 @@ class TestConverterDummy(unittest.TestCase):
         trt_config.precision_mode = PrecisionMode.FP16
         trt_config.ops_run_float = "pd_op.add"
         trt_config.optimization_level = 5
+        trt_config.disable_passes = ['dead_code_elimination_pass']
 
         # get tensorrt_engine_op(converted_program)
         program_with_trt = convert_to_trt(program, trt_config, scope)

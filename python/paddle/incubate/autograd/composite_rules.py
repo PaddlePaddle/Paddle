@@ -304,7 +304,7 @@ def expand_v2_composite(x, shape):
         dim = dim_in - offset
         size_in = shape_in[dim] if dim >= 0 else 1
         size_out = shape[i]
-        if size_out == -1:
+        if size_out == -1 or size_in == 0:
             assert dim >= 0
             repeat = 1
         else:

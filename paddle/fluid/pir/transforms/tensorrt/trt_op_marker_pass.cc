@@ -126,6 +126,7 @@ DEFINE_GENERAL_PATTERN(Asin, paddle::dialect::AsinOp)
 DEFINE_GENERAL_PATTERN(Acos, paddle::dialect::AcosOp)
 DEFINE_GENERAL_PATTERN(Atan, paddle::dialect::AtanOp)
 DEFINE_GENERAL_PATTERN(ShuffleChannel, paddle::dialect::ShuffleChannelOp)
+DEFINE_GENERAL_PATTERN(Meshgrid, paddle::dialect::MeshgridOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -927,10 +928,16 @@ class UnsqueezeOpPattern
         dynamic_dims.push_back(i);
       }
     }
-    if (dynamic_dims.size() > 1) {
-      VLOG(3) << "Currently we don't support unsqueeze with more than one "
-                 "dynamic dims";
-      return false;
+    if (dynamic_dims.size() == 0) {
+      std::vector<int64_t> axes;
+      for (auto &axis_ele : axis.AsVector()) {
+        axes.push_back(axis_ele.dyn_cast<pir::Int64Attribute>().data());
+      }
+      if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+        VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                   "supported in static shape";
+        return false;
+      }
     }
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -967,10 +974,16 @@ class Unsqueeze_OpPattern
         dynamic_dims.push_back(i);
       }
     }
-    if (dynamic_dims.size() > 1) {
-      VLOG(3) << "Currently we don't support unsqueeze with more than one "
-                 "dynamic dims";
-      return false;
+    if (dynamic_dims.size() == 0) {
+      std::vector<int64_t> axes;
+      for (auto &axis_ele : axis.AsVector()) {
+        axes.push_back(axis_ele.dyn_cast<pir::Int64Attribute>().data());
+      }
+      if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+        VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                   "supported in static shape";
+        return false;
+      }
     }
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -1643,18 +1656,6 @@ class ArgsortOpPattern
         return false;
       }
     }
-    pir::Value x = op.x();
-    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto x_shape = x_type.dims();
-    int axis = op->attribute<pir::Int32Attribute>("axis").data();
-    if (axis < 0) {
-      axis += x_shape.size();
-    }
-    if (x_shape[axis] > 3840) {
-      VLOG(3)
-          << "In pd_op.argsort,the axis dim of input should be less than 3840";
-      return false;
-    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -1953,8 +1954,12 @@ class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
     pir::Value x = op.operand_source(0);
     int rank = 1;
     auto x_type = x.type();
-    if (x_type.isa<pir::VectorType>()) {
-      rank = x_type.dyn_cast<pir::VectorType>().size();
+    if (x_type.isa<pir::VectorType>() &&
+        x_type.dyn_cast<pir::VectorType>().size() > 0) {
+      auto vec_type = x_type.dyn_cast<pir::VectorType>();
+      auto tensor_element =
+          vec_type.data()[0].dyn_cast<paddle::dialect::DenseTensorType>();
+      rank = tensor_element.dims().size();
     } else {
       auto x_shape = pir::GetShapeFromValue(x);
       rank = x_shape.size();
@@ -2540,17 +2545,19 @@ class Pad3dOpPattern : public pir::OpRewritePattern<paddle::dialect::Pad3dOp> {
     }
     if (op->HasAttribute("mode")) {
       auto mode = op->attribute<pir::StrAttribute>("mode").AsString();
-      if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+      if (mode != "constant" && mode != "reflect" && mode != "replicate" &&
+          mode != "circular") {
         VLOG(3) << "The pad3d layer of TRT only support "
-                   "constant/reflect/replicate mode.";
+                   "constant/reflect/replicate/circular mode.";
         return false;
       }
     }
     if (op->HasAttribute("data_format")) {
       auto data_format =
           op->attribute<pir::StrAttribute>("data_format").AsString();
-      if (data_format != "NCDHW") {
-        VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
+      if (data_format != "NDHWC" && data_format != "NCDHW") {
+        VLOG(3) << "The pad3d layer of TRT only support NCDHW and NDHWC data "
+                   "format.";
         return false;
       }
     }
@@ -3004,6 +3011,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Acos)
     ADD_PATTERN(Atan)
     ADD_PATTERN(ShuffleChannel)
+    ADD_PATTERN(Meshgrid)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif

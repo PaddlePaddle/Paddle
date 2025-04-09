@@ -92,6 +92,7 @@ message PpConfig {
     optional bool enable_offload_queue = 11 [ default = false ];
     optional bool enable_dynamic_shape = 12 [ default = false ];
     optional bool use_dualpipev = 13 [ default = false ];
+    optional bool forward_backward_overlap_scheduler = 14 [ default = false ];
 }
 
 message DygraphShardingConfig {

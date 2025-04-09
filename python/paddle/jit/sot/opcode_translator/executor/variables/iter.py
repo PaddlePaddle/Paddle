@@ -19,9 +19,6 @@ import types
 from typing import TYPE_CHECKING, Any
 
 from paddle._typing import unreached
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
 from ....profiler import EventGuard
 from ....utils import do_until_stop_iteration
@@ -34,8 +31,11 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedOperationBreak,
 )
-from ..tracker import ConstTracker, DummyTracker, GetAttrTracker
-from .base import VariableFactory
+from ..tracker import ConstTracker, DanglingTracker, DummyTracker
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import ConstantVariable
 from .callable import BuiltinVariable
 from .container import TupleVariable
@@ -382,8 +382,8 @@ class GeneratorVariable(IterVariable):
             )
         if name == "send":
             return BuiltinVariable(
-                generator_send, self.graph, GetAttrTracker(self, "send")
-            ).bind(self, "send")
+                generator_send, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, "send")
         unreached()
 
     def get_py_value(self, allow_tensor=False):

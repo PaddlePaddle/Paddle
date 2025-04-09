@@ -269,114 +269,83 @@ struct Not {
 };
 
 struct HorizontalFusionConstrain {
-  bool operator()(const PatternGraph& graph,
-                  const PatternNodePtr& lhs,
-                  const PatternNodePtr& rhs) {
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, lhs)) {
-      return false;
-    }
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, rhs)) {
-      return false;
-    }
-    const auto& lhs_pattern =
-        std::get<HorizontalFusionPattern>(lhs->stmt_pattern());
-    const auto& rhs_pattern =
-        std::get<HorizontalFusionPattern>(rhs->stmt_pattern());
-
-    return graph.policy_manager().GetPolicy<GeneralTopoPolicy>()->CanFuse(
-               lhs, rhs) &&
-           IsLoopFrameworkEqual(lhs_pattern, rhs_pattern);
-  }
-};
-
-struct HorizontalCheckMiddleOutputVar {
-  bool DontHaveMiddleVariable(const PatternGraph& graph,
-                              const PatternNodePtr& lhs,
-                              const PatternNodePtr& rhs) {
-    for (const auto& i : lhs->downstream()) {
-      if (i == rhs) return false;
-    }
-    for (const auto& i : lhs->upstream()) {
-      if (i == rhs) return false;
-    }
-    return true;
+  bool IsAdjacentRelation(const LoopAxisMapping& lhs,
+                          const LoopAxisMapping& rhs) {
+    return AnyFirstInSecond(lhs.output_values, rhs.input_values) ||
+           AnyFirstInSecond(rhs.output_values, lhs.input_values);
   }
 
-  std::vector<ValueDim> SqueezedValueDim(const LoopValueDims& vdims) {
-    return FilterVector(vdims, [](const ValueDim& v) {
-      return !v.empty() && GetDimExprsFromValue(v.v_)[v.idx_] != 1;
-    });
-  }
+  bool MemoryIncreaseConstraint(const LoopAxisMapping& lhs,
+                                const LoopAxisMapping& rhs) {
+    static const std::int64_t MEMORY_INCREASE_LIMIT =
+        8 * 1024 * 1024 * 64;  // 64 MB
 
-  bool IdenticalDep(const PatternGraph& graph,
-                    const LoopValueDims& lhs_dims,
-                    const LoopValueDims& rhs_dims) {
-    auto sp = graph.policy_manager().template GetPolicy<RelativeJudgePolicy>();
-    auto get_axes_from_valuedim = [&](const ValueDim& vdim) {
-      return (sp->GetAxesInfoManager()).GetAxes(vdim.v_).axis_names[vdim.idx_];
-    };
-    VLOG(4) << "origin lhs_dims.size() = " << lhs_dims.size();
-    VLOG(4) << "origin rhs_dims.size() = " << rhs_dims.size();
-    std::vector<ValueDim> lhs_squeeze_value_dim = SqueezedValueDim(lhs_dims);
-    std::vector<ValueDim> rhs_squeeze_value_dim = SqueezedValueDim(rhs_dims);
-
-    if (VLOG_IS_ON(4)) {
-      VLOG(4) << "lhs_squeeze_value_dim is : ";
-      for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
-        VLOG(4) << "    " << i << " = " << lhs_squeeze_value_dim[i].DebugStr();
-        VLOG(4) << "    "
-                << "shardable axes: "
-                << get_axes_from_valuedim(lhs_squeeze_value_dim[i]);
-      }
-      VLOG(4) << "lhs_squeeze_value_dim is : ";
-      if (VLOG_IS_ON(4)) {
-        for (int i = 0; i < rhs_squeeze_value_dim.size(); ++i) {
-          VLOG(4) << "    " << i << " = "
-                  << rhs_squeeze_value_dim[i].DebugStr();
-          VLOG(4) << "    "
-                  << "shardable axes: "
-                  << get_axes_from_valuedim(rhs_squeeze_value_dim[i]);
+    const auto memory_size_of_input_values =
+        [](const std::vector<pir::Value>& values) -> std::int64_t {
+      std::int64_t memory_size = 0;
+      for (const auto& v : values) {
+        const auto shape_product =
+            GetShapeProduct(GetCompatibleValueAllDims(v));
+        if (shape_product.isa<std::int64_t>()) {
+          memory_size += shape_product.dyn_cast<std::int64_t>() * 32;
+        } else {
+          // Dynamic shape is not supported yet.
+          return -1;
         }
       }
-    }
+      return memory_size;
+    };
 
-    // compare non_one value dims of
-    PADDLE_ENFORCE_EQ(
-        lhs_squeeze_value_dim.size(),
-        rhs_squeeze_value_dim.size(),
-        ::common::errors::PreconditionNotMet(
-            "lhs squeezed dims is not equal to rhs squeezed dims"));
-    for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
-      if (get_axes_from_valuedim(lhs_squeeze_value_dim[i]) !=
-          get_axes_from_valuedim(rhs_squeeze_value_dim[i]))
-        return false;
+    const auto& [_unused1, lhs_unique_input_values] =
+        SplitFirstWhetherInSecond(lhs.input_values, rhs.input_values);
+    const auto& [_unused2, rhs_unique_input_values] =
+        SplitFirstWhetherInSecond(rhs.input_values, lhs.input_values);
+    std::int64_t lhs_memory_size =
+        memory_size_of_input_values(lhs_unique_input_values);
+    std::int64_t rhs_memory_size =
+        memory_size_of_input_values(rhs_unique_input_values);
+    std::int64_t memory_increase_size =
+        (lhs_memory_size + rhs_memory_size) -
+        std::max(lhs_memory_size, rhs_memory_size);
+
+    if (memory_increase_size < MEMORY_INCREASE_LIMIT) {
+      return true;
+    } else {
+      VLOG(4) << "Can not horizontal fusion due to memory may increase "
+              << memory_increase_size / 1024 / 1024 / 8 << " MB"
+              << ", which exceeds the limit = 64 MB";
+      return false;
     }
-    return true;
   }
-  bool IdenticalDepAll(const PatternGraph& graph,
-                       const LoopValueDims& rhs_dims,
-                       const std::vector<LoopValueDims> lhs_dims_vec) {
-    std::function<bool(const LoopValueDims)> is_identical_dep =
-        [&](const LoopValueDims out) {
-          return IdenticalDep(graph, rhs_dims, out);
-        };
-    return All(MapVector(lhs_dims_vec, is_identical_dep));
+
+  bool IsLoopFrameworkEqual(const LoopAxisMapping& lhs,
+                            const LoopAxisMapping& rhs) {
+    if (lhs.loop.empty() || rhs.loop.empty()) return false;
+
+    const auto lhs_reduce_loop = SliceVector(
+        lhs.loop, lhs.loop.size() - lhs.reduce_axis_num, lhs.loop.size());
+    const auto rhs_reduce_loop = SliceVector(
+        rhs.loop, rhs.loop.size() - rhs.reduce_axis_num, rhs.loop.size());
+
+    bool reduce_euqal = lhs_reduce_loop.empty() || rhs_reduce_loop.empty() ||
+                        lhs_reduce_loop == rhs_reduce_loop;
+
+    return reduce_euqal && ShapeProductEqual(lhs.loop, rhs.loop);
   }
+
   bool operator()(const PatternGraph& graph,
                   const PatternNodePtr& lhs,
                   const PatternNodePtr& rhs) {
-    // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
-    if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
-    // TODO(huangjiyi): Support horizontal fusion for patterns with dependency
-    // relationship
-    // const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
-    // const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
-    // bool identical_dep = true;
-    // for (const auto& right_dims : right_dims_vec) {
-    // identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
-    //}
-    // return identical_dep;
-    return false;
+    return StmtPatternGraphMatcher<AnchorPattern>()(graph, lhs) &&
+           StmtPatternGraphMatcher<AnchorPattern>()(graph, rhs) &&
+           graph.policy_manager().GetPolicy<GeneralTopoPolicy>()->CanFuse(
+               lhs, rhs) &&
+           MemoryIncreaseConstraint(lhs->loop_axis_mapping(),
+                                    rhs->loop_axis_mapping()) &&
+           !IsAdjacentRelation(lhs->loop_axis_mapping(),
+                               rhs->loop_axis_mapping()) &&
+           IsLoopFrameworkEqual(lhs->loop_axis_mapping(),
+                                rhs->loop_axis_mapping());
   }
 };
 

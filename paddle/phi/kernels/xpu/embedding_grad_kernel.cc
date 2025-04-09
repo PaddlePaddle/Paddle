@@ -93,8 +93,7 @@ void EmbeddingSparseGradKernel(const Context& ctx,
   std::vector<int64_t> ids;
   DenseTensor ids_cpu;
   ids_cpu.Resize(input.dims());
-  ctx.template HostAlloc(
-      &ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
+  ctx.HostAlloc(&ids_cpu, input.dtype(), input.numel() * sizeof(int64_t));
   if (input.dtype() == phi::DataType::INT64) {
     phi::Copy(ctx, input, CPUPlace(), false, &ids_cpu);
 

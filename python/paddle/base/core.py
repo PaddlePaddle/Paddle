@@ -487,11 +487,9 @@ decomp_ops_contain_unused_output = {
 
 # This api is used for development for dynamic shape in prim, and will be removed in future.
 def _enable_prim_skip_dynamic_shape():
-    flag = os.getenv("FLAGS_prim_skip_dynamic", "1")
-    if flag and flag.lower() in ("1", "true"):
-        return True
-    else:
-        return False
+    from paddle.base.framework import get_flags
+
+    return get_flags("FLAGS_prim_skip_dynamic")["FLAGS_prim_skip_dynamic"]
 
 
 def _enable_prim_dynamic_shape():

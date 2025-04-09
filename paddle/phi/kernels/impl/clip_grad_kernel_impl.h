@@ -29,7 +29,7 @@ class ClipGradFunctor {
  public:
   explicit ClipGradFunctor(const T min, const T max) : min_(min), max_(max) {}
   HOSTDEVICE T operator()(const T x, const T y) const {
-    return (y > min_ && y < max_) ? x : static_cast<T>(0);
+    return (y >= min_ && y <= max_) ? x : static_cast<T>(0);
   }
 
  private:

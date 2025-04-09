@@ -128,6 +128,11 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = x.dims().size();

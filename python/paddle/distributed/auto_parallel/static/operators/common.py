@@ -513,16 +513,6 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
 
     allreduce_type = "c_allreduce_sum"
     need_scale = dist_ctx.gradient_scale
-    scale_using_allreduce_avg = dist_ctx.gradient_scale_using_allreduce_avg
-
-    # With nccl_version > 2.10.00, we can use c_allreduce_avg to replace c_allreduce_sum and eliminate the scale op.
-    if (
-        need_scale
-        and scale_using_allreduce_avg
-        and int(paddle.version.nccl()) > 21000
-    ):
-        allreduce_type = "c_allreduce_avg"
-        need_scale = False
 
     for group in groups:
         group_size = len(group.ranks)
@@ -674,12 +664,18 @@ def is_data_parallel_reduce_op(op):
         "c_allreduce_sum",
         "c_allreduce_avg",
     ]
+    is_all_reduce_op = op.type == "all_reduce" and op.desc.attr(
+        "reduce_type"
+    ) in [
+        dist.ReduceOp.SUM,
+        dist.ReduceOp.AVG,
+    ]
     is_reduce_op = op.type == "reduce" and op.desc.attr("reduce_type") in [
         dist.ReduceOp.SUM,
         dist.ReduceOp.AVG,
     ]
     return (
-        (is_allreduce_op or is_reduce_op)
+        (is_allreduce_op or is_all_reduce_op or is_reduce_op)
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
@@ -687,7 +683,8 @@ def is_data_parallel_reduce_op(op):
 
 def is_amp_flag_sync_op(op):
     return (
-        op.type == "c_allreduce_max"
+        op.type == "all_reduce"
+        and op.desc.attr("op_type") == paddle.distributed.ReduceOp.MAX
         and op.desc.has_attr("op_namescope")
         and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
     )
@@ -695,7 +692,13 @@ def is_amp_flag_sync_op(op):
 
 def is_global_norm_sync_op(op):
     return (
-        op.type == "c_allreduce_sum"
+        (
+            op.type == "c_allreduce_sum"
+            or (
+                op.type == "all_reduce"
+                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+            )
+        )
         and op.desc.has_attr("op_namescope")
         and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )

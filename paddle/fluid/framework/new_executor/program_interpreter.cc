@@ -46,7 +46,6 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 PHI_DECLARE_bool(enable_host_event_recorder_hook);

@@ -61,7 +61,10 @@ class TestBase(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(
-                    net(), full_graph=True, input_spec=self.input_specs
+                    net(),
+                    backend=None,
+                    full_graph=True,
+                    input_spec=self.input_specs,
                 )
         if self.with_train:
             net.train()
