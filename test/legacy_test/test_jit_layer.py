@@ -16,6 +16,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 
@@ -24,7 +25,9 @@ from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
 
-sys.path.append("../dygraph_to_static")
+sys.path.append(
+    str(Path(__file__).resolve().parent.parent / "dygraph_to_static")
+)
 from dygraph_to_static_utils import enable_to_static_guard
 
 paddle.seed(1)
