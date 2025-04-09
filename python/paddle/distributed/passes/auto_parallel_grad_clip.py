@@ -482,12 +482,12 @@ class ClipGradByGlobalNormPass(PassBase):
 
                     allreduce_op = block._insert_op(
                         idx + offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': [input_var]},
-                        outputs={'Out': [input_var]},
+                        type='all_reduce',
+                        inputs={'x': [input_var]},
+                        outputs={'out': [input_var]},
                         attrs={
                             'ring_id': 0,
-                            'use_calc_stream': True,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )

@@ -38,39 +38,16 @@ from paddle.framework import use_pir_api
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
+from .symbolic_shape import SymbolicInt
 from .utils import (
     Cache,
     Singleton,
     map_if_extend,
     meta_str,
-    update_list_inplace,
 )
 
 DynamicSymbolT = TypeVar("DynamicSymbolT")
 SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
-
-
-class SymbolicValue(metaclass=Singleton):
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}()"
-
-    def get_static_type(self) -> type:
-        raise NotImplementedError("get_py_type is not implemented.")
-
-
-class SymbolicBool(SymbolicValue):
-    def get_static_type(self) -> type[bool]:
-        return bool
-
-
-class SymbolicInt(SymbolicValue):
-    def get_static_type(self) -> type[int]:
-        return int
-
-
-class SymbolicFloat(SymbolicValue):
-    def get_static_type(self) -> type[float]:
-        return float
 
 
 class DistInfo:
@@ -152,16 +129,14 @@ class MetaInfo:
         ]
 
     def with_dynamic_axes(self, name: str, dynamic_axes: list[int]) -> MetaInfo:
+        # NOTE(SigureMo): Make sure create a new shape list with dynamic axes.
+        # We will create a new shape list variable lazily in the future.
         shape = [
-            SymbolicInt() if i in dynamic_axes else dim
+            SymbolicInt(dim) if i in dynamic_axes else dim
             for i, dim in enumerate(self.shape)
         ]
-        # NOTE(SigureMo): Ensure output meta.shape is same list object as
-        # self.shape to avoid create two different data proxy for tensor.shape.
-        # It will caused create a new SymbolicVariable when it's a dynamic dim.
-        self.shape = update_list_inplace(self.shape, shape)
         return MetaInfo(
-            self.shape,
+            shape,
             self.dtype,
             self.stop_gradient,
             self.name,

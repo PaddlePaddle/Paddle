@@ -117,9 +117,9 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 block, matmul_grad_id, self.dist_context, self.op_namescope
             )
 
-            # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
-            # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
-            # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
+            # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> all_reduce_sum(dX) -> matmul(X^T, dOut).
+            # all_reduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
+            # adding share_buffer OP before all_reduce_sum, all_reduce_sum will synchronous with comp-stream, and then
             # the matmul op before it cannot be overlapped.
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
@@ -138,11 +138,11 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 name: allreduce_op.output(name) for name in allreduce_op_outputs
             }
 
-            # matmul_v2 + reshape + reshape + matmul_v2 + reshape + ... + original c_allreduce_sum
+            # matmul_v2 + reshape + reshape + matmul_v2 + reshape + ... + original all_reduce_sum
             # =>
-            # matmul_v2 + new c_allreduce_sum + reshape + reshape + matmul_v2 + reshape + ... + original c_allreduce_sum
+            # matmul_v2 + new all_reduce_sum + reshape + reshape + matmul_v2 + reshape + ... + original all_reduce_sum
             #
-            # NOTE(liym27): new c_allreduce_sum must be inserted to "the next of the first matmul_v2", otherwise another
+            # NOTE(liym27): new all_reduce_sum must be inserted to "the next of the first matmul_v2", otherwise another
             # pass fused_linear_param_grad_add will not work.
             allreduce_op = block._insert_op_without_sync(
                 index=matmul_grad_id + 1,
