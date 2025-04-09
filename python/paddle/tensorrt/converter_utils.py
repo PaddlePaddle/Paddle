@@ -35,6 +35,11 @@ from paddle.base.log_helper import get_logger
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+from paddle.base.libpaddle.pir import (
+    get_attrs_map_json,
+    get_inputs_type_json,
+    get_outputs_type_json,
+)
 
 version = trt.__version__
 version_list = list(map(int, version.split('.')))
@@ -583,7 +588,11 @@ def trt_reduce_to_scalar(network, tensor, dtype=trt.int32, name=None):
 
 
 def convert_conv2d(network, paddle_op, inputs):
-    from paddle.tensorrt.util import support_fp32_mix_precision
+    from paddle.tensorrt.util import (
+        RefitManager,
+        RefitRole,
+        support_fp32_mix_precision,
+    )
 
     bias = None
     if (
@@ -657,17 +666,36 @@ def convert_conv2d(network, paddle_op, inputs):
     else:
         raise ValueError(f"Unsupported paddings size: {len(paddings)}")
 
-    if (
+    if paddle_op.name() == "pd_op.fused_conv2d_add_act":
+        constant_manager = TensorRTConstantManager()
+        bias_source_op = paddle_op.operands()[2].source().get_defining_op()
+        if bias_source_op.name() == "builtin.parameter":
+            bias_name = bias_source_op.attrs()['parameter_name']
+        elif bias_source_op.name() == "builtin.constant":
+            bias_np = bias_source_op.attrs()['value']
+        else:
+            raise ValueError(
+                f"Unsupported bias source op: {bias_source_op.name()}"
+            )
+        bias_np = constant_manager.get_constant_value(bias_name)
+        bias_weights = trt.Weights(bias_np)
+        layer = network.add_convolution_nd(
+            input=input_tensor,
+            num_output_maps=n_output,
+            kernel_shape=nv_ksize,
+            kernel=weight_filter,
+            bias=bias_weights,
+        )
+    elif (
         paddle_op.name() == "pd_op.conv2d"
         or paddle_op.name() == "pd_op.depthwise_conv2d"
-        or paddle_op.name() == "pd_op.fused_conv2d_add_act"
     ):
         layer = network.add_convolution_nd(
             input=input_tensor,
             num_output_maps=n_output,
             kernel_shape=nv_ksize,
             kernel=weight_filter,
-            bias=bias,
+            bias=None,
         )
     elif (
         paddle_op.name() == "pd_op.conv2d_transpose"
@@ -704,10 +732,20 @@ def convert_conv2d(network, paddle_op, inputs):
     set_layer_name(layer, paddle_op)
     support_fp32_mix_precision(paddle_op.name(), layer)
 
+    filter_param = paddle_op.operands()[1].source()
+    filter_name = filter_param.get_defining_op().attrs()['parameter_name']
+    refit_manager = RefitManager()
+    refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
+
     return layer.get_output(0)
 
 
 def convert_conv3d(network, paddle_op, inputs):
+    from paddle.tensorrt.util import (
+        RefitManager,
+        RefitRole,
+    )
+
     input_tensor, filter = inputs
     filter_shape = paddle_op.operands()[1].source().shape
 
@@ -716,6 +754,11 @@ def convert_conv3d(network, paddle_op, inputs):
     filter_d = filter_shape[2]
     filter_h = filter_shape[3]
     filter_w = filter_shape[4]
+
+    if isinstance(filter, trt.Weights):
+        weight_filter = filter
+    else:
+        weight_filter = trt.Weights()
 
     groups = paddle_op.attrs().get("groups", 1)
     dilations = paddle_op.attrs().get("dilations", [1, 1, 1])
@@ -735,7 +778,7 @@ def convert_conv3d(network, paddle_op, inputs):
             input=input_tensor,
             num_output_maps=n_output,
             kernel_shape=nv_ksize,
-            kernel=filter,
+            kernel=weight_filter,
             bias=None,
         )
     elif paddle_op.name() == "pd_op.conv3d_transpose":
@@ -743,7 +786,7 @@ def convert_conv3d(network, paddle_op, inputs):
             input=input_tensor,
             num_output_maps=n_input * groups,
             kernel_shape=nv_ksize,
-            kernel=filter,
+            kernel=weight_filter,
             bias=None,
         )
     layer.stride_nd = nv_strides
@@ -763,6 +806,8 @@ def convert_conv3d(network, paddle_op, inputs):
             raise ValueError(
                 "The value in conv3d_transpose's PostPadding should be >= 0."
             )
+    if isinstance(filter, trt.ITensor):
+        layer.set_input(1, filter)
 
     layer.post_padding = nv_post_paddings
     layer.num_groups = groups
@@ -772,6 +817,10 @@ def convert_conv3d(network, paddle_op, inputs):
 
     layer.dilation_nd = nv_dilations
     set_layer_name(layer, paddle_op)
+    filter_param = paddle_op.operands()[1].source()
+    filter_name = filter_param.get_defining_op().attrs()['parameter_name']
+    refit_manager = RefitManager()
+    refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
     return layer.get_output(0)
 
@@ -1113,3 +1162,49 @@ def set_layer_name(layer, second_param):
                 f"({', '.join(input_ids)})"
             )
             layer.name = formatted_name
+
+
+def generic_plugin_converter(network, paddle_op, inputs, extra_attrs=None):
+    op_name = paddle_op.name()
+
+    if extra_attrs is not None:
+        attrs_map_info = get_attrs_map_json(extra_attrs)
+    else:
+        attrs_map_info = get_attrs_map_json(paddle_op)
+
+    input_type_info = get_inputs_type_json(paddle_op)
+    output_type_info = get_outputs_type_json(paddle_op)
+
+    plugin_fields = [
+        trt.PluginField(
+            "op_name",
+            np.array(list(op_name), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+        trt.PluginField(
+            "attrs_map_info",
+            np.array(list(attrs_map_info), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+        trt.PluginField(
+            "inputs_type_info",
+            np.array(list(input_type_info), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+        trt.PluginField(
+            "outputs_type_info",
+            np.array(list(output_type_info), dtype=np.bytes_),
+            trt.PluginFieldType.CHAR,
+        ),
+    ]
+
+    plugin_field_collection = trt.PluginFieldCollection(plugin_fields)
+
+    plugin_name = "pir_generic_plugin"
+    plugin_version = "1"
+    plugin = get_trt_plugin(
+        plugin_name, plugin_field_collection, plugin_version
+    )
+
+    layer = network.add_plugin_v2(inputs, plugin)
+    return layer
