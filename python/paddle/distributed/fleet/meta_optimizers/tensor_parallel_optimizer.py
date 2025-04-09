@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import paddle
 from paddle import static
 
 from .common import (
@@ -244,11 +245,12 @@ class TensorParallelOptimizer(MetaOptimizerBase):
 
                     block._insert_op(
                         offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
+                        type='all_reduce',
+                        inputs={'x': grad},
+                        outputs={'out': grad},
                         attrs={
                             'ring_id': ring_id,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Backward,
                         },
                     )

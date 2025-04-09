@@ -199,6 +199,9 @@ class TestConv2dTransposeOutputPaddingTRTPattern(TensorRTBaseTest):
         self.opt_shape = {"x": [2, 3, 5, 5]}
         self.max_shape = {"x": [4, 3, 5, 5]}
 
+    def test_trt_result(self):
+        self.check_trt_result()
+
 
 def depthwise_conv2d_wrapper(x):
     conv = paddle.nn.Conv2D(2, 2, (3, 3), groups=2)
