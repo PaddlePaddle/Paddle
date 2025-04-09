@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
@@ -45,8 +44,7 @@ void FullWithTensorKernel(const Context& dev_ctx,
       dev_ctx, value, shape, dtype, out->mutable_value());
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL(full_sr,
                    CPU,

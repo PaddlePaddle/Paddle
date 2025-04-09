@@ -17,8 +17,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/platform/profiler.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 PD_DEFINE_int32(heter_world_size, 100, "group size");  // group max size
 PD_DEFINE_int32(switch_send_recv_timeout_s, 600, "switch_send_recv_timeout_s");
 
@@ -31,7 +30,7 @@ int GetMicroId(const phi::DeviceContext& ctx, const framework::Scope* scope) {
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
                     common::errors::InvalidArgument(
-                        "the type of micro id should be LoDTensor."));
+                        "the type of micro id should be DenseTensor."));
   auto micro_id = -1;
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   if (phi::is_cpu_place(tensor->place())) {
@@ -250,7 +249,7 @@ int HeterClient::Send(const phi::DeviceContext& ctx,
     framework::Variable* var = p_scope->FindVar(send_var_name);
     butil::IOBuf temp_iobuf;
     if (var->IsType<phi::DenseTensor>()) {
-      SerializeLodTensor(var, ctx, send_var_msg, &temp_iobuf);
+      SerializeDenseTensor(var, ctx, send_var_msg, &temp_iobuf);
     } else if (var->IsType<phi::SelectedRows>()) {
       SerializeSelectedRows(var, ctx, send_var_msg, &temp_iobuf);
     }
@@ -422,5 +421,4 @@ int HeterClient::Recv(int group_id,
   VLOG(4) << "Recv done";
   return 0;
 }
-}  // namespace distributed
-}  // end namespace paddle
+}  // namespace paddle::distributed

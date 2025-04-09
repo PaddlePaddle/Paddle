@@ -100,7 +100,7 @@ message CoordinatorResMessage {
 };
 
 enum VarType {
-  LOD_TENSOR = 0;
+  DENSE_TENSOR = 0;
   SELECTED_ROWS = 1;
 }
 

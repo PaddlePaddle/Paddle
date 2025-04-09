@@ -34,7 +34,9 @@ struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
                               const int _head_size,
                               const float _scale,
                               const DataType q_dtype)
-      : FlashAttnParamsBase(_batch_size,
+      : FlashAttnParamsBase(/*version=*/2,
+                            /*is_fwd=*/true,
+                            _batch_size,
                             _max_seqlen_q,
                             _max_seqlen_k,
                             _num_heads,

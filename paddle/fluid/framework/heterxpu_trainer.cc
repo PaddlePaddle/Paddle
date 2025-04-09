@@ -135,7 +135,7 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
       Variable* root_var = root_scope_->FindVar(name);
       phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       auto* ptr = scope->Var(name);
-      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+      InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
       phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
 
 #define HeterMemcpyFunc(cpp_type, proto_type)                                 \
@@ -289,7 +289,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc& main_program) {
       for (auto& v : dense_grad_names_) {
         for (auto& name : v.second) {
           auto* ptr = context->scope_->Var(name + "pin");
-          InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+          InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
         }
       }
       for (auto& op_desc : block.AllOps()) {
@@ -462,7 +462,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request,
     for (auto& v : dense_grad_names_) {
       for (auto& name : v.second) {
         auto* ptr = context->scope_->Var(name + "pin");
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
       }
     }
     for (auto& op_desc : block.AllOps()) {

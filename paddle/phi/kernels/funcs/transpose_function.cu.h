@@ -931,7 +931,7 @@ class IdxHelper<uint32_t, Rank> {
   phi::kps::details::FastDivMod divmoder_[Rank];
 };
 
-// Transform index between memory offset and shape coodinate.
+// Transform index between memory offset and shape coordinate.
 template <typename IndexT, int Rank>
 class IdxAndOffsetHelper {
  public:

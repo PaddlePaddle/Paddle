@@ -150,11 +150,11 @@ class Multinomial(distribution.Distribution):
             + (value * logits).sum(-1)
         )
 
-    def sample(self, shape: Iterable[int] = ()) -> Tensor:
+    def sample(self, shape: Iterable[int] = []) -> Tensor:
         """draw sample data from multinomial distribution
 
         Args:
-            sample_shape (tuple, optional): [description]. Defaults to ().
+            sample_shape (list|tuple, optional): [description]. Defaults to [].
         """
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')

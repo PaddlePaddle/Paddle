@@ -31,6 +31,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -59,6 +60,62 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
     value = x->data<T>()[0];
   }
   return value;
+}
+
+template <typename T>
+inline void CheckTensorIndexValue(const paddle::Tensor& x,
+                                  const int64_t dim_len) {
+  // skip check if strides are not all 1
+  for (auto i = 0; i < x.strides().size(); i++) {
+    if (x.strides()[i] != 1) {
+      return;
+    }
+  }
+  T value = static_cast<T>(0);
+  int64_t x_numel = x.numel();
+  if (!(x.place().GetType() == phi::AllocationType::CPU)) {
+    auto ten = (*static_cast<phi::DenseTensor*>(x.impl().get()));
+    phi::DenseTensor cpu_x;
+    framework::TensorCopy(ten, phi::CPUPlace(), &cpu_x);
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    const phi::DeviceContext* dev_ctx = pool.Get(x.place());
+    dev_ctx->Wait();
+#endif
+    for (int i = 0; i < x_numel; i++) {
+      value = cpu_x.data<T>()[i];
+      PADDLE_ENFORCE_EQ(
+          -dim_len <= value && value < dim_len,
+          true,
+          common::errors::OutOfRange(
+              "The index is out of bounds, "
+              "please check whether the dimensions of index and "
+              "input meet the requirements. It should "
+              "be less than [%ld] and greater than or equal to [%ld], but "
+              "received [%ld]",
+              dim_len,
+              -dim_len,
+              value));
+    }
+
+  } else {
+    for (int i = 0; i < x_numel; i++) {
+      value = x.data<T>()[i];
+      PADDLE_ENFORCE_EQ(
+          -dim_len <= value && value < dim_len,
+          true,
+          common::errors::OutOfRange(
+              "The index is out of bounds, "
+              "please check whether the dimensions of index and "
+              "input meet the requirements. It should "
+              "be less than [%ld] and greater than or equal to [%ld], but "
+              "received [%ld]",
+              dim_len,
+              -dim_len,
+              value));
+    }
+  }
+  return;
 }
 
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
@@ -143,11 +200,9 @@ static int _PySlice_GetIndices(PySliceObject* r,
           "tensor(int) and numpy(int) in slice item, but received %s.",
           std::string(Py_TYPE(r->start)->tp_name)));
     }
-    if (*start < 0) *start += length;
-    *start = std::max(*start, static_cast<Py_ssize_t>(0));
   }
   if (r->stop == Py_None) {
-    *stop = *step < 0 ? -1 : length;
+    *stop = *step < 0 ? -length - 1 : length;
   } else {
     if (PyCheckInteger(r->stop) || IsNumpyType(r->stop)) {
       *stop = PyLong_AsLong(r->stop);
@@ -159,9 +214,13 @@ static int _PySlice_GetIndices(PySliceObject* r,
           "tensor(int) and numpy(int) in slice item, but received %s.",
           std::string(Py_TYPE(r->stop)->tp_name)));
     }
-    if (0 < *step && *stop < 0) *stop += length;
-    *stop = std::min(*stop, length);
   }
+
+  // normalize start and stop
+  bool dummy_zero_dim_out = false;
+  phi::funcs::normalize_interval(
+      *start, *stop, *step, length, start, stop, &dummy_zero_dim_out);
+  // return value below seems to be useless...
   if (*stop > length) return -1;
   if (*start >= length) return -1;
   if (*step == 0) return -1;
@@ -231,7 +290,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
           0 <= start && start < dim_len,
           common::errors::OutOfRange("The starting index %d of slice is out "
                                      "of bounds in tensor %d-th axis, it "
-                                     "shound be in the range of [%d, %d).",
+                                     "should be in the range of [%d, %d).",
                                      s_t,
                                      current_dim,
                                      -dim_len,
@@ -299,7 +358,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
                          common::errors::OutOfRange(
                              "The starting index %d of slice is out "
                              "of bounds in tensor %d-th axis, it "
-                             "shound be in the range of [%d, %d).",
+                             "should be in the range of [%d, %d).",
                              s_t,
                              current_dim,
                              -dim_len,
@@ -331,6 +390,21 @@ static void ParseIndex(const paddle::Tensor& tensor,
                                 slice_tensor.shape()[0],
                                 dim_len,
                                 current_dim));
+        } else if (slice_tensor.dtype() == phi::DataType::INT64 ||
+                   slice_tensor.dtype() == phi::DataType::INT32) {
+          // check if current slice_tensor is valid
+          PADDLE_ENFORCE_EQ(
+              current_dim + 1 <= rank,
+              true,
+              common::errors::InvalidArgument(
+                  "Too many indices (%d) for tensor of dimension %d.",
+                  current_dim + 1,
+                  rank));
+          if (slice_tensor.dtype() == phi::DataType::INT32) {
+            CheckTensorIndexValue<int32_t>(slice_tensor, dim_len);
+          } else if (slice_tensor.dtype() == phi::DataType::INT64) {
+            CheckTensorIndexValue<int64_t>(slice_tensor, dim_len);
+          }
         }
         *has_advanced_index = true;
         advanced_index->push_back(std::move(slice_tensor));
@@ -351,12 +425,12 @@ static void ParseIndex(const paddle::Tensor& tensor,
   }
 
   // valid_index is the number of dimensions exclude None index
-  const int valid_indexs = size - none_axes->size() - ell_count;
-  PADDLE_ENFORCE_EQ(valid_indexs <= rank,
+  const int valid_indices = size - none_axes->size() - ell_count;
+  PADDLE_ENFORCE_EQ(valid_indices <= rank,
                     true,
                     common::errors::InvalidArgument(
                         "Too many indices (%d) for tensor of dimension %d.",
-                        valid_indexs,
+                        valid_indices,
                         rank));
 }
 

@@ -71,12 +71,12 @@ class SimpleDemoNet(nn.Layer):
 
     def forward(self, x):
         x.stop_gradient = False
-        out = self.relu_0(x)  # triggle backward partial allreduce
+        out = self.relu_0(x)  # trigger backward partial allreduce
         out = self.linear_0(out)
         out = self.relu_1(out)
         out = dist.reshard(out, self._mesh2, [dist.Replicate()])
         out = self.linear_1(out)
-        out = self.relu_2(out)  # triggle forward partial allreduce
+        out = self.relu_2(out)  # trigger forward partial allreduce
         return out
 
 
@@ -111,6 +111,7 @@ class TestLearningRate(unittest.TestCase):
             engine._optimizer._apply_optimize(
                 loss, startup_program=None, params_grads=params_grads
             )
+        apply_mix2dist_pass(dist_program)
         sgd_idx = 0
         ops = dist_program.global_block().ops
         for op in ops:

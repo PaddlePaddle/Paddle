@@ -230,7 +230,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
               << framework::GradVarName("Bias")
               << " is set to phi::DenseTensor";
       ctx->SetOutputType(bias_grad_var_name,
-                         framework::proto::VarType::LOD_TENSOR);
+                         framework::proto::VarType::DENSE_TENSOR);
     }
 
     auto attr = ctx->GetAttr("is_sparse");
@@ -244,7 +244,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to phi::DenseTensor";
       ctx->SetOutputType(w_grad_var_name,
-                         framework::proto::VarType::LOD_TENSOR);
+                         framework::proto::VarType::DENSE_TENSOR);
     }
 
     ctx->SetOutputDataType(w_grad_var_name, ctx->GetInputDataType("W"));

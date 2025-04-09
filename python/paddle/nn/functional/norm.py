@@ -335,8 +335,8 @@ def layer_norm(
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
             which is expected to be of that specific size.
-        weight(Tensor, optional): The weight tensor of batch_norm. Default: None.
-        bias(Tensor, optional): The bias tensor of batch_norm. Default: None.
+        weight(Tensor, optional): The weight tensor of layer_norm. Default: None.
+        bias(Tensor, optional): The bias tensor of layer_norm. Default: None.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
         name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .

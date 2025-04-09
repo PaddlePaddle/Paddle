@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * SoftMaxOp, ISoftMaxLayer in TRT. This Layer doesn't has weights.
@@ -91,9 +89,7 @@ class SoftMaxOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 USE_OP_ITSELF(softmax);
 REGISTER_TRT_OP_CONVERTER(softmax, SoftMaxOpConverter);

@@ -246,8 +246,7 @@ class LayerObjectHelper(LayerHelperBase):
                 dtype = each.dtype
             elif dtype != each.dtype:
                 raise ValueError(
-                    "Data Type mismatch: %d to %d in %s"
-                    % (dtype, each.dtype, self.name)
+                    f"Data Type mismatch: {dtype} to {each.dtype} in {self.name}"
                 )
         return dtype
 
@@ -339,16 +338,28 @@ class HookRemoveHelper:
     next_hook_id: int = 0
 
     def __init__(
-        self, hooks: typing.OrderedDict[int, Callable[..., Any]]
+        self,
+        hooks: typing.OrderedDict[int, Callable[..., Any]],
+        *,
+        extra_hook_dict: Any = None,
     ) -> None:
         self._hooks_ref = weakref.ref(hooks)
         self._hook_id = HookRemoveHelper.next_hook_id
         HookRemoveHelper.next_hook_id += 1
 
+        self._extra_hooks_ref = None
+        if extra_hook_dict is not None:
+            self._extra_hooks_ref = weakref.ref(extra_hook_dict)
+
     def remove(self) -> None:
         hooks = self._hooks_ref()
         if hooks is not None and self._hook_id in hooks:
             del hooks[self._hook_id]
+
+        if self._extra_hooks_ref is not None:
+            extra_hooks = self._extra_hooks_ref()
+            if extra_hooks is not None and self._hook_id in extra_hooks:
+                del extra_hooks[self._hook_id]
 
 
 class Layer:
@@ -438,6 +449,9 @@ class Layer:
         self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
             OrderedDict()
         )
+        self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
@@ -697,7 +711,7 @@ class Layer:
         return hook_remove_helper
 
     def register_forward_pre_hook(
-        self, hook: _ForwardPreHook
+        self, hook: _ForwardPreHook, *, with_kwargs: bool = False
     ) -> HookRemoveHelper:
         """
 
@@ -749,8 +763,15 @@ class Layer:
                 >>> # hook change the linear's input to input * 2, so out0 is equal to out1.
                 >>> assert (out0.numpy() == out1.numpy()).any()
         """
-        hook_remove_helper = HookRemoveHelper(self._forward_pre_hooks)
+        hook_remove_helper = HookRemoveHelper(
+            self._forward_pre_hooks,
+            extra_hook_dict=self._forward_pre_hooks_with_kwargs_flag,
+        )
         self._forward_pre_hooks[hook_remove_helper._hook_id] = hook
+        if with_kwargs:
+            self._forward_pre_hooks_with_kwargs_flag[
+                hook_remove_helper._hook_id
+            ] = True
         return hook_remove_helper
 
     def create_parameter(
@@ -870,7 +891,7 @@ class Layer:
             name=var_name,
             persistable=persistable,
             dtype=dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
         )
 
     # TODO: Add more parameter list when we need them
@@ -927,7 +948,7 @@ class Layer:
             name=var_name,
             persistable=persistable,
             dtype=dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
         )
 
     def parameters(self, include_sublayers: bool = True) -> list[Tensor]:
@@ -1491,12 +1512,27 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
-        for forward_pre_hook in self._forward_pre_hooks.values():
-            hook_result = forward_pre_hook(self, inputs)
-            if hook_result is not None:
-                if not isinstance(hook_result, tuple):
-                    hook_result = (hook_result,)
-                inputs = hook_result
+
+        for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
+            if hook_id in self._forward_pre_hooks_with_kwargs_flag:
+                args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
+                if args_kwargs_result is not None:
+                    if (
+                        isinstance(args_kwargs_result, tuple)
+                        and len(args_kwargs_result) == 2
+                    ):
+                        inputs, kwargs = args_kwargs_result
+                    else:
+                        raise RuntimeError(
+                            "forward pre-hook must return None or a tuple "
+                            f"of (new_args, new_kwargs), but got {args_kwargs_result}."
+                        )
+            else:
+                hook_result = forward_pre_hook(self, inputs)
+                if hook_result is not None:
+                    if not isinstance(hook_result, tuple):
+                        hook_result = (hook_result,)
+                    inputs = hook_result
 
         if not self._built:
             self._build_once(*inputs, **kwargs)
@@ -1524,11 +1560,10 @@ class Layer:
             (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
-            and (not self._built)
+            and (self.__class__._build_once is Layer._build_once or self._built)
             and in_dygraph_mode()
             and (not in_profiler_mode() or in_sot_simulation_mode())
         ):
-            self._build_once(*inputs, **kwargs)
             return self.forward(*inputs, **kwargs)
         else:
             return self._dygraph_call_func(*inputs, **kwargs)
@@ -1691,12 +1726,12 @@ class Layer:
                 else set_op_customized_attrs_post_hook
             )
 
-            already_registed = False
+            already_registered = False
             if layers_hooks:
                 last_key = next(reversed(layers_hooks))
-                already_registed = layers_hooks[last_key] == candidate_hook
+                already_registered = layers_hooks[last_key] == candidate_hook
 
-            return already_registed
+            return already_registered
 
         if not isinstance(attrs, dict):
             raise TypeError(
@@ -1759,6 +1794,12 @@ class Layer:
                 if name in d:
                     del d[name]
 
+        if isinstance(
+            value, paddle.jit.dy2static.program_translator.StaticFunction
+        ):
+            object.__setattr__(self, name, value)
+            value._patched_name = name
+            return
         if isinstance(getattr(type(self), name, None), property):
             object.__setattr__(self, name, value)
         params = self.__dict__.get('_parameters', None)
@@ -1848,7 +1889,7 @@ class Layer:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            f"assignment to buffers '{name}' should be of type core.Tensor or None, but got '{type(value).__name__}'"
+                            f"assignment to buffers '{name}' should be of type core.DenseTensor or None, but got '{type(value).__name__}'"
                         )
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
@@ -2184,8 +2225,6 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
-            if isinstance(param, paddle.Tensor) and not param._is_initialized():
-                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)

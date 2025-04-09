@@ -58,21 +58,14 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
             false,
             weight_dtype == "int8" ? 127.f : 7.f,
             0.f);
-        PADDLE_ENFORCE_EQ(
-            r,
-            0,
-            common::errors::Fatal(
-                "scale failed, scale related variable `r` is %d", r));
-        r = baidu::xpu::api::cast_v2<XPUType, float>(
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+        r = baidu::xpu::api::cast<XPUType, float>(
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(
                 max_value_fp16.data<phi::dtype::float16>()),
             max_value.data<float>(),
             max_value.numel());
-        PADDLE_ENFORCE_EQ(r,
-                          0,
-                          common::errors::Fatal(
-                              "cast_v2 failed, related variable `r` is %d", r));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       } else if (weight_scale.dtype() == phi::DataType::FLOAT32) {
         r = baidu::xpu::api::scale(xpu_ctx->x_context(),
                                    weight_scale.data<float>(),
@@ -81,10 +74,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                                    false,
                                    weight_dtype == "int8" ? 127.f : 7.f,
                                    0.f);
-        PADDLE_ENFORCE_EQ(r,
-                          0,
-                          common::errors::Fatal(
-                              "scale failed, related variable `r` is %d", r));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Only support that weight scale as type float32 ot float16."));
@@ -95,12 +85,13 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
           bias.get().dtype() == phi::DataType::FLOAT16) {
         bias_fp32.Resize(bias.get().dims());
         dev_ctx.template Alloc<float>(&bias_fp32);
-        r = baidu::xpu::api::cast_v2<XPUType, float>(
+        r = baidu::xpu::api::cast<XPUType, float>(
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(
                 bias.get().data<phi::dtype::float16>()),
             bias_fp32.data<float>(),
             n);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
       }
       if (weight_dtype == "int8") {
         r = baidu::xpu::api::gpt_fc_fusion<XPUType, int8_t, XPUType, int8_wo_t>(
@@ -128,12 +119,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                 : nullptr,
             baidu::xpu::api::Activation_t::LINEAR,
             max_value.data<float>());
-        PADDLE_ENFORCE_EQ(r,
-                          0,
-                          common::errors::Fatal(
-                              "baidu::xpu::api::gpt_fc_fusion failed, related "
-                              "variable `r` is %d",
-                              r));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "gpt_fc_fusion");
       } else if (weight_dtype == "int4") {
         PD_THROW("only support int8 weight only now");
       }

@@ -214,7 +214,7 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   meta_.dtype = meta.dtype;
   meta_.is_scalar = meta.is_scalar;
   meta_.layout = meta.layout;
-  meta_.lod = meta.lod;
+  meta_.legacy_lod = meta.legacy_lod;
   meta_.offset = meta.offset;
   meta_.use_gpudnn = meta.use_gpudnn;
   if (meta.strides.size() == -1) {
@@ -255,7 +255,9 @@ void DenseTensor::ResizeAndAllocate(const DDim& dims) {
   }
 }
 
-void DenseTensor::ResetLoD(const LoD& lod) { meta_.lod = lod; }
+void DenseTensor::ResetLoD(const LegacyLoD& legacy_lod) {
+  meta_.legacy_lod = legacy_lod;
+}
 
 #define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
   template TEST_API const dtype* DenseTensor::data() const; \

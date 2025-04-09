@@ -80,7 +80,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
             model2 = paddle.nn.Sequential()
             self.assertRaises(IndexError, model2.insert, 1, Linear(10, 10))
 
-            # test insert at negtive index -1
+            # test insert at negative index -1
             model2 = paddle.nn.Sequential()
             model2.insert(0, Linear(10, 10))
             self.assertEqual(len(model2), 1)

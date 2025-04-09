@@ -144,18 +144,18 @@ class FileReader:
         self._checkArgsKey("minTimeStamp", int)
 
     def getFileListByGroup(self, groupId):
-        lIndext = 0
-        rIndext = 0
+        lIndex = 0
+        rIndex = 0
 
         if self._organizeForm == FILEORGANIZEFORM_BYTRAINER:
-            lIndext = groupId * self._groupSize
-            rIndext = (groupId + 1) * self._groupSize
+            lIndex = groupId * self._groupSize
+            rIndex = (groupId + 1) * self._groupSize
         elif self._organizeForm == FILEORGANIZEFORM_BYRANK:
-            lIndext = groupId * self._groupSize * self._gpuPerTrainer
-            rIndext = (groupId + 1) * self._groupSize * self._gpuPerTrainer
+            lIndex = groupId * self._groupSize * self._gpuPerTrainer
+            rIndex = (groupId + 1) * self._groupSize * self._gpuPerTrainer
 
         try:
-            return self._fileList[lIndext:rIndext]
+            return self._fileList[lIndex:rIndex]
         except IndexError:
             raise IndexError("invalid index of file list")
 
@@ -281,7 +281,7 @@ class FileReader:
         return self.getFileName("dcgm", groupId, gpuId, tmpPath)
 
     def getFileName(self, name, groupId, gpuId, tmpPath="./tmp"):
-        return os.path.join(tmpPath, "%s_%d_%d.json" % (name, groupId, gpuId))
+        return os.path.join(tmpPath, f"{name}_{groupId}_{gpuId}.json")
 
     def getOpInfoDict(self, groupId, gpuId, tmpPath="./tmp"):
         return self.getDict("opinfo", groupId, gpuId, tmpPath)
@@ -292,7 +292,7 @@ class FileReader:
     def getDict(self, name, groupId, gpuId, tmpPath="./tmp"):
         fileName = self.getFileName(name, groupId, gpuId, tmpPath)
         if not os.path.isfile(fileName):
-            raise OSError(f"[{fileName}] is not existed!")
+            raise OSError(f"[{fileName}] does not existed!")
 
         data = {}
         with open(fileName, "r") as rf:

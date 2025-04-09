@@ -470,7 +470,7 @@ def get_inputs_outputs_in_block(
             for out_var_name in op.output(oname):
                 inner_outputs.add(out_var_name)
 
-    # Step2: Remove LOD_TENSOR_ARRAY created in current control flow block.
+    # Step2: Remove DENSE_TENSOR_ARRAY created in current control flow block.
     remove_inner_inputs = set()
     parent_block = helper.main_program.block(current_block.parent_idx)
 
@@ -482,7 +482,8 @@ def get_inputs_outputs_in_block(
         if (
             not parent_block_var
             and current_block_var
-            and current_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            and current_block_var.type
+            == core.VarDesc.VarType.DENSE_TENSOR_ARRAY
         ):
             remove_inner_inputs.add(in_var_name)
 
@@ -550,7 +551,7 @@ class While:
             >>> loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
             >>> one = paddle.full(shape=[1], dtype='float32', fill_value=1)
             >>> data = paddle.static.data(name='data', shape=[1], dtype='float32')
-            >>> sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained >>> ouside of While, which name should be different from the variable inside the While to be obtained
+            >>> sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained outside of While, which name should be different from the variable inside the While to be obtained
 
             >>> cond = paddle.less_than(x=i, y=loop_len)
             >>> while_op = paddle.static.nn.control_flow.While(cond=cond)
@@ -636,7 +637,7 @@ support_ret_buildin_type = (bool, float, int)
 
 def assign_skip_lod_tensor_array(input, output):
     """
-    Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
+    Assign input to output, but skip the process of copying DenseTensorArray unless it's created in while_block.
     """
 
     def has_shape_diff(x_var, y_var):
@@ -656,7 +657,7 @@ def assign_skip_lod_tensor_array(input, output):
             output = input
         return
 
-    if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if input.type == core.VarDesc.VarType.DENSE_TENSOR_ARRAY:
         main_program = input.block.program
         parent_block = main_program.block(
             main_program.current_block().parent_idx
@@ -742,7 +743,7 @@ class LoopVar:
             return create_loop_var_like(while_op, next_var)
         if is_sequence(next_var):
             return map_structure(
-                lambda var: create_loop_var_like(while_op, var),
+                lambda var: self.infer_type_with_next_var(var, while_op),
                 next_var,
             )
         return LoopVar(self.curr_var, next_var, self.block_arg)
@@ -764,15 +765,15 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
             as many arguments as ``loop_vars`` .
-        body(Callable): A callable returning a tuple or list of tensors or LoDTensorArrays of the same arity
+        body(Callable): A callable returning a tuple or list of tensors or DenseTensorArrays of the same arity
             (length and structure) and types as ``loops_vars`` . And ``body`` takes as many arguments as ``loop_vars`` .
-        loop_vars(list|tuple): A list or tuple of tensors or LoDTensorArrays that is passed to both ``cond`` and ``body`` .
+        loop_vars(list|tuple): A list or tuple of tensors or DenseTensorArrays that is passed to both ``cond`` and ``body`` .
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        A list or tuple of Tensors or LoDTensorArrays which returned by ``body`` .
+        A list or tuple of Tensors or DenseTensorArrays which returned by ``body`` .
 
     Examples:
         .. code-block:: python
@@ -909,6 +910,23 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             loop_vars = infer_loop_vars_type_with_next_vars(
                 loop_vars, next_vars
             )
+
+            from paddle.jit.dy2static.convert_operators import (
+                to_static_variable,
+            )
+
+            def check_next_var(loop_var):
+                if not loop_var.is_variable_curr_var:
+                    return
+                if not isinstance(
+                    loop_var.next_var, paddle.pir.Value
+                ) and not isinstance(loop_var.next_var, (bool, float, int)):
+                    raise ValueError(
+                        "The loop var in the while op is variable, but the corresponding yielded var is not variable, and it is not a constant of type bool, int, or float."
+                    )
+                loop_var.next_var = to_static_variable(loop_var.next_var)
+
+            paddle.utils.map_structure(check_next_var, loop_vars)
 
             next_cond = cond(
                 *map_structure(lambda var: var.next_var, loop_vars)
@@ -1511,7 +1529,10 @@ class OutputSelector:
                     return out.dtype
             return None
 
-        if all(arg is None for arg in outs):
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(out is None for out in outs):
             return outs
 
         if all(
@@ -1939,7 +1960,7 @@ def copy_var_to_parent_block(var, layer_helper):
     parent_block = prog.block(parent_idx)
 
     if (
-        var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        var.type == core.VarDesc.VarType.DENSE_TENSOR_ARRAY
         and parent_block._find_var_recursive(var.name)
     ):
         parent_block_var = var

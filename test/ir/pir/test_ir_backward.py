@@ -296,7 +296,7 @@ class TestBackward_5(unittest.TestCase):
             z = paddle.nn.functional.relu(y)
             loss = paddle.mean(z)
 
-        paddle.autograd.ir_backward.append_backward(loss)
+            paddle.autograd.ir_backward.append_backward(loss)
         relu_grad_number = 0
         for op in program.global_block().ops:
             if op.name() == "pd_op.relu_grad":

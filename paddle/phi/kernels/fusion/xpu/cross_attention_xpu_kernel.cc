@@ -159,7 +159,7 @@ void CrossAttentionXPUKernelImpl(
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "qkv_attention_xpu");
 
   if (input_q.dtype() == DataType::FLOAT32) {
-    int r_cast_out = xpu::cast_v2<XPUTypeFP16, XPUTypeOut>(
+    int r_cast_out = xpu::cast<XPUTypeFP16, XPUTypeOut>(
         ctx.x_context(), qkv_temp_data, qkv_data, qkv->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r_cast_out, "cross_attention_xpu(cast out from fp16 to fp32)");

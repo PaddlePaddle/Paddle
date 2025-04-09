@@ -34,8 +34,7 @@
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static const phi::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<phi::DenseTensor>()) {
@@ -48,7 +47,7 @@ static const phi::Place &GetVarPlace(const framework::Variable &src) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Cannot get unsupported variable type %s for imperative allreduce, "
         "only "
-        "LoDTensor and SelectedRows are supported.",
+        "DenseTensor and SelectedRows are supported.",
         common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
@@ -260,7 +259,7 @@ void AllReduce(const framework::Variable &src,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor and SelectedRows are supported.",
+        "DenseTensor and SelectedRows are supported.",
         common::demangle(framework::ToTypeName(src.Type()))));
   }
 }
@@ -271,7 +270,6 @@ void AllReduce(const framework::Variable &src,
   AllReduce(src, dst, strategy, 0, true);
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
 #endif

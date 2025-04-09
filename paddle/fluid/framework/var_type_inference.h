@@ -203,23 +203,6 @@ class InferVarTypeContext {
     this->SetVarShape(var_name, dims);
   }
 
-  virtual int32_t GetInputLoDLevel(const std::string& name,
-                                   const int& index = 0) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        op_, common::errors::PreconditionNotMet("op_ should not be null"));
-    auto& var_name = op_->Input(name).at(index);
-    return this->GetVarLoDLevel(var_name);
-  }
-
-  virtual void SetOutputLoDLevel(const std::string& name,
-                                 int32_t lod_level,
-                                 const int& index = 0) {
-    PADDLE_ENFORCE_NOT_NULL(
-        op_, common::errors::PreconditionNotMet("op_ should not be null"));
-    auto& var_name = op_->Output(name).at(index);
-    this->SetVarLoDLevel(var_name, lod_level);
-  }
-
   // add a special API for save_op
   // avoid use this API for common logic
   virtual void InsertVar(const std::string& var_name,

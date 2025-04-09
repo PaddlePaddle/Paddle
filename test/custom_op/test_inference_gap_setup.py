@@ -57,9 +57,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             custom_egg_path = [
                 x for x in os.listdir(site_dir) if 'gap_op_setup' in x
             ]
-            assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
-                custom_egg_path
-            )
+            assert (
+                len(custom_egg_path) == 1
+            ), f"Matched egg number is {len(custom_egg_path)}."
             sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
             # usage: import the package directly

@@ -306,6 +306,9 @@ def grid_sample(
     if len(grid.shape) == 5:
         use_cudnn = False
 
+    if not grid.stop_gradient:
+        x.stop_gradient = False
+
     if in_dynamic_or_pir_mode():
         return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     else:

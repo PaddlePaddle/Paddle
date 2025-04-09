@@ -94,8 +94,9 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
   explicit SetGradOutputDistAttrIter(
       const paddle::small_vector<std::vector<GradSlotMeta>,
                                  kSlotSmallVectorSize>& out_meta,
-      const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes)
-      : out_meta_(out_meta), out_indexes_{out_indexes} {}
+      const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes,
+      const phi::distributed::ProcessMesh& mesh)
+      : out_meta_(out_meta), out_indexes_{out_indexes}, mesh_(mesh) {}
 
  private:
   void visit_element(paddle::Tensor* element, const GradSlotMeta& meta);
@@ -105,6 +106,7 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
   const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
       out_meta_;
   const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes_;
+  const phi::distributed::ProcessMesh& mesh_;
 
   int cur_pos_{0};
 };
@@ -264,16 +266,11 @@ class TEST_API EagerUtils {
       const paddle::small_vector<std::vector<GradSlotMeta>,
                                  kSlotSmallVectorSize>& out_metas,
       const paddle::small_vector<size_t, kSlotSmallVectorSize>& out_indexes,
+      const phi::distributed::ProcessMesh& mesh,
       Args&&... args) {
-    SetGradOutputDistAttrIter(out_metas, out_indexes)
+    SetGradOutputDistAttrIter(out_metas, out_indexes, mesh)
         .apply(std::forward<Args>(args)...);
   }
-
-  /**
-   * Set DistAttr By Input
-   */
-  static void SetGradOutputDistAttrByInput(const paddle::Tensor& input,
-                                           paddle::Tensor* grad);
 
   /**
    * Print Input Output (level 0 means least info, level 2 means most info)

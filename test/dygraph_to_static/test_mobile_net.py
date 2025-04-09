@@ -578,18 +578,10 @@ def train_mobilenet(args, to_static):
                 train_batch_elapse = t2 - t1
                 if batch_id % args.print_step == 0:
                     print(
-                        "epoch id: %d, batch step: %d,  avg_loss %0.5f acc_top1 %0.5f acc_top5 %0.5f %2.4f sec net_t:%2.4f back_t:%2.4f read_t:%2.4f"
-                        % (
-                            eop,
-                            batch_id,
-                            avg_loss.numpy(),
-                            acc_top1.numpy(),
-                            acc_top5.numpy(),
-                            train_batch_elapse,
-                            t_end - t_start,
-                            t_end_back - t_start_back,
-                            t1 - t_last,
-                        )
+                        f"epoch id: {eop}, batch step: {batch_id}, avg_loss {avg_loss.numpy():0.5f} "
+                        f"acc_top1 {acc_top1.numpy():0.5f} acc_top5 {acc_top5.numpy():0.5f} "
+                        f"{train_batch_elapse:2.4f} sec net_t:{t_end - t_start:2.4f} "
+                        f"back_t:{t_end_back - t_start_back:2.4f} read_t:{t1 - t_last:2.4f}"
                     )
                 batch_id += 1
                 t_last = time.time()

@@ -218,5 +218,56 @@ class TestFullLikeBF16Op(TestFullLikeOp1):
         self.dtype = np.uint16
 
 
+class TestFullKernelZeroSize(unittest.TestCase):
+    def test_full_kernel_cpu_zero_size(self):
+        paddle.disable_static()
+        value = 5
+        dtype = "int32"
+        shape = [0, 3]
+        tensor = paddle.full(shape, value, dtype=dtype)
+        expected = np.full(shape, value, dtype=dtype)
+        self.assertTrue(np.array_equal(tensor.numpy(), expected))
+        paddle.enable_static()
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+    )
+    def test_full_kernel_gpu_zero_size(self):
+        paddle.disable_static()
+        paddle.set_device("gpu:0")
+        value = 5.5
+        dtype = "float32"
+        shape = [0, 3]
+        tensor = paddle.full(shape, value, dtype=dtype)
+        expected = np.full(shape, value, dtype=dtype)
+        self.assertTrue(np.array_equal(tensor.numpy(), expected))
+        paddle.enable_static()
+
+
+class TestFullLikeKernelZeroSize(unittest.TestCase):
+    def test_full_like_kernel_cpu_zero_size(self):
+        paddle.disable_static()
+        base_tensor = paddle.to_tensor(np.empty((0, 2), dtype=np.float32))
+        value = 10.0
+        result = paddle.full_like(base_tensor, value, dtype="float32")
+        expected = np.full_like(base_tensor.numpy(), value)
+        self.assertTrue(np.array_equal(result.numpy(), expected))
+        paddle.enable_static()
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+    )
+    def test_full_like_kernel_gpu_zero_size(self):
+        paddle.disable_static()
+        base_tensor = paddle.to_tensor(
+            np.empty((0, 3), dtype=np.float32), place=paddle.CUDAPlace(0)
+        )
+        value = 20.0
+        result = paddle.full_like(base_tensor, value, dtype="float32")
+        expected = np.full_like(base_tensor.numpy(), value)
+        self.assertTrue(np.array_equal(result.numpy(), expected))
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -71,4 +71,22 @@ DenseTensor Slice(const Context& ctx,
   return dense_out;
 }
 
+template <typename T, typename Context>
+void Slice(const Context& ctx,
+           const DenseTensor& input,
+           const std::vector<int64_t>& axes,
+           const IntArray& starts,
+           const IntArray& ends,
+           DenseTensor* out) {
+  MetaTensor meta_out(out);
+  std::vector<int64_t> infer_flags = {1};
+  std::vector<int64_t> decrease_axis = {};
+  SliceRawInferMeta(
+      input, axes, starts, ends, infer_flags, decrease_axis, &meta_out);
+  if (input.initialized()) {
+    SliceKernel<T, Context>(
+        ctx, input, axes, starts, ends, infer_flags, decrease_axis, out);
+  }
+}
+
 }  // namespace phi

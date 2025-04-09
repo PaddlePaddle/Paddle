@@ -176,7 +176,6 @@ class Fused3EmbeddingEltwiseLayernormPattern
     auto &combine_op_2 = res.Op(pir::CombineOp::name());
     combine_op_2({&res.Tensor("w1"), &res.Tensor("w2"), &res.Tensor("w3")},
                  {&res.Tensor("combine2_out")});
-
     const auto &cast_op_dtype = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
           auto w1_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w1"));

@@ -261,7 +261,7 @@ class ElementwiseClipFusePattern : public paddle::drr::DrrPatternBase {
 class ElementwiseActFusePass : public pir::PatternRewritePass {
  public:
   ElementwiseActFusePass()
-      : pir::PatternRewritePass("elementwise_act_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("elementwise_act_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

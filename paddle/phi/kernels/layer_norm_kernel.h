@@ -36,7 +36,7 @@ class LayerNormDirectCUDAFunctor {
  public:
   void operator()(gpuStream_t stream,
                   const T* input,
-                  std::vector<int> input_shape,
+                  std::vector<int64_t> input_shape,
                   const U* bias,
                   const U* scale,
                   T* output,

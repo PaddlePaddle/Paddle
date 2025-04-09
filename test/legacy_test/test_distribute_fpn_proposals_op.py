@@ -53,7 +53,7 @@ class TestDistributeFPNProposalsOp(OpTest):
             'pixel_offset': self.pixel_offset,
         }
         output = [
-            ('out%d' % i, self.rois_fpn[i]) for i in range(len(self.rois_fpn))
+            (f'out{i}', self.rois_fpn[i]) for i in range(len(self.rois_fpn))
         ]
 
         self.outputs = {
@@ -162,10 +162,10 @@ class TestDistributeFPNProposalsOpWithRoisNum(TestDistributeFPNProposalsOp):
             'pixel_offset': self.pixel_offset,
         }
         output = [
-            ('out%d' % i, self.rois_fpn[i]) for i in range(len(self.rois_fpn))
+            (f'out{i}', self.rois_fpn[i]) for i in range(len(self.rois_fpn))
         ]
         rois_num_per_level = [
-            ('rois_num%d' % i, np.array(self.rois_fpn[i][1][0]).astype('int32'))
+            (f'rois_num{i}', np.array(self.rois_fpn[i][1][0]).astype('int32'))
             for i in range(len(self.rois_fpn))
         ]
 

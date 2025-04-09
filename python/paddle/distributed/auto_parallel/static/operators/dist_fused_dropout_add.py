@@ -137,7 +137,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                         ".".join(["tensor_parallel_seed", 'tmp'])
                     ),
                     dtype=paddle.int32,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    type=core.VarDesc.VarType.DENSE_TENSOR,
                     persistable=False,
                     stop_gradient=False,
                 )

@@ -103,6 +103,7 @@ void BindPyLayerOp(py::module* m) {
            &PyLayerOp::forward_block,
            return_value_policy::reference)
       .def("update_output", &PyLayerOp::UpdateOutput)
+      .def("update_input", &PyLayerOp::UpdateInput)
       .def(
           "as_operation", &PyLayerOp::operation, return_value_policy::reference)
       .def("id",

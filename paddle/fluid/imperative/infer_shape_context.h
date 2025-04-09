@@ -447,7 +447,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else {
       PADDLE_THROW(common::errors::PermissionDenied(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
+          "Only DenseTensor/SelectedRows support 'GetDim', but Variables "
           "type_id is: %s.",
           framework::ToTypeName(var->Type())));
     }
@@ -466,7 +466,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
     } else {
       PADDLE_THROW(common::errors::PermissionDenied(
-          "Variable type_id %s, expect LoDTensor/SelectedRows."));
+          "Variable type_id %s, expect DenseTensor/SelectedRows."));
     }
   }
 

@@ -164,7 +164,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // gc
   void RecordStreamForGC(const Instruction& instr);
   void CheckGC(const Instruction& instr);
-  void ClearLoDTensorArrayInLocalScope();
+  void ClearDenseTensorArrayInLocalScope();
 
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();

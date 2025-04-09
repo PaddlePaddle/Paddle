@@ -44,11 +44,13 @@ SUPPORT_PROMOTION_OPS = [
     "__mul__",
     "__rmul__",
     "__mod__",
+    "__rmod__",
     "__div__",
     "__rdiv__",
     "__truediv__",
     "__rtruediv__",
     "__floordiv__",
+    "__rfloordiv__",
     "__pow__",
     "__rpow__",
     "__eq__",
@@ -283,7 +285,8 @@ def monkey_patch_value():
         """
         **Notes**:
 
-        Cast a Value to a specified data type.
+        Convert a value to a specified data type if it differs from the current dtype;
+        otherwise, return the original value.
 
         Args:
 
@@ -314,6 +317,10 @@ def monkey_patch_value():
 
         if not isinstance(dtype, DataType):
             dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+
+        if self.dtype == dtype:
+            return self
+
         return _C_ops.cast(self, dtype)
 
     def _scalar_add_(var, value):
@@ -591,6 +598,30 @@ def monkey_patch_value():
                 >>> y = paddle.static.nn.cond(pred, lambda: y + 1, lambda: y - 1)
                 For more info, please refer to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/static/nn/cond_cn.html
             """
+        raise TypeError(textwrap.dedent(error_msg))
+
+    def _complex_(self):
+        error_msg = """\
+            complex(Tensor) is not supported in static graph mode. Because it's value is not available during the static mode.
+            It's usually triggered by the logging implicitly, for example:
+                >>> logging.info("The value of x is: {complex(x)}")
+                                                              ^ `x` is Tensor, `complex(x)` triggers complex(Tensor)
+
+                There are two common workarounds available:
+                If you are logging Tensor values, then consider logging only at dynamic graphs, for example:
+
+                    Modify the following code
+                    >>> logging.info("The value of x is: {complex(x)}")
+                    to
+                    >>> if paddle.in_dynamic_mode():
+                    ...     logging.info("The value of x is: {complex(x)}")
+
+                If you need to convert the Tensor type, for example:
+                    Modify the following code
+                    >>> x = complex(x)
+                    to
+                    >>> x = x.astype("complex64")
+        """
         raise TypeError(textwrap.dedent(error_msg))
 
     def clone(self):
@@ -969,6 +1000,7 @@ def monkey_patch_value():
             ndarray: dtype is same as current Variable
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
@@ -979,6 +1011,32 @@ def monkey_patch_value():
                 ...     data_tensor = paddle.to_tensor(data)
                 ...     x = linear(data_tensor)
                 ...     print(x.numpy())
+        """
+        pass
+
+    @fake_interface_only
+    def tolist(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Returns a Python list that contains the elements of current :ref:`api_guide_Variable_en`
+
+        Returns:
+            list: The Python list containing the elements of current Variable.
+
+        Returns type:
+            list: Elements have the same dtype as current Variable
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
+                >>> data = np.random.uniform(-1, 1, [2, 3]).astype('float32')
+                >>> with base.dygraph.guard():
+                ...     x = paddle.to_tensor(data)
+                ...     print(x.tolist())  # Convert tensor to Python list
         """
         pass
 
@@ -1018,6 +1076,7 @@ def monkey_patch_value():
         ('values', values),
         ("_to", _to),
         ("to", to),
+        ("tolist", tolist),
         ("numpy", numpy),
         ("register_hook", register_hook),
         # For basic operators
@@ -1092,12 +1151,26 @@ def monkey_patch_value():
             ),
         ),
         (
+            '__rfloordiv__',
+            _binary_creator_(
+                '__rfloordiv__', paddle.tensor.floor_divide, True, None
+            ),
+        ),
+        (
             '__mod__',
             _binary_creator_('__mod__', paddle.tensor.remainder, False, None),
         ),
         (
+            '__rmod__',
+            _binary_creator_('__rmod__', paddle.tensor.remainder, True, None),
+        ),
+        (
             '__matmul__',
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
+        ),
+        (
+            '__rmatmul__',
+            _binary_creator_('__rmatmul__', paddle.tensor.matmul, True, None),
         ),
         ('__neg__', _scalar_neg_),
         ('__abs__', _scalar_abs_),
@@ -1131,6 +1204,7 @@ def monkey_patch_value():
         ('__float__', _float_),
         ('__int__', _int_),
         ('__bool__', _bool_),
+        ('__complex__', _complex_),
     ]
 
     global _already_patch_value

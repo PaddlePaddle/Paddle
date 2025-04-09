@@ -132,10 +132,10 @@ class TestVarDesc(unittest.TestCase):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
         var = block.var(b'my_var')
-        var.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        var.set_type(core.VarDesc.VarType.DENSE_TENSOR)
         var.set_dtype(core.VarDesc.VarType.INT32)
         self.assertEqual(core.VarDesc.VarType.INT32, var.dtype())
-        self.assertEqual(core.VarDesc.VarType.LOD_TENSOR, var.type())
+        self.assertEqual(core.VarDesc.VarType.DENSE_TENSOR, var.type())
 
     def test_multiple_dtype(self):
         program_desc = core.ProgramDesc()

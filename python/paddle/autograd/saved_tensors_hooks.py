@@ -36,7 +36,7 @@ class saved_tensors_hooks:
             of the original tensor. `pack_hook` will also be called while any
             tensor need be saved by `PyLayerContext.save_for_backward`. If a tensor
             saved for backward is no need buffer, `pack_hook` will not be called.
-            Only the tensor saved for backward is LoDTensor, `pack_hook` will be
+            Only the tensor saved for backward is DenseTensor, `pack_hook` will be
             called.
         unpack_hook (function): The unpack hook will be called every time the
             backward need use the saved inputs/outputs tensors. Then you can reload

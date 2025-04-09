@@ -36,8 +36,8 @@ phi::DataType GetModelPrecision(const framework::ProgramDesc& program) {
   for (size_t i = 0; i < block_size; ++i) {
     const auto& block = program.Block(i);
     for (auto* var : block.AllVars()) {
-      if (!(var->GetType() == VarType::LOD_TENSOR ||
-            var->GetType() == VarType::LOD_TENSOR_ARRAY))
+      if (!(var->GetType() == VarType::DENSE_TENSOR ||
+            var->GetType() == VarType::DENSE_TENSOR_ARRAY))
         continue;
 
       if (!var->Persistable()) continue;

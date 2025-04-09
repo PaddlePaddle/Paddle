@@ -222,7 +222,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], [x, w, b], y_grad)
@@ -273,7 +273,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], x, y_grad)
@@ -663,7 +663,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], x, y_g)

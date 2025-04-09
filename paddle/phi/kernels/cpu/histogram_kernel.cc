@@ -26,8 +26,8 @@ void HistogramKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const paddle::optional<DenseTensor>& weight,
                      int64_t bins,
-                     int min,
-                     int max,
+                     float min,
+                     float max,
                      bool density,
                      DenseTensor* output) {
   auto& nbins = bins;

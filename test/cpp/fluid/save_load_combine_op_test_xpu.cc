@@ -25,7 +25,7 @@ T* CreateForSaveCombineOp(int x,
                           std::string var_name,
                           const Place& place,
                           paddle::framework::Scope* scope,
-                          phi::LoD* expect_lod) {
+                          phi::LegacyLoD* expect_lod) {
   phi::CPUPlace cpu_place;
   std::vector<T> ground_truth_cpu(x * y);
   for (int i = 0; i < x * y; ++i) {
@@ -59,7 +59,7 @@ phi::DenseTensor* GeneratePlaceholderBeforeLoad(
 template <typename T>
 T* GetValuesAfterLoadCombineOp(phi::DenseTensor* target,
                                const paddle::framework::Scope& scope,
-                               phi::LoD* actual_lod) {
+                               phi::LegacyLoD* actual_lod) {
   T* actual = target->data<T>();
   *actual_lod = target->lod();
   return actual;
@@ -68,8 +68,8 @@ T* GetValuesAfterLoadCombineOp(phi::DenseTensor* target,
 template <typename T, typename U>
 void CheckValues(T* expect,
                  U* actual,
-                 const phi::LoD& expect_lod,
-                 const phi::LoD& actual_lod,
+                 const phi::LegacyLoD& expect_lod,
+                 const phi::LegacyLoD& actual_lod,
                  const int& numel) {
   for (int i = 0; i < numel; ++i) {
     EXPECT_EQ(expect[i], static_cast<T>(actual[i]));
@@ -89,25 +89,25 @@ int SaveLoadCombineOpTest(Place place) {
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
-  phi::LoD expect_lod1;
+  phi::LegacyLoD expect_lod1;
   T* expect1 = CreateForSaveCombineOp<Place, T>(
       10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
-  phi::LoD expect_lod2;
+  phi::LegacyLoD expect_lod2;
   T* expect2 = CreateForSaveCombineOp<Place, T>(
       10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 2, 3, 20};
   int numel3 = 4000;
-  phi::LoD expect_lod3;
+  phi::LegacyLoD expect_lod3;
   T* expect3 = CreateForSaveCombineOp<Place, T>(
       20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
-  phi::LoD expect_lod4;
+  phi::LegacyLoD expect_lod4;
   T* expect4 = CreateForSaveCombineOp<Place, T>(
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
@@ -134,7 +134,7 @@ int SaveLoadCombineOpTest(Place place) {
       attrs);
   load_combine_op->Run(scope, place);
 
-  phi::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
+  phi::LegacyLoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   U* actual1 = GetValuesAfterLoadCombineOp<U>(target1, scope, &actual_lod1);
   U* actual2 = GetValuesAfterLoadCombineOp<U>(target2, scope, &actual_lod2);
   U* actual3 = GetValuesAfterLoadCombineOp<U>(target3, scope, &actual_lod3);

@@ -142,7 +142,7 @@ int SplitPlugin::enqueue(int batchSize,
                          void* workspace,
                          cudaStream_t stream) TRT_NOEXCEPT {
 #endif
-  // this two thrust variables decalared here , not with in .h
+  // this two thrust variables declared here , not with in .h
   // to avoid compiling error in cuda 11.6
   thrust::device_vector<int> d_segment_offsets = segment_offsets_;
   thrust::device_vector<float*> d_output_ptrs;
@@ -204,7 +204,7 @@ nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
                     output_length_.size(),
                     common::errors::InvalidArgument(
                         "When GetOutputDimensions, the index(%d) should not "
-                        "greater the num(%d) of the outpus.",
+                        "greater the num(%d) of the outputs.",
                         output_index,
                         output_length_.size()));
 

@@ -204,7 +204,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   VLOG(6) << "Prepare Grad inputs";
   for (auto& in : tmp_ins) {
     for (auto& tensor : in) {
-      if (tensor.initialized() && tensor.is_dense_tensor() &&
+      if (tensor.has_allocation() && tensor.is_dense_tensor() &&
           !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                ->meta()
                .is_contiguous()) {
@@ -234,7 +234,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
               << " to tmp_outputs: " << grad_output_idx;
       for (size_t j = 0; j < OutputMeta()[grad_output_idx].size(); j++) {
         outs[grad_output_idx]
-            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+            .emplace_back(/* init it in case of copy nullptr of shared_ptr */
                           std::make_shared<phi::DenseTensor>(
                               phi::DataType::UNDEFINED),
                           egr::Controller::Instance().GenerateUniqueName(
@@ -262,16 +262,17 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
       paddle::Tensor* out_tensor =
           ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
-      if (!out_tensor->initialized()) {
+      if (!out_tensor->has_allocation()) {
         PADDLE_ENFORCE(
             paddle::framework::detail::IsOptionalVar(
                 grad_outputs_names.at(i)) ||
                 out_tensor->is_dist_tensor(),
             common::errors::InvalidArgument(
-                "Custom grad operator's %d-th output is not initialized. "
+                "Custom grad operator[%s]'s %d-th output is not initialized. "
                 "Please check your implementation again. If you are "
                 "using inplace optional outputs, then you must use "
                 "`paddle::Optional` to decorate this output",
+                op_type_,
                 i));
         // We can also consider using `autograd_meta` to tolerant nullptr.
         out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());

@@ -236,7 +236,7 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument(
-          "The input of swish plugin shoule not be nullptr."));
+          "The input of swish plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
@@ -249,7 +249,7 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
+#ifdef TRT_PLUGIN_FP16_AVAILABLE
       return (in.type == nvinfer1::DataType::kFLOAT ||
               in.type == nvinfer1::DataType::kHALF) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -413,7 +413,7 @@ int QkvToContextPluginDynamic::enqueue(
         tptr, output, batch, seq_len, head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
+#ifdef TRT_PLUGIN_FP16_AVAILABLE
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     int real_seq_len = seq_len;
     int need_padding = false;
@@ -533,7 +533,7 @@ int QkvToContextPluginDynamic::enqueue(
     PADDLE_THROW(common::errors::Fatal(
         "The Ernie(Bert) TensorRT Plugin should be "
         "complied with CUDA version >= 10.0 when running with fp16. "
-        "Please recomplie it or try to use fp32 by set "
+        "Please recompile it or try to use fp32 by set "
         "config.SetTRTDynamicShapeInfo(min_input_shape, "
         "max_input_shape, opt_input_shape, true"));
 #endif

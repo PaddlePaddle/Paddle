@@ -25,7 +25,7 @@ TEST(dense_tensor, meta) {
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
   // TODO(Shixiaowei02): need to check the lod is valid.
-  const LoD lod{};
+  const LegacyLoD lod{};
 
   DenseTensorMeta meta_0;
   PADDLE_ENFORCE_EQ(meta_0.valid(),
@@ -108,13 +108,13 @@ TEST(dense_tensor, meta) {
                         "lod. Expected layout: %s, but got: %s",
                         layout,
                         meta_3.layout));
-  PADDLE_ENFORCE_EQ(meta_3.lod,
+  PADDLE_ENFORCE_EQ(meta_3.legacy_lod,
                     lod,
                     common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims, layout and "
                         "lod. Expected lod: %s, but got: %s",
                         lod,
-                        meta_3.lod));
+                        meta_3.legacy_lod));
   PADDLE_ENFORCE_EQ(meta_3.valid(),
                     true,
                     common::errors::InvalidArgument(
@@ -145,12 +145,12 @@ TEST(dense_tensor, meta) {
           layout,
           meta_4.layout));
   PADDLE_ENFORCE_EQ(
-      meta_4.lod,
+      meta_4.legacy_lod,
       lod,
       common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected lod: %s, but got: %s",
           lod,
-          meta_4.lod));
+          meta_4.legacy_lod));
   PADDLE_ENFORCE_EQ(
       meta_4.valid(),
       true,
@@ -181,12 +181,12 @@ TEST(dense_tensor, meta) {
           layout,
           meta_5.layout));
   PADDLE_ENFORCE_EQ(
-      meta_5.lod,
+      meta_5.legacy_lod,
       lod,
       common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected lod: %s, but got: %s",
           lod,
-          meta_5.lod));
+          meta_5.legacy_lod));
   PADDLE_ENFORCE_EQ(
       meta_5.valid(),
       true,
@@ -209,7 +209,7 @@ TEST(dense_tensor, ctor) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
@@ -239,7 +239,7 @@ TEST(dense_tensor, resize) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
@@ -265,7 +265,7 @@ TEST(dense_tensor, shallow_copy) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
 
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);

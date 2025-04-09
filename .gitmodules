@@ -125,3 +125,11 @@
 [submodule "third_party/yaml-cpp"]
 	path = third_party/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
+[submodule "third_party/openvino"]
+	path = third_party/openvino
+	url = https://github.com/openvinotoolkit/openvino.git
+	ignore = dirty
+[submodule "third_party/flagcx"]
+	path = third_party/flagcx
+	url = https://github.com/FlagOpen/FlagCX.git
+	ignore = dirty

@@ -21,6 +21,7 @@ namespace pir {
 
 class Pass;
 
-std::unique_ptr<Pass> CreateInplacePass();
+std::unique_ptr<Pass> CreateInplacePass(
+    const std::set<std::string>& no_need_buffer_values = {});
 
 }  // namespace pir

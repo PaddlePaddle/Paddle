@@ -146,7 +146,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         return paddle.multiply(self.probs, (1 - self.probs))
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from Bernoulli distribution.
 
         Args:
@@ -194,7 +194,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             return paddle.bernoulli(self.probs.expand(shape), name=name)
 
     def rsample(
-        self, shape: Sequence[int] = (), temperature: float = 1.0
+        self, shape: Sequence[int] = [], temperature: float = 1.0
     ) -> Tensor:
         """Sample from Bernoulli distribution (reparameterized).
 

@@ -51,7 +51,9 @@ from ..base.backward import (
 )
 from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
-from .lr import LRScheduler
+from ..base.log_helper import get_logger
+from .fusion_utils import FusionStorage
+from .lr import LambdaDecay, LRScheduler
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -67,6 +69,11 @@ if TYPE_CHECKING:
         params: Sequence[Tensor]
         weight_decay: NotRequired[float | WeightDecayRegularizer | None]
         learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
+
+local_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 __all__ = []
@@ -287,7 +294,7 @@ class Optimizer:
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
-        # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
@@ -318,6 +325,13 @@ class Optimizer:
         # create master gradients' states
         self._create_master_grad_states()
 
+        # for fusion storage
+        self._use_fusion_storage = False
+        self._need_refuse = True
+        self.fusion_storage = None
+        self._fuse_buffer_version = 0
+        self.merged_model_params = None
+
     def _create_master_grad_states(self):
         # master gradients states
         if in_pir_mode():
@@ -338,6 +352,47 @@ class Optimizer:
 
     def _get_auxiliary_var(self, key):
         return self._auxiliary_vars.get(key, None)
+
+    def set_merged_model_params(self, merged_model_params):
+        self.merged_model_params = merged_model_params
+        self.need_refuse()
+
+    @imperative_base.no_grad()
+    def _maybe_refuse(self):
+        # only support dygraph mode
+        if not framework.in_dygraph_mode():
+            return
+
+        # TODO(@gexiao): support other optimizer if needed
+        if self.__class__.__name__ != "AdamW":
+            return
+
+        # add buffer check
+        if self.fused_states_buffer is not None:
+            for _, v in self._accumulators.items():
+                for _, vv in v.items():
+                    if not vv._is_shared_buffer_with(self.fused_states_buffer):
+                        self.need_refuse()
+            for _, v in self._master_weights.items():
+                if not v._is_shared_buffer_with(self.fused_states_buffer):
+                    self.need_refuse()
+
+        if not self._need_refuse:
+            return
+
+        local_logger.warning(
+            f"refuse optimizer fuse buffer version start: {self._fuse_buffer_version}"
+        )
+        self.fusion_storage = FusionStorage(
+            self._accumulators,
+            self._master_weights,
+            self.merged_model_params,
+        )
+        self._fuse_buffer_version += 1
+        self.reset_need_refuse()
+        local_logger.warning(
+            f"refuse optimizer fuse buffer version end: {self._fuse_buffer_version}"
+        )
 
     @framework.dygraph_only
     def state_dict(self) -> dict[str, Tensor]:
@@ -419,7 +474,13 @@ class Optimizer:
 
         '''
         if isinstance(self._learning_rate, LRScheduler):
-            self._learning_rate.set_state_dict(state_dict["LR_Scheduler"])
+            lr_state_dict = state_dict.get("LR_Scheduler", None)
+            if not isinstance(self._learning_rate, LambdaDecay):
+                assert (
+                    lr_state_dict is not None
+                ), "LR_Scheduler state must be included in the state dict except LambdaDecay"
+            if lr_state_dict:
+                self._learning_rate.set_state_dict(lr_state_dict)
 
         # NOTE: exclude learning rate scheduler's state from
         # _accumulators_holder.
@@ -489,11 +550,11 @@ class Optimizer:
                         initializer = paddle.nn.initializer.Constant(
                             value=lr_value
                         )
-                        paramete_meta = paddle.pir.core.ParameterMeta(
+                        parameter_meta = paddle.pir.core.ParameterMeta(
                             [], _lr_dtype
                         )
                         init_result = initializer(
-                            paramete_meta, startup_program.global_block()
+                            parameter_meta, startup_program.global_block()
                         )
                         init_result.persistable = True
                         set_parameter(init_result, lr_name)
@@ -693,7 +754,7 @@ class Optimizer:
 
         if not isinstance(scheduler, LRScheduler):
             raise TypeError(
-                f"The type of 'scheduler' in optimizer.set_lr_schduler must be LRScheduler, but received {type(scheduler)}."
+                f"The type of 'scheduler' in optimizer.set_lr_scheduler must be LRScheduler, but received {type(scheduler)}."
             )
         self._learning_rate = scheduler
 
@@ -701,7 +762,7 @@ class Optimizer:
         """
         Get current learning rate of optimizer.
         If 'LRScheduler' is not used, the return value is all the same.
-        If 'LRScheduler' is used, the return value is the current scheduled learing rete.
+        If 'LRScheduler' is used, the return value is the current scheduled learning rete.
 
         Returns:
             float, The current learning rate of optimizer.
@@ -803,13 +864,17 @@ class Optimizer:
     def _append_optimize_op(self, block, param_and_grad):
         """append optimize operator to block and return all the added optimize_op"""
         raise NotImplementedError(
-            'Class "Optimizer" connot be used directly as an optimizer, please use its subclasses such as "Adam"'
+            'Class "Optimizer" cannot be used directly as an optimizer, please use its subclasses such as "Adam"'
         )
 
     def _create_param_lr(self, param_and_grad):
         # create learning rate tensor for every parameter
         param = param_and_grad[0]
-        if hasattr(param, 'optimize_attr') and param.optimize_attr is not None:
+        if (
+            hasattr(param, 'optimize_attr')
+            and param.optimize_attr is not None
+            and 'learning_rate' in param.optimize_attr
+        ):
             param_lr = param.optimize_attr['learning_rate']
             if isinstance(param_lr, (Variable, paddle.pir.Value)):
                 return param_lr
@@ -978,6 +1043,9 @@ class Optimizer:
             raise Exception(
                 f"Accumulator {name} already exists for parameter {param.name}"
             )
+        else:
+            # once master weights are created, accumulators must be created at the same time
+            self.need_refuse()
         if shape is None:
             shape = param.shape
 
@@ -1016,7 +1084,7 @@ class Optimizer:
                 name=var_name,
                 persistable=True,
                 dtype=dtype or param.dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 shape=shape,
                 belong_to_optimizer=True,
             )
@@ -1153,7 +1221,7 @@ class Optimizer:
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
 
-        # Allways called under program_guard use global block as loss block
+        # Always called under program_guard use global block as loss block
         # But if current block is in control flow, append optimize op in the
         # grad block of current block
 
@@ -1268,6 +1336,12 @@ class Optimizer:
 
             if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
+                if (
+                    "xpu" in paddle.device.get_device()
+                    and found_inf is not None
+                    and found_inf.is_dist()
+                ):
+                    found_inf = found_inf._local_value()
                 if found_inf:
                     if isinstance(found_inf, core.eager.Tensor):
                         self._set_auxiliary_var('found_inf', True)
@@ -1275,6 +1349,7 @@ class Optimizer:
                     if isinstance(found_inf, core.eager.Tensor):
                         self._set_auxiliary_var('found_inf', False)
                     if isinstance(parameters_and_grads, list):
+                        self._maybe_refuse()
                         for param_and_grad in parameters_and_grads:
                             # Parameters can be uninitialized in pipeline parallel of semi-auto parallel.
                             # Since gradient clip and parameters update mixed up in one interface, so we
@@ -1671,7 +1746,7 @@ class Optimizer:
                     dtype=param.dtype,
                     shape=param.shape,
                     lod_level=param.lod_level,
-                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    type=core.VarDesc.VarType.DENSE_TENSOR,
                 )
 
             inputs = {"X": [grad, regularization_term]}
@@ -1713,15 +1788,15 @@ class Optimizer:
                 )
                 params_and_grads.append((param, new_grad))
         else:
-            repeate_regularizer = False
+            repeat_regularizer = False
             with framework.name_scope('regularization'):
                 for param, grad in parameters_and_grads:
                     if (
-                        not repeate_regularizer
+                        not repeat_regularizer
                         and param.regularizer is not None
                         and regularization is not None
                     ):
-                        repeate_regularizer = True
+                        repeat_regularizer = True
                         logging.info(
                             "If regularizer of a Parameter has been set by 'base.ParamAttr' or 'base.WeightNormParamAttr' already. "
                             f"The Regularization[{regularization}] in Optimizer will not take effect, and it will only be applied to other Parameters!"
@@ -1961,7 +2036,7 @@ class Optimizer:
         Add a param group to parameter_list.
 
         Args:
-            param_group (dict): The group of Tensors to be optimzed with
+            param_group (dict): The group of Tensors to be optimized with
             different optimization options.
         """
         params = param_group['params']
@@ -2005,7 +2080,7 @@ class Optimizer:
         """
         Update the param group with new entry
         Args:
-            parameters (dict): The extra group of Tensors to be optimzed with
+            parameters (dict): The extra group of Tensors to be optimized with
             different optimization options. Only used in child class.
         """
         pass
@@ -2050,3 +2125,40 @@ class Optimizer:
                 dtype == core.DataType.FLOAT16
                 or dtype == core.DataType.BFLOAT16
             )
+
+    def use_fusion_storage(self):
+        self._use_fusion_storage = True
+
+    def need_refuse(self):
+        self._need_refuse = self._use_fusion_storage
+
+    def reset_need_refuse(self):
+        self._need_refuse = False
+
+    @property
+    def fused_buffer_version(self):
+        return self._fuse_buffer_version
+
+    @property
+    def fused_states_buffer(self):
+        if self.fusion_storage is None:
+            return None
+        return self.fusion_storage.buffer
+
+    @property
+    def fused_states_buffer_ipc_meta(self):
+        if self.fusion_storage is None:
+            return None
+        return self.fusion_storage.buffer_ipc_meta
+
+    @property
+    def fused_states_accumulators_meta(self):
+        if self.fusion_storage is None:
+            return None
+        return self.fusion_storage.accumulators_meta
+
+    @property
+    def fused_states_master_weights_meta(self):
+        if self.fusion_storage is None:
+            return None
+        return self.fusion_storage.master_weights_meta

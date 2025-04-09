@@ -251,7 +251,7 @@ static void YoloTensorParseCuda(
                         (grid_size / threads_per_block.y) + 1,
                         (anchors_num / threads_per_block.z) + 1);
 
-  // Estimate how many boxes will be choosed
+  // Estimate how many boxes will be chosen
   int bbox_count = 0;
 #ifdef PADDLE_WITH_HIP
   hipMemcpy(

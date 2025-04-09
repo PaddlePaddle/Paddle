@@ -86,7 +86,7 @@ __global__ void BlockSparseSoftmaxForward(T* softmax,
     const T* attnptr = (attn_mask == nullptr)
                            ? nullptr
                            : (attn_mask + cur_block_row * num_rows);
-    // the coloumn start index in current row
+    // the column start index in current row
     const int* colindex = layout_colindex + layout_rowptr[cur_block_row];
     for (int j = 0; j < iter; j++) {
       int cur_block_col = j * WarpSize + threadIdx.x;

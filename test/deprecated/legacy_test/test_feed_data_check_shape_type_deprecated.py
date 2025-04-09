@@ -205,12 +205,12 @@ class TestFeedData(unittest.TestCase):
         feed_in_data = np.random.uniform(size=[sum_length, 3, 4, 5]).astype(
             np.float32
         )
-        feed_data_tensor = base.LoDTensor()
+        feed_data_tensor = base.DenseTensor()
         feed_data_tensor.set(feed_in_data, base.CPUPlace())
         feed_data_tensor.set_recursive_sequence_lengths(sequence_lengths)
 
         label_size = [device_count, 1]
-        feed_label_tensor = base.LoDTensor()
+        feed_label_tensor = base.DenseTensor()
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[sum_length, 1]
         ).astype(np.int64)

@@ -340,5 +340,19 @@ class TestForBreakWithLoadSameConsts(TestCaseBase):
         self.assert_results(for_break_with_load_same_consts, x)
 
 
+def for_break_with_write_pre_defined_name(x: paddle.Tensor):
+    y = None
+    for i in [1, 2, 3]:
+        y = i
+        sot.psdb.breakgraph()
+    return x + 1
+
+
+class TestForBreakWithWritePreDefinedName(TestCaseBase):
+    def test_for_break_with_write_pre_defined_name(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(for_break_with_write_pre_defined_name, x)
+
+
 if __name__ == "__main__":
     unittest.main()

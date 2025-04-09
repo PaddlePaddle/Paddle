@@ -145,7 +145,7 @@ class Beta(exponential_family.ExponentialFamily):
         """
         return self._dirichlet.log_prob(paddle.stack([value, 1.0 - value], -1))
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from beta distribution with sample shape.
 
         Args:

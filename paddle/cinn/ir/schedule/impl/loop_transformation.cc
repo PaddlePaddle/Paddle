@@ -14,9 +14,10 @@
 
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/common/iter_simplify.h"
 #include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
@@ -37,6 +38,32 @@
 
 namespace cinn {
 namespace ir {
+
+void SimplifyBindingsInStaticShape(const cinn::ir::DyScheduleImpl* sch,
+                                   const Expr& loop,
+                                   const std::string& sch_name,
+                                   Expr* stmt) {
+  // Get outer loops of current loops.
+  Expr root = sch->GetRootBlock(loop);
+  std::vector<Expr> outer_loops = GetLoopsOfExpr(loop, root);
+
+  // TODO(liujinnan): Deal dynamic shape.
+  if (!ContainDynamicShape(root)) {
+    // Create an analyzer of outer loops and new fused loop.
+    std::vector<Expr> combine_loops = outer_loops;
+    combine_loops.push_back(*stmt);
+    common::cas_intervals_t var_intervals_t =
+        common::CollectVarIntervalsOfExprs(combine_loops);
+    common::SymbolicExprAnalyzer ana{var_intervals_t};
+
+    // Simplify the bindings of new loop.
+    VLOG(4) << "Before SimplifyBindings in " << sch_name << ", ir is:\n"
+            << *stmt;
+    common::SimplifyBlockBinding::SimplifyBindings(*stmt, outer_loops, ana);
+    VLOG(4) << "After SimplifyBindings in " << sch_name << ", ir is:\n"
+            << *stmt;
+  }
+}
 
 std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                                         const std::vector<int>& factors) {
@@ -98,7 +125,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           Expr(temp_var) + substitute_value * Expr(processed_factors[i]);
       new_loop_vars.push_back(temp_var);
     }
-    substitute_value = cinn::common::AutoSimplify(substitute_value);
+    substitute_value = optim::ArithSimplify(substitute_value);
     Expr new_node = ir::ir_utils::IRCopy(for_node->body);
     ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
     std::vector<Expr> splited_loops;
@@ -118,6 +145,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
       splited_loops[i] = new_node;
     }
 
+    SimplifyBindingsInStaticShape(this, loop, "split", &new_node);
+
     this->Replace(loop, new_node);
     VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
     return splited_loops;
@@ -131,36 +160,24 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           << loop;
 
   bool is_positive = true;
-  int num_minus1 = 0;
-  std::vector<Expr> process_factors;
-  Expr prod_size(-1);
-  int idx_neg1 = 1;
-  for (auto factor : factors) prod_size = prod_size * Expr(factor);
-  std::for_each(factors.begin(), factors.end(), [&](int factor) {
+  int num_neg1 = 0;
+  int idx_neg1;
+  Expr prod_size(1);
+
+  for (int i = 0; i < factors.size(); ++i) {
+    int factor = factors[i];
     if (factor == -1) {
-      process_factors.push_back(
-          cinn::common::AutoSimplify(tot_extent / prod_size));
-      idx_neg1 = -idx_neg1;
+      idx_neg1 = i;
+      ++num_neg1;
+    } else if (factor > 0) {
+      prod_size = prod_size * Expr(factor);
     } else {
-      process_factors.push_back(Expr(factor));
-      if (idx_neg1 > 0) idx_neg1++;
+      is_positive = false;
     }
-    if (factor < 1 && factor != -1) is_positive = false;
-    if (factor == -1) ++num_minus1;
-  });
-
-  idx_neg1 = (-idx_neg1) - 1;
-
-  bool exact_split =
-      (tot_extent ==
-       cinn::common::AutoSimplify(process_factors[0] * process_factors[1]));
-  if (!exact_split) {
-    process_factors[idx_neg1] =
-        cinn::common::AutoSimplify(process_factors[idx_neg1] + Expr(1));
   }
 
   PADDLE_ENFORCE_LE(
-      num_minus1,
+      num_neg1,
       1,
       ::common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
@@ -182,6 +199,31 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           "[Expr info] The Expr of current schedule is: %s.",
           module_expr_.GetExprs()));
 
+  std::vector<Expr> process_factors;
+  for (int factor : factors) {
+    if (factor == -1) {
+      process_factors.push_back(optim::ArithSimplify(tot_extent / prod_size));
+    } else {
+      process_factors.push_back(Expr(factor));
+    }
+  }
+
+  // If there exists `-1` in factors, check exact_split by product all factors
+  // and see if it matches the original extent. Otherwise, always treat it as
+  // inexact split.
+  bool exact_split = false;
+  if (num_neg1 > 0) {
+    Expr restored_extent =
+        optim::ArithSimplify(process_factors[idx_neg1] * prod_size);
+    if (restored_extent == tot_extent) {
+      exact_split = true;
+    }
+  }
+  if (!exact_split && num_neg1 > 0) {
+    process_factors[idx_neg1] =
+        optim::ArithSimplify(process_factors[idx_neg1] + Expr(1));
+  }
+
   std::vector<Var> new_loop_vars;
   Expr substitute_value(0);
   for (int i = 0; i < process_factors.size(); ++i) {
@@ -189,7 +231,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }
-  substitute_value = cinn::common::AutoSimplify(substitute_value);
+  substitute_value = optim::ArithSimplify(substitute_value);
   Expr new_node = ir::ir_utils::IRCopy(for_node->body);
   ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
   std::vector<Expr> splited_loops;
@@ -210,6 +252,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
                          new_node);
     splited_loops[i] = new_node;
   }
+
+  SimplifyBindingsInStaticShape(this, loop, "split", &new_node);
 
   this->Replace(loop, new_node);
   VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
@@ -274,7 +318,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
           << loop;
 
   std::vector<Expr> process_factors(factors);
-  Expr prod_size(1);
+  Expr prod_size(int64_t(1));
   for (auto factor : factors) prod_size = prod_size * Expr(factor);
   common::cas_intervals_t var_intervals = {};
   cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
@@ -298,7 +342,7 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     substitute_value = Expr(temp_var) + substitute_value * process_factors[i];
     new_loop_vars.push_back(temp_var);
   }
-  substitute_value = cinn::common::AutoSimplify(substitute_value);
+  substitute_value = optim::ArithSimplify(substitute_value);
   Expr new_node = ir::ir_utils::IRCopy(for_node->body);
   ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
   std::vector<Expr> splited_loops;
@@ -315,6 +359,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
     splited_loops[i] = new_node;
   }
 
+  SimplifyBindingsInStaticShape(this, loop, "split", &new_node);
+
   this->Replace(loop, new_node);
   VLOG(3) << "After Split, ir is:\n" << splited_loops.at(0);
   return splited_loops;
@@ -326,7 +372,7 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   std::string primitive = "Fuse";
   std::ostringstream os;
 
-  VLOG(3) << "Tring to fuse:\n" << cinn::utils::Join(loops, "\n");
+  VLOG(3) << "Trying to fuse:\n" << loops[0];
   std::vector<const ir::For*> for_nodes;
   std::vector<Var> loop_vars;
 
@@ -397,19 +443,26 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   substitute_value.resize(loops_number);
   Expr fused_expr(fused_var);
   for (int i = loops_number - 1; i > 0; i--) {
-    substitute_value[i] = Mod::Make(fused_expr, for_nodes[i]->extent);
-    fused_expr = Div::Make(fused_expr, for_nodes[i]->extent);
+    auto& extent = for_nodes[i]->extent;
+    // Note: if the loop has an extent of 0, just skip this loop, because a
+    // zero-extent loop will never be executed.
+    if (extent.is_constant() && extent.as_int64() == 0) {
+      substitute_value[i] = fused_expr;
+      continue;
+    }
+    substitute_value[i] = Mod::Make(fused_expr, extent);
+    fused_expr = Div::Make(fused_expr, extent);
   }
   substitute_value[0] = fused_expr;
 
   Expr fused_body = ir::ir_utils::IRCopy(for_nodes.back()->body);
   ReplaceExpr(&fused_body, loop_vars, substitute_value);
   optim::Simplify(&fused_body);
-  Expr fused_extent(1);
+  Expr fused_extent(int64_t(1));
   for (int i = 0; i < loops_number; ++i) {
     fused_extent = fused_extent * for_nodes[i]->extent;
   }
-  fused_extent = cinn::common::AutoSimplify(fused_extent);
+  fused_extent = optim::ArithSimplify(fused_extent);
   if (!fused_body.As<ir::Block>()) fused_body = Block::Make({fused_body});
   Expr new_stmt = For::Make(fused_var,
                             Expr(0),
@@ -417,6 +470,9 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
                             for_nodes[0]->for_type(),
                             for_nodes[0]->device_api,
                             fused_body);
+
+  SimplifyBindingsInStaticShape(this, loops[0], "fuse", &new_stmt);
+
   this->Replace(loops[0], new_stmt);
 
   VLOG(3) << "After fuse, ir is:\n" << new_stmt;
@@ -556,7 +612,7 @@ Expr DyScheduleImpl::Reorder(const std::string& block_name,
                       static_cast<int>(all_loops.size()),
                       ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
-                          "primitive <Reoder>.\n"
+                          "primitive <Reorder>.\n"
                           "[Error info] The loop index in Reorder should be "
                           "less than total loop's number!\n"
                           "[Expr info] The Expr of current schedule is: %s.",
@@ -567,7 +623,7 @@ Expr DyScheduleImpl::Reorder(const std::string& block_name,
         0,
         ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
-            "<Reoder>.\n"
+            "<Reorder>.\n"
             "[Error info] The loop index in Reorder should be >= 0!\n"
             "[Expr info] The Expr of current schedule is: %s.",
             module_expr_.GetExprs()));
@@ -592,7 +648,7 @@ Expr DyScheduleImpl::Reorder(const Expr& block,
                       static_cast<int>(all_loops.size()),
                       ::common::errors::InvalidArgument(
                           "[IRScheduleError] An error occurred in the schedule "
-                          "primitive <Reoder>.\n"
+                          "primitive <Reorder>.\n"
                           "[Error info] The loop index in Reorder should be "
                           "less than total loop's number!\n"
                           "[Expr info] The Expr of current schedule is: %s.",
@@ -603,7 +659,7 @@ Expr DyScheduleImpl::Reorder(const Expr& block,
         0,
         ::common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
-            "<Reoder>.\n"
+            "<Reorder>.\n"
             "[Error info] The loop index in Reorder should be >= 0!\n"
             "[Expr info] The Expr of current schedule is: %s.",
             module_expr_.GetExprs()));

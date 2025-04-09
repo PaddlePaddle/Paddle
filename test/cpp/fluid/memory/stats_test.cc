@@ -32,15 +32,18 @@ class StatsTest : public ::testing::Test {
   void SetFunc(
       std::function<void(const std::string, int, int64_t)> update_func,
       std::function<int64_t(const std::string, int)> current_value_func,
-      std::function<int64_t(const std::string, int)> peak_value_func) {
+      std::function<int64_t(const std::string, int)> peak_value_func,
+      std::function<void(const std::string, int)> reset_peak_value_func) {
     update_func_ = update_func;
     current_value_func_ = current_value_func;
     peak_value_func_ = peak_value_func;
+    reset_peak_value_func_ = reset_peak_value_func;
   }
 
   void RunTests() {
     MultiThreadReadWriteTest();
     PeakValueTest();
+    ResetPeakValueTest();
   }
 
  private:
@@ -94,6 +97,18 @@ class StatsTest : public ::testing::Test {
     EXPECT_EQ(peak_value_func_(stat_type_, 0), peak_value);
   }
 
+  void ResetPeakValueTest() {
+    for (int64_t data : datas_) {
+      update_func_(stat_type_, 0, data);
+
+      EXPECT_GE(peak_value_func_(stat_type_, 0),
+                current_value_func_(stat_type_, 0));
+      reset_peak_value_func_(stat_type_, 0);
+      EXPECT_EQ(peak_value_func_(stat_type_, 0),
+                current_value_func_(stat_type_, 0));
+    }
+  }
+
   std::string stat_type_;
   std::vector<int64_t> datas_{
       543149808935355, 634698327471328, 706215795436611, 577939367795333,
@@ -125,13 +140,15 @@ class StatsTest : public ::testing::Test {
   std::function<void(const std::string, int, int64_t)> update_func_;
   std::function<int64_t(const std::string, int)> current_value_func_;
   std::function<int64_t(const std::string, int)> peak_value_func_;
+  std::function<void(const std::string, int)> reset_peak_value_func_;
 };
 
 TEST_F(StatsTest, DeviceAllocatedTest) {
   SetStatType("Allocated");
   SetFunc(DeviceMemoryStatUpdate,
           DeviceMemoryStatCurrentValue,
-          DeviceMemoryStatPeakValue);
+          DeviceMemoryStatPeakValue,
+          DeviceMemoryStatResetPeakValue);
   RunTests();
 }
 
@@ -146,6 +163,9 @@ TEST_F(StatsTest, DeviceReservedMacroTest) {
       },
       [](const std::string stat_type, int id) {
         return DEVICE_MEMORY_STAT_PEAK_VALUE(Reserved, id);
+      },
+      [](const std::string stat_type, int id) {
+        return DEVICE_MEMORY_STAT_RESET_PEAK_VALUE(Reserved, id);
       });
   RunTests();
 }
@@ -161,6 +181,9 @@ TEST_F(StatsTest, HostAllocatedMacroTest) {
       },
       [](const std::string stat_type, int id) {
         return HOST_MEMORY_STAT_PEAK_VALUE(Allocated, id);
+      },
+      [](const std::string stat_type, int id) {
+        return HOST_MEMORY_STAT_RESET_PEAK_VALUE(Allocated, id);
       });
   RunTests();
 }
@@ -169,7 +192,8 @@ TEST_F(StatsTest, HostReservedTest) {
   SetStatType("Reserved");
   SetFunc(HostMemoryStatUpdate,
           HostMemoryStatCurrentValue,
-          HostMemoryStatPeakValue);
+          HostMemoryStatPeakValue,
+          HostMemoryStatResetPeakValue);
   RunTests();
 }
 

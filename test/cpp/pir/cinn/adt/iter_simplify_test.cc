@@ -16,6 +16,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/schedule_base.h"
@@ -39,10 +41,11 @@ namespace common {
 class TestIterSimplify : public ::testing::Test {
  public:
   void SetUp() override {
-    i = ir::Var(ir::Expr(0), ir::Expr(2), "i");
-    j = ir::Var(ir::Expr(0), ir::Expr(4), "j");
-    k = ir::Var(ir::Expr(0), ir::Expr(8), "k");
-    i_j_k_fused = ir::Var(ir::Expr(0), ir::Expr(64), "i_j_k_fused");
+    i = ir::Var(ir::Expr(0), ir::Expr(2), "i").set_index(1);
+    j = ir::Var(ir::Expr(0), ir::Expr(4), "j").set_index(1);
+    k = ir::Var(ir::Expr(0), ir::Expr(8), "k").set_index(1);
+    i_j_k_fused =
+        ir::Var(ir::Expr(0), ir::Expr(64), "i_j_k_fused").set_index(1);
     var_intervals = {
         {"i", CasInterval(i->lower_bound, i->upper_bound)},
         {"j", CasInterval(j->lower_bound, j->upper_bound)},
@@ -258,7 +261,6 @@ TEST_F(TestIterSimplify, div) {
   TEST_EXPR(e1, gt1, i_j_k_fused / 8);
   TEST_EXPR(e2, gt2, i_j_k_fused / 32);
   TEST_EXPR(e3, gt3, i_j_k_fused);
-
   TEST_EXPR(e4, gt4, i_j_k_fused * 2);
   TEST_EXPR(e5, gt5, i_j_k_fused / 2);
   TEST_EXPR(e6, gt6, (i_j_k_fused + 8) / 16);
@@ -366,18 +368,12 @@ TEST_F(TestIterSimplify, fuse_not_same_source) {
       ir::IndexExpr(8),
       ir::IndexExpr(8),
       ir::IndexExpr(1)));
-  auto gt2 = ITER_SUM(ITER_SPLIT(
-      ITER_MARK_SUM(ITER_SUM(ITER_SPLIT(ITER_MARK_VAR(i), ir::IndexExpr(4)),
-                             ITER_SPLIT(ITER_MARK_VAR(j), ir::IndexExpr(1))),
-                    ir::IndexExpr(8))));
 
   ir::Expr e1 = (i * 32 + j * 8 + k) / 8;
-  ir::Expr e2 = (i * 32 + j * 8) / 8;
-  ir::Expr e3 = (i * 32 + j * 7) / 8;
+  ir::Expr e2 = (i * 32 + j * 7) / 8;
 
   TEST_EXPR(e1, gt1, (i * 32 + j * 8 + k) / 8);
-  TEST_EXPR(e2, gt2, i * 4 + j);
-  EXPECT_ANY_THROW(rewriter.Rewrite(&e3));
+  EXPECT_ANY_THROW(rewriter.Rewrite(&e2));
 }
 
 TEST_F(TestIterSimplify, fuse_same_source) {
@@ -445,17 +441,19 @@ TEST_F(TestIterSimplify, SimplifyBindings) {
                                  shape[i],
                                  cinn::UniqName("b" + std::to_string(i)),
                                  false,
-                                 false));
+                                 false)
+                             .set_index(1));
     axis_vars[i]->is_reduce_axis = false;
     iter_values.push_back(axis_vars[i]);
   }
 
   // Create ScheduleBlock body
-  ir::Expr body = ir::ScheduleBlockRealize::Make(
+  ir::Expr body_ = ir::ScheduleBlockRealize::Make(
       iter_values,
       ir::ScheduleBlock::Make(block_vars, {}, {}, "Test", Expr(0)));
 
   // Create For loops
+  auto body = body_;
   for (int i = shape.size() - 1; i >= 0; --i) {
     ir::Var loop_var = axis_vars[i];
     ir::Expr loop_extent = shape[i];
@@ -467,11 +465,14 @@ TEST_F(TestIterSimplify, SimplifyBindings) {
                          ir::Block::Make({body}));
   }
 
+  // Create outer ScheduleBlockRealize
+  ir::Expr body_outer = ir::ScheduleBlockRealize::Make(
+      {}, ir::ScheduleBlock::Make({}, {}, {}, "test1", body));
+
   // Create ir schedule
-  ir::ModuleExpr mod_expr(std::vector<ir::Expr>({body}));
+  ir::ModuleExpr mod_expr({ir::Block::Make({body_outer})});
   ir::IRSchedule ir_sch(mod_expr);
-  auto blocks = ir_sch.GetAllBlocks();
-  std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+  std::vector<ir::Expr> loops = ir_sch.GetLoops(body_);
 
   // Apply Fuse and Split
   ir::Expr loop_fuse = ir_sch.Fuse(loops);
@@ -492,6 +493,25 @@ TEST_F(TestIterSimplify, SimplifyBindings) {
   EXPECT_EQ(simplified_values[0], f / 32);
   EXPECT_EQ(simplified_values[1], f % 32 / 8);
   EXPECT_EQ(simplified_values[2], f % 8);
+}
+
+TEST_F(TestIterSimplify, MergeMulMod) {
+  auto S0 = ir::Var(ir::Expr(0), ir::Expr(4), "S0").set_index(1);
+  auto S1 = ir::Var(ir::Expr(0), ir::Expr(256), "S1").set_index(1);
+  auto S2 = ir::Var(ir::Expr(0), ir::Expr(13), "S2").set_index(1);
+
+  auto e1 = ((((((((S0 * 256) + S1) + (S2 * 1024)) / 2500) * 50) +
+               (((((S0 * 256) + S1) + (S2 * 1024)) % 2500) / 50)) *
+              50) +
+             ((((S0 * 256) + S1) + (S2 * 1024)) % 50));
+  auto e2 = ((((((S0 * 256) + S1) + (S2 * 1024)) / 2500) + -4) * 2500) +
+            ((((S0 * 256) + S1) + (S2 * 1024)) % 2500);
+
+  auto e3 = (S1 / 784 * 28 + S1 % 784 / 28) * 28 + S1 % 28;
+
+  EXPECT_EQ(MergeMulMod(e1), (((S0 * 256) + S1) + (S2 * 1024)));
+  EXPECT_EQ(MergeMulMod(e2), ((((S0 * 256) + S1) + (S2 * 1024)) + -10000));
+  EXPECT_EQ(MergeMulMod(e3), S1);
 }
 }  // namespace common
 }  // namespace cinn

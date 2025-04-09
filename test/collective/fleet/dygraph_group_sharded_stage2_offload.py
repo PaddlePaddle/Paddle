@@ -94,7 +94,10 @@ def train_mlp(model, offload=False, test=False):
 
     for dtype in optimizer.param_storages:
         for dst_rank, param_storage in optimizer.param_storages[dtype].items():
-            param_storage.to(device="gpu", dtype=dtype)
+            param_storage.to(
+                device="xpu" if paddle.is_compiled_with_xpu() else "gpu",
+                dtype=dtype,
+            )
 
     return model.parameters()
 

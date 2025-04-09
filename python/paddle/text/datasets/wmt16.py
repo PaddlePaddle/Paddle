@@ -192,7 +192,7 @@ class WMT16(Dataset):
     def _load_dict(self, lang, dict_size, reverse=False):
         dict_path = os.path.join(
             paddle.dataset.common.DATA_HOME,
-            "wmt16/%s_%d.dict" % (lang, dict_size),
+            f"wmt16/{lang}_{dict_size}.dict",
         )
         dict_found = False
         if os.path.exists(dict_path):
@@ -331,7 +331,7 @@ class WMT16(Dataset):
 
         dict_path = os.path.join(
             paddle.dataset.common.DATA_HOME,
-            "wmt16/%s_%d.dict" % (lang, dict_size),
+            f"wmt16/{lang}_{dict_size}.dict",
         )
         assert os.path.exists(dict_path), "Word dictionary does not exist. "
         "Please invoke paddle.dataset.wmt16.train/test/validation first "

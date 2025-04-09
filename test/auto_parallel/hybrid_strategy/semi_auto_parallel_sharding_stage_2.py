@@ -64,7 +64,7 @@ class TestSemiAutoParallelShardingStage2:
         batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
         # shard optimizer with stage 1 fn
         opt = paddle.optimizer.AdamW(parameters=linear.parameters())
-        opt = dist.shard_optimizer(opt, dist.ShardingStage2(self._mesh))
+        opt = dist.shard_optimizer(opt, dist.ShardingStage2("x", self._mesh))
         for _ in range(5):
             loss = linear(batch)
             loss.backward()
@@ -81,7 +81,7 @@ class TestSemiAutoParallelShardingStage2:
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=layer.parameters()
         )
-        opt = dist.shard_optimizer(opt, dist.ShardingStage2(self._mesh))
+        opt = dist.shard_optimizer(opt, dist.ShardingStage2("x", self._mesh))
         loss_fn = nn.MSELoss()
 
         dist_loader = dist.shard_dataloader(

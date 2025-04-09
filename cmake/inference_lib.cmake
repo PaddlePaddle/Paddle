@@ -150,6 +150,20 @@ function(copy_part_of_third_party TARGET DST)
       DSTS ${dst_dir}/include ${dst_dir})
   endif()
 
+  if(WITH_OPENVINO)
+    set(dst_dir "${DST}/third_party/install/openvino")
+    copy(
+      ${TARGET}
+      SRCS ${OPENVINO_INC_DIR} ${OPENVINO_LIB_DIR}
+      DSTS ${dst_dir} ${dst_dir})
+
+    set(dst_dir "${DST}/third_party/install/tbb")
+    copy(
+      ${TARGET}
+      SRCS ${TBB_INC_DIR} ${TBB_LIB_DIR}
+      DSTS ${dst_dir} ${dst_dir})
+  endif()
+
   set(dst_dir "${DST}/third_party/install/gflags")
   copy(
     ${TARGET}
@@ -193,6 +207,14 @@ function(copy_part_of_third_party TARGET DST)
     copy(
       ${TARGET}
       SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHATTN_LIBRARIES}
+      DSTS ${dst_dir} ${dst_dir}/lib)
+  endif()
+
+  if(WITH_FLASHATTN_V3)
+    set(dst_dir "${DST}/third_party/install/flashattn")
+    copy(
+      ${TARGET}
+      SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHATTN_V3_LIBRARIES}
       DSTS ${dst_dir} ${dst_dir}/lib)
   endif()
 
@@ -376,10 +398,6 @@ copy(
   SRCS ${PADDLE_SOURCE_DIR}/paddle/extension.h
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/)
 
-copy(
-  inference_lib_dist
-  SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/core/parser/*.h
-  DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/paddle/pir/core/parser/)
 copy(
   inference_lib_dist
   SRCS ${PADDLE_SOURCE_DIR}/paddle/pir/include/core/*.h

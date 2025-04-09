@@ -101,12 +101,11 @@ def dice_loss(
     ), "The rank of input should be greater than or equal to 2."
     assert len(input.shape) == len(label.shape), (
         "The rank of input and label should be equal, "
-        "but received input: %d, label: %d."
-        % (len(input.shape), len(label.shape))
+        f"but received input: {len(input.shape)}, label: {len(label.shape)}."
     )
     assert label.shape[-1] == 1, (
         "The last dimension of label should be 1, "
-        "but received %d." % label.shape[-1]
+        f"but received {label.shape[-1]}."
     )
     assert (
         input.shape[:-1] == label.shape[:-1]
@@ -1918,7 +1917,7 @@ def ctc_loss(
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
     It can be aliased as softmax with CTC, since a native softmax activation
-    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+    is integrated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
         log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
@@ -3450,13 +3449,11 @@ def multi_label_soft_margin_loss(
     For each sample in the mini-batch:
 
     .. math::
-        \text{loss}(x, y) = \sum_{ij}\frac{\max(0, 1 - (x[y[j]] - x[i]))}{\text{x.size}(0)}
+        \text{loss}(x, y) = - \frac{1}{C} * \sum_i y[i] * \log((1 + \exp(-x[i]))^{-1})
+            + (1-y[i]) * \log\left(\frac{\exp(-x[i])}{(1 + \exp(-x[i]))}\right)
 
-    where :math:`x \in \left\{0, \; \cdots , \; \text{x.size}(0) - 1\right\}`, \
-    :math:`y \in \left\{0, \; \cdots , \; \text{y.size}(0) - 1\right\}`, \
-    :math:`0 \leq y[j] \leq \text{x.size}(0)-1`, \
-    and :math:`i \neq y[j]` for all :math:`i` and :math:`j`.
-    :math:`y` and :math:`x` must have the same size.
+    where :math:`i \in \left\{0, \; \cdots , \; \text{x.nElement}() - 1\right\}`,
+    :math:`y[i] \in \left\{0, \; 1\right\}`.
 
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes, and if shape is more than 2D, this is (N, C, D1, D2,..., Dk), k >= 1.
@@ -4481,7 +4478,7 @@ def adaptive_log_softmax_with_loss(
         name (str|None, optional): Name for the operation (optional, default is ``None``). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - output (Tensor). The tensor sotring adaptive logsoftmax result, the shape of output is ``[N]``
+        - output (Tensor). The tensor storing adaptive logsoftmax result, the shape of output is ``[N]``
         - loss (Tensor). The tensor variable storing the adaptive_log_softmax_loss of input and label.
 
     Examples:
@@ -4513,9 +4510,9 @@ def adaptive_log_softmax_with_loss(
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.14779019)
     """
-    targt_dim = label.dim()
+    target_dim = label.dim()
 
-    if targt_dim == 1:
+    if target_dim == 1:
         if input.shape[0] != label.shape[0]:
             raise ValueError(
                 'Input and label should have the same size '
@@ -4526,7 +4523,7 @@ def adaptive_log_softmax_with_loss(
                 '1D label tensor expects 2D input tensors, '
                 f'but found inputs with size {input.shape}'
             )
-    elif targt_dim == 0:
+    elif target_dim == 0:
         if input.dim() != 1:
             raise ValueError(
                 '0D label tensor expects 1D input tensors, '
@@ -4537,7 +4534,7 @@ def adaptive_log_softmax_with_loss(
             '0D or 1D label tensor expected, ' 'multi-label not supported'
         )
 
-    is_batched = targt_dim > 0
+    is_batched = target_dim > 0
     input = input if is_batched else input.unsqueeze(0)
     label = label if is_batched else label.unsqueeze(0)
 

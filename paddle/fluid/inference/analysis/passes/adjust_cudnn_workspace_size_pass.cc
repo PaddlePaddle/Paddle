@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/inference/analysis/argument.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 void AdjustCudnnWorkSpacePass::RunImpl(Argument* argument) {
   if (!argument->use_gpu()) return;
@@ -40,6 +38,4 @@ std::string AdjustCudnnWorkSpacePass::repr() const {
   return "adjust-cudnn-work-space-pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

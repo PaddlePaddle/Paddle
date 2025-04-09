@@ -256,7 +256,7 @@ struct Expression {
       return pir::detail::hash_combine(GetOperationHash(value.defining_op()),
                                        GetOpResultId(value));
     }
-    // hash(termiante_value) = terminate_value_id
+    // hash(terminate_value) = terminate_value_id
     return reinterpret_cast<size_t>(value.impl());
   }
 
@@ -282,6 +282,11 @@ struct Expression {
     if (op->HasTrait<pir::SideEffectTrait>()) {
       VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
               << " has side effect";
+      return false;
+    }
+    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
+      VLOG(7) << "[CalcOperationCanBeSafeToReplace] " << op->name()
+              << " is an inplace op";
       return false;
     }
     for (auto& value : op->results()) {
@@ -452,9 +457,9 @@ struct ExpressionEqual {
 struct ExpressionTable {
  public:
   ExpressionTable() = default;
-  void RegisiterExpression(Expression expr) {
+  void RegisterExpression(Expression expr) {
     auto op_info = expr.CalcOpInfo();
-    VLOG(7) << "[RegisiterExpression] op " << expr.op()->name() << " ["
+    VLOG(7) << "[RegisterExpression] op " << expr.op()->name() << " ["
             << expr.op() << "]"
             << "\n  hash: " << op_info.first
             << "\n  can_be_safe_to_replace: " << std::boolalpha
@@ -506,7 +511,7 @@ struct CSEAnalyzer {
 
     // Handle the operation
     auto expr = expression_table->CreateExpression(op);
-    expression_table->RegisiterExpression(expr);
+    expression_table->RegisterExpression(expr);
     auto maybe_same_expression = expression_table->Lookup(expr);
     if (expr.CanBeSafeToReplace()) {
       if (!maybe_same_expression.has_value()) {

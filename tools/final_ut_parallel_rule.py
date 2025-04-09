@@ -100,7 +100,7 @@ def classify_cases_by_mem(rootPath):
         json.dump(all_tests_by_card, f)
 
     with open("/pre_test/ut_mem_map.json", 'r') as load_f:
-        new_lastest_mem = json.load(load_f)
+        new_latest_mem = json.load(load_f)
     no_parallel_case = '^job$'
     for cardType in all_tests_by_card:
         case_mem_0 = '^job$'
@@ -112,15 +112,15 @@ def classify_cases_by_mem(rootPath):
                 no_parallel_case = no_parallel_case + '|^' + case + '$'
                 continue
 
-            if case not in new_lastest_mem:
+            if case not in new_latest_mem:
                 continue
 
             # mem = 0
-            if new_lastest_mem[case]["mem_nvidia"] == 0:
+            if new_latest_mem[case]["mem_nvidia"] == 0:
                 case_mem_0 = case_mem_0 + '|^' + case + '$'
             # mem != 0
             else:
-                case_mem_1[case] = new_lastest_mem[case]["mem_nvidia"]
+                case_mem_1[case] = new_latest_mem[case]["mem_nvidia"]
 
         with open(f'/pre_test/{cardType}_mem0', 'w') as f:
             f.write(case_mem_0)

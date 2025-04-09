@@ -232,7 +232,7 @@ class CostModel:
         new_var = program.global_block().create_var(
             name=var_id,
             dtype=paddle.float32,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
         )
         nodes[var_id] = TensorCostNode(
             new_var, CostNodeType.VARIABLE, "lod_tensor_blocking_queue_0"

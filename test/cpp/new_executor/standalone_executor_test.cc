@@ -234,9 +234,9 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   VarDesc* var_a = main_block->Var("a");
   VarDesc* var_b = main_block->Var("b");
   VarDesc* var_c = main_block->Var("c");
-  var_a->SetType(proto::VarType::LOD_TENSOR);
-  var_b->SetType(proto::VarType::LOD_TENSOR);
-  var_c->SetType(proto::VarType::LOD_TENSOR);
+  var_a->SetType(proto::VarType::DENSE_TENSOR);
+  var_b->SetType(proto::VarType::DENSE_TENSOR);
+  var_c->SetType(proto::VarType::DENSE_TENSOR);
 
   OpDesc* add = main_block->AppendOp();
   add->SetType("elementwise_add");

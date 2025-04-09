@@ -109,10 +109,11 @@ __global__ void ScatterNdCUDAKernel(const T* update,
           "The index is out of bounds, "
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
-          "be less than [%d] and greater or equal to [%d], but received [%d]",
-          output_dims[j],
-          -output_dims[j],
-          index_value);
+          "be less than [%ld] and greater or equal to [%ld], but received "
+          "[%ld]",
+          static_cast<int64_t>(output_dims[j]),
+          -static_cast<int64_t>(output_dims[j]),
+          static_cast<int64_t>(index_value));
       if (index_value < 0) {
         index_value += output_dims[j];
       }

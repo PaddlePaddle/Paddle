@@ -11,12 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/fluid/platform/densetensor_printer.h"
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/scope.h"
 
-TEST(LodTensorPrinter, PrintVar) {
+TEST(DenseTensorPrinter, PrintVar) {
   paddle::framework::Scope scope;
   std::stringstream ss;
   paddle::platform::PrintVar(&scope, "NotAVar", "We don't have var", &ss);

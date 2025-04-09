@@ -14,56 +14,68 @@
 
 #pragma once
 
-#include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/stmt.h"
 
 namespace cinn {
 namespace optim {
 
 struct ForTreeNode {
-  const ir::For* val;
+  const ir::stmt::For val;
   std::vector<ForTreeNode> children;
 };
 
 using ForEqualFunc =
     std::function<bool(const ForTreeNode&, const ForTreeNode&)>;
 
-/**
- * Check if blocks can merge.
- * @param first for_loops vector
- * @param second Another for_loops vector.
- * @return Return if two block's for extents equal currently.
+/*
+ * Determines if two blocks of code with nested for-loops have identical loop
+ * extents and can be merged.
+ *
+ * This pass is applicable in scenarios where there are multiple code blocks
+ * with nested for-loops, and we need to determine if these blocks can be
+ * consolidated to simplify the code structure.
+ *
+ * When applied, this pass will not directly modify the IR but serves as a
+ * prerequisite check to ensure that loop extents match. If they do, a separate
+ * merging process can be safely conducted to combine the blocks into a single
+ * block with shared loop structures.
+ *
+ * Performance impact: This pass itself does not directly impact performance but
+ * enables further optimizations by identifying mergeable loop structures, which
+ * can reduce code size and potentially improve cache efficiency by
+ * consolidating similar data processing tasks.
+ *
+ * Examples:
+ *
+ * Simple identical loops:
+ * Input IR:
+ *   block(var_B)
+ * for(i, 0, 10)
+ *   for(j, 0, 10)
+ *     B[i,j] = A[i,j]
+ *   block(var_C)
+ * for(i, 0, 10)
+ *   for(j, 0, 10)
+ *     C[i,j] = A[i,j]
+ * Output IR:
+ *   Can be merged since loop extents are identical.
+ *
+ * Different loop extents:
+ * Input IR:
+ *   block(var_B)
+ * for(i, 0, 10)
+ *   for(j, 0, 10)
+ *     B[i,j] = A[i,j]
+ *   block(var_C)
+ * for(i, 0, 3)
+ *   for(j, 0, 4)
+ *     C[i,j] = A[i,j]
+ * Output IR:
+ *   Cannot be merged due to differing loop extents.
  */
-/**
- * Example 1: CanMergeBlocks(var_B, var_C)
- * block(var_B)
- *   for(i, 0, 10)
- *     for(j, 0, 10)
- *        B[i,j] = A[i,j]
- *
- * block(var_C)
- *   for(i, 0, 10)
- *     for(j, 0, 10)
- *        C[i,j] = A[i,j]
- * =>
- * Return value:
- * true
- *
- * Example 2: CanMergeBlocks(var_B, var_C)
- * block(var_B)
- *   for(i, 0, 10)
- *     for(j, 0, 10)
- *        B[i,j] = A[i,j]
- *
- * block(var_C)
- *   for(i, 0, 3)
- *     for(j, 0, 4)
- *        C[i,j] = A[i,j]
- * =>
- * Return value:
- * false
- */
-bool CanMergeBlocks(const ir::For* first,
-                    const ir::For* second,
+
+bool CanMergeBlocks(const ir::stmt::For first,
+                    const ir::stmt::For second,
                     const ForEqualFunc& IsEqual);
 
 }  // namespace optim

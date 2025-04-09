@@ -825,6 +825,87 @@ class TestTransposeAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestMatrixTransposeApi(unittest.TestCase):
+    def test_static_out(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name='x', shape=[2, 3, 4], dtype='float32')
+            x_trans1 = paddle.matrix_transpose(x)
+            x_trans2 = paddle.linalg.matrix_transpose(x)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            x_np = np.random.random([2, 3, 4]).astype("float32")
+            result1, result2 = exe.run(
+                feed={"x": x_np}, fetch_list=[x_trans1, x_trans2]
+            )
+            expected_result = np.transpose(x_np, (0, 2, 1))
+
+            np.testing.assert_array_equal(result1, expected_result)
+            np.testing.assert_array_equal(result2, expected_result)
+
+    def test_dygraph_out(self):
+        paddle.disable_static()
+        x = paddle.randn([2, 3, 4])
+        x_trans1 = paddle.matrix_transpose(x)
+        x_trans2 = paddle.linalg.matrix_transpose(x)
+        x_np = x.numpy()
+        expected_result = np.transpose(x_np, (0, 2, 1))
+
+        np.testing.assert_array_equal(x_trans1.numpy(), expected_result)
+        np.testing.assert_array_equal(x_trans2.numpy(), expected_result)
+        paddle.enable_static()
+
+
+class TestMatrixTransposeAPI_ZeroDim(unittest.TestCase):
+    def test_zero_dim_error(self):
+        paddle.disable_static()
+        x = paddle.rand([])
+        with self.assertRaises(ValueError) as context:
+            out = paddle.matrix_transpose(x)
+        self.assertIn(
+            "Tensor.ndim(0) is required to be greater than or equal to 2",
+            str(context.exception),
+        )
+        paddle.enable_static()
+
+
+class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def check_dtype_transpose(self, dtype):
+        x_np = np.random.random([2, 3, 4]).astype(dtype)
+        x = paddle.to_tensor(x_np)
+        out = paddle.matrix_transpose(x)
+        expected_result = np.transpose(x_np, (0, 2, 1))
+        np.testing.assert_array_equal(out.numpy(), expected_result)
+
+    def test_fp32(self):
+        self.check_dtype_transpose('float32')
+
+    def test_fp64(self):
+        self.check_dtype_transpose('float64')
+
+    def test_fp16(self):
+        if paddle.is_compiled_with_cuda():
+            self.check_dtype_transpose('float16')
+
+    def test_int8(self):
+        self.check_dtype_transpose('int8')
+
+    def test_int16(self):
+        self.check_dtype_transpose('int16')
+
+    def test_int32(self):
+        self.check_dtype_transpose('int32')
+
+    def test_int64(self):
+        self.check_dtype_transpose('int64')
+
+    def tearDown(self):
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

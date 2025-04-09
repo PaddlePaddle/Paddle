@@ -23,9 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
-namespace paddle {
-namespace distributed {
-namespace auto_parallel {
+namespace paddle::distributed::auto_parallel {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -33,7 +31,7 @@ std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
   if (tensor == nullptr) return std::vector<int64_t>();
   switch (tensor->GetType()) {
     case framework::proto::VarType::READER:
-    case framework::proto::VarType::LOD_TENSOR_ARRAY:
+    case framework::proto::VarType::DENSE_TENSOR_ARRAY:
     case framework::proto::VarType::STEP_SCOPES:
     case framework::proto::VarType::FEED_MINIBATCH:
     case framework::proto::VarType::FETCH_LIST:
@@ -487,6 +485,4 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed::auto_parallel

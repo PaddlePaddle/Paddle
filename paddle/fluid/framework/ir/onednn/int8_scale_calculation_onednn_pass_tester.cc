@@ -61,7 +61,7 @@ ProgramDesc BuildProgramDesc(bool convWithExistingBias,
   if (convWithExistingBias) nodes.push_back("conv_bias");
   for (auto& v : nodes) {
     auto* var = prog.MutableBlock(0)->Var(v);
-    var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetType(proto::VarType::DENSE_TENSOR);
     if (v == "weights") {
       var->SetPersistable(true);
       var->SetShape({1, static_cast<int>(scale_weights.size()), 1, 1});

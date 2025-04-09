@@ -139,7 +139,7 @@ struct OneDNNContext::Impl {
   void LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
                              KeyBlob::iterator it) const {
     // Take current input shape from TLS
-    // Take current executor addess from TLS
+    // Take current executor address from TLS
     // and for this executor's items add the one defined with arguments
     auto key_it =
         p_exec_items_

@@ -177,7 +177,7 @@ class OperatorUnsqueezeFusePattern : public paddle::drr::DrrPatternBase {
 class OperatorUnsqueezeFusePass : public pir::PatternRewritePass {
  public:
   OperatorUnsqueezeFusePass()
-      : pir::PatternRewritePass("operator_unsqueeze_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("operator_unsqueeze_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

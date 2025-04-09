@@ -85,13 +85,13 @@ class TestListenAndServOp(unittest.TestCase):
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
                 # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
+                os.stat(f"/tmp/paddle.{pid}.port")
                 return
             except OSError:
                 start_left_time -= sleep_time
 
     def _get_pserver_port(self, pid):
-        with open("/tmp/paddle.%d.port" % pid, 'r') as f:
+        with open(f"/tmp/paddle.{pid}.port", 'r') as f:
             port = int(f.read().strip())
         return port
 
@@ -123,7 +123,7 @@ class TestListenAndServOp(unittest.TestCase):
 
         origin = load_block.create_var(
             name="var.origin",
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[10, 8],
             dtype="float32",
             persistable=True,
@@ -131,7 +131,7 @@ class TestListenAndServOp(unittest.TestCase):
 
         slice0 = load_block.create_var(
             name="var.slice0",
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[3, 8],
             dtype="float32",
             persistable=True,
@@ -139,7 +139,7 @@ class TestListenAndServOp(unittest.TestCase):
 
         slice1 = load_block.create_var(
             name="var.slice1",
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[5, 8],
             dtype="float32",
             persistable=True,

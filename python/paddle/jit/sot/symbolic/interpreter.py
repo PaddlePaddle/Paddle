@@ -109,15 +109,16 @@ class Interpreter:
         Returns:
             A list of the Symbol of the StatementIR after execution.
         """
+
+        def _set(v, s):
+            state[s.name] = v
+
         SIR = self.get_sir(name)
         for stmt in SIR.statements:
             stmt: Statement
             before_stmt_opnum = opnum_in_program()
             inputs = replace_symbol(stmt.inputs, state)
             outs = getattr(self, stmt.type)(stmt, inputs)
-
-            def _set(v, s):
-                state[s.name] = v
 
             if len(to_sequence(outs)) != len(to_sequence(stmt.outputs)):
                 raise InnerError("Number output mismatch, some error happen.")

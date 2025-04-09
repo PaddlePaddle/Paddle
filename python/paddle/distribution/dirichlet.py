@@ -111,11 +111,11 @@ class Dirichlet(exponential_family.ExponentialFamily):
             concentration0.pow(2) * (concentration0 + 1)
         )
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from dirichlet distribution.
 
         Args:
-            shape (Sequence[int], optional): Sample shape. Defaults to empty tuple.
+            shape (Sequence[int], optional): Sample shape. Defaults to empty list.
         """
         shape = shape if isinstance(shape, tuple) else tuple(shape)
         return _dirichlet(self.concentration.expand(self._extend_shape(shape)))

@@ -45,6 +45,21 @@ from .auto_parallel.api import (
     to_static,
     unshard_dtensor,
 )
+from .auto_parallel.high_level_api import to_distributed
+from .auto_parallel.interface import get_mesh, set_mesh
+from .auto_parallel.intermediate.parallelize import parallelize
+from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
+from .auto_parallel.intermediate.tensor_parallel import (
+    ColWiseParallel,
+    PrepareLayerInput,
+    PrepareLayerOutput,
+    RowWiseParallel,
+    SequenceParallelBegin,
+    SequenceParallelDisable,
+    SequenceParallelEnable,
+    SequenceParallelEnd,
+)
+from .auto_parallel.local_layer import LocalLayer
 from .auto_parallel.placement_type import (
     Partial,
     Replicate,
@@ -176,5 +191,19 @@ __all__ = [
     "to_static",
     "Strategy",
     "DistModel",
+    "LocalLayer",
     "unshard_dtensor",
+    "parallelize",
+    "SequenceParallelEnd",
+    "SequenceParallelBegin",
+    "SequenceParallelEnable",
+    "SequenceParallelDisable",
+    "ColWiseParallel",
+    "RowWiseParallel",
+    "PrepareLayerOutput",
+    "PrepareLayerInput",
+    "SplitPoint",
+    "set_mesh",
+    "get_mesh",
+    "to_distributed",
 ]

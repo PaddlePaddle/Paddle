@@ -294,7 +294,7 @@ class Conv2dBiasBnOneDNNFusePattern
 class Conv2dBnOneDNNFusePass : public pir::PatternRewritePass {
  public:
   Conv2dBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_bn_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv2d_bn_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -323,7 +323,7 @@ class Conv2dBnOneDNNFusePass : public pir::PatternRewritePass {
 class Conv2dBiasBnOneDNNFusePass : public pir::PatternRewritePass {
  public:
   Conv2dBiasBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_bias_bn_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv2d_bias_bn_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

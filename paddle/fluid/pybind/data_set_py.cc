@@ -140,7 +140,7 @@ class IterableDatasetWrapper {
         }
 
         for (size_t j = 0; j < slots_.size(); ++j) {
-          if (!IsValidLoDTensor(*tensors_[i][j])) {
+          if (!IsValidDenseTensor(*tensors_[i][j])) {
             is_success = false;
             break;
           }
@@ -176,19 +176,9 @@ class IterableDatasetWrapper {
   }
 
  private:
-  bool IsValidLoDTensor(const phi::DenseTensor &tensor) const {
-    auto &lod = tensor.lod();
-    PADDLE_ENFORCE_LE(
-        lod.size(),
-        1,
-        common::errors::InvalidArgument("LoD level must be not larger than 1"));
+  bool IsValidDenseTensor(const phi::DenseTensor &tensor) const {
     if (!drop_last_) return true;
-
-    if (lod.empty()) {
-      return static_cast<size_t>(tensor.dims()[0]) == batch_size_;
-    } else {
-      return lod[0].size() == batch_size_ + 1;
-    }
+    return static_cast<size_t>(tensor.dims()[0]) == batch_size_;
   }
 
  private:

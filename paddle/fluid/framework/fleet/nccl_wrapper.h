@@ -91,5 +91,5 @@ class NCCLWrapper {
   DISABLE_COPY_AND_ASSIGN(NCCLWrapper);
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle

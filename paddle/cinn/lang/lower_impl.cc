@@ -149,7 +149,7 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
 
   return args;
 }
-// Generate Function Arguments for splitted kernel.
+// Generate Function Arguments for split kernel.
 std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
     Expr func_iterator, std::vector<ir::Tensor> temp_tensors) {
   CheckArgsUnique();
@@ -384,7 +384,7 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
 
     if (support_ir_schedule_) {
       optim::TransformPolyForToFor(&func->body);
-      optim::SimplifyBlocks(&func->body);
+      optim::SimplifyUnitBlock(&func->body);
       func->body = ir::Block::Make({func->body});
       result.push_back(func);
       num_func++;

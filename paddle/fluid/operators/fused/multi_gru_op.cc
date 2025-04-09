@@ -163,7 +163,7 @@ phi::KernelKey MultiGRUOp::GetExpectedKernelType(
 void MultiGRUOpMaker::Make() {
   AddInput(
       "X",
-      "(phi::DenseTensor) the input is an LodTensor, which support "
+      "(phi::DenseTensor) the input is an DenseTensor, which support "
       "variable-time length input sequence. The underlying tensor in "
       "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
       "total time steps in this mini-batch, M is the dim size of x.");

@@ -20,10 +20,17 @@ set(bw_api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml)
 set(legacy_bw_api_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_backward.yaml)
 set(bw_api_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/backward_api_base.h)
+set(bw_api_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api_base.cc)
+set(backward_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/backward_api.h)
-set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)
+set(backward_api_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)
 set(bw_api_header_file_tmp ${bw_api_header_file}.tmp)
 set(bw_api_source_file_tmp ${bw_api_source_file}.tmp)
+set(backward_api_header_file_tmp ${backward_api_header_file}.tmp)
+set(backward_api_source_file_tmp ${backward_api_source_file}.tmp)
 # dist backward api file
 set(dist_bw_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/generator/dist_bw_api_gen.py)
@@ -52,12 +59,17 @@ set(fused_bw_api_gen_file
 set(fused_bw_api_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_backward.yaml)
 set(fused_bw_api_header_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/fused_backward_api.h)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/fused_backward_api_base.h)
 set(fused_bw_api_source_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/fused_backward_api.cc)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/fused_backward_api_base.cc)
 set(fused_bw_api_header_file_tmp ${fused_bw_api_header_file}.tmp)
 set(fused_bw_api_source_file_tmp ${fused_bw_api_source_file}.tmp)
-
+set(fused_backward_api_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/fused_backward_api.h)
+set(fused_backward_api_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/fused_backward_api.cc)
+set(fused_backward_api_header_file_tmp ${fused_backward_api_header_file}.tmp)
+set(fused_backward_api_source_file_tmp ${fused_backward_api_source_file}.tmp)
 # sparse api file
 set(sparse_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/generator/sparse_api_gen.py)
@@ -75,11 +87,17 @@ set(sparse_bw_api_gen_file
 set(sparse_bw_api_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml)
 set(sparse_bw_api_header_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_backward_api_base.h)
 set(sparse_bw_api_source_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_bw_api.cc)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_backward_api_base.cc)
 set(sparse_bw_api_header_file_tmp ${sparse_bw_api_header_file}.tmp)
 set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
+set(sparse_backward_api_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_backward_api.h)
+set(sparse_backward_api_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_backward_api.cc)
+set(sparse_backward_api_header_file_tmp ${sparse_backward_api_header_file}.tmp)
+set(sparse_backward_api_source_file_tmp ${sparse_backward_api_source_file}.tmp)
 
 # strings api file
 set(strings_api_gen_file
@@ -135,8 +153,11 @@ if(WITH_DISTRIBUTE)
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${dist_api_gen_file} --api_yaml_path
-      ${api_yaml_file} ${legacy_api_yaml_file} --api_header_path
-      ${api_header_file_tmp} --api_source_path ${api_source_file_tmp})
+      ${api_yaml_file} ${legacy_api_yaml_file} --backward_api_yaml_path
+      ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} --api_header_path
+      ${api_header_file_tmp} --api_source_path ${api_source_file_tmp}
+      --backward_api_header_path ${backward_api_header_file_tmp}
+      --backward_api_source_path ${backward_api_source_file_tmp})
 
   # generate dist backward api
   execute_process(
@@ -150,8 +171,11 @@ else()
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
-      ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-      --api_source_path ${api_source_file_tmp})
+      ${legacy_api_yaml_file} --backward_api_yaml_path ${bw_api_yaml_file}
+      ${legacy_bw_api_yaml_file} --api_header_path ${api_header_file_tmp}
+      --api_source_path ${api_source_file_tmp} --backward_api_header_path
+      ${backward_api_header_file_tmp} --backward_api_source_path
+      ${backward_api_source_file_tmp})
 
   # generate backward api
   execute_process(
@@ -167,9 +191,11 @@ if(WITH_DISTRIBUTE)
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${dist_api_gen_file} --api_yaml_path
-      ${fused_api_yaml_file} --is_fused_ops_yaml --api_header_path
-      ${fused_api_header_file_tmp} --api_source_path
-      ${fused_api_source_file_tmp})
+      ${fused_api_yaml_file} --backward_api_yaml_path ${fused_bw_api_yaml_file}
+      --is_fused_ops_yaml --api_header_path ${fused_api_header_file_tmp}
+      --api_source_path ${fused_api_source_file_tmp} --backward_api_header_path
+      ${fused_backward_api_header_file_tmp} --backward_api_source_path
+      ${fused_backward_api_source_file_tmp})
 
   # generate fused_op backward api
   execute_process(
@@ -183,9 +209,11 @@ else()
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path
-      ${fused_api_yaml_file} --is_fused_ops_yaml --api_header_path
-      ${fused_api_header_file_tmp} --api_source_path
-      ${fused_api_source_file_tmp})
+      ${fused_api_yaml_file} --backward_api_yaml_path ${fused_bw_api_yaml_file}
+      --is_fused_ops_yaml --api_header_path ${fused_api_header_file_tmp}
+      --api_source_path ${fused_api_source_file_tmp} --backward_api_header_path
+      ${fused_backward_api_header_file_tmp} --backward_api_source_path
+      ${fused_backward_api_source_file_tmp})
 
   # generate fused_op backward api
   execute_process(
@@ -200,8 +228,11 @@ endif()
 execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${sparse_api_gen_file} --api_yaml_path
-    ${sparse_api_yaml_file} --api_header_path ${sparse_api_header_file_tmp}
-    --api_source_path ${sparse_api_source_file_tmp})
+    ${sparse_api_yaml_file} --backward_api_yaml_path ${sparse_bw_api_yaml_file}
+    --api_header_path ${sparse_api_header_file_tmp} --api_source_path
+    ${sparse_api_source_file_tmp} --backward_api_header_path
+    ${sparse_backward_api_header_file_tmp} --backward_api_source_path
+    ${sparse_backward_api_source_file_tmp})
 
 # generate backward sparse api
 execute_process(
@@ -223,7 +254,8 @@ if(WITH_DISTRIBUTE)
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
-      ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+      ${bw_api_yaml_file} ${legacy_api_yaml_file} ${legacy_bw_api_yaml_file}
+      --sparse_api_yaml_path ${sparse_api_yaml_file} ${sparse_bw_api_yaml_file}
       --dygraph_api_header_path ${dygraph_api_header_file_tmp}
       --dygraph_api_source_path ${dygraph_api_source_file_tmp}
       --gen_dist_branch)
@@ -231,7 +263,8 @@ else()
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} ${im_api_gen_file} --api_yaml_path ${api_yaml_file}
-      ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
+      ${bw_api_yaml_file} ${legacy_api_yaml_file} ${legacy_bw_api_yaml_file}
+      --sparse_api_yaml_path ${sparse_api_yaml_file} ${sparse_bw_api_yaml_file}
       --dygraph_api_header_path ${dygraph_api_header_file_tmp}
       --dygraph_api_source_path ${dygraph_api_source_file_tmp})
 endif()
@@ -266,14 +299,20 @@ set(generated_files
     "${api_header_file}"
     "${bw_api_source_file}"
     "${bw_api_header_file}"
+    "${backward_api_source_file}"
+    "${backward_api_header_file}"
     "${fused_api_source_file}"
     "${fused_api_header_file}"
     "${fused_bw_api_source_file}"
     "${fused_bw_api_header_file}"
+    "${fused_backward_api_source_file}"
+    "${fused_backward_api_header_file}"
     "${sparse_api_source_file}"
     "${sparse_api_header_file}"
     "${sparse_bw_api_source_file}"
     "${sparse_bw_api_header_file}"
+    "${sparse_backward_api_source_file}"
+    "${sparse_backward_api_header_file}"
     "${dygraph_api_source_file}"
     "${dygraph_api_header_file}"
     "${strings_api_source_file}"
@@ -311,10 +350,13 @@ collect_generated_srcs(
   SRCS
   ${api_source_file}
   ${bw_api_source_file}
+  ${backward_api_source_file}
   ${fused_api_source_file}
   ${fused_bw_api_source_file}
+  ${fused_backward_api_source_file}
   ${sparse_api_source_file}
   ${sparse_bw_api_source_file}
+  ${sparse_backward_api_source_file}
   ${dygraph_api_source_file}
   ${strings_api_source_file}
   ${phi_tensor_operants_source_file}

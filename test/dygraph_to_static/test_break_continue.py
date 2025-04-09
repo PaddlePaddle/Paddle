@@ -351,7 +351,7 @@ class TestOptimBreakInWhile(TestContinueInWhile):
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         dygraph_res = self.run_dygraph_mode()
-        # NOTE(SigureMo): Temperary run the test in sequential run mode to avoid dependency
+        # NOTE(SigureMo): Temporarily run the test in sequential run mode to avoid dependency
         # on the execution order of the test cases.
         if use_pir_api():
             with exe_sequential_run_guard(True):

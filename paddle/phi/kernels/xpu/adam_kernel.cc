@@ -26,29 +26,38 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AdamDenseKernel(const Context& dev_ctx,
-                     const DenseTensor& param,
-                     const DenseTensor& grad,
-                     const DenseTensor& learning_rate,
-                     const DenseTensor& moment1,
-                     const DenseTensor& moment2,
-                     const DenseTensor& beta1_pow,
-                     const DenseTensor& beta2_pow,
-                     const paddle::optional<DenseTensor>& master_param,
-                     const paddle::optional<DenseTensor>& skip_update,
-                     const Scalar& beta1,
-                     const Scalar& beta2,
-                     const Scalar& epsilon,
-                     bool lazy_mode,
-                     int64_t min_row_size_to_use_multithread,
-                     bool multi_precision,
-                     bool use_global_beta_pow,
-                     DenseTensor* param_out,
-                     DenseTensor* moment1_out,
-                     DenseTensor* moment2_out,
-                     DenseTensor* beta1_pow_out,
-                     DenseTensor* beta2_pow_out,
-                     DenseTensor* master_param_outs) {
+void AdamDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,  // UNUSED
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,  // UNUSED
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,  // UNUSED
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
+  PADDLE_ENFORCE_NE(
+      amsgrad,
+      true,
+      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
   funcs::GetDataPointer<Context, float>(
@@ -68,8 +77,8 @@ void AdamDenseKernel(const Context& dev_ctx,
 
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
+  DenseTensor xpu_beta1_pow;
   if (beta1_pow.place() == CPUPlace()) {
-    DenseTensor xpu_beta1_pow;
     phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
@@ -86,8 +95,8 @@ void AdamDenseKernel(const Context& dev_ctx,
 
   float* beta2_pow_ptr = nullptr;
   const float* beta2_const_pow_ptr = nullptr;
+  DenseTensor xpu_beta2_pow;
   if (beta2_pow.place() == CPUPlace()) {
-    DenseTensor xpu_beta2_pow;
     phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
@@ -261,6 +270,8 @@ void MergedAdamKernel(
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& moment1,
     const std::vector<const DenseTensor*>& moment2,
+    const paddle::optional<std::vector<const DenseTensor*>>&
+        moment2_max,  // UNUSED
     const std::vector<const DenseTensor*>& beta1_pow,
     const std::vector<const DenseTensor*>& beta2_pow,
     const paddle::optional<std::vector<const DenseTensor*>>& master_param,
@@ -269,12 +280,19 @@ void MergedAdamKernel(
     const Scalar& epsilon,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,  // UNUSED
     std::vector<DenseTensor*> param_out,
     std::vector<DenseTensor*> moment1_out,
     std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> moment2_max_out,  // UNUSED
     std::vector<DenseTensor*> beta1_pow_out,
     std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_param_out) {
+  PADDLE_ENFORCE_NE(
+      amsgrad,
+      true,
+      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
   auto beta1_ = beta1.to<float>();
@@ -480,18 +498,18 @@ void MergedAdamKernel(
 PD_REGISTER_KERNEL(
     adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }
 
 PD_REGISTER_KERNEL(merged_adam, XPU, ALL_LAYOUT, phi::MergedAdamKernel, float) {
   // Skip beta1_pow, beta2_pow data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

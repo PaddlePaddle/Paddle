@@ -16,7 +16,6 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
 from paddle import base
-from paddle.jit.api import to_static
 from paddle.nn import Layer, Linear
 
 
@@ -153,7 +152,7 @@ class EncoderLayer(Layer):
         for i in range(n_layer):
             self._encoder_sublayers.append(
                 self.add_sublayer(
-                    'esl_%d' % i,
+                    f'esl_{i}',
                     EncoderSubLayer(
                         hidden_act,
                         n_head,
@@ -370,7 +369,6 @@ class PretrainModelLayer(Layer):
             bias_attr="next_sent_fc.b_0",
         )
 
-    @to_static
     def forward(
         self,
         src_ids,

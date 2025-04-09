@@ -106,11 +106,11 @@ class TransformedDistribution(distribution.Distribution):
             ],
         )
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from ``TransformedDistribution``.
 
         Args:
-            shape (Sequence[int], optional): The sample shape. Defaults to ().
+            shape (Sequence[int], optional): The sample shape. Defaults to [].
 
         Returns:
             [Tensor]: The sample result.
@@ -120,11 +120,11 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Reparameterized sample from ``TransformedDistribution``.
 
         Args:
-            shape (Sequence[int], optional): The sample shape. Defaults to ().
+            shape (Sequence[int], optional): The sample shape. Defaults to [].
 
         Returns:
             [Tensor]: The sample result.

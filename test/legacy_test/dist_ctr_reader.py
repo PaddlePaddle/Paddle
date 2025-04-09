@@ -168,6 +168,6 @@ def load_data_meta():
     ), err_info
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
-    logger.info('dnn input dim: %d' % res[0])
-    logger.info('lr input dim: %d' % res[1])
+    logger.info(f'dnn input dim: {res[0]}')
+    logger.info(f'lr input dim: {res[1]}')
     return res

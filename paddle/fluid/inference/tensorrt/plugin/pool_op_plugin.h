@@ -206,10 +206,11 @@ class PoolPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -268,7 +269,76 @@ class PoolPluginDynamicCreator : public TensorRTPluginCreator {
     return new PoolPluginDynamic(serial_data, serial_length);
   }
 };
+
+class PIRPoolPluginDynamicCreator : public TensorRTPluginCreator {
+ public:
+  const char* getPluginName() const TRT_NOEXCEPT override {
+    return "pir_pool_plugin_dynamic";
+  }
+
+  const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
+    return new PoolPluginDynamic(serial_data, serial_length);
+  }
+  nvinfer1::IPluginV2* createPlugin(const char* name,
+                                    const nvinfer1::PluginFieldCollection* fc)
+      TRT_NOEXCEPT override {
+    bool ceil_mode = false;
+    std::string pool_type;
+    bool adaptive = false;
+    bool exclusive = false;
+    std::vector<int> ksize;
+    std::vector<int> strides;
+    std::vector<int> paddings;
+    bool global_pooling = false;
+
+    for (int i = 0; i < fc->nbFields; ++i) {
+      const nvinfer1::PluginField& field = fc->fields[i];
+      const std::string field_name(field.name);
+      if (field_name.compare("ceil_mode") == 0) {
+        ceil_mode = *static_cast<const bool*>(field.data);
+      } else if (field_name.compare("pool_type") == 0) {
+        pool_type = std::string(static_cast<const char*>(fc->fields[i].data),
+                                fc->fields[i].length);
+      } else if (field_name.compare("adaptive") == 0) {
+        adaptive = *static_cast<const bool*>(field.data);
+      } else if (field_name.compare("exclusive") == 0) {
+        exclusive = *static_cast<const bool*>(field.data);
+      } else if (field_name.compare("ksize") == 0) {
+        const int length = fc->fields[i].length;
+        const int* data = static_cast<const int*>(fc->fields[i].data);
+        ksize.insert(ksize.end(), data, data + length);
+      } else if (field_name.compare("strides") == 0) {
+        const int length = fc->fields[i].length;
+        const int* data = static_cast<const int*>(fc->fields[i].data);
+        strides.insert(strides.end(), data, data + length);
+      } else if (field_name.compare("paddings") == 0) {
+        const int length = fc->fields[i].length;
+        const int* data = static_cast<const int*>(fc->fields[i].data);
+        paddings.insert(paddings.end(), data, data + length);
+      } else if (field_name.compare("global_pooling") == 0) {
+        global_pooling = *static_cast<const bool*>(field.data);
+      } else {
+        assert(false && "unknown plugin field name.");
+      }
+    }
+    return new PoolPluginDynamic(ceil_mode,
+                                 pool_type,
+                                 adaptive,
+                                 exclusive,
+                                 ksize,
+                                 strides,
+                                 paddings,
+                                 global_pooling);
+  }
+};
+
 REGISTER_TRT_PLUGIN_V2(PoolPluginDynamicCreator);
+REGISTER_TRT_PLUGIN_V2(PIRPoolPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

@@ -27,6 +27,13 @@ limitations under the License. */
 namespace paddle::operators {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+static void GenXCCLID(std::vector<phi::ccl::CCLRootId>* xccl_ids) {
+  for (size_t i = 0; i < xccl_ids->size(); ++i) {
+    phi::DeviceManager::CCLGetUniqueId(
+        phi::DeviceManager::GetAllCustomDeviceTypes()[0], &(*xccl_ids)[i]);
+  }
+}
+
 static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
                             std::function<std::string(size_t)> func,
                             const framework::Scope& scope) {
@@ -51,7 +58,29 @@ class CGenXCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const phi::Place& dev_place) const override {}
+               const phi::Place& dev_place) const override {
+    int rank = Attr<int>("rank");
+    int ring_id = Attr<int>("ring_id");
+
+    std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
+      return Output("Out");
+    };
+
+    std::string endpoint = Attr<std::string>("endpoint");
+
+    std::vector<phi::ccl::CCLRootId> xccl_ids;
+    xccl_ids.resize(1);
+    int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
+    if (rank == 0) {
+      GenXCCLID(&xccl_ids);
+      std::vector<std::string> endpoint_list =
+          Attr<std::vector<std::string>>("other_endpoints");
+      platform::SendBroadCastCommID(endpoint_list, &xccl_ids, ring_id);
+    } else {
+      platform::RecvBroadCastCommID(server_fd, endpoint, &xccl_ids, ring_id);
+    }
+    CopyXCCLIDToVar(xccl_ids, func, scope);
+  }
 };
 
 #else

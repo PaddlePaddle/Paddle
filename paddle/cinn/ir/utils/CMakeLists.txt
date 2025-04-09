@@ -7,4 +7,5 @@ gather_srcs(
   ir_compare.cc
   ir_nodes_collector.cc
   ir_copy.cc
-  ir_replace.cc)
+  ir_replace.cc
+  stmt_converter.cc)

@@ -21,8 +21,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 using ir::Graph;
 using phi::Event;
@@ -263,5 +262,4 @@ CostData CostModel::ProfileMeasure(
   return cost_data;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

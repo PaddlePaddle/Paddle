@@ -1,0 +1,53 @@
+[files]
+# The following files will be excluded from spell check during commits
+extend-exclude = [
+    "third_party",
+    "patches",
+    "build",
+    # Skip `intermidiate` check in these files
+    "test/cpp/eager/task_tests/CMakeLists.txt",
+    "test/cpp/eager/task_tests/hook_test_intermidiate.cc",
+    # Skip `creater` check in these files
+    "paddle/fluid/inference/tensorrt/convert/CMakeLists.txt",
+    "paddle/fluid/inference/tensorrt/convert/generic_and_custom_plugin_creater.cc",
+    "paddle/fluid/inference/tensorrt/convert/test_custom_plugin_creater.cc",
+]
+
+[default]
+# Ignore 1-3 letter words, refer to https://github.com/crate-ci/typos/issues/1079
+extend-ignore-words-re = ["^[a-zA-Z]{1,3}$"]
+# refer to https://github.com/crate-ci/typos/blob/master/docs/reference.md#example-configurations
+extend-ignore-re = [
+    # Ignore lines by `# typos: disable-line`
+    "(?Rm)^.*(#|//)\\s*typos:\\s*disable-line$",
+    # Ignore block by `# typos: off` and `# typos: on`
+    "(?s)(#|//)\\s*typos:\\s*off.*?\\n\\s*(#|//)\\s*typos:\\s*on"
+]
+
+[default.extend-words]
+# PaddlePaddle specific words
+arange = "arange"
+astroid = 'astroid'
+cacl = 'cacl'
+CANN = 'CANN'
+Clas = 'Clas'
+clen = 'clen'
+datas = 'datas'
+dota = 'dota'
+dout = "dout"
+entrys = 'entrys'
+feeded = 'feeded'
+grad = "grad"
+Halfs = 'Halfs'
+kinf = 'kinf'
+operants = 'operants'
+Optin = 'Optin'
+padd = 'padd'
+pash = 'pash'
+splited = 'splited'
+splitted = 'splitted'
+statis = 'statis'
+UNEXPECT = 'UNEXPECT'
+tood = 'tood'
+unpacket = "unpacket"
+vaccum = 'vaccum'

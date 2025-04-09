@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class SquareOpConverter : public OpConverter {
  public:
@@ -25,7 +23,7 @@ class SquareOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert a sqaure op to tensorrt layer ";
+    VLOG(3) << "convert a square op to tensorrt layer ";
     nvinfer1::ITensor* input_tensor =
         engine_->GetITensor(op_desc.Input("X")[0]);
 
@@ -40,8 +38,6 @@ class SquareOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(square, SquareOpConverter);

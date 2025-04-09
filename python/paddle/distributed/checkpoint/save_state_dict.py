@@ -24,8 +24,10 @@ from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .utils import (
+    check_unique_id,
     compute_local_shape_and_global_offset,
     flatten_state_dict,
+    get_max_id,
 )
 
 if TYPE_CHECKING:
@@ -74,18 +76,6 @@ def copy_dict_to_cpu(nested_dict):
         else:
             new_dict[key] = value
     return new_dict
-
-
-def check_file_name(file_name, process_group):
-    all_unique_id = []
-    unique_id = int(file_name.split(".")[0].split("_")[1])
-    paddle.distributed.all_gather_object(
-        all_unique_id, unique_id, process_group
-    )
-    for id in all_unique_id[1:]:
-        assert (
-            id == all_unique_id[0]
-        ), f"id:{id} !=  all_unique_id[0]:{file_name}"
 
 
 def merge_state_dict_metadata(global_state_dict_metadata):
@@ -147,6 +137,7 @@ def save_state_dict(
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
+    unique_id: int | None = None,
     async_save: bool = False,
 ) -> None:
     """
@@ -156,7 +147,8 @@ def save_state_dict(
         state_dict(Dict[str, paddle.Tensor]): The state_dict to save.
         path(str): The directory to save state_dict.
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
-        coordinator_rank(int): The rank used to save non distributed values. Rank0 is used by default.
+        coordinator_rank(int): The rank used to save non distributed values. Rank 0 is used by default.
+        unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id 0 when save for the first time and increased by 1 each time when calling save_state_dict in the same path. If unique_id is given and there is already checkpoint with the same unique_id, it will be overrited.
         async_save(bool): Async save the state_dict, default is False.
 
     Examples:
@@ -193,16 +185,21 @@ def save_state_dict(
             # Init the default global process group
             paddle.distributed.init_parallel_env()
 
-        unique_id = 0
-        file_name = ""
-        while True:
-            file_name = f"{paddle.distributed.get_rank()}_{unique_id}.distcp"
-            if not os.path.exists(os.path.join(path, file_name)):
-                break
-            unique_id += 1
-        logger.debug(f"file_name:{file_name}")
+        if unique_id is None:
+            max_unique_id = get_max_id(path)
+            logger.debug(f"Max unique id: {max_unique_id}")
+            if max_unique_id is None:
+                unique_id = 0
+            else:
+                unique_id = max_unique_id
+        else:
+            assert unique_id >= 0, f'{unique_id} should be >= 0'
         if use_dist:
-            check_file_name(file_name, process_group)
+            check_unique_id(unique_id, process_group)
+
+        file_name = f"{paddle.distributed.get_rank()}_{unique_id}.distcp"
+        logger.debug(f"The checkpoint is saved to file_name:{file_name}")
+
         metadata = Metadata()
         local_state_dict = {}
         local_state_dict_metadata = {}
@@ -240,9 +237,9 @@ def save_state_dict(
                     )
                     local_tensor = val
                 local_state_dict[key] = local_tensor
-                local_tenosr_dtype = str(local_tensor.dtype).split('.')[1]
+                local_tensor_dtype = str(local_tensor.dtype).split('.')[1]
                 local_state_dict_metadata[key] = LocalTensorMetadata(
-                    global_offset, local_shape, local_tenosr_dtype
+                    global_offset, local_shape, local_tensor_dtype
                 )
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))
@@ -276,7 +273,7 @@ def save_state_dict(
         if coordinator_rank == paddle.distributed.get_rank():
             logger.debug(f"metadata:{metadata}")
             paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
-        logger.debug(f"local_state_dict:{local_state_dict}")
+
         dedup_tensor(
             local_state_dict, local_storage_metadata, metadata.storage_metadata
         )

@@ -12,13 +12,11 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/scale.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 SpmdInfo ScaleInferSpmd(const DistMetaTensor& x,
                         const Scalar& scale,
                         const Scalar& bias,
                         bool bias_after_scale) {
   return ElementwiseUnaryInferSpmd(x);
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

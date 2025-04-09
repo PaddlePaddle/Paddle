@@ -201,7 +201,7 @@ __global__ void GridSample3DCudaKernel(const int nthreads,
     const int n = index / (out_d * out_h * out_w);
     const int grid_offset =
         n * grid_sN + d * grid_sD + h * grid_sH + w * grid_sW;
-    // get the corresponding input x, y, z co-ordinates from grid
+    // get the corresponding input x, y, z coordinates from grid
     T ix = grid[grid_offset];
     T iy = grid[grid_offset + grid_sCoor];
     T iz = grid[grid_offset + 2 * grid_sCoor];
@@ -306,7 +306,7 @@ __global__ void GridSample3DCudaKernel(const int nthreads,
       int iy_nearest = static_cast<int>(std::round(iy));
       int iz_nearest = static_cast<int>(std::round(iz));
 
-      // assign nearest neighor pixel value to output pixel
+      // assign nearest neighbor pixel value to output pixel
       auto inp_ptr_NC = input + n * inp_sN;
       auto out_ptr_NCDHW =
           output + n * out_sN + d * out_sD + h * out_sH + w * out_sW;

@@ -76,7 +76,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
     VLOG(3) << "infershape out " << output_dim[dim];
     ctx->SetOutputDim("Out", common::make_ddim(output_dim));
     auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::LOD_TENSOR) {
+    if (type == framework::proto::VarType::DENSE_TENSOR) {
       ctx->ShareLoD("X", /*->*/ "Out");
     }
   }

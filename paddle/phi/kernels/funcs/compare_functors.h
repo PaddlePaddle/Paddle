@@ -14,7 +14,7 @@
 
 #pragma once
 #include <math.h>
-
+#include "paddle/phi/common/complex.h"
 namespace phi {
 namespace funcs {
 
@@ -36,14 +36,38 @@ template <typename InT, typename OutT = bool>
 struct EqualFunctor {
   HOSTDEVICE OutT operator()(const InT a, const InT b) const {
     if (std::is_floating_point<InT>::value) {
-      if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b)))
-        return static_cast<OutT>(a == b);
-      if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b)))
+      if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b))) {
         return static_cast<OutT>(false);
+      }
+      if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b))) {
+        return static_cast<OutT>(a == b);
+      }
       return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
     } else {
       return static_cast<OutT>(a == b);
     }
+  }
+};
+
+template <typename T>
+struct EqualFunctor<phi::dtype::complex<T>> {
+  HOSTDEVICE bool operator()(const phi::dtype::complex<T> a,
+                             const phi::dtype::complex<T> b) const {
+    if (isnan(static_cast<float>(a.real)) ||
+        isnan(static_cast<float>(a.imag)) ||
+        isnan(static_cast<float>(b.real)) ||
+        isnan(static_cast<float>(b.imag))) {
+      return static_cast<bool>(false);
+    }
+    if (isinf(static_cast<float>(a.real)) ||
+        isinf(static_cast<float>(a.imag)) ||
+        isinf(static_cast<float>(b.real)) ||
+        isinf(static_cast<float>(b.imag))) {
+      return static_cast<bool>(a.real == b.real && a.imag == b.imag);
+    }
+    return static_cast<bool>(fabs(static_cast<double>(a.real - b.real)) <
+                                 1e-8 &&
+                             fabs(static_cast<double>(a.imag - b.imag)) < 1e-8);
   }
 };
 

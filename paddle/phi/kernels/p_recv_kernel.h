@@ -24,20 +24,22 @@ template <typename T, typename Context>
 void PRecvKernel(const Context& dev_ctx,
                  int peer,
                  DataType dtype,
+                 const std::vector<int>& out_shape,
                  bool dynamic_shape,
                  DenseTensor* out);
 
 template <typename T, typename Context>
 void PRecv(const Context& dev_ctx,
            int peer,
+           const std::vector<int>& out_shape,
            bool dynamic_shape,
            DenseTensor* out) {
   MetaTensor out_meta(*out);
   MetaTensor* out_meta_ptr = &out_meta;
   DataType dtype = phi::CppTypeToDataType<T>::Type();
 
-  PRecvInferMeta(peer, dtype, out_meta_ptr);
-  PRecvKernel<T, Context>(dev_ctx, peer, dtype, dynamic_shape, out);
+  PRecvInferMeta(peer, dtype, out_shape, dynamic_shape, out_meta_ptr);
+  PRecvKernel<T, Context>(dev_ctx, peer, dtype, out_shape, dynamic_shape, out);
 }
 
 template <typename T, typename Context>

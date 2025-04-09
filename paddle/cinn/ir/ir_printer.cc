@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/ir/ir_printer.h"
 #include <algorithm>
-#include <cfenv>
+#include <cmath>
 #include <iomanip>
 #include <limits>
 #include <vector>
@@ -33,7 +33,17 @@ using cinn::common::bfloat16;
 using cinn::common::float16;
 
 void IrPrinter::Print(const Expr &e) {
-  IRVisitorRequireReImpl::Visit(&e);
+  Visit(e);
+  os_ << str_;
+  str_ = "";
+}
+void IrPrinter::Print(const stmt::StmtRef &stmt) {
+  VisitStmt(stmt);
+  os_ << str_;
+  str_ = "";
+}
+void IrPrinter::Print(const stmt::BlockRef &block) {
+  VisitBlock(block);
   os_ << str_;
   str_ = "";
 }
@@ -165,7 +175,7 @@ void IrPrinter::Visit(const FloatImm *x) {
       }
     } else {
       float v = TruncateInfinity<float>(x->value);
-      if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
+      if (IsCloseEqualBoundValue<float>(v)) v = std::trunc(v);
       ss << std::setprecision(std::numeric_limits<float>::max_digits10);
       ss << std::showpoint;
       ss << v;
@@ -512,7 +522,16 @@ void IrPrinter::Visit(const _LoweredFunc_ *f) {
   str_ += utils::Join(arg_names, ", ");
   str_ += ")\n";
 
-  Visit(f->body);
+  if (f->body.defined()) {
+    Visit(f->body);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        f->body_block.defined(),
+        true,
+        ::common::errors::InvalidArgument(
+            "Please ensure that `f->body` or `f->body_block` is defined."));
+    VisitBlock(f->body_block);
+  }
 }
 void IrPrinter::Visit(const Let *f) {
   PADDLE_ENFORCE_EQ(
@@ -803,6 +822,219 @@ void IrPrinter::Visit(const intrinsics::BuiltinIntrin *x) {
   str_ += ")";
 }
 
+void IrPrinter::VisitStmt(const stmt::Let &stmt) {
+  PADDLE_ENFORCE_EQ(
+      stmt->type().valid(),
+      true,
+      ::common::errors::InvalidArgument(
+          "The type of `f` is not valid. "
+          "Please ensure that `f->type()` returns a valid type."));
+
+  str_ += stmt->type().to_string();
+  str_ += " ";
+  Visit(stmt->symbol());
+  if (stmt->body().defined()) {
+    str_ += " = ";
+    Visit(stmt->body());
+  }
+}
+
+void IrPrinter::VisitStmt(const stmt::Store &stmt) {
+  if (stmt->is_addr_tensor()) {
+    auto *tensor_node = stmt->tensor().As<ir::_Tensor_>();
+    PADDLE_ENFORCE_NOT_NULL(tensor_node,
+                            ::common::errors::InvalidArgument(
+                                "The tensor node is not valid. "
+                                "Please ensure that `stmt->tensor` is "
+                                "properly assigned to a tensor node."));
+
+    str_ += tensor_node->name;
+  } else if (stmt->is_addr_scalar()) {
+    Visit(stmt->tensor());
+  } else {
+    CINN_NOT_IMPLEMENTED
+  }
+
+  str_ += "[";
+  for (std::size_t i = 0; i + 1 < stmt->indices().size(); i++) {
+    Visit(stmt->indices()[i]);
+    str_ += ", ";
+  }
+  if (!stmt->indices().empty()) Visit(stmt->indices().back());
+  str_ += "] = ";
+  Visit(stmt->value());
+}
+
+void IrPrinter::VisitStmt(const stmt::Alloc &stmt) {
+  auto *buffer = stmt->destination().As<ir::_Buffer_>();
+  PADDLE_ENFORCE_NOT_NULL(buffer,
+                          ::common::errors::InvalidArgument(
+                              "The destination is not a valid buffer. "
+                              "Please ensure that `stmt->destination` is "
+                              "properly assigned to a buffer."));
+  str_ += "alloc(";
+  str_ += buffer->name;
+  str_ += ", ";
+  Visit(stmt->extents());
+  str_ += ")";
+}
+
+void IrPrinter::VisitStmt(const stmt::Free &stmt) {
+  auto *buffer = stmt->destination().As<ir::_Buffer_>();
+  PADDLE_ENFORCE_NOT_NULL(buffer,
+                          ::common::errors::InvalidArgument(
+                              "The destination is not a valid buffer. "
+                              "Please ensure that `stmt->destination` is "
+                              "properly assigned to a buffer."));
+
+  str_ += "free(";
+  str_ += buffer->name;
+  str_ += ")";
+}
+
+void IrPrinter::VisitStmt(const stmt::IfThenElse &stmt) {
+  str_ += "if (";
+  Visit(stmt->condition());
+  str_ += ") ";
+  VisitBlock(stmt->true_case());
+
+  if (!stmt->false_case()->stmts().empty()) {
+    str_ += " else ";
+    VisitBlock(stmt->false_case());
+  }
+}
+
+void IrPrinter::VisitStmt(const stmt::For &stmt) {
+  if (stmt->is_parallel()) {
+    str_ += "parallel for (";
+  } else if (stmt->is_unrolled()) {
+    str_ += "unroll for (";
+  } else if (stmt->is_vectorized()) {
+    int factor = stmt->vectorize_info().factor;
+    str_ += "vectorize[";
+    str_ += std::to_string(factor);
+    str_ += "] for (";
+  } else if (stmt->is_binded()) {
+    auto &bind_info = stmt->bind_info();
+    if (bind_info.valid()) {
+      char axis_name = 'x' + bind_info.offset;
+      auto for_type = bind_info.for_type;
+      std::string prefix =
+          for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
+      str_ += "thread_bind[";
+      str_ += prefix;
+      str_ += axis_name;
+      str_ += "] for (";
+    } else {
+      str_ += "thread_bind[invalid info] for (";
+    }
+  } else if (stmt->is_serial()) {
+    str_ += "serial for (";
+  } else if (stmt->is_default()) {
+    str_ += "default for (";
+  } else {
+    str_ += "for (";
+  }
+  Visit(stmt->loop_var());
+  str_ += ", ";
+  Visit(stmt->min());
+  str_ += ", ";
+  Visit(stmt->extent());
+  str_ += ") ";
+  VisitBlock(stmt->body());
+}
+
+void IrPrinter::VisitStmt(const stmt::Schedule &stmt) {
+  str_ += "Schedule (";
+  str_ += stmt->name();
+  str_ += ") {\n";
+  // print block vars and bindings
+  auto iter_vars = stmt->iter_vars();
+  auto iter_values = stmt->iter_values();
+  PADDLE_ENFORCE_EQ(iter_vars.size(),
+                    iter_values.size(),
+                    ::common::errors::InvalidArgument(
+                        "iter_vars.size() != iter_values.size()"));
+  IncIndent();
+  if (!iter_vars.empty()) DoIndent();
+  for (std::size_t i = 0; i < iter_vars.size(); i++) {
+    if (i) str_ += ", ";
+    str_ += iter_vars[i]->name;
+  }
+  if (!iter_vars.empty()) str_ += " = axis.bind(";
+  for (std::size_t i = 0; i < iter_values.size(); i++) {
+    if (i) str_ += ", ";
+    Visit(iter_values[i]);
+  }
+  if (!iter_vars.empty()) str_ += ")\n";
+
+  // print block body
+  if (!stmt->read_buffers().empty()) {
+    DoIndent();
+    str_ += "read_buffers(";
+    auto &read_buffers = stmt->read_buffers();
+    for (std::size_t i = 0; i < read_buffers.size(); i++) {
+      if (i) str_ += ", ";
+      Visit(read_buffers[i]);
+    }
+    str_ += ")\n";
+  }
+  if (!stmt->write_buffers().empty()) {
+    DoIndent();
+    str_ += "write_buffers(";
+    auto &write_buffers = stmt->write_buffers();
+    for (std::size_t i = 0; i < write_buffers.size(); i++) {
+      if (i) str_ += ", ";
+      Visit(write_buffers[i]);
+    }
+    str_ += ")\n";
+  }
+  if (!stmt->attrs().empty()) {
+    DoIndent();
+    str_ += "attrs(";
+    bool comma = false;
+    for (auto &&kv : stmt->attrs()) {
+      if (comma) str_ += ", ";
+      str_ += kv.first;
+      str_ += ":";
+      absl::visit(
+          [this](auto &&arg) {
+            std::ostringstream ss;
+            ss << arg;
+            this->str_ += ss.str();
+          },
+          kv.second);
+      comma = true;
+    }
+    str_ += ")\n";
+  }
+
+  for (const auto &inner_stmt : stmt->body()->stmts()) {
+    DoIndent();
+    VisitStmt(inner_stmt);
+    str_ += "\n";
+  }
+  DecIndent();
+  DoIndent();
+  str_ += "}";
+}
+
+void IrPrinter::VisitStmt(const stmt::Evaluate &stmt) { Visit(stmt->value()); }
+
+void IrPrinter::VisitBlock(const stmt::BlockRef &block) {
+  str_ += "{\n";
+
+  IncIndent();
+  for (const auto &stmt : block->stmts()) {
+    DoIndent();
+    VisitStmt(stmt);
+    str_ += "\n";
+  }
+  DecIndent();
+  DoIndent();
+  str_ += "}";
+}
+
 std::ostream &operator<<(std::ostream &os, Expr a) {
   std::stringstream ss;
   IrPrinter printer(ss);
@@ -843,6 +1075,24 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Dim> &a) {
   os << ss.str();
   return os;
 }
+
+namespace stmt {
+std::ostream &operator<<(std::ostream &os, const stmt::BlockRef &block) {
+  std::stringstream ss;
+  IrPrinter printer(ss);
+  printer.Print(block);
+  os << ss.str();
+  return os;
+}
+
+std::ostream &operator<<(std::ostream &os, const stmt::StmtRef &stmt) {
+  std::stringstream ss;
+  IrPrinter printer(ss);
+  printer.Print(stmt);
+  os << ss.str();
+  return os;
+}
+}  // namespace stmt
 
 }  // namespace ir
 }  // namespace cinn

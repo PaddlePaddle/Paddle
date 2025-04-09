@@ -40,7 +40,7 @@ using LayerNormScaleBiasT =
     typename std::conditional<ScaleBiasWithSameTypeX, T, U>::type;
 
 /**
- * @brief fused add_bias, dropout, add residual and leyer_norm into one
+ * @brief fused add_bias, dropout, add residual and layer_norm into one
  * operators. Currently only support forward
  */
 
@@ -53,9 +53,9 @@ __device__ void CalcLayernormY(
     const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias,
     const T *x,
     T *y,
-    const int row_id,
-    const int col_id,
-    const int cols,
+    const int64_t row_id,
+    const int64_t col_id,
+    const int64_t cols,
     const LayerNormParamType<T> mean_val,
     const LayerNormParamType<T> invvar) {
   using LoadT = phi::AlignedVector<T, VecSize>;
@@ -64,7 +64,7 @@ __device__ void CalcLayernormY(
   using LoadScaleOrBias =
       phi::AlignedVector<LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX>,
                          VecSize>;
-  for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
+  for (int64_t i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
     LoadScaleOrBias scale_vec;
     LoadScaleOrBias bias_vec;
     LoadT x_vec;
@@ -140,9 +140,9 @@ __global__ void FusedLayernormResidualDropoutBias(
     LayerNormParamType<T> *mean,
     LayerNormParamType<T> *var,
     const float residual_alpha = 1.0) {
-  int col_id = threadIdx.x;
-  int row_id = blockIdx.x;
-  int idx = row_id * cols + col_id;
+  int64_t col_id = threadIdx.x;
+  int64_t row_id = blockIdx.x;
+  int64_t idx = row_id * cols + col_id;
   GPURAND(StatePhilox4_32_10_t) state;
   if (HasDropout) {
     GPURAND(_init)(seed, idx, increment, &state);
@@ -537,8 +537,8 @@ template <bool HasDropout,
           typename InType = T,
           typename OutType = T>
 __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
-    int rows,
-    int cols,
+    int64_t rows,
+    int64_t cols,
     uint64_t seed,
     const float dropout_prob,
     const bool is_upscale_in_train,
@@ -617,10 +617,9 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      phi::Load<T, VecSize>(residual_ptr + row * ELTS_PER_ROW + col * VecSize,
-                            &residual[it]);
-      phi::Load<InType, VecSize>(x_ptr + row * ELTS_PER_ROW + col * VecSize,
-                                 &x_input[it]);
+      int64_t index = row * ELTS_PER_ROW + col * VecSize;
+      phi::Load<T, VecSize>(residual_ptr + index, &residual[it]);
+      phi::Load<InType, VecSize>(x_ptr + index, &x_input[it]);
       if (quant_out_scale_ptr != nullptr) {
         phi::Load<float, VecSize>(quant_out_scale_ptr + col * VecSize,
                                   &dequant_out_scale[it]);
@@ -702,15 +701,15 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 // store dropout_residual_out and mask_out
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
-      phi::Store<T, VecSize>(
-          x[it], residual_out_ptr + row * ELTS_PER_ROW + col * VecSize);
+      int64_t index = row * ELTS_PER_ROW + col * VecSize;
+      phi::Store<T, VecSize>(x[it], residual_out_ptr + index);
       col += THREADS_PER_ROW;
     }
     if (!is_test && HasDropout) {
 #pragma unroll
       for (int it = 0, col = c; it < LDGS; it++) {
-        phi::Store<MaskType, VecSize>(
-            mask_vec[it], mask_out_ptr + row * ELTS_PER_ROW + col * VecSize);
+        int64_t index = row * ELTS_PER_ROW + col * VecSize;
+        phi::Store<MaskType, VecSize>(mask_vec[it], mask_out_ptr + index);
         col += THREADS_PER_ROW;
       }
     }
@@ -820,13 +819,11 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
 
 #pragma unroll
     for (int it = 0, col = c; it < LDGS; it++) {
+      int64_t index = row * ELTS_PER_ROW + col * VecSize;
       if (std::is_same<OutType, int8_t>::value) {
-        phi::Store<OutType, VecSize>(
-            x_output[it], y_ptr + row * ELTS_PER_ROW + col * VecSize);
+        phi::Store<OutType, VecSize>(x_output[it], y_ptr + index);
       } else {
-        phi::Store<T, VecSize>(
-            x[it],
-            reinterpret_cast<T *>(y_ptr) + row * ELTS_PER_ROW + col * VecSize);
+        phi::Store<T, VecSize>(x[it], reinterpret_cast<T *>(y_ptr) + index);
       }
       col += THREADS_PER_ROW;
     }
@@ -856,8 +853,8 @@ template <typename T,
           typename InType = T,
           typename OutType = T>
 void LaunchLayernormResidualDropoutBias(
-    const uint32_t rows,
-    const uint32_t cols,
+    const int64_t rows,
+    const int64_t cols,
     const int increment,
     uint64_t seed,
     const float dropout_prob,

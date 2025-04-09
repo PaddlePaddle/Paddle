@@ -44,9 +44,7 @@ COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 COMMON_DECLARE_bool(benchmark);
 
-namespace paddle {
-namespace memory {
-namespace legacy {
+namespace paddle::memory::legacy {
 template <typename Place>
 void *Alloc(const Place &place, size_t size);
 
@@ -63,6 +61,8 @@ struct Usage {
   size_t operator()(const phi::CPUPlace &cpu) const;
   size_t operator()(const phi::GPUPlace &gpu) const;
   size_t operator()(const phi::GPUPinnedPlace &cuda_pinned) const;
+  size_t operator()(const phi::XPUPlace &xpu) const;
+  size_t operator()(const phi::XPUPinnedPlace &xpu_pinned) const;
 };
 
 size_t memory_usage(const phi::Place &p);
@@ -413,6 +413,78 @@ uint64_t Release<phi::GPUPinnedPlace>(const phi::GPUPinnedPlace &place) {
 #endif
 }
 
+// For XPUPinnedPlace
+#if defined(PADDLE_WITH_XPU)
+BuddyAllocator *GetXPUPinnedBuddyAllocator() {
+  static std::once_flag init_flag;
+  static BuddyAllocator *ba = nullptr;
+
+  std::call_once(init_flag, []() {
+    ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                new detail::XPUPinnedAllocator),
+                            phi::backends::cpu::CUDAPinnedMinChunkSize(),
+                            phi::backends::cpu::CUDAPinnedMaxChunkSize());
+  });
+
+  return ba;
+}
+#endif
+
+template <>
+size_t Used<phi::XPUPinnedPlace>(const phi::XPUPinnedPlace &place) {
+#if defined(PADDLE_WITH_XPU)
+  return GetXPUPinnedBuddyAllocator()->Used();
+#else
+  PADDLE_THROW(common::errors::PermissionDenied(
+      "'XPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void *Alloc<phi::XPUPinnedPlace>(const phi::XPUPinnedPlace &place,
+                                 size_t size) {
+#if defined(PADDLE_WITH_XPU)
+  VLOG(10) << "Allocate " << size << " bytes on " << phi::Place(place);
+  auto *buddy_allocator = GetXPUPinnedBuddyAllocator();
+  void *ptr = buddy_allocator->Alloc(size);
+
+  if (ptr == nullptr) {
+    LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
+                 << " bytes in XPUPinnedPlace";
+  } else if (FLAGS_init_allocated_mem) {
+    memset(ptr, 0xEF, size);
+  }
+  return ptr;
+#else
+  PADDLE_THROW(common::errors::PermissionDenied(
+      "'XPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+void Free<phi::XPUPinnedPlace>(const phi::XPUPinnedPlace &place,
+                               void *p,
+                               size_t size) {
+#if defined(PADDLE_WITH_XPU)
+  VLOG(10) << "Free " << size << " bytes on " << phi::Place(place);
+  GetXPUPinnedBuddyAllocator()->Free(p);
+#else
+  PADDLE_THROW(common::errors::PermissionDenied(
+      "'XPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+template <>
+uint64_t Release<phi::XPUPinnedPlace>(const phi::XPUPinnedPlace &place) {
+#if defined(PADDLE_WITH_XPU)
+  VLOG(10) << "Release on " << phi::Place(place);
+  return GetXPUPinnedBuddyAllocator()->Release();
+#else
+  PADDLE_THROW(common::errors::PermissionDenied(
+      "'XPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
 // For CustomDevice
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 class BuddyAllocatorList {
@@ -609,11 +681,31 @@ size_t Usage::operator()(const phi::GPUPinnedPlace &cuda_pinned) const {
       "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
-}  // namespace legacy
 
-namespace allocation {
+size_t Usage::operator()(const phi::XPUPlace &xpu) const {
+#if defined(PADDLE_WITH_XPU)
+  return Used(xpu);
+#else
+  PADDLE_THROW(common::errors::PermissionDenied(
+      "'XPUPlace' is not supported in CPU only device."));
+#endif
+}
+
+size_t Usage::operator()(const phi::XPUPinnedPlace &xpu_pinned) const {
+#if defined(PADDLE_WITH_XPU)
+  return Used(xpu_pinned);
+#else
+  PADDLE_THROW(common::errors::PermissionDenied(
+      "'XPUPinnedPlace' is not supported in CPU only device."));
+#endif
+}
+
+}  // namespace paddle::memory::legacy
+
+namespace paddle::memory::allocation {
 
 phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
+  VLOG(10) << "NaiveBestFitAllocator::AllocateImpl: place_ = " << place_;
   void *ptr = phi::VisitPlace(place_, legacy::AllocVisitor(size));
   auto *tmp_alloc = new Allocation(ptr, size, place_);
   return tmp_alloc;
@@ -629,6 +721,4 @@ uint64_t NaiveBestFitAllocator::ReleaseImpl(const phi::Place &place) {
   return phi::VisitPlace(place, legacy::ReleaseVisitor());
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

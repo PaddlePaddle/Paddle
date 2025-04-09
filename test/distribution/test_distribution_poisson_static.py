@@ -32,6 +32,7 @@ paddle.enable_static()
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
+        ('zero-dim', np.array(1000.0).astype('float32')),
         ('one-dim', np.array([1000.0]).astype('float32')),
         (
             'multi-dim',
@@ -164,6 +165,17 @@ class TestPoissonProbs(unittest.TestCase):
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate_1', 'rate_2'),
     [
+        (
+            'zero-dim',
+            parameterize.xrand((1,), min=1, max=20)
+            .astype('int32')
+            .astype('float32')
+            .reshape([]),
+            parameterize.xrand((1,), min=1, max=20)
+            .astype('int32')
+            .astype('float32')
+            .reshape([]),
+        ),
         (
             'multi-dim',
             parameterize.xrand((2, 3), min=1, max=20)

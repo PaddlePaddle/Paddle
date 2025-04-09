@@ -192,8 +192,8 @@ void ArrayReadInferMeta(const MetaTensor& array,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  const auto& x_dims = x.dims();
+  const auto& y_dims = y.dims();
 
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
@@ -499,7 +499,6 @@ void CompareRawInferMeta(const MetaTensor& x,
                                   out_dims_array.data(),
                                   max_dim,
                                   axis);
-
     out->set_dims(common::make_ddim(out_dims_array));
     out->share_lod(x);
   }
@@ -880,9 +879,9 @@ void ConvTransposeInferMeta(const MetaTensor& x,
             output_size[i],
             infer_shape,
             errors::InvalidArgument(
-                "output_size of Op(ConvTransposeOp) should not be "
-                "less than the infered output size. But received output_size = "
-                "[%s], whose dim %d is less than the infered output size [%s]",
+                "output_size of Op(ConvTransposeOp) should not be less than "
+                "the inferred output size. But received output_size = [%s], "
+                "whose dim %d is less than the inferred output size [%s]",
                 common::make_ddim(output_size).to_str(),
                 i,
                 infer_shape));
@@ -891,8 +890,8 @@ void ConvTransposeInferMeta(const MetaTensor& x,
             infer_shape + strides[i],
             errors::InvalidArgument(
                 "output_size of Op(ConvTransposeOp) should be less "
-                "than infered size + stride. But received output_size = [%s], "
-                "whose dim %d is not less than the infered output size (%d) + "
+                "than inferred size + stride. But received output_size = [%s], "
+                "whose dim %d is not less than the inferred output size (%d) + "
                 "stride (%d) = %d",
                 common::make_ddim(output_size).to_str(),
                 i,
@@ -1249,7 +1248,6 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
 void CSoftmaxWithCrossEntropyInferMeta(const MetaTensor& logits,
                                        const MetaTensor& label,
                                        int64_t ignore_index,
-                                       int ring_id,
                                        int rank,
                                        int nranks,
                                        MetaTensor* softmax,
@@ -2257,8 +2255,8 @@ void HingeLossInferMeta(const MetaTensor& logits,
 void HistogramInferMeta(const MetaTensor& input,
                         const MetaTensor& weight,
                         int64_t bins,
-                        int min,
-                        int max,
+                        float min,
+                        float max,
                         bool density,
                         MetaTensor* out) {
   PADDLE_ENFORCE_GE(bins,
@@ -2271,7 +2269,7 @@ void HistogramInferMeta(const MetaTensor& input,
       max,
       min,
       common::errors::InvalidArgument("max must be larger or equal to min."
-                                      "But received max is %d, min is %d",
+                                      "But received max is %f, min is %f",
                                       max,
                                       min));
   if (weight) {
@@ -2436,16 +2434,19 @@ void IndexSelectInferMeta(const MetaTensor& x,
           "the dimension of Input(Index) is [%d].",
           index_dim,
           index_dim.size()));
-
-  PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
-
-  auto output_dim = common::vectorize(input_dim);
   if (dim < 0) {
     dim += input_dim.size();
   }
+
+  if (input_dim[dim] != 0) {
+    PADDLE_ENFORCE_EQ(index_dim[0] != 0,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The length of Input(Index) can't be 0."));
+  }
+
+  auto output_dim = common::vectorize(input_dim);
+
   output_dim[dim] = index_dim[0];
   output->set_dims(common::make_ddim(output_dim));
   output->set_dtype(x.dtype());
@@ -3670,18 +3671,23 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
           repeats_dim,
           repeats_dim.size()));
 
-  PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(RepeatsTensor) can't be 0."));
-  PADDLE_ENFORCE_NE(out,
-                    nullptr,
-                    common::errors::InvalidArgument(
-                        "repeat_interleave's output tensor can't be nullptr"));
-  if (dim < 0) {
-    dim += input_dim.size();
+  if (input_dim.size() == 1 && input_dim[0] == 0) {
+    output_dim[0] = 0;
+  } else {
+    PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The length of Input(RepeatsTensor) can't be 0."));
+    PADDLE_ENFORCE_NE(
+        out,
+        nullptr,
+        common::errors::InvalidArgument(
+            "repeat_interleave's output tensor can't be nullptr"));
+    if (dim < 0) {
+      dim += input_dim.size();
+    }
+    output_dim[dim] = -1;
   }
-  output_dim[dim] = -1;
 
   out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);
@@ -4425,7 +4431,7 @@ void UnpoolInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(in_x_dims.size() == 4,
                     true,
                     common::errors::InvalidArgument(
-                        "Unpool Intput(X) must be of 4-dimensional, but "
+                        "Unpool Input(X) must be of 4-dimensional, but "
                         "received Input(X)'s dimensions is %d.",
                         in_x_dims.size()));
   PADDLE_ENFORCE_EQ(in_x_dims,
@@ -4471,7 +4477,7 @@ void Unpool3dInferMeta(const MetaTensor& x,
   PADDLE_ENFORCE_EQ(in_x_dims.size() == 5,
                     true,
                     common::errors::InvalidArgument(
-                        "Unpool Intput(X) must be of 5-dimensional, but "
+                        "Unpool Input(X) must be of 5-dimensional, but "
                         "received Input(X)'s dimensions is %d.",
                         in_x_dims.size()));
   PADDLE_ENFORCE_EQ(in_x_dims,

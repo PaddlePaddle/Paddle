@@ -20,21 +20,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-namespace ir {
+}  // namespace paddle::framework
+namespace paddle::framework::ir {
 class Graph;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
@@ -107,13 +103,13 @@ Graph *Pass::Apply(Graph *graph) const {
         attrs_.find(attr),
         attrs_.end(),
         common::errors::InvalidArgument(
-            "Required atrribute %s for pass < %s > is not set.", attr, Type()));
+            "Required attribute %s for pass < %s > is not set.", attr, Type()));
   }
   for (const std::string &attr : required_graph_attrs_) {
     PADDLE_ENFORCE_EQ(graph->Has(attr),
                       true,
                       common::errors::InvalidArgument(
-                          "Required atrribute %s for graph is not set.", attr));
+                          "Required attribute %s for graph is not set.", attr));
   }
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
@@ -300,6 +296,4 @@ PassRegistry &PassRegistry::Instance() {
   static PassRegistry g_pass_info_map;
   return g_pass_info_map;
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

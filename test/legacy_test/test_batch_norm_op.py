@@ -191,7 +191,6 @@ def create_or_get_tensor(scope, var_name, var, place):
     tensor = scope.var(var_name).get_tensor()
     if var is not None:
         assert isinstance(var, np.ndarray)
-        tensor.set_recursive_sequence_lengths([])
         tensor.set(var, place)
     return tensor
 

@@ -1512,19 +1512,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r, "constant");
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r2,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r2,
-                               XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r2, "constant");
 #endif
 
   auto accessor_wrapper_ptr =
@@ -1692,19 +1682,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_normal_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r, "constant");
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r2,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r2,
-                               XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r2, "constant");
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -1895,19 +1875,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_normal_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r, "constant");
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r2,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r2,
-                               XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r2, "constant");
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -2070,19 +2040,9 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::push_sparse(
   auto xpu_context = xpu_dev_ctx.x_context();
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r, "constant");
   int r2 = xpu::constant<int>(xpu_context, d_right_ptr, total_device, -1);
-  PADDLE_ENFORCE_EQ(
-      r2,
-      XPU_SUCCESS,
-      common::errors::External("XPU constant kernel return wrong value[%d %s]",
-                               r2,
-                               XPUAPIErrorMsg[r2]));
+  PADDLE_ENFORCE_XDNN_SUSSESS(r2, "constant");
 #endif
 
   auto d_idx = MemoryAlloc(place, len * sizeof(int));
@@ -3141,7 +3101,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::
 
   // local use end scatter(len is node num), reote use before scatter(len is
   // pull size) recompute offsets and parts
-  VLOG(2) << "begin recalc local and remote size and offets";
+  VLOG(2) << "begin recalc local and remote size and offsets";
   for (int i = 0; i < node_size_; i++) {
     size_t local_size = 0;
     size_t remote_size = 0;
@@ -4223,6 +4183,6 @@ size_t HeterComm<KeyType, ValType, GradType, GPUAccessor>::
   }
   return total_send_recv;
 }
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

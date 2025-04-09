@@ -730,9 +730,9 @@ class TestConcatAPI(unittest.TestCase):
             self.assertRaises(TypeError, test_input_same_dtype)
 
 
-class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
+class TestConcatAPIWithDenseTensorArray(unittest.TestCase):
     """
-    Test concat api when the input(x) is a LoDTensorArray.
+    Test concat api when the input(x) is a DenseTensorArray.
     """
 
     def setUp(self):

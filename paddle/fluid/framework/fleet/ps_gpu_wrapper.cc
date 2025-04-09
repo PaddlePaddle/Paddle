@@ -49,8 +49,7 @@ COMMON_DECLARE_int32(gpugraph_storage_mode);
 COMMON_DECLARE_bool(query_dest_rank_by_multi_node);
 COMMON_DECLARE_string(graph_edges_split_mode);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 #ifdef PADDLE_WITH_PSLIB
 void AfsWrapper::init(const std::string& fs_name,
@@ -411,7 +410,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                     ranks_vec[i]->size(),
                     common::errors::InvalidArgument(
                         "keys_vec[i]->size() should be equal to "
-                        "ranks_vec[i]->size(), but recieved "
+                        "ranks_vec[i]->size(), but received "
                         "keys_vec[i]->size() is %d, ranks_vec[i]->size() is %d",
                         keys_vec[i]->size(),
                         ranks_vec[i]->size()));
@@ -429,7 +428,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                     0UL,
                     common::errors::InvalidArgument(
                         "ranks_vec[i]->size() should be equal to 0, "
-                        "but recieved %d.",
+                        "but received %d.",
                         ranks_vec[i]->size()));
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
@@ -470,7 +469,7 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
           total_keys,
           common::errors::InvalidArgument(
               "Total shard keys number should be less than or equal to total "
-              "keys number, but recieved %d as total shard keys number and %d "
+              "keys number, but received %d as total shard keys number and %d "
               "as total keys number.",
               total_shard_keys,
               total_keys));
@@ -1104,7 +1103,7 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
                       nullptr,
                       common::errors::InvalidArgument(
                           "The shard values after deduplication should not "
-                          "be nullptr, but got %d at positon %d.",
+                          "be nullptr, but got %d at position %d.",
                           shard_values[dedup_size],
                           dedup_size));
     ++dedup_size;
@@ -1178,7 +1177,7 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
   std::vector<std::shared_ptr<paddle::distributed::SparseShardValues>>
       dim_pass_values(multi_mf_dim_, nullptr);
   for (int dim_id = 0; dim_id < multi_mf_dim_; ++dim_id) {
-    auto pass_values = fleet_ptr_->worker_ptr_->TakePassSparseReferedValues(
+    auto pass_values = fleet_ptr_->worker_ptr_->TakePassSparseReferredValues(
         table_id_, gpu_task->pass_id_, dim_id);
     if (pass_values == nullptr) {
       continue;
@@ -1400,7 +1399,7 @@ void PSGPUWrapper::MergeKeys(std::shared_ptr<HeterContext> gpu_task) {
   std::vector<std::shared_ptr<paddle::distributed::SparseShardValues>>
       dim_pass_values(multi_mf_dim_, nullptr);
   for (int dim_id = 0; dim_id < multi_mf_dim_; ++dim_id) {
-    auto pass_values = fleet_ptr_->worker_ptr_->TakePassSparseReferedValues(
+    auto pass_values = fleet_ptr_->worker_ptr_->TakePassSparseReferredValues(
         table_id_, gpu_task->pass_id_, dim_id);
     if (pass_values == nullptr) {
       continue;
@@ -1639,7 +1638,7 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
                           nullptr,
                           common::errors::InvalidArgument(
                               "The value of local dimension pointer should not "
-                              "be nullptr but recieved %d at position %d.",
+                              "be nullptr but received %d at position %d.",
                               h_dim_ptrs[pos],
                               pos));
         d_dim_ptr[cur + k] = h_dim_ptrs[pos];
@@ -2152,7 +2151,7 @@ void PSGPUWrapper::BeginPass() {
         common::errors::Fatal("[BeginPass] current task is not ended."));
   }
 
-  debug_gpu_memory_info("befor build task");
+  debug_gpu_memory_info("before build task");
   build_task();
   debug_gpu_memory_info("after build task");
   timer.Pause();
@@ -2399,7 +2398,7 @@ void PSGPUWrapper::PullSparse(const phi::Place& place,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
-  VLOG(0) << "Warning:: recommand use pull_gpups_sparse op instead. This "
+  VLOG(0) << "Warning:: recommend use pull_gpups_sparse op instead. This "
              "PullSparse is not used.";
 }
 
@@ -2915,6 +2914,5 @@ void PSGPUWrapper::PushSparseGrad(const phi::Place& place,
   VLOG(3) << "End PushSparseGrad";
 }
 
-}  // namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

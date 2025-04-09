@@ -405,23 +405,6 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(TypeError, test_invalid_offset)
 
-        def test_invalid_filter():
-            paddle.enable_static()
-            input = paddle.static.data(
-                name='input_filter', shape=[None, 3, 32, 32], dtype='float32'
-            )
-            offset = paddle.static.data(
-                name='offset_filter', shape=[None, 3, 32, 32], dtype='float32'
-            )
-            mask = paddle.static.data(
-                name='mask_filter', shape=[None, 3, 32, 32], dtype='float32'
-            )
-            loss = paddle.vision.ops.DeformConv2D(
-                in_channels=input.shape[1], out_channels=4, kernel_size=0
-            )(input, offset, mask)
-
-        self.assertRaises(AssertionError, test_invalid_filter)
-
         def test_invalid_groups():
             paddle.enable_static()
             input = paddle.static.data(

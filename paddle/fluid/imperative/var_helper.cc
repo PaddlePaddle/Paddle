@@ -16,10 +16,9 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type_traits.h"
@@ -27,8 +26,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/selected_rows.h"
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 /* GetVariableWrapper */
 template <>
@@ -44,7 +42,7 @@ const std::shared_ptr<VariableWrapper> &GetVariableWrapper<VariableWrapper>(
 
 void InitializeVariable(paddle::framework::Variable *var,
                         paddle::framework::proto::VarType::Type var_type) {
-  if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
+  if (var_type == paddle::framework::proto::VarType::DENSE_TENSOR) {
     var->GetMutable<phi::DenseTensor>();
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
@@ -55,9 +53,8 @@ void InitializeVariable(paddle::framework::Variable *var,
     var->GetMutable<paddle::framework::FetchList>();
   } else if (var_type == paddle::framework::proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<paddle::framework::Scope *>>();
-  } else if (var_type == paddle::framework::proto::VarType::LOD_RANK_TABLE) {
-    var->GetMutable<paddle::framework::LoDRankTable>();
-  } else if (var_type == paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+  } else if (var_type ==
+             paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY) {
     var->GetMutable<phi::TensorArray>();
   } else if (var_type == paddle::framework::proto::VarType::STRINGS) {
     var->GetMutable<phi::Strings>();
@@ -72,7 +69,7 @@ void InitializeVariable(paddle::framework::Variable *var,
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "paddle::framework::Variable type %d is not in "
-        "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
+        "[DENSE_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
         "LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
         var_type));
   }
@@ -88,7 +85,7 @@ const phi::Place &GetPlace(const std::shared_ptr<VarType> &var) {
     return variable.Get<phi::SelectedRows>().place();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Variable type is %s, expect LoDTensor or SelectedRows.",
+        "Variable type is %s, expect DenseTensor or SelectedRows.",
         paddle::framework::ToTypeName(var->Var().Type())));
   }
 }
@@ -124,7 +121,7 @@ template <>
 void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
                                  framework::proto::VarType::Type type) {
   switch (type) {
-    case paddle::framework::proto::VarType::LOD_TENSOR: {
+    case paddle::framework::proto::VarType::DENSE_TENSOR: {
       var->MutableVar()->GetMutable<phi::DenseTensor>();
       break;
     }
@@ -155,7 +152,7 @@ framework::proto::VarType::Type GetType<egr::EagerVariable>(
   if (var->Var().IsInitialized()) {
     return paddle::framework::ToVarType(var->Var().Type());
   } else {
-    return paddle::framework::proto::VarType::LOD_TENSOR;
+    return paddle::framework::proto::VarType::DENSE_TENSOR;
   }
 }
 template framework::proto::VarType::Type GetType<VarBase>(
@@ -303,5 +300,4 @@ template void SetCachedValue<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var,
     const phi::KernelKey &key,
     std::shared_ptr<VariableWrapper> res);
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, TypeVar
 
 import paddle
 
-from ..base.core import LoDTensor
+from ..base.core import DenseTensor
 from ..base.data_feeder import check_type
 from ..base.framework import in_dygraph_mode
 
@@ -119,7 +119,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
         return x.value().get_tensor()._to_dlpack()
 
-    check_type(x, "x", (LoDTensor), "to_dlpack")
+    check_type(x, "x", (DenseTensor), "to_dlpack")
     return x._to_dlpack()
 
 
@@ -213,7 +213,9 @@ def from_dlpack(
         # Old versions just call the converter
         dlpack_ = dlpack
 
-    out: paddle.base.libpaddle.Tensor = paddle.base.core.from_dlpack(dlpack_)
+    out: paddle.base.libpaddle.DenseTensor = paddle.base.core.from_dlpack(
+        dlpack_
+    )
 
     if in_dygraph_mode():
         out: Tensor = paddle.Tensor(out, place=out._place())

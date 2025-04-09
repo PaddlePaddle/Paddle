@@ -79,6 +79,7 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
   void Visit(const ir::For* for_node, Expr* op) override;
   void Visit(const ir::Block* block_node, Expr* op) override;
   void Visit(const ir::ScheduleBlockRealize* realize, Expr* op) override;
+  void Visit(const ir::_Var_* var, Expr* op) override;
 
  private:
   ir::Expr source_;
@@ -88,14 +89,14 @@ struct MappingTargetExprToDestExprMutator : public ir::IRMutator<> {
 bool CheckIterEq(const std::vector<ir::Var>& up_iter,
                  const std::vector<ir::Var>& down_iter);
 
-ir::Expr CopyedReplaceExpr(const Expr& source,
+ir::Expr CopiedReplaceExpr(const Expr& source,
                            const std::vector<Var>& replaced,
                            const std::vector<Expr>& candidates);
-void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
+void SubstituteTargetExprWithDestExpr(const ir::Expr& source,
                                       const ir::Expr& dest,
                                       ir::Expr* body);
 
-ir::Expr SubstitudeIndexVector(const Expr& source,
+ir::Expr SubstituteIndexVector(const Expr& source,
                                const std::vector<Var>& load_vars,
                                const std::vector<ir::Expr>& indices);
 
@@ -104,9 +105,9 @@ void ReplaceDownstreamLoadExprWithUpstreamComputeBody(
     const FusionOp& upstream,
     const ir::Expr& downstream_load_expr,
     ir::Expr* downstream_body) {
-  ComposeUtils::SubstitudeTargetExprWithDestExpr(
+  ComposeUtils::SubstituteTargetExprWithDestExpr(
       downstream_load_expr,
-      ComposeUtils::SubstitudeIndexVector(
+      ComposeUtils::SubstituteIndexVector(
           GetComputeBody(upstream),
           GetOutputIters(upstream),
           downstream_load_expr.As<ir::Load>()->indices),
@@ -168,8 +169,6 @@ extern ExprSetFinder ScheduleBlockRealizeIsRoot;
 extern ExprSetFinder ScheduleBlockRealizeIsNotInit;
 
 extern ExprSetFinder ScheduleBlockRealizeIsInit;
-
-extern ExprSetFinder ScheduleBlockRealizeIsSplitTransform;
 
 extern ExprSetFinder IsFor;
 
@@ -251,16 +250,19 @@ ExprTransformer UnsqueezeForTransformer(
     const ExprSetFinderUtils::ExprSetFinder& followed_finder,
     const ir::Var& to_append_var);
 
-ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize);
+ExprTransformer SubstituteByScheduleBlockRealize(const ir::Expr& realize);
 
 ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name);
 
 ExprTransformer TransposeForsTransformer(const std::vector<int32_t>& perm);
-ExprTransformer RemoveOnesTransformer(const std::vector<int32_t>& ones);
+ExprTransformer RemoveForsTransformer(const std::vector<int32_t>& ones);
 ExprTransformer InsertForsTransformer(const std::vector<int32_t>& axis,
                                       const std::vector<ir::Var>& vars);
-ExprTransformer InsertIfForAppendVarsTransformer();
+ExprTransformer InsertIfForAppendVarsTransformer(
+    const std::vector<ir::Var>& append_vars);
+ExprTransformer RemoveAllAppendIfTransformer();
+ExprTransformer EliminateUselessIfTransformer();
 int InplaceMutateSingleExpr(ir::Expr* root,
                             const ExprSetFinderUtils::ExprSetFinder& finder,
                             const ExprTransformer& transformer);
@@ -296,6 +298,17 @@ std::vector<ir::Var> GetNonReduceLoopVars(const ir::Expr& root);
 std::vector<ir::Var> GetAllLoopVars(const ir::Expr& root);
 
 ir::Expr GetBodyBlock(const ir::Expr& root);
+
+ir::Expr ReshapeLoop(const ir::Expr& root,
+                     const std::vector<symbol::DimExpr>& in_shape,
+                     const std::vector<symbol::DimExpr>& out_shape);
+
+void CheckLoopAlignment(const std::vector<ir::Expr>& roots);
+
+ir::Tensor GetOutputTensor(const ir::Expr& root);
+
+void InlineGlobalVarCompute(const std::vector<ir::Expr>& roots,
+                            const std::set<std::string>& global_var_names);
 
 }  // namespace trivial_fusion_detail
 }  // namespace pir

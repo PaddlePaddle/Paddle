@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -1178,8 +1176,6 @@ TEST(CpuQuantizeSquashPass, squash_all_u8_input_to_concat2) {
       BuildU8U8ConcatProgramDesc(1.2f, 1.2f), expected_operators, remove_nodes);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(cpu_quantize_squash_pass);

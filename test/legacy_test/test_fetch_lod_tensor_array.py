@@ -21,7 +21,7 @@ import paddle
 from paddle import base
 
 
-class TestFetchLoDTensorArray(unittest.TestCase):
+class TestFetchDenseTensorArray(unittest.TestCase):
     def build_program(self, main_program, startup_program):
         with base.unique_name.guard():
             with base.program_guard(main_program, startup_program):
@@ -78,7 +78,7 @@ class TestFetchLoDTensorArray(unittest.TestCase):
             self.assertEqual(array_v[2].shape, ())
             np.testing.assert_allclose(loss_v, array_v[2], rtol=1e-05)
 
-    def test_fetch_lod_tensor_array(self):
+    def test_fetch_dense_tensor_array(self):
         if base.core.is_compiled_with_cuda():
             self.check_network(use_cuda=True)
         self.check_network(use_cuda=False)

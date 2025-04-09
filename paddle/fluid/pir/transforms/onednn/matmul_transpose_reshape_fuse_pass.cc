@@ -235,7 +235,7 @@ class FusedMatmulTransposeReshapeFusePattern
 class MatmulTransposeReshapeFusePass : public pir::PatternRewritePass {
  public:
   MatmulTransposeReshapeFusePass()
-      : pir::PatternRewritePass("matmul_transpose_reshape_fuse_pass", 3) {}
+      : pir::PatternRewritePass("matmul_transpose_reshape_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

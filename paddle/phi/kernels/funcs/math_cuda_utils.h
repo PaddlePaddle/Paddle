@@ -298,7 +298,7 @@ __inline__ __device__ T PartialWarpReduceMin(T val, warp_mask_t lane_mask) {
   T warp_val = __shfl_sync(lane_mask, val, 0, warpSize);
 #else
   T warp_val = __shfl(
-      val, 0, warpSize);  // To fullfill the data in each thread of this warp.
+      val, 0, warpSize);  // To fulfill the data in each thread of this warp.
 #endif
   warp_val = val;
 

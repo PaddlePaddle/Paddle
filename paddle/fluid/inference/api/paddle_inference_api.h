@@ -46,7 +46,6 @@ namespace paddle_infer {
 
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
-using DistConfig = paddle::DistConfig;
 using XpuConfig = paddle::XpuConfig;
 
 ///

@@ -349,7 +349,7 @@ class TransposeReshapeFusePattern : public paddle::drr::DrrPatternBase {
 class OperatorReshapePass : public pir::PatternRewritePass {
  public:
   OperatorReshapePass()
-      : pir::PatternRewritePass("operator_reshape_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("operator_reshape_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

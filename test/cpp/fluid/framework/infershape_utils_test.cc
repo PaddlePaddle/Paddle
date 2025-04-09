@@ -264,7 +264,7 @@ TEST(InferShapeUtilsTestOutput, ALL) {
   op->SetType("infer_shape_utils_test_output");
 
   auto* x = block_desc.Var("x");
-  x->SetType(paddle::framework::proto::VarType::LOD_TENSOR);
+  x->SetType(paddle::framework::proto::VarType::DENSE_TENSOR);
   x->SetDataType(paddle::framework::proto::VarType::FP32);
   op->SetInput("X", {"x"});
 

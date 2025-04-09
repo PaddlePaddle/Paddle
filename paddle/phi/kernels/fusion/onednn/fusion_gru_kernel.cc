@@ -21,8 +21,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 using phi::OneDNNContext;
 using phi::funcs::CreateKey;
@@ -580,7 +579,7 @@ void FusionGRUKernel(const Context& dev_ctx,
                               mkldnn_data_type) != mkldnn_data_type_list.end(),
                     true,
                     common::errors::InvalidArgument(
-                        "The mkldnn_data_type shoule be [float32, "
+                        "The mkldnn_data_type should be [float32, "
                         "int8, bfloat16], but found %s.",
                         mkldnn_data_type.c_str()));
   const float scale_data =
@@ -642,8 +641,7 @@ void FusionGRUKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fusion_gru,
                    OneDNN,

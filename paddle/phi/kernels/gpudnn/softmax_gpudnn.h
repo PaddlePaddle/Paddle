@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 #define MATRIX_SOFTMAX_ALIGN_BYTES 16
-#define MATRIX_SOFTMAX_THREAHOLD 100000
+#define MATRIX_SOFTMAX_THRESHOLD 100000
 
 namespace phi {
 
@@ -445,8 +445,8 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   using VecT = phi::AlignedVector<T, kVecSize>;
 
   int bid = blockIdx.x;
-  T* batch_input = const_cast<T*>(src) + bid * dim_size;
-  T* batch_output = softmax + bid * dim_size;
+  T* batch_input = const_cast<T*>(src) + (uint64_t)bid * dim_size;
+  T* batch_output = softmax + (uint64_t)bid * dim_size;
 
   const int input_align_shift =
       ((uint64_t)batch_input) % MATRIX_SOFTMAX_ALIGN_BYTES / sizeof(T);
@@ -1301,7 +1301,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim_log2);
       }
     } else {
-      if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
+      if (dim >= MATRIX_SOFTMAX_THRESHOLD) {
         LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
             dev_ctx, out_data, x.data<T>(), N, dim);
       } else {

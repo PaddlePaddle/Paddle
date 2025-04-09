@@ -243,7 +243,7 @@ void BatchCompute(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(hidden_out);
   dev_ctx.template Alloc<T>(cell_out);
 
-  phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
+  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   phi::funcs::FCFunctor<Context, T> fc;
   if (M > D4) {
@@ -342,7 +342,7 @@ void BatchCompute(const Context &dev_ctx,
     batched_input_data = cur_in_data;
   }
 
-  phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
+  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batched_h_out->set_lod(batched_lod);
   to_seq(dev_ctx, *batched_h_out, hidden_out);
   batched_c_out->set_lod(batched_lod);

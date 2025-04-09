@@ -170,7 +170,7 @@ inline void MergeVars(const std::string &var_name,
 
   if (var0->IsType<phi::DenseTensor>()) {
     auto dims = var0->Get<phi::DenseTensor>().dims();
-    VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims
+    VLOG(3) << "merge " << var_name << " DenseTensor dims " << dims
             << "; merge add: " << merge_add;
     // init output tensor
     auto *out_t = out_var->GetMutable<phi::DenseTensor>();

@@ -34,8 +34,21 @@ from program_config import (
 
 import paddle
 import paddle.inference as paddle_infer
+from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
+
+# windows and xpu not support tensort
+if os.name != 'nt' and (not os.getenv('WITH_XPU')):
+    try:
+        from paddle.tensorrt.export import (
+            Input,
+            PrecisionMode,
+            TensorRTConfig,
+            convert_to_trt,
+        )
+    except ImportError:
+        raise RuntimeError("TensorRT package is not available.")
 
 LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
 logging = get_logger(
@@ -144,6 +157,7 @@ class AutoScanTest(unittest.TestCase):
                 input_tensor.copy_from_cpu(feed_data[name]["data"])
                 if feed_data[name]["lod"] is not None:
                     input_tensor.set_lod(feed_data[name]["lod"])
+
             predictor.run()
         result = {}
         for out_name, o_name in zip(
@@ -151,6 +165,17 @@ class AutoScanTest(unittest.TestCase):
         ):
             result[out_name] = predictor.get_output_handle(o_name).copy_to_cpu()
         return result
+
+    def transform_to_trt_program(self, pir_program, trt_config):
+        if trt_config.input_data_type == 'float16':
+            trt_config.precision_mode = PrecisionMode.FP16
+
+        paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
+        # translalte pir program to trt program
+        scope = paddle.static.global_scope()
+        program_with_trt = convert_to_trt(pir_program, trt_config, scope)
+
+        return program_with_trt
 
     @abc.abstractmethod
     def assert_tensors_near(
@@ -260,7 +285,16 @@ class MkldnnAutoScanTest(AutoScanTest):
             if not self.is_program_valid(prog_config):
                 continue
 
-            model, params = create_fake_model(prog_config)
+            with paddle.pir_utils.OldIrGuard():
+                main_program_desc, util_program = create_fake_model(prog_config)
+                model = main_program_desc.serialize_to_string()
+                place = paddle.base.CPUPlace()
+                executor = paddle.base.Executor(place)
+                scope = paddle.base.Scope()
+                with paddle.base.scope_guard(scope):
+                    executor.run(util_program)
+                    params = scope.find_var("out_var_0").get_bytes()
+
             if quant:
                 model, params = create_quant_model(model, params)
 
@@ -490,7 +524,17 @@ class PassAutoScanTest(AutoScanTest):
                 self.num_invalid_programs += 1
                 continue
             self.num_ran_programs += 1
-            model, params = create_fake_model(prog_config)
+
+            with paddle.pir_utils.OldIrGuard():
+                main_program_desc, util_program = create_fake_model(prog_config)
+                model = main_program_desc.serialize_to_string()
+                place = paddle.base.CPUPlace()
+                executor = paddle.base.Executor(place)
+                scope = paddle.base.Scope()
+                with paddle.base.scope_guard(scope):
+                    executor.run(util_program)
+                    params = scope.find_var("out_var_0").get_bytes()
+
             if quant:
                 model, params = create_quant_model(model, params)
 
@@ -693,16 +737,31 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self,
         atol: float,
         rtol: float,
-        tensor: dict[str, np.array],
-        baseline: dict[str, np.array],
+        tensor,
+        baseline,
     ):
-        for key, arr in tensor.items():
-            self.assertEqual(
-                baseline[key].shape,
-                arr.shape,
-                f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {arr.shape}",
-            )
-            np.testing.assert_allclose(arr, baseline[key], rtol=rtol, atol=atol)
+        if isinstance(tensor, dict) and isinstance(baseline, dict):
+            for key, arr in tensor.items():
+                self.assertEqual(
+                    baseline[key].shape,
+                    arr.shape,
+                    f"The output shapes are not equal, the baseline shape is {baseline[key].shape}, but got {arr.shape}",
+                )
+                np.testing.assert_allclose(
+                    arr, baseline[key], rtol=rtol, atol=atol
+                )
+        elif isinstance(tensor, list) and isinstance(baseline, list):
+            for value_t, value_b in zip(tensor, baseline):
+                self.assertEqual(
+                    value_t.shape,
+                    value_b.shape,
+                    f"The output shapes are not equal, the baseline shape is {value_b.shape}, but got {value_t.shape}",
+                )
+                np.testing.assert_allclose(
+                    value_t, value_b, rtol=rtol, atol=atol
+                )
+        else:
+            raise ValueError("Input types are not supported")
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
         fp32_last_pass = "transpose_flatten_concat_fuse_pass"
@@ -748,7 +807,13 @@ class TrtLayerAutoScanTest(AutoScanTest):
         return str(dic)
 
     def run_test(
-        self, quant=False, explicit=False, skip_baseline=False, *args, **kwargs
+        self,
+        quant=False,
+        explicit=False,
+        skip_baseline=False,
+        run_pir=False,
+        *args,
+        **kwargs,
     ):
         all_passes = True
 
@@ -758,117 +823,311 @@ class TrtLayerAutoScanTest(AutoScanTest):
             return True
 
         for prog_config in self.sample_program_configs(*args, **kwargs):
+            paddle.enable_static()
             if random_to_skip():
                 continue
-
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
-            with paddle.pir_utils.OldIrGuard():
-                model, params = create_fake_model(prog_config)
-            if quant:
-                with paddle.pir_utils.OldIrGuard():
-                    model, params = create_quant_model(model, params)
-
-            if not skip_baseline:
-                # baseline: gpu run, we only test float32
-                gpu_config = self.create_inference_config(use_trt=False)
-                baseline_result = self.run_test_config(
-                    model,
-                    params,
-                    prog_config,
-                    gpu_config,
-                    prog_config.get_feed_data(),
+            if run_pir and os.name != 'nt' and (not os.getenv('WITH_XPU')):
+                # get pir program from old program
+                main_program_desc, util_program = create_fake_model(
+                    prog_config, run_pir=True
                 )
-                self.success_log(f"baseline program_config: {prog_config}")
 
-            for (
-                pred_config,
-                nodes_num,
-                threshold,
-            ) in self.sample_predictor_configs(prog_config):
-                if os.path.exists(self.cache_dir):
-                    shutil.rmtree(self.cache_dir)
+                # transform program from old ir to new ir
+                startup_program = pir.translate_to_pir(util_program.desc)
+                pir_main_program = pir.translate_to_pir(main_program_desc)
+                with paddle.pir_utils.IrGuard():
+                    with paddle.static.program_guard(
+                        pir_main_program, startup_program
+                    ):
 
-                if isinstance(threshold, float):
-                    atol = threshold
-                    rtol = 1e-4
-                elif isinstance(threshold, (list, tuple)):
-                    atol = threshold[0]
-                    rtol = threshold[1]
-                else:
-                    raise NotImplementedError
+                        feed_dict = {}
+                        feed_data = prog_config.get_feed_data()
+                        for key, value in feed_data.items():
 
-                is_fp8 = (
-                    pred_config.tensorrt_precision_mode()
-                    == paddle_infer.PrecisionType.Int8
-                )
-                if (not is_fp8 and quant) or (
-                    is_fp8 and not (quant or explicit)
-                ):
-                    continue
+                            feed_dict[key] = value['data']
 
-                if explicit:
-                    pred_config.enable_tensorrt_explicit_quantization()
-                    self.assertTrue(
-                        pred_config.tensorrt_explicit_quantization_enabled()
-                    )
-
-                ignore_flag = False
-                for teller, reason, note in self.ignore_cases:
-                    if teller(prog_config, pred_config):
-                        ignore_flag = True
-                        if reason == IgnoreReasons.TRT_NOT_IMPLEMENTED:
-                            self.ignore_log(
-                                f"[TRT_NOT_IMPLEMENTED] {note} vs {self.inference_config_str(pred_config)}"
-                            )
-                        elif reason == IgnoreReasons.TRT_NOT_SUPPORT:
-                            self.ignore_log(
-                                f"[TRT_NOT_SUPPORT] {note} vs {self.inference_config_str(pred_config)}"
-                            )
-                        else:
-                            raise NotImplementedError
-                        break
-
-                if ignore_flag:
-                    continue
-
-                try:
-                    model, params = create_fake_model(prog_config)
-                    if quant:
-                        model, params = create_quant_model(model, params)
-                    feed_data = prog_config.get_feed_data()
-                    pred_config_deserialize = paddle_infer.Config(pred_config)
-                    trt_result = self.run_test_config(
-                        model, params, prog_config, pred_config, feed_data
-                    )
-                    self.assert_tensors_near(
-                        atol, rtol, trt_result, baseline_result
-                    )
-                    trt_engine_num, paddle_op_num = nodes_num
-                    self.assert_op_size(trt_engine_num, paddle_op_num)
-
-                    # deserialize test
-                    if trt_engine_num > 0:
-                        self.run_test_config(
-                            model,
-                            params,
-                            prog_config,
-                            pred_config_deserialize,
-                            feed_data,
+                        place = (
+                            paddle.CUDAPlace(0)
+                            if paddle.is_compiled_with_cuda()
+                            else paddle.CPUPlace()
+                        )
+                        out_put = pir_main_program.get_output_value_by_name(
+                            prog_config.outputs[0]
+                        )
+                        in_put = out_put.get_defining_op().operand_source(0)
+                        exe = paddle.static.Executor(place)
+                        exe.run(startup_program)
+                        static_out = exe.run(
+                            pir_main_program,
+                            feed=feed_dict,
+                            fetch_list=[in_put],
                         )
 
-                    self.success_log(f"program_config: {prog_config}")
-                    self.success_log(
-                        f"predictor_config: {self.inference_config_str(pred_config)}"
+                        for (
+                            pred_config,
+                            nodes_num,
+                            threshold,
+                        ) in self.sample_predictor_configs(
+                            prog_config, run_pir=True
+                        ):
+                            if os.path.exists(self.cache_dir):
+                                shutil.rmtree(self.cache_dir)
+                            if isinstance(threshold, float):
+                                atol = threshold
+                                rtol = 1e-4
+                            elif isinstance(threshold, (list, tuple)):
+                                atol = threshold[0]
+                                rtol = threshold[1]
+                            else:
+                                raise NotImplementedError
+
+                            is_fp8 = (
+                                pred_config.tensorrt_precision_mode()
+                                == paddle_infer.PrecisionType.Int8
+                            )
+                            if (not is_fp8 and quant) or (
+                                is_fp8 and not (quant or explicit)
+                            ):
+                                continue
+
+                            if explicit:
+                                pred_config.enable_tensorrt_explicit_quantization()
+                                self.assertTrue(
+                                    pred_config.tensorrt_explicit_quantization_enabled()
+                                )
+
+                            ignore_flag = False
+                            for teller, reason, note in self.ignore_cases:
+                                if teller(prog_config, pred_config):
+                                    ignore_flag = True
+                                    if (
+                                        reason
+                                        == IgnoreReasons.TRT_NOT_IMPLEMENTED
+                                    ):
+                                        self.ignore_log(
+                                            f"[TRT_NOT_IMPLEMENTED] {note} vs {self.inference_config_str(pred_config)}"
+                                        )
+                                    elif (
+                                        reason == IgnoreReasons.TRT_NOT_SUPPORT
+                                    ):
+                                        self.ignore_log(
+                                            f"[TRT_NOT_SUPPORT] {note} vs {self.inference_config_str(pred_config)}"
+                                        )
+                                    else:
+                                        raise NotImplementedError
+                                    break
+                            if ignore_flag:
+                                continue
+                            attrs = [
+                                prog_config.ops[i].attrs
+                                for i in range(len(prog_config.ops))
+                            ]
+                            dynamic_shape = self.generate_dynamic_shape()
+
+                            main_program_desc, util_program = create_fake_model(
+                                prog_config,
+                                run_pir=True,
+                                dynamic_shape=dynamic_shape,
+                            )
+                            # transform program from old ir to new ir
+                            startup_program = pir.translate_to_pir(
+                                util_program.desc
+                            )
+                            pir_main_program = pir.translate_to_pir(
+                                main_program_desc
+                            )
+
+                            inputs = []
+                            first_key = next(iter(prog_config.get_feed_data()))
+                            input_data_type = prog_config.get_feed_data()[
+                                first_key
+                            ]['data'].dtype
+                            if not self.dynamic_shape.min_input_shape:
+                                continue
+                            for (
+                                key
+                            ) in self.dynamic_shape.min_input_shape.keys():
+                                input_data = prog_config.get_feed_data()[key][
+                                    'data'
+                                ]
+                                input_dtype = (
+                                    input_data.dtype
+                                    if hasattr(input_data, 'dtype')
+                                    else input_data_type
+                                )
+                                input_range = (
+                                    (0.0, input_data.flat[0])
+                                    if input_dtype in ['int32', 'int64']
+                                    else None
+                                )
+
+                                input_config = Input(
+                                    min_input_shape=tuple(
+                                        self.dynamic_shape.min_input_shape[key]
+                                    ),
+                                    optim_input_shape=tuple(
+                                        self.dynamic_shape.opt_input_shape[key]
+                                    ),
+                                    max_input_shape=tuple(
+                                        self.dynamic_shape.max_input_shape[key]
+                                    ),
+                                    input_data_type=str(input_dtype),
+                                    input_range=input_range,
+                                )
+                                inputs.append(input_config)
+                            trt_config = TensorRTConfig(inputs=inputs)
+                            trt_config.input_data_type = input_data_type
+                            trt_program = self.transform_to_trt_program(
+                                pir_main_program, trt_config
+                            )
+
+                            assert any(
+                                op.name() == "pd_op.tensorrt_engine"
+                                for op in trt_program.global_block().ops
+                            ), "trt_program does not contain any tensorrt_engine ops."
+
+                            feed_data = prog_config.get_feed_data()
+                            for key, value in feed_data.items():
+                                feed_dict[key] = value['data']
+                            trt_output = exe.run(
+                                trt_program, feed=feed_dict, fetch_list=[in_put]
+                            )
+                            self.assert_tensors_near(
+                                atol, rtol, trt_output, static_out
+                            )
+                            paddle.framework.set_flags(
+                                {"FLAGS_trt_min_group_size": 3}
+                            )
+            else:
+                with paddle.pir_utils.OldIrGuard():
+                    main_program_desc, util_program = create_fake_model(
+                        prog_config
                     )
-                except Exception as e:
-                    self.fail_log(f"program_config: {prog_config}")
-                    self.fail_log(
-                        f"predictor_config: {self.inference_config_str(pred_config)}"
+                    model = main_program_desc.serialize_to_string()
+
+                    place = paddle.base.CPUPlace()
+                    executor = paddle.base.Executor(place)
+                    scope = paddle.base.Scope()
+                    with paddle.base.scope_guard(scope):
+                        executor.run(util_program)
+                        params = scope.find_var("out_var_0").get_bytes()
+                if quant:
+                    with paddle.pir_utils.OldIrGuard():
+                        model, params = create_quant_model(model, params)
+
+                if not skip_baseline:
+                    # baseline: gpu run, we only test float32
+                    gpu_config = self.create_inference_config(use_trt=False)
+                    baseline_result = self.run_test_config(
+                        model,
+                        params,
+                        prog_config,
+                        gpu_config,
+                        prog_config.get_feed_data(),
                     )
-                    self.fail_log(f"\033[1;31m ERROR INFO: {e}\033[0m")
-                    all_passes = False
+                    self.success_log(f"baseline program_config: {prog_config}")
+
+                for (
+                    pred_config,
+                    nodes_num,
+                    threshold,
+                ) in self.sample_predictor_configs(prog_config):
+                    if os.path.exists(self.cache_dir):
+                        shutil.rmtree(self.cache_dir)
+
+                    if isinstance(threshold, float):
+                        atol = threshold
+                        rtol = 1e-4
+                    elif isinstance(threshold, (list, tuple)):
+                        atol = threshold[0]
+                        rtol = threshold[1]
+                    else:
+                        raise NotImplementedError
+
+                    is_fp8 = (
+                        pred_config.tensorrt_precision_mode()
+                        == paddle_infer.PrecisionType.Int8
+                    )
+                    if (not is_fp8 and quant) or (
+                        is_fp8 and not (quant or explicit)
+                    ):
+                        continue
+
+                    if explicit:
+                        pred_config.enable_tensorrt_explicit_quantization()
+                        self.assertTrue(
+                            pred_config.tensorrt_explicit_quantization_enabled()
+                        )
+
+                    ignore_flag = False
+                    for teller, reason, note in self.ignore_cases:
+                        if teller(prog_config, pred_config):
+                            ignore_flag = True
+                            if reason == IgnoreReasons.TRT_NOT_IMPLEMENTED:
+                                self.ignore_log(
+                                    f"[TRT_NOT_IMPLEMENTED] {note} vs {self.inference_config_str(pred_config)}"
+                                )
+                            elif reason == IgnoreReasons.TRT_NOT_SUPPORT:
+                                self.ignore_log(
+                                    f"[TRT_NOT_SUPPORT] {note} vs {self.inference_config_str(pred_config)}"
+                                )
+                            else:
+                                raise NotImplementedError
+                            break
+
+                    if ignore_flag:
+                        continue
+
+                    try:
+                        with paddle.pir_utils.OldIrGuard():
+                            main_program_desc, util_program = create_fake_model(
+                                prog_config
+                            )
+                            model = main_program_desc.serialize_to_string()
+                            place = paddle.base.CPUPlace()
+                            executor = paddle.base.Executor(place)
+                            scope = paddle.base.Scope()
+                            with paddle.base.scope_guard(scope):
+                                executor.run(util_program)
+                                params = scope.find_var("out_var_0").get_bytes()
+                        if quant:
+                            model, params = create_quant_model(model, params)
+                        feed_data = prog_config.get_feed_data()
+                        pred_config_deserialize = paddle_infer.Config(
+                            pred_config
+                        )
+                        trt_result = self.run_test_config(
+                            model, params, prog_config, pred_config, feed_data
+                        )
+                        self.assert_tensors_near(
+                            atol, rtol, trt_result, baseline_result
+                        )
+                        trt_engine_num, paddle_op_num = nodes_num
+                        self.assert_op_size(trt_engine_num, paddle_op_num)
+                        # deserialize test
+                        if trt_engine_num > 0:
+                            self.run_test_config(
+                                model,
+                                params,
+                                prog_config,
+                                pred_config_deserialize,
+                                feed_data,
+                            )
+
+                        self.success_log(f"program_config: {prog_config}")
+                        self.success_log(
+                            f"predictor_config: {self.inference_config_str(pred_config)}"
+                        )
+                    except Exception as e:
+                        self.fail_log(f"program_config: {prog_config}")
+                        self.fail_log(
+                            f"predictor_config: {self.inference_config_str(pred_config)}"
+                        )
+                        self.fail_log(f"\033[1;31m ERROR INFO: {e}\033[0m")
+                        all_passes = False
 
         self.assertTrue(all_passes)
 
@@ -894,7 +1153,16 @@ class CutlassAutoScanTest(AutoScanTest):
             if not self.is_program_valid(prog_config):
                 continue
 
-            model, params = create_fake_model(prog_config)
+            with paddle.pir_utils.OldIrGuard():
+                main_program_desc, util_program = create_fake_model(prog_config)
+                model = main_program_desc.serialize_to_string()
+                place = paddle.base.CPUPlace()
+                executor = paddle.base.Executor(place)
+                scope = paddle.base.Scope()
+                with paddle.base.scope_guard(scope):
+                    executor.run(util_program)
+                    params = scope.find_var("out_var_0").get_bytes()
+
             feed_data = {}
             for name, tensor_config in prog_config.inputs.items():
                 feed_data[name] = {

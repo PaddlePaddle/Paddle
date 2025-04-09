@@ -24,6 +24,7 @@ from dygraph_to_static_utils import (
 import paddle
 import paddle.nn.functional as F
 from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
+from paddle.static import InputSpec
 from paddle.utils import gast
 
 SEED = 2020
@@ -41,7 +42,7 @@ def while_loop_dyfunc(x):
 def while_loop_dyfunc_without_tensor(x):
     a = 1
     # There are no tensors in the while condition, which means it's a plain while in python,
-    # so it wont't be transformed to `while_loop` op.
+    # so it won't be transformed to `while_loop` op.
     while not a > 4 and a > 0:
         x = x + 1
         a = a + 1
@@ -470,6 +471,7 @@ def loop_with_inner_mutate_list(x):
         a = []
         a.append(x)
         a.append(x + 1)
+        a.append(None)
         out += a[0]
         # After the loop, a is [x, x], which will be flattened to 2 elements
     return out
@@ -481,6 +483,82 @@ class TestLoopWithInnerMutateList(Dy2StTestBase):
         x = paddle.to_tensor(5)
         static_res = static_fn(x)
         dygraph_res = loop_with_inner_mutate_list(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+
+def loop_change_value_to_int():
+    x = paddle.to_tensor(1, dtype='float32')
+    y = paddle.to_tensor(False, dtype='bool')
+    while y:
+        x = 2
+    return x
+
+
+class TestLoopChangeValueToInt(Dy2StTestBase):
+    def test_loop_change_value_to_int(self):
+        static_fn = paddle.jit.to_static(
+            loop_change_value_to_int, full_graph=True
+        )
+        static_res = static_fn()
+        dygraph_res = loop_change_value_to_int()
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+
+def loop_update_iter_inner_normal(x):
+    y = x + 1
+    out = 0
+    for item in y:
+        y[0] = paddle.full([], 1, dtype="int64")
+        out += y
+    return out
+
+
+def loop_update_iter_inner_with_enumerate(x):
+    y = x + 1
+    out = 0
+    for i, item in enumerate(y):
+        y[i] = item + 1
+        out += y[i]
+    return out
+
+
+class TestLoopUpdateIterInner(Dy2StTestBase):
+    def test_loop_update_iter_inner_normal_paddle_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_normal,
+            input_spec=[InputSpec(shape=[-1, 1], dtype="int64", name="x")],
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_normal(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+    def test_loop_update_iter_inner_normal_python_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_normal,
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_normal(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+    def test_loop_update_iter_inner_with_enumerate_paddle_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_with_enumerate,
+            input_spec=[InputSpec(shape=[-1, 1], dtype="int64", name="x")],
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_with_enumerate(x)
+        np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
+
+    def test_loop_update_iter_inner_with_enumerate_python_control_flow(self):
+        static_fn = paddle.jit.to_static(
+            loop_update_iter_inner_with_enumerate,
+        )
+        x = paddle.to_tensor([[1], [2], [3]], dtype="int64")
+        static_res = static_fn(x)
+        dygraph_res = loop_update_iter_inner_with_enumerate(x)
         np.testing.assert_allclose(dygraph_res.numpy(), static_res.numpy())
 
 

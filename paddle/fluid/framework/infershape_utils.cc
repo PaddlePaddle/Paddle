@@ -77,7 +77,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
 
   bool IsDenseTensorInput(const std::string& name) const override {
     auto var_type = ctx_.GetInputVarType(name);
-    return var_type == proto::VarType::LOD_TENSOR;
+    return var_type == proto::VarType::DENSE_TENSOR;
   }
 
   bool IsDenseTensorInputs(const std::string& name) const override {
@@ -85,7 +85,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return std::all_of(var_types.begin(),
                        var_types.end(),
                        [](const proto::VarType::Type& type) {
-                         return type == proto::VarType::LOD_TENSOR;
+                         return type == proto::VarType::DENSE_TENSOR;
                        });
   }
 
@@ -108,7 +108,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return std::all_of(var_types.begin(),
                        var_types.end(),
                        [](const proto::VarType::Type& type) {
-                         return type == proto::VarType::LOD_TENSOR_ARRAY;
+                         return type == proto::VarType::DENSE_TENSOR_ARRAY;
                        });
   }
 
@@ -136,7 +136,7 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
     return std::all_of(var_types.begin(),
                        var_types.end(),
                        [](const proto::VarType::Type& type) {
-                         return type == proto::VarType::LOD_TENSOR;
+                         return type == proto::VarType::DENSE_TENSOR;
                        });
   }
 
@@ -200,7 +200,7 @@ bool CompatMetaTensor::is_dense() const {
     return var->IsType<phi::DenseTensor>();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->GetType() == proto::VarType::LOD_TENSOR;
+    return var->GetType() == proto::VarType::DENSE_TENSOR;
   }
 }
 
@@ -210,7 +210,7 @@ bool CompatMetaTensor::is_tensor_array() const {
     return var->IsType<phi::TensorArray>();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->GetType() == proto::VarType::LOD_TENSOR_ARRAY;
+    return var->GetType() == proto::VarType::DENSE_TENSOR_ARRAY;
   }
 }
 
@@ -315,7 +315,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       PADDLE_ENFORCE_EQ(dims.size(),
                         1UL,
                         common::errors::InvalidArgument(
-                            "LoDTensorArray can only have one dimension."));
+                            "DenseTensorArray can only have one dimension."));
       // only set the array size for phi::TensorArray input
       tensor_array->resize(dims[0]);
     } else {
@@ -397,7 +397,7 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
+      phi::DenseTensorUtils::GetMutableMeta(tensor)->legacy_lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
     } else {
       // NOTE(chenweihang): do nothing
@@ -408,11 +408,11 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
     // 'var->SetLodLevel' will fail. This case will happen when execute
     // 'test_hsigmoid_op.py'. So it is needed to assert 'var' type.
-    if ((var && (var->GetType() != proto::VarType::LOD_TENSOR &&
-                 var->GetType() != proto::VarType::LOD_TENSOR_ARRAY)) ||
+    if ((var && (var->GetType() != proto::VarType::DENSE_TENSOR &&
+                 var->GetType() != proto::VarType::DENSE_TENSOR_ARRAY)) ||
         (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array())) {
       VLOG(3) << "this tensor or input metatensor is not phi::DenseTensor or "
-                 "LoDTensorArray.";
+                 "DenseTensorArray.";
       return;
     }
     if (var) {

@@ -524,7 +524,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
 class ConvActFusePass : public pir::PatternRewritePass {
  public:
   ConvActFusePass()
-      : pir::PatternRewritePass("conv_activation_mkldnn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv_activation_mkldnn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

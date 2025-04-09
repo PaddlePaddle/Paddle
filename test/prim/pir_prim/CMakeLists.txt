@@ -22,7 +22,8 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_decomp_whole_program
     test_dynamic_combine1
     test_dynamic_combine2
-    test_decomp_fallback)
+    test_decomp_fallback
+    test_prim_amax_amin_op)
 
 foreach(target ${TEST_PRIM_PURE_PIR_CASES})
   py_test_modules(
@@ -30,8 +31,8 @@ foreach(target ${TEST_PRIM_PURE_PIR_CASES})
     MODULES
     ${target}
     ENVS
-    GLOG_v=1
     FLAGS_enable_pir_api=true
+    FLAGS_comp_skip_default_ops=0
     FLAGS_prim_enable_dynamic=true)
 endforeach()
 
@@ -49,23 +50,18 @@ foreach(target ${TEST_PRIM_DYNAMIC_SHAPE_BACKWARD_PIR_CASES})
     MODULES
     ${target}
     ENVS
-    GLOG_v=1
     FLAGS_prim_vjp_skip_default_ops=0
     FLAGS_enable_pir_api=true
+    FLAGS_comp_skip_default_ops=0
     FLAGS_prim_enable_dynamic=true)
 endforeach()
 
-py_test_modules(
-  test_pir_prim_flags_v3
-  MODULES
-  test_pir_prim_flags_v3
-  ENVS
-  GLOG_v=1
-  FLAGS_enable_pir_api=true
-  FLAGS_prim_vjp_skip_default_ops=0)
+py_test_modules(test_pir_prim_flags_v3 MODULES test_pir_prim_flags_v3 ENVS
+                FLAGS_enable_pir_api=true FLAGS_prim_vjp_skip_default_ops=0)
 
 set_tests_properties(test_auto_recompute PROPERTIES TIMEOUT 40)
 set_tests_properties(test_auto_recompute_dy2static PROPERTIES TIMEOUT 40)
+set_tests_properties(test_pir_prim_flags PROPERTIES TIMEOUT 150)
 
 set(TEST_PRIM_PURE_PIR_CINN test_prim_rms_norm_st_shape
                             test_prim_flags_check_ops)
@@ -77,19 +73,26 @@ if(WITH_CINN)
       MODULES
       ${target}
       ENVS
-      GLOG_v=1
-      FLAGS_group_schedule_tiling_first=true
       FLAGS_prim_check_ops=true
       FLAGS_enable_pir_api=true
       FLAGS_prim_enable_dynamic=true
-      FLAGS_prim_vjp_skip_default_ops=false
-      FLAGS_cinn_bucket_compile=True
-      FLAGS_pir_apply_shape_optimization_pass=1)
+      FLAGS_prim_vjp_skip_default_ops=false)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=CINN")
   endforeach()
 endif()
 
 foreach(target ${TEST_PRIM_TRANS_PIR_CASES})
-  py_test_modules(${target} MODULES ${target} ENVS GLOG_v=1
+  py_test_modules(${target} MODULES ${target} ENVS
                   FLAGS_enable_pir_in_executor=true)
 endforeach()
+
+set(TEST_PRIM_BACKWARD_BLACKLIST "test_pir_prim_flags_v4")
+
+py_test_modules(
+  ${TEST_PRIM_BACKWARD_BLACKLIST}
+  MODULES
+  ${TEST_PRIM_BACKWARD_BLACKLIST}
+  ENVS
+  FLAGS_enable_pir_api=true
+  FLAGS_prim_enable_dynamic=true
+  FLAGS_prim_backward_blacklist=pd_op.tanh_grad)

@@ -21,9 +21,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 const char kSumGradOpName[] = "sum";  // NOLINT
 // TODO(minqiyang): only support sgd at current time, please add
@@ -407,9 +405,7 @@ ir::Node* LockFreeOptimizePass::FindForwardOpViaBackwardOp(
   return nullptr;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(lock_free_optimize_pass,
               paddle::framework::ir::LockFreeOptimizePass);

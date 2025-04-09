@@ -104,7 +104,7 @@ void MultiEncoderXPUKernel(
   if (x_dtype == phi::DataType::FLOAT32) {
     auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
         ctx.template Alloc<phi::dtype::float16>(x_fp16));
-    int r_cast_x = xpu::cast_v2<float, XPUTypeFP16>(
+    int r_cast_x = xpu::cast<float, XPUTypeFP16>(
         ctx.x_context(), x.data<float>(), x_fp16_data_t, x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r_cast_x,
                                 "multi_encoder_xpu(cast x from fp32 to fp16)");
@@ -331,10 +331,10 @@ void MultiEncoderXPUKernel(
 
   if (x_dtype == phi::DataType::FLOAT32) {
     int r_cast_out =
-        xpu::cast_v2<XPUTypeFP16, float>(ctx.x_context(),
-                                         out_fp16_data,
-                                         ctx.template Alloc<float>(out),
-                                         out->numel());
+        xpu::cast<XPUTypeFP16, float>(ctx.x_context(),
+                                      out_fp16_data,
+                                      ctx.template Alloc<float>(out),
+                                      out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r_cast_out, "multi_encoder_xpu(cast out from fp16 to fp32)");
   }

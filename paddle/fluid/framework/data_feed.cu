@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/phi/core/platform/collective_helper.h"
+#include "paddle/phi/kernels/funcs/shuffle_batch.cu.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
@@ -1284,14 +1285,14 @@ int GraphDataGenerator::GenerateBatch() {
     }
     sage_batch_count_ += 1;
   }
-  LoD lod{offset_};
+  LegacyLoD lod{offset_};
 
   if (conf_.accumulate_num >= 2) {
     offset_.clear();
     offset_.push_back(0);
     offset_.push_back(uniq_instance_vec_[sage_batch_count_ * 2]);
   }
-  LoD lod2{offset_};
+  LegacyLoD lod2{offset_};
 
   if (conf_.accumulate_num == 1) {
     for (int tensor_pair_idx = 0; tensor_pair_idx < conf_.tensor_pair_num;
@@ -1803,7 +1804,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk,
       slot_num);
 
   std::vector<std::shared_ptr<phi::Allocation>> ins_slot_num(slot_num, nullptr);
-  std::vector<uint64_t *> ins_slot_num_vecotr(slot_num, NULL);
+  std::vector<uint64_t *> ins_slot_num_vector(slot_num, NULL);
   std::shared_ptr<phi::Allocation> d_ins_slot_num_vector =
       memory::AllocShared(place_, (slot_num) * sizeof(uint64_t *));
   uint64_t **d_ins_slot_num_vector_ptr =
@@ -1814,7 +1815,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk,
     if ((*feed_info_)[feed_vec_idx + 2 * i].type[0] == 'u') {
       ins_slot_num[ii] =
           memory::AllocShared(place_, key_num * sizeof(uint64_t));
-      ins_slot_num_vecotr[ii] =
+      ins_slot_num_vector[ii] =
           reinterpret_cast<uint64_t *>(ins_slot_num[ii]->ptr());
       ii++;
     }
@@ -1822,7 +1823,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk,
   if (slot_num > 0) {
     CUDA_CHECK(
         cudaMemcpyAsync(reinterpret_cast<char *>(d_ins_slot_num_vector_ptr),
-                        ins_slot_num_vecotr.data(),
+                        ins_slot_num_vector.data(),
                         sizeof(uint64_t *) * slot_num,
                         cudaMemcpyHostToDevice,
                         train_stream_));
@@ -1843,7 +1844,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk,
     size_t temp_storage_bytes = 0;
     CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
                                              temp_storage_bytes,
-                                             ins_slot_num_vecotr[0],
+                                             ins_slot_num_vector[0],
                                              slot_lod_tensor_ptr_[0] + 1,
                                              key_num,
                                              train_stream_));
@@ -1862,7 +1863,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk,
             slot_lod_tensor_ptr_[ii], 0, sizeof(uint64_t), train_stream_));
         CUDA_CHECK(cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
                                                  temp_storage_bytes,
-                                                 ins_slot_num_vecotr[ii],
+                                                 ins_slot_num_vector[ii],
                                                  slot_lod_tensor_ptr_[ii] + 1,
                                                  key_num,
                                                  train_stream_));
@@ -1892,7 +1893,7 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk,
             d_feature_list_ptr,
             d_feature_size_prefixsum_ptr,
             d_each_ins_slot_num_inner_prefix_ptr,
-            ins_slot_num_vecotr[ii],
+            ins_slot_num_vector[ii],
             slot_lod_tensor_ptr_[ii],
             slot_tensor_ptr_[ii],
             ii,
@@ -2108,7 +2109,7 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk,
 
   std::vector<std::shared_ptr<phi::Allocation>> ins_slot_num(float_slot_num_,
                                                              nullptr);
-  std::vector<uint64_t *> ins_slot_num_vecotr(float_slot_num_, NULL);
+  std::vector<uint64_t *> ins_slot_num_vector(float_slot_num_, NULL);
   std::shared_ptr<phi::Allocation> d_ins_slot_num_vector =
       memory::AllocShared(place_, (float_slot_num_) * sizeof(uint64_t *));
   uint64_t **d_ins_slot_num_vector_ptr =
@@ -2119,7 +2120,7 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk,
     if ((*feed_info_)[feed_vec_idx + 2 * i].type[0] == 'f') {
       ins_slot_num[ii] =
           memory::AllocShared(place_, key_num * sizeof(uint64_t));
-      ins_slot_num_vecotr[ii] =
+      ins_slot_num_vector[ii] =
           reinterpret_cast<uint64_t *>(ins_slot_num[ii]->ptr());
       ii++;
     }
@@ -2128,7 +2129,7 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk,
   if (float_slot_num_ > 0) {
     CUDA_CHECK(
         cudaMemcpyAsync(reinterpret_cast<char *>(d_ins_slot_num_vector_ptr),
-                        ins_slot_num_vecotr.data(),
+                        ins_slot_num_vector.data(),
                         sizeof(uint64_t *) * float_slot_num_,
                         cudaMemcpyHostToDevice,
                         train_stream_));
@@ -2151,7 +2152,7 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk,
     size_t temp_storage_bytes = 0;
     CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
                                              temp_storage_bytes,
-                                             ins_slot_num_vecotr[0],
+                                             ins_slot_num_vector[0],
                                              slot_lod_tensor_ptr_[0] + 1,
                                              key_num,
                                              train_stream_));
@@ -2169,7 +2170,7 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk,
             slot_lod_tensor_ptr_[ii], 0, sizeof(uint64_t), train_stream_));
         CUDA_CHECK(cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
                                                  temp_storage_bytes,
-                                                 ins_slot_num_vecotr[ii],
+                                                 ins_slot_num_vector[ii],
                                                  slot_lod_tensor_ptr_[ii] + 1,
                                                  key_num,
                                                  train_stream_));
@@ -2199,7 +2200,7 @@ int GraphDataGenerator::FillFloatFeature(uint64_t *d_walk,
             d_feature_list_ptr,
             d_feature_size_prefixsum_ptr,
             d_each_ins_slot_num_inner_prefix_ptr,
-            ins_slot_num_vecotr[ii],
+            ins_slot_num_vector[ii],
             slot_lod_tensor_ptr_[ii],
             slot_tensor_ptr_[ii],
             ii,
@@ -3167,7 +3168,7 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
       if (FLAGS_enable_graph_multi_node_sampling) {
         if (sample_flag == EVENT_CONTINUE_SAMPLE) {
           // Switching only occurs when multi machine sampling continues
-          switch_flag = EVENT_SWTICH_METAPATH;
+          switch_flag = EVENT_SWITCH_METAPATH;
         }
       } else {
         cursor += 1;
@@ -3505,11 +3506,16 @@ int FillWalkBuf(const std::vector<uint64_t> &h_device_keys_len,
   thrust::random::default_random_engine engine(*shuffle_seed_ptr);
   const auto &exec_policy = thrust::cuda::par(allocator).on(stream);
   thrust::counting_iterator<int> cnt_iter(0);
+#if defined(PADDLE_WITH_CUDA)
+  phi::funcs::shuffle_copy_fixed(
+      thrust::detail::derived_cast(thrust::detail::strip_const(exec_policy)),
+#else
   thrust::shuffle_copy(exec_policy,
-                       cnt_iter,
-                       cnt_iter + *total_row_ptr,
-                       thrust::device_pointer_cast(d_random_row),
-                       engine);
+#endif
+      cnt_iter,
+      cnt_iter + *total_row_ptr,
+      thrust::device_pointer_cast(d_random_row),
+      engine);
 
   thrust::transform(exec_policy,
                     cnt_iter,
@@ -3798,11 +3804,16 @@ int FillWalkBufMultiPath(
   thrust::random::default_random_engine engine(*shuffle_seed_ptr);
   const auto &exec_policy = thrust::cuda::par(allocator).on(stream);
   thrust::counting_iterator<int> cnt_iter(0);
+#if defined(PADDLE_WITH_CUDA)
+  phi::funcs::shuffle_copy_fixed(
+      thrust::detail::derived_cast(thrust::detail::strip_const(exec_policy)),
+#else
   thrust::shuffle_copy(exec_policy,
-                       cnt_iter,
-                       cnt_iter + *total_row_ptr,
-                       thrust::device_pointer_cast(d_random_row),
-                       engine);
+#endif
+      cnt_iter,
+      cnt_iter + *total_row_ptr,
+      thrust::device_pointer_cast(d_random_row),
+      engine);
 
   thrust::transform(exec_policy,
                     cnt_iter,
@@ -4182,7 +4193,7 @@ void GraphDataGenerator::DoSageForInfer() {
         total_instance = 2;
         d_type_keys = reinterpret_cast<uint64_t *>(
             d_device_keys_[tensor_pair_idx][infer_cursor_[tensor_pair_idx]]
-                ->ptr());  // copy from begining
+                ->ptr());  // copy from beginning
       } else {
         d_type_keys += infer_node_start_[tensor_pair_idx];
         infer_node_start_[tensor_pair_idx] += total_instance / 2;

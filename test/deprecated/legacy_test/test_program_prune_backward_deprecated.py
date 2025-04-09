@@ -37,7 +37,7 @@ class ModelHyperParams:
     # paddle.dataset.wmt16 in which <bos>, <eos> and <unk> token has
     # already been added, but the <pad> token is not added. Transformer requires
     # sequences in a mini-batch are padded to have the same length. A <pad> token is
-    # added into the original dictionary in paddle.dateset.wmt16.
+    # added into the original dictionary in paddle.dataset.wmt16.
 
     # size of source word dictionary.
     src_vocab_size = 10000

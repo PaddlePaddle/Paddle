@@ -257,7 +257,7 @@ class TestSelectedRowsSumBF16OpBigRow(TestSelectedRowsSumBF16Op):
         self.row_numel = 102
 
 
-class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
+class TestDenseTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -549,7 +549,7 @@ class TestSumOpError(unittest.TestCase):
 
 
 create_test_sum_fp16_class(TestSelectedRowsSumOp)
-create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
+create_test_sum_fp16_class(TestDenseTensorAndSelectedRowsOp)
 
 
 class TestReduceOPTensorAxisBase(unittest.TestCase):

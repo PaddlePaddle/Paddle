@@ -20,12 +20,12 @@
 namespace cinn::fusion {
 
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx) {
-  ValueUsage valud_dim;
+  ValueUsage value_dim;
   size_t rank = GetRank(v);
   for (size_t i = 0; i < rank; ++i) {
-    valud_dim.emplace_back(v, i, usage_idx);
+    value_dim.emplace_back(v, i, usage_idx);
   }
-  return valud_dim;
+  return value_dim;
 }
 
 static std::vector<ValueUsage> GetInputValueUsage(pir::Operation* op) {
@@ -109,7 +109,7 @@ static DimUsageRelation CreateOpRelativenessForBroadcast(pir::Operation* op) {
 static DimUsageRelation CreateOpRelativenessForReduce(pir::Operation* op) {
   const auto& reduce_axis_idx = GetReduceAxisIdx(op);
   DimUsageRelation res;
-  const size_t input_rank = GetCompitableRank(op->operand_source(0));
+  const size_t input_rank = GetCompatibleRank(op->operand_source(0));
   int out_idx = 0;
   bool keep_dim = GetReduceOpKeepDims(op);
   for (size_t i = 0; i < input_rank; i++) {
@@ -201,7 +201,6 @@ DimUsageRelation AnalysisIndexExprRelation(
     }
   }
 
-  VLOG(4) << "[AnalysisIndexExprRelation] Result " << RelationDebugStr(res);
   return res;
 }
 

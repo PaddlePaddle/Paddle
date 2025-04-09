@@ -20,6 +20,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/pass/pass.h"
 
 namespace paddle {
@@ -95,10 +96,18 @@ pir::Type TranslateToIrDataType(phi::DataType dtype);
  *
  * @return pir::Operation*
  */
-pir::Operation* CreateOpeartionByName(const std::string& op_name,
+pir::Operation* CreateOperationByName(const std::string& op_name,
                                       const std::vector<pir::Value>& inputs,
                                       const pir::AttributeMap& attrs,
                                       const pir::PatternRewriter& rewriter);
+
+/**
+ * @brief Create a DataType attribute.
+ *
+ * @param pir::IrContext * ctx
+ * @param phi::DataType dtype
+ **/
+pir::Attribute CreateDataTypeAttr(pir::IrContext* ctx, phi::DataType dtype);
 
 /**
  * @brief Get the mutable data of a Variable.
@@ -246,5 +255,8 @@ std::vector<Value> GetUsedExternalValue(const Block& block);
  * @return bool
  */
 bool ValueIsPersistable(const pir::Value& value);
+
+phi::DataType GetTensorDtype(pir::Type type);
+phi::DataType GetValueDtype(const pir::Value& val);
 
 }  // namespace pir

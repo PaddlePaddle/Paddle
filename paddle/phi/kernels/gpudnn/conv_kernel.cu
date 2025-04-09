@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_kernel.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn.h"
 
 #include "glog/logging.h"
 
@@ -176,7 +177,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
 
-  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+  // NOTE(zhiqiu): inplace addto is not supported in double grad yet.
   // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
   // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
 
@@ -557,30 +558,6 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                      data_format,
                      out);
 }
-
-template <typename T, typename Context>
-void DepthwiseConvCudnnKernel(const Context& dev_ctx,
-                              const DenseTensor& input,
-                              const DenseTensor& filter,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
-                              const std::string& padding_algorithm,
-                              int groups,
-                              const std::vector<int>& dilations,
-                              const std::string& data_format,
-                              DenseTensor* out) {
-  ConvCudnnKernel<T>(dev_ctx,
-                     input,
-                     filter,
-                     strides,
-                     paddings,
-                     padding_algorithm,
-                     dilations,
-                     groups,
-                     data_format,
-                     out);
-}
-
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP

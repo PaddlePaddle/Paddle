@@ -38,15 +38,18 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
             toutdata = main_prog.current_block().create_var(
                 name="outofallreduce",
                 dtype='float32',
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )
             main_prog.global_block().append_op(
-                type="c_allreduce_sum",
-                inputs={'X': tindata},
-                attrs={'ring_id': ring_id},
-                outputs={'Out': toutdata},
+                type="all_reduce",
+                inputs={'x': tindata},
+                attrs={
+                    'ring_id': ring_id,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
+                },
+                outputs={'out': toutdata},
             )
             main_prog.global_block().append_op(
                 type="c_sync_comm_stream",

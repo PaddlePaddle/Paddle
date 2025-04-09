@@ -145,7 +145,7 @@ class Dirac(Initializer):
                     ),
                     shape=var.shape,
                     dtype=out_dtype,
-                    type=VarDesc.VarType.LOD_TENSOR,
+                    type=VarDesc.VarType.DENSE_TENSOR,
                     persistable=False,
                 )
             else:
@@ -209,7 +209,7 @@ class Dirac(Initializer):
                 name=unique_name.generate(".".join([out_var.name, "XShape"])),
                 dtype=out_dtype,
                 shape=out_var.shape,
-                type=VarDesc.VarType.LOD_TENSOR,
+                type=VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=True,
             )
@@ -340,7 +340,7 @@ class Dirac(Initializer):
                 name=unique_name.generate(".".join([out_var.name, "XShape"])),
                 dtype=out_dtype,
                 shape=out_var.shape,
-                type=VarDesc.VarType.LOD_TENSOR,
+                type=VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=True,
             )

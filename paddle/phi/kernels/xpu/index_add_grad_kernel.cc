@@ -29,8 +29,17 @@ void IndexAddGradKernel(const Context& ctx,
                         int dim,
                         DenseTensor* x_grad,
                         DenseTensor* add_value_grad) {
-  phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
-  phi::IndexSelectKernel<T, Context>(ctx, out_grad, index, dim, add_value_grad);
+  if (dim < 0) {
+    dim += out_grad.dims().size();
+  }
+
+  if (x_grad) {
+    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+  }
+  if (add_value_grad) {
+    phi::IndexSelectKernel<T, Context>(
+        ctx, out_grad, index, dim, add_value_grad);
+  }
 }
 
 }  // namespace phi

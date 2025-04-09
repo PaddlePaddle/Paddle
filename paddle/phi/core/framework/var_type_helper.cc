@@ -86,7 +86,7 @@ std::type_index ToTypeIndex(proto::VarType::Type type) {
       static_cast<int>(type)));
 }
 
-std::string DataTypeToString(const proto::VarType::Type type) {
+std::string VarDataTypeToString(const proto::VarType::Type type) {
   auto it = gDataTypeMap().proto_to_str_.find(static_cast<int>(type));
   if (it != gDataTypeMap().proto_to_str_.end()) {
     return it->second;
@@ -106,7 +106,7 @@ size_t SizeOfType(proto::VarType::Type type) {
     return it->second;
   }
   PADDLE_THROW(common::errors::Unimplemented("Not support %s as tensor type.",
-                                             DataTypeToString(type)));
+                                             VarDataTypeToString(type)));
 }
 
 // Now only supports promotion of complex type
@@ -126,7 +126,7 @@ int DataTypeNumAlign(const proto::VarType::Type t) {
     PADDLE_THROW(common::errors::Unavailable(
         "Only supports to align data type include float32, float64, complex64 "
         "and complex128, but received data type is `s`.",
-        DataTypeToString(t)));
+        VarDataTypeToString(t)));
   }
   return cast_type_num;
 }

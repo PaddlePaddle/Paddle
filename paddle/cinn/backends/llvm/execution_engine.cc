@@ -109,11 +109,11 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 
 /*static*/ std::unique_ptr<ExecutionEngine> ExecutionEngine::Create(
     const ExecutionOptions &config) {
-  VLOG(1) << "===================== Create CINN ExecutionEngine begin "
+  VLOG(6) << "===================== Create CINN ExecutionEngine begin "
              "====================";
-  VLOG(1) << "initialize llvm config";
-  VLOG(1) << "llvm version: " << LLVM_VERSION_STRING;
-  VLOG(1) << "llvm default target triple: " << LLVM_DEFAULT_TARGET_TRIPLE;
+  VLOG(6) << "initialize llvm config";
+  VLOG(6) << "llvm version: " << LLVM_VERSION_STRING;
+  VLOG(6) << "llvm default target triple: " << LLVM_DEFAULT_TARGET_TRIPLE;
 
   static std::once_flag flag;
   std::call_once(flag, InitializeLLVMPasses);
@@ -125,9 +125,9 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
       -> llvm::Expected<
           std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> {
     auto machine = llvm::cantFail(jtmb.createTargetMachine());
-    VLOG(1) << "create llvm compile layer";
-    VLOG(1) << "Target Name: " << machine->getTarget().getName();
-    VLOG(1) << "Target CPU: " << machine->getTargetCPU().str() << std::endl;
+    VLOG(6) << "create llvm compile layer";
+    VLOG(6) << "Target Name: " << machine->getTarget().getName();
+    VLOG(6) << "Target CPU: " << machine->getTargetCPU().str() << std::endl;
     return std::make_unique<llvm::orc::TMOwningSimpleCompiler>(
         std::move(machine), engine->cache_.get());
   };
@@ -144,7 +144,7 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
     return object_layer;
   };
 
-  VLOG(2) << "create jit execution engine";
+  VLOG(6) << "create jit execution engine";
   engine->jit_ =
       llvm::cantFail(llvm::orc::LLJITBuilder()
                          .setCompileFunctionCreator(compile_layer_creator)
@@ -154,11 +154,11 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
       llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
           engine->jit_->getDataLayout().getGlobalPrefix())));
 
-  VLOG(2) << "register global runtime call symbols";
+  VLOG(6) << "register global runtime call symbols";
 
   engine->RegisterGlobalRuntimeSymbols();
 
-  VLOG(2) << "===================== Create CINN ExecutionEngine end "
+  VLOG(6) << "===================== Create CINN ExecutionEngine end "
              "====================";
   engine->ctx = std::make_unique<llvm::LLVMContext>();
   engine->b = std::make_unique<llvm::IRBuilder<>>(*engine->ctx);
@@ -171,8 +171,10 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 
 template <typename CodeGenT>
 void ExecutionEngine::Link(const ir::Module &module) {
+  if (module.functions().size() == 0) {
+    return;
+  }
   utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
-
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
   VLOG(3) << "ir_emitter->Compile(module) Begin";
   ir_emitter->Compile(module);
@@ -209,6 +211,16 @@ void ExecutionEngine::Link(const ir::Module &module) {
     os.flush();
     VLOG(5) << buffer;
   }
+}
+
+template <>
+void ExecutionEngine::Link<CodeGenGpuHost>(const ir::Module &module) {
+  if (module.functions().size() == 0) {
+    return;
+  }
+  utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
+  auto ir_emitter = std::make_unique<CodeGenGpuHost>(m.get(), b.get());
+  ir_emitter->Compile(module);
 }
 
 bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,

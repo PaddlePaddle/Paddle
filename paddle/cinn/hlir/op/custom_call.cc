@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/backends/codegen_device_util.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -24,6 +23,7 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
@@ -128,7 +128,7 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
                          common::ARMArch>) {},
-        [&](common::HygonDCUArchHIP) {
+        [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
           ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
           host_args.push_back(kernel_stream);
           arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
@@ -147,11 +147,8 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
     *ret = CINNValuePack{{CINNValue(func)}};
   });
 
-  framework::CINNSchedule schedule(
-      [=](lang::Args args, lang::RetValue *ret) {});
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(compute, schedule, "strategy.custom_call.x86", 1);
+  strategy->AddImpl(compute, "strategy.custom_call.x86", 1);
   return strategy;
 }
 
@@ -303,7 +300,7 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
                             b_height));
     }
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unknown Matmul Setting!"));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -495,7 +492,7 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
                             b_height));
     }
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument("Unkown Matmul Setting!"));
+    PADDLE_THROW(::common::errors::InvalidArgument("Unknown Matmul Setting!"));
   }
 
   PADDLE_ENFORCE_EQ(
@@ -1209,7 +1206,7 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     void operator()(int64_t v) { *scalar_ = static_cast<int>(v); }
     void operator()(bool v) { *scalar_ = v ? 0xFFFFFFFF : 0; }
 
-#define EXPAND_MEMSET_TYPE_UNSUPPORT(TYPE)                            \
+#define EXPAND_MEMSET_TYPE_UNSUPPORTED(TYPE)                          \
   void operator()(const TYPE &) {                                     \
     std::stringstream ss;                                             \
     ss << "The type of \"value\" of memset custom_call not support: " \
@@ -1217,16 +1214,16 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));        \
   }
 
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::string)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<int>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<int64_t>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<float>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<double>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<bool>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<std::string>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<symbol::DimExpr>)
-    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<cinn::dialect::SymbolBinding>)
-#undef EXPAND_MEMSET_TYPE_UNSUPPORT
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::string)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<int>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<int64_t>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<float>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<double>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<bool>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<std::string>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<symbol::DimExpr>)
+    EXPAND_MEMSET_TYPE_UNSUPPORTED(std::vector<cinn::dialect::SymbolBinding>)
+#undef EXPAND_MEMSET_TYPE_UNSUPPORTED
   };
 
   int value = 0;

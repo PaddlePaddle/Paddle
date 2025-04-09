@@ -199,8 +199,8 @@ struct KronGradOpFunctor {
     p_stride_dout = stride_dout.Get();
     p_shape_y = dim_y.Get();
 #endif
-    // dout_x: dout * kron(ones(X), Y) re-aranged in shape (numel_x, numel_y)
-    // dout_y: dout * kron(X, ones(Y)) re-aranged in shape (numel_y, numel_x)
+    // dout_x: dout * kron(ones(X), Y) re-arranged in shape (numel_x, numel_y)
+    // dout_y: dout * kron(X, ones(Y)) re-arranged in shape (numel_y, numel_x)
     DenseTensor dout_x;
     T *p_dout_x = nullptr;
     if (dx) {

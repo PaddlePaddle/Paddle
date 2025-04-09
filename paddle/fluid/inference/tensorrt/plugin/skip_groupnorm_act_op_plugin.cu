@@ -40,7 +40,7 @@ bool SkipGroupnormActPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument(
-          "The input of SkipGroupnormAct plugin shoule not be nullptr."));
+          "The input of SkipGroupnormAct plugin should not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,

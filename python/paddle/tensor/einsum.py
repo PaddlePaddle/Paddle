@@ -838,10 +838,9 @@ def parse_fake_shape(
         1. ori_label is the original labels, not aligned by '....'
         2. if the '...' is evaluated to empty list, there is no '.' in label
         """
-        assert len(op.shape) == len(label), (
-            "length of shape and length of label must be the same, but received %d != %d"
-            % (len(op.shape), len(label))
-        )
+        assert len(op.shape) == len(
+            label
+        ), f"length of shape and length of label must be the same, but received {len(op.shape)} != {len(label)}"
         fakes = [s for i, (l, s) in enumerate(zip(label, op.shape))]
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in ori_label:
@@ -913,7 +912,7 @@ def einsum_v2(equation: str, *operands: Tensor) -> Tensor:
         var_list.append(gen_einsum_op(eq, *var_s))
     assert (
         len(var_list) == 1
-    ), "There must be one elements in list, but received %d." % len(var_list)
+    ), f"There must be one elements in list, but received {len(var_list)}."
     return var_list[0]
 
 

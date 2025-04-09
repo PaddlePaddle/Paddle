@@ -65,16 +65,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
+if(WITH_OPENVINO)
+  set(inference_deps ${inference_deps} openvino_engine)
+endif()
+
 set(ANALYSIS_PREDICTOR_SRCS analysis_predictor.cc resource_manager.cc
                             infer_context.cc)
-set(ANALYSIS_PREDICTOR_DEPS
-    ${inference_deps}
-    zero_copy_tensor
-    ir_pass_manager
-    op_compatible_info
-    infer_io_utils
-    model_utils
-    fleet_executor)
+set(ANALYSIS_PREDICTOR_DEPS ${inference_deps} zero_copy_tensor ir_pass_manager
+                            op_compatible_info infer_io_utils model_utils)
 
 if(WITH_ONNXRUNTIME)
   set(ANALYSIS_PREDICTOR_SRCS ${ANALYSIS_PREDICTOR_SRCS}

@@ -16,12 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/fluid/platform/densetensor_printer.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
                 phi::DeviceContext* dev_ctx,
@@ -30,7 +29,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   // create microbatch_id variable
   // and set micro id value
   auto* ptr = scope->Var("microbatch_id");
-  InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+  InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
   framework::Variable* var = scope->FindVar("microbatch_id");
   PADDLE_ENFORCE_EQ(
       var->IsType<phi::DenseTensor>(),
@@ -554,6 +553,5 @@ void HeterSectionWorker::TrainFilesWithProfiler() {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 #endif

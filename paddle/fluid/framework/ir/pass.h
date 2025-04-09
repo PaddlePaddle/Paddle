@@ -109,7 +109,7 @@ class Pass {
       };
 
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Invalid type for attritube %s, expected: %s, actual: %s.",
+          "Invalid type for attribute %s, expected: %s, actual: %s.",
           attr_name,
           TypeToString(typeid(AttrType *)),
           TypeToString(attrs_.at(attr_name).type())));

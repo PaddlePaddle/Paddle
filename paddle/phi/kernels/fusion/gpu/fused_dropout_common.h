@@ -70,10 +70,16 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
                                       ctx.GetMaxThreadsPerBlock(), 512))));
   const auto blocks_x =
       std::max(static_cast<uint32_t>(1), (tmp_cols + threads - 1) / threads);
-  const auto blocks_y = std::max(static_cast<uint32_t>(1), rows);
+  int blocks_y = std::max(static_cast<uint32_t>(1), rows);
+  int blocks_z = 1;
+  if (blocks_y > 65536) {
+    blocks_z = 1024;
+    blocks_y = (blocks_y + blocks_z - 1) / blocks_z;
+  }
   phi::backends::gpu::GpuLaunchConfig config;
   config.block_per_grid.x = blocks_x;
   config.block_per_grid.y = blocks_y;
+  config.block_per_grid.z = blocks_z;
   config.thread_per_block.x = threads;
   return config;
 }

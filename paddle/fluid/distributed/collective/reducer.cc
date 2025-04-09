@@ -931,7 +931,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "The sparse parameter[%d][%s] must have a selected rows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
-            "LodTensor. It is currently not supported by DataParallel. "
+            "DenseTensor. It is currently not supported by DataParallel. "
             "For example, if sparse embedding is used, and the weight of "
             "embedding is shared with subsequent dense parameters, then "
             "the parameter gradient of the embedding will be converted "

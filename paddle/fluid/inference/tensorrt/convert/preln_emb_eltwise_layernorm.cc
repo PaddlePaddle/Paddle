@@ -23,7 +23,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
     VLOG(4) << "convert PrelnEmbEltwiseLayerNorm op to tensorrt layer";
-    // get the presistable var's data
+    // get the persistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          phi::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
@@ -145,9 +145,9 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         output_fp16,
         1,
         common::errors::InvalidArgument(
-            "Only Precision::KHalf(fp16) is supported when infering "
+            "Only Precision::KHalf(fp16) is supported when inferring "
             "ernie(bert) model with config.EnableVarseqlen(). "
-            "But Precision::KFloat32 is setted."));
+            "But Precision::KFloat32 is set."));
 
     std::vector<nvinfer1::PluginField> fields;
     std::vector<std::string> temp_fields_keys;

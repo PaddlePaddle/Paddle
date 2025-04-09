@@ -201,7 +201,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
-    :: Localy storage on windows
+    :: Locally storage on windows
     if not exist %SCCACHE_ROOT% mkdir %SCCACHE_ROOT%
     set SCCACHE_DIR=%SCCACHE_ROOT%\.cache
 
@@ -257,7 +257,7 @@ if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
+call :test_whl_package || goto test_whl_package_error
 call :test_unit || goto test_unit_error
 call :test_inference || goto test_inference_error
 goto:success
@@ -273,7 +273,7 @@ if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
+call :test_whl_package || goto test_whl_package_error
 call :test_unit || goto test_unit_error
 goto:success
 
@@ -291,7 +291,7 @@ if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=Auto
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
+call :test_whl_package || goto test_whl_package_error
 call :test_unit || goto test_unit_error
 ::call :test_inference || goto test_inference_error
 ::call :test_inference_ut || goto test_inference_ut_error
@@ -307,7 +307,7 @@ if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
+call :test_whl_package || goto test_whl_package_error
 goto:success
 
 rem ------Build windows no-avx whl package------
@@ -318,7 +318,7 @@ if not defined CUDA_ARCH_NAME set CUDA_ARCH_NAME=All
 
 call :cmake || goto cmake_error
 call :build || goto build_error
-call :test_whl_pacakage || goto test_whl_pacakage_error
+call :test_whl_package || goto test_whl_package_error
 goto:success
 
 rem ------Build windows inference library------
@@ -658,7 +658,7 @@ echo Build Paddle failed, will exit!
 exit /b 7
 
 rem ---------------------------------------------------------------------------------------------
-:test_whl_pacakage
+:test_whl_package
 @ECHO OFF
 echo    ========================================
 echo    Step 3. Test pip install whl package ...
@@ -670,14 +670,55 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
 
-%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle\fluid\pybind\libpaddle.dll > paddle_dll_size.txt
-set /p paddledllsize=< paddle_dll_size.txt
-for /F %%i in ("%paddledllsize%") do echo "Windows libpaddle.dll Size: %%i"
+rem Record the exact size of dll and whl files and save them to disk D
+set dll_file=%cd%\paddle\fluid\pybind\libpaddle.dll
+for /F "tokens=1-5" %%a in ('dir "%dll_file%"') do (
+    echo "%%e" | findstr  "libpaddle.dll" >nul
+    if !errorlevel! equ 0 (
+        set dllsize=%%d
+        goto dll_break
+    )
+    echo "%%d" | findstr  "libpaddle.dll" >nul
+    if !errorlevel! equ 0 (
+        set dllsize=%%c
+        goto dll_break
+    )
+)
+:dll_break
+echo Windows libpaddle.dll Size: %dllsize% bytes
+set dllsize_folder=D:\record\dll_size
+if not exist "%dllsize_folder%" (
+    mkdir %dllsize_folder%
+)
+if exist "%dllsize_folder%\%AGILE_PULL_ID%.txt" (
+    del "%dllsize_folder%\%AGILE_PULL_ID%.txt"
+)
+echo %dllsize% > %dllsize_folder%\%AGILE_PULL_ID%.txt
 
-%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
-set /p whlsize=< whl_size.txt
-for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
-for /F %%i in ("%whlsize%") do echo ipipe_log_param_Windows_PR_whl_Size: %%i
+set whl_folder=%cd%\python\dist
+for /F "tokens=1-5" %%a in ('dir "%whl_folder%"') do (
+    echo "%%e" | findstr  ".whl" >nul
+    if !errorlevel! equ 0 (
+        set whlsize=%%d
+        goto whl_break
+    )
+    echo "%%d" | findstr  ".whl" >nul
+    if !errorlevel! equ 0 (
+        set whlsize=%%c
+        goto whl_break
+    )
+)
+:whl_break
+echo Windows PR whl Size: %whlsize% bytes
+echo ipipe_log_param_Windows_PR_whl_Size: %whlsize% bytes
+set whlsize_folder=D:\record\whl_size
+if not exist "%whlsize_folder%" (
+    mkdir %whlsize_folder%
+)
+if exist "%whlsize_folder%\%AGILE_PULL_ID%.txt" (
+    del "%whlsize_folder%\%AGILE_PULL_ID%.txt"
+)
+echo %whlsize% > %whlsize_folder%\%AGILE_PULL_ID%.txt
 
 dir /s /b python\dist\*.whl > whl_file.txt
 set /p PADDLE_WHL_FILE_WIN=< whl_file.txt
@@ -699,7 +740,7 @@ set CUDA_VISIBLE_DEVICES=0
 python %work_dir%\paddle\scripts\installation_validate.py
 goto:eof
 
-:test_whl_pacakage_error
+:test_whl_package_error
 ::echo 1 > %cache_dir%\error_code.txt
 ::type %cache_dir%\error_code.txt
 echo Test import paddle failed, will exit!

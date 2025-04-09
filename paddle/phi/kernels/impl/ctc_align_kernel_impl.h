@@ -97,7 +97,7 @@ void CTCAlignKernel(const Context& dev_ctx,
     }
 
     // set output lod
-    phi::LoD output_lod;
+    phi::LegacyLoD output_lod;
     output_lod.push_back(output_lod0);
     output->set_lod(output_lod);
     // resize output dims

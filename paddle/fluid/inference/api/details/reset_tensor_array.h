@@ -17,7 +17,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 
@@ -40,19 +40,19 @@ namespace details {
 struct TensorArrayBatchCleaner {
   TensorArrayBatchCleaner() {
     constexpr auto kTensorId = framework::VarTypeTrait<phi::DenseTensor>::kId;
-    constexpr auto kLoDTensorId =
+    constexpr auto kDenseTensorId =
         framework::VarTypeTrait<phi::DenseTensor>::kId;
     constexpr auto kSelectedRowsId =
         framework::VarTypeTrait<phi::SelectedRows>::kId;
     constexpr auto kFetchListId =
         framework::VarTypeTrait<framework::FetchList>::kId;
     valid_types_.insert(kTensorId);
-    valid_types_.insert(kLoDTensorId);
+    valid_types_.insert(kDenseTensorId);
     valid_types_.insert(kSelectedRowsId);
     valid_types_.insert(kFetchListId);
   }
-  // Collect the variables that are not Tensor or LoDTensor, and reset them to a
-  // bool(trick), because some of them are containers, and some operators just
+  // Collect the variables that are not Tensor or DenseTensor, and reset them to
+  // a bool(trick), because some of them are containers, and some operators just
   // keep inserting new items without clearing the containers first; So the
   // memory grow larger and larger in inference service deployed online.
   void CollectNoTensorVars(framework::Scope *scope);

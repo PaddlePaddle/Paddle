@@ -160,7 +160,7 @@ class MatmulReshapeElementwiseAddFusePattern
 class MatmulReshapeAddFusePass : public pir::PatternRewritePass {
  public:
   MatmulReshapeAddFusePass()
-      : pir::PatternRewritePass("matmul_reshape_add_fuse_pass", 3) {}
+      : pir::PatternRewritePass("matmul_reshape_add_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

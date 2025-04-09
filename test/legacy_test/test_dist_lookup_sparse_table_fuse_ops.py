@@ -41,7 +41,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         lr = init_program.global_block().create_var(
             name="LearningRate",
             persistable=True,
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             dtype="float32",
         )
@@ -49,14 +49,14 @@ class TestLookupTableFuseOp(unittest.TestCase):
         ids = init_program.global_block().create_var(
             name="Ids",
             persistable=True,
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[100],
             dtype="int64",
         )
 
         output = init_program.global_block().create_var(
             name="output",
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[100, 8],
             dtype="float32",
         )
@@ -124,7 +124,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         lr = training_program.global_block().create_var(
             name="LearningRate",
             persistable=True,
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             dtype="float32",
         )
@@ -140,7 +140,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         beta1 = training_program.global_block().create_var(
             name="Beta1Pow",
             persistable=True,
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             dtype="float32",
         )
@@ -148,7 +148,7 @@ class TestLookupTableFuseOp(unittest.TestCase):
         beta2 = training_program.global_block().create_var(
             name="Beta2Pow",
             persistable=True,
-            type=base.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             dtype="float32",
         )

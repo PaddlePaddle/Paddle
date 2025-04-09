@@ -112,7 +112,7 @@ class TestWholeProgram(unittest.TestCase):
         program_helper.to('train')
 
         forward_ops = program_helper.main_program.block(0).ops
-        self.assertEqual(len(forward_ops), 18)
+        self.assertEqual(len(forward_ops), 17)
 
         # step 2: apply optimizer to generate whole program
         optimize_ops, _ = program_helper.apply_optimizer(optimizer)
@@ -122,7 +122,7 @@ class TestWholeProgram(unittest.TestCase):
             for op in program_helper.main_program.block(0).ops
             if op.type == 'sgd'
         ]
-        self.assertEqual(len(all_ops), 38)
+        self.assertEqual(len(all_ops), 37)
         self.assertEqual(len(optimize_ops), len(sgd_ops))
 
         program_helper.reset()

@@ -25,8 +25,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/version.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 using paddle::experimental::ExtractPlainVector;
 using paddle::experimental::WrapAsScalars;
@@ -80,7 +79,8 @@ std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
   return std::make_pair(is_legacy_program, legacy_op_map);
 }
 
-namespace no_scalar {
+}  // namespace paddle::framework
+namespace paddle::framework::no_scalar {
 void ConvertSetValueOp(OpDesc* op) {
   std::vector<paddle::experimental::Scalar> values = PADDLE_GET_CONST(
       std::vector<paddle::experimental::Scalar>, op->GetAttr("values", false));
@@ -188,9 +188,9 @@ void ConvertProgram(ProgramDesc* program) {
     }
   }
 }
-}  // namespace no_scalar
+}  // namespace paddle::framework::no_scalar
 
-namespace scalar {
+namespace paddle::framework::scalar {
 void ConvertSetValueOp(OpDesc* op) {
   std::vector<paddle::experimental::Scalar> values;
 
@@ -317,6 +317,4 @@ void ConvertProgram(ProgramDesc* program) {
     }
   }
 }
-}  // namespace scalar
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::scalar

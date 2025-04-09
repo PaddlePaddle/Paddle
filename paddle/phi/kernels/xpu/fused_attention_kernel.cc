@@ -269,12 +269,13 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                    1.0f);
 
   // bias
-  r = xpu::broadcast_add(xpu_ctx,
-                         qkv_before_transpose_ptr,
-                         qkv_bias_ptr,
-                         qkv_before_transpose_ptr,
-                         {batch_size * seq_len, 3 * num_heads * head_dims},
-                         {3 * num_heads * head_dims});
+  r = xpu::broadcast_add(
+      xpu_ctx,
+      qkv_before_transpose_ptr,
+      qkv_bias_ptr,
+      qkv_before_transpose_ptr,
+      {(int64_t)batch_size * seq_len, 3LL * num_heads * head_dims},
+      {3LL * num_heads * head_dims});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 
   // transpose

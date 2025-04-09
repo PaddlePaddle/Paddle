@@ -48,6 +48,16 @@ def get_paddle_api():
         paddle.fft,
         paddle.vision.ops,
         paddle.metric,
+        paddle.geometric,
+    ]
+    distributed_apis = [
+        paddle.distributed.shard_tensor,
+        paddle.distributed.reshard,
+        paddle.distributed.unshard_dtensor,
+        paddle.distributed.auto_parallel.api.dtensor_to_local,
+        paddle.distributed.auto_parallel.api.dtensor_from_local,
+        paddle.distributed.auto_parallel.api.moe_global_mesh_tensor,
+        paddle.distributed.auto_parallel.api.moe_sub_mesh_tensors,
     ]
     special_paddle_apis = [paddle.tensor.fill_constant]
     non_operator_related_apis = [
@@ -77,6 +87,7 @@ def get_paddle_api():
                 paddle_api_list.append(fn)
     return list(
         set(special_paddle_apis)
+        | set(distributed_apis)
         | set(static_apis)
         | set(paddle_api_list) - set(non_operator_related_apis)
     )
@@ -112,6 +123,7 @@ break_graph_tensor_method = {
     'register_hook',
     'numpy',
     'clear_gradient',
+    'tolist',
     # TODO: Browse all possible functions and make prior judgments.
 }
 
@@ -128,3 +140,29 @@ def is_break_graph_tensor_methods(method_name):
 
 def add_break_graph_apis(apis: list):
     break_graph_set.update(apis)
+
+
+def is_directly_run_api(api):
+    from .utils import hashable
+
+    if not hashable(api):
+        return False
+    NATIVE_CODE_PURE_FUNCTIONS = {
+        paddle.base.libpaddle.is_compiled_with_avx,
+        paddle.base.libpaddle.is_compiled_with_cuda,
+        paddle.base.libpaddle.is_compiled_with_cudnn_frontend,
+        paddle.base.libpaddle.is_compiled_with_rocm,
+        paddle.base.libpaddle.is_compiled_with_custom_device,
+        paddle.base.libpaddle.is_compiled_with_ipu,
+        paddle.base.libpaddle.is_compiled_with_xpu,
+        paddle.base.libpaddle.is_compiled_with_mkldnn,
+        paddle.base.libpaddle.is_compiled_with_nccl,
+        paddle.base.libpaddle.is_compiled_with_mpi,
+        paddle.base.libpaddle.is_compiled_with_mpi_aware,
+        paddle.base.libpaddle.is_compiled_with_cinn,
+        paddle.base.libpaddle.is_compiled_with_distribute,
+        paddle.base.libpaddle.is_compiled_with_brpc,
+        paddle.base.libpaddle.is_compiled_with_dist,
+        paddle.base.libpaddle.is_compiled_with_flagcx,
+    }
+    return api in NATIVE_CODE_PURE_FUNCTIONS

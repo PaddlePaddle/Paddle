@@ -284,14 +284,14 @@ def sequence_conv_pool(
     """
         :api_attr: Static Graph
 
-    **This api takes input as an LoDTensor. If input is a Tensor, please use**
+    **This api takes input as an DenseTensor. If input is a Tensor, please use**
     :ref:`api_base_nets_simple_img_conv_pool` **instead**
 
     The sequence_conv_pool is composed of :ref:`api_base_layers_sequence_conv`
     and :ref:`api_base_layers_sequence_pool` .
 
     Args:
-        input (Tensor): 2-D LoDTensor, the input of sequence_conv,
+        input (Tensor): 2-D DenseTensor, the input of sequence_conv,
             which supports variable-time length input sequence.
             The underlying of input is a matrix with shape
             (T, N), where T is the total time steps in this mini-batch and N is
@@ -326,7 +326,7 @@ def sequence_conv_pool(
             input_dim = 100 #len(word_dict)
             emb_dim = 128
             hid_dim = 512
-            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64", lod_level=1)
+            data = paddle.static.data(name="words", shape=[None, 1], dtype="int64")
             emb = paddle.static.nn.embedding(input=data, size=[input_dim, emb_dim], is_sparse=True)
             seq_conv = base.nets.sequence_conv_pool(input=emb,
                                                      num_filters=hid_dim,
@@ -370,7 +370,7 @@ def glu(input, dim=-1):
     <https://arxiv.org/pdf/1612.08083.pdf>`_.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
+        input (Variable): The input variable which is a Tensor.
                           The supported data types include float32, float64
                           and float16 (only for GPU).
         dim (int, optional): The dimension along which to split. If :math:`dim < 0`, the
@@ -496,34 +496,30 @@ def scaled_dot_product_attention(
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
             "Inputs queries, keys and values should all be 3-D tensors."
-            "But received len(queries.shape) = %d, "
-            "len(keys.shape) = %d, len(values.shape) = %d."
-            % (len(queries.shape), len(keys.shape), len(values.shape))
+            f"But received len(queries.shape) = {len(queries.shape)}, "
+            f"len(keys.shape) = {len(keys.shape)}, len(values.shape) = {len(values.shape)}."
         )
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
             "The hidden size of queries and keys should be the same."
-            "But received queries' hidden size = %d and keys' hidden size = %d."
-            % (queries.shape[-1], keys.shape[-1])
+            f"But received queries' hidden size = {queries.shape[-1]} and keys' hidden size = {keys.shape[-1]}."
         )
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
             "The max sequence length in value batch and in key batch "
             "should be the same. But received max sequence length in value batch "
-            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2])
+            f"= {values.shape[-2]}, in key batch = {keys.shape[-2]}."
         )
     if keys.shape[-1] % num_heads != 0:
         raise ValueError(
-            "The hidden size of keys (%d) must be divisible "
-            "by the number of attention heads (%d)."
-            % (keys.shape[-1], num_heads)
+            f"The hidden size of keys ({keys.shape[-1]}) must be divisible "
+            f"by the number of attention heads ({num_heads})."
         )
     if values.shape[-1] % num_heads != 0:
         raise ValueError(
-            "The hidden size of values (%d) must be divisible "
-            "by the number of attention heads (%d)."
-            % (values.shape[-1], num_heads)
+            f"The hidden size of values ({values.shape[-1]}) must be divisible "
+            f"by the number of attention heads ({num_heads})."
         )
 
     def __compute_qkv(queries, keys, values, num_heads):

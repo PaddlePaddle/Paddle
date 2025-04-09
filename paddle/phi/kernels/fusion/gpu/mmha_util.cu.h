@@ -2005,6 +2005,53 @@ inline __device__ float4 mul(float4 a, float b) {
   return res;
 }
 
+template <>
+inline __device__ float mul(uint32_t a, uint32_t b) {
+  float c;
+  float2 fa = half2_to_float2(mul<uint32_t, uint32_t, uint32_t>(a, b));
+  c = fa.x + fa.y;
+  return c;
+}
+
+template <>
+inline __device__ float2 mul(uint32_t a, uint32_t b) {
+  float2 c;
+  c = half2_to_float2(mul<uint32_t, uint32_t, uint32_t>(a, b));
+  return c;
+}
+
+template <>
+inline __device__ float4 mul(uint2 a, uint2 b) {
+  float4 c;
+  uint32_t ua = mul<uint32_t, uint32_t, uint32_t>(a.x, b.x);
+  uint32_t ub = mul<uint32_t, uint32_t, uint32_t>(a.y, b.y);
+  float2 fa = half2_to_float2(ua);
+  float2 fb = half2_to_float2(ub);
+  c.x = fa.x;
+  c.y = fa.y;
+  c.z = fb.x;
+  c.w = fb.y;
+  return c;
+}
+
+template <>
+inline __device__ float4 mul(uint4 a, uint4 b) {
+  float4 c;
+  uint32_t ua = mul<uint32_t, uint32_t, uint32_t>(a.x, b.x);
+  uint32_t ub = mul<uint32_t, uint32_t, uint32_t>(a.y, b.y);
+  uint32_t uc = mul<uint32_t, uint32_t, uint32_t>(a.z, b.z);
+  uint32_t ud = mul<uint32_t, uint32_t, uint32_t>(a.w, b.w);
+  float2 fa = half2_to_float2(ua);
+  float2 fb = half2_to_float2(ub);
+  float2 fc = half2_to_float2(uc);
+  float2 fd = half2_to_float2(ud);
+  c.x = fa.x + fa.y;
+  c.y = fb.x + fb.y;
+  c.z = fc.x + fc.y;
+  c.w = fd.x + fd.y;
+  return c;
+}
+
 #ifdef ENABLE_BF16
 template <>
 inline __device__ __nv_bfloat16 mul(__nv_bfloat16 a, __nv_bfloat16 b) {

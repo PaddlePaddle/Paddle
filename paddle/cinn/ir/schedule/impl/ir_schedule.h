@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/schedule/schedule_base.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 // #include "paddle/cinn/ir/schedule/utils/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 
@@ -46,6 +46,7 @@ class DyScheduleImpl : public ScheduleBase {
   std::vector<Expr> GetLoops(const Expr& block) const;
   std::vector<Expr> GetLoops(const std::string& block_name) const;
   std::vector<Expr> GetAllBlocks() const;
+  std::vector<stmt::StmtRef> GetAllSchedules() const;
   std::vector<Expr> GetChildBlocks(const Expr& expr) const;
   Expr GetBlock(const std::string& block_name) const;
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);

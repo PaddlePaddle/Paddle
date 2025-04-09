@@ -235,6 +235,15 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
   auto rank = in_dims.size();
+
+  if (input.numel() == 0) {
+    output->Resize(in_dims);
+    indices->Resize(in_dims);
+    dev_ctx.template Alloc<T>(output);
+    dev_ctx.template Alloc<int64_t>(indices);
+    return;
+  }
+
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   const T* in_data = input.data<T>();
   auto size = input.numel();
@@ -248,7 +257,7 @@ void ArgsortKernel(const Context& dev_ctx,
   }
 
   // Use thrust for parallel acceleration when the input size is equal to the
-  // length of the ‘axis’ dimension.
+  // length of the 'axis' dimension.
   // Compared to the following 'Special case for full sort', ascending sort is
   // 34 times faster and descending sort is 31 times faster.
   if (size == in_dims[axis]) {

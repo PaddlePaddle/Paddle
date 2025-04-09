@@ -49,7 +49,7 @@ void Group::DivNRanks(const phi::DeviceContext &context, int64_t nranks) {
 #ifdef PADDLE_WITH_HIP
     if (dtype_ == paddle::framework::proto::VarType_Type_BF16) {
       PADDLE_THROW(
-          common::errors::Fatal("Unsupport BF16 in DataParallel for now"));
+          common::errors::Fatal("Unsupported BF16 in DataParallel for now"));
     }
     framework::VisitDataTypeForHIP(
         dtype_,
@@ -363,7 +363,7 @@ void Reducer::InitializeDenseGroups(
     PADDLE_ENFORCE_EQ(is_sparse_gradient_[variable_index],
                       false,
                       common::errors::PreconditionNotMet(
-                          "Tensor %s's GRAD must be LoDTensor, but received "
+                          "Tensor %s's GRAD must be DenseTensor, but received "
                           "GRAD is SelectedRows",
                           var_name));
 
@@ -721,7 +721,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         "parameters participate in the backward calculation "
         "again at a later time (e.g. after the forward function, "
         "the loss calculation uses the unused "
-        "paramters of the forward and trigger backward), "
+        "parameters of the forward and trigger backward), "
         "its gradient will be wrong.";
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
@@ -792,9 +792,9 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
             "parameters without generating gradients during training. "
-            "For example, if is_sparese=True is used in Embedding, "
+            "For example, if is_sparse=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
-            "because of stop_gradient/detatch, where error will occur.",
+            "because of stop_gradient/detach, where error will occur.",
             var_index,
             vars_[var_index]->Name()));
     auto var_base = vars_[var_index]->GradVarBase();
@@ -806,7 +806,7 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
             "The sparse parameter[%d][%s] must have a selectedrows gradient. "
             "Before forward pass, the parameter type is inferred to be "
             "SelectedRows, but after backward pass, its actual type becomes "
-            "LodTensor. It is currently not supported by DataParallel. "
+            "DenseTensor. It is currently not supported by DataParallel. "
             "For example, if sparse embedding is used, and the weight of "
             "embedding is shared with subsequent dense parameters, then "
             "the parameter gradient of the embedding will be converted "
@@ -999,7 +999,7 @@ bool Reducer::HasGrad(size_t var_index) {
     }
   } else {
     PADDLE_THROW(common::errors::PermissionDenied(
-        "Only support LoDTensor and SelectedRows for gradient var"));
+        "Only support DenseTensor and SelectedRows for gradient var"));
   }
   return false;
 }

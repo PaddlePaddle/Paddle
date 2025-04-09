@@ -32,8 +32,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 template <typename T>
 struct SelectedRowsAdd<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
@@ -413,7 +412,8 @@ template struct SelectedRowsAddToTensor<phi::XPUContext, float>;
 // Another group of functors is called "scatter updates", which means
 // use SelectedRows to update a dense tensor with different Ops, like
 // add or mul.
-namespace scatter {
+}  // namespace phi::funcs
+namespace phi::funcs::scatter {
 
 template <typename T, typename DeviceContext>
 typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
@@ -1005,6 +1005,4 @@ struct UpdateToTensor<phi::CPUContext, T> {
   }
 };
 
-}  // namespace scatter
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs::scatter

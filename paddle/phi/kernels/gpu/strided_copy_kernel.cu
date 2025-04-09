@@ -30,21 +30,12 @@ __global__ void StridedCopyCaseZeroFunc(
     phi::Array<int64_t, phi::DDim::kMaxRank + 1> output_stride) {
   int64_t input_offset = 0;
   int64_t output_offset = 0;
-#ifdef PADDLE_WITH_HIP
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
                            blockIdx.x,
                            blockIdx.y,
                            blockIdx.z};
-#else
-  float coordinate[6] = {threadIdx.x,
-                         threadIdx.y,
-                         threadIdx.z,
-                         blockIdx.x,
-                         blockIdx.y,
-                         blockIdx.z};
-#endif
 
 #pragma unroll
   for (int dim = RANK - 1; dim >= 0; --dim) {
@@ -56,7 +47,7 @@ __global__ void StridedCopyCaseZeroFunc(
 }
 
 template <typename T, typename Context>
-bool LaunchStridedCopyCazeZeroKernel(
+bool LaunchStridedCopyCaseZeroKernel(
     const Context& dev_ctx,
     const T* input_data,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
@@ -222,7 +213,7 @@ __global__ void StridedCopyCaseOneFunc(
 }
 
 template <typename T, typename Context>
-bool LaunchStridedCopyCazeOneKernel(
+bool LaunchStridedCopyCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
@@ -465,21 +456,12 @@ __global__ void Strided2ContiguousCaseZeroFunc(
                               blockDim.z * blockDim.y * blockDim.x +
                           threadIdx.z * blockDim.y * blockDim.x +
                           threadIdx.y * blockDim.x + threadIdx.x;
-#ifdef PADDLE_WITH_HIP
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
                            blockIdx.x,
                            blockIdx.y,
                            blockIdx.z};
-#else
-  float coordinate[6] = {threadIdx.x,
-                         threadIdx.y,
-                         threadIdx.z,
-                         blockIdx.x,
-                         blockIdx.y,
-                         blockIdx.z};
-#endif
 
 #pragma unroll
   for (int dim = RANK - 1; dim >= 0; --dim) {
@@ -490,7 +472,7 @@ __global__ void Strided2ContiguousCaseZeroFunc(
 }
 
 template <typename T, typename Context>
-bool LaunchStrided2ContiguousCazeZeroKernel(
+bool LaunchStrided2ContiguousCaseZeroKernel(
     const Context& dev_ctx,
     const T* input_data,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
@@ -659,7 +641,7 @@ __global__ void Strided2ContiguousCaseOneFunc(
 }
 
 template <typename T, typename Context>
-bool LaunchStrided2ContiguousCazeOneKernel(
+bool LaunchStrided2ContiguousCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& input_stride,
@@ -879,21 +861,13 @@ __global__ void Contiguous2StridedCaseZeroFunc(
                          threadIdx.z * blockDim.y * blockDim.x +
                          threadIdx.y * blockDim.x + threadIdx.x;
   int64_t output_offset = 0;
-#ifdef PADDLE_WITH_HIP
+
   int64_t coordinate[6] = {threadIdx.x,
                            threadIdx.y,
                            threadIdx.z,
                            blockIdx.x,
                            blockIdx.y,
                            blockIdx.z};
-#else
-  float coordinate[6] = {threadIdx.x,
-                         threadIdx.y,
-                         threadIdx.z,
-                         blockIdx.x,
-                         blockIdx.y,
-                         blockIdx.z};
-#endif
 
 #pragma unroll
   for (int dim = RANK - 1; dim >= 0; --dim) {
@@ -904,7 +878,7 @@ __global__ void Contiguous2StridedCaseZeroFunc(
 }
 
 template <typename T, typename Context>
-bool LaunchContiguous2StridedCazeZeroKernel(
+bool LaunchContiguous2StridedCaseZeroKernel(
     const Context& dev_ctx,
     const T* input_data,
     T* output_data,
@@ -1073,7 +1047,7 @@ __global__ void Contiguous2StridedCaseOneFunc(
 }
 
 template <typename T, typename Context>
-bool LaunchContiguous2StridedCazeOneKernel(
+bool LaunchContiguous2StridedCaseOneKernel(
     const Context& dev_ctx,
     const T* input_data,
     T* output_data,
@@ -1348,13 +1322,13 @@ void StridedCopyKernel(const Context& dev_ctx,
   }
 
   if (input.meta().is_contiguous()) {
-    if (LaunchContiguous2StridedCazeZeroKernel<T, Context>(dev_ctx,
+    if (LaunchContiguous2StridedCaseZeroKernel<T, Context>(dev_ctx,
                                                            input_data,
                                                            output_data,
                                                            output_stride,
                                                            input_dims,
                                                            rank)) {
-    } else if (LaunchContiguous2StridedCazeOneKernel<T, Context>(dev_ctx,
+    } else if (LaunchContiguous2StridedCaseOneKernel<T, Context>(dev_ctx,
                                                                  input_data,
                                                                  output_data,
                                                                  output_stride,
@@ -1371,9 +1345,9 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                         numel);
     }
   } else if (out->meta().is_contiguous()) {
-    if (LaunchStrided2ContiguousCazeZeroKernel<T, Context>(
+    if (LaunchStrided2ContiguousCaseZeroKernel<T, Context>(
             dev_ctx, input_data, input_stride, output_data, input_dims, rank)) {
-    } else if (LaunchStrided2ContiguousCazeOneKernel<T, Context>(dev_ctx,
+    } else if (LaunchStrided2ContiguousCaseOneKernel<T, Context>(dev_ctx,
                                                                  input_data,
                                                                  input_stride,
                                                                  output_data,
@@ -1390,14 +1364,14 @@ void StridedCopyKernel(const Context& dev_ctx,
                                                         numel);
     }
   } else {
-    if (LaunchStridedCopyCazeZeroKernel<T, Context>(dev_ctx,
+    if (LaunchStridedCopyCaseZeroKernel<T, Context>(dev_ctx,
                                                     input_data,
                                                     input_stride,
                                                     output_data,
                                                     output_stride,
                                                     input_dims,
                                                     rank)) {
-    } else if (LaunchStridedCopyCazeOneKernel<T, Context>(dev_ctx,
+    } else if (LaunchStridedCopyCaseOneKernel<T, Context>(dev_ctx,
                                                           input_data,
                                                           input_stride,
                                                           output_data,

@@ -83,14 +83,14 @@ class TestAddPositionEncodingTensorOp(OpTest):
         self.out = add_position_encoding(self.x, self.alpha, self.beta)
 
 
-class TestAddPositionEncodingLoDTensorOp(OpTest):
+class TestAddPositionEncodingDenseTensorOp(OpTest):
     """
-    This class is to test the AddPositionEncodingLoDTensorOp
+    This class is to test the AddPositionEncodingDenseTensorOp
     """
 
     def setUp(self):
         """
-        the prepared section for add position encoding LoDTensor op
+        the prepared section for add position encoding DenseTensor op
         """
         self.op_type = "add_position_encoding"
         self.dtype = np.float64

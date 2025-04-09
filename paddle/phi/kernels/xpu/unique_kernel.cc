@@ -145,7 +145,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   DDim x_trans_flat_dims = common::flatten_to_2d(x_trans_dims, 1);
   int64_t axis_len = x_trans_flat_dims[0];
   int64_t slice_size = x_trans_flat_dims[1];
-  auto x_trans_flat_dims_vec = common::vectorize<int>(x_trans_flat_dims);
+  auto x_trans_flat_dims_vec = common::vectorize<int64_t>(x_trans_flat_dims);
 
   auto* sorted_axis_idx = RAII_GUARD.alloc_l3_or_gm<IndexT>(axis_len);
   auto* sort_in_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(axis_len);
@@ -163,14 +163,14 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
 
   // radix sort
   for (int64_t i = slice_size - 1; i >= 0; --i) {
-    r = xpu::gather<XPUType, IndexT>(dev_ctx.x_context(),
-                                     x_trans_data + i,
-                                     sort_offset,
-                                     sort_in_tmp,
-                                     {x.numel() - i},
-                                     axis_len,
-                                     0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
+    r = xpu::paddle_gather<XPUType, IndexT>(dev_ctx.x_context(),
+                                            x_trans_data + i,
+                                            sort_offset,
+                                            sort_in_tmp,
+                                            {x.numel() - i},
+                                            axis_len,
+                                            0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
     r = xpu::stable_sort<XPUType, IndexT>(dev_ctx.x_context(),
                                           sort_in_tmp,
                                           sort_out_tmp,
@@ -179,24 +179,24 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
                                           axis_len,
                                           false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "stable_sort");
-    r = xpu::gather<XPUType, IndexT>(dev_ctx.x_context(),
-                                     x_trans_data,
-                                     sorted_axis_idx,
-                                     x_trans_tmp,
-                                     x_trans_flat_dims_vec,
-                                     axis_len,
-                                     0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
+    r = xpu::paddle_gather<XPUType, IndexT>(dev_ctx.x_context(),
+                                            x_trans_data,
+                                            sorted_axis_idx,
+                                            x_trans_tmp,
+                                            x_trans_flat_dims_vec,
+                                            axis_len,
+                                            0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
     std::swap(x_trans_data, x_trans_tmp);
 
-    r = xpu::gather<IndexT, IndexT>(dev_ctx.x_context(),
-                                    ori_idx_xpu,
-                                    sorted_axis_idx,
-                                    ori_idx_xpu_tmp,
-                                    {axis_len},
-                                    axis_len,
-                                    0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
+    r = xpu::paddle_gather<IndexT, IndexT>(dev_ctx.x_context(),
+                                           ori_idx_xpu,
+                                           sorted_axis_idx,
+                                           ori_idx_xpu_tmp,
+                                           {axis_len},
+                                           axis_len,
+                                           0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
     std::swap(ori_idx_xpu, ori_idx_xpu_tmp);
   }
 
@@ -274,14 +274,14 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
                      phi::CPUPlace(),
                      unique_axis.data(),
                      unique_len * sizeof(IndexT));
-  r = xpu::gather<XPUType, IndexT>(dev_ctx.x_context(),
-                                   x_trans_data,
-                                   unique_axis_idx_xpu,
-                                   out_trans_data,
-                                   x_trans_flat_dims_vec,
-                                   unique_len,
-                                   0);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
+  r = xpu::paddle_gather<XPUType, IndexT>(dev_ctx.x_context(),
+                                          x_trans_data,
+                                          unique_axis_idx_xpu,
+                                          out_trans_data,
+                                          x_trans_flat_dims_vec,
+                                          unique_len,
+                                          0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
   DDim out_trans_dims = x_trans_dims;
   out_trans_dims[0] = unique_len;
   auto out_trans_dims_vec = common::vectorize<int>(out_trans_dims);

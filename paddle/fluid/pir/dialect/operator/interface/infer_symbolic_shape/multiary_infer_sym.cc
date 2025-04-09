@@ -229,6 +229,74 @@ bool AucOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool BaddbmmOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  auto ndim_input = input_shape.shape().size();
+  auto ndim_x = x_shape.shape().size();
+  auto ndim_y = y_shape.shape().size();
+
+  PADDLE_ENFORCE_EQ(ndim_input == 3 || ndim_input == 2,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The input tensor input's dimension must be 3 or 2. "
+                        "But received input's dimension = [%d].",
+                        ndim_input));
+  PADDLE_ENFORCE_EQ(ndim_x,
+                    3,
+                    common::errors::InvalidArgument(
+                        "The input tensor x's dimension must be 3. "
+                        "But received x's dimension = [%d].",
+                        ndim_x));
+  PADDLE_ENFORCE_EQ(ndim_y,
+                    3,
+                    common::errors::InvalidArgument(
+                        "The input tensor y's dimension must be 3. "
+                        "But received y's dimension = [%d].",
+                        ndim_y));
+
+  std::vector<symbol::DimExpr> output_shape;
+  output_shape.push_back(x_shape.shape()[0]);  // batch size
+  output_shape.push_back(x_shape.shape()[1]);
+  output_shape.push_back(y_shape.shape()[2]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  infer_context->AddEqualCstr(x_shape.shape()[0],
+                              y_shape.shape()[0]);  // batch size
+  infer_context->AddEqualCstr(x_shape.shape()[2], y_shape.shape()[1]);
+
+  if (ndim_input == 3) {
+    infer_context->AddBroadcastableCstr(input_shape.shape()[0],
+                                        x_shape.shape()[0]);  // batch size
+    infer_context->AddBroadcastableCstr(input_shape.shape()[1],
+                                        x_shape.shape()[1]);
+    infer_context->AddBroadcastableCstr(input_shape.shape()[2],
+                                        y_shape.shape()[2]);
+  } else if (ndim_input == 2) {
+    infer_context->AddBroadcastableCstr(input_shape.shape()[0],
+                                        x_shape.shape()[0]);
+    infer_context->AddBroadcastableCstr(input_shape.shape()[1],
+                                        y_shape.shape()[2]);
+  }
+
+  return true;
+}
+
+bool Baddbmm_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BaddbmmOpInferSymbolicShape(op, infer_context);
+}
+
 bool BatchFcOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape_or_data =
@@ -645,12 +713,24 @@ bool BilinearOpInferSymbolicShape(
   return true;
 }
 
-// bool AssignPosOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool AssignPosOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &eff_num_len_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  if (eff_num_len_shape_or_data.data()
+          .has_value()) {  // according to the kernel code
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {eff_num_len_shape_or_data.data()->at(0)})});
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {infer_context->GetNextSymName()})});
+  }
+  return true;
+}
 
 bool BroadcastTensorsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -717,7 +797,7 @@ bool BoxCoderOpInferSymbolicShape(
                         prior_box_shape.size()));
   infer_context->AddEqualCstr(prior_box_shape[1], symbol::DimExpr{4});
 
-  if (!paddle::dialect::details::IsFakeValue(op->operand_source(1))) {
+  if (op->operand_source(1)) {
     const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     const std::vector<symbol::DimExpr> &prior_box_var_shape =
@@ -1445,9 +1525,8 @@ bool FullWithTensorOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(operand_source);
 
-  const auto &out_shape = operand_shape_or_data.data().has_value()
-                              ? operand_shape_or_data.data().value()
-                              : operand_shape_or_data.shape();
+  const auto &out_shape =
+      details::GetOrCreateExprVecFromData(operand_shape_or_data, infer_context);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
@@ -1646,12 +1725,264 @@ bool FusedFeedforwardOpInferSymbolicShape(
   return true;
 }
 
-// bool FusedAttentionOpInferSymbolicShape(pir::Operation *op,
-//                                         pir::InferSymbolicShapeContext
-//                                         *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedAttentionOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &qkv_weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const auto &cache_kv_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(5));
+  const auto &src_mask_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(6));
+  const auto &qkv_bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &qkv_weight_shape =
+      qkv_weight_shape_or_data.shape();
+  symbol::DimExpr dim_head = 0;
+  symbol::DimExpr hidden_size = 0;
+  symbol::DimExpr nranks = 1;
+  const bool transpose_qkv_wb =
+      op->attribute<pir::BoolAttribute>("transpose_qkv_wb").data();
+  const int num_heads_ = op->attribute<pir::Int32Attribute>("num_heads").data();
+  symbol::DimExpr num_heads = symbol::DimExpr(num_heads_);
+  const int ring_id = op->attribute<pir::Int32Attribute>("ring_id").data();
+  const bool pre_layer_norm =
+      op->attribute<pir::BoolAttribute>("pre_layer_norm").data();
+  const bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
+  if (transpose_qkv_wb) {
+    PADDLE_ENFORCE_EQ(qkv_weight_shape.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The dimensions of qkv_weight must be 2 if enable"
+                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
+                          "but received dimensions of"
+                          "Input is [%d]",
+                          qkv_weight_shape.size()));
+    PADDLE_ENFORCE_GT(num_heads_,
+                      0,
+                      common::errors::InvalidArgument(
+                          "The num_heads must be provided and greater than 0 "
+                          "if enable transpose_qkv_wb, but we got %d.",
+                          num_heads));
+    infer_context->AddEqualCstr((qkv_weight_shape[0] / num_heads) * num_heads,
+                                qkv_weight_shape[0]);
+    if (ring_id == -1) {
+      infer_context->AddEqualCstr(qkv_weight_shape[0] * symbol::DimExpr(3),
+                                  qkv_weight_shape[1]);
+    } else {
+      nranks = (qkv_weight_shape[0] * symbol::DimExpr(3)) / qkv_weight_shape[1];
+    }
+    dim_head = qkv_weight_shape[0] / (num_heads * nranks);
+    hidden_size = qkv_weight_shape[0];
+  } else {
+    PADDLE_ENFORCE_EQ(qkv_weight_shape.size(),
+                      4,
+                      common::errors::InvalidArgument(
+                          "The dimensions of qkv_weight must be 4 if not"
+                          "enable transpose_qkv_wb: (3, num_head, dim_head, "
+                          "dim_embed), but received [%d]",
+                          qkv_weight_shape.size()));
+    infer_context->AddEqualCstr(qkv_weight_shape[0], symbol::DimExpr(3));
+    if (ring_id == -1) {
+      infer_context->AddEqualCstr(qkv_weight_shape[1] * qkv_weight_shape[2],
+                                  qkv_weight_shape[3]);
+    }
+    num_heads = qkv_weight_shape[1];
+    dim_head = qkv_weight_shape[2];
+    hidden_size = qkv_weight_shape[3];
+  }
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The dimensions of x must be 3 (batch_size, seq_len, "
+                        "dim_embed), but received dimensions of Input is [%d]",
+                        x_shape.size()));
+  infer_context->AddEqualCstr(x_shape[2], hidden_size);
+  if (pre_layer_norm) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_shape)});
+  } else {
+    // The following three code used to set unoptional output value.
+    // Now it's result related to the infermeta.
+    infer_context->SetSymbolForValueByStaticShape(op->result(0));
+    infer_context->SetSymbolForValueByStaticShape(op->result(1));
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
+    if (!paddle::dialect::details::IsFakeValue(op->result(15))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(15),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
+    }
+    if (!paddle::dialect::details::IsFakeValue(op->result(16))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(16),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs({x_shape[0] * x_shape[1]})});
+    }
+    if (!paddle::dialect::details::IsFakeValue(op->result(17))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(17),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(x_shape)});
+    }
+  }
+  if (transpose_qkv_wb) {
+    // [batch_size, seq_len, 3 * num_heads * dim_head]
+    infer_context->SetShapeOrDataForValue(
+        op->result(3),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {x_shape[0],
+             x_shape[1],
+             symbol::DimExpr(3) * num_heads * dim_head})});
+    if (!qkv_bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(4),
+          symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+              {x_shape[0],
+               x_shape[1],
+               symbol::DimExpr(3) * num_heads * dim_head})});
+    } else {
+      // The following code used to set unoptional output value.
+      // Now it's result related to the infermeta.
+      infer_context->SetSymbolForValueByStaticShape(op->result(4));
+    }
+  } else {
+    // [batch_size, seq_len, 3, num_head, head_size]
+    infer_context->SetShapeOrDataForValue(
+        op->result(3),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({x_shape[0],
+                                               x_shape[1],
+                                               symbol::DimExpr(3),
+                                               num_heads,
+                                               dim_head})});
+    if (!qkv_bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(4),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs({x_shape[0],
+                                                 x_shape[1],
+                                                 symbol::DimExpr(3),
+                                                 num_heads,
+                                                 dim_head})});
+    } else {
+      // The following code used to set unoptional output value.
+      // Now it's result related to the infermeta.
+      infer_context->SetSymbolForValueByStaticShape(op->result(4));
+    }
+  }
+  // [3, batch_size, num_head, seq_len, head_size]
+  infer_context->SetShapeOrDataForValue(
+      op->result(5),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {symbol::DimExpr(3), x_shape[0], num_heads, x_shape[1], dim_head})});
+  // cache_seq_len + seq_len if cache else seq_len
+  symbol::DimExpr out_seq_len = x_shape[1];
+  if (!cache_kv_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    const std::vector<symbol::DimExpr> &cache_kv_shape =
+        cache_kv_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        cache_kv_shape.size(),
+        5,
+        common::errors::InvalidArgument(
+            "The CacheKV must be 5 dims, but got %d", cache_kv_shape.size()));
+    infer_context->AddEqualCstr(cache_kv_shape[0], symbol::DimExpr(2));
+    infer_context->AddEqualCstr(cache_kv_shape[1], x_shape[0]);
+    infer_context->AddEqualCstr(cache_kv_shape[2], num_heads);
+    infer_context->AddEqualCstr(cache_kv_shape[4], dim_head);
+    out_seq_len = out_seq_len + cache_kv_shape[3];
+    // [3, batch_size, num_head, cache_seq_len + seq_len, head_size]
+    if (!paddle::dialect::details::IsFakeValue(op->result(18))) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(18),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs({cache_kv_shape[0],
+                                                 cache_kv_shape[1],
+                                                 cache_kv_shape[2],
+                                                 out_seq_len,
+                                                 cache_kv_shape[4]})});
+    }
+  }
+  // [batch, num_head, seq_len, out_seq_len]
+  infer_context->SetShapeOrDataForValue(
+      op->result(6),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {x_shape[0], num_heads, x_shape[1], out_seq_len})});
+  if (!src_mask_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(11),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {x_shape[0], num_heads, x_shape[1], out_seq_len})});
+  } else {
+    // The following code used to set unoptional output value.
+    // Now it's result related to the infermeta.
+    infer_context->SetSymbolForValueByStaticShape(op->result(11));
+  }
+  // the same as QKOut's shape
+  infer_context->SetShapeOrDataForValue(
+      op->result(10),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {x_shape[0], num_heads, x_shape[1], out_seq_len})});
+  if (!is_test) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(9),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {x_shape[0], num_heads, x_shape[1], out_seq_len})});
+  } else {
+    // The following code used to set unoptional output value.
+    // Now it's result related to the infermeta.
+    infer_context->SetSymbolForValueByStaticShape(op->result(9));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(8),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {x_shape[0], num_heads, x_shape[1], out_seq_len})});
+
+  // [batch_size, num_heads, seq_len, head_dim]
+  infer_context->SetShapeOrDataForValue(
+      op->result(7),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {x_shape[0], num_heads, x_shape[1], dim_head})});
+
+  // [batch_size, seq_len, number of heads*head size]
+  infer_context->SetShapeOrDataForValue(
+      op->result(12),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {x_shape[0], x_shape[1], num_heads, dim_head})});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(13),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  if (!is_test) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(14),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_shape)});
+  } else {
+    // The following code used to set unoptional output value.
+    // Now it's result related to the infermeta.
+    infer_context->SetSymbolForValueByStaticShape(op->result(14));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(19),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
 
 bool FlashAttnVarlenQkvpackedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1875,8 +2206,6 @@ bool FusedGemmEpilogueOpInferSymbolicShape(
   if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
     infer_context->SetShapeOrDataForValue(op->result(1),
                                           ShapeOrData{TensorExprs(out_shape)});
-  } else {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
   }
 
   return true;
@@ -2360,7 +2689,7 @@ bool GroupNormOpInferSymbolicShape(
     channel_idx = 1;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "GroupNorm only suport NHWC and NCHW data formt"));
+        "GroupNorm only support NHWC and NCHW data format"));
   }
 
   symbol::DimExpr channel_dim = x_shape.shape()[channel_idx];
@@ -2443,16 +2772,12 @@ bool InstanceNormOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
-  if (paddle::dialect::details::IsFakeValue(op->result(1))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({NxC})});
   }
-  if (paddle::dialect::details::IsFakeValue(op->result(2))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(2));
-  } else {
+  if (!paddle::dialect::details::IsFakeValue(op->result(2))) {
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({NxC})});
@@ -2571,15 +2896,13 @@ bool LinspaceOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const auto step = [&] {
-    symbol::DimExpr expr;
-    if (num_shape_or_data.data().has_value()) {
-      expr = num_shape_or_data.data().value()[0];
-    } else {
-      expr = num_shape_or_data.shape()[0];
-    }
-    return expr;
-  }();
+  PADDLE_ENFORCE_EQ(
+      num_shape_or_data.data().has_value(),
+      true,
+      common::errors::InvalidArgument("TensorShapeOrDataDimExprs.data() of num "
+                                      "must have value, please check."));
+
+  const auto step = num_shape_or_data.data().value().at(0);
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     std::vector<symbol::DimExpr> out_dims{step};
     return symbol::ShapeOrDataDimExprs{
@@ -2918,13 +3241,14 @@ bool RoiPoolOpInferSymbolicShape(
           "The input data should be a four-dimensional tensor with [N,C,H,W], "
           "but received input data with %d dimension",
           x_shape.size()));
-  PADDLE_ENFORCE_EQ(rois_shape.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "rois should be a 2-D LoDTensor with shape (num_rois, "
-                        "4) given as [[x1, y1, x2, y2], ...], but received "
-                        "rois is %d-dimensional LoDTensor",
-                        rois_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      rois_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "rois should be a 2-D DenseTensor with shape (num_rois, "
+          "4) given as [[x1, y1, x2, y2], ...], but received "
+          "rois is %d-dimensional DenseTensor",
+          rois_shape.size()));
   const auto &four = symbol::DimExpr(4);
   infer_context->AddEqualCstr(rois_shape[1], four);
 
@@ -3081,9 +3405,8 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs &bias_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
   const auto &bias_shape = bias_shape_or_data.shape();
-  bool use_peepholes =
+  const bool use_peepholes =
       op->attribute<pir::BoolAttribute>("use_peepholes").data();
-  bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
   PADDLE_ENFORCE_EQ(
       input_shape.size(),
       2,
@@ -3125,19 +3448,26 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), out_shape_or_data);
   infer_context->SetShapeOrDataForValue(op->result(1), out_shape_or_data);
-  if (!is_test) {
-    infer_context->SetShapeOrDataForValue(
-        op->result(2),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(input_shape)});
-    infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
-  } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(2),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(input_shape)});
-    infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
-  }
+
+  // Based on the kernel and infermeta, the inferred results are the same
+  // regardless of whether is_test is true or false.
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(input_shape)});
+  infer_context->SetShapeOrDataForValue(op->result(3), out_shape_or_data);
+
+  return true;
+}
+bool LuSolveOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &b_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &b_shape = b_shape_or_data.shape();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(b_shape)});
+
   return true;
 }
 
@@ -3368,11 +3698,12 @@ bool PsroiPoolOpInferSymbolicShape(
       input_dims.size(),
       4,
       common::errors::InvalidArgument("The format of input tensor is NCHW"));
-  PADDLE_ENFORCE_EQ(rois_dims.size(),
-                    2,
-                    common::errors::InvalidArgument(
-                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                        "given as [(x1, y1, x2, y2), ...]"));
+  PADDLE_ENFORCE_EQ(
+      rois_dims.size(),
+      2,
+      common::errors::InvalidArgument(
+          "ROIs should be a 2-D DenseTensor of shape (num_rois, 4) "
+          "given as [(x1, y1, x2, y2), ...]"));
   infer_context->AddEqualCstr(rois_dims[1], symbol::DimExpr(4));
   if (op->operand_source(2)) {
     auto &rois_num_shape_or_data =
@@ -3448,7 +3779,7 @@ bool PyramidHashOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(num_emb % rand_len,
                     0,
                     common::errors::InvalidArgument(
-                        "The PyramidHashOP’s Attr(num_emb) should mod "
+                        "The PyramidHashOP's Attr(num_emb) should mod "
                         "Attr(rand_len), but num_emb is %d, rand_len is %d",
                         num_emb,
                         rand_len));
@@ -3549,9 +3880,7 @@ bool RankAttentionOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  if (details::IsFakeValue(op->result(0))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(0));
-  } else {
+  if (!details::IsFakeValue(op->result(0))) {
     std::vector<symbol::DimExpr> x_help_shape = {x_shape[0],
                                                  x_shape[1] * max_rank};
     infer_context->SetShapeOrDataForValue(
@@ -3560,9 +3889,7 @@ bool RankAttentionOpInferSymbolicShape(
             symbol::TensorShapeOrDataDimExprs(x_help_shape)});
   }
 
-  if (details::IsFakeValue(op->result(2))) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(2));
-  } else {
+  if (!details::IsFakeValue(op->result(2))) {
     std::vector<symbol::DimExpr> ins_rank_shape = {x_shape[0], 1};
     infer_context->SetShapeOrDataForValue(
         op->result(2),

@@ -57,7 +57,7 @@ __global__ void SequencePaddingKernel(T* dst,
 }
 
 template <typename T>
-class PaddingLoDTensorFunctor<phi::GPUContext, T> {
+class PaddingDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const phi::DenseTensor& seq_tensor,
@@ -139,7 +139,7 @@ class PaddingLoDTensorFunctor<phi::GPUContext, T> {
 };
 
 template <typename T>
-class UnpaddingLoDTensorFunctor<phi::GPUContext, T> {
+class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const phi::DenseTensor& pad_tensor,
@@ -205,15 +205,15 @@ class UnpaddingLoDTensorFunctor<phi::GPUContext, T> {
   }
 };
 
-template class PaddingLoDTensorFunctor<phi::GPUContext, int>;
-template class PaddingLoDTensorFunctor<phi::GPUContext, int64_t>;
-template class PaddingLoDTensorFunctor<phi::GPUContext, float>;
-template class PaddingLoDTensorFunctor<phi::GPUContext, double>;
+template class PaddingDenseTensorFunctor<phi::GPUContext, int>;
+template class PaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
+template class PaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PaddingDenseTensorFunctor<phi::GPUContext, double>;
 
-template class UnpaddingLoDTensorFunctor<phi::GPUContext, int>;
-template class UnpaddingLoDTensorFunctor<phi::GPUContext, int64_t>;
-template class UnpaddingLoDTensorFunctor<phi::GPUContext, float>;
-template class UnpaddingLoDTensorFunctor<phi::GPUContext, double>;
+template class UnpaddingDenseTensorFunctor<phi::GPUContext, int>;
+template class UnpaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
+template class UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class UnpaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

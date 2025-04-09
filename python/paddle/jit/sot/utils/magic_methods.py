@@ -78,13 +78,13 @@ UNARY_OPS_TO_MAGIC_NAMES: dict[UnaryOp, str] = {
     operator.abs: "__abs__",
     operator.index: "__index__",
     operator.inv: "__inv__",
-    operator.not_: "__not__",
     operator.truth: "__bool__",
     bool: "__bool__",
     abs: "__abs__",
     float: "__float__",
     len: "__len__",
     int: "__int__",
+    complex: "__complex__",
 }
 # TODO(SigureMo): support any, all, sum
 

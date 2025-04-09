@@ -133,5 +133,16 @@ class TestLayerListSlice(TestCaseBase):
         self.assert_results(layer_list_slice, net, x)
 
 
+@check_no_breakgraph
+def string_slice(x: str):
+    return x[2:7:2] + x[1:5] + x[4]
+
+
+class TestStringSlice(TestCaseBase):
+    def test_string_slice(self):
+        x = "1234567"
+        self.assert_results(string_slice, x)
+
+
 if __name__ == "__main__":
     unittest.main()

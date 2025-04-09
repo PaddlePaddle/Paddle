@@ -18,8 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 AssertInstruction::AssertInstruction(size_t id,
                                      const phi::Place& place,
                                      ::pir::Operation* op,
@@ -101,5 +100,4 @@ void AssertInstruction::Run() {
       error_msg));
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

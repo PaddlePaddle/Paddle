@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
 #include "glog/logging.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
@@ -53,47 +54,25 @@ void StridedSliceRawStridedKernel(const Context& dev_ctx,
     if (axis_size < 0) {
       continue;
     }
-
-    if (starts[i] < 0) {
-      starts[i] = starts[i] + axis_size;
-      starts[i] = std::max<int64_t>(starts[i], 0);
-    }
-    if (ends[i] < 0) {
-      if (!(ends[i] == -1 && strides[i] < 0)) {  // skip None stop condition
-        ends[i] = ends[i] + axis_size;
-        if (ends[i] < 0) {
-          ends[i] = 0;
-        }
-      }
+    bool dummy_zero_dim_out = false;
+    funcs::normalize_interval(starts[i],
+                              ends[i],
+                              strides[i],
+                              axis_size,
+                              &starts[i],
+                              &ends[i],
+                              &dummy_zero_dim_out);
+    if (ends[i] == -axis_size - 1) {
+      ends[i] = -1;
     }
 
-    int64_t left = 0;
-    int64_t right = 0;
+    int64_t step_size = std::abs(strides[i]);
 
-    if (strides[i] < 0) {
-      left = std::max(static_cast<int64_t>(-1), ends[i]);
-      right = std::min(axis_size - 1, starts[i]);
-    } else {
-      left = std::max(static_cast<int64_t>(0), starts[i]);
-      right = std::min(axis_size, ends[i]);
-    }
-    int64_t step = std::abs(strides[i]);
-
-    auto dim = (std::abs(right - left) + step - 1) / step;
-
-    if (dim <= 0) {
-      dim = 0;
-      strides[i] = 1;
-      starts[i] = 0;
-    }
-
-    if (starts[i] >= axis_size) {
-      starts[i] = (strides[i] < 0) ? axis_size - 1 : axis_size;
-    }
+    auto out_dim = (std::abs(ends[i] - starts[i]) + step_size - 1) / step_size;
 
     output_offset += static_cast<int>(starts[i] * output_stride[axes[i]] *
                                       SizeOf(out->dtype()));
-    output_dims[axes[i]] = dim;
+    output_dims[axes[i]] = out_dim;
     output_stride[axes[i]] *= strides[i];
   }
 

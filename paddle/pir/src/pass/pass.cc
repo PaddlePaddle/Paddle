@@ -89,8 +89,12 @@ GreedyRewriteConfig PatternRewritePass::InitializeConfig() {
 
 void PatternRewritePass::Run(Operation* op) {
   VLOG(4) << "Run PatternRewritePass: " << name();
-  auto [_, num_rewrites] =
-      ApplyPatternsGreedily(op, patterns_, InitializeConfig());
+  GreedyRewriteConfig config = InitializeConfig();
+  if (Has(kValueReplaceHookAttr)) {
+    config.value_replaced_hook =
+        Get<VALUE_REPLACED_HOOK_FUNC>(kValueReplaceHookAttr);
+  }
+  auto [_, num_rewrites] = ApplyPatternsGreedily(op, patterns_, config);
   AddStatistics(num_rewrites);
 }
 
@@ -202,6 +206,10 @@ bool PassManager::Run(Operation* op) {
 bool PassManager::Initialize(IrContext* context) {
   for (auto& pass : passes()) {
     if (!pass->Initialize(context)) return false;
+    if (value_replaced_hook_) {
+      pass->SetNotOwned<VALUE_REPLACED_HOOK_FUNC>(Pass::kValueReplaceHookAttr,
+                                                  &value_replaced_hook_);
+    }
   }
 
   return true;

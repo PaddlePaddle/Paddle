@@ -23,19 +23,16 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 void DownpourLiteWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
@@ -514,7 +511,7 @@ void DownpourLiteWorker::TrainFiles() {
               continue;
             }
             s += param + ":" + std::to_string(len) + ":";
-            s += PrintLodTensor(tensor, 0, len);
+            s += PrintDenseTensor(tensor, 0, len);
             fprintf(stderr, "%s\n", s.c_str());
             fflush(stderr);
             s = "";
@@ -597,6 +594,5 @@ void DownpourLiteWorker::TrainFiles() {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

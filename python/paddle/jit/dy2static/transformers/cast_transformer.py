@@ -27,7 +27,7 @@ class CastTransformer(BaseTransformer):
 
     def __init__(self, root):
         self.root = root
-        self._castable_type = {'bool', 'int', 'float'}
+        self._castable_type = {'bool', 'int', 'float', 'complex'}
 
     def transform(self):
         self.visit(self.root)

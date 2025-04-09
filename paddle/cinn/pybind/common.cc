@@ -33,6 +33,7 @@ using cinn::common::bfloat16;
 using cinn::common::CINNValue;
 using cinn::common::float16;
 using cinn::common::HygonDCUArchHIP;
+using cinn::common::HygonDCUArchSYCL;
 using cinn::common::NVGPUArch;
 using cinn::common::Target;
 using cinn::common::Type;

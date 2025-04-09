@@ -41,27 +41,27 @@ void CEmbeddingKernel(const Context& dev_ctx,
   // ym: number of elements of input ids.
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32) {
-    int r = xpu::embedding(dev_ctx.x_context(),
-                           reinterpret_cast<const XPUType*>(table_data),
-                           ids.data<int32_t>(),
-                           reinterpret_cast<XPUType*>(output_data),
-                           height,
-                           width,
-                           ids.numel(),
-                           -1,
-                           static_cast<int32_t>(start_index));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
+    int r = xpu::paddle_embedding(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(table_data),
+                                  ids.data<int32_t>(),
+                                  reinterpret_cast<XPUType*>(output_data),
+                                  height,
+                                  width,
+                                  ids.numel(),
+                                  -1,
+                                  static_cast<int32_t>(start_index));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_embedding");
   } else if (index_type == phi::DataType::INT64) {
-    int r = xpu::embedding(dev_ctx.x_context(),
-                           reinterpret_cast<const XPUType*>(table_data),
-                           ids.data<int64_t>(),
-                           reinterpret_cast<XPUType*>(output_data),
-                           height,
-                           width,
-                           ids.numel(),
-                           -1,
-                           static_cast<int64_t>(start_index));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
+    int r = xpu::paddle_embedding(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(table_data),
+                                  ids.data<int64_t>(),
+                                  reinterpret_cast<XPUType*>(output_data),
+                                  height,
+                                  width,
+                                  ids.numel(),
+                                  -1,
+                                  static_cast<int64_t>(start_index));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_embedding");
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "XPU c_embedding ids only support int32 or int64."));

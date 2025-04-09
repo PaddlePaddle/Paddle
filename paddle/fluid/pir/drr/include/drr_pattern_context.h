@@ -41,18 +41,22 @@ class ResultPatternGraph;
 
 class NormalAttribute {
  public:
+  NormalAttribute() = default;
+
   explicit NormalAttribute(const std::string& name) : attr_name_(name) {}
 
   const std::string& name() const { return attr_name_; }
 
  private:
-  std::string attr_name_;
+  std::string attr_name_{"default_name"};
 };
 
 using AttrComputeFunc = std::function<std::any(const MatchContext&)>;
 
 class ComputeAttribute {
  public:
+  ComputeAttribute() = default;
+
   explicit ComputeAttribute(const AttrComputeFunc& attr_compute_func)
       : attr_compute_func_(attr_compute_func) {}
 
@@ -61,7 +65,7 @@ class ComputeAttribute {
   }
 
  private:
-  AttrComputeFunc attr_compute_func_;
+  AttrComputeFunc attr_compute_func_{nullptr};
 };
 
 using ConstraintFunction = std::function<bool(const MatchContext&)>;
@@ -177,10 +181,14 @@ class Op {
 
 class TEST_API Tensor {
  public:
-  static const char RESULT_INPUT_NONE_TENSOR_NAME[];
-  static const char RESULT_OUTPUT_NONE_TENSOR_NAME[];
-  static const char SOURCE_INPUT_NONE_TENSOR_NAME[];
-  static const char SOURCE_OUTPUT_NONE_TENSOR_NAME[];
+  static constexpr const char* RESULT_INPUT_NONE_TENSOR_NAME =
+      "__@result_input_none_tensor@__";
+  static constexpr const char* RESULT_OUTPUT_NONE_TENSOR_NAME =
+      "__@result_output_none_tensor@__";
+  static constexpr const char* SOURCE_INPUT_NONE_TENSOR_NAME =
+      "__@source_input_none_tensor@__";
+  static constexpr const char* SOURCE_OUTPUT_NONE_TENSOR_NAME =
+      "__@source_output_none_tensor@__";
 
   bool is_none() const {
     return name_ == RESULT_INPUT_NONE_TENSOR_NAME ||
@@ -308,7 +316,7 @@ class TEST_API ResultPattern {
   // {"complex64", phi::DataType::COMPLEX64},
   // {"complex128", phi::DataType::COMPLEX128},
   // {"Undefined", phi::DataType::UNDEFINED},
-  // {"psting", phi::DataType::PSTRING},
+  // {"pstring", phi::DataType::PSTRING},
   // {"float16", phi::DataType::FLOAT16},
   // {"bfloat16", phi::DataType::BFLOAT16},
   // {"float64", phi::DataType::FLOAT64}};

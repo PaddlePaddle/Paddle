@@ -50,10 +50,60 @@ if(NOT WITH_SETUP_INSTALL)
     message(FATAL_ERROR "Failed to sync submodule, please check your network !")
   endif()
 
-  execute_process(
-    COMMAND git submodule update --init --recursive
-    WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
-    RESULT_VARIABLE result_var)
+  if(WITH_OPENVINO)
+    execute_process(
+      COMMAND git submodule update --init --depth=1 third_party/openvino
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+      RESULT_VARIABLE result_var)
+    # List of modules to be deleted
+    set(delete_module
+        "thirdparty/zlib/zlib"
+        "thirdparty/gflags/gflags"
+        "thirdparty/gtest/gtest"
+        "thirdparty/ocl/icd_loader"
+        "thirdparty/ocl/cl_headers"
+        "thirdparty/ocl/clhpp_headers"
+        "thirdparty/onnx/onnx"
+        "src/bindings/python/thirdparty/pybind11"
+        "thirdparty/ittapi/ittapi"
+        "cmake/developer_package/ncc_naming_style/ncc"
+        "src/plugins/intel_gpu/thirdparty/onednn_gpu"
+        "thirdparty/open_model_zoo"
+        "thirdparty/json/nlohmann_json"
+        "thirdparty/flatbuffers/flatbuffers"
+        "thirdparty/snappy"
+        "thirdparty/level_zero/level-zero"
+        "src/plugins/intel_npu/thirdparty/level-zero-ext"
+        "src/plugins/intel_npu/thirdparty/yaml-cpp")
+    # Iterate over each module and perform actions
+    foreach(module IN LISTS delete_module)
+      # Remove the module from git cache
+      execute_process(
+        COMMAND git rm --cached ${module}
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}/third_party/openvino
+        RESULT_VARIABLE git_rm_result)
+    endforeach()
+    execute_process(
+      COMMAND git submodule update --init --recursive
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+      RESULT_VARIABLE result_var)
+  else()
+    execute_process(
+      COMMAND git submodule status
+      WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+      OUTPUT_VARIABLE submodule_list
+      RESULT_VARIABLE result_var)
+    string(REGEX MATCHALL "third_party/[^ )\n]+" submodule_paths
+                 "${submodule_list}")
+    foreach(submodule IN LISTS submodule_paths)
+      if(NOT submodule STREQUAL "third_party/openvino")
+        execute_process(
+          COMMAND git submodule update --init --recursive ${submodule}
+          WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+          RESULT_VARIABLE result_var)
+      endif()
+    endforeach()
+  endif()
   if(NOT result_var EQUAL 0)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       set(THIRD_PARTY_TAR_URL
@@ -420,6 +470,11 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
+if(WITH_FLAGCX)
+  include(external/flagcx)
+  list(APPEND third_party_deps flagcx)
+endif()
+
 if(WITH_ONNXRUNTIME)
   include(external/onnxruntime
   )# download, build, install onnxruntime、paddle2onnx
@@ -606,7 +661,22 @@ if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT WIN32
    AND NOT APPLE)
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.3)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 90)
+        set(WITH_FLASHATTN_V3 ON)
+        break()
+      endif()
+    endforeach()
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
+        break()
+      endif()
+    endforeach()
+  elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
     foreach(arch ${NVCC_ARCH_BIN})
       if(${arch} GREATER_EQUAL 80)
         include(external/flashattn)
@@ -621,6 +691,22 @@ endif()
 if(WITH_CUDNN_FRONTEND)
   include(external/cudnn-frontend) # download cudnn-frontend
   list(APPEND third_party_deps extern_cudnn_frontend)
+endif()
+
+if(WITH_OPENVINO)
+  include(external/openvino)
+  list(APPEND third_party_deps extern_openvino)
+endif()
+
+string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+if(NOT WITH_GPU
+   OR NOT WITH_DISTRIBUTE
+   OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
+  set(WITH_NVSHMEM OFF)
+endif()
+if(WITH_NVSHMEM)
+  include(external/nvshmem)
+  list(APPEND third_party_deps extern_nvshmem)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

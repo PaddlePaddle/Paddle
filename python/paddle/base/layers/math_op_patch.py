@@ -48,11 +48,13 @@ SUPPORT_PROMOTION_OPS = [
     "__mul__",
     "__rmul__",
     "__mod__",
+    "__rmod__",
     "__div__",
     "__rdiv__",
     "__truediv__",
     "__rtruediv__",
     "__floordiv__",
+    "__rfloordiv__",
     "__pow__",
     "__rpow__",
     "__eq__",
@@ -77,8 +79,11 @@ EXPRESSION_MAP = {
     "__pow__": "A ** B",
     "__rpow__": "A **= B",
     "__floordiv__": "A //B",
+    "__rfloordiv__": "A //=B",
     "__mod__": "A % B",
+    "__rmod__": "A %= B",
     "__matmul__": "A @ B",
+    "__rmatmul__": "A @= B",
     "__eq__": "A == B",
     "__ne__": "A != B",
     "__lt__": "A < B",
@@ -316,7 +321,8 @@ def monkey_patch_variable():
         **Notes**:
             **The variable must be a** :ref:`api_paddle_Tensor`
 
-        Cast a variable to a specified data type.
+        Cast a variable to a specified data type if it differs from the current dtype;
+        otherwise, return the original variable.
 
         Args:
 
@@ -362,6 +368,9 @@ def monkey_patch_variable():
                 original var's dtype is: paddle.float32, numpy dtype is float32
                 new var's dtype is: paddle.int64, numpy dtype is int64
         """
+        if self.dtype == dtype:
+            return self
+
         block = current_block(self)
         out = create_new_tmp_var(block, dtype)
         block.append_op(
@@ -391,9 +400,9 @@ def monkey_patch_variable():
                 raise TypeError(
                     f"Required input var should be Variable, but received {type(var)}"
                 )
-        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        if self.type != core.VarDesc.VarType.DENSE_TENSOR_ARRAY:
             raise TypeError(
-                f"Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {self.type}"
+                f"Only Variable with VarType.DENSE_TENSOR_ARRAY support `append` method, but received type: {self.type}"
             )
         from paddle.tensor.array import array_length, array_write
 
@@ -415,11 +424,11 @@ def monkey_patch_variable():
     def pop(self, *args):
         """
         The type variable must be LoD Tensor Array.
-        When self is LoDTensorArray, calling pop is similar to Python's pop on list.
+        When self is DenseTensorArray, calling pop is similar to Python's pop on list.
         This interface is used to simplify dygraph to static graph operations.
 
         Args:
-            self(Variable): The source variable, which must be LOD_TENSOR_ARRAY
+            self(Variable): The source variable, which must be DENSE_TENSOR_ARRAY
             *args: optional, a int means index.
         Returns:
             Variable: self[index]
@@ -428,9 +437,9 @@ def monkey_patch_variable():
         from paddle.static.nn import while_loop
         from paddle.tensor import fill_constant
 
-        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        if self.type != core.VarDesc.VarType.DENSE_TENSOR_ARRAY:
             raise TypeError(
-                f"Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {self.type}"
+                f"Only Variable with VarType.DENSE_TENSOR_ARRAY support `pop` method, but received type: {self.type}"
             )
         if len(args) == 0:
             idx = -1
@@ -745,6 +754,13 @@ def monkey_patch_variable():
             "2. If you want to run it in full graph mode, you need use Variable directly, and do not use float(Variable)."
         )
 
+    def _complex_(self):
+        raise TypeError(
+            "complex(Variable) is not supported in static graph mode. If you are using @to_static, you can try this:\n"
+            "1. If you want to get the value of Variable, you can switch to non-fullgraph mode by setting @to_static(full_graph=True).\n"
+            "2. If you want to run it in full graph mode, you need use Variable directly, and do not use complex(Variable)."
+        )
+
     def values(var):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
@@ -859,12 +875,26 @@ def monkey_patch_variable():
             ),
         ),
         (
+            '__rfloordiv__',
+            _binary_creator_(
+                '__rfloordiv__', 'elementwise_floordiv', True, None
+            ),
+        ),
+        (
             '__mod__',
             _binary_creator_('__mod__', 'elementwise_mod', False, None),
         ),
         (
+            '__rmod__',
+            _binary_creator_('__rmod__', 'elementwise_mod', True, None),
+        ),
+        (
             '__matmul__',
             _binary_creator_('__matmul__', "matmul_v2", False, None),
+        ),
+        (
+            '__rmatmul__',
+            _binary_creator_('__rmatmul', "matmul_v2", True, None),
         ),
         #  for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
@@ -875,6 +905,7 @@ def monkey_patch_variable():
         ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
         ('__float__', _float_),
         ('__int__', _int_),
+        ('__complex__', _complex_),
         ('values', values),
         ('indices', indices),
         ('to_dense', to_dense),

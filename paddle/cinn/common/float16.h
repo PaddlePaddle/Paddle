@@ -324,6 +324,18 @@ struct CINN_ALIGN(8) half4 {
   float16 x, y, z, w;
 };
 
+struct CINN_ALIGN(16) float168 {
+  float16 x, y, z, w, v, u, t, s;
+};
+
+struct CINN_ALIGN(8) float164 {
+  float16 x, y, z, w;
+};
+
+struct CINN_ALIGN(4) float162 {
+  float16 x, y;
+};
+
 #ifdef __cplusplus
 // Arithmetic operators on GPU
 // CUDA 9.0 provides built-in arithmetic operators for half while

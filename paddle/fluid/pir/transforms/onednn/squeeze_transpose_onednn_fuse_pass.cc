@@ -85,7 +85,7 @@ class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
 class SqueezeTransposePass : public pir::PatternRewritePass {
  public:
   SqueezeTransposePass()
-      : pir::PatternRewritePass("squeeze_transpose_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("squeeze_transpose_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

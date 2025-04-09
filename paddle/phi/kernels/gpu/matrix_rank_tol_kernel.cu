@@ -346,14 +346,23 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                     0,
                     common::errors::InvalidArgument(
                         "The input Tensor x's shape[-2] should not "
-                        "be 0, but shape is %s now.",
+                        "be 0, but received %s now.",
                         dim_x));
   PADDLE_ENFORCE_NE(cols,
                     0,
                     common::errors::InvalidArgument(
                         "The input Tensor x's shape[-1] should not "
-                        "be 0, but shape is %s now.",
+                        "be 0, but received %s now.",
                         dim_x));
+  if (x.numel() == 0) {
+    std::vector<int64_t> out_dims_vec(dim_x.size() - 2);
+    for (int i = 0; i < dim_x.size() - 2; ++i) {
+      out_dims_vec[i] = dim_x[i];
+    }
+    out->Resize(phi::make_ddim(out_dims_vec));
+    dev_ctx.template Alloc<int64_t>(out);
+    return;
+  }
   int k = std::min(rows, cols);
   auto numel = x.numel();
   int batches = numel / (rows * cols);
@@ -457,8 +466,6 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                               bool hermitian,
                               DenseTensor* out) {
   auto* x_data = x.data<T>();
-  dev_ctx.template Alloc<int64_t>(out);
-
   auto dim_x = x.dims();
   auto dim_out = out->dims();
   int rows = dim_x[dim_x.size() - 2];
@@ -467,14 +474,24 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
       rows,
       0,
       errors::InvalidArgument("The input Tensor x's shape[-2] should not "
-                              "be 0, but shape is %s now.",
+                              "be 0, but received %s now.",
                               dim_x));
   PADDLE_ENFORCE_NE(
       cols,
       0,
       errors::InvalidArgument("The input Tensor x's shape[-1] should not "
-                              "be 0, but shape is %s now.",
+                              "be 0, but received %s now.",
                               dim_x));
+  if (x.numel() == 0) {
+    std::vector<int64_t> out_dims_vec(dim_x.size() - 2);
+    for (int i = 0; i < dim_x.size() - 2; ++i) {
+      out_dims_vec[i] = dim_x[i];
+    }
+    out->Resize(phi::make_ddim(out_dims_vec));
+    dev_ctx.template Alloc<int64_t>(out);
+    return;
+  }
+  dev_ctx.template Alloc<int64_t>(out);
   int k = std::min(rows, cols);
   auto numel = x.numel();
   int batches = numel / (rows * cols);

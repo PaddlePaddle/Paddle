@@ -44,6 +44,7 @@ class MergeParallelMatmulPattern
       if (!op->dyn_cast<paddle::dialect::MatmulOp>()) {
         return false;
       }
+
       bool trans_x =
           op->attribute("transpose_x").dyn_cast<pir::BoolAttribute>().data();
       bool trans_y =
@@ -53,6 +54,10 @@ class MergeParallelMatmulPattern
     if (!ValidMatmulTranspose(matmul_op)) {
       return false;
     }
+
+    auto IsFirstInput = [&](pir::Operation* op, pir::Value in_x) -> bool {
+      return in_x == op->operand_source(0);
+    };
 
     auto VectorPrefixEqual = [](const std::vector<std::int64_t>& a,
                                 const std::vector<std::int64_t>& b) {
@@ -72,6 +77,10 @@ class MergeParallelMatmulPattern
       std::vector<std::int64_t> cur_dim;
       for (auto it = input_x.use_begin(); it != input_x.use_end(); ++it) {
         if (!ValidMatmulTranspose(it->owner())) {
+          continue;
+        }
+
+        if (!IsFirstInput(it->owner(), input_x)) {
           continue;
         }
         if (!pre_dim.has_value()) {

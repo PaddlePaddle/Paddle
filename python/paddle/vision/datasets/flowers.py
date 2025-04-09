@@ -194,7 +194,7 @@ class Flowers(Dataset[Tuple["_ImageDataType", "npt.NDArray[np.int64]"]]):
     ) -> tuple[_ImageDataType, npt.NDArray[np.int64]]:
         index = self.indexes[idx]
         label = np.array([self.labels[index - 1]])
-        img_name = "jpg/image_%05d.jpg" % index
+        img_name = f"jpg/image_{index:05}.jpg"
         image = os.path.join(self.data_path, img_name)
         if self.backend == 'pil':
             image = Image.open(image)

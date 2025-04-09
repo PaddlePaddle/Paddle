@@ -55,7 +55,7 @@ struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
         }
       }
 
-      // insert the extra var arguments to the begining of the original call's
+      // insert the extra var arguments to the beginning of the original call's
       // argument list.
       node->read_args.insert(std::begin(op->read_args),
                              extra_var_args.begin(),

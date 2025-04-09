@@ -34,7 +34,7 @@ def random_unique_float(shape, dtype):
     arr = np.unique(arr)
     assert (
         arr.shape[0] >= numel
-    ), "failed to create enough unique values: %d vs %d" % (arr.shape[0], numel)
+    ), f"failed to create enough unique values: {arr.shape[0]} vs {numel}"
     arr = arr[:numel]
     np.random.shuffle(arr)
     arr = arr.reshape(shape)

@@ -19,7 +19,7 @@ limitations under the License. */
 namespace phi {
 
 /// \brief The TensorArray store a list of tensor and it is designed for
-/// compatible with LodTensorArray in Fluid. It shouldn't be used widely
+/// compatible with DenseTensorArray in Fluid. It shouldn't be used widely
 /// in PHI. If you want to store a list of tensor in PHI, please use std::vector
 /// when ever possible.
 class TensorArray : public TensorBase,

@@ -245,7 +245,7 @@ class ContinuousBernoulli(distribution.Distribution):
             self._cut_support_region(), propose, taylor_expansion
         )
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
         Args:
@@ -257,7 +257,7 @@ class ContinuousBernoulli(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate Continuous Bernoulli samples of the specified shape. The final shape would be ``sample_shape + batch_shape``.
 
         Args:

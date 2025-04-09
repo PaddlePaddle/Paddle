@@ -175,6 +175,14 @@ class TestSqueezeOp3(TestSqueezeOp):
         self.new_shape = (6, 5, 1, 4)
 
 
+# Correct: Just not change shape.
+class TestSqueezeOp4(TestSqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (3, 1, 5, 2)
+        self.axes = (2, 3)
+        self.new_shape = (3, 1, 5, 2)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

@@ -90,8 +90,7 @@ class OpDescCreationMethod:
 
             if not input_parameter.duplicable and len(input_arguments) > 1:
                 raise ValueError(
-                    "Input %s expects only one input, but %d are given."
-                    % (input_parameter.name, len(input_arguments))
+                    f"Input {input_parameter.name} expects only one input, but {len(input_arguments)} are given."
                 )
 
             ipt = op_desc.inputs.add()
@@ -105,8 +104,7 @@ class OpDescCreationMethod:
 
             if not output_parameter.duplicable and len(output_arguments) > 1:
                 raise ValueError(
-                    "Output %s expects only one output, but %d are given."
-                    % (output_parameter.name, len(output_arguments))
+                    f"Output {output_parameter.name} expects only one output, but {len(output_arguments)} are given."
                 )
 
             out = op_desc.outputs.add()
@@ -165,11 +163,11 @@ class OpDescCreationMethod:
                     raise NotImplementedError(
                         f"A not supported attribute type: {attr.type}."
                     )
-        for attr_name, defalut_val in self.__extra_attrs__.items():
+        for attr_name, default_val in self.__extra_attrs__.items():
             user_defined_attr = kwargs.get(attr_name, None)
             if user_defined_attr is not None:
                 attr_type = int(
-                    core.get_attrtibute_type(op_desc.type, attr_name)
+                    core.get_attribute_type(op_desc.type, attr_name)
                 )
                 new_attr = op_desc.attrs.add()
                 new_attr.name = attr_name

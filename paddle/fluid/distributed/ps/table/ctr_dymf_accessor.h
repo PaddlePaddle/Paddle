@@ -88,7 +88,7 @@ class CtrDymfAccessor : public ValueAccessor {
     // 根据mf_dim计算的总byte数
     int Size(int mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_HETERPS)
     uint16_t& PassId(float* val) {
       uint16_t* int16_val =
           reinterpret_cast<uint16_t*>(val + UnseenDaysIndex());
@@ -258,7 +258,7 @@ class CtrDymfAccessor : public ValueAccessor {
 
   void SetDayId(int day_id) override;
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_HETERPS)
   // 根据pass_id和show_threshold阈值来判断cache到ssd
   bool SaveMemCache(float* value,
                     int param,

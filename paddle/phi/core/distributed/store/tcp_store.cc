@@ -189,9 +189,10 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
         continue;
       }
 
-      VLOG(8) << "Plan to receive command from " << GetSockName(fds[i].fd);
+      // VLOG(8) << "Plan to receive command from " << GetSockName(fds[i].fd);
       Command command = tcputils::receive_value<Command>(fds[i].fd);
-      VLOG(7) << "TCPStore: recv command: " << static_cast<int>(command) << ".";
+      // VLOG(7) << "TCPStore: recv command: " << static_cast<int>(command) <<
+      // ".";
 
       switch (command) {
         case Command::ADD:
@@ -210,8 +211,9 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
           _do_wait(fds[i].fd);
           break;
         default:
-          VLOG(8) << "Unknown command: " << static_cast<int>(command)
-                  << " from addr info:" << GetSockName(fds[i].fd);
+          break;
+          // VLOG(8) << "Unknown command: " << static_cast<int>(command)
+          //         << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
       auto map_iter = _waiting_sockets.begin();
@@ -239,11 +241,11 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
       _sockets.erase(_sockets.begin() + i - 2);
 #endif
       std::string s(ex.what());
-      if (s.find("TCP connection reset by peer") != std::string::npos) {
-        VLOG(5) << "TCP connection reset by peer";
-      } else {
-        VLOG(5) << "Meet some exceptions during run:" << ex.what();
-      }
+      // if (s.find("TCP connection reset by peer") != std::string::npos) {
+      //   VLOG(5) << "TCP connection reset by peer";
+      // } else {
+      //   VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      // }
     }
   }
 }

@@ -17,11 +17,23 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#endif
 
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
+
+int getSMVersion() {
+  int sm_version = -1;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+  sm_version = paddle::platform::GetGPUComputeCapability(
+      paddle::platform::GetCurrentDeviceId());
+#endif
+  return sm_version;
+}
 
 // 1. scale after q
 // 2. cast before and after softmax
@@ -649,6 +661,10 @@ class FusedFlashAttnPass : public pir::PatternRewritePass {
 
   bool CanApplyOn(pir::Operation *op) const override {
 #ifdef PADDLE_WITH_FLASHATTN
+    int sm_version = getSMVersion();
+    if (sm_version < 80) {
+      return false;
+    }
     return op->num_regions() > 0;
 #else
     return false;

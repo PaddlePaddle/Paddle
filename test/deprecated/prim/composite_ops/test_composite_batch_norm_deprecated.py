@@ -207,7 +207,7 @@ def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
         if mode:
             primapi.to_prim(blocks)
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that batch_norm is splitted into small ops
+            # Ensure that batch_norm is split into small ops
             assert (
                 'batch_norm' not in fwd_ops_new
                 and 'reduce_mean' not in fwd_ops_new
@@ -373,9 +373,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
+    return paddle.jit.to_static(net, backend=None, full_graph=True)
 
 
 class PrimeNet(paddle.nn.Layer):

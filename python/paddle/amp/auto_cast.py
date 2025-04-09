@@ -632,25 +632,14 @@ def amp_guard(
                 if (dtype == 'float16') and not _is_gpu_float16_supported():
                     prop = paddle.device.cuda.get_device_capability()
                     warnings.warn(
-                        "For float16, amp only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: %s, with Compute Capability: %d.%d."
-                        % (
-                            paddle.device.cuda.get_device_name(),
-                            prop[0],
-                            prop[1],
-                        )
+                        f"For float16, amp only support NVIDIA GPU with Compute Capability 7.0 or higher, current GPU is: {paddle.device.cuda.get_device_name()}, with Compute Capability: {prop[0]}.{prop[1]}."
                     )
                     enable = False
                 elif (dtype == 'bfloat16') and not _is_gpu_bfloat16_supported():
                     prop = paddle.device.cuda.get_device_capability()
                     cuda_version = paddle.version.cuda()
                     warnings.warn(
-                        "For bfloat16, amp only support NVIDIA GPU with Compute Capability 8.0 or higher and CUDA Version 11.0 or higher, current GPU is: %s, with Compute Capability: %d.%d, current CUDA Version is: %s."
-                        % (
-                            paddle.device.cuda.get_device_name(),
-                            prop[0],
-                            prop[1],
-                            cuda_version,
-                        )
+                        f"For bfloat16, amp only support NVIDIA GPU with Compute Capability 8.0 or higher and CUDA Version 11.0 or higher, current GPU is: {paddle.device.cuda.get_device_name()}, with Compute Capability: {prop[0]}.{prop[1]}, current CUDA Version is: {cuda_version}."
                     )
                     enable = False
 
@@ -706,18 +695,6 @@ def amp_guard(
 
             # set amp op list
             original_white_list, original_black_list = tracer._get_amp_op_list()
-
-            # TODO(zhangyuqin1998): In auto parallel align mode, ensure lookup_table_v2 runs in FP32.
-            # By default, lookup_table_v2 is in the white_list, and runs in BF16/BF16.
-            # Users can add lookup_table_v2 to the amp_custom_black_list but cannot remove it from the default white_list.
-            # If lookup_table_v2 appears in both the white_list and black_list, AMP will select it in BF16/BF16.
-            # Therefore, in auto parallel align mode, add lookup_table_v2 to the black_list and ensure it is not in the white_list.
-            from paddle.distributed import in_auto_parallel_align_mode
-
-            if in_auto_parallel_align_mode():
-                _black_list.add("lookup_table_v2")
-                if "lookup_table_v2" in _white_list:
-                    _white_list.remove("lookup_table_v2")
             tracer._set_amp_op_list(_white_list, _black_list)
 
             # TODO(zhiqiu) set amp related flags automatically in this guard
@@ -758,12 +735,13 @@ class StateDictHook:
         self._save_dtype = save_dtype
 
     def __call__(self, state_dict: _StateDict) -> None:
-        for key in state_dict:
-            param = state_dict[key]
-            if paddle.is_floating_point(param):
-                param_applied = paddle.cast(param, self._save_dtype)
-                param_applied.name = param.name
-                state_dict[key] = param_applied
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            for key in state_dict:
+                param = state_dict[key]
+                if paddle.is_floating_point(param):
+                    param_applied = paddle.cast(param, self._save_dtype)
+                    param_applied.name = param.name
+                    state_dict[key] = param_applied
 
 
 def _set_multi_precision(

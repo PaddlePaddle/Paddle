@@ -18,19 +18,36 @@ from collections import defaultdict
 from typing import Callable
 
 
-class BubbleHook:
+class PipelineHook:
     def __init__(self):
         self.hooks: dict[int, list[Callable]] = defaultdict(list)
+        self._hooks_capacity = 0
+        self.reset_current_id()
 
-    def set_bubble_times(self, bubble_times: int):
-        self.bubble_times = bubble_times
+    def reset_current_id(self):
+        self._current_id = 0
 
-    def register_hook(self, bubble_id: int, hook: Callable):
-        self.hooks[bubble_id].append(hook)
+    def set_hooks_capacity(self, capacity: int):
+        self._hooks_capacity = capacity
 
-    def run_hook(self, bubble_id: int):
-        if bubble_id not in self.hooks:
-            return
+    def register_hook(self, hook_id: int, hook: Callable):
+        assert (
+            hook_id < self._hooks_capacity
+        ), f"hook_id {hook_id} is out of range, maximum capacity is {self._hooks_capacity}."
+        self.hooks[hook_id].append(hook)
 
-        for hook in self.hooks[bubble_id]:
-            hook(bubble_id)
+    def run_hook(self):
+        assert (
+            self._current_id < self._hooks_capacity
+        ), f"hook_id {self._current_id} is out of range, maximum capacity is {self._hooks_capacity}."
+        for hook in self.hooks[self._current_id]:
+            hook(self._current_id)
+        self._current_id += 1
+
+    @property
+    def current_id(self):
+        return self._current_id
+
+    @property
+    def hooks_capacity(self):
+        return self._hooks_capacity

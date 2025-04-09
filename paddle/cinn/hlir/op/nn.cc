@@ -79,7 +79,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
                  ::common::errors::NotFound(
                      "Out_type of relu op is empty! Please check."));
   strategy->AddImpl(relu_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.relu.x86",
                     1);
   return strategy;
@@ -125,7 +125,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
   PADDLE_ENFORCE(out_type.size(),
                  ::common::errors::NotFound(
                      "Out_type of relu6 op is empty! Please check."));
-  strategy->AddImpl(relu6_compute, lang::PackedFunc(), "strategy.relu6.x86", 1);
+  strategy->AddImpl(relu6_compute, "strategy.relu6.x86", 1);
   return strategy;
 }
 
@@ -169,7 +169,7 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
   PADDLE_ENFORCE(out_type.size(),
                  ::common::errors::NotFound(
                      "Out_type of relu op is empty! Please check."));
-  strategy->AddImpl(relu_compute, lang::PackedFunc(), "strategy.relu.x86", 1);
+  strategy->AddImpl(relu_compute, "strategy.relu.x86", 1);
   return strategy;
 }
 
@@ -214,7 +214,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
                  ::common::errors::NotFound(
                      "Out_type of relu6 op is empty! Please check."));
   strategy->AddImpl(relu6_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.relu6.x86",
                     1);
   return strategy;
@@ -330,77 +330,78 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     if (data_format == "NCHW") {
       // A is input: [N, C, H, W], B is filter: [C_out, C_in/group,
       // filter_h, filter_w]
-      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::X86Arch) {
-                          if (groups == 1 && !use_onednn) {
-                            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                                     B.as_tensor_ref(),
-                                                     padding[0],
-                                                     padding[1],
-                                                     stride[0],
-                                                     stride[1],
-                                                     dilation[0],
-                                                     dilation[1],
-                                                     key,
-                                                     tensor_name,
-                                                     target);
-                          } else {
+      target.arch.Match(
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            if (groups == 1 && !use_onednn) {
+              out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                       B.as_tensor_ref(),
+                                       padding[0],
+                                       padding[1],
+                                       stride[0],
+                                       stride[1],
+                                       dilation[0],
+                                       dilation[1],
+                                       key,
+                                       tensor_name,
+                                       target);
+            } else {
 #ifdef CINN_WITH_DNNL
-                            out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
-                                                         B.as_tensor_ref(),
-                                                         padding[0],
-                                                         padding[1],
-                                                         stride[0],
-                                                         stride[1],
-                                                         dilation[0],
-                                                         dilation[1],
-                                                         tensor_name);
+              out = pe::Conv2d_NCHW_ONEDNN(A.as_tensor_ref(),
+                                           B.as_tensor_ref(),
+                                           padding[0],
+                                           padding[1],
+                                           stride[0],
+                                           stride[1],
+                                           dilation[0],
+                                           dilation[1],
+                                           tensor_name);
 #else
-                            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                                     B.as_tensor_ref(),
-                                                     padding[0],
-                                                     padding[1],
-                                                     stride[0],
-                                                     stride[1],
-                                                     dilation[0],
-                                                     dilation[1],
-                                                     key,
-                                                     tensor_name);
+              out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                       B.as_tensor_ref(),
+                                       padding[0],
+                                       padding[1],
+                                       stride[0],
+                                       stride[1],
+                                       dilation[0],
+                                       dilation[1],
+                                       key,
+                                       tensor_name);
 #endif
-                          }
-                        },
-                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::NVGPUArch) {
-                          if (conv_type == "forward") {
-                            out = pe::Conv2d_NCHW(A.as_tensor_ref(),
-                                                  B.as_tensor_ref(),
-                                                  padding[0],
-                                                  padding[1],
-                                                  stride[0],
-                                                  stride[1],
-                                                  dilation[0],
-                                                  dilation[1],
-                                                  tensor_name);
-                            out.push_back(B.as_tensor_ref());
-                          } else {
+            }
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            if (conv_type == "forward") {
+              out = pe::Conv2d_NCHW(A.as_tensor_ref(),
+                                    B.as_tensor_ref(),
+                                    padding[0],
+                                    padding[1],
+                                    stride[0],
+                                    stride[1],
+                                    dilation[0],
+                                    dilation[1],
+                                    tensor_name);
+              out.push_back(B.as_tensor_ref());
+            } else {
 #ifdef CINN_WITH_CUDNN
-                            // as backward_data and backward_filter is not
-                            // support now, we built a fake op to instead.
-                            // as the runtime use cudnn to compute the
-                            // conv2d, so this fake op is not been called.
-                            // When cinn support
-                            // backward_filter/backward_data code gen, this
-                            // code is to be removed.
-                            out = pe::Identity(A.as_tensor_ref());
-                            out.push_back(A.as_tensor_ref());
-                            out.push_back(B.as_tensor_ref());
+              // as backward_data and backward_filter is not
+              // support now, we built a fake op to instead.
+              // as the runtime use cudnn to compute the
+              // conv2d, so this fake op is not been called.
+              // When cinn support
+              // backward_filter/backward_data code gen, this
+              // code is to be removed.
+              out = pe::Identity(A.as_tensor_ref());
+              out.push_back(A.as_tensor_ref());
+              out.push_back(B.as_tensor_ref());
 #endif
-                          }
-                        },
-                        [&](common::HygonDCUArchHIP) {
-                          PADDLE_THROW(::common::errors::Unimplemented(
-                              "CINN old obsolete code!"));
-                        });
+            }
+          },
+          [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
+            PADDLE_THROW(
+                ::common::errors::Unimplemented("CINN old obsolete code!"));
+          });
     } else if (data_format == "NHWC") {
       // A is input: [N, H, W, C], B is filter: [C_out, C_in/group,
       // filter_h, filter_w]
@@ -430,86 +431,11 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule conv2d_schedule([=](lang::Args args,
-                                              lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of conv2d schedule is empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The vec_ast of conv2d schedule is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    target.arch.Match(
-        [&](common::UnknownArch) {
-          PADDLE_THROW(::common::errors::InvalidArgument(
-              "This target [%s] is not supported yet.", target));
-        },
-        [&](common::X86Arch) {
-          PADDLE_THROW(::common::errors::InvalidArgument(
-              "This target [%s] is not supported yet.", target));
-        },
-        [&](common::ARMArch) {
-          PADDLE_THROW(::common::errors::InvalidArgument(
-              "This target [%s] is not supported yet.", target));
-        },
-        [&](common::NVGPUArch) {
-#ifdef CINN_WITH_CUDNN
-          // If conv_type is backward_filter or backward_data, we built a fake
-          // op. As runtime use cudnn to compute conv2d, this fake op is not to
-          // be called. When cinn support backward_filter/backward_data code
-          // gen, this code is to be removed.
-          if (conv_type != "forward") {
-            PADDLE_ENFORCE_EQ(
-                vec_ast.size(),
-                1,
-                ::common::errors::InvalidArgument(
-                    "The size of vec_ast should be 1, but got %d.",
-                    vec_ast.size()));
-            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
-            std::vector<CINNValue> res{
-                CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-            *ret = CINNValuePack{res};
-            return;
-          }
-#endif
-          int expr_size = vec_ast.size();
-          if (expr_size == 2) {
-            pe::IRCudaScheduleConv(ir_sch, target);
-            VLOG(3) << "After IRCudaScheduleConv, arg_pack[0] is : "
-                    << ir_sch.GetModule().GetExprs().at(0);
-            std::vector<CINNValue> res{
-                CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-            *ret = CINNValuePack{res};
-            return;
-          } else {
-            CINN_NOT_IMPLEMENTED
-          }
-        },
-        [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(
-              ::common::errors::Unimplemented("CINN old obsolete code!"));
-        });
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE(out_type.size(),
                  ::common::errors::NotFound(
                      "Out_type of conv2d op is empty! Please check."));
-  strategy->AddImpl(conv2d_compute, conv2d_schedule, "strategy.conv2d.x86", 1);
+  strategy->AddImpl(conv2d_compute, "strategy.conv2d.x86", 1);
   return strategy;
 }
 
@@ -591,34 +517,35 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
                        "Datatype error! pack_args[2] is not string."));
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
-      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::X86Arch) {
-                          out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                                   B.as_tensor_ref(),
-                                                   padding[0],
-                                                   padding[1],
-                                                   stride[0],
-                                                   stride[1],
-                                                   dilation[0],
-                                                   dilation[1],
-                                                   key,
-                                                   tensor_name,
-                                                   target);
-                        },
-                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::NVGPUArch) {
-                          out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
-                                                          B.as_tensor_ref(),
-                                                          padding[0],
-                                                          padding[1],
-                                                          stride[0],
-                                                          stride[1],
-                                                          tensor_name);
-                        },
-                        [&](common::HygonDCUArchHIP) {
-                          PADDLE_THROW(::common::errors::Unimplemented(
-                              "CINN old obsolete code!"));
-                        });
+      target.arch.Match(
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                     B.as_tensor_ref(),
+                                     padding[0],
+                                     padding[1],
+                                     stride[0],
+                                     stride[1],
+                                     dilation[0],
+                                     dilation[1],
+                                     key,
+                                     tensor_name,
+                                     target);
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
+                                            B.as_tensor_ref(),
+                                            padding[0],
+                                            padding[1],
+                                            stride[0],
+                                            stride[1],
+                                            tensor_name);
+          },
+          [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
+            PADDLE_THROW(
+                ::common::errors::Unimplemented("CINN old obsolete code!"));
+          });
     } else if (data_format == "NHWC") {
       out = pe::Depthwise_Conv2d_NHWC(A.as_tensor_ref(),
                                       B.as_tensor_ref(),
@@ -644,56 +571,13 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule depthwise_conv2d_schedule([=](lang::Args args,
-                                                        lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of InjectiveSchedule is empty! Please check."));
-    cinn::common::CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    std::vector<Expr> vec_tensor;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      } else if (arg_pack[i].is_tensor()) {
-        Expr temp = arg_pack[i];
-        vec_tensor.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound("The vec_ast is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::NVGPUArch) {
-                        pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-                      },
-                      [&](common::HygonDCUArchHIP) {
-                        PADDLE_THROW(::common::errors::Unimplemented(
-                            "CINN old obsolete code!"));
-                      });
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
   PADDLE_ENFORCE(out_type.size(),
                  ::common::errors::NotFound(
                      "Out_type of depthwise_conv op is empty! Please check."));
   if (out_type[0] == Float(32)) {
-    strategy->AddImpl(depthwise_conv2d_compute,
-                      depthwise_conv2d_schedule,
-                      "strategy.depthwise_conv.x86",
-                      1);
+    strategy->AddImpl(
+        depthwise_conv2d_compute, "strategy.depthwise_conv.x86", 1);
   } else {
     VLOG(3) << "depthwise_conv op with dtype != float32 is not implemented "
                "yet!";
@@ -814,7 +698,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
                      "Out_type of batchnorm op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(batchnorm_compute,
-                      GetInjectiveScheduleFunc(output_shapes, target),
+
                       "strategy.batchnorm.x86",
                       1);
   } else {
@@ -923,77 +807,8 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule pool1d_schedule([=](lang::Args args,
-                                              lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of pool1d schedule is empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    std::vector<Expr> vec_tensor;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      } else if (arg_pack[i].is_tensor()) {
-        Expr temp = arg_pack[i];
-        vec_tensor.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input vec_ast of pool1d schedule is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    if (arg_pack.size() == 3UL) {
-      PADDLE_ENFORCE_EQ(
-          vec_tensor.size(),
-          2,
-          ::common::errors::InvalidArgument(
-              "the size of vector tensor should be 2, but got %d.",
-              vec_tensor.size()));
-      Expr input_pad = vec_tensor[1];
-      PADDLE_ENFORCE(input_pad.as_tensor(),
-                     ::common::errors::InvalidArgument(
-                         "Datatype error! input_pad is not a tensor."));
-      auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
-      ir_sch.ComputeInline(block_input_pad);
-    }
-    auto schedule_nv_hygon = [&] {
-      PADDLE_ENFORCE_EQ(
-          vec_tensor.empty(),
-          false,
-          ::common::errors::NotFound("The vec_tensor is empty! Please check."));
-      Expr Out = vec_tensor[0];
-      PADDLE_ENFORCE(Out.as_tensor(),
-                     ::common::errors::InvalidArgument(
-                         "Datatype error! output is not a tensor."));
-      auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-      ir_sch.Split(loops[1], {-1, 2});
-      loops = ir_sch.GetLoops(Out.as_tensor()->name);
-      ir_sch.Bind(loops[0], "blockIdx.x");
-      ir_sch.Bind(loops[1], "threadIdx.x");
-    };
-    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::X86Arch) {
-                        // Do nothing.
-                      },
-                      [&](common::ARMArch) {
-                        // Do nothing.
-                      },
-                      [&](common::NVGPUArch) { schedule_nv_hygon(); },
-                      [&](common::HygonDCUArchHIP) { schedule_nv_hygon(); });
-    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(pool1d_compute, pool1d_schedule, "strategy.pool1d.x86", 1);
+  strategy->AddImpl(pool1d_compute, "strategy.pool1d.x86", 1);
 
   return strategy;
 }
@@ -1135,49 +950,6 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     *ret = CINNValuePack{{CINNValue(out[0]), CINNValue(out[1])}};
   });
 
-  framework::CINNSchedule global_pool2d_schedule([=](lang::Args args,
-                                                     lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of pool2d schedule is empty! Please check."));
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of pool1d scheule is empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    std::vector<Expr> vec_tensor;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      } else if (arg_pack[i].is_tensor()) {
-        Expr temp = arg_pack[i];
-        vec_tensor.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound("The vec_ast is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    target.arch.Match(
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) { pe::IRGlobalPoolScheduleGPU(ir_sch, target); },
-        [&](common::HygonDCUArchHIP) {
-          pe::IRGlobalPoolScheduleGPU(ir_sch, target);
-        });
-    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = CINNValuePack{res};
-  });
-
   framework::CINNCompute pool2d_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
     PADDLE_ENFORCE_EQ(
@@ -1227,92 +999,31 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule pool2d_schedule([=](lang::Args args,
-                                              lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of pool2d schedule is empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    std::vector<Expr> vec_tensor;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      } else if (arg_pack[i].is_tensor()) {
-        Expr temp = arg_pack[i];
-        vec_tensor.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound("The vec_ast is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    int arg_pack_size = arg_pack.size();
-    // arg_pack_size == 3 case: input, input_pad, output
-    // arg_pack_size == 4 case: input, input_pad, output, stage
-    if (arg_pack_size == 3UL || arg_pack_size == 4UL) {
-      PADDLE_ENFORCE_EQ(
-          vec_tensor.size(),
-          2,
-          ::common::errors::InvalidArgument(
-              "the size of vector tensor should be 2, but got %d.",
-              vec_tensor.size()));
-      Expr input_pad = vec_tensor[1];
-      PADDLE_ENFORCE(input_pad.as_tensor(),
-                     ::common::errors::InvalidArgument(
-                         "Datatype error! input_pad is not a tensor."));
-      const std::string &input_pad_name = input_pad.as_tensor()->name;
-      VLOG(6) << "ComputeInline on " << input_pad_name;
-      auto block_input_pad = ir_sch.GetBlock(input_pad_name);
-      ir_sch.ComputeInline(block_input_pad);
-    }
-    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::X86Arch) {},
-                      [&](common::ARMArch) {},
-                      [&](common::NVGPUArch) {
-                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-                      },
-                      [&](common::HygonDCUArchHIP) {
-                        pe::IRPoolScheduleGPU(ir_sch, target, arg_pack_size);
-                      });
-    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
 
   bool use_warp_reduce = false;
-  target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                    [&](common::X86Arch) { use_warp_reduce = false; },
-                    [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                    [&](common::NVGPUArch) {
-                      if (global_pooling && data_format == "NCHW") {
-                        // TODO(hp03): 32 may not be the exact number, try
-                        // also 16 or 8 or other number
-                        //      we choose 32 to make sure all the threads in
-                        //      a warp has work to do,
-                        if ((A_tensor->shape[2].as_int32() *
-                             A_tensor->shape[3].as_int32()) >= 32) {
-                          use_warp_reduce = true;
-                        }
-                      }
-                    },
-                    [&](common::HygonDCUArchHIP) {
-                      PADDLE_THROW(::common::errors::Unimplemented(
-                          "CINN todo: new hardware HygonDCUArchHIP"));
-                    });
-  strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
+  target.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { use_warp_reduce = false; },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) {
+        if (global_pooling && data_format == "NCHW") {
+          // TODO(hp03): 32 may not be the exact number, try
+          // also 16 or 8 or other number
+          //      we choose 32 to make sure all the threads in
+          //      a warp has work to do,
+          if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >=
+              32) {
+            use_warp_reduce = true;
+          }
+        }
+      },
+      [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
+        CINN_NOT_IMPLEMENTED
+      });
+  strategy->AddImpl(pool2d_compute, "strategy.pool2d.x86", 1);
   if (use_warp_reduce) {
-    strategy->AddImpl(global_pool2d_compute,
-                      global_pool2d_schedule,
-                      "strategy.pool2d.gpu.global",
-                      2);
+    strategy->AddImpl(global_pool2d_compute, "strategy.pool2d.gpu.global", 2);
   }
 
   return strategy;
@@ -1421,86 +1132,8 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule pool3d_schedule([=](lang::Args args,
-                                              lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of pool3d schedule is empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    std::vector<Expr> vec_tensor;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      } else if (arg_pack[i].is_tensor()) {
-        Expr temp = arg_pack[i];
-        vec_tensor.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound("The vec_ast is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    if (arg_pack.size() == 3UL) {
-      PADDLE_ENFORCE_EQ(
-          vec_tensor.size(),
-          2,
-          ::common::errors::InvalidArgument(
-              "the size of vector tensor should be 2, but got %d.",
-              vec_tensor.size()));
-      Expr input_pad = vec_tensor[1];
-      PADDLE_ENFORCE(input_pad.as_tensor(),
-                     ::common::errors::InvalidArgument(
-                         "Datatype error! input_pad is not a tensor."));
-      auto block_input_pad = ir_sch.GetBlock(input_pad.as_tensor()->name);
-      ir_sch.ComputeInline(block_input_pad);
-    }
-    target.arch.Match(
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) { /*nothing*/ },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) {
-          PADDLE_ENFORCE_EQ(vec_tensor.empty(),
-                            false,
-                            ::common::errors::NotFound(
-                                "The vec_tensor is empty! Please check."));
-          Expr Out = vec_tensor[0];
-          PADDLE_ENFORCE(Out.as_tensor(),
-                         ::common::errors::InvalidArgument(
-                             "Datatype error! Output is not a tensor."));
-          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Split(loops[1], {-1, 2});
-          loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
-        },
-        [&](common::HygonDCUArchHIP) {
-          PADDLE_ENFORCE_EQ(vec_tensor.empty(),
-                            false,
-                            ::common::errors::NotFound(
-                                "The vec_tensor is empty! Please check."));
-          Expr Out = vec_tensor[0];
-          PADDLE_ENFORCE(Out.as_tensor(),
-                         ::common::errors::InvalidArgument(
-                             "Datatype error! Output is not a tensor."));
-          auto loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Split(loops[1], {-1, 2});
-          loops = ir_sch.GetLoops(Out.as_tensor()->name);
-          ir_sch.Bind(loops[0], "blockIdx.x");
-          ir_sch.Bind(loops[1], "threadIdx.x");
-        });
-    std::vector<CINNValue> res{CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(pool3d_compute, pool3d_schedule, "strategy.pool3d.x86", 1);
+  strategy->AddImpl(pool3d_compute, "strategy.pool3d.x86", 1);
 
   return strategy;
 }
@@ -1583,79 +1216,8 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule softmax_schedule([=](lang::Args args,
-                                               lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of softmax schedule is empty! Please check."));
-    CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_EQ(
-        vec_ast.empty(),
-        false,
-        ::common::errors::NotFound("The vec_ast is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    auto schedule_nv_hygon = [&] {
-      if (output_shapes[0].size() > 1) {
-        auto all_blocks = ir_sch.GetAllBlocks();
-        PADDLE_ENFORCE_EQ(all_blocks.size(),
-                          3,
-                          ::common::errors::InvalidArgument(
-                              "the size of all blocks should be 3, but got %d.",
-                              all_blocks.size()));
-        auto loops = ir_sch.GetLoops(all_blocks[2]);
-        ir_sch.ComputeAt(all_blocks[1], loops.back());
-
-        if (output_shapes[0][0] != 1) {
-          ir_sch.SimpleComputeAt(all_blocks[0], loops[0]);
-        }
-
-        loops = ir_sch.GetLoops(all_blocks[2]);
-        int loop_index = 1;
-        if (output_shapes[0][0] == 1) loop_index--;
-        PADDLE_ENFORCE_GE(loops.size(),
-                          loop_index + 1,
-                          ::common::errors::InvalidArgument(
-                              "the size of loops should be greater "
-                              "than or equal to %d, but got %d.",
-                              loop_index + 1,
-                              loops.size()));
-        auto splited_loops = ir_sch.Split(loops[loop_index], {-1, 5});
-
-        all_blocks = ir_sch.GetAllBlocks();
-        loops = ir_sch.GetLoops(all_blocks[2]);
-        ir_sch.Bind(loops[0], "blockIdx.x");
-        ir_sch.Bind(loops[1], "threadIdx.x");
-      }
-      std::vector<CINNValue> res{
-          CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-      *ret = CINNValuePack{res};
-    };
-    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::X86Arch) {
-                        pe::IRSoftmaxScheduleCPU(ir_sch, axis);
-                        std::vector<CINNValue> res{
-                            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-                        *ret = CINNValuePack{res};
-                      },
-                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                      [&](common::NVGPUArch) { schedule_nv_hygon(); },
-                      [&](common::HygonDCUArchHIP) { schedule_nv_hygon(); });
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      softmax_compute, softmax_schedule, "strategy.softmax.x86", 1);
+  strategy->AddImpl(softmax_compute, "strategy.softmax.x86", 1);
 
   return strategy;
 }
@@ -1713,7 +1275,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(dropout_infer_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.dropout_infer.x86",
                     1);
 
@@ -1778,10 +1340,7 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
       out_type.empty(),
       false,
       ::common::errors::NotFound("Out_type of select is empty! Please check."));
-  strategy->AddImpl(select_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target, false),
-                    "strategy.select.x86",
-                    1);
+  strategy->AddImpl(select_compute, "strategy.select.x86", 1);
   return strategy;
 }
 
@@ -1840,8 +1399,7 @@ std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
                     0U,
                     ::common::errors::InvalidArgument(
                         "Out_type of select op is empty! Please check."));
-  strategy->AddImpl(
-      select_compute, lang::PackedFunc(), "strategy.select.x86", 1);
+  strategy->AddImpl(select_compute, "strategy.select.x86", 1);
   return strategy;
 }
 

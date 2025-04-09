@@ -16,6 +16,7 @@
 
 #include <memory>
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace pir {
 class Operation;
@@ -54,6 +55,7 @@ class CinnJitInstruction : public InstructionBase {
 
   bool need_update_shape{false};
   std::vector<phi::DenseTensor*> tensor_args_;
+  std::vector<phi::DDim> ir_dims_;
 
   // Tensors that hold the temporary spaces used by the kernel. These tensors
   // are managed by CinnJitInstruction, and not exposed to phi executor.

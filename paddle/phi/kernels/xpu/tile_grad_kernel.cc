@@ -39,8 +39,8 @@ void TileGradKernel(const Context& dev_ctx,
   // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
   //    each dimension expanded, the gradients should be summed to original
   //    size.
-  std::vector<int> reshape_dims_vec;
-  std::vector<int> reduce_dims_vec;
+  std::vector<int64_t> reshape_dims_vec;
+  std::vector<int64_t> reduce_dims_vec;
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     reduce_dims_vec.push_back(reshape_dims_vec.size());
     reshape_dims_vec.push_back(repeat_times_data[i]);
@@ -81,8 +81,8 @@ void TileGradKernel(const Context& dev_ctx,
                           dims));
 
     using XPUType = typename XPUTypeTrait<T>::Type;
-    // int reduce_sum(Context* ctx, const T* x, T* y, const std::vector<int>&
-    // xshape, const std::vector<int>& rdims)
+    // int reduce_sum(Context* ctx, const T* x, T* y, const
+    // std::vector<int64_t>& xshape, const std::vector<int64_t>& rdims)
     const auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
     auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
     int r = xpu::reduce_sum<XPUType>(dev_ctx.x_context(),

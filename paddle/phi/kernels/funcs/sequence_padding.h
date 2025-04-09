@@ -106,7 +106,7 @@ inline static void CheckDims(const phi::DDim& seq_tensor_dims,
  * \note  transposition is also done in this functor.
  */
 template <typename DeviceContext, typename T>
-class PaddingLoDTensorFunctor {
+class PaddingDenseTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& seq_tensor,
@@ -119,7 +119,7 @@ class PaddingLoDTensorFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class UnpaddingLoDTensorFunctor {
+class UnpaddingDenseTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& pad_tensor,

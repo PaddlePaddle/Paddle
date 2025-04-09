@@ -53,7 +53,7 @@ class TensorToNumpyTest(unittest.TestCase):
                     self.shape,
                 )
 
-                t = base.LoDTensor()
+                t = base.DenseTensor()
                 t.set(np_arr, p)
 
                 ret_np_arr = np.array(t)

@@ -92,10 +92,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
   } else if (
       var->IsType<
           operators::reader::
-              OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
-    // TODO(xiongkun03) in old executor, this type of variable is not support
-    // eager deletion. so we just leave it here ?
-  } else if (var->IsType<LoDRankTable>()) {
+              OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -136,6 +133,7 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }
+    tensor_arr->clear();
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
     // refer to executor.cc to see what old garbage collector does.

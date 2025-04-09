@@ -28,14 +28,14 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def append_lod_tensor(self, tensor_array, lod, data):
-        lod_tensor = core.LoDTensor()
+        lod_tensor = core.DenseTensor()
         lod_tensor.set_lod(lod)
         lod_tensor.set(data, self.place)
         tensor_array.append(lod_tensor)
 
     def test_get_set(self):
-        ids = self.scope.var("ids").get_lod_tensor_array()
-        scores = self.scope.var("scores").get_lod_tensor_array()
+        ids = self.scope.var("ids").get_dense_tensor_array()
+        scores = self.scope.var("scores").get_dense_tensor_array()
         # Construct sample data with 5 steps and 2 source sentences
         # beam_size = 2, end_id = 1
         # start with start_id

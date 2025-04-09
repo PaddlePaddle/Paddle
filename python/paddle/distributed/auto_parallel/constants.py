@@ -157,6 +157,11 @@ set_field_default_config(SHARDING, "enable_hierarchical_comm", False)
 set_field_default_config(SHARDING, "partition_algor", "greedy_even")
 set_field_default_config(SHARDING, "enable_tuning", False)
 set_field_default_config(SHARDING, "tuning_range", [])
+set_field_default_config(SHARDING, "release_gradients", False)
+set_field_default_config(SHARDING, "comm_buffer_size_MB", 256)
+set_field_default_config(SHARDING, "enable_tensor_fusion", False)
+set_field_default_config(SHARDING, "save_unbalanced_param", True)
+
 
 if TYPE_CHECKING:
 
@@ -209,6 +214,7 @@ set_field_default_config(PIPELINE, "job_schedule_profiler_stop", -1)
 set_field_default_config(PIPELINE, "program_runtimes", [61, 72, 71, 34, 3])
 set_field_default_config(PIPELINE, "memory_limit_times", -1)
 set_field_default_config(PIPELINE, "split_backward", False)
+set_field_default_config(PIPELINE, "auto_parallel_sync_shared_params", False)
 
 if TYPE_CHECKING:
 
@@ -225,6 +231,7 @@ if TYPE_CHECKING:
         job_schedule_profiler_start: int
         job_schedule_profiler_stop: int
         split_backward: bool
+        auto_parallel_sync_shared_params: bool
 
 
 #########################################

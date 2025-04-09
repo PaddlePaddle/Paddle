@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include "glog/logging.h"
+#include "paddle/cinn/common/bfs_walker.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
@@ -25,6 +26,7 @@
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/common/data_type.h"
@@ -93,7 +95,7 @@ std::string GetDebugInfo(const std::unordered_set<std::string>& names) {
   return debug_info;
 }
 
-// OpTransInfo contains informations used to detect subgraphs
+// OpTransInfo contains information used to detect subgraphs
 // supported by the CINN compiler.
 class OpTransInfo {
   using DeParamCondT =
@@ -144,7 +146,6 @@ class OpTransInfo {
                                                     "embedding_grad",
                                                     "embedding",
                                                     "arange",
-                                                    "argmax",
                                                     "argsort",
                                                     "assign_value",
                                                     "one_hot",
@@ -230,6 +231,26 @@ bool HaveUnkDim(const ::pir::Operation& op) {
   return false;
 }
 
+bool HasDynamicRank(const ::pir::Operation& op) {
+  for (size_t i = 0; i < op.num_operands(); i++) {
+    ::pir::Value value = op.operand_source(i);
+    if (value.type().isa<::pir::DenseTensorType>()) {
+      if (value.type().dyn_cast<::pir::DenseTensorType>().dims().size() == -1) {
+        return true;
+      }
+    }
+  }
+  for (size_t i = 0; i < op.num_results(); i++) {
+    ::pir::Value value = op.result(i);
+    if (value.type().isa<::pir::DenseTensorType>()) {
+      if (value.type().dyn_cast<::pir::DenseTensorType>().dims().size() == -1) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool AllInputDenseTensor(const ::pir::Operation& op) {
   for (size_t i = 0; i < op.num_operands(); ++i) {
     auto value = op.operand_source(i);
@@ -294,6 +315,12 @@ bool IsDeniedInCinn(const ::pir::Operation& op) {
             << "So mark IsDeniedForCinn: " << true;
     return true;
   }
+  if (HasDynamicRank(op)) {
+    VLOG(5) << "Found " << op.name()
+            << " has dynamic rank in operand or result value. "
+            << "So mark IsDeniedForCinn: " << true;
+    return true;
+  }
 
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = OpNameAfterStripDialect(op);
@@ -306,8 +333,12 @@ bool IsRegisteredInCINN(const ::pir::Operation& op) {
   return OpRegistry::Global()->Find(CompatibleInfo::OpName(op)) != nullptr;
 }
 
-std::unordered_set<std::string> CollectValueShapeSymbols(
-    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+namespace {
+std::unordered_set<std::string> CollectSymbols(
+    const symbol::ShapeOrDataDimExprs& shape_or_data,
+    std::function<std::vector<symbol::DimExpr>(
+        const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data)>
+        get_dim_exprs_vec_func) {
   std::unordered_set<std::string> res;
   const auto& CollectVectorDimExprSymbols =
       [&](const std::vector<symbol::DimExpr>& dim_exprs) {
@@ -321,10 +352,8 @@ std::unordered_set<std::string> CollectValueShapeSymbols(
 
   const auto& CollectTensorDimExprSymbols =
       [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
-        CollectVectorDimExprSymbols(tensor_shape_or_data.shape());
-        if (tensor_shape_or_data.data()) {
-          CollectVectorDimExprSymbols(tensor_shape_or_data.data().value());
-        }
+        CollectVectorDimExprSymbols(
+            get_dim_exprs_vec_func(tensor_shape_or_data));
       };
 
   shape_or_data.Match(
@@ -345,40 +374,170 @@ std::unordered_set<std::string> CollectValueShapeSymbols(
   return res;
 }
 
+std::unordered_set<std::string> CollectSymbolsFromShape(
+    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  return CollectSymbols(
+      shape_or_data,
+      [](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data)
+          -> std::vector<symbol::DimExpr> {
+        return tensor_shape_or_data.shape();
+      });
+}
+
+std::unordered_set<std::string> CollectSymbolsFromData(
+    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  return CollectSymbols(
+      shape_or_data,
+      [](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        std::vector<symbol::DimExpr> res;
+        if (tensor_shape_or_data.data()) {
+          res = tensor_shape_or_data.data().value();
+        }
+        return res;
+      });
+}
+
+class SymbolGetter {
+ public:
+  using GetSymbolFuncT =
+      std::function<symbol::ShapeOrDataDimExprs(const ::pir::Value&)>;
+  explicit SymbolGetter(const GetSymbolFuncT& get_shape_or_data_func)
+      : get_shape_or_data_func_(get_shape_or_data_func) {}
+  symbol::ShapeOrDataDimExprs operator()(const ::pir::Value& value) const {
+    return get_shape_or_data_func_(value);
+  }
+
+ private:
+  GetSymbolFuncT get_shape_or_data_func_;
+};
+
+template <typename T>
+bool HaveIntersection(const std::unordered_set<T>& lhs,
+                      const std::unordered_set<T>& rhs) {
+  return std::any_of(lhs.begin(), lhs.end(), [&rhs](T elem) {
+    return rhs.find(elem) != rhs.end();
+  });
+}
+
+template <typename T>
+std::unordered_set<T> GetDifference(const std::unordered_set<T>& lhs,
+                                    const std::unordered_set<T>& rhs) {
+  std::unordered_set<T> result;
+  for (const auto& elem : lhs) {
+    if (rhs.find(elem) == rhs.end()) {
+      result.insert(elem);
+    }
+  }
+  return result;
+}
+
+bool HasNewDataSymbolUsedByDownstream(
+    const ::pir::Value& output_value,
+    const std::unordered_set<std::string>& new_data_symbol,
+    const SymbolGetter& symbol_getter) {
+  bool res = false;
+  const auto& VisitNextNewDataSymbolValue =
+      [&](::pir::Value value, const std::function<void(::pir::Value)>& Visit) {
+        if (res) return;
+
+        bool has_item_in_new_data_symbol_set = [&]() {
+          return HaveIntersection(CollectSymbolsFromData(symbol_getter(value)),
+                                  new_data_symbol);
+        }();
+
+        if (has_item_in_new_data_symbol_set) {
+          for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+            const auto& downstream_op = iter->owner();
+            for (const auto& downstream_value : downstream_op->results()) {
+              Visit(downstream_value);
+            }
+          }
+        }
+      };
+
+  ::common::BfsWalker<::pir::Value> value_bfs_walker(
+      VisitNextNewDataSymbolValue);
+  value_bfs_walker(output_value, [&](::pir::Value value) {
+    if (HaveIntersection(CollectSymbolsFromShape(symbol_getter(value)),
+                         new_data_symbol)) {
+      res = true;
+      return;
+    }
+    for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+      const auto& downstream_op = iter->owner();
+      if (downstream_op->isa<paddle::dialect::SliceOp>()) {
+        if (downstream_op->operand_source(1) == value ||
+            downstream_op->operand_source(2) == value) {
+          res = true;
+          return;
+        }
+      }
+    }
+  });
+  return res;
+}
+}  // namespace
+
 bool CauseNewSymbolicShape(const ::pir::Operation& op) {
-  if (FLAGS_disable_dyshape_in_train) {
-    return false;
-  }
-  if (!HaveUnkDim(op)) {
-    return false;
-  }
   auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
       const_cast<::pir::Operation&>(op).GetParentProgram());
-  std::unordered_set<std::string> input_exprs = [&]() {
+  SymbolGetter symbol_getter([&](const ::pir::Value& value) {
+    return shape_analysis.GetShapeOrDataForValue(value);
+  });
+
+  const auto& IsProcessableSlice = [&]() -> bool {
+    using paddle::dialect::details::HasCompleteData;
+    const auto& starts_shape_data = symbol_getter(op.operand_source(1));
+    const auto& ends_shape_data = symbol_getter(op.operand_source(2));
+    return HasCompleteData(starts_shape_data) &&
+           HasCompleteData(ends_shape_data);
+  };
+
+  if (op.isa<paddle::dialect::SliceOp>() && !IsProcessableSlice()) {
+    return true;
+  }
+
+  std::unordered_set<std::string> input_symbols = [&]() {
     std::unordered_set<std::string> res;
     for (const auto& input_value : op.operands_source()) {
-      const auto& single_value_symbol = CollectValueShapeSymbols(
-          shape_analysis.GetShapeOrDataForValue(input_value));
-      input_exprs.insert(single_value_symbol.begin(),
-                         single_value_symbol.end());
+      const auto& shape_symbol =
+          CollectSymbolsFromShape(symbol_getter(input_value));
+      const auto& data_symbol =
+          CollectSymbolsFromData(symbol_getter(input_value));
+      res.insert(shape_symbol.begin(), shape_symbol.end());
+      res.insert(data_symbol.begin(), data_symbol.end());
     }
     return res;
   }();
 
-  bool outputs_have_new_symbol = [&]() {
+  bool outputs_shape_have_new_symbol = [&]() {
     for (const auto& output_value : op.results()) {
-      const auto& single_value_symbol = CollectValueShapeSymbols(
-          shape_analysis.GetShapeOrDataForValue(output_value));
-      for (const auto& symbol : single_value_symbol) {
-        if (input_exprs.find(symbol) == input_exprs.end()) {
-          return true;
-        }
+      if (!GetDifference(CollectSymbolsFromShape(symbol_getter(output_value)),
+                         input_symbols)
+               .empty())
+        return true;
+    }
+    return false;
+  }();
+
+  bool outputs_data_have_new_used_symbol = [&]() {
+    for (const auto& output_value : op.results()) {
+      const auto& new_data_symbol = [&]() -> std::unordered_set<std::string> {
+        return GetDifference(
+            CollectSymbolsFromData(symbol_getter(output_value)), input_symbols);
+      }();
+      if (new_data_symbol.empty()) {
+        return false;
+      }
+      if (HasNewDataSymbolUsedByDownstream(
+              output_value, new_data_symbol, symbol_getter)) {
+        return true;
       }
     }
     return false;
   }();
 
-  return outputs_have_new_symbol;
+  return outputs_shape_have_new_symbol || outputs_data_have_new_used_symbol;
 }
 
 #define PD_OP_NAME(op) paddle::dialect::op::name()
@@ -413,25 +572,73 @@ bool HasHandledInPass(const ::pir::Operation& op) {
 // 3. it should be handled in pd_to_cinn_pass;
 bool IsSupportInCinn(const ::pir::Operation& op) {
   const bool is_denied = IsDeniedInCinn(op);
-  const bool is_registered = IsRegisteredInCINN(op);
-  const bool is_handled = HasHandledInPass(op);
-  const bool cause_new_symbolic_shape = CauseNewSymbolicShape(op);
-  VLOG(5) << op.name() << ": IsDeniedInCinn = " << is_denied
-          << ", IsRegisteredInCINN = " << is_registered
-          << ", HasHandledInPass = " << is_handled
-          << ", CauseNewSymbolicShape = " << cause_new_symbolic_shape;
-  return !is_denied && is_registered && is_handled && !cause_new_symbolic_shape;
+  if (IsDeniedInCinn(op)) {
+    VLOG(5) << op.name() << "[id:" << op.id() << "] is denied in CINN";
+    return false;
+  }
+  if (!IsRegisteredInCINN(op)) {
+    VLOG(5) << op.name() << "[id:" << op.id() << "] isn't registered in CINN";
+    return false;
+  }
+  if (!HasHandledInPass(op)) {
+    VLOG(5) << op.name() << "[id:" << op.id() << "] isn't handled in CINN";
+    return false;
+  }
+  if (CauseNewSymbolicShape(op)) {
+    VLOG(5) << op.name() << "[id:" << op.id()
+            << "] caused new symbolic shape in CINN";
+    return false;
+  }
+  return true;
 }
 }  // namespace
 
+bool IsComplex(const ::pir::Operation& op) {
+  const auto& IsComplexType = [&](const ::pir::Value& value) -> bool {
+    if (!value) {
+      return false;
+    }
+    auto type = value.type();
+    if (!type) {
+      return false;
+    }
+    if (type.isa<paddle::dialect::DenseTensorType>()) {
+      auto dtype = type.dyn_cast<paddle::dialect::DenseTensorType>().dtype();
+      if (dtype && (dtype.isa<::pir::Complex64Type>() ||
+                    dtype.isa<::pir::Complex128Type>())) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (size_t i = 0; i < op.num_operands(); ++i) {
+    if (IsComplexType(op.operand_source(i))) {
+      return true;
+    }
+  }
+
+  for (size_t i = 0; i < op.num_results(); ++i) {
+    if (IsComplexType(op.result(i))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
-  bool flag = IsDeniedInCinn(op) || CauseNewSymbolicShape(op);
+  bool flag = IsDeniedInCinn(op) || CauseNewSymbolicShape(op) || IsComplex(op);
   VLOG(4) << "CompatibleInfo::IsDeniedForCinn of " << op.name()
           << " is: " << flag;
   return flag;
 }
 
 bool CompatibleInfo::IsSupportForCinn(const ::pir::Operation& op) {
+  // check input or output
+  if (IsComplex(op)) {
+    return false;
+  }
   const bool not_builtin_op = op.dialect()->name() != "builtin";
   const bool flag = IsSupportInCinn(op) && not_builtin_op;
 
@@ -448,8 +655,29 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   return OpNameAfterStripDialect(op);
 }
 
+std::string ShortenOpName(const std::string& name) {
+  static const std::unordered_map<std::string, std::string> OP_SHORT_NAMES = {
+      {"fill_constant", "full"},
+      {"reduce_sum", "sum"},
+      {"reduce_max", "r_max"},
+      {"reduce_min", "r_min"},
+      {"reduce_prod", "prod"},
+      {"elementwise_add", "add"},
+      {"elementwise_mul", "mul"},
+      {"subtract", "sub"},
+      {"divide", "div"},
+      {"broadcast_to", "bc"},
+      {"generate_shape", "gs"},
+      {"yield_store", "yield"},
+  };
+  if (OP_SHORT_NAMES.count(name)) {
+    return OP_SHORT_NAMES.at(name);
+  }
+  return name;
+}
+
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
-  std::string op_name = OpName(op);
+  std::string op_name = ShortenOpName(OpName(op));
   std::string func_name =
       cinn::common::Context::Global().NewName("fn_" + op_name);
   return func_name;
@@ -459,7 +687,7 @@ std::string CompatibleInfo::GroupOpsName(
     const std::vector<::pir::Operation*>& ops) {
   std::string name = "fn_";
   for (auto* op : ops) {
-    name += OpName(*op);
+    name += ShortenOpName(OpName(*op));
     name += "_";
   }
   return cinn::common::Context::Global().NewName(name);
@@ -666,6 +894,29 @@ std::vector<int64_t> GetBroadcastAxis(const phi::DDim& in_shape,
   }
 
   return broadcast_axes;
+}
+
+std::vector<::pir::Value> GetBlockOutsideInput(
+    const std::vector<::pir::Operation*>& op_list) {
+  std::vector<::pir::Value> vec_res;
+  std::unordered_set<::pir::Value> block_inner_output;
+  for (size_t k = 0; k < op_list.size(); ++k) {
+    for (size_t i = 0; i < op_list[k]->num_results(); ++i) {
+      block_inner_output.insert(op_list[k]->result(i));
+    }
+  }
+
+  std::unordered_set<::pir::Value> insert_value;
+  for (size_t k = 0; k < op_list.size(); ++k) {
+    for (size_t i = 0; i < op_list[k]->num_operands(); ++i) {
+      if (!block_inner_output.count(op_list[k]->operand_source(i)) &&
+          !insert_value.count(op_list[k]->operand_source(i))) {
+        vec_res.push_back(op_list[k]->operand_source(i));
+        insert_value.insert(op_list[k]->operand_source(i));
+      }
+    }
+  }
+  return vec_res;
 }
 
 }  // namespace pir

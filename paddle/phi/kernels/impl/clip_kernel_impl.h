@@ -55,8 +55,6 @@ void ClipKernel(const Context& dev_ctx,
                               static_cast<float>(max_)));
 
   T* out_data = dev_ctx.template Alloc<T>(out);
-  // const T* x_data = x->data<T>();
-  // int64_t numel = x->numel();
   const T* x_data = x.data<T>();
   int64_t numel = x.numel();
   if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU) {

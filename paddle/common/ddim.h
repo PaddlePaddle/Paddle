@@ -217,7 +217,7 @@ TEST_API std::ostream& operator<<(std::ostream&, const DDim&);
 
 /**
  * \brief Flatten dim to 3d
- * e.g., DDim d = mak_ddim({1, 2, 3, 4, 5, 6})
+ * e.g., DDim d = make_ddim({1, 2, 3, 4, 5, 6})
  *       flatten_to_3d(d, 2, 4); ===> {1*2, 3*4, 5*6} ===> {2, 12, 30}
  */
 TEST_API DDim flatten_to_3d(const DDim& src,
@@ -243,7 +243,8 @@ TEST_API DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2);
 
 namespace pir {
 using DDim = common::DDim;
-using LoD = std::vector<std::vector<size_t>>;
+using LegacyLoD = std::vector<std::vector<size_t>>;
+using LoD = LegacyLoD;
 }  // namespace pir
 
 namespace std {

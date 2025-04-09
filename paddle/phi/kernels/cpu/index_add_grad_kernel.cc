@@ -45,17 +45,21 @@ void IndexAddGradKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   // get x_grad: copy out_grad to x_grad.
-  ctx.template Alloc<T>(x_grad);
-  phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+  if (x_grad) {
+    ctx.template Alloc<T>(x_grad);
+    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+  }
 
-  auto inputs = out_grad;
-  // get add_value_grad by using index_select(out_grad, index, axis)
-  if (index_type == phi::DataType::INT32) {
-    IndexSelectInner<Context, T, int>(
-        ctx, &inputs, index, add_value_grad, axis);
-  } else if (index_type == phi::DataType::INT64) {
-    IndexSelectInner<Context, T, int64_t>(
-        ctx, &inputs, index, add_value_grad, axis);
+  if (add_value_grad) {
+    auto inputs = out_grad;
+    // get add_value_grad by using index_select(out_grad, index, axis)
+    if (index_type == phi::DataType::INT32) {
+      IndexSelectInner<Context, T, int>(
+          ctx, &inputs, index, add_value_grad, axis);
+    } else if (index_type == phi::DataType::INT64) {
+      IndexSelectInner<Context, T, int64_t>(
+          ctx, &inputs, index, add_value_grad, axis);
+    }
   }
 }
 

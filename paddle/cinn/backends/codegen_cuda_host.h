@@ -18,8 +18,6 @@
 #include "paddle/cinn/backends/codegen_invoke_module.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 
-PD_DECLARE_bool(cinn_bucket_compile);
-
 namespace cinn {
 namespace backends {
 
@@ -36,10 +34,7 @@ class CodeGenGpuHost : public CodeGenHost {
 
   // TODO(Hongqing-work): remove this after we clear some old codes.
   llvm::Value *Visit(const ir::_LoweredFunc_ *func) {
-    if (FLAGS_cinn_bucket_compile) {
-      return CodeGenHost::Visit(func);
-    }
-    return LowerGPUKernelLauncher(func);
+    return CodeGenHost::Visit(func);
   }
 
   llvm::Value *Visit(const ir::Call *op) override {
@@ -48,7 +43,8 @@ class CodeGenGpuHost : public CodeGenHost {
         [&](common::X86Arch) { return CodeGenHost::Visit(op); },
         [&](common::ARMArch) { return CodeGenHost::Visit(op); },
         [&](common::NVGPUArch) {
-          if (op->name == runtime::intrinsic::call_cuda_kernel) {
+          if (op->name == runtime::intrinsic::call_cuda_kernel ||
+              op->name == runtime::intrinsic::call_cuda_cooperative_kernel) {
             return LowerGPUKernelCall(op);
           } else {
             return CodeGenHost::Visit(op);
@@ -60,25 +56,17 @@ class CodeGenGpuHost : public CodeGenHost {
           } else {
             return CodeGenHost::Visit(op);
           }
+        },
+        [&](common::HygonDCUArchSYCL) {
+          if (op->name == runtime::intrinsic::call_sycl_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
         });
   }
 
  private:
-  /**
-   * Lower a CUDA/HIP kernel launcher.
-   *
-   * We launch a CUDA/HIP kernel in the following way:
-   *
-   * 1. a GPU function (called fn) will compiled to PTX and lower by CUDA driver
-   * to a function pointer, which we store as a `void*` type global variable
-   * [fn_kernel_ptr] in LLVM module.
-   * 2. when lower the host launcher, we replace the Call of the original kernel
-   * [fn] to a Call of `cinn_call_cuda_kernel` method which is registered as an
-   * external function.
-   *
-   */
-  llvm::Value *LowerGPUKernelLauncher(const ir::_LoweredFunc_ *func);
-
   llvm::Value *LowerGPUKernelCall(const ir::Call *op);
 };
 

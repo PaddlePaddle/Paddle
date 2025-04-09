@@ -438,7 +438,8 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
 paddle::Tensor BuildEmptyDistPaddleTensor(
     const phi::distributed::ProcessMesh& process_mesh,
     const phi::DDim& dims,
-    phi::DataType dtype) {
+    phi::DataType dtype,
+    const std::vector<int64_t>& dims_mapping = {}) {
   paddle::Tensor empty_tensor;
   phi::DenseTensorMeta meta;
   meta.dims = dims;
@@ -446,6 +447,9 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
 
   auto dist_attr = phi::distributed::TensorDistAttr(common::vectorize(dims));
   dist_attr.set_process_mesh(process_mesh);
+  if (!dims_mapping.empty()) {
+    dist_attr.set_dims_mapping(dims_mapping);
+  }
 
   auto dist_t = std::make_shared<phi::distributed::DistTensor>(
       std::make_shared<phi::DenseTensor>(
@@ -699,8 +703,14 @@ std::
       if (out_dim.size() == 1) {
         output_dims.emplace_back(out_dim[0]);
         if (!rank_is_in_current_mesh) {
+          std::vector<int64_t> dims_mapping = {};
+          if (!spmd_info.second.empty()) {
+            dims_mapping = PADDLE_GET_CONST(phi::distributed::TensorDistAttr,
+                                            spmd_info.second[i])
+                               .dims_mapping();
+          }
           *(ctx.MutableOutputAt(pair.first)) = BuildEmptyDistPaddleTensor(
-              current_process_mesh, out_dim[0], out_dtype[0]);
+              current_process_mesh, out_dim[0], out_dtype[0], dims_mapping);
         }
       } else {
         for (size_t j = pair.first; j < pair.second; j++) {
@@ -800,7 +810,7 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
   std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
   for (size_t i = 0; i < all_inputs->size(); ++i) {
     auto& tensor = all_inputs->at(i);
-    if (tensor.initialized() && tensor.is_dense_tensor() &&
+    if (tensor.has_allocation() && tensor.is_dense_tensor() &&
         !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
              ->meta()
              .is_contiguous()) {

@@ -66,10 +66,11 @@ from .core import (  # noqa: F401
     CUDAPinnedPlace,
     CUDAPlace,
     CustomPlace,
+    DenseTensor,
+    DenseTensorArray,
     IPUPlace,
-    LoDTensor,
-    LoDTensorArray,
     Scope,
+    XPUPinnedPlace,
     XPUPlace,
     _cuda_synchronize,
     _Scope,
@@ -130,7 +131,7 @@ from .trainer_desc import (  # noqa: F401
     TrainerDesc,
 )
 
-Tensor = LoDTensor
+Tensor = DenseTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
 

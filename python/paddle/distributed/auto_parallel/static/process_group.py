@@ -160,58 +160,42 @@ class ProcessGroup:
             strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                use_new_comm = paddle.get_flags(
-                    "FLAGS_dynamic_static_unified_comm"
-                )["FLAGS_dynamic_static_unified_comm"]
-                if use_new_comm:
-                    store = core.create_or_get_global_tcp_store()
-                    endpoints_str = ""
-                    for endpoint in strategy.trainer_endpoints:
-                        endpoints_str += endpoint
-                    endpoints_str += f"ring_id:{ring_id}"
-                    endpoints_str_hash = hashlib.md5(
-                        endpoints_str.encode(encoding='UTF-8')
-                    ).hexdigest()
+                store = core.create_or_get_global_tcp_store()
+                endpoints_str = ""
+                for endpoint in strategy.trainer_endpoints:
+                    endpoints_str += endpoint
+                endpoints_str += f"ring_id:{ring_id}"
+                endpoints_str_hash = hashlib.md5(
+                    endpoints_str.encode(encoding='UTF-8')
+                ).hexdigest()
 
-                    core.CommContextManager.set_device_id(genv.device_id)
-                    core.CommContextManager.create_nccl_comm_context(
-                        store,
-                        str(ring_id),
-                        strategy.local_rank,
-                        strategy.nranks,
-                        endpoints_str_hash,
-                    )
-                else:
-                    core.NCCLParallelContext(strategy, place).init_with_ring_id(
-                        ring_id
-                    )
+                core.CommContextManager.set_device_id(genv.device_id)
+                core.CommContextManager.create_nccl_comm_context(
+                    store,
+                    str(ring_id),
+                    strategy.local_rank,
+                    strategy.nranks,
+                    endpoints_str_hash,
+                )
             elif core.is_compiled_with_xpu():
                 place = core.XPUPlace(genv.device_id)
-                use_new_comm = paddle.get_flags(
-                    "FLAGS_dynamic_static_unified_comm"
-                )["FLAGS_dynamic_static_unified_comm"]
-                if use_new_comm:
-                    store = core.create_or_get_global_tcp_store()
-                    endpoints_str = ""
-                    for endpoint in strategy.trainer_endpoints:
-                        endpoints_str += endpoint
-                    endpoints_str += f"ring_id:{ring_id}"
-                    endpoints_str_hash = hashlib.md5(
-                        endpoints_str.encode(encoding='UTF-8')
-                    ).hexdigest()
+                store = core.create_or_get_global_tcp_store()
+                endpoints_str = ""
+                for endpoint in strategy.trainer_endpoints:
+                    endpoints_str += endpoint
+                endpoints_str += f"ring_id:{ring_id}"
+                endpoints_str_hash = hashlib.md5(
+                    endpoints_str.encode(encoding='UTF-8')
+                ).hexdigest()
 
-                    core.CommContextManager.set_device_id(genv.device_id)
-                    core.CommContextManager.create_bkcl_comm_context(
-                        store,
-                        str(ring_id),
-                        strategy.local_rank,
-                        strategy.nranks,
-                        endpoints_str_hash,
-                    )
-                else:
-                    core.BKCLParallelContext(strategy, place).init_with_ring_id(
-                        ring_id
-                    )
+                core.CommContextManager.set_device_id(genv.device_id)
+                core.CommContextManager.create_bkcl_comm_context(
+                    store,
+                    str(ring_id),
+                    strategy.local_rank,
+                    strategy.nranks,
+                    endpoints_str_hash,
+                )
             elif genv.device_type in core.get_all_custom_device_type():
                 place = core.CustomPlace(genv.device_type, genv.device_id)
                 core.XCCLParallelContext(strategy, place).init_with_ring_id(
@@ -222,43 +206,43 @@ class ProcessGroup:
 
             if core.is_compiled_with_cuda():
                 paddle.set_device(
-                    'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                    f'gpu:{paddle.distributed.ParallelEnv().dev_id}'
                 )
             elif core.is_compiled_with_xpu():
                 paddle.set_device(
-                    'xpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                    f'xpu:{paddle.distributed.ParallelEnv().dev_id}'
                 )
             elif genv.device_type in core.get_all_custom_device_type():
                 paddle.set_device(
-                    '%s:%d'
-                    % (
-                        paddle.distributed.ParallelEnv().device_type,
-                        paddle.distributed.ParallelEnv().dev_id,
-                    ),
+                    f'{paddle.distributed.ParallelEnv().device_type!s}:{paddle.distributed.ParallelEnv().dev_id}'
                 )
 
             # TODO(shenliang03): This is a temporary solution to solve the problem of
             # hang caused by cross-creation of new_group
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', ring_id
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', ring_id
+                )
 
             # NOTE(zhiqiu): to avoid send/recv hang in lazy init
             if self._group_type == 'p2p':
                 alltoall_tmp = paddle.empty(
                     shape=[self.nranks, self.nranks], dtype="int32"
                 )
-                paddle._legacy_C_ops.alltoall(
+                paddle._legacy_C_ops.all_to_all(
                     alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
                 )
                 paddle.device.cuda.synchronize()
 
         if self.nranks > 1:
             barrier_tensor = paddle.full([1], 1, dtype="int32")
-            paddle._legacy_C_ops.barrier(
-                barrier_tensor, barrier_tensor, 'ring_id', 0
-            )
+            # barrier is not available in xpu for now
+            if not paddle.framework.core.is_compiled_with_xpu():
+                paddle._legacy_C_ops.barrier(
+                    barrier_tensor, barrier_tensor, 'ring_id', 0
+                )
 
         self._is_instantiate = True
 

@@ -1667,6 +1667,11 @@ class TestSqrt(TestActivation, TestParameter):
 
         np.random.seed(1023)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = np.sqrt(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -1679,14 +1684,20 @@ class TestSqrt(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
-            check_pir_onednn=self.check_pir_onednn,
-        )
+        if self.dtype not in [np.complex64, np.complex128]:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+            )
 
     def test_check_output(self):
         self.check_output(
@@ -1744,6 +1755,16 @@ class TestSqrtPrimFp32(TestActivation):
 class TestSqrt_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
+
+
+class TestSqrt_Complex64(TestSqrt):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSqrt_Complex128(TestSqrt):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
@@ -2006,7 +2027,9 @@ class TestAbs_ZeroDim(TestAbs):
 class TestCeil(TestActivation):
     def setUp(self):
         self.op_type = "ceil"
+        self.prim_op_type = "prim"
         self.python_api = paddle.ceil
+        self.public_python_api = paddle.ceil
         self.init_dtype()
         self.init_shape()
 
@@ -2031,6 +2054,20 @@ class TestCeil(TestActivation):
     # The same reason with TestFloor
     def test_check_grad(self):
         pass
+
+    def test_check_grad_for_prim(self):
+        # the gradient on floor, ceil, round is undefined.
+        # we return zero as gradient, but the numpy return nan.
+        # for prim, we compare result with eager python api,
+        # so, we use only_prim flag to express we only test prim.
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                paddle.CUDAPlace(0),
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
 
 class TestCeil_ZeroDim(TestCeil):
@@ -5639,7 +5676,12 @@ create_test_act_fp16_class(
     check_pir=True,
     check_prim_pir=True,
 )
-create_test_act_fp16_class(TestCeil, grad_check=False, check_pir=True)
+create_test_act_fp16_class(
+    TestCeil,
+    grad_check=False,
+    check_pir=True,
+    check_prim_pir=True,
+)
 create_test_act_fp16_class(
     TestFloor,
     check_prim=True,
@@ -5815,7 +5857,12 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(
     TestAbs, check_prim=True, check_pir=True, check_prim_pir=True
 )
-create_test_act_bf16_class(TestCeil, grad_check=False, check_pir=True)
+create_test_act_bf16_class(
+    TestCeil,
+    grad_check=False,
+    check_pir=True,
+    check_prim_pir=True,
+)
 create_test_act_bf16_class(
     TestFloor,
     grad_check=False,

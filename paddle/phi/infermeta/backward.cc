@@ -304,13 +304,27 @@ void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
                                            const MetaTensor& label,
                                            const MetaTensor& loss_grad,
                                            int64_t ignore_index,
-                                           int ring_id,
                                            int rank,
                                            int nranks,
                                            MetaTensor* logits_grad,
                                            MetaConfig config) {
   logits_grad->set_dims(softmax.dims());
 }
+
+void CSoftmaxWithMultiLabelCrossEntropyGradInferMeta(
+    const MetaTensor& softmax,
+    const MetaTensor& label,
+    const MetaTensor& smooth_weight,
+    const MetaTensor& loss_grad,
+    int64_t ignore_index,
+    bool sum_multi_label_loss,
+    int rank,
+    int nranks,
+    MetaTensor* logits_grad,
+    MetaConfig config) {
+  logits_grad->set_dims(softmax.dims());
+}
+
 void FlashAttnGradInferMeta(const MetaTensor& q,
                             const MetaTensor& k,
                             const MetaTensor& v,
@@ -331,6 +345,23 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
   if (dqkv) {
     dqkv->share_meta(qkv);
+  }
+}
+
+void FlashAttnV3GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk) {
+    dk->share_meta(k);
+  }
+  if (dv) {
+    dv->share_meta(v);
   }
 }
 
@@ -524,6 +555,7 @@ void EmbeddingGradInferMeta(const MetaTensor& x,
   (void)x;
   if (weight) {
     out->share_dims(weight);
+    out->set_dtype(weight.dtype());
   }
 }
 
@@ -1165,6 +1197,9 @@ void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
     bias_grad->share_lod(bias);
     bias_grad->set_dtype(bias.dtype());
     bias_grad->set_layout(bias.layout());
+  } else if (bias_grad) {
+    std::vector<int64_t> bias_grad_dims;
+    bias_grad->set_dims(common::make_ddim(bias_grad_dims));
   }
 }
 

@@ -20,8 +20,8 @@ limitations under the License. */
 
 using CPUPlace = phi::CPUPlace;
 using XPUPlace = phi::XPUPlace;
-using LoD = phi::LoD;
-using LoDTensorArray = phi::TensorArray;
+using LegacyLoD = phi::LegacyLoD;
+using DenseTensorArray = phi::TensorArray;
 
 template <typename T>
 using BeamSearchDecoder = phi::funcs::BeamSearchDecoder<T>;
@@ -37,13 +37,13 @@ template <typename T>
 void GenerateXPUExample(const std::vector<size_t>& level_0,
                         const std::vector<size_t>& level_1,
                         const std::vector<int>& data,
-                        LoDTensorArray* ids,
-                        LoDTensorArray* scores) {
+                        DenseTensorArray* ids,
+                        DenseTensorArray* scores) {
   PADDLE_ENFORCE_EQ(level_0.back(),
                     level_1.size() - 1,
                     common::errors::InvalidArgument(
                         "source level is used to describe candidate set"
-                        ", so it's element should less than levle_1 length. "
+                        ", so it's element should less than level_1 length. "
                         "And the value of source"
                         "level is %d. ",
                         level_1.size() - 1));
@@ -59,7 +59,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
 
   XPUPlace xpu_place(XPU_PlaceNo);
 
-  LoD lod;
+  LegacyLoD lod;
   lod.push_back(level_0);
   lod.push_back(level_1);
 
@@ -141,8 +141,8 @@ void BeamSearchDecodeTestByXPUFrame() {
   // Construct sample data with 5 steps and 2 source sentences
   // beam_size = 2, start_id = 0, end_id = 1
 
-  LoDTensorArray ids;
-  LoDTensorArray scores;
+  DenseTensorArray ids;
+  DenseTensorArray scores;
 
   GenerateXPUExample<T>(std::vector<size_t>{0, 1, 2},
                         std::vector<size_t>{0, 1, 2},
@@ -166,7 +166,7 @@ void BeamSearchDecodeTestByXPUFrame() {
                         &scores);
   GenerateXPUExample<T>(
       std::vector<size_t>{0, 2, 4},
-      std::vector<size_t>{0, 0, 0, 2, 2},  // the branchs of the first source
+      std::vector<size_t>{0, 0, 0, 2, 2},  // the branches of the first source
                                            // sentence are pruned since finished
       std::vector<int>{5, 1},
       &ids,
@@ -182,7 +182,7 @@ void BeamSearchDecodeTestByXPUFrame() {
       ids, scores, &id_tensor_cpu, &score_tensor_cpu, 2, 1);
   bs_xpu.apply_xpu<T>();
 
-  LoD lod = id_tensor_cpu.lod();
+  LegacyLoD lod = id_tensor_cpu.lod();
   std::vector<size_t> expect_source_lod = {0, 2, 4};
   ASSERT_EQ(lod[0], expect_source_lod);
 

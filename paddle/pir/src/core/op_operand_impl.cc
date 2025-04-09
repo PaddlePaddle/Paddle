@@ -16,8 +16,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/value_impl.h"
 
-namespace pir {
-namespace detail {
+namespace pir::detail {
 
 pir::Operation *OpOperandImpl::owner() const { return owner_; }
 
@@ -62,7 +61,7 @@ void OpOperandImpl::RemoveFromUdChain() {
   if (!source_) return;
   if (!prev_use_addr_) return;
   if (prev_use_addr_ == source_.impl()->first_use_addr()) {
-    /// NOTE: In ValueImpl, first_use_offseted_by_index_ use lower three bits
+    /// NOTE: In ValueImpl, first_use_offsetted_by_index_ use lower three bits
     /// storage index information, so need to be updated using the set_first_use
     /// method here.
     source_.impl()->set_first_use(next_use_);
@@ -79,5 +78,4 @@ void OpOperandImpl::RemoveFromUdChain() {
 
 OpOperandImpl::~OpOperandImpl() { RemoveFromUdChain(); }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

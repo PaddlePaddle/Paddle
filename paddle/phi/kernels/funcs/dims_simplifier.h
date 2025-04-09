@@ -52,7 +52,7 @@ struct BroadcastDimsSimplifier {
     }
     ExtendInputDimensions(axis);
 
-    // To Merge the dimensions of input_tensors while the consequtive
+    // To Merge the dimensions of input_tensors while the consecutive
     // equal-dimensions appears. Example below :
     //   in_1.shape = [2, 3, 4, 5]    in_1.shape = [2, 12, 5]
     //   in_2.shape = [1, 3, 4, 5] -> in_2.shape = [1, 12, 5]
@@ -156,7 +156,7 @@ struct BroadcastDimsSimplifier {
     auto VectorReorganise = [](DimVector *vec, int l_idx, int m_idx) {
       (*vec)[m_idx - 1] = std::accumulate(vec->begin() + l_idx,
                                           vec->begin() + m_idx,
-                                          1,
+                                          int64_t{1},
                                           std::multiplies<int64_t>());
       vec->erase(vec->begin() + l_idx, vec->begin() + m_idx - 1);
     };

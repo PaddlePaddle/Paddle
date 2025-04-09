@@ -171,7 +171,7 @@ struct PointerArraySetter : public ArraySetterBase<Context> {
 
   // need_alloc : tensor data needs extra buffer or not.
   // use_cuda_graph: tensor data shall be captured by cuda_graph or not.
-  // pre_alloc_host_buf: tensor data is temporaily stored by pinned memory or
+  // pre_alloc_host_buf: tensor data is temporarily stored by pinned memory or
   // not.
   PointerArraySetter(const Context& ctx,
                      std::vector<DenseTensor*>* t,

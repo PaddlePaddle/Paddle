@@ -22,8 +22,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
@@ -63,7 +63,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
   template <typename T>
-  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetches, PaddleTensor *output_data);
   void PrepareFeedFetch();
 
   NativeConfig config_;
@@ -74,8 +74,8 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::unique_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
-  std::vector<framework::OpDesc *> fetchs_;
-  // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
+  std::vector<framework::OpDesc *> fetches_;
+  // Memory buffer for feed inputs. The temporary DenseTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
   std::vector<phi::DenseTensor> feed_tensors_;
   // Do not use unique_ptr, use parent scope to delete

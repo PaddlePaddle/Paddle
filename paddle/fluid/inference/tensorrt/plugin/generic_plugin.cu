@@ -382,7 +382,7 @@ bool GenericPlugin::supportsFormatCombination(
       return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
     // output
-    if (pos == 2)
+    if (pos == 2 || pos == 3)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
   } else if (op_desc_.Type() == "scatter_nd_add") {
@@ -609,7 +609,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     PADDLE_ENFORCE_EQ(
         _map.count(nv_dtype),
         true,
-        common::errors::InvalidArgument("Sorry, dtyp [ %d ] is not supported.",
+        common::errors::InvalidArgument("Sorry, dtype [ %d ] is not supported.",
                                         static_cast<int>(nv_dtype)));
     return _map.at(nv_dtype);
   };

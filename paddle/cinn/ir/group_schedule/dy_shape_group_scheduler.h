@@ -58,7 +58,8 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   ir::ScheduleBlockNode* FindGlobalMasterNode(
       const std::unique_ptr<ir::ScheduleBlockGraph>& schedule_block_graph);
 
-  IterativeSpaceInfo ConstructIterSpaceInfo(ScheduleBlockNode* node);
+  SymbolicPredicate MakeBucketPredicate(const BucketInfo& bucket_info,
+                                        ScheduleBlockNode* node);
 
  private:
   std::vector<BucketContext> bucket_contexts_;

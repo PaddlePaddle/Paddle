@@ -48,7 +48,7 @@ class ProgramWriter {
   Json program_json;
 
   /** value_id_map is used to record the serialize id of pir::Value.
-   * which is used to serilize op's operands. */
+   * which is used to serialize op's operands. */
   std::map<pir::Value, int64_t> value_id_map;
 
   /** xxx_id_ is used to record current id of IR structure
@@ -72,7 +72,7 @@ class ProgramWriter {
                                 const AttributeMap& attr_map);
   Json WriteAttributesMapOther(const AttributeMap& attr_map);
   /** WriteAttribute is used to write attribute of op.
-   * which call writeAttr to get Derived Class‘s json object.
+   * which call writeAttr to get Derived Class's json object.
    * same as WriteType
    */
 

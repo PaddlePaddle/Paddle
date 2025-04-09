@@ -85,6 +85,7 @@ find_package_and_include(rocprim)
 find_package_and_include(hipsparse)
 find_package_and_include(rocsparse)
 find_package_and_include(rocfft)
+find_package_and_include(rocsolver)
 
 if(CCACHE_PATH)
   set(HIP_HIPCC_EXECUTABLE ${CCACHE_PATH} ${HIP_HIPCC_EXECUTABLE})
@@ -178,3 +179,7 @@ find_library(ROCM_HIPRTC_LIB ${hip_library_name} HINTS ${HIP_PATH}/lib)
 message(STATUS "ROCM_HIPRTC_LIB: ${ROCM_HIPRTC_LIB}")
 
 include(thrust)
+
+if(WITH_Z100)
+  add_definitions(-DCINN_WITH_Z100)
+endif()

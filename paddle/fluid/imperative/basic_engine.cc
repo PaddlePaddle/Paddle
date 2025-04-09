@@ -36,8 +36,7 @@
 
 COMMON_DECLARE_bool(sort_sum_gradient);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 void BasicEngine::Init(
     const std::vector<std::shared_ptr<VarBase>>& tensors,
@@ -383,7 +382,7 @@ static void PerformBackwardInplace(const std::string& op_type,
         if (p.first == pair.second) {
           if (!p.second.empty() && p.second[0]) {
             auto& out_var = p.second[0];
-            if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
+            if (out_var->Type() == framework::proto::VarType::DENSE_TENSOR) {
               out_tensor =
                   out_var->MutableVar()->GetMutable<phi::DenseTensor>();
             }
@@ -683,5 +682,4 @@ void BasicEngine::Clear() {
   leaf_accumulators_.clear();
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

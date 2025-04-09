@@ -132,7 +132,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
 
 const char* PYBIND_ITEM_TEMPLATE = R"(  {"%s", (PyCFunction)(void(*)(void))%s, METH_VARARGS | METH_KEYWORDS, "C++ interface function for %s in dygraph."},)";
 
-// These operators will skip automatical code generation and
+// These operators will skip automatic code generation and
 // need to be handwritten in CUSTOM_HANDWRITE_OP_FUNC_FILE
 std::unordered_set<std::string> CUSTOM_HANDWRITE_OPS_SET = {"run_program"};
 

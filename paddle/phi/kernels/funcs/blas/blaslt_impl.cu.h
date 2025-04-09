@@ -1113,7 +1113,7 @@ struct MatmulWithCublasLt : public CublasLtBase<T, OutT> {
   }
 };
 
-// As for just Linear fused ephilogue below: out = matmul(x, y) + bias.
+// As for just Linear fused epilogue below: out = matmul(x, y) + bias.
 template <typename T>
 struct LinearWithCublasLt : public CublasLtBase<T> {
   static void Run(const phi::GPUContext& ctx,

@@ -95,11 +95,11 @@ class Distribution:
         """Variance of distribution"""
         raise NotImplementedError
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sampling from the distribution."""
         raise NotImplementedError
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """reparameterized sample"""
         raise NotImplementedError
 

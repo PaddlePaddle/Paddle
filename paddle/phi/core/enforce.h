@@ -163,9 +163,9 @@ void ThrowWarnInternal(const std::string& message);
 
 /*
  * Summary: This macro is used to get Variable or internal type
- *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   data (such as DenseTensor or SelectedRows) of the Input and
  *   Output in op, generally used when call scope.FindVar(Input/
- *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Output("Name")) or ctx.Input<DenseTensor>().
  *   Firstly this macro check whether the obtained pointer is null,
  *   and then return data if it is not null.
  *
@@ -182,7 +182,7 @@ void ThrowWarnInternal(const std::string& message);
  * Return: The data pointed to by the pointer.
  *
  * Examples:
- *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+ *    GET_DATA_SAFELY(ctx.Input<DenseTensor>("X"), "Input", "X", "Mul");
  */
 #define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \

@@ -26,7 +26,11 @@ from paddle.base.core import (
     has_decomp_rule,
     has_decomp_vjp,
 )
-from paddle.base.framework import pir_chunk_id_guard, pir_op_role_guard
+from paddle.base.framework import (
+    pir_chunk_id_guard,
+    pir_op_name_guard,
+    pir_op_role_guard,
+)
 from paddle.base.libpaddle.pir import Block, Operation
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.decomposition.recompute import DebugPrint, auto_recompute
@@ -869,9 +873,9 @@ def decompose_dist_program(pir_program):
                 ) and _check_prim_dynamic(op):
                     skip_decomp = True
                 if not skip_decomp:
-                    with pir_op_role_guard(op.op_role), pir_chunk_id_guard(
-                        op.chunk_id
-                    ):
+                    with pir_op_name_guard(op.name()), pir_op_role_guard(
+                        op.op_role
+                    ), pir_chunk_id_guard(op.chunk_id):
                         pir.set_insertion_point(op)
                         orig_outs = op.results()
 
@@ -1004,16 +1008,19 @@ def auto_recompute_pir_program(pir_program, is_forward_op_func=None):
     if len(outputs):
         fwd_op_end_idx = max(get_defining_op_indices(pir_program, outputs))
 
+    logger = logging.getLogger("auto-recompute")
+    logger.setLevel(logging.INFO)
+
     if is_forward_op_func is not None:
         try:
             fwd_op_end_idx = max(
                 get_forward_op_idxs(pir_program, is_forward_op_func)
             )
         except:
-            logging.info("No Forward Ops Found!")
+            logger.info("No Forward Ops Found!")
 
     if fwd_op_end_idx == -1:
-        print("Skip Recompute!")
+        logger.info("Skip Auto Recompute!")
         return pir_program
     backward_op_start_idx = fwd_op_end_idx + 1
 

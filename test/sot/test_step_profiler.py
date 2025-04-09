@@ -43,7 +43,7 @@ class SimpleModel(paddle.nn.Layer):
 
 
 class TestStepProfilerSmokeTest(unittest.TestCase):
-    # Temperarily disable this test
+    # Temporarily disable this test
     # @sot_step_profiler_guard(True)
     @strict_mode_guard(False)
     def test_step_profiler_smoke(self):

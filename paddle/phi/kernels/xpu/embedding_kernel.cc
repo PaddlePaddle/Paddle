@@ -60,7 +60,7 @@ void EmbeddingKernel(const Context &ctx,
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   if (ids_t->dtype() == phi::DataType::INT64) {
 #ifndef PADDLE_WITH_XPU_PLUGIN
-    r = xpu::embedding<XPUType, int64_t>(
+    r = xpu::paddle_embedding<XPUType, int64_t>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUType *>(table),
         ids_t->data<int64_t>(),
@@ -87,14 +87,14 @@ void EmbeddingKernel(const Context &ctx,
         ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     const int64_t *ids = reinterpret_cast<const int64_t *>(ids_tt);
-    r = xpu::embedding<XPUType>(dev_ctx.x_context(),
-                                reinterpret_cast<const XPUType *>(table),
-                                ids,
-                                reinterpret_cast<XPUType *>(output),
-                                xm,
-                                n,
-                                ym,
-                                padding_idx);
+    r = xpu::paddle_embedding<XPUType>(dev_ctx.x_context(),
+                                       reinterpret_cast<const XPUType *>(table),
+                                       ids,
+                                       reinterpret_cast<XPUType *>(output),
+                                       xm,
+                                       n,
+                                       ym,
+                                       padding_idx);
 #else
     r = xpu::plugin::fast_embedding<XPUType, int>(
         dev_ctx.x_context(),
@@ -107,7 +107,7 @@ void EmbeddingKernel(const Context &ctx,
         padding_idx);
 #endif
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_embedding");
 }
 
 }  // namespace phi

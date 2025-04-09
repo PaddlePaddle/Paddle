@@ -97,13 +97,6 @@ class CollectiveHelper:
             other_endpoints = endpoints[:]
             other_endpoints.remove(current_endpoint)
 
-        if rank == 0 and wait_port:
-            use_new_comm = paddle.get_flags(
-                "FLAGS_dynamic_static_unified_comm"
-            )["FLAGS_dynamic_static_unified_comm"]
-            if not use_new_comm:
-                wait_server_ready(other_endpoints)
-
         def _add_sync_by_allreduce(block):
             sync_var = block.create_var(
                 name=unique_name.generate('sync_var'),
@@ -124,12 +117,12 @@ class CollectiveHelper:
                 },
             )
             block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': [sync_var]},
-                outputs={'Out': [sync_var]},
+                type='all_reduce',
+                inputs={'x': [sync_var]},
+                outputs={'out': [sync_var]},
                 attrs={
                     'ring_id': global_ring_id,
-                    'use_calc_stream': True,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
@@ -224,9 +217,9 @@ class CollectiveHelper:
 
             ring_id = (ring_id + 1) % self.nrings
             block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
+                type='broadcast',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={
                     'ring_id': ring_id,
                     'root': 0,

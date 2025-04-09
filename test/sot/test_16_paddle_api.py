@@ -38,6 +38,12 @@ def paddle_api_function_call_concat(
     return paddle.concat([x, y], axis=axis)
 
 
+def paddle_api_function_breakgraph_when_type_error(
+    x: paddle.Tensor, axis: paddle.Tensor
+):
+    return paddle.nn.functional.softmax(x, axis=axis)
+
+
 class TestPaddleApiCall(TestCaseBase):
     def test_paddle_api_method_call(self):
         self.assert_results(paddle_api_method_call, paddle.to_tensor(2.0))
@@ -54,6 +60,13 @@ class TestPaddleApiCall(TestCaseBase):
         b = paddle.to_tensor([[5, 6], [7, 8]])
         self.assert_results(paddle_api_function_call_concat, a, b, 0)
         self.assert_results(paddle_api_function_call_concat, a, b, 1)
+
+    def test_paddle_api_function_breakgraph_when_type_error(self):
+        x = paddle.to_tensor([[1, 2], [3, 4]], dtype=paddle.float32)
+        axis = paddle.to_tensor(1)
+        self.assert_results(
+            paddle_api_function_breakgraph_when_type_error, x, axis
+        )
 
 
 if __name__ == "__main__":

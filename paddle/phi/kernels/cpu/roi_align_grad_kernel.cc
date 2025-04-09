@@ -97,13 +97,24 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   int boxes_batch_size = 0;
   if (boxes_num) {
     boxes_batch_size = static_cast<int>(boxes_num->numel());
-    auto* boxes_num_data = boxes_num->data<int>();
-    int start = 0;
-    for (int n = 0; n < boxes_batch_size; ++n) {
-      for (int i = start; i < start + boxes_num_data[n]; ++i) {
-        box_batch_id_data[i] = n;
+    if (boxes_num->dtype() == phi::DataType::INT64) {
+      auto* boxes_num_data = boxes_num->data<int64_t>();
+      int64_t start = 0;
+      for (int64_t n = 0; n < boxes_batch_size; ++n) {
+        for (int64_t i = start; i < start + boxes_num_data[n]; ++i) {
+          box_batch_id_data[i] = n;
+        }
+        start += boxes_num_data[n];
       }
-      start += boxes_num_data[n];
+    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+      auto* boxes_num_data = boxes_num->data<int>();
+      int start = 0;
+      for (int n = 0; n < boxes_batch_size; ++n) {
+        for (int i = start; i < start + boxes_num_data[n]; ++i) {
+          box_batch_id_data[i] = n;
+        }
+        start += boxes_num_data[n];
+      }
     }
   } else {
     auto boxes_lod = boxes.lod().back();

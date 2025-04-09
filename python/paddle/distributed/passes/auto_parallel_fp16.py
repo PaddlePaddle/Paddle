@@ -124,7 +124,7 @@ def _keep_fp32_input(op, in_name):
 
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_output(op, out_name):
-    # TODO(lizhiyu02): Support 'custom_white_list' adn 'custom_black_list' in amp_options
+    # TODO(lizhiyu02): Support 'custom_white_list' and 'custom_black_list' in amp_options
     if not op.amp_options.enable:
         return True
     op_type = op.type
@@ -289,7 +289,7 @@ class FP16State:
             # var = self.program.global_block().var(var_name)
 
         # NOTE(JZ-LIANG) "array_" is a hack to adopt for ernie3.0 inference, since there is
-        # a trick which make the LOD_TENSOR_ARRAY to the float32 in while block to reset the LOD_TENSOR_ARRAY
+        # a trick which make the DENSE_TENSOR_ARRAY to the float32 in while block to reset the DENSE_TENSOR_ARRAY
         if (
             var is None
             or var.type not in __amp_utils__._valid_types
@@ -649,7 +649,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
         ),
         shape=[1],
         dtype='bool',
-        type=core.VarDesc.VarType.LOD_TENSOR,
+        type=core.VarDesc.VarType.DENSE_TENSOR,
         persistable=False,
         stop_gradient=False,
     )
@@ -743,7 +743,7 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
         ),
         dtype=src_var.dtype,
         shape=src_var.shape,
-        type=core.VarDesc.VarType.LOD_TENSOR,
+        type=core.VarDesc.VarType.DENSE_TENSOR,
         persistable=False,
         stop_gradient=src_var.stop_gradient,
     )

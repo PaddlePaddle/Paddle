@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -45,7 +46,11 @@ class XPUTestGather(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             self.init_config()
-            xnp = np.random.random(self.x_shape).astype(self.dtype)
+            xnp = np.random.random(self.x_shape).astype(
+                self.dtype if self.dtype != np.uint16 else np.float32
+            )
+            if self.dtype == np.uint16:
+                xnp = convert_float_to_uint16(xnp)
             self.inputs = {
                 'X': xnp,
                 'Index': np.array(self.index).astype(self.index_type),

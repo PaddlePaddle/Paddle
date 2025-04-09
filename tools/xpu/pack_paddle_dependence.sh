@@ -26,10 +26,13 @@ XHPC_DIR_NAME=$4
 XCCL_URL=$5
 XCCL_DIR_NAME=$6
 
+WITH_XPU_XRE5=$7
+
 mkdir -p xpu/include/xhpc/xblas
 mkdir -p xpu/include/xhpc/xfa
 mkdir -p xpu/include/xhpc/xpudnn
 mkdir -p xpu/include/xpu
+mkdir -p xpu/include/xre
 mkdir -p xpu/lib
 
 function download_from_bos() {
@@ -59,32 +62,41 @@ function check_files() {
 
 function xre_prepare() {
   check_files ${XRE_DIR_NAME}/include/xpu/runtime.h ${XRE_DIR_NAME}/so/libxpurt.so
+  if [ "$WITH_XPU_XRE5" -eq 1 ]; then
+    check_files ${XRE_DIR_NAME}/so/libcudart.so
+    check_files ${XRE_DIR_NAME}/so/libxpuml.so
+  fi
   cp -r ${XRE_DIR_NAME}/include/xpu/* xpu/include/xpu/
   cp -r ${XRE_DIR_NAME}/so/* xpu/lib/
+  cp -r ${XRE_DIR_NAME}/include/* xpu/include/xre
 }
 
 function xhpc_prepare() {
-  check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so
-  cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-  cp -r ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
-
   check_files ${XHPC_DIR_NAME}/xdnn/include/xpu/xdnn.h ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so
   cp -r ${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
   cp -r ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
-  check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
-  cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-  cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+  if [ "$WITH_XPU_XRE5" -eq 1 ]; then
+    check_files ${XHPC_DIR_NAME}/xblas/include/cublasLt.h ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so
+    cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
+    cp -r ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
 
-  check_files ${XHPC_DIR_NAME}/xpudnn/include/xpudnn.h ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so
-  cp -r ${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
-  cp -r ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+    check_files ${XHPC_DIR_NAME}/xfa/include/flash_api.h ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so
+    cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
+    cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+
+    check_files ${XHPC_DIR_NAME}/xpudnn/include/xpudnn.h ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so
+    cp -r ${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
+    cp -r ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+  fi
 }
 
 function xccl_prepare() {
   check_files ${XCCL_DIR_NAME}/include/bkcl.h ${XCCL_DIR_NAME}/so/libbkcl.so
   cp -r ${XCCL_DIR_NAME}/include/* xpu/include/xpu/
   cp -r ${XCCL_DIR_NAME}/so/* xpu/lib/
+  # FIXME(yangjianbang): 待bkcl增加RPATH后, 删除以下代码
+  patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
 }
 
 function local_prepare() {
@@ -111,23 +123,28 @@ function local_assemble() {
     # xre assemble
     cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
     cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/* xpu/lib/
+    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/include/* xpu/include/xre
 
     # xccl assemble
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/include/* xpu/include/xpu/
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/so/* xpu/lib/
 
     # xhpc assemble
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
-
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+    if [ "$WITH_XPU_XRE5" -eq 1 ]; then
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
 
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
-    cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
+
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
+      cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+      # FIXME(yangjianbang): 待bkcl增加RPATH后, 删除以下代码
+      patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
+    fi
 }
 
 if [[ $XRE_URL != "http"* ]]; then

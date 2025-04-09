@@ -28,6 +28,9 @@
 
 namespace pir {
 using InferSymbolicShapeCacheValue = std::vector<symbol::ShapeOrDataDimExprs>;
+
+enum TransLayoutType { NCHW2NHWC, NHWC2NCHW, INVALID };
+
 /**
  * This class represents information needed to determine the output
  * shape of an operator, which includes the operator's name, input shapes, and
@@ -36,12 +39,12 @@ using InferSymbolicShapeCacheValue = std::vector<symbol::ShapeOrDataDimExprs>;
 class IR_API InferSymbolicShapeCacheKey {
  public:
   InferSymbolicShapeCacheKey(
-      const Operation& op,
-      const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas);
-  InferSymbolicShapeCacheKey(
       const std::string& op_name,
       const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas,
-      const AttributeMap& attributes);
+      const std::map<std::string, Attribute>& attributes)
+      : op_name_(op_name),
+        input_shape_or_datas_(input_shape_or_datas),
+        attributes_(attributes) {}
   bool operator==(const InferSymbolicShapeCacheKey& other) const;
   std::size_t GetHashValue() const;
   friend std::ostream& operator<<(std::ostream& os,
@@ -51,7 +54,7 @@ class IR_API InferSymbolicShapeCacheKey {
  private:
   std::string op_name_;
   std::vector<symbol::ShapeOrDataDimExprs> input_shape_or_datas_;
-  std::vector<std::pair<std::string, ::pir::Attribute>> attributes_;
+  std::map<std::string, Attribute> attributes_;
   const std::vector<symbol::ShapeOrDataDimExprs>& GetInputShapeOrDatas() const;
   void SetInputShapeOrDatas(
       const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas);
@@ -196,6 +199,15 @@ class IR_API ShapeConstraintIRAnalysis final
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
 
+  // Set ShapeOrData of `to` value by ShapeOrData of `from` value.
+  void ShareShapeOrData(Value from, Value to);
+
+  // Update Symbol Shape for value by layout transformation.
+  void UpdateShapeOrDataByTransLayout(Value val,
+                                      TransLayoutType trans_layout_type);
+
+  void AddEqualCstr(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs);
+
   bool IsEqual(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) const;
 
   bool IsGreatThanOne(const symbol::DimExpr& dim_expr) const;
@@ -239,6 +251,9 @@ class IR_API ShapeConstraintIRAnalysis final
   }
 
   void SetInputDynamicDimSpec(
+      const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec);
+
+  void AppendInputDynamicDimSpec(
       const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec);
 
  private:

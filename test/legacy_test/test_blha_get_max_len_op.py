@@ -22,12 +22,18 @@ from paddle.incubate.nn.functional import blha_get_max_len
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Only support GPU in CUDA mode."
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Only support XPU or GPU in CUDA mode.",
 )
 class TestBlhaGetMaxLenOp(unittest.TestCase):
     def setUp(self):
         self.name = "TestBlhaGetMaxLenOpDynamic"
-        self.place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         self.batch_size = 10
         self.test_encoder_data = np.random.randint(
             1, 100, size=self.batch_size
@@ -68,6 +74,13 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
         test_encoder_data_res = np.max(self.test_encoder_data).astype("int32")
         test_decoder_data_res = np.max(self.test_decoder_data).astype("int32")
 
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+
         with paddle.static.program_guard(paddle.static.Program()):
             seq_lens_encoder = paddle.static.data(
                 "seq_lens_encoder", self.test_encoder_data.shape, "int32"
@@ -81,7 +94,7 @@ class TestBlhaGetMaxLenOp(unittest.TestCase):
                 seq_lens_decoder,
                 batch_size_tensor,
             )
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(place)
             res_max_enc_len_this_time, res_max_dec_len_this_time = exe.run(
                 feed={
                     "seq_lens_encoder": self.test_encoder_data,

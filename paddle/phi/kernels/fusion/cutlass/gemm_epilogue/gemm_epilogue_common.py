@@ -22,7 +22,7 @@ from util import SubstituteTemplate
 CommonCutlassGemmEpilogueKernelDeclare = '''
 cutlass::Status ${kernel_func_name}(const GemmEpilogueAllParams& params) {
     /// CommonCutlassGemmEpilogueKernelDeclare
-    using DeviceKernalName = cutlass::gemm::device::GemmUniversal<
+    using DeviceKernelName = cutlass::gemm::device::GemmUniversal<
         ${element_a}, ${layout_a},
         ${element_b}, ${layout_b},
         ${element_c}, ${layout_c},
@@ -58,7 +58,7 @@ CommonCutlassGemmEpilogueKernelArguments = '''
     if(!params.isVec_bias)     { ldc_bias = (long)params.ldd; }
     long ldd = (long)params.ldd;
 
-    typename DeviceKernalName::Arguments arguments{
+    typename DeviceKernelName::Arguments arguments{
         cutlass::gemm::GemmUniversalMode::kGemm,
         problem_size,
         ${split_k_factor},
@@ -81,8 +81,8 @@ CommonCutlassGemmEpilogueKernelArguments = '''
 CommonCutlassGemmEpilogueKernelExecute = '''
 
     /// CommonCutlassGemmEpilogueKernelExecute
-    DeviceKernalName device_gemm;
-    // size_t workspace_size = DeviceKernalName::get_workspace_size(arguments);
+    DeviceKernelName device_gemm;
+    // size_t workspace_size = DeviceKernelName::get_workspace_size(arguments);
     // cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
 
     cutlass::Status status = device_gemm.can_implement(arguments);

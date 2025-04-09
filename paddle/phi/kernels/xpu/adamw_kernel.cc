@@ -244,21 +244,15 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
   }
 
   // template <typename T, typename TG, typename MT> DLL_EXPORT int
-  // adamw_v2(Context* ctx, MT beta1, MT beta2, MT epsilon, MT coeff, MT
-  // lr_ratio, const MT* beta1_pow, MT beta1_pow_scalar, const MT* beta2_pow, MT
+  // adamw(Context* ctx, MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio,
+  // const MT* beta1_pow, MT beta1_pow_scalar, const MT* beta2_pow, MT
   // beta2_pow_scalar, const MT* moment1, MT* moment1_out, const MT* moment2,
   // MT* moment2_out, const MT* lr, const TG* grad, const T* param, T*
-  // param_out, const MT* master_param, MT* master_param_out, int64_t n, bool
-  // round_bf16_output);
-  bool round_bf16_output = false;
-  if (std::getenv("XPU_PADDLE_ADAMW_ROUND_BF16_OUTPUT") != nullptr) {
-    round_bf16_output = true;
-  }
-
+  // param_out, const MT* master_param, MT* master_param_out, int64_t n);
   if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
     // Compute with betapow in REG
     if (grad_type == phi::DataType::FLOAT32) {
-      int r = xpu::adamw_v2<XPUType, float, MPDType>(
+      int r = xpu::adamw<XPUType, float, MPDType>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
@@ -283,11 +277,10 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
           master_in_data,
           master_out_data,
-          param.numel(),
-          round_bf16_output);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
+          param.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     } else {
-      int r = xpu::adamw_v2<XPUType, XPUType, MPDType>(
+      int r = xpu::adamw<XPUType, XPUType, MPDType>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
@@ -312,9 +305,8 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
           master_in_data,
           master_out_data,
-          param.numel(),
-          round_bf16_output);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
+          param.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     }
     if (!use_global_beta_pow) {
       // Cpu update
@@ -325,7 +317,7 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     }
   } else {
     if (grad_type == phi::DataType::FLOAT32) {
-      int r = xpu::adamw_v2<XPUType, float, MPDType>(
+      int r = xpu::adamw<XPUType, float, MPDType>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
@@ -350,11 +342,10 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
           master_in_data,
           master_out_data,
-          param.numel(),
-          round_bf16_output);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
+          param.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     } else {
-      int r = xpu::adamw_v2<XPUType, XPUType, MPDType>(
+      int r = xpu::adamw<XPUType, XPUType, MPDType>(
           dev_ctx.x_context(),
           beta1_,
           beta2_,
@@ -379,9 +370,8 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
           reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
           master_in_data,
           master_out_data,
-          param.numel(),
-          round_bf16_output);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw_v2");
+          param.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
     }
     if (!use_global_beta_pow) {
       // Update with xpu
@@ -435,11 +425,11 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
     moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
-    float moment2_max = GetAbsMax<Context>(dev_ctx,
-                                           moment2_output_for_xdnn,
-                                           buffer_for_findmax,
-                                           moment2_out->numel());
-    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    float moment2_max_ = GetAbsMax<Context>(dev_ctx,
+                                            moment2_output_for_xdnn,
+                                            buffer_for_findmax,
+                                            moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
@@ -477,32 +467,41 @@ void AdamwDenseKernelKL3(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void AdamwDenseKernel(const Context& dev_ctx,
-                      const DenseTensor& param,
-                      const DenseTensor& grad,
-                      const DenseTensor& learning_rate,
-                      const DenseTensor& moment1,
-                      const DenseTensor& moment2,
-                      const DenseTensor& beta1_pow,
-                      const DenseTensor& beta2_pow,
-                      const paddle::optional<DenseTensor>& master_param,
-                      const paddle::optional<DenseTensor>& skip_update,
-                      const Scalar& beta1,
-                      const Scalar& beta2,
-                      const Scalar& epsilon,
-                      float lr_ratio,
-                      float coeff,
-                      bool with_decay,
-                      bool lazy_mode,
-                      int64_t min_row_size_to_use_multithread,
-                      bool multi_precision,
-                      bool use_global_beta_pow,
-                      DenseTensor* param_out,
-                      DenseTensor* moment1_out,
-                      DenseTensor* moment2_out,
-                      DenseTensor* beta1_pow_out,
-                      DenseTensor* beta2_pow_out,
-                      DenseTensor* master_param_outs) {
+void AdamwDenseKernel(
+    const Context& dev_ctx,
+    const DenseTensor& param,
+    const DenseTensor& grad,
+    const DenseTensor& learning_rate,
+    const DenseTensor& moment1,
+    const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,  // UNUSED
+    const DenseTensor& beta1_pow,
+    const DenseTensor& beta2_pow,
+    const paddle::optional<DenseTensor>& master_param,
+    const paddle::optional<DenseTensor>& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    float lr_ratio,
+    float coeff,
+    bool with_decay,
+    bool lazy_mode,
+    int64_t min_row_size_to_use_multithread,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    bool amsgrad,  // UNUSED
+    DenseTensor* param_out,
+    DenseTensor* moment1_out,
+    DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,  // UNUSED
+    DenseTensor* beta1_pow_out,
+    DenseTensor* beta2_pow_out,
+    DenseTensor* master_param_outs) {
+  PADDLE_ENFORCE_NE(
+      amsgrad,
+      true,
+      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+
   auto dev_version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
@@ -803,11 +802,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
     moment1_out->set_storage_properties(std::move(moment1_out_sp));
 
     // for moment2
-    float moment2_max = GetAbsMax<Context>(dev_ctx,
-                                           moment2_output_for_xdnn,
-                                           buffer_for_findmax,
-                                           moment2_out->numel());
-    float moment2_scale_value = 65504.0f / moment2_max / 2.0f;
+    float moment2_max_ = GetAbsMax<Context>(dev_ctx,
+                                            moment2_output_for_xdnn,
+                                            buffer_for_findmax,
+                                            moment2_out->numel());
+    float moment2_scale_value = 65504.0f / moment2_max_ / 2.0f;
     // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
     // bias_after_scale, float _scale, float _bias);
     r = xpu::scale<float>(dev_ctx.x_context(),
@@ -885,9 +884,9 @@ PD_REGISTER_KERNEL(adamw,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
-  kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
-  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(9).SetBackend(phi::Backend::ALL_BACKEND);
 
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
@@ -896,7 +895,8 @@ PD_REGISTER_KERNEL(adamw,
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   }
-  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(5).SetBackend(phi::Backend::UNDEFINED);
 }

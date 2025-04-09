@@ -22,27 +22,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/framework/selected_rows_serialize.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
 namespace paddle {
-namespace framework {
-/*
- * Serialize/Deserialize SelectedRows to std::ostream
- * You can pass ofstream or ostringstream to serialize to file
- * or to a in memory string. GPU tensor will be copied to CPU.
- */
-void SerializeToStream(std::ostream& os,
-                       const phi::SelectedRows& selected_rows,
-                       const phi::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is,
-                           phi::SelectedRows* selected_rows,
-                           const phi::DeviceContext& dev_ctx);
-
-void SerializeToStream(std::ostream& os,
-                       const phi::SelectedRows& selected_rows);
-
-void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows);
-
-}  // namespace framework
+namespace framework {}  // namespace framework
 }  // namespace paddle

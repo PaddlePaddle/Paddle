@@ -36,10 +36,27 @@ pir::Value reshard(
     const pir::Value& x,
     const phi::distributed::ProcessMesh& process_mesh,
     const std::vector<int64_t>& dims_mapping,
-    const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {},
+    const phi::distributed::Placements& placements = {});
 
 pir::Value reshard(const pir::Value& x,
                    const TensorDistAttribute& tensor_dist_attr);
+
+pir::Value dtensor_from_local(
+    const pir::Value& x,
+    const phi::distributed::ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
+pir::Value dtensor_from_local(const pir::Value& x,
+                              const TensorDistAttribute& tensor_dist_attr);
+
+pir::Value dtensor_to_local(
+    const pir::Value& x,
+    const phi::distributed::ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
+pir::Value dtensor_to_local(const pir::Value& x,
+                            const TensorDistAttribute& grad_dist_attr);
 
 std::vector<pir::Value> moe_sub_mesh_tensors(
     const pir::Value& input,
@@ -59,6 +76,16 @@ pir::Value moe_global_mesh_tensor(
     const std::vector<int64_t>& global_dims_mapping,
     const flat_hash_map<int64_t, phi::ReduceType>& global_partial_status,
     const std::vector<int64_t>& global_shape);
+
+pir::Value dist_reshape(
+    const pir::Value& x,
+    const phi::distributed::Placements& x_placements,
+    const std::vector<int64_t>& global_shape,
+    const std::vector<int64_t>& local_shape,
+    const phi::distributed::ProcessMesh& mesh,
+    const phi::distributed::Placements& placements,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status);
 
 }  // namespace dialect
 }  // namespace paddle

@@ -269,6 +269,44 @@ def _append_gradient_merge_backward_op(
     return new_params_grads, grad_to_gradient_merge
 
 
+def _move_used_grad_op(used_grad_op, grad):
+    move_to_opt_block_flag = True
+    move_to_opt_ops = []
+    cannot_move_op = ["pd_op.send_v2", "pd_op.send"]
+
+    def find_move_op(backward_op):
+        nonlocal move_to_opt_block_flag
+        if not move_to_opt_block_flag or backward_op in move_to_opt_ops:
+            return
+        if backward_op.name() in cannot_move_op:
+            move_to_opt_block_flag = False
+            return
+        if backward_op.num_operands() == 1:
+            move_to_opt_block_flag = True
+            move_to_opt_ops.append(backward_op)
+        elif backward_op.name() == "pd_op.slice":
+            move_to_opt_ops.append(backward_op)
+            for i in range(0, backward_op.num_operands()):
+                if not grad.is_same(backward_op.operand_source(i)):
+                    move_to_opt_ops.append(
+                        backward_op.operand_source(i).get_defining_op()
+                    )
+            move_to_opt_block_flag = True
+        else:
+            # NOTE(zhangwl):temp only consider one operand op
+            move_to_opt_block_flag = False
+            return
+        for op_result in backward_op.results():
+            for next_op in op_result.all_used_ops():
+                if next_op.op_role != int(OpRole.Optimize):
+                    find_move_op(next_op)
+
+    find_move_op(used_grad_op)
+    if move_to_opt_block_flag:
+        for move_op in move_to_opt_ops:
+            move_op.op_role = int(OpRole.Optimize)
+
+
 def _pir_append_gradient_merge_backward_op(
     main_program,
     startup_program,
@@ -345,29 +383,9 @@ def _pir_append_gradient_merge_backward_op(
         )
         new_gradient_merge_var_add_op.set_bool_attr("grad_merge_add", True)
 
-        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather op
+        # NOTE(zhangweilong): grad may in different device in auto_parallel, so need consider all_gather/all_reduce/split/... op
         for used_grad_op in grad.all_used_ops():
-            move_to_opt_block_flag = False
-            move_to_opt_ops = []
-            if used_grad_op.num_operands() == 1:
-                move_to_opt_block_flag = True
-                move_to_opt_ops.append(used_grad_op)
-            elif used_grad_op.name() == "pd_op.slice":
-                move_to_opt_ops.append(used_grad_op)
-                for i in range(1, used_grad_op.num_operands()):
-                    move_to_opt_ops.append(
-                        used_grad_op.operand_source(i).get_defining_op()
-                    )
-                move_to_opt_block_flag = True
-            if move_to_opt_block_flag:
-                for used_op_result in used_grad_op.results():
-                    for used_op in used_op_result.all_used_ops():
-                        if used_op.op_role != int(OpRole.Optimize):
-                            move_to_opt_block_flag = False
-                            break
-                if move_to_opt_block_flag:
-                    for move_op in move_to_opt_ops:
-                        move_op.op_role = int(OpRole.Optimize)
+            _move_used_grad_op(used_grad_op, grad)
 
         opt_ops_use_grad = [
             op
@@ -675,7 +693,7 @@ def parse_program(
     return grad_to_gradient_merge
 
 
-def _find_trival_optimizer_ops(block):
+def _find_trivial_optimizer_ops(block):
     optimizer_ops = []
     for op in block.ops:
         if "adam" in op.name() or "sgd" in op.name():
@@ -756,7 +774,7 @@ def _append_scale_op_after_comm(block, optimizer_ops, k_steps):
 
 def _pir_append_scale_op(program, new_params_to_grads, k_steps):
     block = program.global_block()
-    optimizer_ops = _find_trival_optimizer_ops(block)
+    optimizer_ops = _find_trivial_optimizer_ops(block)
     if len(optimizer_ops) > 0:
         _append_scale_op_after_comm(block, optimizer_ops, k_steps)
     else:

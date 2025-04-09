@@ -100,12 +100,12 @@ void parallel_run(const WorkerFuncType& fn,
   } catch (::common::EnforceNotMet& ex) {
     LOG(ERROR) << ex.error_str();
     PADDLE_THROW(
-        ::common::errors::Fatal("Parallel compile Paddle enfore error"));
+        ::common::errors::Fatal("Parallel compile Paddle enforce error"));
   } catch (const std::exception& e) {
     LOG(ERROR) << "Parallel compile error " << e.what();
     PADDLE_THROW(::common::errors::Fatal("Parallel compile std::exception"));
   } catch (...) {
-    PADDLE_THROW(::common::errors::Fatal("Parallel compile unknow exception"));
+    PADDLE_THROW(::common::errors::Fatal("Parallel compile unknown exception"));
   }
 }
 

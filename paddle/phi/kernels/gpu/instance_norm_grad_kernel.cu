@@ -385,14 +385,6 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   dims = {1, NxC, H, W, D};
   strides = {NxC * H * W * D, H * W * D, W * D, D, 1};
 
-  if ((H * W * D) == 1) {
-    phi::Copy(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
-    phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
-    functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-    functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
-    return;
-  }
-
 #ifdef PADDLE_WITH_HIP
   miopenTensorDescriptor_t data_desc_;
   miopenTensorDescriptor_t in_param_desc_;

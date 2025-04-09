@@ -113,7 +113,7 @@ static Counts &counts() {
 #error Unsupported bitness
 #endif
 
-// endianess
+// endianness
 #ifdef _MSC_VER
 #define ROBIN_HOOD_PRIVATE_DEFINITION_LITTLE_ENDIAN() 1
 #define ROBIN_HOOD_PRIVATE_DEFINITION_BIG_ENDIAN() 0
@@ -191,7 +191,7 @@ static Counts &counts() {
 #define ROBIN_HOOD_UNLIKELY(condition) __builtin_expect(condition, 0)
 #endif
 
-// detect if native wchar_t type is availiable in MSVC
+// detect if native wchar_t type is available in MSVC
 #ifdef _MSC_VER
 #ifdef _NATIVE_WCHAR_T_DEFINED
 #define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
@@ -202,7 +202,7 @@ static Counts &counts() {
 #define ROBIN_HOOD_PRIVATE_DEFINITION_HAS_NATIVE_WCHART() 1
 #endif
 
-// detect if MSVC supports the pair(std::piecewise_construct_t,...) consructor
+// detect if MSVC supports the pair(std::piecewise_construct_t,...) constructor
 // being constexpr
 #ifdef _MSC_VER
 #if _MSC_VER <= 1900
@@ -944,7 +944,7 @@ struct WrapKeyEqual : public T {
 //   or a DataNode with a pointer to std::pair<key,val>. Which DataNode
 //   representation to use
 //   depends on how fast the swap() operation is. Heuristically, this is
-//   automatically choosen
+//   automatically chosen
 //   based on sizeof(). there are always 2^n Nodes.
 //
 // * info: Each Node in the map has a corresponding info byte, so there are 2^n
@@ -1579,7 +1579,7 @@ class Table
   // first insert.
   // This tremendously speeds up ctor & dtor of a map that never receives an
   // element. The
-  // penalty is payed at the first insert, and not before. Lookup of this empty
+  // penalty is paid at the first insert, and not before. Lookup of this empty
   // map works
   // because everybody points to DummyInfoByte::b. parameter bucket_count is
   // dictated by the

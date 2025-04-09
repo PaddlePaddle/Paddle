@@ -35,7 +35,7 @@ class TestCollectiveAllGather(TestCollectiveRunnerBase):
             toutdata = main_prog.current_block().create_var(
                 name="outofsplit",
                 dtype=dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )

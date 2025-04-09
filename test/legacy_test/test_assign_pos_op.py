@@ -43,7 +43,7 @@ def count(x, upper_num):
 
 
 # why defining the assert function specially?
-# Becasue assign_pos_op is multithread-op, which can make the order of numbers
+# Because assign_pos_op is multithread-op, which can make the order of numbers
 # in each counter(bin) is random. But the numbers set is certain in each counter(bin).
 np_allclose = np.allclose
 
@@ -78,6 +78,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
         y = count(x, 16)
         cum_count = np.cumsum(y).astype(x.dtype)
         self.op_type = "assign_pos"
+        self.python_api = utils._assign_pos
         self.inputs = {
             'X': x,
             "cum_count": cum_count,
@@ -89,7 +90,12 @@ class TestAssignPosOpInt64(op_test.OpTest):
     def test_forward(self):
         paddle.enable_static()
         np.testing.assert_allclose = get_redefined_allclose(self.cum_count)
-        self.check_output_with_place(paddle.CUDAPlace(0), check_dygraph=False)
+        self.check_output_with_place(
+            paddle.CUDAPlace(0),
+            check_dygraph=False,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
 
 @unittest.skipIf(

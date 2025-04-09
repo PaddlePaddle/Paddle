@@ -14,12 +14,14 @@
 
 import functools
 import inspect
+import textwrap
 
 from paddle import pir
 from paddle.base.framework import Variable, in_pir_mode
 from paddle.base.libpaddle.pir import build_pipe_for_pylayer
 from paddle.common_ops_import import LayerHelper
 from paddle.static.nn import static_pylayer
+from paddle.utils import flatten, pack_sequence_as
 
 from .program_translator import convert_to_static, unwrap_decorators
 
@@ -27,16 +29,55 @@ from .program_translator import convert_to_static, unwrap_decorators
 class StaticPyLayerContext:
     def __init__(self):
         self.saved_vars = []
+        self.saved_vars_structure = None
 
         if in_pir_mode():
             self.tuple_push_op_name = "cf.tuple_push"
             self.tuple_pop_op_name = "cf.tuple_pop"
 
+    def __setattr__(self, attr: str, value: object):
+        attr_allow_list = ["saved_vars", "saved_vars_structure"]
+        if (
+            in_pir_mode()
+            and attr not in attr_allow_list
+            and isinstance(value, pir.Value)
+        ):
+            raise AttributeError(
+                textwrap.dedent(
+                    f"""\
+                `ctx.{attr} = tensor` is not allowed in static mode, please use `ctx.save_for_backward(tensor)` instead.
+
+                For example:
+
+                    >>> class ExamplePyLayer(PyLayer):
+                    ...     @staticmethod
+                    ...     def forward(ctx, x):
+                    ...         # ctx.x = x  # This is not allowed in static mode, Replace it with `ctx.save_for_backward(x)`
+                    ...         ctx.save_for_backward(x)
+                    ...         x1 = paddle.tanh(x)
+                    ...         return x1
+
+                    ...     @staticmethod
+                    ...     def backward(ctx, grad):
+                    ...         # x = ctx.x  # Same as above, replace it with `x, = ctx.saved_tensor()`
+                    ...         x, = ctx.saved_tensor()
+                    ...         x_grad = grad * (1 - paddle.square(x))
+                    ...         return x_grad
+                """
+                )
+            )
+        super().__setattr__(attr, value)
+
     def save_for_backward(self, *tensors):
         if in_pir_mode():
+            self.saved_vars_structure = tensors
+            flatten_tensors = flatten(tensors)
+            tensor_elements = list(
+                filter(lambda x: isinstance(x, pir.Value), flatten_tensors)
+            )
             current_insert_point = pir.get_current_insertion_point()
             current_block = current_insert_point.block()
-            build_pipe_for_pylayer(current_block, tensors)
+            build_pipe_for_pylayer(current_block, tensor_elements)
         else:
             for tensor in tensors:
                 assert isinstance(tensor, Variable)
@@ -50,6 +91,16 @@ class StaticPyLayerContext:
             for op in current_block.ops:
                 if op.name() == self.tuple_pop_op_name:
                     out_list = op.as_tuple_pop_op().pop_all_values()
+            if self.saved_vars_structure is not None:
+                flattened_structure = flatten(self.saved_vars_structure)
+                value_cursor = 0
+                for i, tensor in enumerate(flattened_structure):
+                    if isinstance(tensor, pir.Value):
+                        flattened_structure[i] = out_list[value_cursor]
+                        value_cursor += 1
+                out_list = pack_sequence_as(
+                    self.saved_vars_structure, flattened_structure
+                )
         else:
             helper = LayerHelper("StaticPyLayerContext")
             out_list = []

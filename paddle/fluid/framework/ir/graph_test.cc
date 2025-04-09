@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class NOP : public OperatorBase {
  public:
@@ -49,8 +48,8 @@ class SumOpVarTypeInference : public VarTypeInference {
   void operator()(InferVarTypeContext *ctx) const override {
     auto default_var_type = proto::VarType::SELECTED_ROWS;
 
-    if (ctx->InputTypeAnyOf("X", proto::VarType::LOD_TENSOR)) {
-      default_var_type = proto::VarType::LOD_TENSOR;
+    if (ctx->InputTypeAnyOf("X", proto::VarType::DENSE_TENSOR)) {
+      default_var_type = proto::VarType::DENSE_TENSOR;
     }
 
     ctx->SetOutputType("Out", default_var_type);
@@ -70,8 +69,7 @@ class DummyOpVarTypeInference : public VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 REGISTER_OPERATOR(fake_sum,
                   paddle::framework::NOP,
@@ -85,8 +83,7 @@ REGISTER_OPERATOR(sum_without_infer_var_type,
                   paddle::framework::NOP,
                   paddle::framework::SumOpMaker);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 TEST(GraphTest, Basic) {
   ProgramDesc prog;
@@ -106,9 +103,9 @@ TEST(GraphTest, Basic) {
   ASSERT_EQ(proto::VarType::SELECTED_ROWS,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::DENSE_TENSOR);
   op->InferVarType(prog.MutableBlock(0));
-  ASSERT_EQ(proto::VarType::LOD_TENSOR,
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
@@ -238,9 +235,9 @@ TEST(GraphTest, TestMultiBlock) {
   ASSERT_EQ(proto::VarType::SELECTED_ROWS,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::DENSE_TENSOR);
   op->InferVarType(prog.MutableBlock(0));
-  ASSERT_EQ(proto::VarType::LOD_TENSOR,
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
   // Set contents in block_1.
@@ -256,10 +253,10 @@ TEST(GraphTest, TestMultiBlock) {
   op->SetOutput("Out", {"d"});
   op->SetAttr("op_role", 1);
 
-  prog.MutableBlock(1)->Var("a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(1)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(1)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(1)->Var("d")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(1)->Var("a")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(1)->Var("b")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(1)->Var("c")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(1)->Var("d")->SetType(proto::VarType::DENSE_TENSOR);
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
@@ -274,10 +271,10 @@ TEST(GraphTest, TestMultiBlock) {
   op->SetOutput("Out", {"d"});
   op->SetAttr("op_role", 1);
 
-  prog.MutableBlock(2)->Var("a")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(2)->Var("b")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(2)->Var("c")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(1)->Var("d")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(2)->Var("a")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(2)->Var("b")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(2)->Var("c")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(1)->Var("d")->SetType(proto::VarType::DENSE_TENSOR);
 
   // Step2: Convert program into graph, 3 blocks corresponding 3 sub_graphs.
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
@@ -337,5 +334,4 @@ TEST(GraphTest, TestMultiBlock) {
   FLAGS_convert_all_blocks = flag_temp;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -299,7 +299,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
     } else {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to phi::DenseTensor";
-      ctx->SetOutputType(weight_grad, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(weight_grad, framework::proto::VarType::DENSE_TENSOR);
     }
     ctx->SetOutputDataType(weight_grad, ctx->GetInputDataType("Input"));
   }

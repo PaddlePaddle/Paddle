@@ -126,7 +126,7 @@ class Binomial(distribution.Distribution):
         """
         return self.total_count * self.probs * (1 - self.probs)
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate binomial samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:

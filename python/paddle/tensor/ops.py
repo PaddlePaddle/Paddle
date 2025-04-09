@@ -105,11 +105,13 @@ def acos(x: Tensor, name: str | None = None) -> Tensor:
         out = cos^{-1}(x)
 
     Args:
-        x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Acos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Acos operator, a Tensor with shape same as input.
+        Tensor. Output of Acos operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -133,6 +135,11 @@ def acos(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -152,11 +159,13 @@ def acosh(x: Tensor, name: str | None = None) -> Tensor:
        out = acosh(x)
 
     Args:
-        x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Acosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Acosh operator, a Tensor with shape same as input.
+        Tensor. Output of Acosh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -180,6 +189,11 @@ def acosh(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -199,11 +213,13 @@ def asin(x: Tensor, name: str | None = None) -> Tensor:
        out = sin^{-1}(x)
 
     Args:
-        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Asin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Same shape and dtype as input.
+        Tensor. Same shape and dtype as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -227,6 +243,11 @@ def asin(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -246,11 +267,13 @@ def asinh(x: Tensor, name: str | None = None) -> Tensor:
        out = asinh(x)
 
     Args:
-        x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Asinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Asinh operator, a Tensor with shape same as input.
+        Tensor. Output of Asinh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -274,6 +297,11 @@ def asinh(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -293,11 +321,13 @@ def atan(x: Tensor, name: str | None = None) -> Tensor:
        out = tan^{-1}(x)
 
     Args:
-        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Same shape and dtype as input x.
+        Tensor. Same shape and dtype as input x
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -321,6 +351,11 @@ def atan(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -340,11 +375,13 @@ def atanh(x: Tensor, name: str | None = None) -> Tensor:
        out = atanh(x)
 
     Args:
-        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Atan operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Atanh operator, a Tensor with shape same as input.
+        Tensor. Output of Atanh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -368,6 +405,11 @@ def atanh(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -388,11 +430,13 @@ def ceil(x: Tensor, name: str | None = None) -> Tensor:
         out = \\left \\lceil x \\right \\rceil
 
     Args:
-        x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Ceil operator, a Tensor with shape same as input.
+        Tensor. Output of Ceil operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -409,7 +453,20 @@ def ceil(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'ceil'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'ceil',
         )
         helper = LayerHelper('ceil', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -427,11 +484,13 @@ def cos(x: Tensor, name: str | None = None) -> Tensor:
        out = cos(x)
 
     Args:
-        x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Cos operator, a Tensor with shape same as input.
+        Tensor. Output of Cos operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -450,7 +509,19 @@ def cos(x: Tensor, name: str | None = None) -> Tensor:
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'cos',
         )
         helper = LayerHelper('cos', **locals())
@@ -469,11 +540,13 @@ def cosh(x: Tensor, name: str | None = None) -> Tensor:
        out = \\frac{exp(x)+exp(-x)}{2}
 
     Args:
-        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Cosh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Cosh operator, a Tensor with shape same as input.
+        Tensor. Output of Cosh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -497,6 +570,11 @@ def cosh(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -617,11 +695,13 @@ def floor(x: Tensor, name: str | None = None) -> Tensor:
         out = \\lfloor x \\rfloor
 
     Args:
-        x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Floor operator, a Tensor with shape same as input.
+        Tensor. Output of Floor operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -638,7 +718,20 @@ def floor(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.floor(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'floor'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'floor',
         )
         helper = LayerHelper('floor', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -655,11 +748,13 @@ def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
         out = \\frac{1}{x}
 
     Args:
-        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Reciprocal operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Reciprocal operator, a Tensor with shape same as input.
+        Tensor. Output of Reciprocal operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -676,7 +771,20 @@ def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.reciprocal(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'reciprocal'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'reciprocal',
         )
         helper = LayerHelper('reciprocal', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -756,11 +864,13 @@ def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
        out = \\frac{1}{\\sqrt{x}}
 
     Args:
-        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Rsqrt operator, a Tensor with shape same as input.
+        Tensor. Output of Rsqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -777,7 +887,20 @@ def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.rsqrt(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'rsqrt'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+            ],
+            'rsqrt',
         )
         helper = LayerHelper('rsqrt', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -793,11 +916,13 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
        out = \\frac{1}{1 + e^{-x}}
 
     Args:
-        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float16, float32, float64, complex64 or complex128.
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Sigmoid operator, a Tensor with shape same as input.
+        Tensor. Output of Sigmoid operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -822,6 +947,11 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
                 'float32',
                 'float64',
                 'uint16',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -841,11 +971,13 @@ def sin(x: Tensor, name: str | None = None) -> Tensor:
        out = sin(x)
 
     Args:
-        x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Sin operator, a Tensor with shape same as input.
+        Tensor. Output of Sin operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -869,6 +1001,11 @@ def sin(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -888,11 +1025,13 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
        out = sinh(x)
 
     Args:
-        x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
+        x (Tensor): Input of Sinh operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Sinh operator, a Tensor with shape same as input.
+        Tensor. Output of Sinh operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -916,6 +1055,11 @@ def sinh(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -935,11 +1079,13 @@ def sqrt(x: Tensor, name: str | None = None) -> Tensor:
        out=\\sqrt{x}=x^{1/2}
 
     Args:
-        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
+            uint8, int8, int16, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Sqrt operator, a Tensor with shape same as input.
+        Tensor. Output of Sqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -958,7 +1104,19 @@ def sqrt(x: Tensor, name: str | None = None) -> Tensor:
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'sqrt',
         )
         helper = LayerHelper('sqrt', **locals())
@@ -1025,11 +1183,13 @@ def tan(x: Tensor, name: str | None = None) -> Tensor:
        out = tan(x)
 
     Args:
-        x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Tan operator, an N-D Tensor, with data type float32, float64, float16,
+            bfloat16, uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor. Output of Tan operator, a Tensor with shape same as input.
+        Tensor. Output of Tan operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
@@ -1053,6 +1213,11 @@ def tan(x: Tensor, name: str | None = None) -> Tensor:
                 'uint16',
                 'float32',
                 'float64',
+                'uint8',
+                'int8',
+                'int16',
+                'int32',
+                'int64',
                 'complex64',
                 'complex128',
             ],
@@ -1074,11 +1239,11 @@ def erf(x: Tensor, name: str | None = None) -> Tensor:
             out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
 
     Args:
-        x (Tensor): The input tensor, it's data type should be float32, float64.
+        x (Tensor): The input tensor, it's data type should be float32, float64, uint8, int8, int16, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
+        Tensor. The output of Erf, dtype: float32 or float64 (integer types are autocasted into float32), shape: the same as the input.
 
     Examples:
 

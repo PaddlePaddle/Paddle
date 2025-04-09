@@ -23,7 +23,7 @@
 
 namespace {
 
-// add_grad + matmul_grad + add_ -> matmul + fused_liner_param_gard_add
+// add_grad + matmul_grad + add_ -> matmul + fused_linear_param_grad_add
 class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedMatmulAddGradAddPattern"; }
@@ -91,7 +91,7 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// matmul_grad + add_ -> matmul + fused_liner_param_gard_add
+// matmul_grad + add_ -> matmul + fused_linear_param_grad_add
 class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedMatmulGradAddPattern"; }
@@ -148,7 +148,7 @@ class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
 };
 
 // matmul + reshape + reshape + matmul + reshape + add_ -> matmul +
-// fused_liner_param_gard_add
+// fused_linear_param_grad_add
 class FusedMatmulReshapeMatmulAddPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override {
@@ -214,7 +214,7 @@ class FusedMatmulReshapeMatmulAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
+// matmul + 0 = add_(0,1) -> fused_linear_param_grad_add
 class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedMatmulAddaPattern"; }
@@ -258,7 +258,7 @@ class FusedMatmulAddaPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
+// matmul + 1 = add_(1,0) -> fused_linear_param_grad_add
 class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedMatmulAddbPattern"; }
@@ -302,7 +302,7 @@ class FusedMatmulAddbPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// add_grad + matmul + 0 = add_(0,1) -> fused_liner_param_gard_add
+// add_grad + matmul + 0 = add_(0,1) -> fused_linear_param_grad_add
 class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedMatmulAddGradAddaPattern"; }
@@ -360,7 +360,7 @@ class FusedMatmulAddGradAddaPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// add_grad + matmul + 1 = add_(1,0) -> fused_liner_param_gard_add
+// add_grad + matmul + 1 = add_(1,0) -> fused_linear_param_grad_add
 class FusedMatmulAddGradAddbPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedMatmulAddGradAddbPattern"; }

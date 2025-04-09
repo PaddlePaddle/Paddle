@@ -820,7 +820,7 @@ class AMPPass(PassBase):
             ),
             shape=[1],
             dtype='bool',
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             persistable=False,
             stop_gradient=False,
         )

@@ -65,7 +65,6 @@ from paddle.framework import use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
 )
 
@@ -77,6 +76,11 @@ from .dy2static.program_translator import (
     StaticFunction,
     SymbolicStaticFunction,
     unwrap_decorators,
+)
+from .dy2static.utils import (
+    ENV_ENABLE_SOT,
+    Backend,
+    infer_use_cinn_backend,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
@@ -100,13 +104,11 @@ if TYPE_CHECKING:
         skip_forward: NotRequired[bool]
         input_names_after_prune: NotRequired[list[str]]
         skip_prune_program: NotRequired[bool]
+        separate_parameters: NotRequired[bool]
 
     class _LoadOptions(TypedDict):
         model_filename: NotRequired[str]
         params_filename: NotRequired[str]
-
-
-ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
 
 _LayerT = TypeVar("_LayerT", bound=Layer)
@@ -166,15 +168,6 @@ def ignore_module(modules: list[ModuleType]) -> None:
 
     """
     add_ignore_module(modules)
-
-
-def _check_and_set_backend(backend, build_strategy):
-    if backend not in ['CINN', None]:
-        raise ValueError(
-            f"The backend of to_static should be 'CINN' or None, but received {backend}."
-        )
-    if backend == 'CINN':
-        build_strategy.build_cinn_pass = True
 
 
 class _ToStaticOptions(TypedDict):
@@ -280,10 +273,21 @@ def to_static(
     """
     property = kwargs.get("property", False)
     full_graph = kwargs.get("full_graph", None)
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
+        )
+    backend = Backend.from_arg(backend)
+    backend = (
+        Backend.CINN
+        if infer_use_cinn_backend(backend, build_strategy)
+        else Backend.PHI
+    )
 
     def decorated(python_func):
         """
-        Decorates a python function into a ASTStaticFunction object.
+        Decorates a python function into a ASTStaticFunction or SymbolicStaticFunction object.
         """
 
         nonlocal full_graph
@@ -291,16 +295,15 @@ def to_static(
             flag = ENV_ENABLE_SOT.get()
             full_graph = not flag
 
-        if sys.version_info >= (3, 13) and not full_graph:
+        if sys.version_info >= (3, 14) and not full_graph:
             warnings.warn(
-                "full_graph=False is not supported in Python 3.13+. Set full_graph=True automatically"
+                "full_graph=False is not supported in Python 3.14+. Set full_graph=True automatically"
             )
             full_graph = True
 
-        StaticClass = {
-            False: SymbolicStaticFunction,
-            True: ASTStaticFunction,
-        }[full_graph]
+        StaticClass = (
+            ASTStaticFunction if full_graph else SymbolicStaticFunction
+        )
 
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -319,13 +322,6 @@ def to_static(
 
         return static_layer
 
-    build_strategy = build_strategy or BuildStrategy()
-    if not isinstance(build_strategy, BuildStrategy):
-        raise TypeError(
-            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
-        )
-    _check_and_set_backend(backend, build_strategy)
-
     # for usage: `to_static(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
@@ -334,6 +330,7 @@ def to_static(
                 logging_utils.warn(
                     f"`{class_name}.forward` has already been decorated somewhere. It will be redecorated to replace previous one."
                 )
+            function._original_funcs["forward"] = function.forward
             function.forward = decorated(function.forward)
             return function
         else:
@@ -436,6 +433,9 @@ class _SaveLoadConfig:
         # in the scene of llm-inference, pruning program can cause unexpectable result, an option to skip prune is necessary
         self.skip_prune_program = False
 
+        # if True, the params will be saved separately in multiple files.
+        self.separate_parameters = False
+
     @property
     def output_spec(self):
         return self._output_spec
@@ -511,6 +511,7 @@ def _parse_save_configs(configs: _SaveOptions) -> _SaveLoadConfig:
         "skip_forward",
         "input_names_after_prune",
         "skip_prune_program",
+        "separate_parameters",
     ]
 
     # input check
@@ -531,6 +532,7 @@ def _parse_save_configs(configs: _SaveOptions) -> _SaveLoadConfig:
         "input_names_after_prune", None
     )
     inner_config.skip_prune_program = configs.get("skip_prune_program", False)
+    inner_config.separate_parameters = configs.get("separate_parameters", False)
 
     return inner_config
 
@@ -608,7 +610,6 @@ def _get_input_var_and_names(inputs, input_spec, input_names_after_prune):
             elif spec.name not in input_var_names:
                 warnings.warn(name_no_exists_error % spec.name)
             else:
-                # do nothing
                 pass
     else:
         # prune
@@ -643,7 +644,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
     )
     output_spec_is_not_value_error = (
         "tensor `%s` is not support in pir mode, "
-        "because pir value has no name sometimes, especially as ouptut,"
+        "because pir value has no name sometimes, especially as output,"
         "so we can't check tensor's name with output var name, please"
         "change as pir.value(to_static layer's output)"
         "or int(the position of to_static layer's output)"
@@ -746,14 +747,14 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            f"The {path}.pdmodel and {path} directory exist at the same time, "
+            f"The {path}.pdmodel(json) and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
             "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
             f"The ``path`` ({path}) to load model not exists. "
-            "Please make sure that *.pdmodel exists or "
+            "Please make sure that *.pdmodel(json) exists or "
             "don't using ``skip_forward=True`` to jit.save."
         )
     else:
@@ -1422,12 +1423,13 @@ def save(
                 program=clone_program,
                 clip_extra=configs.clip_extra,
                 skip_prune_program=configs.skip_prune_program,
+                separate_parameters=configs.separate_parameters,
             )
 
         if combine_params:
             if use_pir_api():
                 # NOTE(Ruting): concrete_program has been pruned when init partialProgramLayer,
-                # so we do not neet to prune again.
+                # so we do not need to prune again.
 
                 for var in concrete_program.main_program.list_vars():
                     if var.persistable:
@@ -1529,7 +1531,7 @@ def load(
     .. note::
         If you load model saved by ``paddle.static.save_inference_model`` ,
         there will be the following limitations when using it in fine-tuning:
-        1. Imperative mode do not support LoDTensor. All original model's feed targets or parameters that depend on LoD are temporarily unavailable.
+        1. Imperative mode do not support DenseTensor. All original model's feed targets or parameters that depend on LoD are temporarily unavailable.
         2. All saved model's feed targets need to be passed into TranslatedLayer's forward function.
         3. The variable's ``stop_gradient`` information is lost and can not be recovered.
         4. The parameter's ``trainable`` information is lost and can not be recovered.

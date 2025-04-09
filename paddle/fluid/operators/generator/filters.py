@@ -61,7 +61,7 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
     }} else {{
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
               << " is set to phi::DenseTensor";
-      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::DENSE_TENSOR);
     }}
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }}

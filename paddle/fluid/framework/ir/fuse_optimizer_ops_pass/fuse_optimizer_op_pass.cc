@@ -44,7 +44,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
               "The %s operator has multiple gradient input. Expected "
               "it to only have one gradient input.",
               fuse_op_type));
-      if (IsLoDTensorType(GetTypeOfVar(vars_info, grad_name[0]))) {
+      if (IsDenseTensorType(GetTypeOfVar(vars_info, grad_name[0]))) {
         opt_nodes.emplace_back(node);
       }
       ++opt_ops_num;
@@ -110,7 +110,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     // FIXME(wangxi). update persistable
     details::VariableInfo var_info;
     var_info.name_ = fused_var_name;
-    var_info.type_ = proto::VarType::LOD_TENSOR;
+    var_info.type_ = proto::VarType::DENSE_TENSOR;
     var_info.persistable_ = false;
     fused_var_set.insert({fused_var_name, var_info});
     fused_vars_name.emplace(var_name, fused_var_name);
@@ -398,7 +398,7 @@ void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
         iter->second.front()->Var(),
         common::errors::InvalidArgument("The gradient var(%s) node is null.",
                                         grad_var_name));
-    PADDLE_ENFORCE_EQ(IsLoDTensorType(iter->second.front()->Var()->GetType()),
+    PADDLE_ENFORCE_EQ(IsDenseTensorType(iter->second.front()->Var()->GetType()),
                       true,
                       common::errors::InvalidArgument(
                           "Currently the gradient(%s) type only should be "
@@ -432,10 +432,10 @@ FuseOptimizerOpPass::GetVarInfo(const Graph &result) const {
   return vars;
 }
 
-bool FuseOptimizerOpPass::IsLoDTensorType(
+bool FuseOptimizerOpPass::IsDenseTensorType(
     const proto::VarType::Type &type) const {
-  // Current only support LOD_TENSOR.
-  return type == proto::VarType::LOD_TENSOR;
+  // Current only support DENSE_TENSOR.
+  return type == proto::VarType::DENSE_TENSOR;
 }
 
 const VarDesc *FuseOptimizerOpPass::GetVarDescFromVarsInfo(
@@ -501,7 +501,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
   PADDLE_ENFORCE_NE(
       aux_var_map->count(kGrad),
       static_cast<size_t>(0),
-      common::errors::NotFound("The gradient variable doesn‘t exist."));
+      common::errors::NotFound("The gradient variable doesn't exist."));
   auto &grad_vec = aux_var_map->at(kGrad);
 
   std::vector<size_t> grad_sort_idx;

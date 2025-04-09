@@ -107,7 +107,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return self.rate.pow(-2)
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -119,7 +119,7 @@ class Exponential(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:

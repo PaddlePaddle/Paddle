@@ -58,9 +58,9 @@
 
 - op : adam_ (adam)
   inputs :
-    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, moment2_max: Moment2Max, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
-    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, moment2_max_out: Moment2MaxOut, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
   scalar :
     beta1 :
       data_type : float
@@ -81,9 +81,9 @@
 
 - op : adamw_ (adamw)
   inputs :
-    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, moment2_max: Moment2Max, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
-    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, moment2_max_out: Moment2MaxOut, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
   scalar :
     beta1 :
       data_type : float
@@ -239,6 +239,16 @@
     {start : Start, end : End, step : Step}
   outputs :
     out : Out
+  scalar:
+    start:
+      data_type : double
+      support_tensor : true
+    end:
+      data_type : double
+      support_tensor : true
+    step:
+      data_type : double
+      support_tensor : true
 
 - op : argmax(arg_max)
   inputs :
@@ -361,6 +371,17 @@
     {x : Predict, label : Label, stat_pos : StatPos, stat_neg : StatNeg, ins_tag_weight : InsTagWeight}
   outputs :
     {auc : AUC, stat_pos_out : StatPosOut, stat_neg_out : StatNegOut}
+
+- op : baddbmm
+  backward : baddbmm_grad
+  inputs :
+    {input : Input, x : X, y : Y}
+  outputs :
+    out : Out
+  attrs :
+    {alpha : Alpha, beta : Beta}
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : barrier
   inputs :
@@ -511,6 +532,7 @@
   drop_empty_grad : [input_grad]
 
 - op : c_concat
+  backward: c_concat_grad
   inputs :
     x : X
   outputs :
@@ -1313,6 +1335,26 @@
   outputs :
     out : Out
 
+- op : flash_attn_unpadded
+  backward : flash_attn_unpadded_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
+
+- op : flash_attn_varlen_qkvpacked
+  backward : flash_attn_varlen_qkvpacked_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
+
 - op : flatten (flatten_contiguous_range)
   backward : flatten_grad (flatten_contiguous_range_grad)
   inputs :
@@ -1432,10 +1474,10 @@
 - op : fused_adam_(fused_adam)
   inputs :
     {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
-     moments2 : Moments2, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
+     moments2 : Moments2, moments2_max : Moments2Max, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
      skip_update : SkipUpdate}
   outputs :
-    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out,
+    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out, moments2_max_out : Moments2MaxOut,
      beta1_pows_out : Beta1PowsOut, beta2_pows_out : Beta2PowsOut, master_params_out : MasterParamsOut}
 
 - op : fused_attention
@@ -1755,15 +1797,6 @@
     context_start : contextStart
     context_stride : contextStride
 
-- op : fusion_seqexpand_concat_fc
-  inputs :
-    x : X
-    fc_weight : FCWeight
-    fc_bias : FCBias
-  outputs :
-    out : Out
-    fc_out : FCOut
-
 - op : fusion_seqpool_concat
   inputs:
     x : X
@@ -2011,6 +2044,7 @@
     out : Out
 
 - op : index_select
+  backward : index_select_grad, index_select_double_grad
   inputs :
     {x : X, index : Index}
   outputs :
@@ -2535,6 +2569,10 @@
     {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
+  int_array:
+      axis :
+        data_type : int
+        support_tensor : true
 
 - op : mean_all (mean)
   backward : mean_all_grad (mean_grad)
@@ -2542,6 +2580,16 @@
     x : X
   outputs :
     out : Out
+
+- op : memory_efficient_attention
+  backward : memory_efficient_attention_grad
+  scalar :
+    max_seqlen_q :
+      data_type : int64_t
+      support_tensor : true
+    max_seqlen_k :
+      data_type : int64_t
+      support_tensor : true
 
 - op : merge_selected_rows
   inputs :
@@ -2551,9 +2599,9 @@
 
 - op : merged_adam_
   inputs :
-    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, moment2_max: Moment2Max, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
   outputs :
-    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, moment2_max_out: Moment2MaxOut, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
   scalar :
     beta1 :
       data_type : float
@@ -2976,53 +3024,6 @@
     {x : X, boxes : ROIs, boxes_num : RoisNum}
   outputs :
     out : Out
-
-- op : pull_box_sparse
-  inputs :
-    { w : W, ids: Ids}
-  outputs :
-    out : Out
-  attrs :
-    sparse : is_sparse
-  extra :
-    attrs : [bool is_sparse = false, bool is_distributed = false, int size = 1]
-
-- op : pull_gpups_sparse
-  backward : push_gpups_sparse
-  inputs :
-    {w : W, ids : Ids}
-  outputs :
-    out : Out
-
-- op : pull_sparse_v2
-  inputs :
-    { ids : Ids, w : W}
-  outputs :
-    out : Out
-  extra :
-    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
-
-- op : push_box_sparse
-  inputs :
-    ids: Ids
-  outputs :
-    out : Out
-  attrs :
-    sparse : is_sparse
-
-- op : push_dense
-  inputs :
-    ids : Ids
-  attrs :
-    {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
-
-- op : push_sparse_v2
-  inputs :
-    { x : Ids, W : w}
-  outputs :
-    out : Out
-  extra :
-    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_labe_lname = "", int padding_id = 0, bool scales_parse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
 
 - op : put_along_axis
   backward : put_along_axis_grad
@@ -4076,79 +4077,13 @@
   outputs:
     output : Output
 
-- op: c_allgather
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_allreduce_avg
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_allreduce_max
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_allreduce_min
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_allreduce_prod
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
 - op: c_allreduce_sum
   inputs :
     x : X
   outputs :
     out: Out
 
-- op: c_broadcast
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op: c_identity
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_reduce_avg
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_reduce_max
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_reduce_min
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_reduce_prod
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
-- op: c_reduce_sum
   inputs :
     x : X
   outputs :
@@ -4222,13 +4157,6 @@
     {x : X, dep : Dep}
   outputs:
     out : Out
-
-- op: detection_map
-  backward: detection_map_grad
-  inputs:
-    {detect_res : DetectRes, label : Label, has_state : HasState, pos_count : PosCount, true_pos : TruePos, false_pos : FalsePos}
-  outputs:
-    {accum_pos_count : AccumPosCount, accum_true_pos : AccumTruePos, accum_false_pos : AccumFalsePos, m_ap : MAP}
 
 - op: dgc
   inputs:

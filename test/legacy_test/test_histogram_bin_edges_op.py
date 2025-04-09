@@ -62,5 +62,15 @@ class TestHistogramBinEdgesOpTest1(TestHistogramBinEdgesOp):
         )
 
 
+class TestHistogramBinEdgesOpTest2(TestHistogramBinEdgesOp):
+    def setUp(self):
+        self.x = np.random.randn(5, 20).astype('float32')
+        self.bin = 10
+        self.range = (0.2, 0.9)
+        self.out = np.histogram_bin_edges(
+            self.x, bins=self.bin, range=self.range
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

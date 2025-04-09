@@ -56,7 +56,7 @@ using AbstractAutogradMeta = paddle::AbstractAutogradMeta;
  *
  * **/
 
-// No other AutogradMeta class should be derivated from AbstractAutogradMeta.
+// No other AutogradMeta class should be derived from AbstractAutogradMeta.
 // It's only used by
 class AutogradMeta : public AbstractAutogradMeta {
  public:

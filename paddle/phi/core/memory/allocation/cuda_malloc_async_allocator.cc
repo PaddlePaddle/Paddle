@@ -89,16 +89,17 @@ inline void sync_streams(gpuStream_t to_record, gpuStream_t to_wait) {
 
 // CUDAMallocAsyncAllocation
 
-void CUDAMallocAsyncAllocation::RecordStream(gpuStream_t stream) {
+bool CUDAMallocAsyncAllocation::RecordStream(gpuStream_t stream) {
   std::call_once(once_flag_,
                  [this] { phi::backends::gpu::SetDeviceId(place_.device); });
   std::lock_guard<SpinLock> lock_guard(recorded_streams_lock_);
   if (malloc_stream_ == stream) {
     // Called record_stream on tensor whose original malloc_stream matches the
     // recorded stream. This should have no effect.
-    return;
+    return false;
   }
   recorded_streams_.insert(stream);
+  return true;
 }
 
 void CUDAMallocAsyncAllocation::EraseStream(gpuStream_t stream) {

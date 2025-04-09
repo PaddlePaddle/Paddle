@@ -24,10 +24,10 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-using PassManagerCreater = std::function<std::shared_ptr<pir::PassManager>()>;
+using PassManagerCreator = std::function<std::shared_ptr<pir::PassManager>()>;
 
 void CheckInferSymbolicIfNeed(pir::Program* program,
-                              const PassManagerCreater& CreatePassManager);
+                              const PassManagerCreator& CreatePassManager);
 
 }  // namespace ir
 }  // namespace dialect

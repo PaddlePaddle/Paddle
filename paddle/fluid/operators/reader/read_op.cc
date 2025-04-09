@@ -17,8 +17,7 @@
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // Returns true if the two dimensions are compatible.
 // A dimension is compatible with the other if:
@@ -86,7 +85,7 @@ class ReadInferVarType : public framework::StaticGraphVarTypeInference {
                             "The number of input reader's dtypes do not match "
                             "the output variable number."));
       for (size_t i = 0; i < dtypes.size(); ++i) {
-        SetType(ctx, out_names[i], framework::proto::VarType::LOD_TENSOR);
+        SetType(ctx, out_names[i], framework::proto::VarType::DENSE_TENSOR);
         SetDataType(ctx, out_names[i], dtypes[i]);
       }
     }
@@ -193,8 +192,7 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

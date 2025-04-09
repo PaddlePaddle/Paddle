@@ -24,6 +24,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -39,8 +40,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     auto* program = fusion_op->GetParentProgram();
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
-    VLOG(4) << "Program before lowering: \n"
-            << pir::CustomPrintHelper(*program, shape_analysis.PrintHook());
 
     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
     OpLoweringGroupPtr group = GetGroup(fusion_op);
@@ -64,7 +63,8 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
   virtual pir::Operation* ProcessGroup(
       const OpLoweringGroupPtr& group,
       pir::PatternRewriter& rewriter) const {  // NOLINT
-    auto group_inputs = GetBlockOutsideInput(group->ops());
+    auto group_inputs =
+        cinn::hlir::framework::pir::GetBlockOutsideInput(group->ops());
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;
     const auto& group_output_values = group->output_values();

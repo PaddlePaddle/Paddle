@@ -23,8 +23,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
 gpuStream_t BoxWrapper::stream_list_[8];
@@ -84,15 +83,15 @@ void BoxWrapper::PullSparse(const phi::Place& place,
                             const std::vector<int64_t>& slot_lengths,
                             const int hidden_size,
                             const int expand_embed_dim) {
-#define EMBEDX_CASE(i, ...)                                                  \
-  case i: {                                                                  \
-    constexpr size_t EmbedxDim = i;                                          \
-    switch (expand_embed_dim) {                                              \
-      __VA_ARGS__                                                            \
-      default:                                                               \
-        PADDLE_THROW(common::errors::InvalidArgument(                        \
-            "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
-    }                                                                        \
+#define EMBEDX_CASE(i, ...)                                                    \
+  case i: {                                                                    \
+    constexpr size_t EmbedxDim = i;                                            \
+    switch (expand_embed_dim) {                                                \
+      __VA_ARGS__                                                              \
+      default:                                                                 \
+        PADDLE_THROW(common::errors::InvalidArgument(                          \
+            "Unsupported this expand embedding size [%d]", expand_embed_dim)); \
+    }                                                                          \
   } break
 
 #define PULLSPARSE_CASE(i, ...)                                            \
@@ -109,7 +108,7 @@ void BoxWrapper::PullSparse(const phi::Place& place,
     EMBEDX_CASE(16, PULLSPARSE_CASE(0););
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupport this embedding size [%d]", hidden_size - 3));
+          "Unsupported this embedding size [%d]", hidden_size - 3));
   }
 #undef PULLSPARSE_CASE
 #undef EMBEDX_CASE
@@ -122,15 +121,15 @@ void BoxWrapper::PushSparseGrad(const phi::Place& place,
                                 const int hidden_size,
                                 const int expand_embed_dim,
                                 const int batch_size) {
-#define EMBEDX_CASE(i, ...)                                                  \
-  case i: {                                                                  \
-    constexpr size_t EmbedxDim = i;                                          \
-    switch (expand_embed_dim) {                                              \
-      __VA_ARGS__                                                            \
-      default:                                                               \
-        PADDLE_THROW(common::errors::InvalidArgument(                        \
-            "Unsupport this expand embedding size [%d]", expand_embed_dim)); \
-    }                                                                        \
+#define EMBEDX_CASE(i, ...)                                                    \
+  case i: {                                                                    \
+    constexpr size_t EmbedxDim = i;                                            \
+    switch (expand_embed_dim) {                                                \
+      __VA_ARGS__                                                              \
+      default:                                                                 \
+        PADDLE_THROW(common::errors::InvalidArgument(                          \
+            "Unsupported this expand embedding size [%d]", expand_embed_dim)); \
+    }                                                                          \
   } break
 
 #define PUSHSPARSE_CASE(i, ...)                                \
@@ -152,7 +151,7 @@ void BoxWrapper::PushSparseGrad(const phi::Place& place,
     EMBEDX_CASE(16, PUSHSPARSE_CASE(0););
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
-          "Unsupport this embedding size [%d]", hidden_size - 3));
+          "Unsupported this embedding size [%d]", hidden_size - 3));
   }
 #undef PUSHSPARSE_CASE
 #undef EMBEDX_CASE
@@ -341,6 +340,5 @@ void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
   VLOG(0) << "End AddReplaceFeasign";
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

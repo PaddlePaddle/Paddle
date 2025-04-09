@@ -30,7 +30,7 @@ namespace distributed {
  * in auto parallel, and once there is a specific rule for that op,  replicated
  * rule would not effect that op any more.
  *
- * Vector of input tensors and output tensors used as argumnets (for both
+ * Vector of input tensors and output tensors used as arguments (for both
  * inferfw & inferbw) to support any kind of op.
  *
  */

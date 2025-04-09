@@ -6,6 +6,10 @@ if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
 
+if(WITH_PYTHON)
+  add_subdirectory(python)
+endif()
+
 file(
   GLOB TEST_INTERP_CASES
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

@@ -23,7 +23,7 @@ namespace pir {
 void OpInfo::AttachInterface(InterfaceValue &&interface_value) {
   PADDLE_ENFORCE_NOT_NULL(impl_,
                           common::errors::InvalidArgument(
-                              "Cann't attach interface to a nullptr OpInfo"));
+                              "Can't attach interface to a nullptr OpInfo"));
   impl_->AttachInterface(std::move(interface_value));
 }
 

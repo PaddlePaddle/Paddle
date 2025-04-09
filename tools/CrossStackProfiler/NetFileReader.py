@@ -33,14 +33,14 @@ class netFileReader(FileReader):
         metaInfo['name'] = 'process_name'
         metaInfo['ph'] = 'M'
         metaInfo['pid'] = tx_pid
-        metaInfo['args'] = {'name': "%02d_tx" % tx_pid}
+        metaInfo['args'] = {'name': f"{tx_pid:02}_tx"}
 
         traceEventList.append(metaInfo)
         metaInfo = {}
         metaInfo['name'] = 'process_name'
         metaInfo['ph'] = 'M'
         metaInfo['pid'] = rx_pid
-        metaInfo['args'] = {'name': "%02d_rx" % rx_pid}
+        metaInfo['args'] = {'name': f"{rx_pid:02}_rx"}
 
         traceEventList.append(metaInfo)
 
@@ -98,16 +98,14 @@ class netFileReader(FileReader):
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
-                "[Net info]: process [%d] has been started, total task num is %d ..."
-                % (subproc.pid, len(processPool))
+                f"[Net info]: process [{subproc.pid}] has been started, total task num is {len(processPool)} ..."
             )
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
-                "[Net info]: process [%d] has exited! remained %d process!"
-                % (t.pid, len(pidList))
+                f"[Net info]: process [{t.pid}] has exited! remained {len(pidList)} process!"
             )
 
         traceInfo = {}

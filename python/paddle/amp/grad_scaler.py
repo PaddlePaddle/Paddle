@@ -181,7 +181,7 @@ class AmpScaler:
                 self._scale = paddle.to_tensor(
                     np.array([self._init_loss_scaling]).astype(np.float32)
                 )
-                self._cache_founf_inf = None
+                self._cache_found_inf = None
                 self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
     def scale(self, var: Tensor) -> Tensor:
@@ -335,13 +335,13 @@ class AmpScaler:
             optimizer._set_auxiliary_var('found_inf', self._found_inf)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             # TODO: Fix to _cache_found_inf after PaddleNLP update
-            self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+            self._cache_found_inf = optimizer._get_auxiliary_var('found_inf')
         else:
             if self._found_inf:
-                self._cache_founf_inf = True
+                self._cache_found_inf = True
             else:
                 optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
-                self._cache_founf_inf = False
+                self._cache_found_inf = False
 
         if self._use_dynamic_loss_scaling:
             # update the scale
@@ -462,7 +462,7 @@ class AmpScaler:
         if not self._enable:
             return
 
-        if self._cache_founf_inf:
+        if self._cache_found_inf:
             self._incr_count = 0
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
@@ -846,13 +846,13 @@ class GradScaler(AmpScaler):
         if hasattr(optimizer, "_set_auxiliary_var"):
             optimizer._set_auxiliary_var('found_inf', self._found_inf)
             optimizer.step()
-            self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+            self._cache_found_inf = optimizer._get_auxiliary_var('found_inf')
         else:
             if self._found_inf:
-                self._cache_founf_inf = True
+                self._cache_found_inf = True
             else:
                 optimizer.step()
-                self._cache_founf_inf = False
+                self._cache_found_inf = False
 
         optimizer_state["state"] = OptimizerState.STEPPED
 

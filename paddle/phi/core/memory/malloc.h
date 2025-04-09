@@ -52,14 +52,14 @@ extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 extern uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
 
-void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
+bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
 void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-void RecordStream(std::shared_ptr<Allocation> allocation,
+bool RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream);
 #endif
 

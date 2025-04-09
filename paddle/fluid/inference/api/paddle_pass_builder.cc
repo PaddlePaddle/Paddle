@@ -86,7 +86,9 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 }
 
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
-
+#ifdef PADDLE_WITH_OPENVINO
+const std::vector<std::string> kOVSubgraphPasses({"openvino_subgraph_pass"});
+#endif
 const std::vector<std::string> kTRTSubgraphPasses({
   "set_subgraph_edge_pass",                                       //
       "trt_remove_amp_strategy_op_pass",                          //
@@ -579,6 +581,15 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
   passes_.assign({"inference_process_pass"});
 }
+const std::vector<std::string> kPirCustomDevicePasses{
+    // Functional pass
+    "add_shadow_output_after_dead_parameter_pass",
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass",
+    "map_op_to_another_pass",
+    "identity_op_clean_pass",
+    "matmul_scale_fuse_pass",
+};
 
 const std::vector<std::string> kPirGpuPasses{
     // Functional pass
@@ -618,6 +629,8 @@ const std::vector<std::string> kPirXpuPasses{
     // Operator fusion pass
     "add_activation_xpu_fuse_pass",
     "add_layernorm_xpu_fuse_pass",
+    "rms_norm_xpu_fuse_pass",
+    "elementwise_mul_add_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",
     "group_norm_silu_fuse_pass",
@@ -670,6 +683,7 @@ const std::vector<std::string> kPirMkldnnBf16Passes{
     "cpu_bfloat16_placement_pass",
     "cpu_bfloat16_pass",
     "cpu_bfloat16_type_placement_pass",
+    "cpu_special_ops_bf16_pass",
     "cpu_bf16_quantize_squash_pass",
 };
 

@@ -25,7 +25,7 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
                        phi::DenseTensor* pre_ids,
                        phi::DenseTensor* pre_scores) {
   // lod
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   std::vector<size_t> level0({0, 2, 4});
   std::vector<size_t> level1({0, 1, 2, 3, 4});
   lod.push_back(level0);

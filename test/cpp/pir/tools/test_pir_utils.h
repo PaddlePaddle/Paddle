@@ -41,7 +41,7 @@ pir::Operation *CreateDenseTensorOp(
         pir::Float32Type::get(pir::IrContext::Instance())) {
   std::vector<pir::Value> op_inputs = {};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0, 1, 2}};
+  phi::LegacyLoD lod = {{0, 1, 2}};
   size_t offset = 0;
   std::vector<pir::Type> op_output_types = {
       paddle::dialect::DenseTensorType::get(

@@ -58,17 +58,17 @@ class TransformFlag {
 
  private:
   // This is the highest priority in flags,
-  // and can be setted by api[data_transform->skip_transform] in the yaml file.
+  // and can be set by api[data_transform->skip_transform] in the yaml file.
   bool stop_transform_ = false;
 
-  // trans_data_type_ can be setted by api[data_transform->support_trans_dtype]
+  // trans_data_type_ can be set by api[data_transform->support_trans_dtype]
   // in the yaml file.
   // trans_data_type_ only affect the non complex types,
-  // the complex is always transfered, except stop_transform_ is true.
+  // the complex is always transferred, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
-  // trans_backend_ and trans_layout_ are true defaultly,
-  // and they can only be setted by global flag.
+  // trans_backend_ and trans_layout_ are true default,
+  // and they can only be set by global flag.
   bool trans_backend_ = true;
   bool trans_layout_ = true;
 };
@@ -110,7 +110,7 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const TransformFlag& transform_flag,
     bool is_stride_kernel);
 
-// Only support transfering place for SelectedRows
+// Only support transferring place for SelectedRows
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
@@ -121,21 +121,21 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
-// Only support transfering contiguous for SparseCooTensor
+// Only support transferring contiguous for SparseCooTensor
 std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
     const Tensor& input);
 
 paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
     const paddle::optional<Tensor>& input);
 
-// Only support transfering contiguous for SparseCsrTensor
+// Only support transferring contiguous for SparseCsrTensor
 std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     const Tensor& input);
 
 paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     const paddle::optional<Tensor>& input);
 
-// Only support transfering contiguous
+// Only support transferring contiguous
 std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
     const Tensor& input);
 

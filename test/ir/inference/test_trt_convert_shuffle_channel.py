@@ -58,19 +58,21 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "shuffle_channel_input": [1, 6, 24, 24]
+        }
+        self.dynamic_shape.max_input_shape = {
+            "shuffle_channel_input": [4, 6, 48, 48]
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "shuffle_channel_input": [1, 6, 24, 48]
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "shuffle_channel_input": [1, 6, 24, 24]
-            }
-            self.dynamic_shape.max_input_shape = {
-                "shuffle_channel_input": [4, 6, 48, 48]
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "shuffle_channel_input": [1, 6, 24, 48]
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -92,14 +94,12 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
         ]
         self.trt_param.max_batch_size = 9
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
@@ -109,7 +109,7 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

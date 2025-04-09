@@ -34,25 +34,25 @@ using SparseCooTensorTypeStorage = paddle::dialect::SparseCooTensorTypeStorage;
 using SparseCsrTensorType = paddle::dialect::SparseCsrTensorType;
 using SparseCsrTensorTypeStorage = paddle::dialect::SparseCsrTensorTypeStorage;
 using DataLayout = DenseTensorTypeStorage::DataLayout;
-using LoD = DenseTensorTypeStorage::LoD;
+using LegacyLoD = DenseTensorTypeStorage::LegacyLoD;
 
 TypeTranslator::TypeTranslator() {
   const auto& HandleTensor = [&](pir::IrContext* ctx,
                                  const VarDesc& var_desc) -> pir::Type {
     VLOG(10) << "[vartype translating]"
-             << "[" << var_desc.Name() << "] from LOD_TENSOR";
+             << "[" << var_desc.Name() << "] from DENSE_TENSOR";
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
     const auto layout = DataLayout::NCHW;
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
   };
   const auto& HandleTensorArray = [&](pir::IrContext* ctx,
                                       const VarDesc& var_desc) -> pir::Type {
     VLOG(10) << "[vartype translating]"
-             << "[" << var_desc.Name() << "] from LOD_TENSOR_ARRAY";
+             << "[" << var_desc.Name() << "] from DENSE_TENSOR_ARRAY";
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dims = common::make_ddim(var_desc.GetShape());
@@ -68,7 +68,7 @@ TypeTranslator::TypeTranslator() {
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
     const auto layout = DataLayout::NCHW;
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     pir::Type SelectedRows =
         SelectedRowsType::get(ctx, dtype, dim, layout, lod, offset);
@@ -82,7 +82,7 @@ TypeTranslator::TypeTranslator() {
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     bool coalesced = false;
     const auto non_zero_dims = common::make_ddim(var_desc.GetShape());
@@ -109,7 +109,7 @@ TypeTranslator::TypeTranslator() {
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     const auto layout = DataLayout::NCHW;
     pir::DenseTensorType non_zero_crows =
@@ -185,8 +185,8 @@ TypeTranslator::TypeTranslator() {
        [&](pir::IrContext* ctx, const VarDesc& var_desc) -> pir::Type {
          return pir::Float8E5M2Type::get(ctx);
        }},
-      {VarType::LOD_TENSOR, HandleTensor},
-      {VarType::LOD_TENSOR_ARRAY, HandleTensorArray},
+      {VarType::DENSE_TENSOR, HandleTensor},
+      {VarType::DENSE_TENSOR_ARRAY, HandleTensorArray},
       {VarType::SELECTED_ROWS, HandleSelectedRows},
       {VarType::SPARSE_COO, HandleSparseCooTensor},
       {VarType::SPARSE_CSR, HandleSparseCsrTensor},

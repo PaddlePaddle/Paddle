@@ -71,7 +71,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
   MatmulCsrDenseGradKernel<T, Context>(
       dev_ctx, softmax, value, dout, &dsoftmax, dvalue);
 
-  /* Step2: Calculate grad of sdd_result, manualy not reuse */
+  /* Step2: Calculate grad of sdd_result, manually not reuse */
   SparseCsrTensor d_sdd_result;
   EmptyLikeCsrKernel<T, Context>(dev_ctx, dsoftmax, &d_sdd_result);
   auto q_dim = query.dims();

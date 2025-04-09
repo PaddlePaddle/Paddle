@@ -176,6 +176,12 @@ class IR_API Block {
     return num;
   }
 
+  OpListType get_recursive_ops() {
+    OpListType ops;
+    Walk([&ops](Operation *op) { ops.push_back(op); });
+    return ops;
+  }
+
  private:
   Block(Block &) = delete;
   Block &operator=(const Block &) = delete;

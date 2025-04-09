@@ -25,7 +25,7 @@
 namespace phi {
 namespace math {
 
-static inline std::string LoDToString(const LoD& lod) {
+static inline std::string LoDToString(const LegacyLoD& lod) {
   std::ostringstream stream;
   for (const auto& row : lod) {
     for (const auto& element : row) {
@@ -36,7 +36,7 @@ static inline std::string LoDToString(const LoD& lod) {
   return stream.str();
 }
 
-static inline bool CheckLoD(const LoD& in, int tensor_height = -1) {
+static inline bool CheckLegacyLoD(const LoD& in, int tensor_height = -1) {
   if (in.empty()) return true;
   for (const auto& level : in) {
     // check: there should be more than 2 offsets existing in each level.
@@ -74,7 +74,7 @@ static inline bool CheckLoD(const LoD& in, int tensor_height = -1) {
  * will have some candidates, input the candidate ids and their corresponding
  * scores (probabilities), it will sort and select the top beam_size candidates
  * for each source sentence, and store the selected candidates's score and their
- * corresponding ids to LoDTensors.
+ * corresponding ids to DenseTensors.
  *
  * A detailed example:
  *

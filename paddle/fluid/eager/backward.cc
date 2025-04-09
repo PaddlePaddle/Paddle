@@ -18,6 +18,7 @@
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
+COMMON_DECLARE_int32(call_stack_level);
 namespace egr {
 
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
@@ -180,7 +181,8 @@ std::vector<paddle::Tensor> RunBackward(
 
     // copy grad tensor since we should totally run grad without affect forward
     // value
-    if (!grad_tensors.empty() && grad_tensors[i].initialized()) {
+    if (!grad_tensors.empty() &&
+        (grad_tensors[i].defined() && grad_tensors[i].has_allocation())) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           common::errors::Fatal(
@@ -223,7 +225,7 @@ std::vector<paddle::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
-  std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
+  std::list<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
   std::deque<GradNodeBase*> force_sequential_nodes_queue;
   std::set<GradNodeBase*> force_sequential_nodes_set;
@@ -238,7 +240,7 @@ std::vector<paddle::Tensor> RunBackward(
       force_sequential_nodes_queue.push_front(
           force_sequential_nodes_forward_queue.front());
     }
-    force_sequential_nodes_forward_queue.pop();
+    force_sequential_nodes_forward_queue.pop_front();
   }
 
   VLOG(5) << "Startup_ops's size is " << queue.size();
@@ -253,176 +255,208 @@ std::vector<paddle::Tensor> RunBackward(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
-
-    if (queue.size() > 1 && node_in_degree_map[node] != 0) {
+    try {
+      if (queue.size() > 1 && node_in_degree_map[node] != 0) {
+        queue.pop_front();
+        continue;
+      }
       queue.pop_front();
-      continue;
-    }
-    queue.pop_front();
 
-    // Run node: This is where Hook happens
-    auto node_input_buffer_iter = node_input_buffers_dict.find(node);
-    PADDLE_ENFORCE_NE(
-        node_input_buffer_iter,
-        node_input_buffers_dict.end(),
-        common::errors::Fatal(
-            "Unable to find next node in the GradTensorHolder \n"
-            "Trying to run Node without configuring its GradTensorHolder."));
+      // Run node: This is where Hook happens
+      auto node_input_buffer_iter = node_input_buffers_dict.find(node);
+      PADDLE_ENFORCE_NE(
+          node_input_buffer_iter,
+          node_input_buffers_dict.end(),
+          common::errors::Fatal(
+              "Unable to find next node in the GradTensorHolder \n"
+              "Trying to run Node without configuring its GradTensorHolder."));
 
-    std::unique_ptr<GradTensorHolder> node_input_buffer =
-        std::move(node_input_buffer_iter->second);
+      std::unique_ptr<GradTensorHolder> node_input_buffer =
+          std::move(node_input_buffer_iter->second);
 
-    // Check input
-    EnforceGradNodeHasInput(node);
+      // Check input
+      EnforceGradNodeHasInput(node);
 
-    VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
+      VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
 
-    // This 'Global_XXXGradNode' record event is different with
-    // 'Local_XXXGradNode' event.
-    // * 'Global_XXXGradNode' will not only cover execution time of this
-    // function, but also include gradient
-    //    accumulation when the output(s) of corresponding forward OP are shared
-    //    by other OP(s), which may have extra overhead of accumulation than
-    //    'Local_XXXGradNode'.
-    // * 'Local_XXXGradNode' will only cover execution time of GradNode
-    // function.
-    phi::RecordEvent grad_node_record_event(
-        "Global_" + std::string((*node).name()),
-        phi::TracerEventType::Operator,
-        1);
+      // This 'Global_XXXGradNode' record event is different with
+      // 'Local_XXXGradNode' event.
+      // * 'Global_XXXGradNode' will not only cover execution time of this
+      // function, but also include gradient
+      //    accumulation when the output(s) of corresponding forward OP are
+      //    shared by other OP(s), which may have extra overhead of accumulation
+      //    than 'Local_XXXGradNode'.
+      // * 'Local_XXXGradNode' will only cover execution time of GradNode
+      // function.
+      phi::RecordEvent grad_node_record_event(
+          "Global_" + std::string((*node).name()),
+          phi::TracerEventType::Operator,
+          1);
 
-    // Run Pre Backward Node and get outputs
-    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
-        grad_output_tensors = (*node)(
-            node_input_buffer->Buffers(), create_graph, is_general_grad);
+      // Run Pre Backward Node and get outputs
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+          grad_output_tensors = (*node)(
+              node_input_buffer->Buffers(), create_graph, is_general_grad);
 
-    if (!inputs.empty() && is_general_grad) {
-      GeneralGrad::Instance().SetResultForEndingNodes(grad_output_tensors,
-                                                      node);
-    }
+      if (!inputs.empty() && is_general_grad) {
+        GeneralGrad::Instance().SetResultForEndingNodes(grad_output_tensors,
+                                                        node);
+      }
 
-    // retain_grad or not
-    if (!retain_graph) {
-      VLOG(3)
-          << "retain_graph is false, need to clear the TensorWrapper of nodes.";
-      node->ClearTensorWrappers();
-    }
+      // retain_grad or not
+      if (!retain_graph) {
+        VLOG(3) << "retain_graph is false, need to clear the TensorWrapper of "
+                   "nodes.";
+        node->ClearTensorWrappers();
+      }
 
-    // TODO(jiabin): Should we erase it or find a more efficient way.
-    node_input_buffers_dict.erase(node_input_buffer_iter);
+      // TODO(jiabin): Should we erase it or find a more efficient way.
+      node_input_buffers_dict.erase(node_input_buffer_iter);
 
-    // Prepare GradTensorHolder for next node
-    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
-        metas = node->OutputMeta();
-    PADDLE_ENFORCE(metas.size() == grad_output_tensors.size() || metas.empty(),
-                   common::errors::Fatal(
-                       "Number of edges should be either empty ( for leaf node "
-                       ") or the same as number of output grad tensors, but we "
-                       "got edges size is: %d, grad_output size is: %d",
-                       metas.size(),
-                       grad_output_tensors.size()));
+      // Prepare GradTensorHolder for next node
+      const paddle::small_vector<std::vector<GradSlotMeta>,
+                                 kSlotSmallVectorSize>& metas =
+          node->OutputMeta();
+      PADDLE_ENFORCE(
+          metas.size() == grad_output_tensors.size() || metas.empty(),
+          common::errors::Fatal(
+              "Number of edges should be either empty ( for leaf node "
+              ") or the same as number of output grad tensors, but we "
+              "got edges size is: %d, grad_output size is: %d",
+              metas.size(),
+              grad_output_tensors.size()));
 
-    for (size_t i = 0; i < metas.size(); i++) {
-      for (size_t j = 0; j < metas[i].size(); j++) {
-        const Edge& edge = metas[i][j].GetEdge();
-        if (!edge.IsInitialized()) {
-          continue;
-        }
-        auto edge_rank = edge.GetEdgeRankInfo();
-        // Since we make edge has as same rank as bwd outputs, we indexing them
-        // with the same rank(i, j)
-        auto next_node_shared = edge.GetMutableGradNode();
-        VLOG(3) << "Node: " << node->name() << " addr:" << node
-                << ", Found pending node: " << next_node_shared->name()
-                << " addr: " << next_node_shared.get();
-        // Next node could be nullptr if it is leaf tensor with no
-        // AccumulationNode attached
-        // Or it could also originated from dispensable inputs
-        if (!next_node_shared || !next_node_shared.get() ||
-            grad_output_tensors[i].empty()) {
-          continue;
-        }
-
-        PADDLE_ENFORCE_LT(
-            j,
-            grad_output_tensors[i].size(),
-            common::errors::Fatal(
-                "Rank of grad_output_tensors should be less than "
-                "grad_output_tensors[i].size(), which is: %d. This error may "
-                "indicate autoprune or autograd api error. ",
-                grad_output_tensors.size()));
-        paddle::Tensor& grad_output_tensor = grad_output_tensors[i][j];
-
-        if ((!grad_output_tensor.defined() ||
-             !grad_output_tensor.initialized())) {
-          VLOG(7) << "We get grad_output_tensor with slot: " << i
-                  << ", rank: " << j << " as uninitialized or undefined tensor";
-        }
-
-        VLOG(7) << "Get Edge and grad_output_tensor with slot: " << i
-                << ", rank: " << j
-                << " 's name is: " << grad_output_tensor.name();
-
-        auto* next_node = next_node_shared.get();
-        if (!node_input_buffers_dict.count(next_node)) {
-          const auto& input_meta = next_node->InputMeta();
-          auto grad_tensor_holder =
-              std::make_unique<GradTensorHolder>(input_meta);
-          VLOG(7) << "Construct GradTensorHolder for grad node: "
-                  << next_node->name();
-          node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
-        }
-
-        VLOG(3) << "Sum or Move grad inputs for edge slot: " << edge_rank.first
-                << ", rank: " << edge_rank.second;
-
-        node_input_buffers_dict[next_node]->add(edge_rank.first,
-                                                edge_rank.second,
-                                                grad_output_tensor,
-                                                create_graph);
-
-        // Update queue
-        node_in_degree_map[next_node]--;
-        VLOG(7) << next_node->name()
-                << " ref_cnt is: " << node_in_degree_map[next_node];
-
-        PADDLE_ENFORCE(
-            node_in_degree_map[next_node] >= 0,
-            common::errors::Fatal(
-                "Detected in-degree value smaller than zero. For Node: %s"
-                "Node's in-degree cannot be negative.",
-                next_node->name()));
-
-        auto add_next_node_func = [&queue](GradNodeBase* next_node) {
-          if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
-            queue.push_front(next_node);
-          } else {
-            queue.push_back(next_node);
+      for (size_t i = 0; i < metas.size(); i++) {
+        for (size_t j = 0; j < metas[i].size(); j++) {
+          const Edge& edge = metas[i][j].GetEdge();
+          if (!edge.IsInitialized()) {
+            continue;
           }
-        };
-        if (node_in_degree_map[next_node] == 0) {
-          if (force_sequential_nodes_set.count(next_node)) {
-            if (force_sequential_nodes_queue.front() == next_node) {
-              force_sequential_nodes_queue.pop_front();
-              add_next_node_func(next_node);
-              while (ready_force_sequential_nodes.count(
-                  force_sequential_nodes_queue.front())) {
-                ready_force_sequential_nodes.erase(
-                    force_sequential_nodes_queue.front());
-                add_next_node_func(force_sequential_nodes_queue.front());
+          auto edge_rank = edge.GetEdgeRankInfo();
+          // Since we make edge has as same rank as bwd outputs, we indexing
+          // them with the same rank(i, j)
+          auto next_node_shared = edge.GetMutableGradNode();
+          VLOG(3) << "Node: " << node->name() << " addr:" << node
+                  << ", Found pending node: " << next_node_shared->name()
+                  << " addr: " << next_node_shared.get();
+          // Next node could be nullptr if it is leaf tensor with no
+          // AccumulationNode attached
+          // Or it could also originated from dispensable inputs
+          if (!next_node_shared || !next_node_shared.get() ||
+              grad_output_tensors[i].empty()) {
+            continue;
+          }
+
+          PADDLE_ENFORCE_LT(
+              j,
+              grad_output_tensors[i].size(),
+              common::errors::Fatal(
+                  "Rank of grad_output_tensors should be less than "
+                  "grad_output_tensors[i].size(), which is: %d. This error may "
+                  "indicate autoprune or autograd api error. ",
+                  grad_output_tensors.size()));
+          paddle::Tensor& grad_output_tensor = grad_output_tensors[i][j];
+
+          if ((!grad_output_tensor.defined() ||
+               !grad_output_tensor.has_allocation())) {
+            VLOG(7) << "We get grad_output_tensor with slot: " << i
+                    << ", rank: " << j
+                    << " as undefined tensor or without allocation.";
+          }
+
+          VLOG(7) << "Get Edge and grad_output_tensor with slot: " << i
+                  << ", rank: " << j
+                  << " 's name is: " << grad_output_tensor.name();
+
+          auto* next_node = next_node_shared.get();
+          if (!node_input_buffers_dict.count(next_node)) {
+            const auto& input_meta = next_node->InputMeta();
+            auto grad_tensor_holder =
+                std::make_unique<GradTensorHolder>(input_meta);
+            VLOG(7) << "Construct GradTensorHolder for grad node: "
+                    << next_node->name();
+            node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
+          }
+
+          VLOG(3) << "Sum or Move grad inputs for edge slot: "
+                  << edge_rank.first << ", rank: " << edge_rank.second;
+
+          node_input_buffers_dict[next_node]->add(edge_rank.first,
+                                                  edge_rank.second,
+                                                  grad_output_tensor,
+                                                  create_graph);
+
+          // Update queue
+          node_in_degree_map[next_node]--;
+          VLOG(7) << next_node->name()
+                  << " ref_cnt is: " << node_in_degree_map[next_node];
+
+          PADDLE_ENFORCE(
+              node_in_degree_map[next_node] >= 0,
+              common::errors::Fatal(
+                  "Detected in-degree value smaller than zero. For Node: %s"
+                  "Node's in-degree cannot be negative.",
+                  next_node->name()));
+
+          auto add_next_node_func = [&queue](GradNodeBase* next_node) {
+            if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+              queue.push_front(next_node);
+            } else {
+              queue.push_back(next_node);
+            }
+          };
+          if (node_in_degree_map[next_node] == 0) {
+            if (force_sequential_nodes_set.count(next_node)) {
+              if (force_sequential_nodes_queue.front() == next_node) {
                 force_sequential_nodes_queue.pop_front();
+                add_next_node_func(next_node);
+                while (ready_force_sequential_nodes.count(
+                    force_sequential_nodes_queue.front())) {
+                  ready_force_sequential_nodes.erase(
+                      force_sequential_nodes_queue.front());
+                  add_next_node_func(force_sequential_nodes_queue.front());
+                  force_sequential_nodes_queue.pop_front();
+                }
+              } else {
+                ready_force_sequential_nodes.insert(next_node);
+                continue;
               }
             } else {
-              ready_force_sequential_nodes.insert(next_node);
-              continue;
+              add_next_node_func(next_node);
             }
-          } else {
-            add_next_node_func(next_node);
           }
         }
       }
+      paddle::memory::LogDeviceMemoryStats(place, std::string((*node).name()));
+    } catch (::common::enforce::EnforceNotMet& ex) {
+      if (FLAGS_call_stack_level == 3) {
+        paddle::framework::InsertCallStackInfoDygraph(
+            node->name(), {node->GetForwardTrace()}, &ex);
+      }
+
+      LOG(WARNING) << "While running Node (" << node->name()
+                   << ") raises an EnforceNotMet exception";
+      throw ex;
+    } catch (std::exception& ex) {
+      LOG(WARNING) << "While running Node (" << node->name()
+                   << ") raises a std::exception: "
+                   << common::demangle(typeid(ex).name());
+      if (FLAGS_call_stack_level == 3) {
+        LOG(WARNING) << "Node (" << node->name()
+                     << ")'s forward call stack is :" << node->GetForwardTrace()
+                     << std::endl;
+      }
+      std::rethrow_exception(std::current_exception());
+    } catch (...) {
+      LOG(WARNING) << "While running Node (" << node->name()
+                   << ") raises an unknown exception";
+      if (FLAGS_call_stack_level == 3) {
+        LOG(WARNING) << "Node (" << node->name()
+                     << ")'s forward call stack is :" << node->GetForwardTrace()
+                     << std::endl;
+      }
+      std::rethrow_exception(std::current_exception());
     }
-    paddle::memory::LogDeviceMemoryStats(place, std::string((*node).name()));
   }
 
   VLOG(7) << "Run Backward Final hook size: "

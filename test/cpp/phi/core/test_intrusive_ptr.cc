@@ -113,7 +113,7 @@ TEST(intrusive_ptr, op_comp) {
       true,
       common::errors::Fatal(
           "blank intrusive_ptr p's content is not equal to its copy, something "
-          "wrong with constructor or get funtion"));
+          "wrong with constructor or get function"));
   PADDLE_ENFORCE_EQ(
       p != p1.get(),
       true,
@@ -125,7 +125,7 @@ TEST(intrusive_ptr, op_comp) {
       true,
       common::errors::Fatal(
           "blank intrusive_ptr p's content is not equal to its copy, something "
-          "wrong with constructor or get funtion"));
+          "wrong with constructor or get function"));
   PADDLE_ENFORCE_EQ(
       p.get() != p1,
       true,

@@ -20,7 +20,31 @@ namespace cinn {
 namespace optim {
 
 /**
- * Remove common global memory read and substitue them with local memory read.
+ *
+ * This pass eliminates redundant global memory reads by substituting them with
+ * local memory buffers.
+ *
+ * This pass is applicable in scenarios where multiple identical global memory
+ * reads occur within the same scope of computation, such as loop nests or
+ * blocks of code with shared memory access patterns. By identifying such
+ * redundant reads, it can improve performance by reducing memory bandwidth
+ * usage and improving cache locality.
+ *
+ * When applied, this pass performs the following modifications to the IR:
+ * - Identifies global memory tensors with repeated access patterns and analyzes
+ * the indices and extent of memory reads.
+ * - Creates new local tensors (buffers) in the IR to store the data retrieved
+ * from the global memory for reuse.
+ * - Replaces the redundant global memory reads with corresponding reads from
+ * the newly created local tensors.
+ *
+ * Performance impact:
+ * - This pass reduces the reliance on global memory, which is typically slower
+ * than local memory. It addresses performance bottlenecks such as high memory
+ * bandwidth usage and low cache efficiency.
+ * - It ensures memory operations are more localized, potentially leading to
+ * significant speedups in memory-intensive computations.
+ *
  */
 void EliminateCommonGlobalMemoryRead(Expr* e);
 

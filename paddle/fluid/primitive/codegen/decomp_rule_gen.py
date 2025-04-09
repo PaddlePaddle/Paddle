@@ -22,7 +22,8 @@ import yaml
 
 # fmt: off
 # import from paddle/fluid/operators/generator
-sys.path.append(
+sys.path.insert(
+    0,
     str(pathlib.Path(__file__).resolve().parents[2] / 'operators/generator')
 )
 import filters as op_gen_filters
@@ -32,13 +33,14 @@ from parse_utils import to_named_dict
 from type_mapping import output_type_map
 
 # import from paddle/fluid/pir/dialect/op_generator/api_gen.py
-sys.path.append(
+sys.path.insert(
+    0,
     str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
 from decomp_interface_gen_op_list import (
-    decomp_interface_implementation_gen_op_list,
     decomp_ops_contain_unused_output,
+    decomp_rule_interface_implementation_gen_op_list,
 )
 from op_gen import attr_types_map, to_pascal_case
 
@@ -207,7 +209,7 @@ def gen(
         templates_dir,
         destination_dir,
         apis=apis,
-        decomp_white_list=decomp_interface_implementation_gen_op_list,
+        decomp_white_list=decomp_rule_interface_implementation_gen_op_list,
         decomp_ops_list_contain_unused_output=decomp_ops_contain_unused_output,
     )
 

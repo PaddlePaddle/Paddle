@@ -472,7 +472,6 @@ class TestDy2STWithSetValue(AmpTestBase):
 
     def test_pir_op_called_as_expected(self):
         expected_fp16_calls = {
-            "pd_op.cast_": 1,
             "pd_op.layer_norm": 1,
             "pd_op.scale": 1,
             "pd_op.scale_": 2,

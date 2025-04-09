@@ -119,7 +119,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
             np.array([[1, 2, 3], [4, 5, 6]]),
             np.array([[11, 12, 13], [14, 15, 16]]),
         ]
-        self.axises = [0, 1]
+        self.axes = [0, 1]
 
     def check_output(self, out, pd_out, name):
         np.testing.assert_array_equal(
@@ -130,7 +130,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
 
     def test_dynamic(self):
         for dtype in self.dtypes:
-            for axis in self.axises:
+            for axis in self.axes:
                 out, grad_inputs = concat_dynamic(
                     custom_ops.custom_concat, dtype, self.np_inputs, axis
                 )
@@ -144,7 +144,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
 
     def test_static(self):
         for dtype in self.dtypes:
-            for axis in self.axises:
+            for axis in self.axes:
                 out, x1_grad, x2_grad = concat_static(
                     custom_ops.custom_concat, dtype, self.np_inputs, axis
                 )
@@ -158,7 +158,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
 
     def test_dynamic_with_attr(self):
         for dtype in self.dtypes:
-            for axis in self.axises:
+            for axis in self.axes:
                 out, grad_inputs = concat_dynamic(
                     custom_ops.custom_concat_with_attr,
                     dtype,
@@ -176,7 +176,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
 
     def test_static_with_attr(self):
         for dtype in self.dtypes:
-            for axis in self.axises:
+            for axis in self.axes:
                 out, x1_grad, x2_grad = concat_static(
                     custom_ops.custom_concat_with_attr,
                     dtype,

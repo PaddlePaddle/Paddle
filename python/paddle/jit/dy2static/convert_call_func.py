@@ -42,7 +42,7 @@ from .program_translator import (
     convert_to_static,
     unwrap_decorators,
 )
-from .utils import WeakMethod, is_builtin, is_paddle_func
+from .utils import is_builtin, is_paddle_func, patch_method_guard
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -203,6 +203,17 @@ def is_unsupported(func):
     return False
 
 
+class StaticLayerWrapper:
+    def __init__(self, layer):
+        self.layer = layer
+
+    def __call__(self, *args, **kwargs):
+        with patch_method_guard(
+            self.layer, "forward", convert_call(self.layer.forward)
+        ):
+            return self.layer(*args, **kwargs)
+
+
 def convert_call(func):
     """
     Converts a function call which needs to be transformed to static function.
@@ -355,18 +366,7 @@ def convert_call(func):
 
     elif hasattr(func, '__class__') and callable(func.__class__):
         if hasattr(func, 'forward') and isinstance(func, Layer):
-            try:
-                _, forward_func = unwrap_decorators(func.forward)
-                func._original_funcs['forward'] = forward_func.__func__
-                forward_func = convert_to_static(forward_func.__func__)
-                # Bound method will be convert into plain function after `convert_to_static`.
-                # So descriptor mechanism is used to bound `self` instance on function to
-                # keep it as bound method.
-                func.forward = WeakMethod(forward_func, func)
-            except (OSError, TypeError):
-                # NOTE: func.forward may have been decorated.
-                func_self = None if func_self else func_self
-            converted_call = func
+            return StaticLayerWrapper(func)
         else:
             try:
                 call_func = func.__class__.__call__

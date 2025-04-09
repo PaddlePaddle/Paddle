@@ -342,7 +342,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np.testing.assert_allclose(x.numpy(), np_data)
 
     def test_inplace_with_stride_bwd_1(self):
-        # combined-setitem case for X with stop_graident=False
+        # combined-setitem case for X with stop_gradient=False
         np_v = np.random.randn(3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -374,7 +374,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_inplace_with_stride_bwd_2(self):
-        # combined-setitem case for X with stop_graident=True
+        # combined-setitem case for X with stop_gradient=True
         np_v = np.random.randn(3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -406,7 +406,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_inplace_with_stride_bwd_3(self):
-        # advanced-setitem case for X with stop_graident=False
+        # advanced-setitem case for X with stop_gradient=False
         np_v = np.random.randn(3, 3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -438,7 +438,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_inplace_with_stride_bwd_4(self):
-        # advanced-setitem case for X with stop_graident=True
+        # advanced-setitem case for X with stop_gradient=True
         np_v = np.random.randn(3, 3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -470,7 +470,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_basic_setitem_bwd_1(self):
-        # basic-setitem case for X with stop_graident=False
+        # basic-setitem case for X with stop_gradient=False
         np_v = np.random.randn(5).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -502,7 +502,7 @@ class TestSetitemInDygraph(unittest.TestCase):
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
 
     def test_basic_setitem_bwd_2(self):
-        # basic-setitem case for X with stop_graident=True
+        # basic-setitem case for X with stop_gradient=True
         np_v = np.random.randn(5).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
@@ -532,6 +532,39 @@ class TestSetitemInDygraph(unittest.TestCase):
             )
         else:
             np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
+    def test_boolean_mask_tensor_broadcast_v(self):
+        tensor_np = np.zeros((2, 2, 3)).astype(np.float32)
+        mask_np = np.array([[True, False], [False, True]])
+        value_np = np.array([100] * 3).astype(np.float32)
+        tensor = paddle.to_tensor(tensor_np)
+        mask = paddle.to_tensor(mask_np)
+        value = paddle.to_tensor(value_np)
+        tensor[mask] = value
+        tensor_np[mask_np] = value_np
+        np.testing.assert_allclose(tensor.numpy(), tensor_np)
+
+    def test_boolean_mask_scalar(self):
+        tensor_np = np.arange(2 * 3).reshape(2, 3)
+        tensor = paddle.to_tensor(tensor_np)
+        mask_np = np.array([[True, True, False], [False, True, False]])
+        mask = paddle.to_tensor(mask_np)
+        tensor[mask] = 100
+        tensor_np[mask_np] = 100
+        np.testing.assert_equal(tensor.numpy(), tensor_np)
+
+    def test_boolean_mask_tensor(self):
+        tensor_np = np.arange(2 * 3).reshape(2, 3)
+        tensor = paddle.to_tensor(tensor_np)
+        mask_np = np.array([[True, True, False], [False, True, False]]).astype(
+            'bool'
+        )
+        mask = paddle.to_tensor(mask_np)
+        value_np = np.array([100] * mask_np.sum())
+        value = paddle.to_tensor(value_np)
+        tensor[mask] = value
+        tensor_np[mask_np] = value_np
+        np.testing.assert_equal(tensor.numpy(), tensor_np)
 
 
 @unittest.skipIf(
@@ -940,6 +973,54 @@ class TestSetitemInStatic(unittest.TestCase):
             res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_data)
+
+    def test_boolean_mask_scalar(self):
+        tensor_np = np.arange(2 * 3).reshape(2, 3).astype('int32')
+        mask_np = np.array([[True, True, False], [False, True, False]]).astype(
+            'bool'
+        )
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            tensor = paddle.to_tensor(tensor_np)
+            mask = paddle.to_tensor(mask_np)
+            tensor[mask] = 100
+            res = self.exe.run(fetch_list=[tensor])
+        tensor_np[mask_np] = 100
+        np.testing.assert_equal(res[0], tensor_np)
+
+    def test_boolean_mask_tensor(self):
+        tensor_np = np.arange(2 * 3).reshape(2, 3).astype('int32')
+        mask_np = np.array([[True, True, False], [False, True, False]]).astype(
+            'bool'
+        )
+        value_np = np.array([100] * mask_np.sum()).astype('int32')
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            tensor = paddle.to_tensor(tensor_np)
+            mask = paddle.to_tensor(mask_np)
+            value = paddle.to_tensor(value_np)
+            tensor[mask] = value
+            res = self.exe.run(fetch_list=[tensor])
+        tensor_np[mask_np] = value_np
+        np.testing.assert_equal(res[0], tensor_np)
+
+    def test_boolean_mask_tensor_broadcast_v(self):
+        tensor_np = np.zeros((2, 2, 3)).astype(np.float32)
+        mask_np = np.array([[True, False], [False, True]])
+        value_np = np.array([100] * 3).astype(np.float32)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            tensor = paddle.to_tensor(tensor_np)
+            mask = paddle.to_tensor(mask_np)
+            value = paddle.to_tensor(value_np)
+            tensor[mask] = value
+            res = self.exe.run(fetch_list=[tensor])[0]
+        tensor_np[mask_np] = value_np
+        np.testing.assert_allclose(res, tensor_np)
 
 
 if __name__ == '__main__':

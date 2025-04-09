@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::has_duplicates;
 using phi::distributed::auto_parallel::ProcessMeshProto;
@@ -237,5 +236,4 @@ int SubMeshDim(const ProcessMesh &global_mesh, const ProcessMesh &sub_mesh) {
   return -1;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

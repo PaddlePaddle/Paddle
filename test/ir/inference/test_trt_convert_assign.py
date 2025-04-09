@@ -60,6 +60,7 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
                 np.float32,
                 np.int64,
             ]:
+                # breakpoint()
                 self.has_bool_dtype = dtype == np.bool_
                 ops_config = [
                     {
@@ -91,29 +92,24 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.dims == 0:
-                self.dynamic_shape.min_input_shape = {"input_data": []}
-                self.dynamic_shape.max_input_shape = {"input_data": []}
-                self.dynamic_shape.opt_input_shape = {"input_data": []}
-            elif self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"input_data": [1]}
-                self.dynamic_shape.max_input_shape = {"input_data": [1]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [1]}
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3, 64, 64]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [1, 3, 64, 64]
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [1, 3, 64, 64]
-                }
+    def generate_dynamic_shape(self):
+        if self.dims == 0:
+            self.dynamic_shape.min_input_shape = {"input_data": []}
+            self.dynamic_shape.max_input_shape = {"input_data": []}
+            self.dynamic_shape.opt_input_shape = {"input_data": []}
+        elif self.dims == 1:
+            self.dynamic_shape.min_input_shape = {"input_data": [1]}
+            self.dynamic_shape.max_input_shape = {"input_data": [1]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1]}
+        else:
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+        return self.dynamic_shape
 
+    def sample_predictor_configs(
+        self, program_config, run_pir=False
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -128,22 +124,22 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-2
+        if not run_pir:
+            # for static_shape
+            clear_dynamic_shape()
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-2
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -156,7 +152,10 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
         ), 1e-2
 
     def test(self):
+        # test for old ir
         self.run_test()
+        # test for pir
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

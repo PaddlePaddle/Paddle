@@ -525,6 +525,7 @@ class OpTest(unittest.TestCase):
                 not cls.input_shape_is_large
                 and cls.op_type
                 not in check_shape_white_list.NEED_TO_FIX_OP_LIST
+                and not is_xpu_op_test()
             ):
                 raise AssertionError(
                     "Number of element(s) of input should be large than or equal to 100 for "
@@ -608,6 +609,27 @@ class OpTest(unittest.TestCase):
             self.is_fp16_compared_with_fp32()
             or self.is_bf16_compared_with_fp32()
         )
+
+    def is_0size_test(self):
+        def numel(shape):
+            numel = 1
+            for i in shape:
+                numel = numel * i
+            return numel
+
+        for name, item in self.inputs.items():
+            if isinstance(item, (list, tuple)):
+                for tup in item:
+                    if (
+                        len(tup) > 1
+                        and hasattr(tup[1], "shape")
+                        and numel(tup[1].shape) == 0
+                    ):
+                        return True
+            else:
+                if numel(item.shape) == 0:
+                    return True
+        return False
 
     def enable_cal_ref_output(self):
         self.is_calc_ref = True
@@ -709,7 +731,7 @@ class OpTest(unittest.TestCase):
         for var_name in input_vars:
             if isinstance(input_vars[var_name], list):
                 for name, np_value in self.inputs[var_name]:
-                    tensor = core.LoDTensor()
+                    tensor = core.DenseTensor()
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
                         dtype = np.array(np_value[1]).dtype
@@ -758,7 +780,7 @@ class OpTest(unittest.TestCase):
                             tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
-                tensor = core.LoDTensor()
+                tensor = core.DenseTensor()
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
                     if self.is_calc_ref:
@@ -902,13 +924,13 @@ class OpTest(unittest.TestCase):
             return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
-        """Get LoD input data whose batch size is 1.
+        """Get LegacyLoD input data whose batch size is 1.
         All sequence related OP unittests should call this function to contain the case of batch size = 1.
         Args:
             lod (list[list of int], optional): Length-based LoD, length of lod[0] should be 1. Default: [[13]].
             shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
         Returns:
-            tuple (ndarray, lod) : LoD input data whose batch size is 1.
+            tuple (ndarray, lod) : LegacyLoD input data whose batch size is 1.
         """
         if lod is None:
             lod = [[13]]
@@ -937,13 +959,13 @@ class OpTest(unittest.TestCase):
         return False
 
     def get_sequence_instance_size_0_input(self, lod=None, shape=None):
-        """Get LoD input data whose instance size is 0.
+        """Get LegacyLoD input data whose instance size is 0.
         All sequence related OP unittests should call this function to contain the case of instance size is 0.
         Args:
             lod (list[list of int], optional): Length-based LoD, lod[0]'s size must at least eight, lod[0] must at least two zeros at the beginning and at least two zeros at the end, the middle position of lod[0] contains a single zero and multiple zero. Default: [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]].
             shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
         Returns:
-            tuple (ndarray, lod): LoD input data whose instance size is 0.
+            tuple (ndarray, lod): LegacyLoD input data whose instance size is 0.
         """
         if lod is None:
             lod = [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
@@ -1002,7 +1024,7 @@ class OpTest(unittest.TestCase):
                     v = block.create_var(
                         name=name,
                         dtype=np.float32,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        type=core.VarDesc.VarType.DENSE_TENSOR,
                         persistable=False,
                         stop_gradient=False,
                     )
@@ -1010,7 +1032,7 @@ class OpTest(unittest.TestCase):
                     v = block.create_var(
                         name=name,
                         dtype=np_value_temp.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        type=core.VarDesc.VarType.DENSE_TENSOR,
                         persistable=False,
                         stop_gradient=False,
                     )
@@ -1028,7 +1050,7 @@ class OpTest(unittest.TestCase):
             if name not in np_list:
                 assert var_proto.intermediate, f"{name} not found"
                 v = block.create_var(
-                    dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR
+                    dtype='float32', type=core.VarDesc.VarType.DENSE_TENSOR
                 )
                 var_dict[name].append(v)
                 if if_return_inputs_grad_dict:
@@ -1635,8 +1657,11 @@ class OpTest(unittest.TestCase):
                                     )
                                 )
                                 expect_shape = outs[i].shape
+                                if np.issubdtype(outs[i].dtype, np.integer):
+                                    expect_data = outs[i].flatten().tolist()
+                                else:
+                                    expect_data = []
                                 i += 1
-                                expect_data = []
                                 if not shape_or_data.is_equal(
                                     expect_shape, expect_data
                                 ):
@@ -1648,7 +1673,7 @@ class OpTest(unittest.TestCase):
             pass
 
     def _infer_and_compare_symbol(self, place):
-        """Don't caculate the program, only infer the shape of var"""
+        """Don't calculate the program, only infer the shape of var"""
 
         kernel_sig = self.get_kernel_signature(place)
         program = paddle.static.Program()
@@ -2281,10 +2306,6 @@ class OpTest(unittest.TestCase):
                     ),
                 )
 
-            def _compare_list(self, name, actual, expect):
-                """if expect is a tuple, we need to compare list."""
-                raise NotImplementedError("base class, not implement!")
-
             def compare_single_output_with_expect(self, name, expect):
                 actual, actual_np = self.find_actual_value(name)
                 # expect_np = expect[0] if isinstance(expect, tuple) else expect
@@ -2301,8 +2322,6 @@ class OpTest(unittest.TestCase):
                 )
                 # modify there for fp32 check
                 self._compare_numpy(name, actual_np, expect_np)
-                if isinstance(expect, (tuple, list)):
-                    self._compare_list(name, actual, expect)
 
             def compare_outputs_with_expects(self):
                 for out_name, out_dup in Operator.get_op_outputs(self.op_type):
@@ -2387,14 +2406,6 @@ class OpTest(unittest.TestCase):
                     actual_np = convert_uint16_to_float(actual_np)
                     atol = max(atol, 0.03)
                 return actual_np, expect_np
-
-            def _compare_list(self, name, actual, expect):
-                """if expect is a tuple, we need to compare list."""
-                self.op_test.assertListEqual(
-                    actual.recursive_sequence_lengths(),
-                    expect[1],
-                    "Output (" + name + ") has different lod at " + str(place),
-                )
 
         class DygraphChecker(Checker):
             def init(self):
@@ -2481,23 +2492,6 @@ class OpTest(unittest.TestCase):
                         imperative_expect.value().get_tensor()
                     )
                     return imperative_expect, imperative_expect_t
-
-            def _compare_list(self, name, actual, expect):
-                """if expect is a tuple, we need to compare list."""
-                with base.dygraph.base.guard(place=place):
-                    self.op_test.assertListEqual(
-                        actual.value()
-                        .get_tensor()
-                        .recursive_sequence_lengths(),
-                        expect[1],
-                        "Operator ("
-                        + self.op_type
-                        + ") Output ("
-                        + name
-                        + ") has different lod at "
-                        + str(place)
-                        + " in dygraph mode",
-                    )
 
             def _is_skip_name(self, name):
                 # if in final state and kernel signature don't have name, then skip it.
@@ -2623,23 +2617,6 @@ class OpTest(unittest.TestCase):
                     expect_t = np.array(expect)
                     return expect, expect_t
 
-            def _compare_list(self, name, actual, expect):
-                """if expect is a tuple, we need to compare list."""
-                with paddle.pir.core.program_guard(place=place):
-                    self.op_test.assertListEqual(
-                        actual.value()
-                        .get_tensor()
-                        .recursive_sequence_lengths(),
-                        expect[1],
-                        "Operator ("
-                        + self.op_type
-                        + ") Output ("
-                        + name
-                        + ") has different lod at "
-                        + str(place)
-                        + " in dygraph mode",
-                    )
-
             def _is_skip_name(self, name):
                 # if in final state and kernel signature don't have name, then skip it.
                 if (
@@ -2660,7 +2637,7 @@ class OpTest(unittest.TestCase):
                 self.checker_name = "symbol infer checker"
 
             def infer_and_compare_symbol(self):
-                """infer symbol and compare it with actualy shape and data"""
+                """infer symbol and compare it with actual shape and data"""
                 self.is_python_api_test = True
                 self.op_test._infer_and_compare_symbol(place)
 
@@ -2855,17 +2832,17 @@ class OpTest(unittest.TestCase):
                     # The output is dispensable or intermediate.
                     break
                 out = fetch_outs[i]
-                if isinstance(out, core.LoDTensor):
+                if isinstance(out, core.DenseTensor):
                     lod_level_runtime = len(out.lod())
                 else:
-                    if isinstance(out, core.LoDTensorArray):
+                    if isinstance(out, core.DenseTensorArray):
                         warnings.warn(
-                            "The check of LoDTensorArray's lod_level is not implemented now!"
+                            "The check of DenseTensorArray's lod_level is not implemented now!"
                         )
                     lod_level_runtime = 0
 
                 var = self.program.global_block().var(var_name)
-                if var.type == core.VarDesc.VarType.LOD_TENSOR:
+                if var.type == core.VarDesc.VarType.DENSE_TENSOR:
                     lod_level_compile = var.lod_level
                 else:
                     lod_level_compile = 0
@@ -3043,6 +3020,9 @@ class OpTest(unittest.TestCase):
                     ),
                 )
             else:
+                if a.size == 0:
+                    self.assertTrue(b.size == 0)
+                    return
                 # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
                 # max_relative_error is 1e-7. According to the value of np.abs(a), we
                 # change np.abs(a) to achieve dynamic threshold. For example, if
@@ -3093,19 +3073,9 @@ class OpTest(unittest.TestCase):
                 def err_msg():
                     offset = np.argmax(diff_mat > max_relative_error)
                     return (
-                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
-                        "the first error element is %d, expected %e, but got %e."
-                    ) % (
-                        self.op_type,
-                        msg_prefix,
-                        name,
-                        str(a.shape),
-                        self.dtype,
-                        max_diff,
-                        max_relative_error,
-                        offset,
-                        a.flatten()[offset],
-                        b.flatten()[offset],
+                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {a.shape!s}, dtype: {self.dtype}) "
+                        f"max gradient diff {max_diff:e} over limit {max_relative_error:e}, "
+                        f"the first error element is {offset}, expected {a.flatten()[offset].item():e}, but got {b.flatten()[offset].item():e}."
                     )
 
                 self.assertLessEqual(max_diff, max_relative_error, err_msg())
@@ -3188,7 +3158,9 @@ class OpTest(unittest.TestCase):
         max_relative_error,
         atol,
     ):
-        if user_defined_grads is None and self.is_compared_with_fp32():
+        if (
+            user_defined_grads is None and self.is_compared_with_fp32()
+        ) or self.is_0size_test():
             self.enable_cal_ref_output()
             numeric_grads = self._get_gradient(
                 inputs_to_check,
@@ -3452,7 +3424,11 @@ class OpTest(unittest.TestCase):
             )
             tensor_ndim = len(tensor_to_check.shape())
             # for 0D Tensor, it's additional case for OP, so not raise error
-            if tensor_ndim > 0 and tensor_size < 100:
+            if (
+                tensor_ndim > 0
+                and tensor_size < 100
+                and not self.is_0size_test()
+            ):
                 self.__class__.input_shape_is_large = False
 
         if type(output_names) is not list:
@@ -3679,7 +3655,7 @@ class OpTest(unittest.TestCase):
 
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):
-        tensor = core.LoDTensor()
+        tensor = core.DenseTensor()
         tensor.set(np_value, place)
         if lod is not None:
             tensor.set_recursive_sequence_lengths(lod)

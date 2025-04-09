@@ -20,15 +20,15 @@
 
 namespace paddle {
 namespace framework {
-TEST(LodTensor, PrintLodTensor) {
+TEST(DenseTensor, PrintDenseTensor) {
   phi::DenseTensor tensor1;
   tensor1.Resize({2});
   tensor1.mutable_data<float>(phi::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
   tensor1.data<float>()[1] = 0.5;
-  std::string res = PrintLodTensor(&tensor1, -1, 2);
+  std::string res = PrintDenseTensor(&tensor1, -1, 2);
   ASSERT_EQ(res, "access violation");
-  res = PrintLodTensor(&tensor1, 0, 2);
+  res = PrintDenseTensor(&tensor1, 0, 2);
   ASSERT_EQ(res, "0.2,0.5");
 
   phi::DenseTensor tensor2;
@@ -36,9 +36,9 @@ TEST(LodTensor, PrintLodTensor) {
   tensor2.mutable_data<int64_t>(phi::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
   tensor2.data<int64_t>()[1] = 2;
-  res = PrintLodTensor(&tensor2, -1, 2);
+  res = PrintDenseTensor(&tensor2, -1, 2);
   ASSERT_EQ(res, "access violation");
-  res = PrintLodTensor(&tensor2, 0, 2);
+  res = PrintDenseTensor(&tensor2, 0, 2);
   ASSERT_EQ(res, "1,2");
 
   phi::DenseTensor tensor3;
@@ -46,7 +46,7 @@ TEST(LodTensor, PrintLodTensor) {
   tensor3.mutable_data<double>(phi::CPUPlace());
   tensor3.data<double>()[0] = 0.1;
   tensor3.data<double>()[1] = 0.2;
-  res = PrintLodTensor(&tensor3, 0, 2);
+  res = PrintDenseTensor(&tensor3, 0, 2);
   ASSERT_EQ(res, "0.1,0.2");
 
   phi::DenseTensor tensor4;
@@ -55,7 +55,7 @@ TEST(LodTensor, PrintLodTensor) {
   tensor4.data<double>()[0] = 0.1;
   tensor4.data<double>()[1] = 0.2;
   res = "";
-  PrintLodTensor(&tensor4, 0, 2, res);
+  PrintDenseTensor(&tensor4, 0, 2, res);
   // ASSERT_EQ(res, "0.1,0.2");
 
   phi::DenseTensor tensor5;
@@ -64,10 +64,10 @@ TEST(LodTensor, PrintLodTensor) {
   tensor5.data<int64_t>()[0] = 1;
   tensor5.data<int64_t>()[1] = 2;
   res = "";
-  PrintLodTensor(&tensor5, -1, 2, res);
+  PrintDenseTensor(&tensor5, -1, 2, res);
   ASSERT_EQ(res, "access violation");
   res = "";
-  PrintLodTensor(&tensor5, 0, 2, res);
+  PrintDenseTensor(&tensor5, 0, 2, res);
   ASSERT_EQ(res, "1,2");
 
   phi::DenseTensor tensor6;
@@ -76,15 +76,15 @@ TEST(LodTensor, PrintLodTensor) {
   tensor6.data<float>()[0] = 0.2;
   tensor6.data<float>()[1] = 0.5;
   res = "";
-  PrintLodTensor(&tensor6, -1, 2, res);
+  PrintDenseTensor(&tensor6, -1, 2, res);
   // ASSERT_EQ(res, "access violation");
   res = "";
-  PrintLodTensor(&tensor6, 0, 2, res);
+  PrintDenseTensor(&tensor6, 0, 2, res);
   // ASSERT_EQ(res, "0.2,0.5");
 }
 
-TEST(LodTensor, GetTensorBound) {
-  LoD lod{{0, 2}};
+TEST(DenseTensor, GetTensorBound) {
+  LegacyLoD lod{{0, 2}};
   phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
@@ -96,8 +96,8 @@ TEST(LodTensor, GetTensorBound) {
   ASSERT_EQ(res.second, 2);
 }
 
-TEST(LodTensor, CheckValidOutput) {
-  LoD lod{{0, 1, 2}};
+TEST(DenseTensor, CheckValidOutput) {
+  LegacyLoD lod{{0, 1, 2}};
   phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});

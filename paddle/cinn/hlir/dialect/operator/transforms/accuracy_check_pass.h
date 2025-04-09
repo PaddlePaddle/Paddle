@@ -19,6 +19,6 @@
 
 namespace cinn::dialect::ir {
 
-std::unique_ptr<pir::Pass> CreateAccuarcyCheckPass();
+std::unique_ptr<pir::Pass> CreateAccuracyCheckPass();
 
 }  // namespace cinn::dialect::ir

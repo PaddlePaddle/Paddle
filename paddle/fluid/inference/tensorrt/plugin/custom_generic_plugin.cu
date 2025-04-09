@@ -48,7 +48,7 @@ void validate(const std::string& op_type,
   PADDLE_ENFORCE_GE(supports_dtypes.count(datatype),
                     0,
                     common::errors::InvalidArgument(
-                        "custorm op [%s] has unsupported datatype: [%s], "
+                        "custom op [%s] has unsupported datatype: [%s], "
                         "now only support: [float32, float16, int8, int32].",
                         op_type,
                         datatype));
@@ -56,7 +56,7 @@ void validate(const std::string& op_type,
       supports_tensor_formats.count(tensor_format),
       0,
       common::errors::InvalidArgument(
-          "custorm op [%s] has unsupported tensor format: [%s], "
+          "custom op [%s] has unsupported tensor format: [%s], "
           "now only support: [LINEAR, CHW32, CHW2, HWC8, CHW4, DHWC8(TensorRT "
           "7.2 and after), HWC16(TensorRT 8.0 and after)].",
           op_type,
@@ -68,7 +68,7 @@ void validate(const std::string& op_type,
         supports_formats_tmp.count(tensor_format),
         0,
         common::errors::InvalidArgument(
-            "custorm op [%s]: float32 only supports [LINEAR, CHW32], "
+            "custom op [%s]: float32 only supports [LINEAR, CHW32], "
             "but got tensor format: [%s], ",
             op_type,
             tensor_format));
@@ -85,7 +85,7 @@ void validate(const std::string& op_type,
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
                       common::errors::InvalidArgument(
-                          "custorm op [%s]: float16 only supports [LINEAR, "
+                          "custom op [%s]: float16 only supports [LINEAR, "
                           "CHW2, HWC8, CHW4, DHWC8(TensorRT 7.2 and after), "
                           "HWC16(TensorRT 8.0 and after)], "
                           "but got tensor format: [%s], ",
@@ -99,7 +99,7 @@ void validate(const std::string& op_type,
         supports_formats_tmp.count(tensor_format),
         0,
         common::errors::InvalidArgument(
-            "custorm op [%s]: int8 only supports [LINEAR, CHW32, CHW4], "
+            "custom op [%s]: int8 only supports [LINEAR, CHW32, CHW4], "
             "but got tensor format: [%s], ",
             op_type,
             tensor_format));
@@ -109,7 +109,7 @@ void validate(const std::string& op_type,
     PADDLE_ENFORCE_GE(supports_formats_tmp.count(tensor_format),
                       0,
                       common::errors::InvalidArgument(
-                          "custorm op [%s]: int32 only supports [LINEAR], "
+                          "custom op [%s]: int32 only supports [LINEAR], "
                           "but got tensor format: [%s], ",
                           op_type,
                           tensor_format));
@@ -311,26 +311,26 @@ bool CustomGenericPlugin::supportsFormatCombination(
   auto& op_meta_info_map = OpMetaInfoMap::Instance();
   const auto& meta_info_map = op_meta_info_map.GetMap();
   auto& op_info = meta_info_map.at(op_desc_.Type()).front();
-  auto& supports_formate_config =
+  auto& supports_format_config =
       OpMetaInfoHelper::GetTrtSupportsFormatConfig(op_info);
-  PADDLE_ENFORCE_NE(supports_formate_config.empty(),
+  PADDLE_ENFORCE_NE(supports_format_config.empty(),
                     true,
                     common::errors::InvalidArgument(
                         "The %s op has no tensorrt plugin "
                         "supportsFormatCombination config!"
                         "Please use SetTrtSupportsFormatConfig to set.",
                         op_desc_.Type().c_str()));
-  // generate support format combaination function by config
+  // generate support format combination function by config
   size_t input_num = OpMetaInfoHelper::GetInputs(op_info).size();
   size_t output_num = OpMetaInfoHelper::GetOutputs(op_info).size();
   std::vector<std::vector<std::pair<std::string, std::string>>>
       format_combinations;
-  for (auto& config : supports_formate_config) {
+  for (auto& config : supports_format_config) {
     auto format_combination = parseConfig(op_desc_.Type(), config);
     PADDLE_ENFORCE_EQ(input_num + output_num,
                       format_combination.size(),
                       common::errors::InvalidArgument(
-                          "Expexted %d format_combination, but got %d.",
+                          "Expected %d format_combination, but got %d.",
                           input_num + output_num,
                           format_combination.size()));
     format_combinations.emplace_back(format_combination);

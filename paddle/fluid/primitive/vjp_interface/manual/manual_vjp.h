@@ -81,5 +81,15 @@ std::vector<std::vector<paddle::Tensor>> fused_attention_vjp(
     int ring_id,
     const std::vector<std::vector<bool>>& stop_gradients);
 
+std::vector<std::vector<paddle::Tensor>> fused_gemm_epilogue_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const paddle::optional<Tensor>& reserve_space,
+    const Tensor& out_grad,
+    bool trans_x,
+    bool trans_y,
+    const std::string& activation,
+    const std::vector<std::vector<bool>>& stop_gradients);
+
 }  // namespace primitive
 }  // namespace paddle

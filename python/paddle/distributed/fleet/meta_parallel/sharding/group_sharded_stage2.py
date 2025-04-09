@@ -31,6 +31,7 @@ import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import collective
 from paddle.distributed.utils.log_utils import get_logger
+from paddle.framework import core
 
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
 from .group_sharded_storage import GradStorage
@@ -66,7 +67,7 @@ class GroupShardedStage2(nn.Layer):
         sync_buffers=False,
         buffer_max_size=2**23,  # 8MB
         auto_refresh_trainable=True,
-        device="gpu",
+        device="xpu" if core.is_compiled_with_xpu() else "gpu",
         dp_group=None,
     ):
         super().__init__()
@@ -315,7 +316,7 @@ class GroupShardedStage2(nn.Layer):
 
         self._trainable_param2rank = {}
         for optim in self._sharding_optimizers:
-            # Need to be wrappered for Sharding Stage2 Optimizer
+            # Need to be wrapped for Sharding Stage2 Optimizer
             if len(optim.param_storages.keys()) == 0:
                 optim._update_opt_status()
 
@@ -577,7 +578,7 @@ class GroupShardedStage2(nn.Layer):
                     ),
                     device=self._default_device,
                     destination=dst_rank,
-                    parm2align=self._trainable_param2align,
+                    param2align=self._trainable_param2align,
                 )
 
             # Criteria to decide whether this parameter is to be put in GradStorage

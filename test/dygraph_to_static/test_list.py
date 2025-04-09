@@ -49,7 +49,7 @@ def test_list_append_in_if(x):
         a.append(x)
     else:
         a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="float32"))
-    # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
+    # TODO(Aurelius84): Currently, run_program_op doesn't support output DenseTensorArray.
     return a[0]
 
 
@@ -208,11 +208,11 @@ def test_list_pop_in_while_loop(x, iter_num):
 
 class TestListWithoutControlFlowConfig(Dy2StTestBase):
     def setUp(self):
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = base.CPUPlace()
+        if base.is_compiled_with_cuda():
+            self.place = base.CUDAPlace(0)
+        if base.is_compiled_with_xpu():
+            self.place = base.XPUPlace(0)
 
         self.init_data()
         self.init_dygraph_func()

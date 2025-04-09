@@ -89,7 +89,7 @@ class NormalInitializer(Initializer):
                 "complex64",
                 "complex128",
             ],
-            "guassian_random",
+            "gaussian_random",
         )
 
         if self._seed == 0:
@@ -260,7 +260,7 @@ class TruncatedNormalInitializer(Initializer):
                 ),
                 shape=var.shape,
                 dtype=out_dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
             )
         else:

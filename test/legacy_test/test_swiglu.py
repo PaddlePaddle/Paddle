@@ -20,6 +20,8 @@ from op_test import OpTest
 import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
+from paddle import _C_ops
+from paddle.base import core
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     DistTensorSpec,
     TensorDistAttr,
@@ -250,12 +252,12 @@ class TestSwigluSpmd(unittest.TestCase):
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec, self.y_dist_tensor_spec
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(len(result_dist_attrs), 2)
-        self.assertEqual(len(infered_input_dist_attrs), 2)
-        self.assertEqual(len(infered_output_dist_attrs), 1)
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(len(inferred_input_dist_attrs), 2)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 0])
 
     def test_input_x_unshard_last_dim(self):
         x_shape = [64, 32]
@@ -268,12 +270,31 @@ class TestSwigluSpmd(unittest.TestCase):
         result_dist_attrs = self.rule.infer_forward(
             self.x_dist_tensor_spec, DistTensorSpec()
         )
-        infered_input_dist_attrs = result_dist_attrs[0]
-        infered_output_dist_attrs = result_dist_attrs[1]
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
         self.assertEqual(len(result_dist_attrs), 2)
-        self.assertEqual(len(infered_input_dist_attrs), 2)
-        self.assertEqual(len(infered_output_dist_attrs), 1)
-        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1])
+        self.assertEqual(len(inferred_input_dist_attrs), 2)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, -1])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "mamtul 0 size only with in cuda"
+)
+class TestSwiglu0SizeDygraph(unittest.TestCase):
+    def test_swiglu(self):
+        x = paddle.ones([0, 128], dtype="float32")
+        y = paddle.ones([0, 128], dtype="float32")
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = fused_swiglu_impl(x, y)
+
+        dz = paddle.ones([0, 128], dtype="float32")
+
+        out = _C_ops.swiglu_grad(x, y, dz)
+
+        self.assertEqual(out[0].shape, x.shape)
+        self.assertEqual(out[1].shape, y.shape)
 
 
 if __name__ == "__main__":

@@ -58,8 +58,7 @@
 // paddle/fluid/pir/dialect/CMakeLists.txt.
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 namespace {
 
@@ -326,7 +325,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                  paddle::framework::proto::VarType::SPARSE_CSR) {
         input_types.emplace_back("sparse_csr");
       } else if (var_desc->GetType() ==
-                 paddle::framework::proto::VarType::LOD_TENSOR) {
+                 paddle::framework::proto::VarType::DENSE_TENSOR) {
         input_types.emplace_back("dense");
       } else {
         PADDLE_THROW(common::errors::InvalidArgument(
@@ -419,7 +418,7 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
                                         op_desc.Type(),
                                         legacy_input_vars[0]));
 
-    if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
+    if (var->GetType() == paddle::framework::proto::VarType::DENSE_TENSOR) {
       need_inputs_sig.emplace_back("dense");
     } else if (var->GetType() ==
                paddle::framework::proto::VarType::SELECTED_ROWS) {
@@ -635,7 +634,7 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
                                           op_desc.Type(),
                                           legacy_input_vars[0]));
       if (var->GetType() ==
-          paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+          paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY) {
         is_vector = false;
       }
     }
@@ -725,7 +724,7 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
                             op_desc.Type(),
                             legacy_output_vars[0]));
       if (var->GetType() ==
-          paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+          paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY) {
         pir::Type translated_var_type =
             type_translator[var->GetType()](ctx, *var);
         op_output_types.push_back(translated_var_type);
@@ -974,7 +973,7 @@ struct Assign2AssignOpTranscriber : public OpTranscriber {
                           op_desc.Type(),
                           input_vars.size()));
     const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
-    if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+    if (input_var->GetType() == framework::proto::VarType::DENSE_TENSOR_ARRAY) {
       target_op_name = dialect::AssignArray_Op::name();
     } else {
       return OpTranscriber::LookUpOpInfo(ctx, op_desc);
@@ -1194,30 +1193,12 @@ struct EmbeddingOpTranscriber : public OpTranscriber {
       const auto& output_vars = op_desc.Output("Out");
       const auto& output_name = output_vars[0];
 
-      const dialect::DenseTensorType& out_tensor_type = std::get<1>(out_info);
       pir::Value& out_value = std::get<2>(out_info);
-
-      ValueInfo ids_info = GetTensorInfoByVarName(
-          op_desc, op_desc.Input("Ids", true), param_map, "Ids");
-      const std::vector<int64_t>& ids_shape = std::get<0>(ids_info);
-
-      ValueInfo w_info = GetTensorInfoByVarName(
-          op_desc, op_desc.Input("W", true), param_map, "W");
-
-      const std::vector<int64_t>& w_shape = std::get<0>(w_info);
-
-      std::vector<int64_t> out_new_shape(
-          ids_shape.begin(), ids_shape.begin() + ids_shape.size() - 1);
-      out_new_shape.insert(out_new_shape.end(), w_shape[1]);
-
       pir::Builder builder(ctx, operation->GetParent());
-      dialect::ReshapeOp reshape_op_out =
-          builder.Build<dialect::ReshapeOp>(out_value, out_new_shape);
-      pir::Value out_new = reshape_op_out.out();
-      VLOG(6) << "[" << op_desc.Type() << "] out_shape change from "
-              << out_tensor_type.dims() << " to "
-              << common::make_ddim(out_new_shape);
-
+      std::vector<int64_t> axis = {-2};
+      dialect::SqueezeOp squeeze_op_out =
+          builder.Build<dialect::SqueezeOp>(out_value, axis);
+      pir::Value out_new = squeeze_op_out.out();
       param_map->PushValue(output_name,
                            VariableDefiningInfo(out_new, false, -1));
     }
@@ -2915,10 +2896,10 @@ struct ElementwiseTranscriber : public OpTranscriber {
               << y_tensor_type.dims() << " to "
               << common::make_ddim(y_new_shape);
     } else {
-      auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
+      auto shape_op = builder.Build<dialect::Shape64Op>(y_value);
       auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
           std::vector<int64_t>(append_size, 1),
-          phi::DataType::INT32,
+          phi::DataType::INT64,
           phi::CPUPlace());
       auto y_true_shape_op = builder.Build<pir::CombineOp>(
           std::vector<pir::Value>{shape_op.out(), append_shape_op.out()});
@@ -3261,7 +3242,7 @@ struct RandIntOpTranscriber : public OpTranscriber {
         common::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
         paddle::dialect::DenseTensorTypeStorage::DataLayout::NCHW;
-    paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
+    paddle::dialect::DenseTensorTypeStorage::LegacyLoD lod = {};
     size_t offset = 0;
     pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
         ctx, dtype, dim, layout, lod, offset);
@@ -3579,7 +3560,7 @@ struct SliceOpTranscriber : public OpTranscriber {
                           op_desc.Type(),
                           input_vars.size()));
     const auto* input_var = op_desc.Block()->FindVarRecursive(input_vars[0]);
-    if (input_var->GetType() == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+    if (input_var->GetType() == framework::proto::VarType::DENSE_TENSOR_ARRAY) {
       PADDLE_ENFORCE_EQ(op_desc.HasOutput("Out"),
                         true,
                         common::errors::InvalidArgument(
@@ -3600,7 +3581,7 @@ struct SliceOpTranscriber : public OpTranscriber {
                             op_desc.Type(),
                             output_vars[0]));
 
-      if (output_var->GetType() == framework::proto::VarType::LOD_TENSOR) {
+      if (output_var->GetType() == framework::proto::VarType::DENSE_TENSOR) {
         target_op_name = dialect::SliceArrayDenseOp::name();
       } else {
         target_op_name = dialect::SliceArrayOp::name();
@@ -3787,7 +3768,7 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
   }
 };
 
-// NOTE(Dev): heleper funtions for WithXShapeGradOpTranscriber
+// NOTE(Dev): heleper functions for WithXShapeGradOpTranscriber
 static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
     const OpDesc& op_desc,
     pir::IrContext* ctx,
@@ -3802,7 +3783,7 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
   auto shape_vec = var_desc->GetShape();
   // NOTE(dev): GrapOp depends on X instead of XShape, so we need
-  // earse fisrt element in xshape.
+  // erase first element in xshape.
   shape_vec.erase(shape_vec.begin());
   xshape_value = builder
                      ->Build<paddle::dialect::DataOp>(
@@ -4004,7 +3985,7 @@ OpTranslator::OpTranslator() {
   special_handlers["gather"] = GatherOpTranscriber();
   special_handlers["box_coder"] = BoxCoderOpTranscriber();
 
-  // To adapt LodTensorArray
+  // To adapt DenseTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();
   special_handlers["write_to_array"] = WriteArrayOpTranscriber();
   special_handlers["read_from_array"] = ReadArrayOpTranscriber();
@@ -4042,5 +4023,4 @@ OpTranslator::OpTranslator() {
 
   special_handlers["c_sync_comm_stream"] = SyncCommStreamOpTranscriber();
 }
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

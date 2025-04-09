@@ -112,14 +112,14 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
   phi::DenseTensorMeta new_out_meta(out_meta.dtype,
                                     common::make_ddim(out_dims_vec),
                                     out_meta.layout,
-                                    out_meta.lod);
+                                    out_meta.legacy_lod);
   out->set_meta(new_out_meta);
 
   auto& tmp_meta = tmp->meta();
   phi::DenseTensorMeta new_tmp_meta(tmp_meta.dtype,
                                     common::make_ddim(tmp_dims_vec),
                                     tmp_meta.layout,
-                                    tmp_meta.lod);
+                                    tmp_meta.legacy_lod);
   tmp->set_meta(new_tmp_meta);
 
   int64_t dim_in = x->dims()[1];
@@ -183,7 +183,7 @@ void CPUMatchMatrixTensorOPKernel(const Context& dev_ctx,
     }
   }
 
-  phi::LoD out_lod;
+  phi::LegacyLoD out_lod;
   out_lod.push_back(top_offset);
 
   out->set_lod(out_lod);

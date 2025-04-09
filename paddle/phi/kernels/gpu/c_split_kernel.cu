@@ -19,11 +19,11 @@
 namespace phi {
 
 static constexpr int64_t kNumCUDAThreads = 512;
-static constexpr int64_t kNumMaxinumNumBlocks = 4096;
+static constexpr int64_t kNumMaximumNumBlocks = 4096;
 
 static inline int64_t NumBlocks(const int64_t N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <typename T>

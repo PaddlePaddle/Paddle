@@ -32,7 +32,7 @@ TEST(tensor_array, tensor_array_not_init) {
   const DDim dims({1, 2});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
   DenseTensorMeta meta(dtype, dims, layout, lod);
   DenseTensor tensor_0;
   tensor_0.set_meta(meta);
@@ -94,7 +94,7 @@ TEST(tensor_array, tensor_array_init) {
   const DDim dims2({1, 2, 3});
   const DataType dtype{DataType::INT8};
   const DataLayout layout{DataLayout::NHWC};
-  const LoD lod{};
+  const LegacyLoD lod{};
 
   DenseTensorMeta meta1(dtype, dims1, layout, lod);
   DenseTensorMeta meta2(dtype, dims2, layout, lod);

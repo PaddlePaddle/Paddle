@@ -73,7 +73,6 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::copy(xshape.begin() + int_indices_v.size(),
             xshape.end(),
             value_shape_bd.begin() + index_shape.size() - 1);
-  auto value_shape = common::vectorize<int64_t>(value_grad->dims());
   int ret = xpu::SUCCESS;
   using XPUType = typename XPUTypeTrait<T>::Type;
   if (x_grad) {
@@ -95,6 +94,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
     }
   }
   if (value_grad) {
+    auto value_shape = common::vectorize<int64_t>(value_grad->dims());
     dev_ctx.template Alloc<T>(value_grad);
     if (value_shape != value_shape_bd) {
       std::vector<int64_t> compress_dims;
@@ -140,5 +140,7 @@ PD_REGISTER_KERNEL(index_put_grad,
                    ALL_LAYOUT,
                    phi::IndexPutGradKernel,
                    float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

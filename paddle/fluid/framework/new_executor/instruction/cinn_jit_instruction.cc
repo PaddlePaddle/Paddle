@@ -25,10 +25,10 @@
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
-PD_DECLARE_bool(cinn_bucket_compile);
 PD_DECLARE_bool(cinn_measure_kernel_time);
 PD_DECLARE_string(tile_config_policy);
 PD_DECLARE_string(cinn_kernel_execution_label);
+PD_DECLARE_bool(cinn_check_jit_instruction_shape);
 
 namespace paddle {
 namespace framework {
@@ -141,7 +141,7 @@ class CinnJitInstruction::FnPtrImpl {
         ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
         phi::gpuGraphDestroy(graph);
         phi::gpuGraphExecDestroy(instance);
-        phi::DestoryStream(stream);
+        phi::DestroyStream(stream);
       } else {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
@@ -160,6 +160,7 @@ class CinnJitInstruction::FnPtrImpl {
   }
 
   void InferShape(const std::vector<phi::DenseTensor*>& kernel_tensor_args,
+                  const std::vector<phi::DDim>& ir_dim,
                   int32_t input_tensor_size,
                   int32_t output_tensor_size) {
     VLOG(6) << "Start InferShape: " << cinn_kernel_info_.fn_name;
@@ -181,6 +182,11 @@ class CinnJitInstruction::FnPtrImpl {
     for (int i = 0; i < output_tensor_size; ++i) {
       DDim dim(output_tensor_shapes[i],
                kernel_tensor_args[input_tensor_size + i]->dims().size());
+      if (static_cast<size_t>(i) < ir_dim.size() &&
+          FLAGS_cinn_check_jit_instruction_shape) {
+        CheckDims(ir_dim[i], dim);
+        CheckDimGTZero(dim, this->cinn_kernel_info_.fn_name);
+      }
       kernel_tensor_args[input_tensor_size + i]->Resize(dim);
       free(output_tensor_shapes[i]);
     }
@@ -194,6 +200,43 @@ class CinnJitInstruction::FnPtrImpl {
       }
     }
     func_args_.clear();
+  }
+
+  void CheckDims(const DDim& first, const DDim& second) const {
+    VLOG(3) << "Start Check Dims in jit instruction.";
+    PADDLE_ENFORCE_EQ(
+        first.size(),
+        second.size(),
+        phi::errors::PreconditionNotMet("The rank of dim MUST be same. "
+                                        "But get [%d] and [%d]",
+                                        first.size(),
+                                        second.size()));
+    for (size_t i = 0; i < first.size(); ++i) {
+      if (first[i] > 0) {
+        PADDLE_ENFORCE_EQ(first[i],
+                          second[i],
+                          phi::errors::PreconditionNotMet(
+                              "Dim MUST be equal"
+                              ", but Get first[%d] is [%d], second[%d] is[%d]",
+                              i,
+                              first[i],
+                              i,
+                              second[i]));
+      }
+    }
+  }
+
+  void CheckDimGTZero(const DDim& dim, const std::string& kernel_name) {
+    VLOG(3) << "Start Check that Dims is greater than zero in jit instruction.";
+    for (int i = 0; i < dim.size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          dim.at(i) >= 0,
+          true,
+          phi::errors::PreconditionNotMet("The dim of tensor MUST >= 0. "
+                                          "Jit Kernel name: %s. Tensor dim: %s",
+                                          kernel_name,
+                                          dim.to_str()));
+    }
   }
 
  private:
@@ -226,7 +269,6 @@ CinnJitInstruction::CinnJitInstruction(
     auto tensor = value_exec_info->GetScope()
                       ->FindVar(var_name)
                       ->GetMutable<phi::DenseTensor>();
-
     tensor_args_.push_back(tensor);
   }
 
@@ -240,12 +282,20 @@ CinnJitInstruction::CinnJitInstruction(
   // prepare output tensors
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value result = op->result(i);
+    bool check = result && result.type() &&
+                 result.type().isa<paddle::dialect::DenseTensorType>();
+    PADDLE_ENFORCE_EQ(check,
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "cinn jit instruction only support DenseTensorType"));
     auto var_name = value_exec_info->GetVarName(result);
 
     auto tensor = value_exec_info->GetScope()
                       ->Var(var_name)
                       ->GetMutable<phi::DenseTensor>();
 
+    ir_dims_.push_back(
+        result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
     tensor_args_.push_back(tensor);
     auto alloc_tensor_type =
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
@@ -286,18 +336,18 @@ void CinnJitInstruction::Run() {
         static_cast<void*>(static_cast<phi::GPUContext*>(dev_ctx_)->stream());
   }
 
-  // 1. prepare kernel argmuments
+  // 1. prepare kernel arguments
   fn_ptr_impl_->InitFuncArgs(tensor_args_);
 
-  if (FLAGS_cinn_bucket_compile && need_update_shape) {
+  if (need_update_shape) {
     fn_ptr_impl_->InferShape(
-        tensor_args_, input_tensor_size, output_tensor_size);
+        tensor_args_, ir_dims_, input_tensor_size, output_tensor_size);
   }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
     dev_ctx_->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
-  // 2. exexute kernel
+  // 2. execute kernel
   fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
 
   // 3. release resource

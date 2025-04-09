@@ -30,6 +30,17 @@ def _product(t):
     return int(np.prod(t))
 
 
+# data type like int32, int64, bool, that do not requires grad
+DTYPE_REQUIRES_GRAD = [
+    paddle.float16,
+    paddle.float32,
+    paddle.float64,
+    core.DataType.FLOAT16,
+    core.DataType.FLOAT32,
+    core.DataType.FLOAT64,
+]
+
+
 def dtype_to_np_dtype(dtype):
     if dtype == paddle.float32 or dtype == core.DataType.FLOAT32:
         return np.float32
@@ -84,7 +95,7 @@ def var_to_np_array_in_scope(scope, place, name):
 
 def make_jacobian(x, y_size, np_dtype):
     if isinstance(x, (base.framework.Variable, paddle.pir.Value)):
-        return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
+        return np.zeros([_product(x.shape), y_size], dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
             filter(
@@ -260,10 +271,15 @@ def _compute_numerical_jacobian_pir(
     x_name = x.get_defining_op().attrs()['name']
     x_shape = x.shape
     x_size = _product(x_shape)
-    np_type = dtype_to_np_dtype(x.dtype)
-    np_t = np.array(feeds[x_name]).astype(np_type)
-    np_t = np_t.flatten()
-    jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+    if x.dtype in DTYPE_REQUIRES_GRAD:
+        np_type = dtype_to_np_dtype(x.dtype)
+        np_t = np.array(feeds[x_name]).astype(np_type)
+        np_t = np_t.flatten()
+        jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+    else:
+        np_type = np.float32  # temporarily set to float32
+        jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
+        return jacobian
 
     for i in range(x_size):
         orig = np_t[i]
@@ -541,7 +557,7 @@ def double_grad_check(
 
 
 # TODO(jiabin): We currently support only triple grad check here, extend this to support
-# higher order differenciation later.
+# higher order differentiation later.
 
 
 # check triple grad and two outputs of the triple Kernel
@@ -717,8 +733,8 @@ def get_static_double_grad(
     if x_init:
         if len(x_init) != len(x):
             raise ValueError(
-                'len(x_init) (=%d) is not the same'
-                ' as len(x) (= %d)' % (len(x_init), len(x))
+                f'len(x_init) (={len(x_init)}) is not the same'
+                f' as len(x) (={len(x)})'
             )
         # init variable in main program
         for var, arr in zip(x, x_init):
@@ -836,8 +852,8 @@ def get_pir_static_double_grad(
     if x_init:
         if len(x_init) != len(x):
             raise ValueError(
-                'len(x_init) (=%d) is not the same'
-                ' as len(x) (= %d)' % (len(x_init), len(x))
+                f'len(x_init) (={len(x_init)}) is not the same'
+                f' as len(x) (={len(x)})'
             )
         # init variable in main program
         for var, arr in zip(x, x_init):
@@ -1028,9 +1044,8 @@ def double_grad_check_for_dygraph(
         ):
             msg = (
                 'Check eager double result fail. Mismatch between static_graph double grad '
-                'and eager double grad on %s, the output double grad tensor\'s index is : %d \n'
-                'static:%s\n eager:%s\n'
-                % (str(place), i, static_double_grad[i], eager_double_grad[i])
+                f'and eager double grad on {place!s}, the output double grad tensor\'s index is : {i} \n'
+                f'static:{static_double_grad[i]}\n eager:{eager_double_grad[i]}\n'
             )
             return fail_test(msg)
 
@@ -1293,8 +1308,7 @@ def triple_grad_check_for_dygraph(
         ):
             msg = (
                 'Check eager double result fail. Mismatch between static_graph double grad '
-                'and eager double grad on %s, the output double grad tensor\'s index is : %d \n'
-                'static:%s\n eager:%s\n'
-                % (str(place), i, static_triple_grad[i], eager_triple_grad[i])
+                f'and eager double grad on {place!s}, the output double grad tensor\'s index is : {i} \n'
+                f'static:{static_triple_grad[i]}\n eager:{eager_triple_grad[i]}\n'
             )
             return fail_test(msg)

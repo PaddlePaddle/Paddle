@@ -451,5 +451,39 @@ class TestElementwiseMinBF16Op_Vector(TestElementwiseBF16Op):
         )
 
 
+class TestElementwiseOpEqualInput(TestElementwiseOp):
+    def init_data(self):
+        self.x = np.ones([13, 17]).astype(np.float32)
+        self.y = np.ones([13, 17]).astype(np.float32)
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_min"
+        self.prim_op_type = "prim"
+        self.if_enable_cinn()
+        self.python_api = paddle.minimum
+        self.dtype = np.float32
+        self.public_python_api = paddle.minimum
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseOp0SizeInput(TestElementwiseOp):
+    def init_data(self):
+        self.x = np.ones([0, 1, 2]).astype(np.float32)
+        self.y = np.ones([1, 3598, 2]).astype(np.float32)
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_min"
+        self.prim_op_type = "prim"
+        self.if_enable_cinn()
+        self.python_api = paddle.minimum
+        self.dtype = np.float32
+        self.public_python_api = paddle.minimum
+        self.inputs = {'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
+
+
 if __name__ == '__main__':
     unittest.main()

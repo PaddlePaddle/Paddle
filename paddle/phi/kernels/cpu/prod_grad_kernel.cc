@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/prod_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/prod_grad_kernel_impl.h"
 
@@ -25,4 +26,6 @@ PD_REGISTER_KERNEL(prod_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

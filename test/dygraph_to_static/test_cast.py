@@ -18,6 +18,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
+    test_pir_only,
 )
 
 import paddle
@@ -55,6 +56,17 @@ def test_mix_cast(x):
     x = float(x)
     x = bool(x)
     x = float(x)
+    return x
+
+
+def test_complex_cast(x):
+    x = paddle.to_tensor(x)
+    x = complex(x)
+    return x
+
+
+def test_not_var_complex_cast(x):
+    x = complex(x)
     return x
 
 
@@ -184,6 +196,65 @@ class TestNotVarCast(TestCastBase):
         res = self.do_test()
         self.assertTrue(type(res) == int, msg='The casted dtype is not int.')
         ref_val = int(self.input)
+        self.assertTrue(
+            res == ref_val,
+            msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
+        )
+
+
+@unittest.skipIf(
+    paddle.core.is_compiled_with_xpu(),
+    "xpu does not support complex cast temporarily",
+)
+class TestComplexCast(TestCastBase):
+    def prepare(self):
+        self.input_shape = (8, 16)
+        self.input_dtype = 'float32'
+        self.input = (
+            np.random.binomial(2, 0.5, size=np.prod(self.input_shape))
+            .reshape(self.input_shape)
+            .astype(self.input_dtype)
+        )
+        self.cast_dtype = 'complex64'
+
+    def set_func(self):
+        self.func = paddle.jit.to_static(full_graph=True)(test_complex_cast)
+
+    @test_pir_only
+    def test_cast_result(self):
+        self.set_func()
+        res = self.do_test().numpy()
+        self.assertTrue(
+            res.dtype == self.cast_dtype,
+            msg=f'The target dtype is {self.cast_dtype}, but the casted dtype is {res.dtype}.',
+        )
+        ref_val = self.input.astype(self.cast_dtype)
+        np.testing.assert_allclose(
+            res,
+            ref_val,
+            rtol=1e-05,
+            err_msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',
+        )
+
+
+class TestNotVarComplexCast(TestCastBase):
+    def prepare(self):
+        self.input = 3.14
+        self.cast_dtype = 'complex'
+
+    def set_func(self):
+        self.func = paddle.jit.to_static(full_graph=True)(
+            test_not_var_complex_cast
+        )
+
+    @test_ast_only
+    def test_cast_result(self):
+        self.set_func()
+        res = self.do_test()
+        self.assertTrue(
+            type(res) == complex, msg='The casted dtype is not complex.'
+        )
+        ref_val = complex(self.input)
         self.assertTrue(
             res == ref_val,
             msg=f'The casted value is {res}.\nThe correct value is {ref_val}.',

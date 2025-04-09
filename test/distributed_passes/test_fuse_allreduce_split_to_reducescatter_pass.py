@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
 import unittest
+
+import requests
+from test_imperative_base import new_program_scope
 
 import paddle
 
@@ -34,14 +39,33 @@ program_txt = '''
 class TestPass(unittest.TestCase):
     def test_if_with_single_output(self):
         paddle.pir.register_paddle_dialect()
-        ir_program = paddle.pir.parse_program(program_txt)
-        pm = paddle.pir.PassManager()
-        pm.add_pass('fuse_allreduce_split_to_reducescatter_pass', {})
-        pm.run(ir_program)
-        self.assertEqual(ir_program.global_block().num_ops(), 6)
-        self.assertEqual(
-            ir_program.global_block().ops[-2].name(), "pd_op.reduce_scatter"
-        )
+        url = "https://paddle-ci.cdn.bcebos.com/json_file/main_program.json"
+
+        response = requests.get(url)
+        response.raise_for_status()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as f:
+            f.write(response.content)
+            f.flush()
+            os.fsync(f.fileno())
+            temp_file_name = f.name
+
+        with paddle.pir_utils.IrGuard():
+            with new_program_scope():
+                ir_program = paddle.load(temp_file_name)
+                for op in ir_program.global_block().ops:
+                    if op.name() == 'pd_op.all_reduce_':
+                        op.set_str_attr("event_to_record", "event_7989")
+                        op.set_int_array_attr("events_to_wait", [])
+                        op.set_str_attr("execution_stream", "auto_parallel_mp")
+                        op.set_bool_attr("force_record_event", False)
+            pm = paddle.pir.PassManager()
+            pm.add_pass('fuse_allreduce_split_to_reducescatter_pass', {})
+            pm.run(ir_program)
+            self.assertEqual(ir_program.global_block().num_ops(), 6)
+            self.assertEqual(
+                ir_program.global_block().ops[-2].name(), "pd_op.reduce_scatter"
+            )
 
 
 if __name__ == "__main__":

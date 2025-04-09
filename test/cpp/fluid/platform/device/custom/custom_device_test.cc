@@ -36,6 +36,10 @@ void RegisterDevice() {
   InitFakeCPUDevice(&runtime_params);
   phi::LoadCustomRuntimeLib(
       runtime_params, std::move(device_interface), "", nullptr);
+
+  std::vector<std::string> passes =
+      phi::CustomDevicePassManager::Instance()->GetCustomDevicePass();
+  EXPECT_EQ(passes[0], "fake_cpu_device_pass");
 }
 
 void InitDevice() {

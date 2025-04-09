@@ -204,9 +204,9 @@ class TestStackBF16Op(OpTest):
         )
 
 
-class TestStackAPIWithLoDTensorArray(unittest.TestCase):
+class TestStackAPIWithDenseTensorArray(unittest.TestCase):
     """
-    Test stack api when the input(x) is a LoDTensorArray.
+    Test stack api when the input(x) is a DenseTensorArray.
     """
 
     def setUp(self):
@@ -241,9 +241,9 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         )
 
 
-class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
+class TestTensorStackAPIWithDenseTensorArray(unittest.TestCase):
     """
-    Test stack api when the input(x) is a LoDTensorArray.
+    Test stack api when the input(x) is a DenseTensorArray.
     """
 
     def setUp(self):
@@ -396,7 +396,11 @@ class TestStackListOfSingleTensor(unittest.TestCase):
     def test_list_single_tensor(self):
         expect = paddle.stack(self.x)
         paddle.base.core._set_prim_all_enabled(True)
-        st_model = paddle.jit.to_static(paddle.stack, full_graph=True)
+        st_model = paddle.jit.to_static(
+            paddle.stack,
+            backend=None,
+            full_graph=True,
+        )
         actual = st_model(self.x)
         np.testing.assert_allclose(expect, actual)
         paddle.enable_static()

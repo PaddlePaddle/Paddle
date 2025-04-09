@@ -219,6 +219,18 @@ struct CINN_ALIGN(2) bfloat16 {
 #endif  // __cplusplus
 };
 
+struct CINN_ALIGN(16) bfloat168 {
+  bfloat16 x, y, z, w, v, u, t, s;
+};
+
+struct CINN_ALIGN(8) bfloat164 {
+  bfloat16 x, y, z, w;
+};
+
+struct CINN_ALIGN(4) bfloat162 {
+  bfloat16 x, y;
+};
+
 __host__ __device__ inline bfloat16 operator+(const bfloat16& a,
                                               const bfloat16& b) {
 #if defined(CINN_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800

@@ -25,7 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/ir_util.h"
@@ -351,6 +350,12 @@ std::vector<Expr> IRSchedule::GetLoops(const std::string& block_name) const {
 std::vector<Expr> IRSchedule::GetAllBlocks() const {
   auto results = impl_->GetAllBlocks();
   trace_.Append(ScheduleDesc::Step("GetAllBlocks", {}, {}, results));
+  return results;
+}
+
+std::vector<stmt::StmtRef> IRSchedule::GetAllSchedules() const {
+  auto results = impl_->GetAllSchedules();
+  trace_.Append(ScheduleDesc::Step("GetAllSchedules", {}, {}, {}, results));
   return results;
 }
 

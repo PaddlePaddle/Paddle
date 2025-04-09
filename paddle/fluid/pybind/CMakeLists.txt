@@ -32,7 +32,6 @@ set(PYBIND_DEPS
     ps_gpu_wrapper
     custom_operator
     cost_model
-    fleet_executor
     global_utils
     phi_utils
     phi
@@ -46,6 +45,10 @@ set(PYBIND_DEPS
     detail_op_handle
     type_info
     auto_parallel)
+
+if(WITH_GPU)
+  list(APPEND PYBIND_DEPS gpu_event_timer)
+endif()
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
@@ -111,7 +114,6 @@ set(PYBIND_SRCS
     pir.cc
     pir_utils.cc
     graph.cc
-    bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
@@ -140,13 +142,25 @@ set(PYBIND_SRCS
     auto_parallel_py.cc
     sot/eval_frame_tools.cc
     sot/cpython_internals.c
+    sot/frame_proxy.c
     sot/eval_frame.c
+    sot/guards.cc
     op_callstack_utils.cc
     python_callable_registry.cc)
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
-#endif
+if(WITH_DISTRIBUTE)
+  set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+
+  string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+  if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+    set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+    set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+    add_definitions(-DPADDLE_WITH_DEEP_EP)
+    if(WITH_NVSHMEM)
+      set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
+    endif()
+  endif()
+endif()
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
@@ -167,13 +181,16 @@ if(WITH_PYTHON)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl xpu_async_load)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_gloo)
   endif()
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
+  endif()
+  if(WITH_FLAGCX)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_flagcx)
   endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
@@ -720,5 +737,24 @@ if(WITH_PYTHON)
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+
+  function(install_py_pybind11_stubgen)
+    # check install
+    execute_process(
+      COMMAND
+        ${PYTHON_EXECUTABLE} "-c"
+        "import re, pybind11_stubgen; print(re.compile('/__init__.py.*').sub('',pybind11_stubgen.__file__))"
+      RESULT_VARIABLE _pybind11_stubgen_status
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(_pybind11_stubgen_status EQUAL 0)
+      return()
+    endif()
+
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
+                            pybind11-stubgen)
+  endfunction()
+
+  install_py_pybind11_stubgen()
 
 endif()

@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 
 COMMON_DECLARE_bool(use_xqa_optim);
+COMMON_DECLARE_bool(blha_use_fp32_qk_sum);
 
 #ifdef PADDLE_WITH_HIP
 #define GPU(str) hip##str
@@ -98,6 +99,7 @@ struct Block_AttN_params {
 };
 
 template <typename T,
+          typename SUM_T,
           int Dh,
           int Dh_MAX,
           int THREADS_PER_KEY,
@@ -146,6 +148,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
+  using Qk_sum_type = typename Qk_vec_<SUM_T, Dh_MAX>::Type;
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
   using QK_Packed_Int8_t = typename Packed_Int8_<Qk_vec, CACHE_TYPE>::Type;
 
@@ -322,7 +325,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
       }
     }
 
-    qk = dot<Qk_vec, Qk_vec>(q, k);
+    qk = dot<Qk_sum_type, Qk_vec>(q, k);
 
     if (QK_VECS_PER_WARP <= WARP_SIZE) {
 #pragma unroll
@@ -892,7 +895,9 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   float qk_maxs[GQA_SUB_PARTITION_SIZE];
 #pragma unroll
   for (int i = 0; i < GQA_SUB_PARTITION_SIZE; i++) {
-    qk_maxs[i] = -FLT_MAX;
+    // qk_maxs[i] = -FLT_MAX;
+    // initialize qk_maxs!!!
+    qk_maxs[i] = qk_smem[act_time_step * GQA_SUB_PARTITION_SIZE + i];
   }
 
   // threads in one block can process 'K_PER_ITER' keys
@@ -1220,6 +1225,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
 
 #ifdef PADDLE_WITH_HIP
 #define BLHAG_LAUNCH_KERNEL(T,                                             \
+                            SUM_T,                                         \
                             Dh,                                            \
                             Dh_MAX,                                        \
                             THDS_PER_KEY,                                  \
@@ -1233,6 +1239,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   size_t smem_sz =                                                         \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
   constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                    SUM_T,                 \
                                                     Dh,                    \
                                                     Dh_MAX,                \
                                                     THDS_PER_KEY,          \
@@ -1293,6 +1300,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
       params, load_func, store_func);
 #else
 #define BLHAG_LAUNCH_KERNEL(T,                                             \
+                            SUM_T,                                         \
                             Dh,                                            \
                             Dh_MAX,                                        \
                             THDS_PER_KEY,                                  \
@@ -1306,6 +1314,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
   size_t smem_sz =                                                         \
       smem_size_in_bytes<T>(params, Dh, THDS_PER_VALUE, THDS_PER_BLOCK);   \
   constexpr auto kernel_fn = block_attention_kernel<T,                     \
+                                                    SUM_T,                 \
                                                     Dh,                    \
                                                     Dh_MAX,                \
                                                     THDS_PER_KEY,          \
@@ -1365,6 +1374,7 @@ inline size_t gqa_smem_size_in_bytes(const Block_AttN_params<T> &params,
 #endif
 
 template <typename T,
+          typename SUM_T,
           int Dh,
           int Dh_MAX,
           int BlockSize,
@@ -1380,6 +1390,7 @@ void dispatch_blha_impl_kernel(const Block_AttN_params<T> &params,
                                StoreFunc store_func) {
   VLOG(1) << "group wise";
   BLHAG_LAUNCH_KERNEL(T,
+                      SUM_T,
                       Dh,
                       Dh_MAX,
                       THREADS_PER_KEY,
@@ -1407,15 +1418,30 @@ void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
                               LoadFunc load_func,
                               StoreFunc store_func) {
   if (params.gqa_num_per_partitions == 1 || !FLAGS_use_xqa_optim) {
-    dispatch_blha_impl_kernel<T,
-                              Dh,
-                              Dh_MAX,
-                              BlockSize,
-                              THREADS_PER_VALUE,
-                              THREADS_PER_KEY,
-                              THREADS_PER_BLOCK,
-                              CACHE_TYPE>(
-        params, stream, load_func, store_func);
+    auto dispatch_blha_kernel = [&](auto kernel_type, auto qk_sum_type) {
+      using Kernel_T = decltype(kernel_type);
+      using SUM_T = decltype(qk_sum_type);
+      dispatch_blha_impl_kernel<Kernel_T,
+                                SUM_T,
+                                Dh,
+                                Dh_MAX,
+                                BlockSize,
+                                THREADS_PER_VALUE,
+                                THREADS_PER_KEY,
+                                THREADS_PER_BLOCK,
+                                CACHE_TYPE>(
+          params, stream, load_func, store_func);
+    };
+    if (FLAGS_blha_use_fp32_qk_sum) {
+      if constexpr (std::is_same_v<T, float16>) {
+        dispatch_blha_kernel(float16{}, float{});
+      } else {
+        dispatch_blha_kernel(T{}, T{});
+      }
+    } else {
+      dispatch_blha_kernel(T{}, T{});
+    }
+
   } else if (params.gqa_num_per_partitions == 2) {
     constexpr int THDS_PER_BLOCK = 1024;
     BLHA_LAUNCH_GQA_KERNEL(T,
@@ -1493,7 +1519,7 @@ void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
                            store_func)
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "gqa_num_per_partitions = %d is unsupport!",
+        "gqa_num_per_partitions = %d is unsupported!",
         params.gqa_num_per_partitions));
   }
 }
@@ -1578,7 +1604,7 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
       break;
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "block_size = %d is unsupport!", params.block_size));
+          "block_size = %d is unsupported!", params.block_size));
   }
 }
 
@@ -1598,13 +1624,17 @@ void dispatch_blha_impl_headsize(const phi::GPUContext &dev_ctx,
       dispatch_blha_impl_blocksize<T, 64, 64>(
           params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
+    case 96:
+      dispatch_blha_impl_blocksize<T, 96, 128>(
+          params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
+      break;
     case 128:
       dispatch_blha_impl_blocksize<T, 128, 128>(
           params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     default:
-      PADDLE_THROW(common::errors::Unimplemented("Dim_head = %d is unsupport!",
-                                                 dim_head));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Dim_head = %d is unsupported!", dim_head));
   }
 }
 
@@ -3977,7 +4007,7 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, int VecSize>
-__global__ void write_pre_cahe_to_kv_buffer(
+__global__ void write_pre_cache_to_kv_buffer(
     T *k_buf,  // [bsz, num_head, seq_len + pre_cache_length, head_dim]
     T *v_buf,
     const T *pre_key_cache,  // [bsz, num_head, pre_cache_length, head_dim]
@@ -4150,7 +4180,7 @@ void qkv_transpose_split(
     elem_cnt = batch_size * q_head_num * pre_cache_length * size_per_head * 2;
     pack_num = elem_cnt / PackSize;
     GetNumBlocks(pack_num, &grid_size);
-    write_pre_cahe_to_kv_buffer<T, PackSize>
+    write_pre_cache_to_kv_buffer<T, PackSize>
         <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(k_buf,
                                                         v_buf,
                                                         pre_key_cache,

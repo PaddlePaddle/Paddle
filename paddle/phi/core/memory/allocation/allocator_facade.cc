@@ -60,9 +60,11 @@
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_allocator.h"
+#include "paddle/phi/core/memory/allocation/xpu_pinned_allocator.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
@@ -228,6 +230,7 @@ class AllocatorFacadePrivate {
         for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitXPUAllocator(phi::XPUPlace(dev_id));
         }
+        InitNaiveBestFitXPUPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
         auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
@@ -294,7 +297,7 @@ class AllocatorFacadePrivate {
           WrapStreamSafeXPUAllocatorForDefault();
           is_stream_safe_cuda_allocator_used_ = true;
         }
-
+        InitNaiveBestFitXPUPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_IPU
         for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
@@ -324,6 +327,7 @@ class AllocatorFacadePrivate {
         for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitXPUAllocator(phi::XPUPlace(dev_id));
         }
+        InitNaiveBestFitXPUPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_IPU
         for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
@@ -522,19 +526,20 @@ class AllocatorFacadePrivate {
     }
   }
 
-  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+  bool RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     gpuStream_t stream) {
     if (auto stream_safe_cuda_allocation =
             std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation)) {
-      stream_safe_cuda_allocation->RecordStream(stream);
+      return stream_safe_cuda_allocation->RecordStream(stream);
 #ifdef PADDLE_WITH_CUDA
     } else if (auto cuda_malloc_async_allocation =
                    std::dynamic_pointer_cast<CUDAMallocAsyncAllocation>(
                        allocation)) {
-      cuda_malloc_async_allocation->RecordStream(stream);
+      return cuda_malloc_async_allocation->RecordStream(stream);
 #endif
     } else {
       VLOG(6) << "RecordStream for a non-StreamSafeCUDAAllocation";
+      return false;
     }
   }
 
@@ -659,14 +664,15 @@ class AllocatorFacadePrivate {
             << place;
   }
 
-  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+  bool RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     XPUStream stream) {
     std::shared_ptr<StreamSafeXPUAllocation> stream_safe_xpu_allocation =
         std::dynamic_pointer_cast<StreamSafeXPUAllocation>(allocation);
     if (stream_safe_xpu_allocation != nullptr) {
-      stream_safe_xpu_allocation->RecordStream(stream);
+      return stream_safe_xpu_allocation->RecordStream(stream);
     } else {
       VLOG(6) << "RecordStream for a non-StreamSafeXPUAllocation";
+      return false;
     }
   }
 
@@ -771,16 +777,17 @@ class AllocatorFacadePrivate {
             << ") in " << place;
   }
 
-  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+  bool RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     phi::stream::stream_t stream) {
     std::shared_ptr<StreamSafeCustomDeviceAllocation>
         stream_safe_custom_device_allocation =
             std::dynamic_pointer_cast<StreamSafeCustomDeviceAllocation>(
                 allocation);
     if (stream_safe_custom_device_allocation != nullptr) {
-      stream_safe_custom_device_allocation->RecordStream(stream);
+      return stream_safe_custom_device_allocation->RecordStream(stream);
     } else {
       VLOG(6) << "RecordStream for a non-StreamSafeCustomDeviceAllocation";
+      return false;
     }
   }
 
@@ -822,7 +829,7 @@ class AllocatorFacadePrivate {
   void InitNaiveBestFitCPUAllocator() {
 #if defined(__APPLE__) && defined(__arm64__)
     // NOTE(wuweilong): It is more efficient to use CPUAllocator directly,
-    // but it wll cause some problem in Mac OS m1 chip, so we use
+    // but it will cause some problem in Mac OS m1 chip, so we use
     // NaiveBestFitAllocator instead.
     allocators_[phi::CPUPlace()] =
         std::make_shared<NaiveBestFitAllocator>(phi::CPUPlace());
@@ -1259,6 +1266,24 @@ class AllocatorFacadePrivate {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 
+  void InitNaiveBestFitXPUPinnedAllocator() {
+    if (FLAGS_use_auto_growth_pinned_allocator) {
+      auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+      VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+              << FLAGS_auto_growth_chunk_size_in_mb;
+      auto pinned_allocator = std::make_shared<XPUPinnedAllocator>();
+      allocators_[phi::XPUPinnedPlace()] =
+          std::make_shared<AutoGrowthBestFitAllocator>(
+              pinned_allocator,
+              phi::backends::cpu::CUDAPinnedMinChunkSize(),
+              chunk_size,
+              allow_free_idle_chunk_);
+    } else {
+      allocators_[phi::XPUPinnedPlace()] =
+          std::make_shared<NaiveBestFitAllocator>(phi::XPUPinnedPlace());
+    }
+  }
+
   // Create a new XPUAllocator or XPUManagedAllocator for the given device
   std::shared_ptr<Allocator> CreateXPUAllocator(phi::XPUPlace p) {
     return std::make_shared<XPUAllocator>(p);
@@ -1454,6 +1479,8 @@ class AllocatorFacadePrivate {
     if (!system_allocators_.empty()) return;
     system_allocators_[phi::CPUPlace()] = std::make_shared<CPUAllocator>();
 #ifdef PADDLE_WITH_XPU
+    system_allocators_[phi::XPUPinnedPlace()] =
+        std::make_shared<XPUPinnedAllocator>();
     int device_count = platform::GetXPUDeviceCount();
     for (int i = 0; i < device_count; ++i) {
       phi::XPUPlace p(i);
@@ -1503,6 +1530,7 @@ class AllocatorFacadePrivate {
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(phi::XPUPlace(dev_id));
     }
+    places.emplace_back(phi::XPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_IPU
     int device_count = platform::GetIPUDeviceCount();
@@ -1563,7 +1591,7 @@ class AllocatorFacadePrivate {
       const phi::Place& place = pair.first;
       if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place) ||
           phi::is_gpu_place(place) || phi::is_custom_place(place) ||
-          phi::is_xpu_place(place)) {
+          phi::is_xpu_place(place) || phi::is_xpu_pinned_place(place)) {
         pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }
@@ -1789,9 +1817,9 @@ uint64_t AllocatorFacade::Release(const phi::GPUPlace& place,
   return m->GetAllocator(place, stream)->Release(place);
 }
 
-void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
+bool AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
                                    gpuStream_t stream) {
-  GetPrivate()->RecordStream(allocation, stream);
+  return GetPrivate()->RecordStream(allocation, stream);
 }
 
 void AllocatorFacade::EraseStream(std::shared_ptr<phi::Allocation> allocation,
@@ -1913,9 +1941,9 @@ uint64_t AllocatorFacade::Release(const phi::CustomPlace& place,
   return m->GetAllocator(place, stream)->Release(place);
 }
 
-void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
+bool AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
                                    phi::stream::stream_t stream) {
-  GetPrivate()->RecordStream(allocation, stream);
+  return GetPrivate()->RecordStream(allocation, stream);
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(

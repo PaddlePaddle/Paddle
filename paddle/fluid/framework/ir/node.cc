@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/node.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 // msvc15 don't support constexpr in correct way.
 // static constexpr member implies inline since CXX17 and may cause multiple
 // definition.
@@ -39,6 +37,4 @@ std::unique_ptr<Node> CreateNodeForTest(OpDesc *op_desc) {
   return std::unique_ptr<Node>(new Node(op_desc));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

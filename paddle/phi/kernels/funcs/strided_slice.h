@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace phi {
 namespace funcs {
@@ -73,39 +74,26 @@ static void StridedSliceOutDims(const std::vector<int64_t>& starts,
       continue;
     }
 
-    if (start_index < 0) {
-      start_index = start_index + axis_size;
-      start_index = std::max<int64_t>(start_index, 0);
-    }
-    if (end_index < 0) {
-      if (!(end_index == -1 && stride_index < 0)) {  // skip None stop condition
-        end_index = end_index + axis_size;
-        if (end_index < 0) {
-          end_index = 0;
-        }
-      }
-    }
-
-    if (stride_index < 0) {
-      start_index = start_index + 1;
-      end_index = end_index + 1;
+    bool neg_dim_condition = false;
+    normalize_interval(start_index,
+                       end_index,
+                       stride_index,
+                       axis_size,
+                       &start_index,
+                       &end_index,
+                       &neg_dim_condition);
+    if (end_index == -axis_size - 1) {
+      end_index = -1;
     }
 
-    bool neg_dim_condition = ((stride_index < 0 && (start_index < end_index)) ||
-                              (stride_index > 0 && (start_index > end_index)));
-    PADDLE_ENFORCE_EQ(neg_dim_condition,
-                      false,
-                      errors::InvalidArgument(
-                          "The start index and end index are invalid for their "
-                          "corresponding stride."));
-
-    int64_t left =
-        std::max(static_cast<int64_t>(0), std::min(start_index, end_index));
-    int64_t right = std::min(axis_size, std::max(start_index, end_index));
-    int64_t step = std::abs(stride_index);
-
-    auto out_dims_index = (std::abs(right - left) + step - 1) / step;
-
+    int64_t out_dims_index;
+    if (neg_dim_condition) {
+      out_dims_index = 0;
+    } else {
+      int64_t step_size = std::abs(stride_index);
+      out_dims_index =
+          (std::abs(end_index - start_index) + step_size - 1) / step_size;
+    }
     out_dims_vector[axes_index] = out_dims_index;
   }
 }
@@ -136,19 +124,18 @@ static void StridedSliceFunctor(int64_t* starts,
         decrease_axis_affect = true;
       }
     }
-    // stride must not be zero
-    if (starts[axis_index] < 0) {
-      starts[axis_index] = starts[axis_index] + axis_size;
-      starts[axis_index] = std::max<int64_t>(starts[axis_index], 0);
-    }
-    if (ends[axis_index] < 0) {
-      if (!(ends[axis_index] == -1 &&
-            strides[axis_index] < 0)) {  // skip None stop condition
-        ends[axis_index] = ends[axis_index] + axis_size;
-        if (ends[axis_index] < 0) {
-          ends[axis_index] = 0;
-        }
-      }
+    bool dummy_zero_dim_out = false;
+    normalize_interval(starts[axis_index],
+                       ends[axis_index],
+                       strides[axis_index],
+                       axis_size,
+                       &starts[axis_index],
+                       &ends[axis_index],
+                       &dummy_zero_dim_out);
+    if (ends[axis_index] == -axis_size - 1) {
+      // manually set the end to -1 when step < 0,
+      // which indicates that it can extend to the left endpoint.
+      ends[axis_index] = -1;
     }
     if (decrease_axis_affect) {
       if (strides[axis_index] < 0) {

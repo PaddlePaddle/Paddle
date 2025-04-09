@@ -32,8 +32,6 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 
-PD_DECLARE_bool(cinn_bucket_compile);
-
 using cinn::hlir::framework::pir::CompatibleInfo;
 using cinn::hlir::framework::pir::OpLoweringGroup;
 using cinn::hlir::framework::pir::OpLoweringGroupPtr;
@@ -63,7 +61,6 @@ ProgramInfo BuildProgram(std::vector<int64_t> input_shape) {
 
 // TODO(LiuYang): This test is temporarily
 // TEST(CompilationTask, Basic) {
-//   FLAGS_cinn_bucket_compile = true;
 //   auto prog_info = BuildProgram({4096, 128});
 //   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
 //   LOG(INFO) << program->block()->size();
@@ -89,7 +86,6 @@ ProgramInfo BuildProgram(std::vector<int64_t> input_shape) {
 // }
 
 // TEST(CompilationTask, CompileGroup) {
-//   FLAGS_cinn_bucket_compile = true;
 //   // Step 1: Construct pir::Program
 //   int M = 4096, N = 128;
 //   auto prog_info = BuildProgram({M, N});

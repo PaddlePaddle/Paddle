@@ -368,11 +368,11 @@ paddle::framework::GpuPsCommRankFea GraphTable::make_gpu_ps_rank_fea(
   // 遍历 rank_nodes[i][shard_num]，分8份，分配到 res
   std::vector<std::future<size_t>> tasks;
 
-  auto mutexs = new std::mutex[shard_num_per_server];
+  auto mutexes = new std::mutex[shard_num_per_server];
   for (int i = 0; i < node_num_; i++) {
     for (size_t shard_id = 0; shard_id < shard_num_per_server; shard_id++) {
       tasks.push_back(_cpu_worker_pool[gpu_id]->enqueue(
-          [i, gpu_id, shard_id, &rank_nodes, &node_num_vec, &mutexs]()
+          [i, gpu_id, shard_id, &rank_nodes, &node_num_vec, &mutexes]()
               -> size_t {
             auto &rank_node = rank_nodes[i][shard_id];
             size_t start = 0;
@@ -381,9 +381,9 @@ paddle::framework::GpuPsCommRankFea GraphTable::make_gpu_ps_rank_fea(
                 start++;
               }
             }
-            mutexs[shard_id].lock();
+            mutexes[shard_id].lock();
             node_num_vec[shard_id] += start;
-            mutexs[shard_id].unlock();
+            mutexes[shard_id].unlock();
             return start;
           }));
     }
@@ -3150,12 +3150,12 @@ class MergeShardVector {
     _slice_num = slice_num;
     _shard_keys = output;
     _shard_keys->resize(slice_num);
-    _mutexs = new std::mutex[slice_num];
+    _mutexes = new std::mutex[slice_num];
   }
   ~MergeShardVector() {
-    if (_mutexs != nullptr) {
-      delete[] _mutexs;
-      _mutexs = nullptr;
+    if (_mutexes != nullptr) {
+      delete[] _mutexes;
+      _mutexes = nullptr;
     }
   }
   // merge shard keys
@@ -3165,15 +3165,15 @@ class MergeShardVector {
       auto &dest = (*_shard_keys)[shard_id];
       auto &src = shard_keys[shard_id];
 
-      _mutexs[shard_id].lock();
+      _mutexes[shard_id].lock();
       dest.insert(dest.end(), src.begin(), src.end());
-      _mutexs[shard_id].unlock();
+      _mutexes[shard_id].unlock();
     }
   }
 
  private:
   int _slice_num = 0;
-  std::mutex *_mutexs = nullptr;
+  std::mutex *_mutexes = nullptr;
   std::vector<std::vector<uint64_t>> *_shard_keys;
 };
 

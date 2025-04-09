@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.base.core import LoDTensor as Tensor
+from paddle.base.core import DenseTensor as Tensor
 
 
 class TestTensorCopyFrom(unittest.TestCase):

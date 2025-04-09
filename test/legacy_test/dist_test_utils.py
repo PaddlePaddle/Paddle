@@ -25,4 +25,4 @@ def silentremove(filename):
 
 
 def remove_ps_flag(pid):
-    silentremove("/tmp/paddle.%d.port" % pid)
+    silentremove(f"/tmp/paddle.{pid}.port")

@@ -38,13 +38,13 @@ TEST(DistAttr, ctor) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* x = global_block->Var("X");
-  x->SetType(paddle::framework::proto::VarType::LOD_TENSOR);
+  x->SetType(paddle::framework::proto::VarType::DENSE_TENSOR);
   x->SetLoDLevel(0);
   x->SetDataType(paddle::framework::proto::VarType::FP32);
   x->SetShape({1000, 784});
 
   auto* y = global_block->Var("Y");
-  y->SetType(paddle::framework::proto::VarType::LOD_TENSOR);
+  y->SetType(paddle::framework::proto::VarType::DENSE_TENSOR);
   y->SetLoDLevel(0);
   y->SetDataType(paddle::framework::proto::VarType::FP32);
   y->SetShape({784, 100});
@@ -55,7 +55,7 @@ TEST(DistAttr, ctor) {
   op->SetInput("Y", {y->Name()});
 
   auto* out = global_block->Var("Out");
-  out->SetType(paddle::framework::proto::VarType::LOD_TENSOR);
+  out->SetType(paddle::framework::proto::VarType::DENSE_TENSOR);
   out->SetShape({1000, 100});
   op->SetOutput("Out", {out->Name()});
 

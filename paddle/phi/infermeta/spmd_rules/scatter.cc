@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -58,7 +57,7 @@ SpmdInfo ScatterBaseInferSpmd(const DistMetaTensor& x,
   std::string out_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   out_axes[0] = '1';
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{index_axes, index_dims_mapping_src},
@@ -140,7 +139,7 @@ SpmdInfo ScatterBaseInferSpmdReverse(const DistMetaTensor& x,
       GetBroadcastAxes(updates_ndim, updates_ndim, alphabet);
   std::string out_axes = GetBroadcastAxes(out_ndim, out_ndim, alphabet);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge output shardings
   // the batch axis of output must be replicated
   // TODO(zhangyichen): consider the case when the output is partial
@@ -233,5 +232,4 @@ SpmdInfo ScatterGradInferSpmd(const DistMetaTensor& index,
           {x_grad_dist_attr, updates_grad_dist_attr}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

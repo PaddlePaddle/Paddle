@@ -53,26 +53,26 @@ void IndexSampleKernel(const Context& ctx,
 
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    int r = xpu::gather_element<XPUType, int64_t>(
-        ctx.x_context(),
-        reinterpret_cast<const XPUType*>(in_data),
-        index_data,
-        reinterpret_cast<XPUType*>(out_data),
-        {batch_size, input_length},
-        {batch_size, index_length},
-        1);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_element");
+    int r =
+        xpu::gather<XPUType, int64_t>(ctx.x_context(),
+                                      reinterpret_cast<const XPUType*>(in_data),
+                                      index_data,
+                                      reinterpret_cast<XPUType*>(out_data),
+                                      {batch_size, input_length},
+                                      {batch_size, index_length},
+                                      1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
   } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
-    int r = xpu::gather_element<XPUType, int32_t>(
-        ctx.x_context(),
-        reinterpret_cast<const XPUType*>(in_data),
-        index_data,
-        reinterpret_cast<XPUType*>(out_data),
-        {batch_size, input_length},
-        {batch_size, index_length},
-        1);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_element");
+    int r =
+        xpu::gather<XPUType, int32_t>(ctx.x_context(),
+                                      reinterpret_cast<const XPUType*>(in_data),
+                                      index_data,
+                                      reinterpret_cast<XPUType*>(out_data),
+                                      {batch_size, input_length},
+                                      {batch_size, index_length},
+                                      1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
   }
 }
 

@@ -70,7 +70,7 @@ def start_local_trainers(
 
         print(f"start trainer proc:{cmd} env:{proc_env}")
 
-        fn = open("workerlog.%d" % idx, "a")
+        fn = open(f"workerlog.{idx}", "a")
         proc = subprocess.Popen(
             cmd.split(" "), env=current_env, stdout=fn, stderr=fn
         )
@@ -109,7 +109,7 @@ def get_cluster_from_args(selected_gpus):
 
     trainer_endpoints = []
     for ip in node_ips:
-        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+        trainer_endpoints.append([f"{ip}:{port}" for port in free_ports])
     return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
 
 

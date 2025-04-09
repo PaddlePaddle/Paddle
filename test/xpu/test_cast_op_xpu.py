@@ -29,6 +29,7 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 typeid_dict = {
+    'int16': int(core.VarDesc.VarType.INT16),
     'int32': int(core.VarDesc.VarType.INT32),
     'int64': int(core.VarDesc.VarType.INT64),
     'float32': int(core.VarDesc.VarType.FP32),

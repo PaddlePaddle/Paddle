@@ -559,8 +559,8 @@ def equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         The output has no gradient.
 
     Args:
-        x (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        y (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -580,12 +580,18 @@ def equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
             [True , False, False])
     """
-    if not isinstance(y, (int, bool, float, Variable, paddle.pir.Value)):
+    if not isinstance(
+        y, (int, bool, float, Variable, complex, paddle.pir.Value)
+    ):
         raise TypeError(
-            f"Type of input args must be float, bool, int or Tensor, but received type {type(y)}"
+            f"Type of input args must be float, bool, complex, int or Tensor, but received type {type(y)}"
         )
-    if not isinstance(y, (Variable, paddle.pir.Value)):
+    if not isinstance(y, (Variable, paddle.pir.Value, complex)):
         y = full(shape=[], dtype=x.dtype, fill_value=y)
+
+    if isinstance(y, complex):
+        # full not support for complex yet
+        y = paddle.to_tensor(y)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.equal(x, y)
@@ -604,6 +610,8 @@ def equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "equal",
         )
@@ -621,6 +629,8 @@ def equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "equal",
         )
@@ -1013,6 +1023,49 @@ def less_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.less_than_(x, y)
 
 
+def less(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+    """
+    Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
+
+    Note:
+        The output has no gradient.
+
+    Args:
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        name (str|None, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.less(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , False])
+    """
+
+    # Directly call less_than API
+    return less_than(x, y, name)
+
+
+@inplace_apis_in_dygraph_only
+def less_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+    r"""
+    Inplace version of ``less_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_less`.
+    """
+
+    # Directly call less_than_ API
+    return less_than_(x, y, name)
+
+
 def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
@@ -1021,8 +1074,8 @@ def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         The output has no gradient.
 
     Args:
-        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
-        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1058,6 +1111,8 @@ def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "not_equal",
         )
@@ -1075,6 +1130,8 @@ def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 "int32",
                 "int64",
                 "uint16",
+                "complex64",
+                "complex128",
             ],
             "not_equal",
         )
@@ -1231,6 +1288,16 @@ def bitwise_and(
     )
 
 
+def __rand__(x: Tensor, y: int | bool):
+    if isinstance(y, (int, bool)):
+        y_tensor = paddle.to_tensor(y, dtype=x.dtype)
+        return bitwise_and(y_tensor, x, None, None)
+    else:
+        raise TypeError(
+            f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
+        )
+
+
 @inplace_apis_in_dygraph_only
 def bitwise_and_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -1290,6 +1357,21 @@ def bitwise_or(
     )
 
 
+def __ror__(
+    x: Tensor,
+    y: int | bool,
+    out: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
+    if isinstance(y, (int, bool)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+        return bitwise_or(y, x, out=out, name=name)
+    else:
+        raise TypeError(
+            f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
+        )
+
+
 @inplace_apis_in_dygraph_only
 def bitwise_or_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -1346,6 +1428,21 @@ def bitwise_xor(
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
     )
+
+
+def __rxor__(
+    x: Tensor,
+    y: int | bool,
+    out: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
+    if isinstance(y, (int, bool)):
+        y = paddle.to_tensor(y, dtype=x.dtype)
+        return bitwise_xor(y, x, out=out, name=name)
+    else:
+        raise TypeError(
+            f"unsupported operand type(s) for |: '{type(y).__name__}' and 'Tensor'"
+        )
 
 
 @inplace_apis_in_dygraph_only

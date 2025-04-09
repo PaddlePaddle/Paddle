@@ -64,7 +64,7 @@ static int BuildFusion(Graph* graph,
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
     SET_IN(Ids, input);
     SET_IN(WeightH, weight_h);
-    // Neet to have this passed as We need Wc data for peephole connections
+    // Need to have this passed as We need Wc data for peephole connections
     SET_IN(Bias, bias);
 #undef SET_IN
 
@@ -93,7 +93,7 @@ static int BuildFusion(Graph* graph,
     embeddings_tensor->Resize(
         {embedding_tensor.dims()[0], weightx_tensor.dims()[1]});
 
-    // Multiplie embeddings via WeightsX and add bias
+    // Multiply embeddings via WeightsX and add bias
     auto embedding_data = embedding_tensor.data<float>();
     auto weightx_data = weightx_tensor.data<float>();
     auto embeddings_data =

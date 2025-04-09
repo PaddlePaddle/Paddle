@@ -124,9 +124,19 @@ std::ostream& operator<<(std::ostream& os, const FusionOpInfo& info) {
   return os;
 }
 
+ProgramInfo::ProgramInfo(const ::pir::Program& program) { id_ = program.id(); }
+
+std::size_t ProgramInfo::hash() const { return std::hash<uint64_t>{}(id_); }
+
+std::ostream& operator<<(std::ostream& os, const ProgramInfo& info) {
+  os << "ProgramInfo - " << info.hash();
+  return os;
+}
+
 FusionInfo::FusionInfo(const OpLoweringGroup& group) {
   ParseOpInfos(group);
   ParseInputDimExprs(group);
+  ParseProgramInfo(group);
 }
 
 void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
@@ -165,7 +175,7 @@ void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
 void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   // NOTE(Aurelius84): [Why try get DimExpr from Group firstly? ]
   // In case of BroadcastTree, we will clone many Groups containing same ops.
-  // But its input valus is defining outside and will have same DimExprs in
+  // But its input values is defining outside and will have same DimExprs in
   // global ShapeAnalysis, which leading hash conflict unexpected.
   const auto TryGetDimExprsFromGroup = [&](const ::pir::Value& value) -> bool {
     if (!group.HasShapeOrDataExprs(value)) return false;
@@ -174,8 +184,7 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
   };
   // NOTE(Aurelius84): If we can't get DimExpr from Group, we will find them
   // from global ShapeAnalysis.
-  const auto TryeGetDimExprsFromGlobal =
-      [&](const ::pir::Value& value) -> bool {
+  const auto TryGetDimExprsFromGlobal = [&](const ::pir::Value& value) -> bool {
     auto& shape_analysis =
         ::pir::ShapeAnalysisManager::Instance().Get(group.GetParentProgram());
     input_dim_exprs_.push_back(shape_analysis.GetShapeOrDataForValue(value));
@@ -186,9 +195,13 @@ void FusionInfo::ParseInputDimExprs(const OpLoweringGroup& group) {
     if (group.IsBroadcastLeaf()) {
       TryGetDimExprsFromGroup(value);
     } else {
-      TryeGetDimExprsFromGlobal(value);
+      TryGetDimExprsFromGlobal(value);
     }
   }
+}
+
+void FusionInfo::ParseProgramInfo(const OpLoweringGroup& group) {
+  program_info_ = std::make_shared<ProgramInfo>(*group.GetParentProgram());
 }
 
 std::size_t FusionInfo::hash() const {
@@ -198,6 +211,7 @@ std::size_t FusionInfo::hash() const {
   std::size_t seed = 2153;
   for (const auto& info : op_infos_) hash_combine(seed, info);
   for (const auto& dim_expr : input_dim_exprs_) hash_combine(seed, dim_expr);
+  hash_combine(seed, *program_info_);
   if (!FLAGS_enable_cinn_compile_cache) hash_combine(seed, unique_fn_name_);
 
   return seed;
@@ -221,7 +235,7 @@ std::ostream& operator<<(std::ostream& os, const FusionInfo& fusion_info) {
 
 std::vector<const ::pir::Operation*> TopologySort(
     const OpLoweringGroup& group) {
-  // NOTE(Aurelius84): Use simplest one-by-one order temporaly.
+  // NOTE(Aurelius84): Use simplest one-by-one order temporarily.
   auto* block = group.GetParentBlock();
   std::vector<const ::pir::Operation*> ops;
   ops.reserve(block->size());

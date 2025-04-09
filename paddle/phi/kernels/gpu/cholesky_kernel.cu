@@ -114,6 +114,11 @@ void CholeskyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     bool upper,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   auto& dims = x.dims();
   int batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {

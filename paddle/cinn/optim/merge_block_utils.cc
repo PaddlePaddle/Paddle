@@ -14,24 +14,34 @@
 
 #include "paddle/cinn/optim/merge_block_utils.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/stmt.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace optim {
 
 namespace {
+using ir::stmt::BlockRef;
+using ir::stmt::For;
+using ir::stmt::StmtRef;
 
-struct ForInfoAnalyzer : public ir::IRMutator<Expr*> {
+struct ForHash {
+  std::size_t operator()(const For& stmt) const {
+    return std::hash<const Object*>()(stmt.get());
+  }
+};
+
+struct ForInfoAnalyzer {
  public:
-  void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+  void operator()(const For& for_stmt) { Visit(for_stmt); }
 
-  ForTreeNode BuildTreeNode(const ir::For* node) {
+  ForTreeNode BuildTreeNode(const For& node) {
     ForTreeNode tree_node = {node, std::vector<ForTreeNode>()};
-    for (const auto for_node : for_to_children_[node]) {
-      tree_node.children.push_back(BuildTreeNode(for_node));
+    for (const For& stmt : for_to_children_[node]) {
+      tree_node.children.push_back(BuildTreeNode(stmt));
     }
     return tree_node;
   }
@@ -39,38 +49,36 @@ struct ForInfoAnalyzer : public ir::IRMutator<Expr*> {
   ForTreeNode GetRootTreeNode() { return BuildTreeNode(root_node_); }
 
  private:
-  void Visit(const ir::For* node, ir::Expr* expr) override {
-    auto old_last_node = last_node_;
-    if (last_node_ == nullptr) {
+  void Visit(const For& node) {
+    if (root_node_ == nullptr) {
       root_node_ = node;
-    } else {
-      for_to_children_[last_node_].push_back(node);
     }
-    last_node_ = const_cast<ir::For*>(node);
-    ir::IRMutator<>::Visit(node, expr);
-    last_node_ = old_last_node;
+    const BlockRef& body = node->body();
+    for (const StmtRef& stmt : body->stmts()) {
+      if (stmt.isa<For>()) {
+        for_to_children_[node].push_back(stmt.as<For>());
+        Visit(stmt.as<For>());
+      }
+    }
   }
 
-  ir::For* last_node_ = nullptr;
-  const ir::For* root_node_ = nullptr;
-  std::unordered_map<const ir::For*, std::vector<const ir::For*>>
-      for_to_children_;
+ private:
+  For root_node_{nullptr};
+  std::unordered_map<For, std::vector<For>, ForHash> for_to_children_;
 };
 
 }  // namespace
 
-bool CanMergeBlocks(const ir::For* first,
-                    const ir::For* second,
+bool CanMergeBlocks(const For first,
+                    const For second,
                     const ForEqualFunc& IsEqual) {
-  auto Get = [&](ir::Expr* expr) -> ForTreeNode {
+  auto Get = [&](const For for_stmt) -> ForTreeNode {
     ForInfoAnalyzer for_info_analyzer;
-    for_info_analyzer(expr);
+    for_info_analyzer(for_stmt);
     return for_info_analyzer.GetRootTreeNode();
   };
-  ir::Expr first_expr = Expr(const_cast<ir::For*>(first));
-  ir::Expr second_expr = Expr(const_cast<ir::For*>(second));
-  const auto first_inner_for_list = Get(&first_expr);
-  const auto second_inner_for_list = Get(&second_expr);
+  const auto first_inner_for_list = Get(first);
+  const auto second_inner_for_list = Get(second);
   return IsEqual(first_inner_for_list, second_inner_for_list);
 }
 

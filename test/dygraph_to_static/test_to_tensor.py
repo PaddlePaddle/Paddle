@@ -40,6 +40,8 @@ def case1(x):
 def case2(x):
     if core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
+    elif core.is_compiled_with_xpu():
+        place = paddle.XPUPlace(0)
     else:
         place = paddle.CPUPlace()
     a = paddle.to_tensor(
@@ -53,6 +55,8 @@ def case3(x):
     paddle.set_default_dtype("float64")
     if core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
+    elif core.is_compiled_with_xpu():
+        place = paddle.XPUPlace(0)
     else:
         place = paddle.CPUPlace()
     a = paddle.to_tensor([1.0, 2.0, 3.0], place=place)
@@ -64,6 +68,8 @@ def case4(x):
     paddle.set_default_dtype("float64")
     if core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
+    elif core.is_compiled_with_xpu():
+        place = paddle.XPUPlace(0)
     else:
         place = paddle.CPUPlace()
     a = paddle.to_tensor([1], place=place)
@@ -182,6 +188,8 @@ class TestStatic(Dy2StTestBase):
         with paddle.static.program_guard(main_prog, startup_prog):
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
+            elif core.is_compiled_with_xpu():
+                place = paddle.XPUPlace(0)
             else:
                 place = paddle.CPUPlace()
 

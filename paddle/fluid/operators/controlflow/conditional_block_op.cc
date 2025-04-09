@@ -284,7 +284,7 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     // NOTE(Aurelius84): VarType of Output is phi::DenseTensor by default. In
-    // case of Input is {Tensor, LoDTensorArray}, we need synchronous the
+    // case of Input is {Tensor, DenseTensorArray}, we need synchronous the
     // Input's VarType into Input@GRAD to avoid generating {Tensor, Tensor} as
     // Input@GRAD.
     auto input_size = ctx->InputSize(ConditionalOp::kInputs);

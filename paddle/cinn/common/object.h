@@ -75,5 +75,42 @@ struct Object {
 using object_ptr = Object*;
 using shared_object = Shared<Object>;
 
+/*
+ * \brief Delete the default copy/move constructor and assign operator
+ * \param TypeName The class typename.
+ */
+#define CINN_DELETE_COPY_MOVE_AND_ASSIGN_FOR_OBJECT_NODE(TypeName) \
+  TypeName(const TypeName& other) = delete;                        \
+  TypeName(TypeName&& other) = delete;                             \
+  TypeName& operator=(const TypeName& other) = delete;             \
+  TypeName& operator=(TypeName&& other) = delete;
+
+/*
+ * \brief Define the default copy/move constructor and assign operator
+ * \param TypeName The class typename.
+ */
+#define CINN_DEFINE_COPY_MOVE_AND_ASSIGN_FOR_OBJECT_REF(TypeName) \
+  TypeName(const TypeName& other) = default;                      \
+  TypeName(TypeName&& other) = default;                           \
+  TypeName& operator=(const TypeName& other) = default;           \
+  TypeName& operator=(TypeName&& other) = default;
+
+/*
+ * \brief Define object reference methods
+ * \param TypeName The object type name
+ * \param ParentType The parent type of the objectref
+ * \param ObjectName The type name of the object
+ */
+#define CINN_DEFINE_OBJECT_REF_METHODS(TypeName, ParentType, ObjectName) \
+  TypeName() = default;                                                  \
+  explicit TypeName(ObjectName* n) : ParentType(n) {}                    \
+  explicit TypeName(const cinn::common::Shared<Object>& ref)             \
+      : ParentType(ref) {}                                               \
+  CINN_DEFINE_COPY_MOVE_AND_ASSIGN_FOR_OBJECT_REF(TypeName);             \
+  const ObjectName* operator->() const {                                 \
+    return static_cast<const ObjectName*>(this->p_);                     \
+  }                                                                      \
+  ObjectName* operator->() { return static_cast<ObjectName*>(this->p_); }
+
 }  // namespace common
 }  // namespace cinn

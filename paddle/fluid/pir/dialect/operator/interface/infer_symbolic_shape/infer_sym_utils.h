@@ -187,4 +187,7 @@ std::vector<symbol::DimExpr> GetIntArrayFromAttrOrOperand(
 bool GetAxisFromOpInput(pir::Value in_value,
                         pir::InferSymbolicShapeContext *infer_context,
                         std::vector<int64_t> *axis);
+
+std::vector<symbol::DimExpr> GetDataFromTensorOrTensorList(
+    const symbol::ShapeOrDataDimExprs &shape_or_data);
 }  // namespace paddle::dialect::details

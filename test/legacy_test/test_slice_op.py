@@ -915,7 +915,7 @@ class TestSliceApiEager(unittest.TestCase):
             )
 
 
-class TestSliceApiWithLoDTensorArray(unittest.TestCase):
+class TestSliceApiWithDenseTensorArray(unittest.TestCase):
     def setUp(self):
         self.shape = (3, 4)
         self.data = np.random.random(size=self.shape).astype('float32')
@@ -1002,7 +1002,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
             self.set_program_and_run(main_program, 1)
 
             self.assertTrue(
-                self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR
+                self.sliced_arr.type == core.VarDesc.VarType.DENSE_TENSOR
             )
             self.assertEqual(self.sliced_arr.shape, self.shape)
             np.testing.assert_array_equal(self.out, self.data)
@@ -1017,7 +1017,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
                 self.assertTrue(
                     self.sliced_arr.type
-                    == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                    == core.VarDesc.VarType.DENSE_TENSOR_ARRAY
                 )
                 self.assertEqual(self.sliced_arr.shape, self.shape)
                 np.testing.assert_array_equal(
@@ -1040,7 +1040,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
                 self.assertTrue(
                     self.sliced_arr.type
-                    == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                    == core.VarDesc.VarType.DENSE_TENSOR_ARRAY
                 )
                 self.assertEqual(self.sliced_arr.shape, self.shape)
                 np.testing.assert_array_equal(

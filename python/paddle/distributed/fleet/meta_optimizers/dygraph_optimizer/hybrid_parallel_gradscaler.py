@@ -45,13 +45,13 @@ class HybridParallelGradScaler:
             optimizer._set_auxiliary_var('found_inf', self._found_inf)
             optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             # TODO: Fix to _cache_found_inf after PaddleNLP update
-            self._cache_founf_inf = optimizer._get_auxiliary_var('found_inf')
+            self._cache_found_inf = optimizer._get_auxiliary_var('found_inf')
         else:
             if self._found_inf:
-                self._cache_founf_inf = True
+                self._cache_found_inf = True
             else:
                 optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
-                self._cache_founf_inf = False
+                self._cache_found_inf = False
 
         if self._use_dynamic_loss_scaling:
             self._update()

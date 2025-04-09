@@ -40,7 +40,7 @@ void BatchFCGradInferMeta(const MetaTensor& input,
                           const MetaTensor& w,
                           const MetaTensor& bias,
                           const MetaTensor& out_grad,
-                          MetaTensor* intput_grad,
+                          MetaTensor* input_grad,
                           MetaTensor* w_grad,
                           MetaTensor* bias_grad);
 
@@ -151,11 +151,22 @@ void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
                                            const MetaTensor& label,
                                            const MetaTensor& loss_grad,
                                            int64_t ignore_index,
-                                           int ring_id,
                                            int rank,
                                            int nranks,
                                            MetaTensor* logits_grad,
                                            MetaConfig config = MetaConfig());
+
+void CSoftmaxWithMultiLabelCrossEntropyGradInferMeta(
+    const MetaTensor& softmax,
+    const MetaTensor& label,
+    const MetaTensor& smooth_weight,
+    const MetaTensor& loss_grad,
+    int64_t ignore_index,
+    bool sum_multi_label_loss,
+    int rank,
+    int nranks,
+    MetaTensor* logits_grad,
+    MetaConfig config = MetaConfig());
 
 void CudnnLSTMGradInferMeta(
     const MetaTensor& x,
@@ -236,6 +247,13 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
                             MetaTensor* dv);
 
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dq);
+
+void FlashAttnV3GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv);
 
 void Flatten2GradInferMeta(const MetaTensor& x,
                            const MetaTensor& x_shape,
@@ -480,7 +498,7 @@ void NllLossGradInferMeta(const MetaTensor& input,
                           const MetaTensor& out_grad,
                           int64_t ignore_index,
                           const std::string& reduction,
-                          MetaTensor* intput_grad,
+                          MetaTensor* input_grad,
                           MetaConfig config = MetaConfig());
 
 void PixelUnshuffleGradInferMeta(const MetaTensor& out_grad,

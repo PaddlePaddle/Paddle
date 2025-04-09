@@ -16,9 +16,7 @@
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 class WaitedAllocateSizeGuard {
  public:
@@ -97,6 +95,4 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
   }
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

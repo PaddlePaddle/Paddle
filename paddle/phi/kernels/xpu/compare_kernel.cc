@@ -23,29 +23,34 @@
 namespace phi {
 
 template <typename T, typename XPUType, typename Context>
-void XPUCompareKernelImpl(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out,
-                          std::function<int(xpu::Context*,
-                                            const XPUType*,
-                                            const XPUType*,
-                                            bool*,
-                                            const std::vector<int>&,
-                                            const std::vector<int>&)> func) {
-  auto x_shape = common::vectorize<int>(x.dims());
-  auto y_shape = common::vectorize<int>(y.dims());
+void XPUCompareKernelImpl(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    DenseTensor* out,
+    std::function<int(xpu::Context*,
+                      const XPUType*,
+                      const XPUType*,
+                      bool*,
+                      const std::vector<int64_t>&,
+                      const std::vector<int64_t>&)> func) {
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+
+  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto y_shape = common::vectorize<int64_t>(y.dims());
 
   if (x.dims().size() == 0) {
-    x_shape = std::vector<int>({1});
+    x_shape = std::vector<int64_t>({1});
   }
   if (y.dims().size() == 0) {
-    y_shape = std::vector<int>({1});
+    y_shape = std::vector<int64_t>({1});
   }
 
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto* out_data = dev_ctx.template Alloc<bool>(out);
 
   int ret =
       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);
@@ -63,8 +68,8 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
                 const XPUType* x,                                     \
                 const XPUType* y,                                     \
                 bool* z,                                              \
-                const std::vector<int>& xshape,                       \
-                const std::vector<int>& yshape) {                     \
+                const std::vector<int64_t>& xshape,                   \
+                const std::vector<int64_t>& yshape) {                 \
       return functor(ctx, x, y, z, xshape, yshape);                   \
     };                                                                \
     XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \

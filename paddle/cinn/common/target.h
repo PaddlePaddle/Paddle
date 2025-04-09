@@ -87,6 +87,8 @@ struct Target {
 
   std::vector<Lib> get_target_libs() const;
 
+  bool get_supports_cooperative_launch() const;
+
   std::string arch_str() const;
 
   std::string device_name_str() const;
@@ -103,6 +105,8 @@ const Target& DefaultHostTarget();
 const Target& DefaultNVGPUTarget();
 
 const Target& DefaultHygonDcuHipTarget();
+
+const Target& DefaultHygonDcuSyclTarget();
 
 const Target& DefaultDeviceTarget();
 

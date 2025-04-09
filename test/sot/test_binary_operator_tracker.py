@@ -17,9 +17,6 @@
 
 from __future__ import annotations
 
-import os
-
-os.environ['MIN_GRAPH_SIZE'] = '-1'
 import operator
 import unittest
 
@@ -38,6 +35,9 @@ from paddle.jit.sot.opcode_translator.executor.tracker import (
     BinaryOperatorTracker,
 )
 from paddle.jit.sot.opcode_translator.executor.variables import ConstantVariable
+from paddle.jit.sot.utils import ENV_MIN_GRAPH_SIZE
+
+ENV_MIN_GRAPH_SIZE.set(-1)
 
 
 def register_dispatch(fn, parameters, handler):

@@ -110,7 +110,7 @@ class VariableWrapper {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
         PADDLE_THROW(common::errors::PermissionDenied(
-            "Only support LoDTensor and SelectedRows for gradient var"));
+            "Only support DenseTensor and SelectedRows for gradient var"));
       }
       if (tensor && tensor->IsInitialized()) {
         is_empty = false;
@@ -152,7 +152,7 @@ class VariableWrapper {
   framework::proto::VarType::Type DataType() const {
     const phi::DenseTensor* tensor = nullptr;
     if (var_.IsInitialized()) {
-      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+      if (type_ == framework::proto::VarType::DENSE_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
@@ -195,7 +195,7 @@ class VariableWrapper {
     const phi::DenseTensor* tensor = nullptr;
     auto place = phi::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
-      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+      if (type_ == framework::proto::VarType::DENSE_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
@@ -331,7 +331,8 @@ class VariableWrapper {
   // calculation.
   uint32_t inplace_version_snapshot_{0};
 
-  framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
+  framework::proto::VarType::Type type_{
+      framework::proto::VarType::DENSE_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
 
   // See [ Why need handle complex gradient to real gradient? ]

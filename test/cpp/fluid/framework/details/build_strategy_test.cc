@@ -119,8 +119,8 @@ std::unique_ptr<ir::Graph> CreateGraph() {
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
 
-  prog.MutableBlock(0)->Var("a1")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(0)->Var("b1")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("a1")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(0)->Var("b1")->SetType(proto::VarType::DENSE_TENSOR);
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   return g;
@@ -144,7 +144,7 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
   prog.MutableBlock(0)->Var("test_out");
   op->InferVarType(prog.MutableBlock(0));
 
-  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::DENSE_TENSOR);
   op->InferVarType(prog.MutableBlock(0));
 
   // Set contents in block_1.
@@ -154,8 +154,8 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
   op->SetOutput("Out", {"b1"});
   op->SetAttr("op_role", 1);
 
-  prog.MutableBlock(1)->Var("a1")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(1)->Var("b1")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(1)->Var("a1")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(1)->Var("b1")->SetType(proto::VarType::DENSE_TENSOR);
 
   // Set contents in block_2.
   op = prog.MutableBlock(2)->AppendOp();
@@ -164,8 +164,8 @@ std::unique_ptr<ir::Graph> CreateMultiGraph() {
   op->SetOutput("Out", {"b2"});
   op->SetAttr("op_role", 1);
 
-  prog.MutableBlock(2)->Var("a2")->SetType(proto::VarType::LOD_TENSOR);
-  prog.MutableBlock(2)->Var("b2")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(2)->Var("a2")->SetType(proto::VarType::DENSE_TENSOR);
+  prog.MutableBlock(2)->Var("b2")->SetType(proto::VarType::DENSE_TENSOR);
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   return g;

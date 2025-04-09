@@ -38,8 +38,7 @@ PHI_DEFINE_EXPORTED_bool(print_kernel_run_info,
                          false,
                          "Whether print kernel run info.");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 PhiKernelInstruction::PhiKernelInstruction(
     size_t id,
@@ -185,10 +184,10 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
+  auto place =
+      kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
   if (FLAGS_print_kernel_run_info) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto place =
-        kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
     if (phi::is_gpu_place(place)) {
       std::string use_cudnn =
           op_->attributes()
@@ -222,7 +221,7 @@ void PhiKernelInstruction::Run() {
   for (auto& pair : this->InplaceInfo()) {
     ShareVarBuffer(pair.first, pair.second);
   }
-  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
+  VLOG(6) << "Begin run op " << phi_op_name_ << " kernel in " << place;
   {
     phi::RecordEvent record_event(kernel_name_ + " kernel launch",
                                   phi::TracerEventType::StaticKernelLaunch,
@@ -233,5 +232,4 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

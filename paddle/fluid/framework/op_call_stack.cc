@@ -74,6 +74,40 @@ void InsertCallStackInfo(const std::string &type,
   exception->set_error_str(sout.str());
 }
 
+void InsertCallStackInfoDygraph(
+    const std::string &node_name,
+    const std::vector<std::string> &forward_callstack_str,
+    platform::EnforceNotMet *exception) {
+  const std::vector<std::string> *callstack = &forward_callstack_str;
+  std::ostringstream sout;
+  // Step 1. Construct python call stack string
+  if (callstack) {
+    if (FLAGS_call_stack_level > 1) {
+      sout << "\n\n  Forward Traceback (most recent call last):";
+    } else {
+      sout << "In user code:\n";
+    }
+    for (auto &line : *callstack) {
+      sout << "\n  " << line;
+    }
+  }
+  VLOG(1) << exception->error_str();
+  // Step 2. Construct final call stack & append error op name
+  if (FLAGS_call_stack_level > 1) {
+    sout << exception->what();
+  } else {
+    // If callstack exists, use err_str_ instead sub_err_str_
+    if (callstack) {
+      sout << "\n\n";
+      sout << InsertIndentationIntoEachLine(exception->error_str());
+    } else {
+      sout << exception->simple_error_str();
+    }
+  }
+  sout << "  [GradNode < " << node_name << " > error]";
+  exception->set_error_str(sout.str());
+}
+
 void InsertCallStackInfo(const std::string &type,
                          const std::vector<std::string> &callstack_attr_str,
                          platform::EnforceNotMet *exception) {

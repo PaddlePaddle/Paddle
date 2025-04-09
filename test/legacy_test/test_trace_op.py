@@ -173,6 +173,69 @@ class TestTraceAPICase(unittest.TestCase):
         np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 
 
+class TestTraceAPIZerodimCase(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.x = np.random.random([5, 0, 0, 0]).astype('float32')
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.places:
+            x = paddle.to_tensor(self.x, place=place)
+            params = [
+                (0, 1, 2),
+                (1, 0, 1),
+                (-1, 2, 0),
+                (2, 1, 2),
+                (0, -1, -2),
+                (5, 1, 2),
+                (-5, 2, 0),
+            ]
+            for offset, axis1, axis2 in params:
+                paddle_res = paddle.trace(
+                    x, offset=offset, axis1=axis1, axis2=axis2
+                )
+                np_res = np.trace(
+                    self.x, offset=offset, axis1=axis1, axis2=axis2
+                )
+                self.assertEqual(tuple(paddle_res.shape), np_res.shape)
+                np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
+        paddle.enable_static()
+
+    def test_static(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            case = np.random.randn(2, 0, 0, 0).astype('float32')
+            data1 = paddle.static.data(
+                name='data1', shape=[2, 0, 0, 0], dtype='float32'
+            )
+            params = [
+                (0, 1, 2),
+                (-5, 1, -1),
+                (2, 0, 1),
+                (0, 2, 1),
+                (1, 0, 2),
+                (-1, 1, 0),
+                (0, -2, -1),
+            ]
+            for offset, axis1, axis2 in params:
+                out = tensor.trace(
+                    data1, offset=offset, axis1=axis1, axis2=axis2
+                )
+                place = core.CPUPlace()
+                exe = base.Executor(place)
+                result = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"data1": case},
+                    fetch_list=[out],
+                    return_numpy=True,
+                )[0]
+                target = np.trace(case, offset=offset, axis1=axis1, axis2=axis2)
+                self.assertEqual(tuple(result.shape), target.shape)
+                np.testing.assert_allclose(result, target, rtol=1e-5)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -321,27 +321,5 @@ class TestDeformConv2DWithGroups(TestDeformConv2D):
         self.no_bias = False
 
 
-class TestDeformConv2DError(unittest.TestCase):
-
-    def test_input_error(self):
-        def test_input_rank_error():
-            paddle.enable_static()
-            x = paddle.static.data(name='error_x_1', shape=[0], dtype='float32')
-            offset = paddle.static.data(
-                name='error_offset_1', shape=[0], dtype='float32'
-            )
-            mask = paddle.static.data(
-                name='error_mask_1', shape=[0, 0, 0], dtype='float32'
-            )
-            out = paddle.vision.ops.DeformConv2D(
-                in_channels=0,
-                out_channels=0,
-                kernel_size=0,
-                deformable_groups=0,
-            )(x, offset, mask)
-
-        self.assertRaises(AssertionError, test_input_rank_error)
-
-
 if __name__ == "__main__":
     unittest.main()

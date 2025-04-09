@@ -38,7 +38,7 @@ class TestSplitOp(OpTest):
             self.inputs = {'X': convert_float_to_uint16(x)}
             self.outputs = {
                 'Out': [
-                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    (f'out{i}', convert_float_to_uint16(out[i]))
                     for i in range(len(out))
                 ]
             }
@@ -47,7 +47,7 @@ class TestSplitOp(OpTest):
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': x}
             self.outputs = {
-                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+                'Out': [(f'out{i}', out[i]) for i in range(len(out))]
             }
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
 
@@ -90,7 +90,7 @@ class TestSplitWithNumOp(OpTest):
             out = np.split(self.x, self.indices_or_sections, self.axis)
             self.outputs = {
                 'Out': [
-                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    (f'out{i}', convert_float_to_uint16(out[i]))
                     for i in range(len(out))
                 ]
             }
@@ -98,7 +98,7 @@ class TestSplitWithNumOp(OpTest):
             self.inputs = {'X': self.x}
             out = np.split(self.x, self.indices_or_sections, self.axis)
             self.outputs = {
-                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+                'Out': [(f'out{i}', out[i]) for i in range(len(out))]
             }
 
     def init_data(self):
@@ -145,7 +145,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.attrs = {'sections': self.sections, 'num': self.num}
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
+        self.outputs = {'Out': [(f'out{i}', out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -192,7 +192,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
+        self.outputs = {'Out': [(f'out{i}', out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -232,7 +232,7 @@ class TestSplitOp_unk_section(OpTest):
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
+        self.outputs = {'Out': [(f'out{i}', out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)

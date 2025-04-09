@@ -28,7 +28,7 @@ TEST(SaveLoadOp, CPU) {
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 10});
-  phi::LoD expect_lod;
+  phi::LegacyLoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
   expect_lod[0].push_back(1);
@@ -109,7 +109,7 @@ TEST(SaveFP16Op, CPU) {
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 10});
-  phi::LoD expect_lod;
+  phi::LegacyLoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
   expect_lod[0].push_back(1);
@@ -156,7 +156,7 @@ TEST(LoadFP16Op, CPU) {
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 10});
 
-  phi::LoD expect_lod;
+  phi::LegacyLoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
   expect_lod[0].push_back(1);

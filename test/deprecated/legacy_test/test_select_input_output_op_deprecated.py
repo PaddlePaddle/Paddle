@@ -43,7 +43,7 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                     out = program.current_block().create_var(
                         dtype='float32',
                         shape=[2],
-                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        type=core.VarDesc.VarType.DENSE_TENSOR,
                     )
                     outputs.append(out)
 

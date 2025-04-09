@@ -103,7 +103,7 @@ bool ONNXRuntimePredictor::InitBinding() {
 
   size_t n_inputs = session_->GetInputCount();
   framework::proto::VarType::Type proto_type =
-      framework::proto::VarType::LOD_TENSOR;
+      framework::proto::VarType::DENSE_TENSOR;
   for (size_t i = 0; i < n_inputs; ++i) {
     auto input_name = session_->GetInputName(i, allocator);
     auto type_info = session_->GetInputTypeInfo(i);

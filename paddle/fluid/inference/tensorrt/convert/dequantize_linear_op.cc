@@ -11,9 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class DequantizeLinearOpConverter : public OpConverter {
  public:
@@ -32,7 +30,7 @@ class DequantizeLinearOpConverter : public OpConverter {
     // Create constant layer for scale
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,
-        common::errors::NotFound("Can not find %s presistable var in scope.",
+        common::errors::NotFound("Can not find %s persistable var in scope.",
                                  op_desc.Input("Scale")[0]));
     auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
     int n_scale = scale_t->numel();
@@ -59,8 +57,6 @@ class DequantizeLinearOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(dequantize_linear, DequantizeLinearOpConverter);

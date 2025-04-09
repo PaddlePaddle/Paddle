@@ -1014,7 +1014,7 @@ class SplitHeterWorkerOpsPass(PassBase):
             block_var_detail[stage_id - 1]["backward"]["persistables"],
         )
 
-        # add step conter
+        # add step counter
         send_input_vars = []
         dummy_output = []
         pserver_endpoints = get_ps_endpoints(role_maker)

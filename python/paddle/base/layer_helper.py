@@ -111,9 +111,7 @@ class LayerHelper(LayerHelperBase):
             if dtype is None:
                 dtype = each.dtype
             elif dtype != each.dtype:
-                raise ValueError(
-                    "Data Type mismatch: %d to %d" % (dtype, each.dtype)
-                )
+                raise ValueError(f"Data Type mismatch: {dtype} to {each.dtype}")
         return dtype
 
     def get_parameter(self, name: str) -> Tensor:

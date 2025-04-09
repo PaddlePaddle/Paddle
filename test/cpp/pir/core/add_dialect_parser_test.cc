@@ -24,7 +24,6 @@
 #include "paddle/pir/include/core/builtin_attribute_storage.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/dialect.h"
-#include "paddle/pir/include/core/parser/ir_parser.h"
 #include "paddle/pir/include/core/utils.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
@@ -38,8 +37,6 @@ class TestParserDialect : public pir::Dialect {
   static const char* name() { return "tp"; }
 
   void PrintAttribute(pir::Attribute attr, std::ostream& os) const;  // NOLINT
-
-  pir::Attribute ParseAttribute(pir::IrParser& parser);  // NOLINT
 
  private:
   void initialize();
@@ -57,11 +54,6 @@ class CharAttribute : public pir::Attribute {
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(CharAttribute, CharAttributeStorage);
 
   char data() const;
-
-  static CharAttribute Parse(pir::IrParser& parser) {  // NOLINT
-    std::string char_val = parser.ConsumeToken().val_;
-    return CharAttribute::get(parser.ctx, char_val[0]);
-  }
 };
 
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(CharAttribute);
@@ -81,37 +73,4 @@ void TestParserDialect::PrintAttribute(pir::Attribute attr,
                                        std::ostream& os) const {
   auto byte_attr = attr.dyn_cast<CharAttribute>();
   os << "(tp.char)" << byte_attr.data();
-}
-
-pir::Attribute TestParserDialect::ParseAttribute(
-    pir::IrParser& parser) {  // NOLINT
-  std::string type_name = parser.ConsumeToken().val_;
-  std::string parenthesis_token_val = parser.ConsumeToken().val_;
-  PADDLE_ENFORCE_EQ(
-      parenthesis_token_val,
-      ")",
-      common::errors::InvalidArgument(
-          "The token value of expectation is ), not " + parenthesis_token_val +
-          "." + parser.GetErrorLocationInfo()));
-  return CharAttribute::Parse(parser);
-}
-
-TEST(IrParserTest, AddAttribute) {
-  pir::IrContext* ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  ctx->GetOrRegisterDialect<TestParserDialect>();
-
-  std::string op_str =
-      "(%0) = \"builtin.parameter\" () "
-      "{parameter_name:\"conv2d_0.w_0\",test:(tp.char)a} : () -> "
-      "builtin.tensor<64x3x7x7xf32>";
-  std::stringstream ss;
-  ss << op_str;
-  pir::IrParser* parser = new pir::IrParser(ctx, ss);
-  pir::Operation* op = parser->ParseOperation();
-  std::stringstream ssp;
-  op->Print(ssp);
-  delete parser;
-  EXPECT_TRUE(ssp.str() == ss.str());
 }

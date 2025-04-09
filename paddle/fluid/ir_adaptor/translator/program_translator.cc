@@ -548,7 +548,7 @@ void ProgramTranslator::TranslateGeneralOperation(
   VLOG(10) << "[op translated][general]" << operation << "end";
 }
 
-inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
+inline pir::Operation* InsertGetParameterOp(pir::IrContext* ctx,
                                             const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();
   std::string parameter_op_name(pir::ParameterOp::name());
@@ -563,7 +563,7 @@ inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
   return operation;
 }
 
-inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
+inline pir::Operation* InsertSetParameterOp(pir::IrContext* ctx,
                                             pir::Value defining_op_result,
                                             const VarDesc* var) {
   std::string set_parameter_op_name(pir::SetParameterOp::name());
@@ -627,7 +627,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
               var_desc,
               common::errors::PreconditionNotMet(
                   "VarDesc of [%s] can not be nullptr", var_name));
-          pir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
+          pir::Operation* op = InsertGetParameterOp(ctx_, var_desc);
           program_->block()->push_back(op);
           param_map_.PushValue(var_name, VariableDefiningInfo(op->result(0)));
           VLOG(10) << "[op translated][get parameter]" << var_name;
@@ -683,7 +683,7 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                 param_map_.at(var_name).value.dyn_cast<pir::OpResult>();
           }
 
-          pir::Operation* op = InsertSetParamaterOp(
+          pir::Operation* op = InsertSetParameterOp(
               ctx_, defining_op_result, parameter_name_mappings_[var_name]);
 
           pir::Block* block = program_->block();
@@ -761,7 +761,7 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
   auto val = pir::Value(nullptr);
   if (var_desc->GetType() ==
-      paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY) {
     val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);
     VLOG(10) << "[undefined variable] " << var_name << " " << val.type();
   } else {

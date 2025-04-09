@@ -108,7 +108,7 @@ class TestHistogramOpError(unittest.TestCase):
             )
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_input_range_error(self):
@@ -298,6 +298,16 @@ class TestHistogramOp_ZeroDim(TestHistogram):
         self.bins = 5
         self.min = 1
         self.max = 5
+        self.density = False
+        self.is_weight = False
+
+
+class TestHistogramOpAPIWithFloatminMax(TestHistogram):
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 4
+        self.min = 2.2
+        self.max = 4.5
         self.density = False
         self.is_weight = False
 

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 from legacy_test.test_collective_base import (
     TestCollectiveRunnerBase,
     runtime_main,
@@ -39,7 +43,7 @@ class TestCollectiveConcat(TestCollectiveRunnerBase):
             toutdata = main_prog.current_block().create_var(
                 name="outofconcat",
                 dtype='float32',
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )

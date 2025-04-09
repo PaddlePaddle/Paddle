@@ -146,11 +146,11 @@ void DistributeFpnProposalsKernel(
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);
 
-      std::vector<int> fpn_rois_shape(fpn_rois.dims().size());
+      std::vector<int64_t> fpn_rois_shape(fpn_rois.dims().size());
       for (int i = 0; i < fpn_rois.dims().size(); ++i) {
         fpn_rois_shape[i] = fpn_rois.dims()[i];
       }
-      int r1 = xpu::gather<XPUType, int>(
+      int r1 = xpu::paddle_gather<XPUType, int>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(fpn_rois.data<T>()),
           sub_idx.data<int>(),
@@ -158,7 +158,7 @@ void DistributeFpnProposalsKernel(
           fpn_rois_shape,
           sub_idx.numel(),
           0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r1, "gather");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r1, "paddle_gather");
     } else {
       multi_fpn_rois[i]->Resize({sub_rois_num, funcs::kBoxDim});
       dev_ctx.template Alloc<T>(multi_fpn_rois[i]);

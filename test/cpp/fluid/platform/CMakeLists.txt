@@ -64,7 +64,7 @@ cc_test(
 cc_test(
   lodtensor_printer_test
   SRCS lodtensor_printer_test.cc
-  DEPS lodtensor_printer)
+  DEPS densetensor_printer)
 
 cc_test(
   profiler_test

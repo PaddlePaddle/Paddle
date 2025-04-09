@@ -45,7 +45,6 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         mul_x = block.create_parameter(
             dtype="float32",
             shape=[dims[0], dims[1]],
-            lod_level=0,
             name="mul.x",
             optimize_attr={'learning_rate': 1.1},
             regularizer=(
@@ -55,12 +54,11 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             ),
         )
         mul_y = block.create_var(
-            dtype="float32", shape=[dims[1], dims[2]], lod_level=0, name="mul.y"
+            dtype="float32", shape=[dims[1], dims[2]], name="mul.y"
         )
         mul_out = block.create_var(
             dtype="float32",
             shape=[dims[0], dims[2]],
-            lod_level=0,
             name="mul.out",
         )
         block.append_op(
@@ -94,9 +92,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
                 dgc_momentum_optimizer._optimizer.get_velocity_str
             )
 
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )

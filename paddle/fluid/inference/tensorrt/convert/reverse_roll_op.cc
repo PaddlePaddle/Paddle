@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/reverse_roll_op_plugin.h"
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 class ReverseRollOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -65,7 +63,7 @@ class ReverseRollOpConverter : public OpConverter {
       reverse_roll_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "ReverseROll TRT Plugin should run in dynamic shape."));
+          "ReverseRoll TRT Plugin should run in dynamic shape."));
     }
     auto output_name = op_desc.Output("Out").front();
     ReplenishLayerAndOutput(
@@ -73,8 +71,6 @@ class ReverseRollOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(reverse_roll, ReverseRollOpConverter);

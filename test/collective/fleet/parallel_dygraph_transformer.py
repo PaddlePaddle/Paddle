@@ -464,7 +464,7 @@ class EncoderLayer(Layer):
         for i in range(n_layer):
             self._encoder_sublayers.append(
                 self.add_sublayer(
-                    'esl_%d' % i,
+                    f'esl_{i}',
                     EncoderSubLayer(
                         n_head,
                         d_key,
@@ -739,7 +739,7 @@ class DecoderLayer(Layer):
         for i in range(n_layer):
             self._decoder_sub_layers.append(
                 self.add_sublayer(
-                    'dsl_%d' % i,
+                    f'dsl_{i}',
                     DecoderSubLayer(
                         n_head,
                         d_key,

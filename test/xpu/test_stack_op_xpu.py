@@ -130,6 +130,85 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.axis = 2
 
 
+class TestStackSkipScenarioDynamic(unittest.TestCase):
+    def test_skip_scenario(self):
+        paddle.disable_static()
+        paddle.set_device("xpu")
+
+        def print_hook(name):
+            def hook(grad):
+                temp = grad  # Nonsense, just do something with the input
+
+            return hook
+
+        # Build tensors: first 5 each row need grad, rest 15 are no-grad
+        d = []
+        for j in range(4):
+            a = []
+            for i in range(20):
+                b = paddle.to_tensor([float(j * 20 + i)], dtype='float32')
+                if i < 5:
+                    b.stop_gradient = False
+                    b.register_hook(print_hook(f'i_{i}_j_{j}'))
+                else:
+                    b.stop_gradient = True
+                a.append(b)
+
+            c = paddle.stack(a)  # shape=[20]
+            d.append(c)
+
+        e = paddle.concat(d, axis=-1)  # shape=[20,4]
+        e.backward()
+        paddle.enable_static()
+
+
+class TestStackSkipScenarioDynamic2(unittest.TestCase):
+    def test_skip_scenario_mixed_segments(self):
+        """
+        Scenario:
+          - For each of 4 rows, we create 20 single-element tensors:
+            * Indices [0..4]   : stop_gradient = True
+            * Indices [5..9]   : stop_gradient = False
+            * Indices [10..14] : stop_gradient = True
+            * Indices [15..19] : stop_gradient = False
+        """
+
+        paddle.disable_static()
+        paddle.set_device("xpu")
+
+        def print_hook(name):
+            def hook(grad):
+                temp = grad  # Nonsense, just do something with the input
+
+            return hook
+
+        d = []
+        for j in range(4):
+            a = []
+            for i in range(20):
+                val = float(j * 20 + i)
+                b = paddle.to_tensor([val], dtype='float32')
+
+                # First 5 => no grad
+                # Second 5 => grad
+                # Third 5 => no grad
+                # Fourth 5 => grad
+                if (0 <= i < 5) or (10 <= i < 15):
+                    b.stop_gradient = True
+                else:
+                    b.stop_gradient = False
+                    b.register_hook(print_hook(f'i_{i}_j_{j}'))
+
+                a.append(b)
+
+            c = paddle.stack(a)  # shape=[20]
+            d.append(c)
+
+        e = paddle.concat(d, axis=-1)  # shape=[20,4]
+        e.backward()
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('stack')
 for stype in support_types:
     create_test_class(globals(), XPUTestStackOp, stype)

@@ -88,7 +88,7 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
 
 class FcOneDNNEnablePass : public pir::PatternRewritePass {
  public:
-  FcOneDNNEnablePass() : pir::PatternRewritePass("fc_onednn_enable_pass", 3) {}
+  FcOneDNNEnablePass() : pir::PatternRewritePass("fc_onednn_enable_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

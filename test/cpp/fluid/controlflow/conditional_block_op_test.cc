@@ -18,12 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
 
-using LoDTensorArray = phi::TensorArray;
+using DenseTensorArray = phi::TensorArray;
 using Scope = paddle::framework::Scope;
 using Variable = paddle::framework::Variable;
 using Place = phi::Place;
 
-TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
+TEST(ConditionalBlockGrad, NoNeedRunDenseTensorArray) {
   Place place = phi::CPUPlace();
   Scope scope;
 
@@ -34,7 +34,7 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   cond_data[0] = false;
 
   Variable* input_var = scope.Var("input_lod_tensor_array");
-  LoDTensorArray* input_tensors = input_var->GetMutable<phi::TensorArray>();
+  DenseTensorArray* input_tensors = input_var->GetMutable<phi::TensorArray>();
   for (int i = 0; i < 5; ++i) {
     phi::DDim in_dims = common::make_ddim({i + 1, i + 2});
     phi::DenseTensor lod_tensor;
@@ -46,7 +46,8 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   }
 
   Variable* input_grad_var = scope.Var("input_lod_tensor_array@GRAD");
-  LoDTensorArray* grad_tensors = input_grad_var->GetMutable<phi::TensorArray>();
+  DenseTensorArray* grad_tensors =
+      input_grad_var->GetMutable<phi::TensorArray>();
   grad_tensors->resize(5);
 
   paddle::framework::AttributeMap attrs;
@@ -60,7 +61,7 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
 
   conditional_grad_op->Run(scope, place);
 
-  const LoDTensorArray& out_tensors = input_grad_var->Get<phi::TensorArray>();
+  const DenseTensorArray& out_tensors = input_grad_var->Get<phi::TensorArray>();
   for (int i = 0; i < 5; ++i) {
     phi::DDim out_dims = out_tensors[i].dims();
     EXPECT_EQ(common::make_ddim({i + 1, i + 2}), out_dims);

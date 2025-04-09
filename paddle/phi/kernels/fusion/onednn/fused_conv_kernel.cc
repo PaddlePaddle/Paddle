@@ -15,8 +15,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/conv_function.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void FusedConv2DKernel(const Context& dev_ctx,
@@ -156,8 +155,7 @@ KernelKey ConvGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
       tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_conv2d,
                    OneDNN,

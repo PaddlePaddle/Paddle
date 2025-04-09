@@ -31,7 +31,7 @@ void Expand(const Context& ctx,
             DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
@@ -40,12 +40,8 @@ void Expand(const Context& ctx,
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        expand_shape[i],
-        0,
-        common::errors::InvalidArgument("The expanded size cannot be zero."));
     if (i < diff) {
-      PADDLE_ENFORCE_GT(
+      PADDLE_ENFORCE_GE(
           expand_shape[i],
           0,
           common::errors::InvalidArgument(
@@ -53,6 +49,16 @@ void Expand(const Context& ctx,
               "positive for expand_v2 op.",
               expand_shape[i]));
       repeat_times[i] = expand_shape[i];
+    } else if (expand_shape[i] == 0) {
+      PADDLE_ENFORCE_EQ(
+          vec_in_dims[i] == 1 || vec_in_dims[i] == expand_shape[i],
+          true,
+          common::errors::InvalidArgument(
+              "The value (%d) of the non-singleton dimension does not match"
+              " the corresponding value (%d) in shape for expand_v2 op.",
+              vec_in_dims[i],
+              expand_shape[i]));
+      repeat_times[i] = 0;
     } else if (expand_shape[i] > 0) {
       if (vec_in_dims[i] != 1) {
         PADDLE_ENFORCE_EQ(
@@ -67,14 +73,7 @@ void Expand(const Context& ctx,
       } else {
         repeat_times[i] = expand_shape[i];
       }
-    } else {
-      PADDLE_ENFORCE_EQ(
-          expand_shape[i],
-          -1,
-          common::errors::InvalidArgument(
-              "When the value in shape is negative for expand_v2 op, "
-              "only -1 is supported, but the value received is %d.",
-              expand_shape[i]));
+    } else if (expand_shape[i] == -1) {
       repeat_times[i] = 1;
     }
   }
@@ -86,7 +85,13 @@ void Expand(const Context& ctx,
   DDim new_in_dims = common::make_ddim(vec_in_dims);
   DDim out_dims(new_in_dims);
   for (size_t i = 0; i < repeat_times.size(); ++i) {
-    out_dims[i] *= repeat_times[i];
+    if (repeat_times[i] == 0) {
+      out_dims[i] = 0;
+    } else if (expand_shape[i] == -1) {
+      out_dims[i] = new_in_dims[i];
+    } else {
+      out_dims[i] *= repeat_times[i];
+    }
   }
 
   out->Resize(out_dims);
@@ -113,6 +118,8 @@ void ExpandKernel(const Context& ctx,
                   const IntArray& shape,
                   DenseTensor* out) {
   auto rank = x.dims().size();
+  auto expand_shape = shape.GetData();
+  auto shape_size = expand_shape.size();
   PADDLE_ENFORCE_GE(
       rank,
       0,
@@ -128,8 +135,6 @@ void ExpandKernel(const Context& ctx,
           "or equal to %d, but the value received is %d.",
           MAX_RANK_SUPPORTED,
           rank));
-  auto expand_shape = shape.GetData();
-  auto shape_size = expand_shape.size();
   PADDLE_ENFORCE_GE(
       shape_size,
       rank,

@@ -11,8 +11,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void WorkQueueOptions::Validate() const {
   PADDLE_ENFORCE_GT(name.size(),
@@ -249,5 +248,4 @@ std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
   return ptr;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

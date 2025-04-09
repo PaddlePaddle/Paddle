@@ -991,7 +991,7 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
                            const std::string& key,
                            const std::string& op_type,
                            ssize_t arg_pos) {
-  VLOG(1) << "After Process pir::Block*";
+  VLOG(3) << "After Process pir::Block*";
   ::pybind11::detail::instance* inst =
       (::pybind11::detail::instance*)obj;  // NOLINT
   void** vh = inst->simple_layout ? inst->simple_value_holder
@@ -1004,7 +1004,7 @@ void CastPyArg2AttrIRProgram(PyObject* obj,
                              const std::string& key,
                              const std::string& op_type,
                              ssize_t arg_pos) {
-  VLOG(1) << "After Process pir::Program*";
+  VLOG(3) << "After Process pir::Program*";
   const std::shared_ptr<::pir::Program> program =
       ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
   attrs[key] = program;
@@ -1038,7 +1038,7 @@ void CastPyArg2AttrValues(PyObject* obj,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
   attrs[key] = results;
-  VLOG(1) << "Pybind: Cast " << results.size() << " Value Finished.";
+  VLOG(4) << "Pybind: Cast " << results.size() << " Value Finished.";
 }
 
 void ConstructAttrMapFromPyArgs(
@@ -1059,7 +1059,7 @@ void ConstructAttrMapFromPyArgs(
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
-    VLOG(1) << "Start Process " << arg_pos;
+    VLOG(5) << "Start Process " << arg_pos;
     Py_ssize_t key_len = 0;
     const char* key_ptr = nullptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
@@ -1075,7 +1075,7 @@ void ConstructAttrMapFromPyArgs(
     }
 
     std::string key(key_ptr, (size_t)key_len);  // NOLINT
-    VLOG(1) << "Start Process " << key;
+    VLOG(5) << "Start Process " << key;
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
@@ -1182,7 +1182,7 @@ void ConstructAttrMapForRunProgram(
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
-    VLOG(1) << "Start Process " << arg_pos;
+    VLOG(3) << "Start Process " << arg_pos;
     Py_ssize_t key_len = 0;
     const char* key_ptr = nullptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
@@ -1196,7 +1196,7 @@ void ConstructAttrMapForRunProgram(
           ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
     }
     std::string_view key_view(key_ptr, static_cast<size_t>(key_len));
-    VLOG(1) << "Start Process " << key_view;
+    VLOG(3) << "Start Process " << key_view;
     obj = PyTuple_GET_ITEM(args, arg_pos + 1);
     auto it = kAttrFuncMap.find(std::string(key_view));
     if (it != kAttrFuncMap.end()) {

@@ -454,7 +454,7 @@ class QuantizationTransformPass:
             if self._global_step is None:
                 global_step_in = graph.create_persistable_node(
                     name=counter_name,
-                    var_type=core.VarDesc.VarType.LOD_TENSOR,
+                    var_type=core.VarDesc.VarType.DENSE_TENSOR,
                     shape=[1],
                     var_dtype=core.VarDesc.VarType.INT64,
                 )
@@ -576,7 +576,7 @@ class QuantizationTransformPass:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=scale_name,
-            var_type=core.VarDesc.VarType.LOD_TENSOR,
+            var_type=core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype(),
         )
@@ -590,7 +590,7 @@ class QuantizationTransformPass:
             # The name of scales_var_node maybe 'scales_0', 'scales_1', etc.
             scales_node = graph.create_persistable_node(
                 name=unique_name.generate('scales'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 shape=[self._window_size],
                 var_dtype=var_node.dtype(),
             )
@@ -658,7 +658,7 @@ class QuantizationTransformPass:
             scale_value = np.array([_SCALE_DEFAULT_VALUE], dtype=data_type)
         scale_in_node = graph.create_persistable_node(
             name=scale_name,
-            var_type=core.VarDesc.VarType.LOD_TENSOR,
+            var_type=core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype(),
         )
@@ -670,7 +670,7 @@ class QuantizationTransformPass:
         if not self._is_test:
             state_in_node = graph.create_persistable_node(
                 name=unique_name.generate('state'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
@@ -688,7 +688,7 @@ class QuantizationTransformPass:
             )
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('accum'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
@@ -1283,7 +1283,7 @@ class QuantizationFreezePass:
         )
         weight_scale_node = graph.create_persistable_node(
             name=unique_name.generate('channel_scale'),
-            var_type=core.VarDesc.VarType.LOD_TENSOR,
+            var_type=core.VarDesc.VarType.DENSE_TENSOR,
             shape=[channel_scale.shape[0]],
             var_dtype=output_var_node.dtype(),
         )
@@ -1654,7 +1654,7 @@ class OutScaleForTrainingPass:
                     except:
                         scale_node = graph.create_persistable_node(
                             name=self._scale_name(in_node.name()),
-                            var_type=core.VarDesc.VarType.LOD_TENSOR,
+                            var_type=core.VarDesc.VarType.DENSE_TENSOR,
                             shape=[1],
                             var_dtype=in_node.dtype(),
                         )
@@ -1676,7 +1676,7 @@ class OutScaleForTrainingPass:
                     if not self._is_test:
                         state_in_node = graph.create_persistable_node(
                             name=unique_name.generate('scale_state@'),
-                            var_type=core.VarDesc.VarType.LOD_TENSOR,
+                            var_type=core.VarDesc.VarType.DENSE_TENSOR,
                             var_dtype=in_node.dtype(),
                             shape=[1],
                         )
@@ -1688,7 +1688,7 @@ class OutScaleForTrainingPass:
                         )
                         accum_in_node = graph.create_persistable_node(
                             name=unique_name.generate('scale_accum@'),
-                            var_type=core.VarDesc.VarType.LOD_TENSOR,
+                            var_type=core.VarDesc.VarType.DENSE_TENSOR,
                             var_dtype=in_node.dtype(),
                             shape=[1],
                         )
@@ -1953,7 +1953,7 @@ class AddQuantDequantPass:
                             (
                                 quant_var_node,
                                 _,
-                            ) = self._inser_quant_dequant_moving_average_abs_max_op(
+                            ) = self._insert_quant_dequant_moving_average_abs_max_op(
                                 graph,
                                 in_node,
                                 self._quant_bits,
@@ -1981,7 +1981,7 @@ class AddQuantDequantPass:
         graph.resolve_hazard()
         return graph
 
-    def _inser_quant_dequant_moving_average_abs_max_op(
+    def _insert_quant_dequant_moving_average_abs_max_op(
         self, graph, var_node, quant_bits, op_role
     ):
         """Insert fake_quantize_dequantize_moving_average_abs_max op."""
@@ -2016,7 +2016,7 @@ class AddQuantDequantPass:
 
         scale_in_node = graph.create_persistable_node(
             name=f"{var_node.name()}.quant_dequant@scale",
-            var_type=core.VarDesc.VarType.LOD_TENSOR,
+            var_type=core.VarDesc.VarType.DENSE_TENSOR,
             shape=[1],
             var_dtype=var_node.dtype(),
         )
@@ -2028,7 +2028,7 @@ class AddQuantDequantPass:
         if not self._is_test:
             state_in_node = graph.create_persistable_node(
                 name=unique_name.generate('quant_dequant.state'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
@@ -2046,7 +2046,7 @@ class AddQuantDequantPass:
             )
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('quant_dequant.accum'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
@@ -2160,7 +2160,7 @@ class InsertQuantizeLinear:
             scale_name = self._quantized_scale_name(var_name)
             if self.channel_wise:
                 scale_var_shape = var_node.shape()[self.quant_axis]
-                scale_var_type = core.VarDesc.VarType.LOD_TENSOR
+                scale_var_type = core.VarDesc.VarType.DENSE_TENSOR
                 init_scale_value = (
                     np.ones(scale_var_shape, dtype=data_type)
                     * _SCALE_DEFAULT_VALUE
@@ -2193,7 +2193,7 @@ class InsertQuantizeLinear:
         if zero_point_node is None:
             zero_point_node = graph.create_persistable_node(
                 name=self._zero_point_name(quant_var_node.name()),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 shape=scale_var_node.shape(),
                 var_dtype=core.VarDesc.VarType.INT32,
             )
@@ -2217,7 +2217,7 @@ class InsertQuantizeLinear:
             )
             state_in_node = graph.create_persistable_node(
                 name=unique_name.generate('state'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
@@ -2235,7 +2235,7 @@ class InsertQuantizeLinear:
             )
             accum_in_node = graph.create_persistable_node(
                 name=unique_name.generate('accum'),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
@@ -2294,7 +2294,7 @@ class InsertQuantizeLinear:
         if zero_point_node is None:
             zero_point_node = graph.create_persistable_node(
                 name=self._zero_point_name(dequant_var_node.name()),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 shape=scale_var_node.shape(),
                 var_dtype=core.VarDesc.VarType.INT32,
             )
@@ -3091,7 +3091,7 @@ class ReplaceFakeQuantDequantPass:
         if zero_point_node is None:
             zero_point_node = graph.create_persistable_node(
                 name=self._zero_point_name(quanted_node.name()),
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 shape=scale_node.shape(),
                 var_dtype=core.VarDesc.VarType.INT32,
             )
@@ -3442,7 +3442,7 @@ class AddQuantDequantForInferencePass:
         except:
             zero_point_node = graph.create_persistable_node(
                 name=f"{quant_var_node.name()}@zero_point",
-                var_type=core.VarDesc.VarType.LOD_TENSOR,
+                var_type=core.VarDesc.VarType.DENSE_TENSOR,
                 shape=scale_var_node.shape(),
                 var_dtype=core.VarDesc.VarType.INT32,
             )

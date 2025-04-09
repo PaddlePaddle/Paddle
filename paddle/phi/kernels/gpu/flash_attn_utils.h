@@ -18,9 +18,14 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
+#endif
+
+#ifdef PADDLE_WITH_FLASHATTN_V3
+#include "paddle/phi/backends/dynload/flashattnv3.h"
 #endif
 
 namespace phi {
@@ -89,14 +94,14 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
         dtype,
         DataType::INT32,
         common::errors::InvalidArgument("dtype of startend_row_indices must be "
-                                        "int32, but recieved %d",
+                                        "int32, but received %d",
                                         dtype));
     PADDLE_ENFORCE_GE(
         rank,
         4,
         common::errors::InvalidArgument(
-            "The number of dimenstions of startend_row_indices is expected to "
-            "be greater or equal to 4, but recieved %d. The shape of "
+            "The number of dimensions of startend_row_indices is expected to "
+            "be greater or equal to 4, but received %d. The shape of "
             "startend_row_indices is [%s]",
             rank,
             origin_dims));
@@ -105,7 +110,7 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
                       common::errors::InvalidArgument(
                           "The sparse_mask_dims[%d] of "
                           "attn_mask_start_row_indices is expected to be "
-                          "equal to %d, but recieved %d.",
+                          "equal to %d, but received %d.",
                           rank - 2,
                           max_seqlen_q,
                           origin_dims[2]));
@@ -124,6 +129,10 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
 }
 
 struct FlashAttnParamsBase {
+  int version;
+  bool is_fwd;
+
+  int kBlockM;
   int batch_size;
   // for padded kernel, max_seqlen_q and seqlen_q is the same.
   int64_t max_seqlen_q;
@@ -138,6 +147,7 @@ struct FlashAttnParamsBase {
   int head_size_rounded;
 
   bool is_bf16;
+  bool is_fp8;
   float softmax_scale;
   std::vector<int64_t> softmax_lse_dims;
 
@@ -148,7 +158,9 @@ struct FlashAttnParamsBase {
   const DenseTensor* startend_row_indices;
   std::vector<int64_t> startend_row_indices_dims;
 
-  FlashAttnParamsBase(const int _batch_size,
+  FlashAttnParamsBase(const int _version,
+                      const int _is_fwd,
+                      const int _batch_size,
                       const int64_t _max_seqlen_q,
                       const int64_t _max_seqlen_k,
                       const int _num_heads,
@@ -159,7 +171,9 @@ struct FlashAttnParamsBase {
                       const DataType q_dtype,
                       const paddle::optional<DenseTensor>& attn_mask,
                       const paddle::optional<DenseTensor>& startend_row_indices)
-      : batch_size(_batch_size),
+      : version(_version),
+        is_fwd(_is_fwd),
+        batch_size(_batch_size),
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
         num_heads(_num_heads),
@@ -171,9 +185,19 @@ struct FlashAttnParamsBase {
         startend_row_indices(startend_row_indices.get_ptr()) {
     is_bf16 = q_dtype == DataType::BFLOAT16;
 
+    // TODO(GuoxiaWang): check q, k, v dtype
+
     auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-    head_size_rounded = round_multiple(head_size, 32);
-    seqlen_q_rounded = round_multiple(max_seqlen_q, 128);
+    // FLAGS_flash_attn_version
+    if (_version == 3 && !_is_fwd) {
+      kBlockM = head_size <= 64 ? 128 : (head_size < 256 ? 64 : 32);
+      head_size_rounded = head_size <= 64 ? 64 : round_multiple(head_size, 32);
+    } else {
+      kBlockM = 128;
+      head_size_rounded = round_multiple(head_size, 32);
+    }
+
+    seqlen_q_rounded = round_multiple(max_seqlen_q, kBlockM);
     seqlen_k_rounded = round_multiple(max_seqlen_k, 128);
 
     softmax_lse_dims = {batch_size, num_heads, seqlen_q_rounded};
@@ -213,9 +237,11 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor* softmax;
   DenseTensor* softmax_lse;
   DenseTensor* seed_offset;
+  DenseTensor tile_count_semaphore;
 
   FlashAttnFwdParamsV2(
       const GPUContext& ctx,
+      const int _version,
       const int _batch_size,
       const int64_t _max_seqlen_q,
       const int64_t _max_seqlen_k,
@@ -235,7 +261,9 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
       DenseTensor* _softmax,
       DenseTensor* _softmax_lse,
       DenseTensor* _seed_offset)
-      : FlashAttnParamsBase(_batch_size,
+      : FlashAttnParamsBase(_version,
+                            /*is_fwd=*/true,
+                            _batch_size,
                             _max_seqlen_q,
                             _max_seqlen_k,
                             _num_heads,
@@ -257,10 +285,15 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
     // with the same size.
     rng_state = Empty<int64_t>(ctx, {2});
 
-    auto seed_offset_pair = GenerateRNGState(
-        ctx, fixed_seed_offset, rng_name, batch_size, num_heads);
-    seed = seed_offset_pair.first;
-    offset = seed_offset_pair.second;
+    if (_dropout > 0.0f) {
+      auto seed_offset_pair = GenerateRNGState(
+          ctx, fixed_seed_offset, rng_name, batch_size, num_heads);
+      seed = seed_offset_pair.first;
+      offset = seed_offset_pair.second;
+    } else {
+      seed = 0;
+      offset = 0;
+    }
 
     seed_offset->Resize({2});
     int64_t* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
@@ -269,6 +302,10 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
 
     softmax_lse->Resize(phi::make_ddim(softmax_lse_dims));
     ctx.template Alloc<float>(softmax_lse);
+
+    if (_version == 3) {
+      tile_count_semaphore = Full<int>(ctx, {1}, static_cast<int>(0));
+    }
 
     if (return_softmax) {
       PADDLE_ENFORCE_EQ(
@@ -292,8 +329,12 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor dq_accum;
   DenseTensor rng_state;
 
+  DenseTensor softmax_lse_log2;
+  DenseTensor dq_semaphore;
+
   FlashAttnBwdParamsV2(
       const GPUContext& ctx,
+      const int _version,
       const int _batch_size,
       const int64_t _max_seqlen_q,
       const int64_t _max_seqlen_k,
@@ -307,7 +348,9 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
       const paddle::optional<DenseTensor>& attn_mask,
       const paddle::optional<DenseTensor>& startend_row_indices,
       const int64_t* seed_offset_data)
-      : FlashAttnParamsBase(_batch_size,
+      : FlashAttnParamsBase(_version,
+                            /*is_fwd=*/false,
+                            _batch_size,
                             _max_seqlen_q,
                             _max_seqlen_k,
                             _num_heads,
@@ -329,6 +372,12 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
     // gradient of softmax_lse
     softmax_d = Empty<float>(ctx, softmax_lse_dims);
 
+    if (_version == 3) {
+      softmax_lse_log2 = Empty<float>(ctx, softmax_lse_dims);
+      dq_semaphore = Empty<int>(
+          ctx, {(max_seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
+    }
+
     // an internal gradient of q, which will be further accumulated.
     dq_accum = Empty<float>(
         ctx, {batch_size, num_heads, seqlen_q_rounded, head_size_rounded});
@@ -344,10 +393,11 @@ static void CheckFlashAttnStatus(const bool status) {
 }
 #endif
 
-static void RaiseNotSupportedError() {
+static void RaiseNotSupportedError(int version = 2) {
   PADDLE_THROW(common::errors::Unimplemented(
-      "FlashAttention is unsupported, please check "
-      "the GPU compability and CUDA Version."));
+      "FlashAttentio%d is unsupported, please check "
+      "the GPU compatibility and CUDA Version.",
+      version));
 }
 
 }  // namespace phi

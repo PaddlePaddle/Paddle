@@ -431,7 +431,7 @@ def _pickle_save(obj, f, protocol):
 
         return (tuple, ((name, data),))
 
-    def reduce_LoDTensor(self):
+    def reduce_DenseTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
         if self._place().is_custom_place():
@@ -462,11 +462,11 @@ def _pickle_save(obj, f, protocol):
         # This is not a good method, because the pickle module has been modified.
         pickle.dispatch_table[core.eager.Tensor] = reduce_varbase
         pickle.dispatch_table[EagerParamBase] = reduce_varbase
-        pickle.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+        pickle.dispatch_table[core.DenseTensor] = reduce_DenseTensor
         pickle.dispatch_table.update(dispatch_table_layer)
 
     def pop_dispatch_table():
-        pickle.dispatch_table.pop(core.LoDTensor)
+        pickle.dispatch_table.pop(core.DenseTensor)
         pickle.dispatch_table.pop(core.eager.Tensor)
         pickle.dispatch_table.pop(EagerParamBase)
         for k in dispatch_table_layer:
@@ -485,7 +485,7 @@ def _pickle_save(obj, f, protocol):
         pickler = pickle.Pickler(f, protocol)
         pickler.dispatch_table = copyreg.dispatch_table.copy()
 
-        pickler.dispatch_table[core.LoDTensor] = reduce_LoDTensor
+        pickler.dispatch_table[core.DenseTensor] = reduce_DenseTensor
         pickler.dispatch_table[core.eager.Tensor] = reduce_varbase
         pickler.dispatch_table[EagerParamBase] = reduce_varbase
         pickler.dispatch_table.update(dispatch_table_layer)
@@ -525,20 +525,20 @@ def _is_state_dict(obj):
                     paddle.nn.Layer,
                     Program,
                     core.eager.Tensor,
-                    core.LoDTensor,
+                    core.DenseTensor,
                     core.SelectedRows,
                 ),
             )
 
-        # If the value of a dict is a core.Tensor/LoDTensor or a dict
-        # that does not contain a paddle type(Layer, Program, Tensor, LoDTensor, SelectedRows),
+        # If the value of a dict is a core.Tensor/DenseTensor or a dict
+        # that does not contain a paddle type(Layer, Program, Tensor, DenseTensor, SelectedRows),
         # the dict is considered to be a state_ dict.
         for key, value in obj.items():
             if isinstance(value, dict):
                 for k, v in value.items():
                     if _contain_x(v, condition):
                         return False
-            elif not isinstance(value, (core.eager.Tensor, core.LoDTensor)):
+            elif not isinstance(value, (core.eager.Tensor, core.DenseTensor)):
                 return False
         return True
 
@@ -547,7 +547,7 @@ def _is_state_dict(obj):
 
 def _transformed_from_varbase(obj):
     # In paddle2.1 version, Tensor is saved as tuple(tensor.name, tensor.numpy()).
-    # When executing paddle.load, use this function to determine whether to restore to Tensor/LoDTensor.
+    # When executing paddle.load, use this function to determine whether to restore to Tensor.
     if isinstance(obj, tuple) and len(obj) == 2:
         name_types = str
         if isinstance(obj[0], name_types) and isinstance(obj[1], np.ndarray):
@@ -556,8 +556,8 @@ def _transformed_from_varbase(obj):
 
 
 def _transformed_from_lodtensor(obj):
-    # In paddle2.1 version, LoDTensor is saved as np.array(tensor).
-    # When executing paddle.load, use this function to determine whether to restore to Tensor/LoDTensor.
+    # In paddle2.1 version, DenseTensor is saved as np.array(tensor).
+    # When executing paddle.load, use this function to determine whether to restore to Tensor.
     if isinstance(obj, np.ndarray):
         return True
     return False
@@ -568,7 +568,7 @@ def _to_LodTensor(ndarray):
         raise TypeError(
             f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
-    t = core.LoDTensor()
+    t = core.DenseTensor()
     place = _current_expected_place_()
     t.set(ndarray, place)
     return t
@@ -627,7 +627,7 @@ def _parse_every_object(obj, condition_func, convert_func):
     else:
         if isinstance(obj, Iterable) and not isinstance(
             obj,
-            (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
+            (str, np.ndarray, core.eager.Tensor, core.DenseTensor),
         ):
             raise NotImplementedError(
                 f"The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {type(obj)}."
@@ -665,24 +665,24 @@ def _parse_load_result(obj, return_numpy):
             obj, _transformed_from_varbase, tuple_to_tensor
         )
     # If there is no tuple(name, ndarray), it is considered to be saved by paddle2.0
-    # or converted from LoDTensor, and all ndarrays are converted to tensor.
+    # or converted from DenseTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(
             obj, _transformed_from_lodtensor, ndarray_to_tensor
         )
 
 
-def _save_lod_tensor(tensor, file_name):
+def _save_dense_tensor(tensor, file_name):
     if not tensor._is_initialized():
         raise ValueError(
             "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model firstly."
         )
     if _is_file_path(file_name):
-        _seek = core.save_lod_tensor(tensor, file_name)
+        _seek = core.save_dense_tensor(tensor, file_name)
         # '_seek' is the end position of this tensor in the file.
 
     elif _is_memory_buffer(file_name):
-        tensor_bytes = core.save_lod_tensor_to_memory(tensor)
+        tensor_bytes = core.save_dense_tensor_to_memory(tensor)
 
         with _open_file_buffer(file_name, 'wb') as f:
             f.write(tensor_bytes)
@@ -695,16 +695,16 @@ def _save_lod_tensor(tensor, file_name):
     return _seek
 
 
-def _load_lod_tensor(file_name):
-    temp_t = paddle.base.core.LoDTensor()
+def _load_dense_tensor(file_name):
+    temp_t = paddle.base.core.DenseTensor()
     if _is_file_path(file_name):
         # '_seek' is the end position of this tensor in the file.
-        _seek = paddle.base.core.load_lod_tensor(temp_t, file_name)
+        _seek = paddle.base.core.load_dense_tensor(temp_t, file_name)
 
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             tensor_bytes = f.read()
-            paddle.base.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
+            paddle.base.core.load_dense_tensor_from_memory(temp_t, tensor_bytes)
             _seek = f.tell()
 
     else:
@@ -757,14 +757,14 @@ def _load_selected_rows(file_name):
 
 
 def _save_binary_var(obj, path):
-    if isinstance(obj, core.LoDTensor):
-        _save_lod_tensor(obj, path)
+    if isinstance(obj, core.DenseTensor):
+        _save_dense_tensor(obj, path)
     elif isinstance(obj, core.SelectedRows):
         _save_selected_rows(obj, path)
     elif isinstance(obj, core.eager.Tensor):
-        _save_lod_tensor(obj.value().get_tensor(), path)
+        _save_dense_tensor(obj.value().get_tensor(), path)
     else:
-        # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
+        # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'DenseTensor' or 'SelectedRows'
         raise NotImplementedError(
             f"When use_binary_format = True, `paddle.save`  expected Tensor, but received {type(obj)}."
         )
@@ -1237,7 +1237,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 return tensor
             except:
                 try:
-                    tensor, _ = _load_lod_tensor(path)
+                    tensor, _ = _load_dense_tensor(path)
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())

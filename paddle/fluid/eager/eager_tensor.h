@@ -254,7 +254,7 @@ class EagerVariable final {
       } else {
         PADDLE_THROW(
             common::errors::Fatal("Unable to fetch underlying tensor "
-                                  "from EagerVariable, only LoDTensor and "
+                                  "from EagerVariable, only DenseTensor and "
                                   "Tensor are supported for now"));
       }
     } else {

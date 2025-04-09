@@ -29,8 +29,7 @@ limitations under the License. */
 COMMON_DECLARE_bool(enable_auto_detect_gpu_topo);
 COMMON_DECLARE_bool(enable_auto_rdma_trans);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 #if defined(PADDLE_WITH_CUDA)
 GPUResource::GPUResource(std::vector<int> &dev_ids, int index) {
@@ -286,6 +285,5 @@ void HeterPsResource::set_multi_mf(int multi_mf_dim, int max_mf_dim) {
           << " max_mf_dim_: " << max_mf_dim_;
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

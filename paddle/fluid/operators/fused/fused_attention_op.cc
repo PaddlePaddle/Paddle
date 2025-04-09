@@ -380,7 +380,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("BiasDropoutResidualOut",
               "Result of residual + dropout(src + bias).")
         .AsIntermediate();
-    AddOutput("CacheKVOut", "The udpated cache KV.").AsDispensable();
+    AddOutput("CacheKVOut", "The updated cache KV.").AsDispensable();
     AddOutput("Y", "Result after attention.");
 
     AddAttr<int>("num_heads", "The number head for multi_head_attention.")
@@ -389,8 +389,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "The qkv_w shape is (h, 3h), do transpose to it.")
         .SetDefault(false);
     AddAttr<bool>("pre_layer_norm",
-                  "if true, the attention op uses pre_layer_norm architecure, "
-                  "else, uses post_layer_norm architecuture. "
+                  "if true, the attention op uses pre_layer_norm architecture, "
+                  "else, uses post_layer_norm architecture. "
                   "[default false].")
         .SetDefault(false);
     AddAttr<float>("epsilon",

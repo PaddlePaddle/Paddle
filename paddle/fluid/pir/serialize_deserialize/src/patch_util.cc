@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/serialize_deserialize/patch/patch.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 

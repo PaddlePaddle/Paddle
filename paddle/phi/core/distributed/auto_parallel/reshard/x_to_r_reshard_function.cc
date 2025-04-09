@@ -61,7 +61,6 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& in_partial_status = in_dist_attr.partial_status();
   auto all_process_ids = GetUnionProcessIds(in_process_ids, out_process_ids);
   std::unordered_map<int64_t, DenseTensor> rank_to_result;
-  bool dynamic_shape = true;
 
   // Step 1: other ranks need to send value to the root
   if (!in_dist_attr.is_replicated()) {
@@ -73,7 +72,7 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 all_process_ids,
                                 in.value(),
                                 root_rank,
-                                dynamic_shape);
+                                /*dynamic_shape=*/true);
     } else {
       for (size_t i = 0; i < all_process_ids.size(); ++i) {
         if (all_process_ids[i] != root_rank) {
@@ -83,7 +82,8 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                     dtype,
                                     all_process_ids,
                                     all_process_ids[i],
-                                    dynamic_shape,
+                                    {} /*out_shape*/,
+                                    /*dynamic_shape=*/true,
                                     &rank_to_result[all_process_ids[i]]);
         }
       }

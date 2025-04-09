@@ -42,7 +42,7 @@ def count(x, upper_num):
 
 
 # why defining the assert function specially?
-# Becasue assign_pos_op is multithread-op, which can make the order of numbers
+# Because assign_pos_op is multithread-op, which can make the order of numbers
 # in each counter(bin) is random. But the numbers set is certain in each counter(bin).
 np_allclose = np.allclose
 

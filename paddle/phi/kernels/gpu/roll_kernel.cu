@@ -29,6 +29,11 @@ void RollKernel(const Context& dev_ctx,
                 const IntArray& shifts,
                 const std::vector<int64_t>& axis,
                 DenseTensor* out) {
+  if (x.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
@@ -69,6 +74,7 @@ PD_REGISTER_KERNEL(roll,
                    phi::RollKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   bool,
                    float,
                    double,
                    int,

@@ -100,6 +100,9 @@ static const char* TargetToBackendRepr(Target target) {
       [&](common::NVGPUArch) -> const char* { return backend_nvgpu; },
       [&](common::HygonDCUArchHIP) -> const char* {
         return backend_hygondcu_hip;
+      },
+      [&](common::HygonDCUArchSYCL) -> const char* {
+        return backend_hygondcu_sycl;
       });
 }
 

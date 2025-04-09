@@ -21,17 +21,18 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumMaximumNumBlocks = 4096;
 static constexpr int kROISize = 4;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <class T>
@@ -176,7 +177,16 @@ void RoiAlignGradKernel(const Context& dev_ctx,
                         int sampling_ratio,
                         bool aligned,
                         DenseTensor* dx) {
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+
+    phi::FullKernel<T>(
+        dev_ctx, common::vectorize(dx->dims()), 0.0, dx->dtype(), dx);
+    return;
+  }
+
   int rois_num = boxes.dims()[0];
+
   int channels = x.dims()[1];
   int height = x.dims()[2];
   int width = x.dims()[3];
@@ -185,6 +195,11 @@ void RoiAlignGradKernel(const Context& dev_ctx,
     return;
   }
 
+  // if (dx->numel() == 0) {
+  //   dev_ctx.template Alloc<T>(dx);
+
+  //   return;
+  // }
   DenseTensor box_batch_id_list;
   box_batch_id_list.Resize({rois_num});
   int* box_batch_size = dev_ctx.template HostAlloc<int>(&box_batch_id_list);
@@ -193,19 +208,36 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   auto gplace = dev_ctx.GetPlace();
   if (boxes_num) {
     int boxes_batch_size = boxes_num->numel();
-    std::vector<int> boxes_num_list(boxes_batch_size);
-    memory_utils::Copy(cplace,
-                       boxes_num_list.data(),
-                       gplace,
-                       boxes_num->data<int>(),
-                       sizeof(int) * boxes_batch_size,
-                       0);
-    int start = 0;
-    for (int n = 0; n < boxes_batch_size; ++n) {
-      for (size_t i = start; i < start + boxes_num_list[n]; ++i) {
-        box_batch_size[i] = n;
+    if (boxes_num->dtype() == phi::DataType::INT64) {
+      std::vector<int64_t> boxes_num_list(boxes_batch_size);
+      memory_utils::Copy(cplace,
+                         boxes_num_list.data(),
+                         gplace,
+                         boxes_num->data<int64_t>(),
+                         sizeof(int64_t) * boxes_batch_size,
+                         0);
+      int64_t start = 0;
+      for (int64_t n = 0; n < boxes_batch_size; ++n) {
+        for (int64_t i = start; i < start + boxes_num_list[n]; ++i) {
+          box_batch_size[i] = n;
+        }
+        start += boxes_num_list[n];
       }
-      start += boxes_num_list[n];
+    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+      std::vector<int> boxes_num_list(boxes_batch_size);
+      memory_utils::Copy(cplace,
+                         boxes_num_list.data(),
+                         gplace,
+                         boxes_num->data<int>(),
+                         sizeof(int) * boxes_batch_size,
+                         0);
+      int start = 0;
+      for (int n = 0; n < boxes_batch_size; ++n) {
+        for (size_t i = start; i < start + boxes_num_list[n]; ++i) {
+          box_batch_size[i] = n;
+        }
+        start += boxes_num_list[n];
+      }
     }
   } else {
     auto boxes_lod = boxes.lod().back();

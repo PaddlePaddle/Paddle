@@ -166,7 +166,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
@@ -205,7 +205,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that layer_norm is splitted into small ops
+            # Ensure that layer_norm is split into small ops
             self.assertTrue('layer_norm' not in fwd_ops_new)
 
         exe = paddle.static.Executor()
@@ -270,9 +270,7 @@ class TestCompositelayer_norm(unittest.TestCase):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
+    return paddle.jit.to_static(net, backend=None, full_graph=True)
 
 
 class PrimeNet(paddle.nn.Layer):

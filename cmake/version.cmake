@@ -97,6 +97,7 @@ function(version version_file)
     "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
     "WITH_MKL: ${WITH_MKL}\n"
     "WITH_ONEDNN: ${WITH_ONEDNN}\n"
+    "WITH_OPENVINO: ${WITH_OPENVINO}\n"
     "WITH_GPU: ${WITH_GPU}\n"
     "WITH_ROCM: ${WITH_ROCM}\n"
     "WITH_IPU: ${WITH_IPU}\n")

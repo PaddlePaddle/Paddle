@@ -27,6 +27,7 @@ import threading
 import traceback
 import warnings
 from collections.abc import Iterable
+from contextlib import contextmanager
 from types import FunctionType, MethodType
 from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
@@ -198,6 +199,16 @@ def get_flags(flags: str | Sequence[str]) -> dict[str, bool | str | float]:
     else:
         raise TypeError("Flags in get_flags should be a list, tuple or string.")
     return flags_value
+
+
+@contextmanager
+def flag_guard(flag_name, flag_value):
+    old_value = paddle.get_flags(flag_name)[flag_name]
+    paddle.set_flags({flag_name: flag_value})
+    try:
+        yield
+    finally:
+        paddle.set_flags({flag_name: old_value})
 
 
 # use thread local to create thread save global variables.
@@ -432,8 +443,11 @@ def in_cinn_mode() -> bool:
         bool: Whether paddle runs in cinn mode.
 
     """
-    flag = str(os.environ.get("FLAGS_use_cinn")).lower()
-    return flag in ("true", "1")
+    CINN_FLAG_NAME = "FLAGS_use_cinn"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_FLAG_NAME)[CINN_FLAG_NAME]
 
 
 global_ipu_index = -1
@@ -1161,6 +1175,41 @@ def cuda_pinned_places(
     return [core.CUDAPinnedPlace()] * device_count
 
 
+def xpu_pinned_places(
+    device_count: int | None = None,
+) -> list[core.XPUPinnedPlace]:
+    """
+    This function creates a list of :code:`base.XPUPinnedPlace` objects.
+
+    If :code:`device_count` is None, the device count would
+    be determined by environment variable :code:`CPU_NUM`.
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
+
+    Parameters:
+        device_count (int, optional): device number. Default: None.
+
+    Returns:
+        list of base.XPUPinnedPlace: Created list of XPU pinned places.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.base as base
+            >>> xpu_pinned_places_cpu_num = base.xpu_pinned_places()
+            >>> # or
+            >>> xpu_pinned_places = base.xpu_pinned_places(1)
+
+    """
+    assert core.is_compiled_with_cuda(), "Not compiled with CUDA"
+    if device_count is None:
+        device_count = len(_cuda_ids())
+    return [core.XPUPinnedPlace()] * device_count
+
+
 class NameScope:
     def __init__(self, name="", parent=None):
         self._children = {}
@@ -1173,7 +1222,7 @@ class NameScope:
             self._children[prefix] = [new_child]
         else:
             new_child = NameScope(
-                prefix + "_%d" % len(self._children[prefix]), self
+                f"{prefix}_{len(self._children[prefix])}", self
             )
             self._children[prefix].append(new_child)
         return new_child
@@ -1264,7 +1313,7 @@ class NameStruct:
             self._children[prefix] = [new_child]
         else:
             new_child = NameStruct(
-                prefix + "_%d" % len(self._children[prefix]), self
+                f"{prefix}_{len(self._children[prefix])}", self
             )
             self._children[prefix].append(new_child)
         return new_child
@@ -1352,7 +1401,9 @@ def grad_var_name(var_name):
     return var_name + GRAD_VAR_SUFFIX
 
 
-def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
+def convert_np_dtype_to_proto_type(
+    np_dtype: np.dtype | str,
+) -> core.VarDesc.VarType:
     """
     Convert the data type in numpy to the data type in Paddle.
 
@@ -1409,7 +1460,9 @@ def convert_np_dtype_to_proto_type(np_dtype: np.dtype | str):
         raise ValueError(f"Not supported numpy dtype {dtype}")
 
 
-def convert_np_dtype_to_dtype_(np_dtype):
+def convert_np_dtype_to_dtype_(
+    np_dtype: np.dtype | str,
+) -> core.VarDesc.VarType | core.DataType:
     """
     Convert the data type in numpy to the data type in Paddle.
 
@@ -1488,7 +1541,7 @@ def _debug_string_(proto, throw_on_error=True):
 
 
 def _create_tensor(
-    type=core.VarDesc.VarType.LOD_TENSOR,
+    type=core.VarDesc.VarType.DENSE_TENSOR,
     name=None,
     shape=None,
     dtype=None,
@@ -1504,7 +1557,7 @@ def _create_tensor(
         dtype,
         list(shape) if shape else [],
         name,
-        type if type else core.VarDesc.VarType.LOD_TENSOR,
+        type if type else core.VarDesc.VarType.DENSE_TENSOR,
         True if persistable else False,
     )
     eager_tensor.retain_grads()
@@ -1689,7 +1742,7 @@ class Variable(metaclass=VariableMetaClass):
     def __init__(
         self,
         block,
-        type=core.VarDesc.VarType.LOD_TENSOR,
+        type=core.VarDesc.VarType.DENSE_TENSOR,
         name=None,
         shape=None,
         dtype=None,
@@ -1831,8 +1884,8 @@ class Variable(metaclass=VariableMetaClass):
 
         assert (
             self.type == core.VarDesc.VarType.SELECTED_ROWS
-            or self.type == core.VarDesc.VarType.LOD_TENSOR
-        ), "only support a variable with SELECTED_ROWS or LOD_TENSOR to be detached"
+            or self.type == core.VarDesc.VarType.DENSE_TENSOR
+        ), "only support a variable with SELECTED_ROWS or DENSE_TENSOR to be detached"
 
         with unique_name.guard(self.block.program._name_generator):
             output = self.block.create_var(
@@ -1942,7 +1995,7 @@ class Variable(metaclass=VariableMetaClass):
         Get the Gradient of Current Variable
 
         Returns:
-            ndarray or tuple of ndarray: if Variable's type is LoDTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
+            ndarray or tuple of ndarray: if Variable's type is DenseTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
 
         Examples:
             .. code-block:: python
@@ -2065,6 +2118,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle
                 >>> import paddle.static as static
 
@@ -2076,13 +2130,13 @@ class Variable(metaclass=VariableMetaClass):
                 ...                                     shape=[-1, 23, 48],
                 ...                                     dtype='float32')
                 >>> print(new_variable._to_readable_code())
-                var X : LOD_TENSOR.shape(-1, 23, 48).dtype(float32).stop_gradient(False)
+                var X : DENSE_TENSOR.shape(-1, 23, 48).dtype(float32).stop_gradient(False)
         """
-        # VarType.LOD_TENSOR -> LOD_TENSOR
+        # VarType.DENSE_TENSOR -> DENSE_TENSOR
         type_str = str(self.type).split(".")[1]
         if (
             self.type == core.VarDesc.VarType.SELECTED_ROWS
-            or self.type == core.VarDesc.VarType.LOD_TENSOR
+            or self.type == core.VarDesc.VarType.DENSE_TENSOR
         ):
             dtype_str = str(self.dtype).split(".")[1]
             var_str = f"{self.name} : {type_str}.shape{self.shape}.dtype({dtype_str}).stop_gradient({self.stop_gradient})"
@@ -2129,6 +2183,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle.base as base
                 >>> import paddle
 
@@ -2143,7 +2198,7 @@ class Variable(metaclass=VariableMetaClass):
                 >>> print(new_variable.to_string(True, True))
                 name: "X"
                 type {
-                  type: LOD_TENSOR
+                  type: DENSE_TENSOR
                   lod_tensor {
                     tensor {
                       data_type: FP32
@@ -2427,6 +2482,7 @@ class Variable(metaclass=VariableMetaClass):
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle.base as base
                 >>> cur_program = base.Program()
                 >>> cur_block = cur_program.current_block()
@@ -2434,7 +2490,7 @@ class Variable(metaclass=VariableMetaClass):
                 ...                                     shape=[-1, 23, 48],
                 ...                                     dtype='float32')
                 >>> print("Type of current Var is: {}".format(new_variable.type))
-                Type of current Var is: VarType.LOD_TENSOR
+                Type of current Var is: VarType.DENSE_TENSOR
         """
         return self.desc.type()
 
@@ -2482,7 +2538,7 @@ class Variable(metaclass=VariableMetaClass):
                     self.name + ".tmp"
                 ),
                 dtype=self.dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )
@@ -2869,7 +2925,7 @@ class Variable(metaclass=VariableMetaClass):
 
         if not (isinstance(value, np.ndarray) or hasattr(value, "__array__")):
             raise TypeError(
-                f"`value` should be `numpy.ndarray` or `LoDTensor`, but received {type(value)}."
+                f"`value` should be `numpy.ndarray` or `DenseTensor`, but received {type(value)}."
             )
 
         if scope is not None and not isinstance(scope, core._Scope):
@@ -2903,6 +2959,8 @@ class Variable(metaclass=VariableMetaClass):
             place = core.CPUPlace()
         elif p.is_cuda_pinned_place():
             place = core.CUDAPinnedPlace()
+        elif p.is_xpu_pinned_place():
+            place = core.XPUPinnedPlace()
         elif p.is_xpu_place():
             p = core.Place()
             p.set_place(t._place())
@@ -3308,8 +3366,7 @@ class Operator:
                             in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
-                                "Input %s expects only one input, but %d are given."
-                                % (in_proto.name, len(in_args))
+                                f"Input {in_proto.name} expects only one input, but {len(in_args)} are given."
                             )
                         in_arg_names = []
                         for index, arg in enumerate(in_args):
@@ -3363,8 +3420,7 @@ class Operator:
                         out_args = [out_args]
                     if not out_proto.duplicable and len(out_args) > 1:
                         raise ValueError(
-                            "Output %s expects only one output, but %d are given."
-                            % (out_proto.name, len(out_args))
+                            f"Output {out_proto.name} expects only one output, but {len(out_args)} are given."
                         )
                     out_arg_names = []
                     for arg in out_args:
@@ -4008,7 +4064,7 @@ def _stride_in_no_check_dy2st_diff():
 
 def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
     if op_type in {"while", "conditional_block"}:
-        # Dont' need check while and conditional_block, it is only a wrapper of inner ops
+        # Don't need check while and conditional_block, it is only a wrapper of inner ops
         # we will stuck in inner op.
         return
     if outputs is not None:
@@ -4029,7 +4085,7 @@ def check_if_to_static_diff_with_dygraph(op_type, inplace_map, outputs):
                             and inplace_map.get("Input", None) == "Out"
                         ):
                             raise ValueError(
-                                f"Sorry about what's happend. In to_static mode, {op_type}'s output variable {k} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block."
+                                f"Sorry about what's happened. In to_static mode, {op_type}'s output variable {k} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. If you are sure it is safe, you can call with paddle.base.framework._stride_in_no_check_dy2st_diff() in your safe code block."
                             )
 
 
@@ -4320,9 +4376,8 @@ class Block:
         )
         if with_details:
             re_add_indent = re.compile(r"\n(.)")
-            res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
-                self.idx,
-                self.parent_idx,
+            res_str = (
+                f"blocks {{\n  idx: {self.idx}\n  parent_idx: {self.parent_idx}"
             )
             for var in list(self.vars.values()):
                 res_str += "\n  vars {{\n    {}  }}".format(
@@ -4929,7 +4984,7 @@ class Block:
                     type=v.type,
                     lod_level=(
                         v.lod_level
-                        if v.type == core.VarDesc.VarType.LOD_TENSOR
+                        if v.type == core.VarDesc.VarType.DENSE_TENSOR
                         else None
                     ),
                     stop_gradient=p.stop_gradient,
@@ -5549,7 +5604,7 @@ class IrGraph:
 
         Args:
             name(str): the name of the persistable variable node.
-            vart_type(core.VarDesc.VarType): the type of the persistable variable node.
+            var_type(core.VarDesc.VarType): the type of the persistable variable node.
             shape(list): the shape of the persistable variable node.
             var_dtype(core.VarDesc.VarType): the data type of the persistable variable node.
 
@@ -5570,7 +5625,7 @@ class IrGraph:
 
         Args:
             name(str): the name of the variable node.
-            vart_type(core.VarDesc.VarType): the type of the variable node.
+            var_type(core.VarDesc.VarType): the type of the variable node.
             shape(list): the shape of the variable node.
             var_dtype(core.VarDesc.VarType): the data type of the variable node.
 
@@ -6029,26 +6084,26 @@ class Program:
                         new_var_desc,
                         "shape",
                         [
-                            core.VarDesc.VarType.LOD_TENSOR,
+                            core.VarDesc.VarType.DENSE_TENSOR,
                             core.VarDesc.VarType.SELECTED_ROWS,
-                            core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                            core.VarDesc.VarType.DENSE_TENSOR_ARRAY,
                         ],
                     ),
                     "dtype": get_var_desc_attr_or_none(
                         new_var_desc,
                         "dtype",
                         [
-                            core.VarDesc.VarType.LOD_TENSOR,
+                            core.VarDesc.VarType.DENSE_TENSOR,
                             core.VarDesc.VarType.SELECTED_ROWS,
-                            core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                            core.VarDesc.VarType.DENSE_TENSOR_ARRAY,
                         ],
                     ),
                     "lod_level": get_var_desc_attr_or_none(
                         new_var_desc,
                         "lod_level",
                         [
-                            core.VarDesc.VarType.LOD_TENSOR,
-                            core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                            core.VarDesc.VarType.DENSE_TENSOR,
+                            core.VarDesc.VarType.DENSE_TENSOR_ARRAY,
                         ],
                     ),
                     "error_clip": (
@@ -6845,7 +6900,7 @@ class Program:
         res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
         res._sync_with_cpp()
 
-        # Note: The op_role and op_role_var cann't be deleted currently,
+        # Note: The op_role and op_role_var can't be deleted currently,
         # and we will try to remove them in the future.
         common_clipped_attrs_list = ["op_callstack", "with_quant_attr"]
 
@@ -7312,6 +7367,7 @@ class Program:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle
                 >>> import paddle.static as static
 
@@ -7323,8 +7379,8 @@ class Program:
                 >>> for var in prog.list_vars():
                 ...     print(var)
 
-                >>> # var img : LOD_TENSOR.shape(-1, 1, 28, 28).dtype(float32).stop_gradient(True)
-                >>> # var label : LOD_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
+                >>> # var img : DENSE_TENSOR.shape(-1, 1, 28, 28).dtype(float32).stop_gradient(True)
+                >>> # var label : DENSE_TENSOR.shape(-1, 1).dtype(int64).stop_gradient(True)
         """
         for each_block in self.blocks:
             yield from list(each_block.vars.values())
@@ -7339,6 +7395,7 @@ class Program:
         Examples:
             .. code-block:: python
 
+                >>> # doctest: +SKIP("This has diff in xdoctest env")
                 >>> import paddle
                 >>> import paddle.static as static
 
@@ -7356,8 +7413,8 @@ class Program:
                 >>> # Here will print all parameters in current program, in this example,
                 >>> # the result is like:
                 >>> #
-                >>> # persist trainable param fc_0.w_0 : LOD_TENSOR.shape(13, 10).dtype(float32).stop_gradient(False)
-                >>> # persist trainable param fc_0.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
+                >>> # persist trainable param fc_0.w_0 : DENSE_TENSOR.shape(13, 10).dtype(float32).stop_gradient(False)
+                >>> # persist trainable param fc_0.b_0 : DENSE_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
                 >>> #
                 >>> # Here print(param) will print out all the properties of a parameter,
                 >>> # including name, type and persistable, you can access to specific
@@ -7568,7 +7625,7 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         block,
         shape,
         dtype,
-        type=core.VarDesc.VarType.LOD_TENSOR,
+        type=core.VarDesc.VarType.DENSE_TENSOR,
         **kwargs,
     ):
         if shape is None:
@@ -7705,7 +7762,7 @@ class EagerParamBase(core.eager.Tensor):
             dtype,
             list(shape) if shape else [],
             name,
-            core.VarDesc.VarType.LOD_TENSOR,
+            core.VarDesc.VarType.DENSE_TENSOR,
             True,
         )
         self.retain_grads()
@@ -8139,11 +8196,11 @@ def device_guard(device: str | None = None) -> Generator[None, None, None]:
         if device == "cpu":
             raise ValueError("Should not set device id for cpu.")
     if (
-        device not in ["cpu", "gpu", "xpu", "", None]
+        device not in ["cpu", "gpu", "dcu", "xpu", "", None]
         and device not in core.get_all_custom_device_type()
     ):
         raise ValueError(
-            "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'xpu', 'dcu', 'gpu' or custom device, and it can also be empty string or None "
             f"when there is no need to specify device. But received {device}"
         )
     if index:
@@ -8199,6 +8256,7 @@ def _get_paddle_place(place):
             core.XPUPlace,
             core.CPUPlace,
             core.CUDAPinnedPlace,
+            core.XPUPinnedPlace,
             core.CUDAPlace,
             core.IPUPlace,
             core.CustomPlace,
@@ -8220,7 +8278,12 @@ def _get_paddle_place(place):
 
     # GPU
     available_gpu_place = re.match(r"gpu:\d+", place)
-    if place == "gpu_pinned" or place == "gpu" or available_gpu_place:
+    if (
+        place == "gpu_pinned"
+        or place == "gpu"
+        or place == "dcu"
+        or available_gpu_place
+    ):
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 f"The device should not be {available_gpu_place.group()}, since PaddlePaddle is "
@@ -8228,7 +8291,7 @@ def _get_paddle_place(place):
             )
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
-        elif place == "gpu":
+        elif place == "gpu" or place == "dcu":
             return core.CUDAPlace(0)
         else:
             place_info_list = place.split(":", 1)
@@ -8238,7 +8301,7 @@ def _get_paddle_place(place):
 
     # XPU
     available_xpu_place = re.match(r"xpu:\d+", place)
-    if available_xpu_place or place == "xpu":
+    if available_xpu_place or place == "xpu" or place == "xpu_pinned":
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
@@ -8246,6 +8309,8 @@ def _get_paddle_place(place):
             )
         if place == "xpu":
             return core.XPUPlace(0)
+        elif place == "xpu_pinned":
+            return core.XPUPinnedPlace()
         else:
             place_info_list = place.split(":", 1)
             device_id = place_info_list[1]
@@ -8273,7 +8338,7 @@ def _get_paddle_place(place):
         return core.CustomPlace(device_type, device_id)
 
     raise ValueError(
-        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, IPUPlace and CustomPlace, but received {place}."
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace, XPUPinnedPlace, IPUPlace and CustomPlace, but received {place}."
     )
 
 
@@ -8303,7 +8368,7 @@ def dtype_to_str(in_dtype):
     elif in_dtype == core.VarDesc.VarType.COMPLEX128:
         return "complex128"
     else:
-        raise TypeError(f"got unsupport data type for promotion: {in_dtype}.")
+        raise TypeError(f"got unsupported data type for promotion: {in_dtype}.")
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
@@ -8459,7 +8524,12 @@ def auto_complete_op_role(program, op_role):
         yield
     finally:
         if paddle.framework.in_pir_mode() and is_dist_block(block):
-            always_forward_ops = ["pd_op.data", "builtin.parameter"]
+            always_forward_ops = [
+                "pd_op.data",
+                "builtin.parameter",
+                "cf.stack_create",
+                "cf.tuple_push",
+            ]
             set_op_roles(block, op_role, always_forward_ops)
 
 
@@ -8490,3 +8560,16 @@ def pir_chunk_id_guard(chunk_id: int - 1) -> Generator[None, None, None]:
     finally:
         if paddle.framework.in_pir_mode():
             pir.set_chunk_id(original_chunk_id)
+
+
+@signature_safe_contextmanager
+def pir_op_name_guard(op_name: str) -> Generator[None, None, None]:
+
+    if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
+        original_comp_op_name = pir.get_comp_op_name()
+        pir.set_comp_op_name(op_name)
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode() and core._is_bwd_prim_enabled():
+            pir.set_comp_op_name(original_comp_op_name)

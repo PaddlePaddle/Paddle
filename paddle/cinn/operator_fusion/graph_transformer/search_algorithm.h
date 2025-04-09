@@ -42,7 +42,8 @@ struct SearchAlgorithm<NodePattern, GraphMatcher, GraphOperation> {
       if (GraphMatcher()(*graph_, iter_node) &&
           !visited_nodes.count(iter_node)) {
         visited_nodes.insert(iter_node);
-        VLOG(4) << "Find Matched Node: " << iter_node;
+        VLOG(4) << "Find Matched Node: " << iter_node->id() << "(" << iter_node
+                << ")";
         return iter_node;
       }
     }
@@ -69,27 +70,26 @@ struct SearchAlgorithm<NodePairPattern, GraphMatcher, GraphOperation> {
     VLOG(4) << "Create NodePairPattern algorithm.";
     graph_ = graph;
   }
-  std::optional<std::pair<PatternNodePtr, PatternNodePtr>> FindMatchedPair() {
-    for (PatternNodePtr i : graph_->all_pattern_nodes()) {
-      for (PatternNodePtr j : graph_->all_pattern_nodes()) {
-        if (i == j) continue;
-        const auto& pair = std::make_pair(i, j);
-        if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
-          visited_node_pair.insert(pair);
-          VLOG(4) << "Find Matched Node Pair: (" << i << ", " << j << ")";
-          return pair;
+  void operator()() {
+    std::vector<PatternNodePtr> nodes;
+    for (auto node : graph_->all_pattern_nodes()) {
+      nodes.push_back(node);
+    }
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      auto lhs = nodes[i];
+      for (size_t j = i + 1; j < nodes.size(); ++j) {
+        auto rhs = nodes[j];
+        if (GraphMatcher()(*graph_, lhs, rhs)) {
+          VLOG(4) << "Find Matched Node Pair: (" << lhs->id() << ", "
+                  << rhs->id() << ")";
+          auto merged = GraphOperation()(graph_, lhs, rhs);
+          if (merged == nullptr) continue;
+          lhs = nodes[i] = merged;
+          nodes.erase(nodes.begin() + j);
+          --j;
         }
       }
-    }
-    VLOG(4) << "Can't find matched node any more.";
-    return {};
-  }
-  void operator()() {
-    while (true) {
-      const auto& node = FindMatchedPair();
-      if (!node.has_value()) break;
-      const auto& [i, j] = node.value();
-      GraphOperation()(graph_, i, j);
     }
   }
 };
@@ -138,8 +138,8 @@ struct SearchAlgorithm<ReverseTopoNodePairPattern,
 template <typename Kind, typename GraphMatcher, typename GraphOperation>
 void GraphTransformer(PatternGraph* graph) {
   VLOG(4) << "Start GraphTransformer...";
-  auto alog = SearchAlgorithm<Kind, GraphMatcher, GraphOperation>(graph);
-  alog();
+  auto algo = SearchAlgorithm<Kind, GraphMatcher, GraphOperation>(graph);
+  algo();
 }
 
 }  // namespace cinn::fusion

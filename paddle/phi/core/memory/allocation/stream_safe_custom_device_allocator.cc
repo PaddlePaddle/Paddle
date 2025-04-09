@@ -34,11 +34,11 @@ StreamSafeCustomDeviceAllocation::StreamSafeCustomDeviceAllocation(
       owning_stream_(std::move(owning_stream)),
       allocator_(allocator->shared_from_this()) {}
 
-void StreamSafeCustomDeviceAllocation::RecordStream(
+bool StreamSafeCustomDeviceAllocation::RecordStream(
     phi::stream::stream_t stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
-    return;
+    return false;
   }
   std::call_once(once_flag_, [this] { phi::DeviceManager::SetDevice(place_); });
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
@@ -55,6 +55,7 @@ void StreamSafeCustomDeviceAllocation::RecordStream(
   VLOG(8) << "Record event " << outstanding_event_map_[stream]->raw_event()
           << " to stream " << stream;
   outstanding_event_map_[stream]->Record(&stream_wrapper);
+  return true;
 }
 
 bool StreamSafeCustomDeviceAllocation::CanBeFreed() {

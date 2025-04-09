@@ -41,12 +41,11 @@
 #include "paddle/cinn/backends/extern_func_emitter.h"
 #include "paddle/cinn/backends/extern_func_emitter_builtin.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
-#include "paddle/cinn/optim/var_mod_simplify.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
@@ -278,44 +277,59 @@ llvm::Value *CodeGenLLVM::Visit(const ir::StringImm *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Add *op) {
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '+', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '+',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Sub *op) {
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '-', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '-',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Mul *op) {
-  ir::TryElevateInt32ToInt64({op->a(), op->b()});
-  auto *lhs = Visit(&op->a());
-  auto *rhs = Visit(&op->b());
-  return EmitBinaryOp(lhs, rhs, '*', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '*',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Div *op) {
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '/', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '/',
+                      is_integral_type(op->type()));
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Mod *op) {
-  return EmitBinaryOp(
-      Visit(&op->a()), Visit(&op->b()), '%', is_integral_type(op->type()));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()}));
+  return EmitBinaryOp(Visit(&promote_args.at(0)),
+                      Visit(&promote_args.at(1)),
+                      '%',
+                      is_integral_type(op->type()));
 }
 
-#define __IR_EMITTER_DEFINE_CMP_VISITOR(__sop, __uop, __fop) \
-  auto *lhs = Visit(&op->a());                               \
-  auto *rhs = Visit(&op->b());                               \
-  CHECK(op->a().type() == op->b().type());                   \
-  llvm::CmpInst::Predicate predicate;                        \
-  if (op->a().type().is_int()) {                             \
-    predicate = llvm::CmpInst::ICMP_##__sop;                 \
-  } else if (op->a().type().is_uint()) {                     \
-    predicate = llvm::CmpInst::ICMP_##__uop;                 \
-  } else /*float*/ {                                         \
-    predicate = llvm::CmpInst::FCMP_##__fop;                 \
-  }                                                          \
+#define __IR_EMITTER_DEFINE_CMP_VISITOR(__sop, __uop, __fop)     \
+  auto promote_args =                                            \
+      std::move(ir::TryElevateInt32ToInt64({op->a(), op->b()})); \
+  auto *lhs = Visit(&promote_args.at(0));                        \
+  auto *rhs = Visit(&promote_args.at(1));                        \
+  CHECK(promote_args.at(0).type() == promote_args.at(1).type()); \
+  llvm::CmpInst::Predicate predicate;                            \
+  if (promote_args.at(0).type().is_int()) {                      \
+    predicate = llvm::CmpInst::ICMP_##__sop;                     \
+  } else if (promote_args.at(0).type().is_uint()) {              \
+    predicate = llvm::CmpInst::ICMP_##__uop;                     \
+  } else /*float*/ {                                             \
+    predicate = llvm::CmpInst::FCMP_##__fop;                     \
+  }                                                              \
   return EmitComparison(predicate, lhs, rhs, b_)
 
 llvm::Value *CodeGenLLVM::Visit(const ir::EQ *op) {
@@ -752,7 +766,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
   { ir::ir_utils::IrVerify(op); }
 
   for (auto &fn : op->functions) {
-    VLOG(1) << "JIT Linking function [" << fn.As<ir::_LoweredFunc_>()->name
+    VLOG(3) << "JIT Linking function [" << fn.As<ir::_LoweredFunc_>()->name
             << "]";
     auto fnll = Visit(fn.As<ir::_LoweredFunc_>());
 
@@ -923,8 +937,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
       // fit the total_lanes in native_lanes(split into multiple native steps)
       for (int offset = 0; offset < total_lanes; offset += total_lanes) {
         int lanes = total_lanes;
-        Expr base = cinn::common::AutoSimplify(ramp->base + offset);
-        optim::VarModSimplify(&base);
+        Expr base = optim::ArithSimplify(ramp->base + offset);
         auto *ptr =
             CreateBufferPtr(op->type().ElementOf(), buffer, Visit(&base));
         auto *vtype = llvm::VectorType::get(
@@ -1237,10 +1250,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
 
   for (int i = 0; i < load_lanes; i += load_lanes) {
     int slice_lanes = load_lanes;
-    auto slice_base = cinn::common::AutoSimplify(ramp->base + i);
-    optim::VarModSimplify(&slice_base);
-    auto slide_stride = Expr(1);
-    auto slide_index = slice_base;
+    auto slice_base = optim::ArithSimplify(ramp->base + i);
 
 #if LLVM_VERSION_MAJOR >= 11
     const llvm::ElementCount elem_count(slice_lanes, /*scalable*/ false);
@@ -1357,6 +1367,10 @@ int GetNaiveVecAlignmentImpl(common::HygonDCUArchHIP, const Target &target) {
   return 128;
 }
 
+int GetNaiveVecAlignmentImpl(common::HygonDCUArchSYCL, const Target &target) {
+  return 128;
+}
+
 int GetNaiveVecAlignment(const Target &target) {
   return std::visit(
       [&](const auto &impl) { return GetNaiveVecAlignmentImpl(impl, target); },
@@ -1467,8 +1481,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BufferCreate *op) {
   for (int i = 0; i < buffer_node->shape.size(); i++) {
     buffer_size = buffer_size * buffer_node->shape[i];
   }
-  ir::TryElevateInt32ToInt64({buffer_size});
-  args.push_back(Visit(&buffer_size));
+  auto promote_args = std::move(ir::TryElevateInt32ToInt64({buffer_size}));
+  args.push_back(Visit(&promote_args.at(0)));
   args.push_back(ll_const_int32(32));
 
   return Call(callee, args);

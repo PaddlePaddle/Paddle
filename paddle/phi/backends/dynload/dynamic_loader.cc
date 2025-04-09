@@ -68,12 +68,22 @@ PHI_DEFINE_string(rccl_dir,
                   "dlopen will search rccl from LD_LIBRARY_PATH");
 #endif
 
+#ifdef PADDLE_WITH_FLAGCX
+COMMON_DECLARE_string(flagcx_dir);
+#endif
+
+PHI_DEFINE_EXPORTED_string(
+    flagcx_dir,  // NOLINT
+    "",
+    "Specify path for loading libflagcx.so. For instance, "
+    "For instance, /usr/local/flagcx/lib. If default, "
+    "dlopen will search flagcx from LD_LIBRARY_PATH");
+
 #ifdef PADDLE_WITH_XPU
 PD_DEFINE_string(xpti_dir, "", "Specify path for loading libxpti.so.");
 #endif
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 struct PathNode {
   PathNode() = default;
@@ -366,7 +376,7 @@ void* GetCublasDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -385,7 +395,7 @@ void* GetCublasDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -413,7 +423,7 @@ void* GetCublasLtDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -529,7 +539,7 @@ void* GetCUPTIDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -594,6 +604,8 @@ void* GetCusolverDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusolver_lib, true, {cuda_lib_path});
 #endif
+#elif defined(PADDLE_WITH_HIP)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsolver.so");
 #else
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so.11");
@@ -623,7 +635,7 @@ void* GetCusparseDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -719,6 +731,20 @@ void* GetFlashAttnDsoHandle() {
 #endif
 }
 
+void* GetFlashAttnV3DsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattnv3.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattnv3.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattnv3.so");
+#endif
+}
+
 void* GetAfsApiDsoHandle() {
   std::string afsapi_dir = "";
   if (!s_py_site_pkg_path.path.empty()) {
@@ -759,6 +785,14 @@ void* GetNCCLDsoHandle() {
       FLAGS_nccl_dir, "libnccl.so", true, {}, warning_msg);
 #endif
 
+#endif
+}
+
+void* GetFLAGCXDsoHandle() {
+#ifdef PADDLE_WITH_FLAGCX
+  return GetDsoHandleFromSearchPath(FLAGS_flagcx_dir, "libflagcx.so");
+#else
+  return nullptr;
 #endif
 }
 
@@ -827,7 +861,7 @@ void* GetCUFFTDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.11");
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer.");
     return nullptr;
   }
@@ -848,7 +882,7 @@ void* GetCUFFTDsoHandle() {
 #endif
   } else {
     std::string warning_msg(
-        "Your CUDA_VERSION is less than 11 or greater than 12, paddle "
+        "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
         "temporarily no longer supports");
     return nullptr;
   }
@@ -887,5 +921,4 @@ void* GetXPTIDsoHandle() {
   return nullptr;
 #endif
 }
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

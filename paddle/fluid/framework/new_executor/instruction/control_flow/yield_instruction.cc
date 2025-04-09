@@ -38,13 +38,18 @@ YieldInstruction::YieldInstruction(size_t id,
       continue;
     }
     auto in = op->operand_source(i);
-    inputs.emplace(in, GetValueIds(in, *value_exe_info));
-    input_vars_.push_back(value_exe_info->GetVarByValue(in));
+    if (in && in.type()) {
+      inputs.emplace(in, GetValueIds(in, *value_exe_info));
+      input_vars_.push_back(value_exe_info->GetVarByValue(in));
+    }
   }
   SetInputs(inputs);
 
   for (size_t i = 0; i < parent_op->num_results(); ++i) {
-    output_vars_.push_back(value_exe_info->GetVarByValue(parent_op->result(i)));
+    if (parent_op->result(i) && parent_op->result(i).type()) {
+      output_vars_.push_back(
+          value_exe_info->GetVarByValue(parent_op->result(i)));
+    }
   }
 
   PADDLE_ENFORCE_EQ(

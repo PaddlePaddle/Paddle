@@ -529,7 +529,7 @@ class StaticPIRGraphAdapter:
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
             if self._amp_level == 'O2' and input_dtypes[idx] == paddle.float16:
-                if isinstance(feed[n], core.LoDTensor):
+                if isinstance(feed[n], core.DenseTensor):
                     feed[n] = feed[n]._as_type(paddle.pir.core.DataType.FLOAT16)
                 elif isinstance(feed[n], np.ndarray):
                     feed[n] = feed[n].astype('float16')
@@ -568,7 +568,7 @@ class StaticPIRGraphAdapter:
             if len(name) > 0:
                 rets.insert(i, feed[name])
 
-        # LoDTensor cannot be fetch as numpy directly
+        # DenseTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
             return rets[:]
@@ -962,7 +962,7 @@ class StaticGraphAdapter:
             if inputs[idx] is not None:
                 feed[n] = inputs[idx]
             if self._amp_level == 'O2' and input_dtypes[idx] == paddle.float16:
-                if isinstance(feed[n], core.LoDTensor):
+                if isinstance(feed[n], core.DenseTensor):
                     feed[n] = feed[n]._as_type(core.VarDesc.VarType.FP16)
                 elif isinstance(feed[n], np.array):
                     feed[n] = feed[n].astype('float16')
@@ -1001,7 +1001,7 @@ class StaticGraphAdapter:
             if len(name) > 0:
                 rets.insert(i, feed[name])
 
-        # LoDTensor cannot be fetch as numpy directly
+        # DenseTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
             return rets[:]
@@ -2615,8 +2615,8 @@ class Model:
                 field of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ..., [X, Y]] if stack_outputs
-                is False. stack_outputs as False is used for LoDTensor output situation,
-                it is recommended set as True if outputs contains no LoDTensor. Default: False.
+                is False. stack_outputs as False is used for DenseTensor output situation,
+                it is recommended set as True if outputs contains no DenseTensor. Default: False.
             verbose (int, optional): The verbosity mode, should be 0, 1, or 2. 0 = silent,
                 1 = progress bar, 2 = one line per batch. Default: 1.
             callbacks(Sequence[Callback]|Callback|None, optional): A Callback instance, Default: None.
@@ -2790,7 +2790,7 @@ class Model:
             #   ([input1, input2, ...], [label1, label2, ...])
             # To handle all of these, flatten (nested) list to list.
             data = paddle.utils.flatten(data)
-            # LoDTensor.shape is callable, where LoDTensor comes from
+            # DenseTensor.shape is callable, where DenseTensor comes from
             # DataLoader in static graph
 
             batch_size = (

@@ -34,7 +34,6 @@
 			*paddle::PaddleTensor*;
 			*paddle::UpdateDllFlag*;
 			*paddle::MakeCipher*;
-			*paddle::DistConfig*;
 			*paddle::DefaultGPUPlace*;
 			*paddle::ResourceManager*;
 			*paddle::GPUContextResource*;

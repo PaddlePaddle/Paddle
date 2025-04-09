@@ -72,6 +72,11 @@ def convert_to_list(value, n, name, dtype=int):
     if isinstance(value, dtype):
         return [value] * n
     else:
+        if isinstance(value, (Variable, paddle.pir.Value)):
+            raise NotSupportedTensorArgumentError(
+                f"`{name}` required numerical type with `{dtype}`, but received Tensor.",
+                name,
+            )
         try:
             value_list = list(value)
         except TypeError:
@@ -228,8 +233,7 @@ def pack_sequence_as(structure, flat_sequence):
     if not is_sequence(structure):
         if len(flat_sequence) != 1:
             raise ValueError(
-                "Structure is a scalar but len(flat_sequence) == %d > 1"
-                % len(flat_sequence)
+                f"Structure is a scalar but len(flat_sequence) == {len(flat_sequence)} > 1"
             )
         return flat_sequence[0]
     flat_structure = flatten(structure)

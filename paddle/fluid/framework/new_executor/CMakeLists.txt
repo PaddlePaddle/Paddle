@@ -14,6 +14,11 @@ if(NOT WITH_ONEDNN)
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_instruction.cc)
 endif()
 
+if(NOT WITH_CUSTOM_DEVICE)
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/custom_engine_instruction.cc)
+endif()
+
 if(NOT TENSORRT_FOUND OR NOT WITH_TENSORRT)
   list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/tensorrt_engine_instruction.cc)
@@ -21,6 +26,7 @@ endif()
 
 set(standalone_executor_deps
     pir
+    pir_save_load
     program_translator
     op_dialect_vjp
     global_utils

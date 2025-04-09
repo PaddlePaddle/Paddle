@@ -14,8 +14,7 @@
 
 #include "paddle/pir/include/core/utils.h"
 
-namespace pir {
-namespace detail {
+namespace pir::detail {
 
 std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
@@ -66,5 +65,4 @@ void PrintHeader(const std::string &header, std::ostream &os) {
   os << "===" << std::string(line_len, '-') << "===\n";
 }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/lod_rank_table.h"
+#include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
@@ -31,11 +30,11 @@ inline bool IsType(const std::type_index& type) {
 
 inline proto::VarType::Type ToVarType(int type) {
   switch (type) {
-    case proto::VarType::LOD_TENSOR:
+    case proto::VarType::DENSE_TENSOR:
     case proto::VarType::SELECTED_ROWS:
     case proto::VarType::SPARSE_COO:
     case proto::VarType::LOD_RANK_TABLE:
-    case proto::VarType::LOD_TENSOR_ARRAY:
+    case proto::VarType::DENSE_TENSOR_ARRAY:
     case proto::VarType::FETCH_LIST:
     case proto::VarType::READER:
       return static_cast<proto::VarType::Type>(type);
@@ -48,13 +47,10 @@ inline proto::VarType::Type ToVarType(int type) {
 template <typename Visitor>
 inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
   switch (var.Type()) {
-    case proto::VarType::LOD_TENSOR:
+    case proto::VarType::DENSE_TENSOR:
       visitor(var.Get<phi::DenseTensor>());
       return;
-    case proto::VarType::LOD_RANK_TABLE:
-      visitor(var.Get<LoDRankTable>());
-      return;
-    case proto::VarType::LOD_TENSOR_ARRAY:
+    case proto::VarType::DENSE_TENSOR_ARRAY:
       visitor(var.Get<phi::TensorArray>());
       return;
     case proto::VarType::SELECTED_ROWS:

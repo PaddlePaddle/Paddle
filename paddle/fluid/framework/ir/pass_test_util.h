@@ -132,11 +132,11 @@ bool RunPassAndAssert(Graph* graph,
 /// @tparam     T         phi::DenseTensor data type.
 ///
 template <typename T>
-void InitLoDTensorHolder(const Scope& scope,
-                         const phi::Place& place,
-                         const std::string& var_name,
-                         const std::vector<int64_t>& dims,
-                         const T* data = nullptr);
+void InitDenseTensorHolder(const Scope& scope,
+                           const phi::Place& place,
+                           const std::string& var_name,
+                           const std::vector<int64_t>& dims,
+                           const T* data = nullptr);
 
 ///
 /// @brief      Retrieve operator descriptor from program.

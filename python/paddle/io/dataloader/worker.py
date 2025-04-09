@@ -394,7 +394,7 @@ def _worker_loop(
                 if use_shared_memory:
 
                     def numpy2lodtensor(arr):
-                        lodtensor = core.Tensor()
+                        lodtensor = core.DenseTensor()
                         lodtensor.set(arr, core.CPUPlace())
                         return lodtensor
 

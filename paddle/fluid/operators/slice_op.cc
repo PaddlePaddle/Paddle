@@ -37,7 +37,7 @@ class SliceOp : public framework::OperatorWithKernel {
     // Case 1: Special treatment when input is a tensor array.
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
-    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+    if (x_var_type == framework::proto::VarType::DENSE_TENSOR_ARRAY) {
       PADDLE_ENFORCE_EQ(axes.size(),
                         1,
                         common::errors::InvalidArgument(
@@ -46,7 +46,7 @@ class SliceOp : public framework::OperatorWithKernel {
                             "but received %d.",
                             axes.size()));
       if (ctx->IsRuntime()) {
-        // If the var type of input is LOD_TENSOR_ARRAY,
+        // If the var type of input is DENSE_TENSOR_ARRAY,
         // the output shape is determined by SliceKernel:Compute in runtime.
         return;
       } else {
@@ -313,8 +313,8 @@ class SliceOpGrad : public framework::OperatorWithKernel {
         true,
         common::errors::InvalidArgument("Input(Out@GRAD) should not be null"));
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
-    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-      // If the var type of input is LOD_TENSOR_ARRAY,
+    if (x_var_type == framework::proto::VarType::DENSE_TENSOR_ARRAY) {
+      // If the var type of input is DENSE_TENSOR_ARRAY,
       // the output shape is determined by SliceGradKernel:Compute in runtime.
       if (ctx->IsRuntime()) {
         return;
@@ -427,7 +427,7 @@ class SliceCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto ends = this->Attr<std::vector<int>>("ends");
     auto infer_flags = this->Attr<std::vector<int>>("infer_flags");
     auto decrease_axis = this->Attr<std::vector<int>>("decrease_axis");
-    VLOG(6) << "Runing slice_grad composite func";
+    VLOG(6) << "Running slice_grad composite func";
     std::vector<int64_t> new_axes =
         std::vector<int64_t>(axes.begin(), axes.end());
     std::vector<int64_t> new_infer_flags =

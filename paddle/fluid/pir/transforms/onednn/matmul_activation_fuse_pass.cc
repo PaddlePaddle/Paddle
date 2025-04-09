@@ -637,7 +637,7 @@ class FusedMatmulClipFusePattern : public paddle::drr::DrrPatternBase {
 class MatmulActivationFusePass : public pir::PatternRewritePass {
  public:
   MatmulActivationFusePass()
-      : pir::PatternRewritePass("matmul_activation_fuse_pass", 3) {}
+      : pir::PatternRewritePass("matmul_activation_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

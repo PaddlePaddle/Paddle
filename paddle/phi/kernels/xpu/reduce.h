@@ -28,9 +28,9 @@ namespace phi {
 static void GetReduceDims(const DDim& xdims,
                           const std::vector<int64_t>& dims,
                           bool reduce_all,
-                          std::vector<int>* reduce_dims) {
+                          std::vector<int64_t>* reduce_dims) {
   const auto& input_dim_size = xdims.size();
-  std::vector<int> true_dims;
+  std::vector<int64_t> true_dims;
   for (size_t i = 0; i < dims.size(); ++i) {
     if (dims[i] < 0) {
       true_dims.push_back(dims[i] + input_dim_size);
@@ -40,11 +40,11 @@ static void GetReduceDims(const DDim& xdims,
   }
 
   if (reduce_all) {
-    for (int i = 0; i < input_dim_size; ++i) {
+    for (int64_t i = 0; i < input_dim_size; ++i) {
       reduce_dims->push_back(i);
     }
   } else {
-    std::set<int> dims_set(true_dims.begin(), true_dims.end());
+    std::set<int64_t> dims_set(true_dims.begin(), true_dims.end());
     for (auto i = 0; i < input_dim_size; i++) {
       if (dims_set.find(i) != dims_set.end()) {
         if (xdims[i] != 1) {
@@ -65,8 +65,8 @@ int XPUReduce(const Context& dev_ctx,
               std::function<int(xpu::Context*,
                                 const T*,
                                 T*,
-                                const std::vector<int>&,
-                                const std::vector<int>&)> func) {
+                                const std::vector<int64_t>&,
+                                const std::vector<int64_t>&)> func) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   dev_ctx.template Alloc<T>(out);
@@ -75,12 +75,12 @@ int XPUReduce(const Context& dev_ctx,
   auto* y_data = out->data<T>();
 
   const auto& input_dim_size = x.dims().size();
-  std::vector<int> xdims(input_dim_size);
+  std::vector<int64_t> xdims(input_dim_size);
   for (int i = 0; i < input_dim_size; ++i) {
     xdims[i] = x.dims()[i];
   }
 
-  std::vector<int> reduce_dims;
+  std::vector<int64_t> reduce_dims;
   GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
 
   int r = xpu::SUCCESS;
@@ -100,8 +100,8 @@ template <typename DeviceContext, typename T, typename OutT, typename Functor>
 void ReduceKernelImpl(const DeviceContext& dev_ctx,
                       const phi::DenseTensor& input,
                       phi::DenseTensor* output,
-                      const std::vector<int>& xdims,
-                      const std::vector<int>& reduce_dims) {
+                      const std::vector<int64_t>& xdims,
+                      const std::vector<int64_t>& reduce_dims) {
   using XPUType = typename XPUTypeTrait<OutT>::Type;
   dev_ctx.template Alloc<OutT>(output);
   const auto* x_data = input.data<OutT>();
@@ -129,12 +129,12 @@ void XPUReduce(const DeviceContext& dev_ctx,
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
 
   const auto& input_dim_size = x.dims().size();
-  std::vector<int> xdims(input_dim_size);
+  std::vector<int64_t> xdims(input_dim_size);
   for (int i = 0; i < input_dim_size; ++i) {
     xdims[i] = x.dims()[i];
   }
 
-  std::vector<int> reduce_dims;
+  std::vector<int64_t> reduce_dims;
   GetReduceDims(x.dims(), dims, reduce_all, &reduce_dims);
 
   // no need to cast dtype

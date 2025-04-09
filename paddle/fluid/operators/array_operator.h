@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 
-#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/platform/device_context.h"
 

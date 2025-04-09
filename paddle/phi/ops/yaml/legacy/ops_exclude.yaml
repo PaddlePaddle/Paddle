@@ -10,15 +10,11 @@
 - any
 - assign_out_
 - assign_value_
-- c_allgather
-- c_allreduce_max
-- c_allreduce_min
-- c_allreduce_prod
 - c_allreduce_sum
-- c_broadcast
 - c_concat
 - c_identity
-- c_reduce_sum
+- c_softmax_with_cross_entropy
+- c_split
 - cast
 - conv2d_transpose
 - conv2d_transpose_bias

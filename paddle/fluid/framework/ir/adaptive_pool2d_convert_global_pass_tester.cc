@@ -19,9 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(AdaptivePool2dConvertGlobalPass, basic) {
   Layers layers;
@@ -63,8 +61,6 @@ TEST(AdaptivePool2dConvertGlobalPass, pass_op_version_check) {
           .IsPassCompatible("adaptive_pool2d_convert_global_pass"));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(adaptive_pool2d_convert_global_pass);

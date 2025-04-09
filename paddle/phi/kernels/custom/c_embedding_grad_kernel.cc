@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/c_embedding_grad_kernel.h"
 #include "glog/logging.h"
-#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/float16.h"
@@ -31,7 +31,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           int64_t start_index,
                           DenseTensor* w_grad) {
   w_grad->Resize(w.dims());
-  dev_ctx.template Alloc(w_grad, w.dtype());
+  dev_ctx.Alloc(w_grad, w.dtype());
   const auto& index_type = ids.dtype();
   if (index_type == phi::DataType::INT32 ||
       index_type == phi::DataType::INT64) {

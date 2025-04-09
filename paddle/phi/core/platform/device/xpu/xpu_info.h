@@ -92,6 +92,8 @@ uint64_t RecordedXPULimitSize(int dev_id);
 
 bool IsXPUMallocRecorded(int dev_id);
 
+void EmptyCache(void);
+
 }  // namespace platform
 }  // namespace paddle
 #endif

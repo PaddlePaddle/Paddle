@@ -168,6 +168,15 @@ class ProcessGroup {
         GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors UNUSED,
+      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      bool sync_op UNUSED) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "ProcessGroup%s does not support all_to_all with sync_op flag.",
+        GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& UNUSED = BarrierOptions()) {
     PADDLE_THROW(common::errors::Unimplemented(
@@ -296,6 +305,17 @@ class ProcessGroup {
       const phi::DenseTensor& in_tensor UNUSED,
       const std::vector<int64_t>& out_size_each_rank UNUSED,
       const std::vector<int64_t>& in_size_each_rank UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "ProcessGroup%s does not support all_to_all "
+        "with sync_op and use_calc_stream flag.",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors UNUSED,
+      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
       bool sync_op UNUSED,
       bool use_calc_stream UNUSED) {
     PADDLE_THROW(common::errors::Unimplemented(

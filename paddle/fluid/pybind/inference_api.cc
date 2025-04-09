@@ -46,6 +46,10 @@
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/fluid/pybind/cuda_multiprocess_helper.h"
+#endif
+
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
@@ -248,6 +252,59 @@ paddle_infer::PlaceType ToPaddleInferPlace(
   }
 }
 
+void PaddleInferShareExternalDataByPtrName(
+    paddle_infer::Tensor &tensor,  // NOLINT
+    const std::string &shm_name,
+    const std::vector<int> &shape,
+    int dtype,
+    int place) {
+#if defined(PADDLE_WITH_CUDA)
+  phi::AllocationType place_ = static_cast<phi::AllocationType>(place);
+  paddle_infer::PlaceType place_type = ToPaddleInferPlace(place_);
+
+  volatile shmStruct *shm = NULL;
+  sharedMemoryInfo info;
+  if (sharedMemoryOpen(shm_name.c_str(), sizeof(shmStruct), &info) != 0) {
+    PADDLE_THROW(phi::errors::Fatal("Failed to create shared memory slab."));
+  }
+  shm = (volatile shmStruct *)info.addr;
+  void *ptr = nullptr;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaIpcOpenMemHandle(&ptr,
+                           *(cudaIpcMemHandle_t *)&shm->memHandle,  // NOLINT
+                           cudaIpcMemLazyEnablePeerAccess));
+
+  // NOTE(Zhenyu Li): Unable to enter the correct branch when using enum
+  if (dtype == 22) {
+    phi::dtype::bfloat16 *data_ptr =
+        reinterpret_cast<phi::dtype::bfloat16 *>(ptr);
+    tensor.ShareExternalData(data_ptr, shape, place_type);
+  } else if (dtype == 10) {
+    float *data_ptr = reinterpret_cast<float *>(ptr);
+    tensor.ShareExternalData(data_ptr, shape, place_type);
+  } else if (dtype == 15) {
+    phi::dtype::float16 *data_ptr =
+        reinterpret_cast<phi::dtype::float16 *>(ptr);
+    tensor.ShareExternalData(data_ptr, shape, place_type);
+  } else if (dtype == 3) {
+    int8_t *data_ptr = reinterpret_cast<int8_t *>(ptr);
+    tensor.ShareExternalData(data_ptr, shape, place_type);
+  } else if (dtype == 2) {
+    uint8_t *data_ptr = reinterpret_cast<uint8_t *>(ptr);
+    tensor.ShareExternalData(data_ptr, shape, place_type);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported data type. Now share_external_data_by_ptr only supports "
+        "UINT8, INT8, FLOAT32, BFLOAT16 and FLOAT16, but got %d.",
+        dtype));
+  }
+  sharedMemoryClose(&info);
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "share_external_data_by_ptr_name only supports CUDA device."));
+#endif
+}
+
 void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                   phi::DenseTensor input_tensor) {
   std::vector<int> shape;
@@ -344,10 +401,15 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
         static_cast<uint8_t *>(paddle_tensor.data()),
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
+  } else if (paddle_tensor.dtype() == phi::DataType::INT8) {
+    tensor.ShareExternalData(
+        static_cast<int8_t *>(paddle_tensor.data()),
+        shape,
+        ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
-        "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
+        "INT64, UINT8, INT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
 }
 
@@ -796,6 +858,10 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::Exp_DisableMixedPrecisionOps)
       .def("exp_enable_mixed_precision_ops",
            &AnalysisConfig::Exp_EnableMixedPrecisionOps)
+      .def("exp_sparse_conv_using_buffer",
+           &AnalysisConfig::Exp_SparseConvUsingBuffer,
+           py::arg("kernels"),
+           py::arg("strides"))
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
@@ -892,6 +958,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_low_precision_io",
            &AnalysisConfig::EnableLowPrecisionIO,
            py::arg("x") = true)
+      .def("enable_openvino_engine",
+           &AnalysisConfig::EnableOpenVINOEngine,
+           py::arg("inference_precision") = AnalysisConfig::Precision::kFloat32)
+      .def("openvino_engine_enabled", &AnalysisConfig::openvino_engine_enabled)
       .def("enable_tensorrt_engine",
            &AnalysisConfig::EnableTensorRtEngine,
            py::arg("workspace_size") = 1 << 30,
@@ -1018,24 +1088,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("custom_pass_only") = false)
       .def("set_optimization_level",
            &AnalysisConfig::SetOptimizationLevel,
-           py::arg("opt_level") = 2)
-      .def("set_dist_config", &AnalysisConfig::SetDistConfig)
-      .def("dist_config", &AnalysisConfig::dist_config);
-
-  py::class_<DistConfig>(*m, "DistConfig")
-      .def(py::init<>())
-      .def("set_carrier_id", &DistConfig::SetCarrierId)
-      .def("set_comm_init_config", &DistConfig::SetCommInitConfig)
-      .def("set_endpoints", &DistConfig::SetEndpoints)
-      .def("set_ranks", &DistConfig::SetRanks)
-      .def("enable_dist_model", &DistConfig::EnableDistModel)
-      .def("carrier_id", &DistConfig::carrier_id)
-      .def("current_endpoint", &DistConfig::current_endpoint)
-      .def("trainer_endpoints", &DistConfig::trainer_endpoints)
-      .def("nranks", &DistConfig::nranks)
-      .def("rank", &DistConfig::rank)
-      .def("comm_init_config", &DistConfig::comm_init_config)
-      .def("use_dist_model", &DistConfig::use_dist_model);
+           py::arg("opt_level") = 2);
 }
 
 void BindXpuConfig(py::module *m) {
@@ -1205,6 +1258,8 @@ void BindPaddleInferTensor(py::module *m) {
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<double>)
       .def("_copy_from_cpu_bind", &PaddleInferTensorCreate<bool>)
       .def("_copy_from_cpu_bind", &PaddleInferStringTensorCreate)
+      .def("_share_external_data_by_ptr_name_bind",
+           &PaddleInferShareExternalDataByPtrName)
       .def("_share_external_data_bind", &PaddleInferShareExternalData)
       .def("_share_external_data_paddle_tensor_bind",
            [](paddle_infer::Tensor &self, const py::handle &input) {

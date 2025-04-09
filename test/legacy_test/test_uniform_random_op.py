@@ -320,9 +320,7 @@ class TestUniformRandomOpApi(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.static.data(
-                'x', shape=[-1, 16], dtype='float32', lod_level=1
-            )
+            x = paddle.static.data('x', shape=[-1, 16], dtype='float32')
 
             linear = paddle.nn.Linear(
                 in_features=x.shape[-1],

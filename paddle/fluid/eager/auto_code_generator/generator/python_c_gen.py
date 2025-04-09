@@ -26,7 +26,13 @@ from codegen_utils import (
 #########################
 # Global Configurations #
 #########################
-skipped_forward_api_names = set()
+skipped_forward_api_names = {
+    "scale_grad",
+    "push_gpups_sparse",
+    "multiply_grad",
+    "conv2d_grad",
+    "pull_sparse_v2_grad",
+}
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -142,7 +148,7 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 }}
 """
 
-NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
+NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) ad_func_out = {}({});"
 
 
 FUNCTION_SET_DEVICE_TEMPLATE = """{}
@@ -192,6 +198,7 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_grad_functions.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/pybind/eager_custom_python_api.h"
@@ -502,7 +509,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             "::", namespace, GetForwardFunctionName(forward_api_name)
         )
 
-        return_str = "    return ToPyObject(out);"
+        return_str = "    return ToPyObject(ad_func_out);"
 
         # Generate Record Event for performance profiling
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
@@ -570,7 +577,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     inplace_args_pos_map[inplace_input],
                 )
             return_str += (
-                "    return ToPyObject(out, args, inplace_var_idx_map);"
+                "    return ToPyObject(ad_func_out, args, inplace_var_idx_map);"
             )
 
             # Generate Python-C Function Definition
@@ -662,6 +669,10 @@ class PythonCGenerator(GeneratorBase):
 
         forward_api_list = self.forward_api_list
         for forward_api_content in forward_api_list:
+            if "backward_op" in forward_api_content and forward_api_content[
+                "backward_op"
+            ].endswith(('double_grad', 'triple_grad', 'grad_grad')):
+                continue
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace
             )

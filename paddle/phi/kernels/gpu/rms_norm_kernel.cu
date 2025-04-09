@@ -286,7 +286,7 @@ struct DirectStore {
 
 template <typename T>
 inline __device__ void WelfordCombine(T val, T* mean, T* m2, T* count) {
-  // Use Welford Online algorithem to compute mean and variance
+  // Use Welford Online algorithm to compute mean and variance
   // For more details you can refer to:
   // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
   *count += 1;
@@ -568,7 +568,7 @@ inline GPU(Error_t)
     }
   }
 
-  static const bool max_smem_configed = [=]() {
+  static const bool max_smem_configured = [=]() {
     int max_smem_size = 0;
     GPU(Error_t)
     err = GPU(DeviceGetAttribute)(

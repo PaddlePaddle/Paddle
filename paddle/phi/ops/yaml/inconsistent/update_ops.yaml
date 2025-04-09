@@ -14,6 +14,5 @@
     param : [start, end, step]
     data_type : dtype
     backend : place
-  support_tensor : [start, end, step]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait

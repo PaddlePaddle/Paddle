@@ -13,8 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_device_transform.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void TransDataDevice(const phi::DenseTensor &in,
                      const phi::Place &dst_place,
@@ -42,7 +41,7 @@ void TransDataDevice(const phi::DenseTensor &in,
   }
 
   // FIXME(zcd): TransDataDevice is used to transform data from GPU to CPU and
-  // the enforced checkings have been done in GetDeviceContext, so the
+  // the enforced checks have been done in GetDeviceContext, so the
   // `dev_ctx->Wait()` is necessary. But `dev_ctx->Wait()` will make the program
   // slow, especially when the number of elements is little, for example,
   // the elements of learning rate are one and it's CPU side.
@@ -52,5 +51,4 @@ void TransDataDevice(const phi::DenseTensor &in,
   TensorCopySync(in, dst_place, out);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

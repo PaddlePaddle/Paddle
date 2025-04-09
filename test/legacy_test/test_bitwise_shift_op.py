@@ -83,10 +83,13 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
                 x,
                 y,
             )
+            out_ = x << y
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
             out_ref = ref_left_shift_arithmetic(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
 
     def test_dygraph_api_arithmetic(self):
         paddle.disable_static()
@@ -96,8 +99,10 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
             x,
             y,
         )
+        out_ = x << y
         out_ref = ref_left_shift_arithmetic(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
         paddle.enable_static()
 
     def test_static_api_logical(self):
@@ -106,18 +111,23 @@ class TestBitwiseLeftShiftAPI(unittest.TestCase):
             x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
             y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
             out = paddle.bitwise_left_shift(x, y, False)
+            out_ = x.__lshift__(y, False)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
             out_ref = ref_left_shift_logical(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
 
     def test_dygraph_api_logical(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         out = paddle.bitwise_left_shift(x, y, False)
+        out_ = x.__lshift__(y, False)
         out_ref = ref_left_shift_logical(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
         paddle.enable_static()
 
 
@@ -235,6 +245,67 @@ class TestBitwiseLeftShiftAPI_special_case4(TestBitwiseLeftShiftAPI):
         self.y = np.array([10], dtype='uint8')
 
 
+class TestTensorRlshiftAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_input()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def init_input(self):
+        self.x = np.random.randint(-255, 256)
+        self.y = np.random.randint(0, 256, [200, 300]).astype('int32')
+
+    def test_dygraph_tensor_rlshift(self):
+        paddle.disable_static()
+        x = self.x
+        y = paddle.to_tensor(self.y, dtype=self.y.dtype)
+        out = x << y
+        expected_out = x << y.numpy()
+        np.testing.assert_allclose(out.numpy(), expected_out)
+        paddle.enable_static()
+
+    def test_static_rlshift(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = self.x
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = x << y
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(
+                feed={'x': self.x, 'y': self.y},
+                fetch_list=[out],
+            )
+            out_ref = ref_left_shift_arithmetic(self.x, self.y)
+            np.testing.assert_allclose(out_ref, res[0])
+
+
+class TestTensorRlshiftAPI_UINT8(TestTensorRlshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(0, 64)
+        self.y = np.random.randint(0, 64, [200, 300]).astype('uint8')
+
+
+class TestTensorRlshiftAPI_INT8(TestTensorRlshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(-64, 64)
+        self.y = np.random.randint(0, 64, [200, 300]).astype('int8')
+
+
+class TestTensorRlshiftAPI_INT16(TestTensorRlshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(-256, 256)
+        self.y = np.random.randint(0, 256, [200, 300]).astype('int16')
+
+
+class TestTensorRlshiftAPI_INT64(TestTensorRlshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(-255, 256)
+        self.y = np.random.randint(0, 256, [200, 300]).astype('int64')
+
+
 class TestBitwiseRightShiftAPI(unittest.TestCase):
     def setUp(self):
         self.init_input()
@@ -257,10 +328,13 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
                 x,
                 y,
             )
+            out_ = x >> y
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
             out_ref = ref_right_shift_arithmetic(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
 
     def test_dygraph_api_arithmetic(self):
         paddle.disable_static()
@@ -270,8 +344,10 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
             x,
             y,
         )
+        out_ = x >> y
         out_ref = ref_right_shift_arithmetic(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
         paddle.enable_static()
 
     def test_static_api_logical(self):
@@ -280,18 +356,23 @@ class TestBitwiseRightShiftAPI(unittest.TestCase):
             x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
             y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
             out = paddle.bitwise_right_shift(x, y, False)
+            out_ = x.__rshift__(y, False)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            res_ = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out_])
             out_ref = ref_right_shift_logical(self.x, self.y)
             np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res_[0])
 
     def test_dygraph_api_logical(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         out = paddle.bitwise_right_shift(x, y, False)
+        out_ = x.__rshift__(y, False)
         out_ref = ref_right_shift_logical(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
         paddle.enable_static()
 
 
@@ -407,6 +488,101 @@ class TestBitwiseRightShiftAPI_special_case4(TestBitwiseRightShiftAPI):
     def init_input(self):
         self.x = np.array([0b11111111], dtype='uint8')
         self.y = np.array([10], dtype='uint8')
+
+
+class TestTensorRrshiftAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_input()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def init_input(self):
+        self.x = np.random.randint(-255, 256)
+        self.y = np.random.randint(0, 256, [200, 300]).astype('int32')
+
+    def test_dygraph_tensor_rrshift(self):
+        paddle.disable_static()
+        x = self.x
+        y = paddle.to_tensor(self.y, dtype=self.y.dtype)
+        out = x >> y
+        expected_out = x >> y.numpy()
+        np.testing.assert_allclose(out.numpy(), expected_out)
+        paddle.enable_static()
+
+    def test_static_rrshift(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = self.x
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = x >> y
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(
+                feed={'x': self.x, 'y': self.y},
+                fetch_list=[out],
+            )
+            out_ref = ref_right_shift_arithmetic(self.x, self.y)
+            np.testing.assert_allclose(out_ref, res[0])
+
+
+class TestTensorRrshiftAPI_UINT8(TestTensorRrshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(0, 64)
+        self.y = np.random.randint(0, 64, [200, 300]).astype('uint8')
+
+
+class TestTensorRrshiftAPI_INT8(TestTensorRrshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(-64, 64)
+        self.y = np.random.randint(0, 64, [200, 300]).astype('int8')
+
+
+class TestTensorRrshiftAPI_INT16(TestTensorRrshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(-256, 256)
+        self.y = np.random.randint(0, 256, [200, 300]).astype('int16')
+
+
+class TestTensorRrshiftAPI_INT64(TestTensorRrshiftAPI):
+    def init_input(self):
+        self.x = np.random.randint(-255, 256)
+        self.y = np.random.randint(0, 256, [200, 300]).astype('int64')
+
+
+class TestTensorShiftAPI_FLOAT(unittest.TestCase):
+    def setup(self):
+        paddle.disable_static()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def test_lshift_float(self):
+        x = paddle.to_tensor(np.random.randint(-255, 256, [200, 300]))
+        y = np.random.uniform(0, 256)
+        with self.assertRaises(TypeError):
+            x.__lshift__(y)
+
+    def test_rshift_float(self):
+        x = paddle.to_tensor(np.random.randint(-255, 256, [200, 300]))
+        y = np.random.uniform(0, 256)
+        with self.assertRaises(TypeError):
+            x.__rshift__(y)
+
+    def test_rlshift_float(self):
+        x = np.random.uniform(0, 256)
+        y = paddle.to_tensor(np.random.randint(-255, 256, [200, 300]))
+        with self.assertRaises(TypeError):
+            y.__rlshift__(x)
+
+    def test_rrshift_float(self):
+        x = np.random.uniform(0, 256)
+        y = paddle.to_tensor(np.random.randint(-255, 256, [200, 300]))
+        with self.assertRaises(TypeError):
+            y.__rrshift__(x)
 
 
 if __name__ == '__main__':

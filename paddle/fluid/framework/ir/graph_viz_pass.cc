@@ -25,9 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 using inference::analysis::Dot;
 namespace {
 std::string FormatName(const Node* node) {
@@ -138,7 +136,7 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
       dot.AddNode(node_id, attr, node_id);
     } else if (n->IsVar()) {
-      if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
+      if (n->Var() && n->Var()->GetType() == proto::VarType::DENSE_TENSOR) {
         bool is_first = true;
         for (int64_t length : n->Var()->GetShape()) {
           if (is_first) {
@@ -186,9 +184,7 @@ GraphVizPass::marked_nodes_t GraphVizPass::ConsumeMarkedNodes(
   return res;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(graph_viz_pass, paddle::framework::ir::GraphVizPass)
     .RequirePassAttr(paddle::framework::ir::kGraphvizPath);

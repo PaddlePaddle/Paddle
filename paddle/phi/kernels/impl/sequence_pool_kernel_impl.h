@@ -54,7 +54,7 @@ void SequencePoolKernel(const Context& ctx,
         lod[0][lod[0].size() - 1],
         lod[1].size() - 1,
         errors::InvalidArgument("The input lod information is illegal."));
-    phi::LoD out_lod;
+    phi::LegacyLoD out_lod;
     out_lod.push_back(lod[0]);
     out->set_lod(out_lod);
   }

@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
@@ -99,7 +99,7 @@ std::tuple<CudaAxisSpace, CudaAxisSpace> GetCudaAxisSpace(
         for_node, ::common::errors::InvalidArgument("for_node is nullptr"));
     IntSet interval{
         for_node->min,
-        common::AutoSimplify(for_node->min + for_node->extent - Expr(1))};
+        optim::ArithSimplify(for_node->min + for_node->extent - Expr(1))};
     if (for_node->is_gpu_thread_binded()) {
       if (for_node->bind_info().offset == 0) {
         cuda_thread_space.x = interval;
@@ -142,9 +142,9 @@ IntSet Evaluate(Expr expr,
   Expr copy_for_upper_bound = ir::ir_utils::IRCopy(expr);
   Expr copy_for_lower_bound = ir::ir_utils::IRCopy(expr);
   common::cas_intervals_t var_intervals;
-  std::set<ir::Expr> var_set = ir::ir_utils::CollectIRNodesWithoutTensor(
+  std::vector<ir::Expr> var_vec = ir::ir_utils::CollectIRNodesWithoutTensor(
       expr, [](const ir::Expr* x) { return x->as_var(); });
-  for (Expr var_expr : var_set) {
+  for (Expr var_expr : var_vec) {
     ir::Var var = var_expr.as_var_ref();
     if (fixed.count(var) != 0) {
       const ir::Var& fixed_var = fixed.at(var);
@@ -175,10 +175,8 @@ IntSet Evaluate(Expr expr,
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var->upper_bound);
     }
   }
-  ir::Expr lower_bound =
-      common::AutoSimplify(copy_for_lower_bound, var_intervals);
-  ir::Expr upper_bound =
-      common::AutoSimplify(copy_for_upper_bound, var_intervals);
+  ir::Expr lower_bound = optim::ArithSimplify(copy_for_lower_bound);
+  ir::Expr upper_bound = optim::ArithSimplify(copy_for_upper_bound);
   lower_bound = common::EnhancedSimplifyModExpr(lower_bound, var_intervals);
   upper_bound = common::EnhancedSimplifyModExpr(upper_bound, var_intervals);
   return IntSet(lower_bound, upper_bound, var_intervals);
@@ -262,7 +260,7 @@ std::unordered_map<ir::Var, IntSet> GetVarDomainOfSBlock(
     var_domains.emplace(
         var2for.first,
         IntSet(for_node->min,
-               common::AutoSimplify(for_node->min + for_node->extent -
+               optim::ArithSimplify(for_node->min + for_node->extent -
                                     ir::Expr(1))));
   }
   return var_domains;

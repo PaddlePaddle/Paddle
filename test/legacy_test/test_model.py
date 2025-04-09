@@ -188,7 +188,7 @@ class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not base.is_compiled_with_cuda():
-            cls().skipTest('module not tested when ONLY_CPU compling')
+            cls().skipTest('module not tested when ONLY_CPU compiling')
         cls.device = paddle.set_device('gpu')
         base.enable_dygraph(cls.device)
 

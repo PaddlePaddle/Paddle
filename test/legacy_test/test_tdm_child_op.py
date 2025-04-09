@@ -149,9 +149,7 @@ class TestCase4(TestTDMChildOp):
 class TestTDMChildShape(unittest.TestCase):
     def test_shape(self):
         with paddle_static_guard():
-            x = paddle.static.data(
-                name='x', shape=[-1, 1], dtype='int32', lod_level=1
-            )
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32')
             tdm_tree_info = create_tdm_tree()
             tree_info_np = np.array(tdm_tree_info).astype('int32')
 

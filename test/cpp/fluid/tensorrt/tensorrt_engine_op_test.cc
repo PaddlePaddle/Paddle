@@ -54,7 +54,7 @@ void AddTensorToBlockDesc(framework::proto::BlockDesc* block,
   using framework::proto::VarType;
   auto* var = block->add_vars();
   framework::VarDesc desc(name);
-  desc.SetType(VarType::LOD_TENSOR);
+  desc.SetType(VarType::DENSE_TENSOR);
   desc.SetDataType(VarType::FP32);
   desc.SetShape(shape);
   *var = *desc.Proto();

@@ -42,6 +42,8 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
         return true;
       }
     }
+  } else if (!type) {
+    return false;
   } else {
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "Only support AllocatedDenseTensorType and "
@@ -65,8 +67,12 @@ TuplePushInstruction::TuplePushInstruction(size_t id,
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   for (size_t i = 0; i < tuple_push_op_.tuple_size(); ++i) {
     auto inlet_element_value = tuple_push_op_.inlet_element(i);
-    inputs.emplace(inlet_element_value,
-                   GetValueIds(inlet_element_value, *value_exe_info_));
+    if (inlet_element_value.type()) {
+      inputs.emplace(inlet_element_value,
+                     GetValueIds(inlet_element_value, *value_exe_info_));
+    } else {
+      inputs.emplace(inlet_element_value, std::vector<int>{});
+    }
   }
   SetInputs(inputs);
 
@@ -99,13 +105,22 @@ void TuplePushInstruction::Run() {
     for (size_t i = 0; i < tuple_push_op_.tuple_size(); i++) {
       auto inlet_element_value = tuple_push_op_.inlet_element(i);
       Variable* var = value_exe_info_->GetVarByValue(inlet_element_value);
-
-      auto var_name = value_2_var_name.at(inlet_element_value);
-      auto num_str = std::to_string(stack_element_var_array_->size());
-      std::string new_name = var_name + "_copied_" + num_str;
-      auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
       bool is_optional = (inlet_element_value.impl() == nullptr ||
                           !inlet_element_value.type());
+      auto num_str = std::to_string(stack_element_var_array_->size());
+      if (!value_2_var_name.count(inlet_element_value)) {
+        if (!is_optional) {
+          PADDLE_THROW(common::errors::PermissionDenied(
+              "Cannot find corresbonding DenseTensor"));
+        }
+        stack_element_var_array_->emplace_back(nullptr);
+        continue;
+      }
+      std::string var_name = value_2_var_name.at(inlet_element_value);
+      std::string new_name = var_name + "_copied_" + num_str + "_in_tuple_" +
+                             std::to_string(op_->id());
+      auto* copy_var = value_exe_info_->GetScope()->Var(new_name);
+
       DeepCopyVariable(var,
                        &copy_var,
                        value_exe_info_,

@@ -50,6 +50,10 @@ std::optional<int> GetDataAlignmentImpl(common::HygonDCUArchHIP arch) {
   return std::nullopt;
 }
 
+std::optional<int> GetDataAlignmentImpl(common::HygonDCUArchSYCL arch) {
+  return std::nullopt;
+}
+
 std::optional<int> GetDataAlignment(common::Arch arch) {
   return std::visit([](const auto &impl) { return GetDataAlignmentImpl(impl); },
                     arch.variant());
@@ -100,8 +104,6 @@ Module Module::Builder::Build() {
   }
 
   auto res = ir::Module(module_.get());
-
-  res = optim::Optimize(res, module_->target);
   return res;
 }
 

@@ -45,27 +45,57 @@ class IRVisitorRequireReImpl {
         true,
         ::common::errors::Unavailable("The expression is not defined. Please "
                                       "provide a valid expression."));
-    switch (expr->node_type()) {
-      case IrNodeTy::IterMark:
-        return Visit(expr->As<IterMark>(), args...);
-      case IrNodeTy::IterSum:
-        return Visit(expr->As<IterSum>(), args...);
-      case IrNodeTy::IterSplit:
-        return Visit(expr->As<IterSplit>(), args...);
+    if (expr->is_index()) {
+      switch (expr->node_type()) {
+#define __(op__)           \
+  case ir::IrNodeTy::op__: \
+    return VisitIndexExpr(expr->As<ir::op__>(), args...);
+
+        NODETY_FORALL_INDEXEXPR(__)
+
+        default:
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "not supported NodeTy in IndexExpr, the expr->node_type() = %s",
+              expr->node_type()));
+#undef __
+      }
+    } else {
+      switch (expr->node_type()) {
+        case IrNodeTy::IterMark:
+          return Visit(expr->As<IterMark>(), args...);
+        case IrNodeTy::IterSum:
+          return Visit(expr->As<IterSum>(), args...);
+        case IrNodeTy::IterSplit:
+          return Visit(expr->As<IterSplit>(), args...);
 #define __(op__)           \
   case ir::IrNodeTy::op__: \
     return Visit(expr->As<ir::op__>(), args...);
 
-        NODETY_FORALL(__)
+          NODETY_FORALL(__)
+
+        default:
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "not supported NodeTy, the expr->node_type() = %s",
+              expr->node_type()));
+#undef __
+      }
+      return RetTy();
+    }
+  }
+  virtual RetTy Visit(const ir::IndexExpr* expr, Args... args) {
+    switch (expr->node_type()) {
+#define __(op__)           \
+  case ir::IrNodeTy::op__: \
+    return VisitIndexExpr(expr->As<ir::op__>(), args...);
+
+      NODETY_FORALL_INDEXEXPR(__)
 
       default:
-        std::stringstream ss;
-        ss << "not supported NodeTy, the expr->node_type() = "
-           << expr->node_type();
-        PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "not supported NodeTy in IndexExpr, the expr->node_type() = %s",
+            expr->node_type()));
 #undef __
     }
-    return RetTy();
   }
   // @}
  protected:
@@ -74,6 +104,13 @@ class IRVisitorRequireReImpl {
   virtual RetTy Visit(const IterSplit* op, Args... args) {}
 #define __(op__) virtual RetTy Visit(const ir::op__* op, Args... args) = 0;
   NODETY_FORALL(__)
+#undef __
+
+#define __(op__)                                           \
+  RetTy VisitIndexExpr(const ir::op__* op, Args... args) { \
+    return Visit(op, args...);                             \
+  }
+  NODETY_FORALL_INDEXEXPR(__)
 #undef __
 };
 
@@ -101,6 +138,12 @@ struct IRVisitor : public IRVisitorRequireReImpl<void> {
 
 bool operator==(Expr a, Expr b);
 bool operator!=(Expr a, Expr b);
+
+bool operator==(IndexExpr a, Expr b);
+bool operator!=(IndexExpr a, Expr b);
+
+bool operator==(Expr a, IndexExpr b);
+bool operator!=(Expr a, IndexExpr b);
 
 bool operator==(IndexExpr a, IndexExpr b);
 bool operator!=(IndexExpr a, IndexExpr b);

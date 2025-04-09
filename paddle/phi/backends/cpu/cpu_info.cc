@@ -48,9 +48,7 @@ PHI_DEFINE_EXPORTED_bool(use_pinned_memory,  // NOLINT
                          true,
                          "If set, allocate cpu pinned memory.");
 
-namespace phi {
-namespace backends {
-namespace cpu {
+namespace phi::backends::cpu {
 
 size_t CpuTotalPhysicalMemory() {
 #ifdef __APPLE__
@@ -199,6 +197,4 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
 }
 #endif
 
-}  // namespace cpu
-}  // namespace backends
-}  // namespace phi
+}  // namespace phi::backends::cpu

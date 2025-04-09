@@ -21,6 +21,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -104,11 +105,18 @@ class XPUTestIndexPut(XPUOpTestWrapper):
 
         def init_data(self):
             x_np = ((np.random.random(self.x_shape) - 0.5) * 10.0).astype(
-                self.dtype
+                "float32"
             )
             value_np = (
                 (np.random.random(self.value_shape) - 0.5) * 10.0
-            ).astype(self.dtype)
+            ).astype("float32")
+
+            if self.dtype == np.uint16:
+                x_np = convert_float_to_uint16(x_np)
+                value_np = convert_float_to_uint16(value_np)
+            else:
+                x_np = x_np.astype(self.dtype)
+                value_np = value_np.astype(self.dtype)
 
             if self.mixed_indices:
                 tmp_indices_np1 = gen_indices_np(
@@ -149,12 +157,21 @@ class XPUTestIndexPut(XPUOpTestWrapper):
             if self.is_all_false:
                 out_np = x_np
             else:
-                out_np = compute_index_put_ref(
-                    copy.deepcopy(x_np),
-                    self.indices_np,
-                    value_np,
-                    self.accumulate,
-                )
+                if self.dtype == np.uint16:
+                    out_np = compute_index_put_ref(
+                        convert_uint16_to_float(copy.deepcopy(x_np)),
+                        self.indices_np,
+                        convert_uint16_to_float(value_np),
+                        self.accumulate,
+                    )
+                    out_np = convert_float_to_uint16(out_np)
+                else:
+                    out_np = compute_index_put_ref(
+                        copy.deepcopy(x_np),
+                        self.indices_np,
+                        value_np,
+                        self.accumulate,
+                    )
             self.outputs = {'out': out_np}
 
         def get_indices_names(self):
@@ -172,49 +189,49 @@ class XPUTestIndexPut(XPUOpTestWrapper):
     class TestXPUIndexPut1(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int64
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = [(16, 16), (16, 16), (1, 16), (1, 16)]
-            self.value_shape = (16, 16)
+            self.x_shape = (48, 26, 56)
+            self.indices_shapes = [(16, 16), (16, 16), (1, 16)]
+            self.value_shape = [16, 16]
             self.accumulate = False
 
     class TestXPUIndexPut2(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int64
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = [(16, 16), (16, 16), (1, 16), (1, 16)]
+            self.x_shape = (48, 26, 56)
+            self.indices_shapes = [(16, 16), (16, 16), (1, 16)]
             self.value_shape = (16, 16)
             self.accumulate = True
 
     class TestXPUIndexPut3(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.bool_
-            self.x_shape = (110, 94)
-            self.indices_shapes = [(110, 94)]
-            self.value_shape = (5170,)
+            self.x_shape = (12, 94)
+            self.indices_shapes = [(12, 94)]
+            self.value_shape = (564,)
             self.accumulate = False
 
     class TestXPUIndexPut4(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.bool_
-            self.x_shape = (110, 94)
-            self.indices_shapes = [(110, 94)]
-            self.value_shape = (5170,)
+            self.x_shape = (11, 94)
+            self.indices_shapes = [(11, 94)]
+            self.value_shape = (564,)
             self.accumulate = True
 
     class TestXPUIndexPut5(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int32
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = ((16, 16), (16, 16), (1, 16))
-            self.value_shape = (16, 16, 56)
+            self.x_shape = (17, 32, 26, 36)
+            self.indices_shapes = ((8, 8), (8, 8), (1, 8))
+            self.value_shape = (8, 8, 36)
             self.accumulate = False
 
     class TestXPUIndexPut6(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int32
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = ((16, 16), (16, 16), (1, 16))
-            self.value_shape = (16, 16, 56)
+            self.x_shape = (17, 32, 26, 36)
+            self.indices_shapes = ((8, 8), (8, 8), (1, 8))
+            self.value_shape = (8, 8, 36)
             self.accumulate = True
 
     class TestXPUIndexPut7(TestXPUIndexPutOp):
@@ -237,32 +254,32 @@ class XPUTestIndexPut(XPUOpTestWrapper):
     class TestXPUIndexPut9(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int64
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = ((16, 16), (16, 16), (1, 16))
-            self.value_shape = (56,)
+            self.x_shape = (17, 32, 26, 36)
+            self.indices_shapes = ((8, 8), (8, 8), (1, 8))
+            self.value_shape = (36,)
             self.accumulate = False
 
     class TestXPUIndexPut10(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int64
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = ((16, 16), (16, 16), (1, 16))
-            self.value_shape = (56,)
+            self.x_shape = (17, 32, 26, 36)
+            self.indices_shapes = ((8, 8), (8, 8), (8, 8))
+            self.value_shape = (36,)
             self.accumulate = True
 
     class TestXPUIndexPut11(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int64
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+            self.x_shape = (17, 32, 26, 36)
+            self.indices_shapes = ((8, 8), (8, 8), (8, 8))
             self.value_shape = (1,)
             self.accumulate = False
 
     class TestXPUIndexPut12(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int64
-            self.x_shape = (110, 42, 56, 56)
-            self.indices_shapes = ((16, 16), (16, 16), (1, 16))
+            self.x_shape = (17, 32, 26, 36)
+            self.indices_shapes = ((8, 8), (8, 8), (1, 8))
             self.value_shape = (1,)
             self.accumulate = True
 
@@ -317,26 +334,26 @@ class XPUTestIndexPut(XPUOpTestWrapper):
     class TestXPUIndexPutMixedIndices(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int32
-            self.x_shape = (110, 42, 32, 56)
-            self.indices_shapes = ((16, 16), (16, 16))
-            self.value_shape = (16, 16, 56)
+            self.x_shape = (17, 32, 16, 36)
+            self.indices_shapes = ((8, 8), (8, 8))
+            self.value_shape = (8, 8, 36)
             self.accumulate = False
 
             self.mixed_indices = True
             self.index_dtype1 = np.bool_
-            self.indices_shapes1 = [(32,)]
+            self.indices_shapes1 = [(16,)]
 
     class TestXPUIndexPutMixedIndices1(TestXPUIndexPutOp):
         def set_case(self):
             self.index_dtype = np.int32
-            self.x_shape = (110, 42, 32, 56)
-            self.indices_shapes = ((16, 16), (16, 16))
-            self.value_shape = (16, 16, 56)
+            self.x_shape = (17, 32, 16, 36)
+            self.indices_shapes = ((8, 8), (8, 8))
+            self.value_shape = (8, 8, 36)
             self.accumulate = True
 
             self.mixed_indices = True
             self.index_dtype1 = np.bool_
-            self.indices_shapes1 = [(32,)]
+            self.indices_shapes1 = [(16,)]
 
 
 supported_type = get_xpu_op_support_types("index_put")
@@ -357,7 +374,7 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype_np = np.float32
         self.index_type_np = np.int64
-        self.x_shape = (100, 110)
+        self.x_shape = (50, 55)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
         self.dtype_pd = paddle.float32

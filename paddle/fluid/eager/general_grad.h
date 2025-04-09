@@ -592,7 +592,7 @@ class GeneralGrad {
     // Purify potentialstartup_ops, remove those nodes that are the same as
     // input_target_nodes
     PurifyPotentialStartUpNodes();
-    // Get Graph Info Betweent input target gradnode and outputs
+    // Get Graph Info Between input target gradnode and outputs
     // Record the depending_nodes_ and potential_startup_nodes_
     GetGraphInfoBetweenTargets(*queue);
     // Update Graph Info, remove some nodes in

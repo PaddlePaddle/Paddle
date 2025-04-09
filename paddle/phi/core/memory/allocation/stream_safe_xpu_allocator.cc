@@ -35,10 +35,10 @@ StreamSafeXPUAllocation::StreamSafeXPUAllocation(
       owning_stream_(std::move(owning_stream)),
       allocator_(allocator->shared_from_this()) {}
 
-void StreamSafeXPUAllocation::RecordStream(XPUStream stream) {
+bool StreamSafeXPUAllocation::RecordStream(XPUStream stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
-    return;
+    return false;
   }
 
   std::call_once(once_flag_,
@@ -47,6 +47,7 @@ void StreamSafeXPUAllocation::RecordStream(XPUStream stream) {
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
 
   RecordStreamPrivate(stream);
+  return true;
 }
 
 bool StreamSafeXPUAllocation::CanBeFreed() {

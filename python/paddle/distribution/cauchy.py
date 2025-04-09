@@ -122,7 +122,7 @@ class Cauchy(distribution.Distribution):
         raise ValueError("Cauchy distribution has no stddev.")
 
     def sample(
-        self, shape: Sequence[int] = (), name: str | None = None
+        self, shape: Sequence[int] = [], name: str | None = None
     ) -> Tensor:
         """Sample from Cauchy distribution.
 
@@ -172,7 +172,7 @@ class Cauchy(distribution.Distribution):
             return self.rsample(shape, name)
 
     def rsample(
-        self, shape: Sequence[int] = (), name: str | None = None
+        self, shape: Sequence[int] = [], name: str | None = None
     ) -> Tensor:
         """Sample from Cauchy distribution (reparameterized).
 

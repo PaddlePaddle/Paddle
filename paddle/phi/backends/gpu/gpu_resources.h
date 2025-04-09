@@ -30,7 +30,7 @@ void InitGpuProperties(Place place,
                        std::array<unsigned int, 3>* max_grid_dim_size);
 
 void InitStream(gpuStream_t* stream);
-void DestoryStream(gpuStream_t stream);
+void DestroyStream(gpuStream_t stream);
 
 void InitBlasHandle(blasHandle_t* blas_handle, gpuStream_t stream);
 void DestroyBlasHandle(blasHandle_t handle);

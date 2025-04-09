@@ -252,7 +252,7 @@ class ScaleFusedMatmulFusePattern : public paddle::drr::DrrPatternBase {
 class ScaleMatmulFusePass : public pir::PatternRewritePass {
  public:
   ScaleMatmulFusePass()
-      : pir::PatternRewritePass("scale_matmul_fuse_pass", 3) {}
+      : pir::PatternRewritePass("scale_matmul_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

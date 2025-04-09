@@ -195,7 +195,7 @@ class Geometric(distribution.Distribution):
                 f"Expected type of k is number.Real|framework.Variable|Value, but got {type(k)}"
             )
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Sample from Geometric distribution with sample shape.
 
         Args:
@@ -221,7 +221,7 @@ class Geometric(distribution.Distribution):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:

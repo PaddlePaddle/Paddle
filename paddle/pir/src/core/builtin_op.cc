@@ -63,6 +63,17 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
+void TrueStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
+  VLOG(10) << "Builder construction stop gradient as True for OpResults.";
+  bool stop_gradient = true;
+  std::vector<pir::Attribute> outs_stop_gradient(
+      argument.output_types.size(),
+      pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradient));
+  argument.AddAttribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
+}
+
 void RefreshStopGradientsDefaultly(Operation *op) {
   bool stop_gradient = true;
   for (auto value : op->operands_source()) {
@@ -193,7 +204,9 @@ void GroupOp::Print(IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
   printer.PrintOpOperands(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);

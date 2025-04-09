@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/garbage_collector/no_event_garbage_collector.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCoreNoEventGarbageCollector::InterpreterCoreNoEventGarbageCollector()
     : queue_(nullptr), ctxs_() {
@@ -52,10 +51,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(
   } else if (
       var->IsType<
           operators::reader::
-              OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
-    // TODO(xiongkun03) in old executor, this type of variable is not support
-    // eager deletion. so we just leave it here ?
-  } else if (var->IsType<LoDRankTable>()) {
+              OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -96,6 +92,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), ctx);
     }
+    tensor_arr->clear();
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
     // refer to executor.cc to see what old garbage collector does.
@@ -135,5 +132,4 @@ void InterpreterCoreNoEventGarbageCollector::Add(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

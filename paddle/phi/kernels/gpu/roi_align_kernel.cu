@@ -23,12 +23,12 @@
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumMaximumNumBlocks = 4096;
 static constexpr int kROISize = 4;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <class T>
@@ -145,6 +145,10 @@ void RoiAlignKernel(const Context& dev_ctx,
                     int sampling_ratio,
                     bool aligned,
                     DenseTensor* out) {
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto in_dims = x.dims();
   int batch_size = in_dims[0];
   int channels = in_dims[1];
@@ -181,19 +185,36 @@ void RoiAlignKernel(const Context& dev_ctx,
             boxes_batch_size,
             batch_size));
 
-    std::vector<int> boxes_num_list(boxes_batch_size);
-    memory_utils::Copy(cplace,
-                       boxes_num_list.data(),
-                       gplace,
-                       boxes_num->data<int>(),
-                       sizeof(int) * boxes_batch_size,
-                       0);
-    int start = 0;
-    for (int n = 0; n < boxes_batch_size; ++n) {
-      for (int i = start; i < start + boxes_num_list[n]; ++i) {
-        roi_batch_id_data[i] = n;
+    if (boxes_num->dtype() == phi::DataType::INT64) {
+      std::vector<int64_t> boxes_num_list(boxes_batch_size);
+      memory_utils::Copy(cplace,
+                         boxes_num_list.data(),
+                         gplace,
+                         boxes_num->data<int64_t>(),
+                         sizeof(int64_t) * boxes_batch_size,
+                         0);
+      int64_t start = 0;
+      for (int64_t n = 0; n < boxes_batch_size; ++n) {
+        for (int64_t i = start; i < start + boxes_num_list[n]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+        start += boxes_num_list[n];
       }
-      start += boxes_num_list[n];
+    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+      std::vector<int> boxes_num_list(boxes_batch_size);
+      memory_utils::Copy(cplace,
+                         boxes_num_list.data(),
+                         gplace,
+                         boxes_num->data<int>(),
+                         sizeof(int) * boxes_batch_size,
+                         0);
+      int start = 0;
+      for (int n = 0; n < boxes_batch_size; ++n) {
+        for (int i = start; i < start + boxes_num_list[n]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+        start += boxes_num_list[n];
+      }
     }
   } else {
     auto lod = boxes.lod();

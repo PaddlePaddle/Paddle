@@ -306,7 +306,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             var = program.global_block().vars[varname]
             if (
                 not var.persistable
-                or var.desc.type() != core.VarDesc.VarType.LOD_TENSOR
+                or var.desc.type() != core.VarDesc.VarType.DENSE_TENSOR
             ):
                 continue
             param = vars_metatools.create_var_struct(var)
@@ -324,7 +324,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 processed_var_names.add(var_name)
                 var = program.global_block().vars[var_name]
 
-                if var.desc.type() != core.VarDesc.VarType.LOD_TENSOR:
+                if var.desc.type() != core.VarDesc.VarType.DENSE_TENSOR:
                     continue
 
                 data_count = 1

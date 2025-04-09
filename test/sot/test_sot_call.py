@@ -24,7 +24,8 @@ def simple_case(x, y):
     a = x[0]
     b = x[1]
     c = paddle.reshape(y, [a, b])
-    return c
+    # This case use full graph mode, we need to return a list to keep same as SOT
+    return [c]
 
 
 class TestSotCall(TestCaseBase):

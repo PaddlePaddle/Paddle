@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/multinomial_kernel.h"
+#include "paddle/phi/kernels/funcs/multinomial_kernel_helper.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -148,35 +149,7 @@ void MultinomialKernel(const Context& dev_ctx,
   // If replacement is False, it's not a replaceable sample. Every category
   // can be used only once.
   if (!replacement) {
-    int64_t in_data_numel = x.numel();
-    int64_t out_data_numel = out->numel();
-
-    phi::DenseTensor cpu_tensor;
-    phi::Copy<Context>(dev_ctx, x, phi::CPUPlace(), false, &cpu_tensor);
-    T* cpu_in_data = cpu_tensor.data<T>();
-    for (size_t i = 0; i < num_distributions; ++i) {
-      int zero_num = 0;
-      for (size_t j = 0; j < num_categories; ++j) {
-        T weight = cpu_in_data[i * num_categories + j];
-        PADDLE_ENFORCE_GE(
-            static_cast<MT>(weight),
-            0,
-            errors::InvalidArgument(
-                "Each element of multinomial'input must >= 0, but got %f.",
-                static_cast<MT>(weight)));
-        if (weight == static_cast<T>(0)) {
-          zero_num++;
-        }
-      }
-      int valid_samples = num_categories - zero_num;
-      PADDLE_ENFORCE_LE(
-          int_num_samples,
-          valid_samples,
-          errors::InvalidArgument("When replacement=False, 'num_samples' "
-                                  "must less than or equal to the number of "
-                                  "positive item of input"));
-    }
-
+    MultinomialInputChecker<T, Context>(dev_ctx, x, num_samples);
     // Refer to [gumbel softmax algorithm]
     DenseTensor rand = EmptyLike<T, Context>(dev_ctx, x);
     T* rand_data = rand.data<T>();
@@ -271,7 +244,7 @@ void MultinomialKernel(const Context& dev_ctx,
   auto gen_cuda = dev_ctx.GetGenerator();
   size_t curand4_loop_times =
       (num_distributions + 4 * grid_y - 1) / (4 * grid_y);
-  // 'increment' shoulde be multiple of 4
+  // 'increment' should be multiple of 4
   uint64_t increment = curand4_loop_times * 4;
   auto seed_offset = gen_cuda->IncrementOffset(increment);
 

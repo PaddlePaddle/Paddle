@@ -74,13 +74,13 @@ void MainWord2Vec(const ::paddle::PaddlePlace& place) {
   config.use_xpu = ::paddle::xpu_place_used(place);
 
   phi::DenseTensor first_word, second_word, third_word, fourth_word;
-  phi::LoD lod{{0, 1}};
+  phi::LegacyLoD lod{{0, 1}};
   int64_t dict_size = 2073;  // The size of dictionary
 
-  SetupLoDTensor(&first_word, lod, static_cast<int64_t>(0), dict_size - 1);
-  SetupLoDTensor(&second_word, lod, static_cast<int64_t>(0), dict_size - 1);
-  SetupLoDTensor(&third_word, lod, static_cast<int64_t>(0), dict_size - 1);
-  SetupLoDTensor(&fourth_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupDenseTensor(&first_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupDenseTensor(&second_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupDenseTensor(&third_word, lod, static_cast<int64_t>(0), dict_size - 1);
+  SetupDenseTensor(&fourth_word, lod, static_cast<int64_t>(0), dict_size - 1);
 
   std::vector<PaddleTensor> paddle_tensor_feeds;
   paddle_tensor_feeds.push_back(LodTensorToPaddleTensor(&first_word));
@@ -105,10 +105,10 @@ void MainWord2Vec(const ::paddle::PaddlePlace& place) {
   cpu_feeds.push_back(&fourth_word);
 
   framework::FetchType output1;
-  std::vector<::paddle::framework::FetchType*> cpu_fetchs1;
-  cpu_fetchs1.push_back(&output1);
+  std::vector<::paddle::framework::FetchType*> cpu_fetches1;
+  cpu_fetches1.push_back(&output1);
 
-  TestInference<phi::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
+  TestInference<phi::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetches1);
 
   auto output1_tensor = PADDLE_GET(phi::DenseTensor, output1);
   float* lod_data = output1_tensor.data<float>();
@@ -142,11 +142,11 @@ void MainImageClassification(const ::paddle::PaddlePlace& place) {
   cpu_feeds.push_back(&input);
 
   framework::FetchType output1;
-  std::vector<framework::FetchType*> cpu_fetchs1;
-  cpu_fetchs1.push_back(&output1);
+  std::vector<framework::FetchType*> cpu_fetches1;
+  cpu_fetches1.push_back(&output1);
 
   TestInference<phi::CPUPlace, false, true>(
-      config.model_dir, cpu_feeds, cpu_fetchs1, repeat, is_combined);
+      config.model_dir, cpu_feeds, cpu_fetches1, repeat, is_combined);
 
   auto predictor = CreatePaddlePredictor(config);
   std::vector<PaddleTensor> paddle_tensor_feeds;
@@ -178,9 +178,10 @@ void MainThreadsWord2Vec(const ::paddle::PaddlePlace& place) {
     // each job has 4 words
     jobs[i].resize(4);
     for (size_t j = 0; j < 4; ++j) {
-      phi::LoD lod{{0, 1}};
+      phi::LegacyLoD lod{{0, 1}};
       int64_t dict_size = 2073;  // The size of dictionary
-      SetupLoDTensor(&jobs[i][j], lod, static_cast<int64_t>(0), dict_size - 1);
+      SetupDenseTensor(
+          &jobs[i][j], lod, static_cast<int64_t>(0), dict_size - 1);
       paddle_tensor_feeds[i].push_back(LodTensorToPaddleTensor(&jobs[i][j]));
     }
 

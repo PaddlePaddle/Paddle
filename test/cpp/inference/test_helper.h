@@ -68,20 +68,20 @@ void SetupTensor(phi::DenseTensor* input,
 }
 
 template <typename T>
-void SetupLoDTensor(phi::DenseTensor* input,
-                    const phi::LoD& lod,
-                    T lower,
-                    T upper) {
+void SetupDenseTensor(phi::DenseTensor* input,
+                      const phi::LegacyLoD& lod,
+                      T lower,
+                      T upper) {
   input->set_lod(lod);
   int dim = lod[0][lod[0].size() - 1];
   SetupTensor<T>(input, {dim, 1}, lower, upper);
 }
 
 template <typename T>
-void SetupLoDTensor(phi::DenseTensor* input,
-                    phi::DDim dims,
-                    const phi::LoD lod,
-                    const std::vector<T>& data) {
+void SetupDenseTensor(phi::DenseTensor* input,
+                      phi::DDim dims,
+                      const phi::LegacyLoD lod,
+                      const std::vector<T>& data) {
   const size_t level = lod.size() - 1;
   PADDLE_ENFORCE_EQ(dims[0],
                     static_cast<int64_t>((lod[level]).back()),
@@ -173,11 +173,12 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
 }
 
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
-void TestInference(const std::string& dirname,
-                   const std::vector<phi::DenseTensor*>& cpu_feeds,
-                   const std::vector<paddle::framework::FetchType*>& cpu_fetchs,
-                   const int repeat = 1,
-                   const bool is_combined = false) {
+void TestInference(
+    const std::string& dirname,
+    const std::vector<phi::DenseTensor*>& cpu_feeds,
+    const std::vector<paddle::framework::FetchType*>& cpu_fetches,
+    const int repeat = 1,
+    const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -231,7 +232,7 @@ void TestInference(const std::string& dirname,
   // 5. Define Tensor to get the outputs: set up maps for fetch targets
   std::map<std::string, paddle::framework::FetchType*> fetch_targets;
   for (size_t i = 0; i < fetch_target_names.size(); ++i) {
-    fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
+    fetch_targets[fetch_target_names[i]] = cpu_fetches[i];
   }
 
   // 6. If export Flags_use_mkldnn=True, use onednn related ops.

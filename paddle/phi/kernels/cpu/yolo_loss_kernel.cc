@@ -148,7 +148,7 @@ static inline void CalcObjnessLoss(T* loss,
             // positive sample: obj = mixup score
             loss[i] += SigmoidCrossEntropy<T>(input[k * w + l], 1.0) * obj;
           } else if (obj > -0.5) {
-            // negetive sample: obj = 0
+            // negative sample: obj = 0
             loss[i] += SigmoidCrossEntropy<T>(input[k * w + l], 0.0);
           }
         }

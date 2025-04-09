@@ -60,10 +60,10 @@ void SerializeToMultiVarMsgAndIOBuf(
     MultiVarMsg* var_msg,
     butil::IOBuf* iobuf);
 
-void SerializeLodTensor(framework::Variable* var,
-                        const phi::DeviceContext& ctx,
-                        VarMsg* var_msg,
-                        butil::IOBuf* iobuf);
+void SerializeDenseTensor(framework::Variable* var,
+                          const phi::DeviceContext& ctx,
+                          VarMsg* var_msg,
+                          butil::IOBuf* iobuf);
 
 void SerializeSelectedRows(framework::Variable* var,
                            const phi::DeviceContext& ctx,
@@ -82,10 +82,10 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
                                         const phi::DeviceContext& ctx,
                                         const framework::Scope* scope);
 
-void DeserializeLodTensor(framework::Variable* var,
-                          const VarMsg& msg,
-                          butil::IOBufBytesIterator& iobuf,  // NOLINT
-                          const phi::DeviceContext& ctx);
+void DeserializeDenseTensor(framework::Variable* var,
+                            const VarMsg& msg,
+                            butil::IOBufBytesIterator& iobuf,  // NOLINT
+                            const phi::DeviceContext& ctx);
 
 void DeserializeSelectedRows(framework::Variable* var,
                              const VarMsg& msg,

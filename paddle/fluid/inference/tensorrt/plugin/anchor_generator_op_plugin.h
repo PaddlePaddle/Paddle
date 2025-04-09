@@ -227,7 +227,105 @@ class AnchorGeneratorPluginDynamicCreator : public nvinfer1::IPluginCreator {
   std::string namespace_;
   nvinfer1::PluginFieldCollection field_collection_;
 };
+
+class PIRAnchorGeneratorPluginDynamic : public DynamicPluginTensorRT {
+ public:
+  explicit PIRAnchorGeneratorPluginDynamic(
+      const nvinfer1::DataType data_type,
+      const std::vector<float>& anchor_sizes,
+      const std::vector<float>& aspect_ratios,
+      const std::vector<float>& stride,
+      const std::vector<float>& variances,
+      const float offset,
+      const int num_anchors);
+  PIRAnchorGeneratorPluginDynamic(void const* data, size_t length);
+  ~PIRAnchorGeneratorPluginDynamic();
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(
+      int outputIndex,
+      const nvinfer1::DimsExprs* inputs,
+      int nbInputs,
+      nvinfer1::IExprBuilder& exprBuilder)  // NOLINT
+      TRT_NOEXCEPT override;
+
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* inOut,
+                                 int nbInputs,
+                                 int nbOutputs) TRT_NOEXCEPT override;
+
+  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+                       int nbInputs,
+                       const nvinfer1::DynamicPluginTensorDesc* out,
+                       int nbOutputs) TRT_NOEXCEPT override;
+
+  size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
+                          int nbInputs,
+                          const nvinfer1::PluginTensorDesc* outputs,
+                          int nbOutputs) const TRT_NOEXCEPT override;
+  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+              const nvinfer1::PluginTensorDesc* outputDesc,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
+              cudaStream_t stream) TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
+  const char* getPluginType() const TRT_NOEXCEPT override;
+  int getNbOutputs() const TRT_NOEXCEPT override;
+  int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
+  size_t getSerializationSize() const TRT_NOEXCEPT override;
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
+  void destroy() TRT_NOEXCEPT override;
+
+ private:
+  template <typename T>
+  int enqueue_impl(const nvinfer1::PluginTensorDesc* inputDesc,
+                   const nvinfer1::PluginTensorDesc* outputDesc,
+                   const void* const* inputs,
+                   void* const* outputs,
+                   void* workspace,
+                   cudaStream_t stream);
+  nvinfer1::DataType data_type_;
+  std::vector<float> anchor_sizes_;
+  std::vector<float> aspect_ratios_;
+  std::vector<float> stride_;
+  std::vector<float> variances_;
+  float offset_;
+  void* anchor_sizes_device_;
+  void* aspect_ratios_device_;
+  void* stride_device_;
+  void* variances_device_;
+  int num_anchors_;
+  std::string namespace_;
+};
+
+class PIRAnchorGeneratorPluginDynamicCreator : public nvinfer1::IPluginCreator {
+ public:
+  PIRAnchorGeneratorPluginDynamicCreator() = default;
+  ~PIRAnchorGeneratorPluginDynamicCreator() override = default;
+  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;
+  const char* getPluginNamespace() const TRT_NOEXCEPT override;
+  const char* getPluginName() const TRT_NOEXCEPT override;
+  const char* getPluginVersion() const TRT_NOEXCEPT override;
+  const nvinfer1::PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2Ext* createPlugin(
+      const char* name,
+      const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2Ext* deserializePlugin(const char* name,
+                                            const void* serial_data,
+                                            size_t serial_length)
+      TRT_NOEXCEPT override;
+
+ private:
+  std::string namespace_;
+  nvinfer1::PluginFieldCollection field_collection_;
+};
+
 REGISTER_TRT_PLUGIN_V2(AnchorGeneratorPluginDynamicCreator);
+REGISTER_TRT_PLUGIN_V2(PIRAnchorGeneratorPluginDynamicCreator);
 #endif
 
 }  // namespace plugin

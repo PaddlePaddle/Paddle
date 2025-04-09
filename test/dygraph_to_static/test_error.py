@@ -121,7 +121,7 @@ class TestFlags(unittest.TestCase):
         self.reset_flags_to_default()
 
     def reset_flags_to_default(self):
-        # Reset flags to use defaut value
+        # Reset flags to use default value
 
         # 1. A flag to set whether to open the dygraph2static error reporting module
         os.environ[error.DISABLE_ERROR_ENV_NAME] = str(

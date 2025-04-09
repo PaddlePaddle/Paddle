@@ -36,6 +36,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -49,8 +50,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
   std::shared_ptr<ValueExecutionInfo> info =
       std::make_shared<ValueExecutionInfo>(scope);
@@ -314,9 +314,13 @@ void DeepCopyVariable(const Variable* src_var,
     // have holder. In this case we only do set_meta but not copy Tensor.
     if (src_tensor.numel() == 0) {
       tmp_dst_tensor->set_meta(src_tensor.meta());
+      if (src_tensor.has_allocation()) {
+        tmp_dst_tensor->ResetHolder(
+            ::phi::memory_utils::AllocShared(src_tensor.place(), 0u));
+      }
       return;
     }
-    if (!src_tensor.initialized()) {
+    if (!src_tensor.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -337,7 +341,7 @@ void DeepCopyVariable(const Variable* src_var,
       dst_t->set_meta(src_t.meta());
       return;
     }
-    if (!src_slr.initialized()) {
+    if (!src_slr.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -350,7 +354,7 @@ void DeepCopyVariable(const Variable* src_var,
   } else if (src_var->IsType<phi::TensorArray>()) {
     auto src_tensor_array = src_var->Get<phi::TensorArray>();
     auto* dst_tensor_array = (*dst_var)->GetMutable<phi::TensorArray>();
-    if (!src_tensor_array.initialized()) {
+    if (!src_tensor_array.has_allocation()) {
       if (is_optional) {
         (*dst_var) = nullptr;
         return;
@@ -1082,5 +1086,4 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
   return res;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

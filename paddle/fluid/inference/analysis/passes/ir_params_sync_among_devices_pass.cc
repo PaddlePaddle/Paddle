@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/framework/framework.pb.h"
@@ -74,7 +75,11 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+  phi::DeviceContext *dev_ctx = pool.Get(place);
+
   std::unordered_set<std::string> visited;
+  std::vector<phi::DenseTensor *> dense_tensors;
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
@@ -95,13 +100,68 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
           var,
           common::errors::PreconditionNotMet("The var should not be nullptr"));
       if (var->IsType<phi::DenseTensor>()) {
-        auto *t = var->GetMutable<phi::DenseTensor>();
-        auto var_data_type = var_node->Var()->GetDataType();
-        VLOG(5) << "var_name is " << var_name << ", data type is "
-                << var_data_type;
-        paddle::framework::TensorCopySync(*t, place, t);
+        dense_tensors.push_back(var->GetMutable<phi::DenseTensor>());
       }
     }
+  }
+
+  if (dense_tensors.empty()) return;
+
+  size_t num_threads = 8;
+  const size_t chunk_size =
+      std::max(static_cast<size_t>(1), dense_tensors.size() / num_threads);
+  num_threads = std::min(num_threads, dense_tensors.size() / chunk_size);
+  const size_t remains_size = dense_tensors.size() % num_threads;
+
+  auto sync_handler = [&](const std::vector<phi::DenseTensor *> &tensors) {
+#ifdef PADDLE_WITH_HIP
+    hipStream_t stream;
+    hipStreamCreateWithFlags(&stream, hipStreamNonBlocking);
+#else
+    cudaStream_t stream;
+    cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+#endif
+    for (auto *t : tensors) {
+      auto t_tmp = *t;
+      void *src_ptr = t_tmp.data();
+      t->Resize(t->dims());
+
+      void *dst_ptr = nullptr;
+      dst_ptr = dev_ctx->Alloc(t, t->dtype());
+      phi::memory_utils::Copy(place,
+                              dst_ptr,
+                              phi::CPUPlace(),
+                              src_ptr,
+                              t->numel() * phi::SizeOf(t->dtype()),
+                              stream);
+    }
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(stream);
+    hipStreamDestroy(stream);
+#else
+    cudaStreamSynchronize(stream);
+    cudaStreamDestroy(stream);
+#endif
+  };
+
+  std::vector<std::future<void>> futures;
+  for (size_t i = 0; i < num_threads; ++i) {
+    auto start_it = dense_tensors.begin() + i * chunk_size;
+    auto end_it = start_it + chunk_size;
+    futures.push_back(
+        std::async(std::launch::async,
+                   sync_handler,
+                   std::vector<phi::DenseTensor *>(start_it, end_it)));
+  }
+  if (remains_size > 0) {
+    futures.push_back(std::async(
+        std::launch::async,
+        sync_handler,
+        std::vector<phi::DenseTensor *>(
+            dense_tensors.rbegin(), dense_tensors.rbegin() + remains_size)));
+  }
+  for (auto &future : futures) {
+    future.wait();
   }
 }
 #endif

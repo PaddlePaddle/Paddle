@@ -136,8 +136,8 @@ class Conv2dTransposeBnOneDNNFusePattern : public paddle::drr::DrrPatternBase {
 
     //--- deal with filter ---
 
-    // ConvTranpose weight is gIOHW, conv is gOIHW
-    // We transpose IOHW to IOHW first, then multipy scale, and transpose it to
+    // ConvTranspose weight is gIOHW, conv is gOIHW
+    // We transpose IOHW to IOHW first, then multiply scale, and transpose it to
     // IOHW again
     const auto &new_conv2d_filter_shape = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
@@ -328,8 +328,8 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
 
     //--- deal with filter ---
 
-    // ConvTranpose weight is gIOHW, conv is gOIHW
-    // We transpose IOHW to IOHW first, then multipy scale, and transpose it to
+    // ConvTranspose weight is gIOHW, conv is gOIHW
+    // We transpose IOHW to IOHW first, then multiply scale, and transpose it to
     // IOHW again
     const auto &new_conv2d_filter_shape = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
@@ -406,7 +406,7 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
 class ConvTransposeEltwiseaddBnOneDNNFusePass : public pir::PatternRewritePass {
  public:
   ConvTransposeEltwiseaddBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_transpose_bias_bn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv2d_transpose_bias_bn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -419,7 +419,7 @@ class ConvTransposeEltwiseaddBnOneDNNFusePass : public pir::PatternRewritePass {
 class ConvTransposeBnOneDNNFusePass : public pir::PatternRewritePass {
  public:
   ConvTransposeBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_transpose_bn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv2d_transpose_bn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

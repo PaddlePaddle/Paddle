@@ -76,6 +76,7 @@ class IR_API Pass {
  public:
   inline static const char kParamScopeAttr[] = "__param_scope__";
   inline static const char kPlaceAttr[] = "__place__";
+  inline static const char kValueReplaceHookAttr[] = "__value_replaced_hook__";
 
   explicit Pass(const std::string& name,
                 uint8_t opt_level,

@@ -39,7 +39,8 @@ class AsyncLoad {
     explicit Task(const Place& place);
     virtual ~Task();
     bool IsCompleted();
-    void Synchronize();
+    void CudaSynchronize();
+    void CpuSynchronize();
     void UpdateWaitChain(const phi::DeviceContext& ctx);
 
    private:
@@ -50,10 +51,17 @@ class AsyncLoad {
   std::shared_ptr<AsyncLoad::Task> Offload(phi::DenseTensor* dst,
                                            const phi::DenseTensor& src);
 
+  std::shared_ptr<AsyncLoad::Task> OffloadWithOffset(
+      phi::DenseTensor* dst,
+      const phi::DenseTensor& src,
+      size_t dst_offset,
+      size_t src_offset,
+      size_t offload_size);
+
   void PrepareLoadEnv(const std::string& key, const Place& place);
-  void SyncCalcuStream(const Place& place,
-                       phi::GPUContext* ctx,
-                       platform::DeviceEvent& calc_event);  // NOLINT
+  void SyncCalcStream(const Place& place,
+                      phi::GPUContext* ctx,
+                      platform::DeviceEvent& calc_event);  // NOLINT
   std::shared_ptr<AsyncLoad::Task> Reload(phi::DenseTensor* dst,
                                           const phi::DenseTensor& src);
 

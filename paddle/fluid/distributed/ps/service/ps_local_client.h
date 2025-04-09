@@ -87,7 +87,9 @@ class PsLocalClient : public PSClient {
       const std::vector<std::unordered_map<uint64_t, uint32_t>>& keys2rank_vec,
       const uint16_t& dim_id = 0);
 
-  virtual ::std::future<int32_t> PrintTableStat(uint32_t table_id);
+  virtual ::std::future<int32_t> PrintTableStat(uint32_t table_id,
+                                                uint16_t pass_id,
+                                                size_t threshold);
 
   virtual ::std::future<int32_t> SaveCacheTable(uint32_t table_id,
                                                 uint16_t pass_id,
@@ -146,7 +148,7 @@ class PsLocalClient : public PSClient {
     return fut;
   }
 
-  // recv table from server and save it in LodTensor
+  // recv table from server and save it in DenseTensor
   virtual int32_t RecvAndSaveTable(const uint64_t table_id UNUSED,
                                    const std::string& path UNUSED) {
     return 0;

@@ -14,15 +14,130 @@
 
 #include "paddle/cinn/common/integer_set.h"
 
-#include "paddle/cinn/common/arithmetic.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
+CasInterval::CasInterval(ir::Expr expr_l, ir::Expr expr_r) {
+  VLOG(6) << "CasInterval is : [" << expr_l << ", " << expr_r << "].";
+  expr_r = ReplaceMinToConstant(expr_r);
+  expr_l = ReplaceMaxToConstant(expr_l);
+  expr_l = optim::ArithSimplify(expr_l);
+  expr_r = optim::ArithSimplify(expr_r);
+  VLOG(6) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
+          << "].";
+
+  if (expr_l.is_constant() && expr_r.is_constant()) {
+    PADDLE_ENFORCE_EQ(
+        expr_l->type().is_integer(),
+        true,
+        ::common::errors::InvalidArgument("Expected expr_l to be an integer."));
+    PADDLE_ENFORCE_EQ(
+        expr_r->type().is_integer(),
+        true,
+        ::common::errors::InvalidArgument("Expected expr_r to be an integer."));
+    l = expr_l.as_int64();
+    r = expr_r.as_int64();
+    return;
+  }
+  e_l = expr_l;
+  e_r = expr_r;
+}
+
+/**
+ * @brief Given an expr, visit it. If there is an ir::Min and its operands are 1
+ * constant value and 1 inconstant value, return the constant min value. For
+ * example, if a < min(5, b), then we get a < 5 and a < b. Using a < 5 to
+ * simplify the condition ensures correctness, though not sufficient.
+ */
+ir::Expr CasInterval::ReplaceMinToConstant(ir::Expr expr) {
+  ir::Expr copied = ir::ir_utils::IRCopy(expr);
+  struct Mutator : public ir::IRMutator<ir::Expr*> {
+    void operator()(ir::Expr* expr) { Visit(expr); }
+    void Visit(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+   private:
+    void Visit(const ir::Min* op, ir::Expr* expr) override {
+      auto a = op->a();
+      auto b = op->b();
+
+      Visit(&a);
+      Visit(&b);
+
+      auto min_a = op->a();
+      auto min_b = op->b();
+      if (min_a.is_constant() && !min_b.is_constant()) {
+        PADDLE_ENFORCE_EQ(
+            min_a->type().is_integer(),
+            true,
+            ::common::errors::InvalidArgument("Min a should be an integer."));
+        *expr = ir::ir_utils::IRCopy(min_a);
+      } else if (min_b.is_constant() && !min_a.is_constant()) {
+        PADDLE_ENFORCE_EQ(
+            min_b->type().is_integer(),
+            true,
+            ::common::errors::InvalidArgument("Min b should be an integer."));
+        *expr = ir::ir_utils::IRCopy(min_b);
+      }
+    }
+  };
+  Mutator()(&copied);
+  return copied;
+}
+
+/**
+ * @brief Given an expr, visit it. If there is an ir::Max and its operands are 1
+ * constant value and 1 inconstant value, return the constant max value.
+ */
+ir::Expr CasInterval::ReplaceMaxToConstant(ir::Expr expr) {
+  ir::Expr copied = ir::ir_utils::IRCopy(expr);
+  struct Mutator : public ir::IRMutator<ir::Expr*> {
+    void operator()(ir::Expr* expr) { Visit(expr); }
+    void Visit(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
+
+   private:
+    void Visit(const ir::Max* op, ir::Expr* expr) override {
+      auto a = op->a();
+      auto b = op->b();
+
+      Visit(&a);
+      Visit(&b);
+
+      auto max_a = op->a();
+      auto max_b = op->b();
+      if (max_a.is_constant() && !max_b.is_constant()) {
+        PADDLE_ENFORCE_EQ(
+            max_a->type().is_integer(),
+            true,
+            ::common::errors::InvalidArgument("Max a should be an integer."));
+        *expr = ir::ir_utils::IRCopy(max_a);
+      } else if (max_b.is_constant() && !max_a.is_constant()) {
+        PADDLE_ENFORCE_EQ(
+            max_b->type().is_integer(),
+            true,
+            ::common::errors::InvalidArgument("Max b should be an integer."));
+        *expr = ir::ir_utils::IRCopy(max_b);
+      }
+    }
+  };
+  Mutator()(&copied);
+  return copied;
+}
+
+std::ostream& operator<<(std::ostream& os, const CasInterval& i) {
+  if (i.e_l.defined() && i.e_r.defined()) {
+    os << "Expr e_l Interval[" << i.e_l << ", " << i.e_r << "]";
+  } else {
+    os << "Int l Interval[" << i.l << ", " << i.r << "]";
+  }
+  return os;
+}
 
 ir::Expr SymbolicExprLimit::positive_inf =
     ir::Expr(ir::Var("positive_infinity"));
@@ -92,7 +207,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveEQ(const ir::Expr& lhs,
     if (lhs == rhs) {
       return true;
     }
-    ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+    ir::Expr diff = optim::ArithSimplify(ir::Sub::Make(lhs, rhs));
     if (diff.is_constant()) {
       return diff.get_constant() == 0;
     }
@@ -149,7 +264,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveGE(const ir::Expr& lhs,
         rhs == SymbolicExprLimit::negative_inf) {
       return true;
     }
-    ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+    ir::Expr diff = optim::ArithSimplify(ir::Sub::Make(lhs, rhs));
     VLOG(6) << "diff of " << ir::Sub::Make(lhs, rhs) << " = " << diff;
     if (diff.is_constant() && diff.get_constant() < 0) {
       return false;
@@ -195,7 +310,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveGT(const ir::Expr& lhs,
         rhs == SymbolicExprLimit::negative_inf) {
       return true;
     }
-    ir::Expr diff = AutoSimplify(ir::Sub::Make(lhs, rhs), var_intervals_);
+    ir::Expr diff = optim::ArithSimplify(ir::Sub::Make(lhs, rhs));
     VLOG(6) << "diff of " << ir::Sub::Make(lhs, rhs) << " = " << diff;
     if (diff.is_constant() && diff.get_constant() <= 0) {
       return false;
@@ -245,7 +360,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
                     ::common::errors::InvalidArgument(
                         "Rhs in ProveDivisible must be defined."));
   PADDLE_ENFORCE_EQ(
-      cinn::common::IsPureMath(lhs),
+      cinn::optim::IsPureMath(lhs),
       true,
       ::common::errors::InvalidArgument(
           "Lhs in ProveDivisible must be a pure math expression."));
@@ -316,11 +431,6 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
         });
         res = OptionalAnd(res, is_ge);
         return res;
-      case cinn::ir::IrNodeTy::FracOp:
-        tmp_expr = cinn::common::AutoSimplify(lhs);
-        if (tmp_expr.node_type() == cinn::ir::IrNodeTy::FracOp)
-          return std::nullopt;
-        return OptionalAnd(ProveDivisible(tmp_expr, rhs), is_ge);
       case cinn::ir::IrNodeTy::FloatImm:
         return false;
       case cinn::ir::IrNodeTy::Add:
@@ -334,7 +444,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
                         ProveDivisible(lhs.As<ir::Sub>()->b(), rhs)),
             is_ge);
       case cinn::ir::IrNodeTy::Div:
-        tmp_expr = cinn::common::AutoSimplify(lhs);
+        tmp_expr = optim::ArithSimplify(lhs);
         if (tmp_expr.node_type() == cinn::ir::IrNodeTy::Div)
           return std::nullopt;
         return OptionalAnd(ProveDivisible(tmp_expr, rhs), is_ge);
@@ -370,6 +480,9 @@ class BoundReplacer : public ir::IRMutator<> {
 
  private:
   void Visit(const ir::_Var_* var, ir::Expr* op) override {
+    // if the variable is S0/S1..., do not replace it.
+    if (var->is_symbolic_constant) return;
+
     ir::Expr lower_bound = SymbolicExprLimit::negative_inf;
     ir::Expr upper_bound = SymbolicExprLimit::positive_inf;
     if (var_intervals_.count(var->name) != 0) {
@@ -460,14 +573,14 @@ ir::Expr SymbolicExprAnalyzer::LowerBound(const ir::Expr& expr) const {
   BoundReplacer bound_replacer(var_intervals_, true);
   ir::Expr bound = ir::ir_utils::IRCopy(expr);
   bound_replacer(&bound);
-  return AutoSimplify(bound);
+  return optim::ArithSimplify(bound);
 }
 
 ir::Expr SymbolicExprAnalyzer::UpperBound(const ir::Expr& expr) const {
   BoundReplacer bound_replacer(var_intervals_, false);
   ir::Expr bound = ir::ir_utils::IRCopy(expr);
   bound_replacer(&bound);
-  return AutoSimplify(bound);
+  return optim::ArithSimplify(bound);
 }
 
 std::optional<bool> ProveEQ(const SingleIntervalIntSet& lhs,
@@ -685,6 +798,5 @@ ir::Expr EnhancedSimplifyModExpr(
   mutator(&copied);
   return copied;
 }
-
 }  // namespace common
 }  // namespace cinn

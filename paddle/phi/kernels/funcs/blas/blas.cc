@@ -23,7 +23,7 @@ MatDescriptor CreateMatrixDescriptor(const DDim &tensor_dim,
       tensor_dim.size(),
       1,
       common::errors::InvalidArgument("The tensor dim size should be greater "
-                                      "than 1, but reveived dim size is %d",
+                                      "than 1, but received dim size is %d",
                                       tensor_dim.size()));
   MatDescriptor retv;
   if (num_flatten_cols > 1) {

@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class RecvOpV2 : public framework::OperatorWithKernel {
  public:
@@ -39,7 +38,7 @@ class RecvOpV2 : public framework::OperatorWithKernel {
             "The ring_id (%d) for recv_v2 op must be non-negative.", ring_id));
 
     if (ctx->GetOutputsVarType("Out").front() ==
-        framework::proto::VarType::LOD_TENSOR) {
+        framework::proto::VarType::DENSE_TENSOR) {
       auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
       PADDLE_ENFORCE_GE(
           out_shape.size(),
@@ -106,8 +105,7 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

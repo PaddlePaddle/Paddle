@@ -74,7 +74,7 @@ void TileKernel(const Context& dev_ctx,
             "be positive integers, but the value received is %d.",
             repeat_times[i]));
   }
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   if (repeat_times.size() < vec_in_dims.size()) {
     int diff = vec_in_dims.size() - repeat_times.size();
     repeat_times.insert(repeat_times.begin(), diff, 1);
@@ -97,7 +97,7 @@ void TileKernel(const Context& dev_ctx,
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];
   }
-  auto vec_out_dims = common::vectorize<int>(out_dims);
+  auto vec_out_dims = common::vectorize<int64_t>(out_dims);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
 

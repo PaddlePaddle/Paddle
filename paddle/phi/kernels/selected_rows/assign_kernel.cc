@@ -17,8 +17,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 // Note: use `const paddle::optional<SelectedRows>& x`
 // as input if needed
@@ -31,8 +30,7 @@ void AssignKernel(const Context& dev_ctx,
   phi::AssignKernel<Context>(dev_ctx, x.value(), out->mutable_value());
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_sr,
                                  CPU,

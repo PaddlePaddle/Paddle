@@ -17,6 +17,7 @@ from paddle.distributed import fleet
 
 from .base.topology import ParallelMode
 from .meta_parallel import (
+    DualPipeVParallel,
     PipelineLayer,
     PipelineParallel,
     PipelineParallelWithInterleave,
@@ -24,6 +25,7 @@ from .meta_parallel import (
     SegmentParallel,
     ShardingParallel,
     TensorParallel,
+    VPPFhenBInBalancedMemory,
 )
 
 _grad_scalar = None
@@ -157,7 +159,9 @@ def distributed_model(model):
         assert isinstance(
             model, PipelineLayer
         ), "For pipeline parallel, the model should an instance of PipelineLayer"
-        if model.get_num_virtual_stages() == 1:
+        if strategy.hybrid_configs["pp_configs"].use_dualpipev:
+            model = DualPipeVParallel(model, fleet_env._hcg, strategy=strategy)
+        elif model.get_num_virtual_stages() == 1:
             # 1f1b pipeline
             model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
         else:
@@ -169,9 +173,16 @@ def distributed_model(model):
                     model, fleet_env._hcg, strategy=strategy
                 )
             elif pp_degree <= accumulate_steps < 2 * pp_degree:
-                model = PipelineParallelWithInterleaveFthenB(
-                    model, fleet_env._hcg, strategy=strategy
-                )
+                if strategy.hybrid_configs[
+                    "pp_configs"
+                ].best_unbalanced_scheduler:
+                    model = VPPFhenBInBalancedMemory(
+                        model, fleet_env._hcg, strategy=strategy
+                    )
+                else:
+                    model = PipelineParallelWithInterleaveFthenB(
+                        model, fleet_env._hcg, strategy=strategy
+                    )
             else:
                 raise ValueError(
                     f"The accumulate_steps({accumulate_steps}) should be greater than or equal to pp_degree({pp_degree})"

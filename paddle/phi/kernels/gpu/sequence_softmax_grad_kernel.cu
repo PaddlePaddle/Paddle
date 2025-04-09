@@ -38,12 +38,12 @@ template <typename T, int BlockDim>
 __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
                                              const T *softmax_data,
                                              const size_t *ref_lod,
-                                             const size_t src_hight,
+                                             const size_t src_height,
                                              T *dx_data) {
   __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
   __shared__ T shared_data;
 
-  for (int i = blockIdx.x; i < src_hight; i += gridDim.x) {
+  for (int i = blockIdx.x; i < src_height; i += gridDim.x) {
     size_t start = ref_lod[i];
     size_t span = ref_lod[i + 1] - start;
 

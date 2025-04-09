@@ -194,11 +194,12 @@ class Uniform(distribution.Distribution):
 
         super().__init__(self.low.shape)
 
-    def sample(self, shape: list[int], seed: int = 0) -> Tensor:
+    def sample(self, shape: Sequence[int] = [], seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
-            shape (list): 1D `int32`. Shape of the generated samples.
+            shape (Sequence[int], optional): 1D `int32`. Shape of the generated samples.
+                Defaults to [].
             seed (int): Python integer number.
 
         Returns:
@@ -206,9 +207,9 @@ class Uniform(distribution.Distribution):
 
         """
         if not in_dynamic_mode():
-            check_type(shape, 'shape', (list), 'sample')
+            check_type(shape, 'shape', (list, tuple), 'sample')
             check_type(seed, 'seed', (int), 'sample')
-
+        shape = list(shape)
         name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
         if -1 in batch_shape:

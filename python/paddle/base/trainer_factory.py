@@ -226,7 +226,7 @@ class FetchHandlerMonitor:
                                             hold LoD information. \
                                             They can not be completely cast \
                                             to Python ndarray. We can \
-                                            not return LoDTensor itself directly, \
+                                            not return DenseTensor itself directly, \
                                             please choose another targets"
                         )
                     if res_dict[user_name]._is_initialized():

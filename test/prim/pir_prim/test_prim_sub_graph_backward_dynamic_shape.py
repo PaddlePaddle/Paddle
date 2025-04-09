@@ -40,12 +40,11 @@ def reduce_as_net(x, y):
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
+    backend = "CINN" if use_cinn else None
     return paddle.jit.to_static(
         net,
         input_spec=input_spec,
-        build_strategy=build_strategy,
+        backend=backend,
         full_graph=True,
     )
 
@@ -64,7 +63,7 @@ class TestPrimBaseWithGrad(unittest.TestCase):
 
     def base_net(self, flag=None):
         if flag == "prim":
-            core._set_prim_all_enabled(True)
+            core._set_prim_backward_enabled(True)
         x = paddle.to_tensor(self.x, stop_gradient=False)
         if flag == "prim":
             fn = apply_to_static(
@@ -88,7 +87,7 @@ class TestPrimBaseWithGrad(unittest.TestCase):
                 .ops
             ]
             assert self.op_name not in ops
-            core._set_prim_all_enabled(False)
+            core._set_prim_backward_enabled(False)
         return res, x_grad
 
     def test_prim_all_dynamic(self):
@@ -121,7 +120,7 @@ class TestPrimTwoWithGrad(unittest.TestCase):
 
     def base_net(self, flag=None):
         if flag == "prim":
-            core._set_prim_all_enabled(True)
+            core._set_prim_backward_enabled(True)
         x = paddle.to_tensor(self.x, stop_gradient=False)
         y = paddle.to_tensor(self.y, stop_gradient=False)
         if flag == "prim":
@@ -148,7 +147,7 @@ class TestPrimTwoWithGrad(unittest.TestCase):
                 .ops
             ]
             assert self.op_name not in ops
-            core._set_prim_all_enabled(False)
+            core._set_prim_backward_enabled(False)
         return res, [x_grad, y_grad]
 
     def test_prim_all_dynamic(self):
@@ -182,7 +181,7 @@ class TestPrimBaseOneGradTwoInputs(unittest.TestCase):
 
     def base_net(self, flag=None):
         if flag == "prim":
-            core._set_prim_all_enabled(True)
+            core._set_prim_backward_enabled(True)
         x = paddle.to_tensor(self.x, stop_gradient=False)
         y = paddle.to_tensor(self.y, stop_gradient=False)
         if flag == "prim":
@@ -211,7 +210,7 @@ class TestPrimBaseOneGradTwoInputs(unittest.TestCase):
                 .ops
             ]
             assert self.op_name not in ops
-            core._set_prim_all_enabled(False)
+            core._set_prim_backward_enabled(False)
         return res, [grad]
 
     def test_prim_all_dynamic(self):
@@ -247,7 +246,7 @@ class TestPrimThreeWithGrad(unittest.TestCase):
 
     def base_net(self, flag=None):
         if flag == "prim":
-            core._set_prim_all_enabled(True)
+            core._set_prim_backward_enabled(True)
         x = paddle.to_tensor(self.x, stop_gradient=False)
         y = paddle.to_tensor(self.y, stop_gradient=False)
         z = paddle.to_tensor(self.z, stop_gradient=False)
@@ -277,7 +276,7 @@ class TestPrimThreeWithGrad(unittest.TestCase):
                 .ops
             ]
             assert self.op_name not in ops
-            core._set_prim_all_enabled(False)
+            core._set_prim_backward_enabled(False)
         return res, [x_grad, y_grad, z_grad]
 
     def test_prim_all_dynamic(self):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 import numpy as np
 
@@ -99,7 +100,7 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
 }
 
 
-def convert_np_dtype_to_dtype_(np_dtype):
+def convert_np_dtype_to_dtype_(np_dtype) -> DataType:
     """
     Convert the data type in numpy to the data type in Paddle.
 
@@ -108,7 +109,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
             string.
 
     Returns:
-        core.DataType : The data type in Paddle.
+        DataType : The data type in Paddle.
 
     """
     # Convert the data type string to numpy data type.
@@ -123,7 +124,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     else:
         dtype = np.dtype(np_dtype)
 
-    if dtype in np_type_to_paddle_type.keys():
+    if dtype in np_type_to_paddle_type:
         return np_type_to_paddle_type[dtype]
     else:
         raise ValueError(f"Not supported numpy dtype {dtype}")
@@ -216,6 +217,8 @@ def switch_main_program(program, insertion_point=None):
     prev_program = _main_program_
     prev_insertion_point = get_current_insertion_point()
     _main_program_ = program
+    if program == prev_program and insertion_point is None:
+        insertion_point = prev_insertion_point
     if insertion_point is None:
         set_insertion_point_to_block_end(_main_program_.global_block())
     else:
@@ -392,7 +395,7 @@ def create_parameter(
 
 def create_persistable_value(dtype, shape, name=None, **kwargs):
     """
-    Create Value that is persistable in startup program and main program. The Value is initilized in startup program and
+    Create Value that is persistable in startup program and main program. The Value is initialized in startup program and
     used in main program.
 
     Returns:
@@ -493,7 +496,10 @@ def _convert_into_value(tensor):
             paddle.pir.core.default_main_program(), tensor
         )
         NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
-        if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+        # NOTE(SigureMo): Why do not use `tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX)`?
+        # Because the tensor maybe copied, the name of the tensor will be appended with a new suffix.
+        # Such as `lstm_0.dropout_state__non_persistable_deepcopy_204`
+        if NON_PERSISTABLE_VAR_NAME_SUFFIX in tensor.name:
             value.persistable = False
         return value
 
@@ -574,7 +580,7 @@ def set_state_dict(program, state_dict, scope=None):
         clear_state_dict = state_dict
 
     for name, value in clear_state_dict.items():
-        if isinstance(value, paddle.base.libpaddle.Tensor):
+        if isinstance(value, paddle.base.libpaddle.DenseTensor):
             continue
         elif isinstance(value, np.ndarray):
             clear_state_dict[name] = paddle.to_tensor(value)

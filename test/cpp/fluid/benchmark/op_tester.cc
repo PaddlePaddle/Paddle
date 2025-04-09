@@ -187,7 +187,7 @@ void OpTester::CreateInputVarDesc() {
     std::string var_name = config_.op_type + "." + name;
     framework::VarDesc *var = Var(var_name);
     // Need to support more type
-    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetType(framework::proto::VarType::DENSE_TENSOR);
     var->SetPersistable(false);
     var->SetDataType(TransToVarType(input->dtype));
     var->SetShape(input->dims);
@@ -203,7 +203,7 @@ void OpTester::CreateOutputVarDesc() {
     std::string var_name = config_.op_type + "." + name;
     framework::VarDesc *var = Var(var_name);
     // Need to support more type
-    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetType(framework::proto::VarType::DENSE_TENSOR);
     var->SetPersistable(false);
     var->SetDataType(framework::proto::VarType::FP32);
 
@@ -253,7 +253,7 @@ void OpTester::CreateOpDesc() {
       case framework::proto::AttrType::LONGS:
       default:
         PADDLE_THROW(common::errors::Unimplemented(
-            "Unsupport attr type %d in OpTester.", type));
+            "Unsupported attr type %d in OpTester.", type));
     }
   }
 }
@@ -377,7 +377,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
 
     VLOG(3) << "Set lod for tensor " << var_name;
     std::vector<std::vector<size_t>> &lod_vec = item.second.lod;
-    phi::LoD lod;
+    phi::LegacyLoD lod;
     for (auto &item : lod_vec) {
       lod.push_back(item);
     }
@@ -401,7 +401,7 @@ std::string OpTester::DebugString() {
     ss << GenSpaces(count++) << "vars {\n";
     ss << GenSpaces(count) << "name: \"" << var->Name() << "\"\n";
     ss << GenSpaces(count++) << "type: {\n";
-    ss << GenSpaces(count) << "type: LOD_TENSOR\n";
+    ss << GenSpaces(count) << "type: DENSE_TENSOR\n";
     ss << GenSpaces(count++) << "lod_tensor {\n";
     ss << GenSpaces(count++) << "tensor {\n";
     const auto &data_type = var->GetDataType();
@@ -496,7 +496,7 @@ std::string OpTester::DebugString() {
       } break;
       default:
         PADDLE_THROW(common::errors::Unimplemented(
-            "Unsupport attr type %d in OpTester.", attr_type));
+            "Unsupported attr type %d in OpTester.", attr_type));
     }
     ss << GenSpaces(--count) << "}\n";
   }

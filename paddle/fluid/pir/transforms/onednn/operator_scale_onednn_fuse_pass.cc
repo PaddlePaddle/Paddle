@@ -275,7 +275,7 @@ class OperatorScaleFusePattern : public paddle::drr::DrrPatternBase {
 class OperatorScaleFusePass : public pir::PatternRewritePass {
  public:
   OperatorScaleFusePass()
-      : pir::PatternRewritePass("operator_scale_onednn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("operator_scale_onednn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

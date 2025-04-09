@@ -30,9 +30,9 @@ TEST(NaiveExecutor, Basic) {
   auto* a = main_block->Var("a");  // input
   auto* b = main_block->Var("b");  // input
   auto* c = main_block->Var("c");  // input
-  a->SetType(proto::VarType::LOD_TENSOR);
-  b->SetType(proto::VarType::LOD_TENSOR);
-  c->SetType(proto::VarType::LOD_TENSOR);
+  a->SetType(proto::VarType::DENSE_TENSOR);
+  b->SetType(proto::VarType::DENSE_TENSOR);
+  c->SetType(proto::VarType::DENSE_TENSOR);
 
   auto* add = main_block->AppendOp();
   add->SetType("elementwise_add");

@@ -80,13 +80,7 @@ void ExpandAs(const Context& context,
     r = xpu::broadcast<XPUType>(
         context.x_context(), x_data, out_data, x_shape, out_shape);
   }
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU API(broadcast) return wrong "
-                               "value[%d %s] in ExpandAsV2XPUKernel.",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 }
 
 template <typename T, typename Context>
@@ -126,6 +120,7 @@ PD_REGISTER_KERNEL(expand_as,
                    XPU,
                    ALL_LAYOUT,
                    phi::ExpandAsKernel,
+                   double,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,

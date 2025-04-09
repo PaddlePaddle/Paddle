@@ -32,12 +32,12 @@ class GradientAccumulator {
     // var may be initialized, so Synchronous VariableWrapper with Variable
     if (var && var->Var().IsInitialized()) {
       if (var->Var().IsType<phi::DenseTensor>()) {
-        var->SetType(framework::proto::VarType::LOD_TENSOR);
+        var->SetType(framework::proto::VarType::DENSE_TENSOR);
       } else if (var->Var().IsType<phi::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
         PADDLE_THROW(common::errors::PermissionDenied(
-            "Only support LoDTensor and SelectedRows for gradient var"));
+            "Only support DenseTensor and SelectedRows for gradient var"));
       }
     }
 

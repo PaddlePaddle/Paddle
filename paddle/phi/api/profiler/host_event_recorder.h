@@ -73,9 +73,9 @@ class EventContainer {
 
  private:
   struct EventBlock {
-    union InitDeferedEvent {
-      InitDeferedEvent() {}
-      ~InitDeferedEvent() {}
+    union InitDeferredEvent {
+      InitDeferredEvent() {}
+      ~InitDeferredEvent() {}
 
       EventType event;
     };
@@ -83,9 +83,9 @@ class EventContainer {
     static constexpr size_t kBlockSize = 1 << 24;  // 16 MB
     static constexpr size_t kAvailSize =
         kBlockSize - sizeof(size_t) - sizeof(nullptr);
-    static constexpr size_t kNumEvents = kAvailSize / sizeof(InitDeferedEvent);
+    static constexpr size_t kNumEvents = kAvailSize / sizeof(InitDeferredEvent);
     static constexpr size_t kPadSize =
-        kAvailSize - kNumEvents * sizeof(InitDeferedEvent);
+        kAvailSize - kNumEvents * sizeof(InitDeferredEvent);
     static constexpr size_t kMinimumEventsPerBlock = 1024;
     static_assert(
         kNumEvents >= kMinimumEventsPerBlock,
@@ -93,7 +93,7 @@ class EventContainer {
 
     size_t offset = 0;
     EventBlock *next = nullptr;
-    InitDeferedEvent events[kNumEvents];
+    InitDeferredEvent events[kNumEvents];
     char padding[kPadSize];
   };
   static_assert(sizeof(EventBlock) == EventBlock::kBlockSize,

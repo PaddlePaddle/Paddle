@@ -26,7 +26,7 @@ def parameterize(*params):
     return parameterized.expand(list(itertools.product(*params)))
 
 
-class TestAudioFuncitons(unittest.TestCase):
+class TestAudioFunctions(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(
             paddle.CUDAPlace(0)

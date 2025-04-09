@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#define GLOG_NO_ABBREVIATED_SEVERITIES
 
 #include "paddle/phi/core/memory/allocation/system_allocator.h"
 
@@ -37,11 +36,20 @@ limitations under the License. */
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
+#ifdef PADDLE_WITH_XPU
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#endif
+
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler/mem_tracing.h"
 
 COMMON_DECLARE_bool(use_pinned_memory);
-COMMON_DECLARE_bool(custom_device_mem_record);
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -194,7 +202,7 @@ void GPUAllocator::Free(void* p, size_t size, size_t index) {
 bool GPUAllocator::UseGpu() const { return true; }
 
 // PINNED memory allows direct DMA transfers by the GPU to and from system
-// memory. It’s locked to a physical address.
+// memory. It's locked to a physical address.
 void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
 
@@ -285,6 +293,93 @@ bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
 #endif
 
+#ifdef PADDLE_WITH_XPU
+
+// XPU PINNED memory allows direct DMA transfers by the XPU to and from system
+// memory. It’s locked to a physical address.
+void* XPUPinnedAllocator::Alloc(size_t* index, size_t size) {
+  VLOG(6) << "Alloc start, requested size: " << size << " bytes";
+  if (size <= 0) {
+    VLOG(6) << "Requested size <= 0, returning nullptr";
+    return nullptr;
+  }
+
+  // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
+  // of host pinned allocation. Allocates too much would reduce
+  // the amount of memory available to the underlying system for paging.
+  size_t usable =
+      phi::backends::cpu::CUDAPinnedMaxAllocSize() - xpu_pinned_alloc_size_;
+  VLOG(6) << "Usable pinned memory: " << usable << " bytes";
+
+  if (size > usable) {
+    VLOG(6) << "Requested size (" << size
+            << " bytes) exceeds usable pinned memory (" << usable << " bytes)";
+    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
+                 << " MB pinned memory."
+                 << ", available " << usable / 1024.0 / 1024.0
+                 << " MB";  // NOLINT
+    return nullptr;
+  }
+
+  void* p = nullptr;
+  VLOG(6) << "Calling cudaHostAlloc for " << size << " bytes";
+  // PINNED memory is visible to all CUDA contexts.
+  cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
+  VLOG(6) << "cudaHostAlloc returned: " << result;
+
+  if (result == cudaSuccess) {
+    *index = 1;  // PINNED memory
+    xpu_pinned_alloc_size_ += size;
+    HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
+    platform::RecordMemEvent(
+        p, CPUPlace(), size, phi::TracerMemEventType::ReservedAllocate);
+    VLOG(6) << "cudaHostAlloc succeeded. Allocated pointer: " << p;
+    return p;
+  } else {
+    VLOG(6) << "cudaHostAlloc failed.";
+    LOG(WARNING) << "cudaHostAlloc failed.";
+    return nullptr;
+  }
+}
+
+void XPUPinnedAllocator::Free(void* p, size_t size, size_t index) {
+  cudaError_t err;
+  PADDLE_ENFORCE_EQ(index,
+                    1,
+                    common::errors::InvalidArgument(
+                        "The index should be 1, but got %d", index));
+
+  PADDLE_ENFORCE_GE(xpu_pinned_alloc_size_,
+                    size,
+                    common::errors::InvalidArgument(
+                        "The size of memory (%d) to free exceeds the size of "
+                        "allocated cuda pinned memory (%d)",
+                        size,
+                        xpu_pinned_alloc_size_));
+  xpu_pinned_alloc_size_ -= size;
+  err = cudaFreeHost(p);
+
+  // Purposefully allow cudaErrorCudartUnloading, because
+  // that is returned if you ever call cudaFreeHost after the
+  // driver has already shutdown. This happens only if the
+  // process is terminating, in which case we don't care if
+  // cudaFreeHost succeeds.
+  if (err != cudaErrorCudartUnloading) {
+    PADDLE_ENFORCE_EQ(
+        err,
+        0,
+        common::errors::Fatal(
+            "cudaFreeHost failed in XPUPinnedAllocator, error code is %d",
+            err));
+  }
+  HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
+  platform::RecordMemEvent(
+      p, CPUPlace(), size, phi::TracerMemEventType::ReservedFree);
+}
+
+bool XPUPinnedAllocator::UseGpu() const { return false; }
+#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 void* CustomAllocator::Alloc(size_t* index, size_t size) {
   if (size <= 0) return nullptr;
@@ -297,11 +392,9 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
     VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
     *index = 0;
     plug_alloc_size += size;
-    if (FLAGS_custom_device_mem_record) {
-      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
-      platform::RecordMemEvent(
-          p, place, size, phi::TracerMemEventType::ReservedAllocate);
-    }
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+    platform::RecordMemEvent(
+        p, place, size, phi::TracerMemEventType::ReservedAllocate);
   } else {
     size_t avail, total;
 
@@ -336,11 +429,9 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
   auto place = phi::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
-  if (FLAGS_custom_device_mem_record) {
-    DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
-    platform::RecordMemEvent(
-        p, place, size, phi::TracerMemEventType::ReservedFree);
-  }
+  DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+  platform::RecordMemEvent(
+      p, place, size, phi::TracerMemEventType::ReservedFree);
 }
 
 bool CustomAllocator::UseGpu() const { return true; }

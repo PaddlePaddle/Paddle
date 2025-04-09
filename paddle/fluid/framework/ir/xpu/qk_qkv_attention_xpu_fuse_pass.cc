@@ -253,7 +253,7 @@ void QkQkvAttentionXPUFusePass::ApplyQkQkvAttentionXPUFuse(
     fused_op_desc.SetInput("v", {input->Name()});
     std::unordered_map<std::string, std::vector<float>> var_quant_scales =
         GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
-    // recored q/k/v max, qk_max, and qkv_max
+    // recorded q/k/v max, qk_max, and qkv_max
     std::vector<Node*> input_max_nodes;
     if (var_quant_scales.find(input->Name()) != var_quant_scales.end() &&
         var_quant_scales.find(qk_matmul_out->Name()) !=

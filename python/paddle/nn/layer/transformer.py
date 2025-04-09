@@ -70,9 +70,9 @@ def _convert_param_attr_to_list(param_attr, n):
         list: A list composed of each including cell's `param_attr`.
     """
     if isinstance(param_attr, (list, tuple)):
-        assert len(param_attr) == n, (
-            "length of param_attr should be %d when it is a list/tuple" % n
-        )
+        assert (
+            len(param_attr) == n
+        ), f"length of param_attr should be {n} when it is a list/tuple"
         param_attrs = []
         for attr in param_attr:
             if isinstance(attr, bool):

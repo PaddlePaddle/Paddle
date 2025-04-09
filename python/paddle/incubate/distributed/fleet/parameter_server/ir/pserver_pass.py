@@ -431,7 +431,7 @@ def add_optimizer_pass(program, config):
         if config.is_sync_mode() and trainers > 1:
             vars2merge = []
             for i in range(trainers):
-                per_trainer_name = "%s.trainer_%d" % (merged_var_name, i)
+                per_trainer_name = f"{merged_var_name}.trainer_{i}"
                 per_trainer_var = pserver_block.create_var(
                     name=per_trainer_name,
                     persistable=False,
@@ -787,7 +787,6 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             persistable=False,
             dtype="int64",
             shape=[1, 1],
-            lod_level=0,
         )
 
         # insert grad split to ids and tensor op

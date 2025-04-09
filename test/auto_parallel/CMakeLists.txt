@@ -133,9 +133,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     test_semi_auto_parallel_unshard_dtensor ENVS FLAGS_enable_pir_api=1)
   set_tests_properties(test_semi_auto_parallel_unshard_dtensor
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_auto_parallel_multiply_test MODULES
-                  test_auto_parallel_multiply_test ENVS)
-  set_tests_properties(test_auto_parallel_multiply_test
+  py_test_modules(test_auto_parallel_backward_test MODULES
+                  test_auto_parallel_backward_test ENVS)
+  set_tests_properties(test_auto_parallel_backward_test
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_moe_utils MODULES test_moe_utils)
   set_tests_properties(test_moe_utils PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
@@ -171,6 +171,11 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   FLAGS_enable_pir_api=1)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
   py_test_modules(test_parallel_api MODULES test_parallel_api)
+  py_test_modules(test_dtensor_to_local_api MODULES test_dtensor_to_local_api)
+  py_test_modules(test_dtensor_from_local_api MODULES
+                  test_dtensor_from_local_api)
+  py_test_modules(test_dy_local_view_compute MODULES test_dy_local_view_compute)
+  py_test_modules(test_local_view_compute MODULES test_local_view_compute)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

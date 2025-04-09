@@ -964,7 +964,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
 class ConvConcatActFusePass : public pir::PatternRewritePass {
  public:
   ConvConcatActFusePass()
-      : pir::PatternRewritePass("conv_concat_activation_mkldnn_fuse_pass", 3) {}
+      : pir::PatternRewritePass("conv_concat_activation_mkldnn_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

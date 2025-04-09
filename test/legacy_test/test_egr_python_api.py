@@ -122,7 +122,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             core.VarDesc.VarType.FP32,
             [4, 16, 16, 32],
             "test_eager_tensor",
-            core.VarDesc.VarType.LOD_TENSOR,
+            core.VarDesc.VarType.DENSE_TENSOR,
             True,
         )
         self.assertEqual(egr_tensor0.persistable, True)
@@ -486,7 +486,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             dtype=core.VarDesc.VarType.FP32,
             dims=[4, 16, 16, 32],
             name="special_eager_tensor",
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             persistable=True,
         )
         self.assertEqual(egr_tensor14.persistable, True)
@@ -722,7 +722,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(tensor3.numpy(), arr2)
         self.assertTrue(tensor3._is_shared_buffer_with(tensor))
 
-    def test_0_size_tensor_share_buffert_to(self):
+    def test_0_size_tensor_share_buffer_to(self):
         x = paddle.rand([0, 4])
         y = paddle.rand([0, 4])
         x._share_buffer_to(y)
@@ -772,7 +772,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertEqual(tensor.stop_gradient, False)
         tensor.stop_gradient = True
         self.assertEqual(tensor.stop_gradient, True)
-        self.assertEqual(tensor.type, core.VarDesc.VarType.LOD_TENSOR)
+        self.assertEqual(tensor.type, core.VarDesc.VarType.DENSE_TENSOR)
 
     def test_global_properties(self):
         print("Test_global_properties")

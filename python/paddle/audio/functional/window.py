@@ -213,7 +213,7 @@ def _taylor(
     signs[1::2] = -1
     m2 = ma * ma
     for mi in range(len(ma)):
-        numer = signs[mi] * paddle.prod(
+        number = signs[mi] * paddle.prod(
             1 - m2[mi] / s2 / (A**2 + (ma - 0.5) ** 2)
         )
         if mi == 0:
@@ -227,7 +227,7 @@ def _taylor(
                 * paddle.prod(1 - m2[mi] / m2[mi + 1 :])
             )
 
-        Fm[mi] = numer / denom
+        Fm[mi] = number / denom
 
     def W(n):
         return 1 + 2 * paddle.matmul(

@@ -156,7 +156,9 @@ class SymbolicTraceContext:
 
         return DummyFunc()
 
-    def compile_fn(self, sir_name: str, input_spec: list[InputSpec], **kwargs):
+    def compile_fn(
+        self, sir_name: str, input_spec: tuple[InputSpec, ...], **kwargs
+    ):
         """
         start compile and return the python function, which must can be to_static without errors.
         """

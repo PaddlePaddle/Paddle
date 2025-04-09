@@ -28,14 +28,14 @@ class TestInferShape(unittest.TestCase):
 
         # prepare input/output
         x1 = block.var(b'x1')
-        x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_type(core.VarDesc.VarType.DENSE_TENSOR)
         x1.set_shape(shape)
         x2 = block.var(b'x2')
-        x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x2.set_type(core.VarDesc.VarType.DENSE_TENSOR)
         x2.set_shape(shape)
 
         out = block.var(b'out')
-        out.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        out.set_type(core.VarDesc.VarType.DENSE_TENSOR)
 
         # prepare the operator
         sum_op_desc = block.append_op()
@@ -58,14 +58,14 @@ class TestInferShape(unittest.TestCase):
 
         # prepare input/output
         x1 = block.var(b'x')
-        x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x1.set_type(core.VarDesc.VarType.DENSE_TENSOR)
         x1.set_shape(x_shape)
         x2 = block.var(b'y')
-        x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        x2.set_type(core.VarDesc.VarType.DENSE_TENSOR)
         x2.set_shape(y_shape)
 
         out = block.var(b'out')
-        out.set_type(core.VarDesc.VarType.LOD_TENSOR)
+        out.set_type(core.VarDesc.VarType.DENSE_TENSOR)
 
         # prepare the operator
         mul_op_desc = block.append_op()

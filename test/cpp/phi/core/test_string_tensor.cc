@@ -267,7 +267,7 @@ TEST(pstring, func) {
       common::errors::InvalidArgument(
           "The oss2 should be '%s', but got '%s'.", long_str, oss2.str()));
 
-  // Test comparision operators
+  // Test comparison operators
   PADDLE_ENFORCE_EQ((long_str < short_str),
                     true,
                     common::errors::InvalidArgument(

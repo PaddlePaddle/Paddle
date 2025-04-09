@@ -32,8 +32,8 @@ void MaxKernel(const Context& dev_ctx,
   auto f = [](xpu::Context* ctx,
               const T* x,
               T* y,
-              const std::vector<int>& xdims,
-              const std::vector<int>& reduce_dims) {
+              const std::vector<int64_t>& xdims,
+              const std::vector<int64_t>& reduce_dims) {
 #ifndef PADDLE_WITH_XPU_PLUGIN
     return xpu::reduce_max<XPUType>(ctx,
                                     reinterpret_cast<const XPUType*>(x),
@@ -45,8 +45,8 @@ void MaxKernel(const Context& dev_ctx,
         ctx,
         reinterpret_cast<const XPUType*>(x),
         reinterpret_cast<XPUType*>(y),
-        xdims,
-        reduce_dims);
+        std::vector<int>(xdims.begin(), xdims.end()),
+        std::vector<int>(reduce_dims.begin(), reduce_dims.end()));
 #endif
   };
 

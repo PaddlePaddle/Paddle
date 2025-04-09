@@ -52,8 +52,8 @@ class SumOpVarTypeInference : public VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto default_var_type = proto::VarType::SELECTED_ROWS;
 
-    if (ctx->InputTypeAnyOf("X", proto::VarType::LOD_TENSOR)) {
-      default_var_type = proto::VarType::LOD_TENSOR;
+    if (ctx->InputTypeAnyOf("X", proto::VarType::DENSE_TENSOR)) {
+      default_var_type = proto::VarType::DENSE_TENSOR;
     }
 
     ctx->SetOutputType("Out", default_var_type);
@@ -165,9 +165,9 @@ TEST(InferVarType, sum_op) {
   ASSERT_EQ(proto::VarType::SELECTED_ROWS,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::LOD_TENSOR);
+  prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::DENSE_TENSOR);
   op->InferVarType(prog.MutableBlock(0));
-  ASSERT_EQ(proto::VarType::LOD_TENSOR,
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 }
 
@@ -185,7 +185,7 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
 
   op->InferVarType(prog.MutableBlock(0));
 
-  ASSERT_EQ(proto::VarType::LOD_TENSOR,
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR,
             prog.MutableBlock(0)->Var("test2_out")->GetType());
 }
 
@@ -214,17 +214,17 @@ TEST(InferVarType, multiple_api) {
   ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetInputType("X"));
 
   ASSERT_TRUE(ctx.InputTypeAllOf("X", proto::VarType::SELECTED_ROWS));
-  ASSERT_FALSE(ctx.InputTypeAnyOf("X", proto::VarType::LOD_TENSOR));
+  ASSERT_FALSE(ctx.InputTypeAnyOf("X", proto::VarType::DENSE_TENSOR));
 
   ctx.SyncTypeAndDataType("X", "Out");
 
   ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetOutputType("Out"));
-  ASSERT_EQ(proto::VarType::LOD_TENSOR, ctx.GetOutputType("Out", 1));
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR, ctx.GetOutputType("Out", 1));
 
   ctx.SetOutputType("Out", proto::VarType::SELECTED_ROWS, ALL_ELEMENTS);
-  ctx.SetOutputType("Out", proto::VarType::LOD_TENSOR, 1);
+  ctx.SetOutputType("Out", proto::VarType::DENSE_TENSOR, 1);
   ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetOutputType("Out"));
-  ASSERT_EQ(proto::VarType::LOD_TENSOR, ctx.GetOutputType("Out", 1));
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR, ctx.GetOutputType("Out", 1));
 
   ASSERT_EQ(0, ctx.GetInputDataType("X"));
 
@@ -247,8 +247,8 @@ TEST(InferVarType, multiple_api) {
   ASSERT_EQ(proto::VarType::FP64, infer.GetDataType(&ctx, "test2_a_out"));
 
   ASSERT_EQ(proto::VarType::SELECTED_ROWS, infer.GetType(&ctx, "test2_a_out"));
-  infer.SetType(&ctx, "test2_a_out", proto::VarType::LOD_TENSOR);
-  ASSERT_EQ(proto::VarType::LOD_TENSOR, infer.GetType(&ctx, "test2_a_out"));
+  infer.SetType(&ctx, "test2_a_out", proto::VarType::DENSE_TENSOR);
+  ASSERT_EQ(proto::VarType::DENSE_TENSOR, infer.GetType(&ctx, "test2_a_out"));
 
   ASSERT_ANY_THROW(infer.GetDataTypes(&ctx, "test2_a_out"));
   ASSERT_ANY_THROW(infer.SetDataTypes(&ctx, "test2_a_out", {}));
@@ -276,17 +276,17 @@ TEST(InferVarType, test_enforce_check) {
   ASSERT_ANY_THROW(ctx.InputSize("X"));
   ASSERT_ANY_THROW(ctx.InputVarName("X"));
 
-  ASSERT_ANY_THROW(ctx.InputTypeAnyOf("X", proto::VarType::LOD_TENSOR));
-  ASSERT_ANY_THROW(ctx.InputTypeAllOf("X", proto::VarType::LOD_TENSOR));
+  ASSERT_ANY_THROW(ctx.InputTypeAnyOf("X", proto::VarType::DENSE_TENSOR));
+  ASSERT_ANY_THROW(ctx.InputTypeAllOf("X", proto::VarType::DENSE_TENSOR));
 
   ASSERT_ANY_THROW(ctx.SyncTypeAndDataType("X", "Out"));
 
-  ASSERT_ANY_THROW(ctx.SetOutputType("Out", proto::VarType::LOD_TENSOR));
+  ASSERT_ANY_THROW(ctx.SetOutputType("Out", proto::VarType::DENSE_TENSOR));
   ASSERT_ANY_THROW(ctx.GetInputType("X"));
   ASSERT_ANY_THROW(ctx.GetOutputType("Out"));
 
   ASSERT_ANY_THROW(ctx.GetInputDataType("X"));
-  ASSERT_ANY_THROW(ctx.SetOutputDataType("Out", proto::VarType::LOD_TENSOR));
+  ASSERT_ANY_THROW(ctx.SetOutputDataType("Out", proto::VarType::DENSE_TENSOR));
 
   ASSERT_ANY_THROW(ctx.GetInputDataTypes("X"));
   ASSERT_ANY_THROW(ctx.SetOutputDataTypes("Out", {}));
@@ -294,10 +294,7 @@ TEST(InferVarType, test_enforce_check) {
   ASSERT_ANY_THROW(ctx.GetInputShape("X"));
   ASSERT_ANY_THROW(ctx.SetOutputShape("Out", {}));
 
-  ASSERT_ANY_THROW(ctx.GetInputLoDLevel("X"));
-  ASSERT_ANY_THROW(ctx.SetOutputLoDLevel("Out", 1));
-
-  ASSERT_ANY_THROW(ctx.InsertVar("var", proto::VarType::LOD_TENSOR));
+  ASSERT_ANY_THROW(ctx.InsertVar("var", proto::VarType::DENSE_TENSOR));
 }
 
 }  // namespace framework

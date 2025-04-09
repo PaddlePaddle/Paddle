@@ -40,7 +40,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
         **kwargs,
     ):
         """
-        Ags:
+        Args:
             files (:obj:`List[str]`): A list of absolute path of audio files.
             labels (:obj:`List[int]`): Labels of audio files.
             feat_type (:obj:`str`, `optional`, defaults to `raw`):

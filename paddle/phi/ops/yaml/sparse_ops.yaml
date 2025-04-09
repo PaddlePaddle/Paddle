@@ -42,6 +42,7 @@
            add_coo_dense{sparse_coo, dense -> sparse_coo},
     layout : x
   backward : add_grad
+  traits : pir::BinaryElementWiseTrait
 
 - op : asin
   args : (Tensor x)
@@ -140,6 +141,7 @@
            divide_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
     layout : x
   backward : divide_grad
+  traits : pir::BinaryElementWiseTrait
 
 - op : divide_scalar
   args : (Tensor x, float scalar)
@@ -208,6 +210,7 @@
            multiply_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
     layout : x
   backward : multiply_grad
+  traits : pir::BinaryElementWiseTrait
 
 - op : pow
   args : (Tensor x, float factor)
@@ -343,6 +346,7 @@
            subtract_csr_csr{sparse_csr, sparse_csr -> sparse_csr}
     layout : x
   backward : subtract_grad
+  traits : pir::BinaryElementWiseTrait
 
 - op : sum
   args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)

@@ -26,6 +26,14 @@ paddle::Tensor custom_add(const paddle::Tensor& x, const paddle::Tensor& y) {
   return x.exp() + y.exp();
 }
 
+paddle::Tensor custom_optional_add(const paddle::Tensor& x,
+                                   const paddle::optional<paddle::Tensor>& y) {
+  if (y) {
+    return x.exp() + *y;
+  }
+  return x.exp();
+}
+
 std::vector<paddle::Tensor> custom_tensor(
     const std::vector<paddle::Tensor>& inputs) {
   std::vector<paddle::Tensor> out;
@@ -54,6 +62,7 @@ paddle::optional<paddle::Tensor> optional_tensor(bool return_option = false) {
 
 PYBIND11_MODULE(custom_cpp_extension, m) {
   m.def("custom_add", &custom_add, "exp(x) + exp(y)");
+  m.def("custom_optional_add", &custom_optional_add, "exp(x) + optional(y)");
   m.def("custom_sub", &custom_sub, "exp(x) - exp(y)");
   m.def("custom_tensor", &custom_tensor, "x + 1");
   m.def("nullable_tensor", &nullable_tensor, "returned Tensor might be None");

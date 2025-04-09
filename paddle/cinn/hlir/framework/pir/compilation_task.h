@@ -40,6 +40,7 @@ class GroupCompilationContext {
   void SetLoweredFuncs(BucketLoweredFuncsWrapper&& funcs);
   void PrepareModuleBuilder();
   std::string PrintPredicate2Funcs() const;
+  bool NeedCompileCX86Kernel() const { return need_x86_kernel_; }
 
  private:
   friend class CompilationTask;
@@ -58,6 +59,7 @@ class GroupCompilationContext {
   ir::LoweredFunc infer_shape_lowered_func_;
   ir::Module::Builder module_builder_;
   ir::Module::Builder CX86_module_builder_;
+  bool need_x86_kernel_{false};
 };
 
 class CompilationTask {
@@ -74,7 +76,9 @@ class CompilationTask {
  private:
   std::shared_ptr<pir::CompilationResult> CodegenAndJit();
   std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
-      const ir::Module& module, const ir::Module& CX86module);
+      const ir::Module& module,
+      const ir::Module& CX86module,
+      bool need_x86_kernel = false);
 
   GroupCompilationContext* context_;
 };

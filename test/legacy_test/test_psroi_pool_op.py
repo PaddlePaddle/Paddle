@@ -375,9 +375,7 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
             name='x', shape=[2, 490, 28, 28]
         )
         self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
-        self.boxes_placeholder = paddle.static.data(
-            name='boxes', shape=[3, 4], lod_level=1
-        )
+        self.boxes_placeholder = paddle.static.data(name='boxes', shape=[3, 4])
         self.boxes = np.array(
             [[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]]
         ).astype(np.float32)

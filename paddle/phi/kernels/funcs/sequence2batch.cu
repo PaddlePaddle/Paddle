@@ -93,10 +93,10 @@ class CopyMatrixRowsFunctor<phi::GPUContext, T> {
 template class CopyMatrixRowsFunctor<phi::GPUContext, float>;
 template class CopyMatrixRowsFunctor<phi::GPUContext, double>;
 
-template class LoDTensor2BatchFunctor<phi::GPUContext, float>;
-template class LoDTensor2BatchFunctor<phi::GPUContext, double>;
-template class Batch2LoDTensorFunctor<phi::GPUContext, float>;
-template class Batch2LoDTensorFunctor<phi::GPUContext, double>;
+template class DenseTensor2BatchFunctor<phi::GPUContext, float>;
+template class DenseTensor2BatchFunctor<phi::GPUContext, double>;
+template class Batch2DenseTensorFunctor<phi::GPUContext, float>;
+template class Batch2DenseTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -194,7 +194,7 @@ class StudentT(distribution.Distribution):
         )
         return var
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate StudentT samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:

@@ -42,7 +42,7 @@ def get_cluster_from_args(selected_gpus):
 
     trainer_endpoints = []
     for ip in node_ips:
-        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+        trainer_endpoints.append([f"{ip}:{port}" for port in free_ports])
     return get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus)
 
 
@@ -65,9 +65,9 @@ def start_local_trainers(
     procs = []
     for t in pod.trainers:
         proc_env = {
-            "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": f"{t.endpoint}",
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ID": str(t.rank),
+            "PADDLE_CURRENT_ENDPOINT": str(t.endpoint),
+            "PADDLE_TRAINERS_NUM": str(cluster.trainers_nranks()),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "MASTER_ADDR": "127.0.0.1",
             "MASTER_PORT": "6170",

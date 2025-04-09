@@ -20,6 +20,7 @@ from .instruction_utils import (  # noqa: F401
     calc_stack_effect,
     convert_instruction,
     gen_instr,
+    get_instruction_size,
     get_instructions,
     instrs_info,
     modify_extended_args,

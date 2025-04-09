@@ -6,7 +6,7 @@ cc_library(
   var_helper
   SRCS var_helper.cc type_defs.cc
   DEPS tensor phi common)
-if(WITH_XPU)
+if(WITH_XPU_BKCL)
   cc_library(
     prepared_operator
     SRCS prepared_operator.cc

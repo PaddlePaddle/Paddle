@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 from paddle.autograd.ir_backward import grad
 from paddle.base.core import call_vjp, has_vjp
@@ -205,21 +207,15 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
             x.stop_gradient = False
             y.stop_gradient = False
             new_i, new_x = paddle.static.nn.while_loop(
-                lambda p, q: p < q, lambda p, q: [p + y, q + x], [i, x]
+                lambda p, q: p < 100, lambda p, q: (p + y, q + x), [i, x]
             )
 
             out = new_i - new_x
-            grad_outs = grad(out, [i, x, y])
+            cond_grad, i_grad, x_grad = grad(out, [i, x, y])
 
-            self.assertEqual(
-                grad_outs[0].get_defining_op().name(), "pd_op.while"
-            )
-            self.assertEqual(
-                grad_outs[1].get_defining_op().name(), "pd_op.add_n"
-            )
-            self.assertEqual(
-                grad_outs[2].get_defining_op().name(), "pd_op.while"
-            )
+            self.assertEqual(cond_grad.get_defining_op().name(), "pd_op.while")
+            self.assertEqual(i_grad.get_defining_op().name(), "pd_op.add_n")
+            self.assertEqual(x_grad.get_defining_op().name(), "pd_op.while")
             self.assertEqual(
                 main_program.global_block()
                 .ops[-3]
@@ -231,6 +227,12 @@ class TestBuildModuleWithWhile2Op(unittest.TestCase):
                 .name(),
                 "pd_op.add_grad",
             )
+            exe = paddle.static.Executor()
+            (out_np, i_grad_np) = exe.run(
+                main_program, fetch_list=[out, i_grad]
+            )
+            np.testing.assert_allclose(out_np, 45)
+            np.testing.assert_allclose(i_grad_np, -11)
 
 
 if __name__ == "__main__":

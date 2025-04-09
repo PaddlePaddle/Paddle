@@ -26,7 +26,6 @@ void UnStackKernel(const Context& ctx,
                    int axis,
                    int num,
                    std::vector<DenseTensor*> outs) {
-  if (x.numel() == 0) return;
   if (axis < 0) axis += x.dims().size();
 
   int64_t split_dim = x.dims()[axis];

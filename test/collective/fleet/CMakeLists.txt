@@ -61,8 +61,13 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21204;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if(WITH_NCCL OR WITH_RCCL)
-  if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
+if(WITH_NCCL
+   OR WITH_RCCL
+   OR WITH_XPU_BKCL)
+  if((WITH_GPU
+      OR WITH_ROCM
+      OR WITH_XPU)
+     AND LOCAL_ALL_PLAT)
     bash_test_modules(
       test_parallel_dygraph_mp_layers
       START_BASH
@@ -129,19 +134,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_dygraph_sharding_stage3_bf16 PROPERTIES TIMEOUT
                                                                     "200")
-endif()
-if(WITH_NCCL)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-    py_test_modules(
-      test_communicator_half_async
-      MODULES
-      test_communicator_half_async
-      ENVS
-      "FLAGS_enable_pir_api=0;FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-    )
-    set_tests_properties(test_communicator_half_async
-                         PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
-  endif()
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -356,14 +348,14 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     START_BASH
     ../../legacy_test/dist_test.sh
     TIMEOUT
-    "120"
+    "400"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
     "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_sharding_parallel
-                       PROPERTIES TIMEOUT "120")
+                       PROPERTIES TIMEOUT "400")
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
@@ -608,13 +600,19 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_imperative_auto_mixed_precision_for_eager
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
+if((WITH_GPU
+    OR WITH_ROCM
+    OR WITH_XPU)
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_dygraph_recompute_for_eager MODULES test_dygraph_recompute_for_eager
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
+if((WITH_GPU
+    OR WITH_ROCM
+    OR WITH_XPU)
+   AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_dygraph_recompute MODULES test_dygraph_recompute ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
@@ -781,4 +779,31 @@ if((WITH_GPU) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_dygraph_dist_save_load
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_dualpipe
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21282;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dualpipe PROPERTIES TIMEOUT "500")
+endif()
+if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
+  bash_test_modules(
+    test_zero_bubble_utils
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
 endif()

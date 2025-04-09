@@ -78,13 +78,13 @@ void RmsNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
   float* inv_var_data = nullptr;
-  if (inv_var != nullptr) {
+  if (inv_var != nullptr && std::getenv("XPU_RMS_NORM_INFER_OPT") == nullptr) {
     dev_ctx.template Alloc<float>(inv_var);
     inv_var_data = inv_var->data<float>();
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }

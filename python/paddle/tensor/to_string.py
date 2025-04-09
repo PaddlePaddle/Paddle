@@ -328,6 +328,23 @@ def _format_dense_tensor(tensor, indent):
     return data
 
 
+def selected_rows_tensor_to_string(tensor, dtype, prefix='Tensor'):
+    indent = len(prefix) + 1
+    if tensor.is_selected_rows():
+        _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, rows={rows},\n{indent}{data})"
+        data = _format_dense_tensor(tensor, indent)
+        return _template.format(
+            prefix=prefix,
+            shape=tensor.shape,
+            dtype=dtype,
+            place=tensor._place_str,
+            stop_gradient=tensor.stop_gradient,
+            indent=' ' * indent,
+            data=data,
+            rows=tensor.rows(),
+        )
+
+
 def sparse_tensor_to_string(tensor, prefix='Tensor'):
     indent = len(prefix) + 1
     if tensor.is_sparse_coo():
@@ -433,6 +450,9 @@ def tensor_to_string(tensor, prefix='Tensor'):
 
     if tensor.is_sparse():
         return sparse_tensor_to_string(tensor, prefix)
+
+    if tensor.is_selected_rows():
+        return selected_rows_tensor_to_string(tensor, dtype, prefix)
 
     if tensor.is_dist():
         return dist_tensor_to_string(tensor, prefix)

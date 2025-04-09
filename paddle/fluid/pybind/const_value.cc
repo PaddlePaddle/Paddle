@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/dgc_const_values.h"
 #endif
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 void BindConstValue(pybind11::module* m) {
   m->def("kEmptyVarName", [] { return framework::kEmptyVarName; });
@@ -79,5 +78,4 @@ void BindConstValue(pybind11::module* m) {
 #endif
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -29,8 +29,7 @@
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 GlooCommContext::GlooCommContext(
     int rank,
@@ -168,5 +167,4 @@ void GlooCommContext::Recv(phi::DenseTensor* out_tensor,
   send_recv(&opts);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

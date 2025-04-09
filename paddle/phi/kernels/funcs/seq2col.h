@@ -35,7 +35,7 @@ struct Seq2ColFunctor {
   /*
     Convert sequences to frames.
 
-    1. Dimension infomation:
+    1. Dimension information:
 
        Sequences                   Frames
     (N, seq_length)  ->  (N, frame_length, n_frames)
@@ -105,7 +105,7 @@ struct Col2SeqFunctor {
   /*
     Accumulate output gradient d_out to d_x.
 
-    1. Dimension infomation:
+    1. Dimension information:
 
               d_out                        d_x
     (N, frame_length, n_frames)  ->  (N, seq_length)

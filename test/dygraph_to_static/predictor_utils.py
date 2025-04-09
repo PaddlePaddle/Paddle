@@ -74,7 +74,7 @@ class PredictorTools:
         Args:
             config (AnalysisConfig): predictor configs
         Returns:
-            outs (numpy array): forward netwrok prediction outputs
+            outs (numpy array): forward network prediction outputs
         '''
         predictor = create_paddle_predictor(config)
         names = predictor.get_input_names()
@@ -83,7 +83,7 @@ class PredictorTools:
             tensor = predictor.get_input_tensor(name)
             feed_data = self.feeds_var[i]
             tensor.copy_from_cpu(np.array(feed_data))
-            if type(feed_data) == base.LoDTensor:
+            if type(feed_data) == base.DenseTensor:
                 tensor.set_lod(feed_data.lod())
 
         # ensure no diff in multiple repeat times

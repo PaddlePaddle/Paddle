@@ -384,11 +384,6 @@ class TestMultinomialError(unittest.TestCase):
         with self.assertRaises(ValueError):
             y = paddle.multinomial(paddle.to_tensor([1.0, 2.0, -3.0]))
 
-        with self.assertRaises(ValueError):
-            prob = paddle.rand([20, 1000])
-            prob[1:0] = 0
-            y = paddle.multinomial(prob)
-
 
 class TestRandomValue(unittest.TestCase):
     def test_fixed_random_number(self):

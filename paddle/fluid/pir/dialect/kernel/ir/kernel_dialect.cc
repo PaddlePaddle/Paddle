@@ -24,8 +24,7 @@
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 void PrintKernelType(pir::Type type, std::ostream &os) {
   if (type.isa<AllocatedDenseTensorType>()) {
@@ -255,8 +254,7 @@ pir::OpPrintFn OneDNNKernelDialect::PrintOperation(
 }
 #endif
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::KernelDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomKernelDialect)

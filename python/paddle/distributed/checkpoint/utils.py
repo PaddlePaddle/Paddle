@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import copy
+import os
+import re
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -117,3 +119,23 @@ def unflatten_state_dict(flat_state_dict, mapping):
         tmp[key_tuple[-1]] = value
 
     return state_dict
+
+
+def get_max_id(path):
+    numbers = []
+    pattern = re.compile(r"^(\d+)_(\d+)\.distcp$")
+    files = os.listdir(path)
+    for file in files:
+        match = pattern.match(file)
+        if match:
+            numbers.append(int(match.group(2)))
+    return max(numbers) if numbers else None
+
+
+def check_unique_id(unique_id, process_group):
+    all_unique_id = []
+    paddle.distributed.all_gather_object(
+        all_unique_id, unique_id, process_group
+    )
+    for id in all_unique_id[1:]:
+        assert id == all_unique_id[0], f"id:{id} !=  all_unique_id[0]"

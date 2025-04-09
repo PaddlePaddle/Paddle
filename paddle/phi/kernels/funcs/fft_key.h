@@ -58,7 +58,7 @@ struct FFTConfigKey {
 template <typename Key>
 struct KeyHash {
   // Key must be a POD because we read out its memory
-  // contenst as char* when hashing
+  // contents as char* when hashing
   static_assert(std::is_pod<Key>::value, "Key must be plain old data type");
 
   size_t operator()(const Key& params) const {
@@ -75,7 +75,7 @@ struct KeyHash {
 template <typename Key>
 struct KeyEqual {
   // Key must be a POD because we read out its memory
-  // contenst as char* when comparing
+  // contents as char* when comparing
   static_assert(std::is_pod<Key>::value, "Key must be plain old data type");
 
   bool operator()(const Key& a, const Key& b) const {

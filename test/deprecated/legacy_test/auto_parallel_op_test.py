@@ -352,14 +352,14 @@ def convert_input_dims_map_to_placements(
     return placements_map
 
 
-# TODO: This method has been implementd in
+# TODO: This method has been implemented in
 # paddle/phi/core/distributed/auto_parallel/placement_types.h, bind it
 # python and it's logic.
 def placements_to_dims_map(placements: list, tensor_ndim: int) -> tuple[int]:
     r = [-1] * tensor_ndim
     for i, placement in enumerate(placements):
         if placement.is_shard():
-            shard_dim = cast(dist.Shard, placement).get_dim()
+            shard_dim = cast("dist.Shard", placement).get_dim()
             if r[shard_dim] > -1:
                 raise ValueError(
                     f"Tensor dim {shard_dim} is already sharded on mesh dim {r[shard_dim]},"
@@ -402,9 +402,9 @@ def dims_map_to_placements(
         if m >= 0:
             placement = placements[m]
             if placement.is_shard():
-                placement = cast(dist.Shard, placement)
+                placement = cast("dist.Shard", placement)
                 raise RuntimeError(
-                    f"DeviceMesh dimension cann't be mapped to two dimension of the same tensor: {i} and {placement.dim}"
+                    f"DeviceMesh dimension can't be mapped to two dimension of the same tensor: {i} and {placement.dim}"
                 )
             elif placement.is_partial():
                 raise RuntimeError(
@@ -428,7 +428,7 @@ class AutoParallelForwardChecker:
     def __init__(
         self,
         op_type,
-        pthon_api,
+        python_api,
         dtype,
         placements_map,
         inputs,
@@ -441,7 +441,7 @@ class AutoParallelForwardChecker:
         self.checker_name = "AutoParallelForwardChecker"
         self.init_checker(
             op_type,
-            pthon_api,
+            python_api,
             dtype,
             placements_map,
             inputs,
@@ -455,7 +455,7 @@ class AutoParallelForwardChecker:
     def init_checker(
         self,
         op_type,
-        pthon_api,
+        python_api,
         dtype,
         placements_map,
         inputs,
@@ -466,7 +466,7 @@ class AutoParallelForwardChecker:
         python_out_sig=None,
     ):
         self.op_type = op_type
-        self.public_python_api = pthon_api
+        self.public_python_api = python_api
         self.dtype = np.dtype(dtype)
         self.placements_map = placements_map
         self.inputs = inputs
@@ -512,15 +512,9 @@ class AutoParallelForwardChecker:
                     rtol=self.atol,
                     atol=self.rtol,
                     err_msg=(
-                        'Check eager auto parallel failed. Mismatch between eager auto parallel outputs '
-                        'and eager outputs on %s, the eager forward output tensor\'s index is : %d \n'
-                        'eager auto parallel output tensor:\n%s\n eager output tensor:\n%s\n'
-                        % (
-                            str(self.place),
-                            i,
-                            actual_ret[i],
-                            self.eager_forward_desire[i],
-                        )
+                        f"Check eager auto parallel failed. Mismatch between eager auto parallel outputs "
+                        f"and eager outputs on {self.place!s}. The eager forward output tensor's index is : {i} \n"
+                        f"eager auto parallel output tensor:\n{actual_ret[i]}\n eager output tensor:\n{self.eager_forward_desire[i]}\n"
                     ),
                 )
 
@@ -673,7 +667,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
     def __init__(
         self,
         op_type,
-        pthon_api,
+        python_api,
         dtype,
         placements_map,
         inputs,
@@ -689,7 +683,7 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
     ):
         super().__init__(
             op_type,
-            pthon_api,
+            python_api,
             dtype,
             placements_map,
             inputs,
@@ -732,14 +726,8 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                     atol=self.rtol,
                     err_msg=(
                         'Check eager auto parallel failed. Mismatch between eager auto parallel outputs '
-                        'and eager outputs on %s, the eager forward output tensor\'s index is : %d \n'
-                        'eager auto parallel output tensor:\n%s\n eager output tensor:\n%s\n'
-                        % (
-                            str(self.place),
-                            i,
-                            actual_forward_res[i],
-                            self.eager_forward_desire[i],
-                        )
+                        f'and eager outputs on {self.place}, the eager forward output tensor\'s index is : {i} \n'
+                        f'eager auto parallel output tensor:\n{actual_forward_res[i]}\n eager output tensor:\n{self.eager_forward_desire[i]}\n'
                     ),
                 )
 
@@ -758,14 +746,8 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                     atol=self.rtol,
                     err_msg=(
                         'Check eager auto parallel backward failed. Mismatch between eager auto parallel grad outputs '
-                        'and eager grad outputs on %s, the eager grad output tensor\'s index is : %d \n'
-                        'eager auto parallel grad output tensor:\n%s\n eager grad output tensor:\n%s\n'
-                        % (
-                            str(self.place),
-                            i,
-                            actual_grad_res[i],
-                            self.eager_grad_desire[i],
-                        )
+                        f'and eager grad outputs on {self.place}, the eager grad output tensor\'s index is : {i} \n'
+                        f'eager auto parallel grad output tensor:\n{actual_grad_res[i]}\n eager grad output tensor:\n{self.eager_grad_desire[i]}\n'
                     ),
                 )
 

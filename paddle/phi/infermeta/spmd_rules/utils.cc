@@ -48,7 +48,7 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
   return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
-// Rule1: A repicated dimension could be merged by any sharded dimension.
+// Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)
@@ -106,7 +106,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     }
   }
 
-  // Resolute "mesh_dim shard by more than one axis" confict.
+  // Resolute "mesh_dim shard by more than one axis" conflict.
   // Now we just naive pick the first axis naively.
   // (TODO) use local cost model to pick the axis with lowest cost(in concern of
   // memory or communication or computation).
@@ -299,7 +299,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     return false;
   };
 
-  // a dim can not be sharded twice along diffrent mesh_dim
+  // a dim can not be sharded twice along different mesh_dim
   std::set<char> sharded_axis;
   std::map<int32_t, ReduceType> partial_dim_to_type;
   std::map<int32_t, char> mesh_dim_to_axis;

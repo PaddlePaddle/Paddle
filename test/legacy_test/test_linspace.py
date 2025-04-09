@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -244,6 +245,38 @@ class TestLinspaceOpError(unittest.TestCase):
                     paddle.linspace(0, 10, num, dtype="float32")
 
                 self.assertRaises(TypeError, test_step_dtype)
+
+
+class TestLinspaceOpEmptyTensor(unittest.TestCase):
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
+    def _test_linspace_empty_static(self, place):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                out = paddle.linspace(0, 10, 0, dtype='float32')
+                exe = paddle.static.Executor(place)
+                res = exe.run(fetch_list=[out])
+                self.assertEqual(res[0].shape, (0,))
+                self.assertEqual(len(res[0]), 0)
+
+    def _test_linspace_empty_dynamic(self):
+        with dygraph_guard():
+            out = paddle.linspace(0, 10, 0, dtype='float32')
+            self.assertEqual(out.shape, [0])
+            self.assertEqual(len(out.numpy()), 0)
+
+    def test_empty_tensor(self):
+        places = self._get_places()
+        for place in places:
+            self._test_linspace_empty_static(place)
+
+        self._test_linspace_empty_dynamic()
 
 
 if __name__ == "__main__":

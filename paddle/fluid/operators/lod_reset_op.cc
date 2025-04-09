@@ -96,7 +96,7 @@ class LoDResetOpVarTypeInference
       SetLoDLevel(ctx, out_var_name, 1);
     }
     SetDataType(ctx, out_var_name, GetDataType(ctx, x_var_name));
-    SetType(ctx, out_var_name, paddle::framework::proto::VarType::LOD_TENSOR);
+    SetType(ctx, out_var_name, paddle::framework::proto::VarType::DENSE_TENSOR);
   }
 };
 
@@ -140,7 +140,7 @@ Given a 1-level phi::DenseTensor input(X):
 
 attr(target_lod): [0, 4, 6]
 
-then we get a 1-level LoDTensor:
+then we get a 1-level DenseTensor:
     Out.lod =  [[ 0,                   4,            6 ]]
     Out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     Out.dims = [6, 1]
@@ -156,7 +156,7 @@ input(Y) is a Tensor:
     Y.data = [[0, 2, 6]]
     Y.dims = [1, 3]
 
-then we get a 1-level LoDTensor:
+then we get a 1-level DenseTensor:
     Out.lod =  [[ 0,     2,                          6 ]]
     Out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     Out.dims = [6, 1]
@@ -168,12 +168,12 @@ Given a 1-level phi::DenseTensor input(X):
     X.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     X.dims = [6, 1]
 
-input(Y) is a 2-level LoDTensor:
+input(Y) is a 2-level DenseTensor:
     Y.lod =  [[0, 2, 4], [0, 2, 5, 6]]
     Y.data = [[1.1], [2.1], [3.1], [4.1], [5.1], [6.1]]
     Y.dims = [6, 1]
 
-then we get a 2-level LoDTensor:
+then we get a 2-level DenseTensor:
     Out.lod =  [[0, 2, 4], [0, 2, 5, 6]]
     Out.data = [[1.0], [2.0], [3.0], [4.0], [5.0], [6.0]]
     Out.dims = [6, 1]

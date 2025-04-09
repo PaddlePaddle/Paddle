@@ -59,11 +59,7 @@ class MovieInfo:
         ]
 
     def __str__(self) -> str:
-        return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
-            self.index,
-            self.title,
-            self.categories,
-        )
+        return f"<MovieInfo id({self.index}), title({self.title}), categories({self.categories})>"
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -97,12 +93,8 @@ class UserInfo:
         ]
 
     def __str__(self) -> str:
-        return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
-            self.index,
-            "M" if self.is_male else "F",
-            age_table[self.age],
-            self.job_id,
-        )
+        gender = "M" if self.is_male else "F"
+        return f"<UserInfo id({self.index}), gender({gender}), age({age_table[self.age]}), job({self.job_id})>"
 
     def __repr__(self) -> str:
         return str(self)

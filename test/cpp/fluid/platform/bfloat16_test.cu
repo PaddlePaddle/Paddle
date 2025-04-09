@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/bfloat16.h"
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -56,7 +55,7 @@ TEST(bfloat16, convert_bfloat16_to_float32_on_gpu) {
   EXPECT_EQ(static_cast<bool>(bfloat16(true)), true);
 }
 
-TEST(bfloat16, lod_tensor_on_gpu) {
+TEST(bfloat16, dense_tensor_on_gpu) {
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;
@@ -68,7 +67,7 @@ TEST(bfloat16, lod_tensor_on_gpu) {
       bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f), bfloat16(0.0f)};
   memcpy(src_ptr, arr, 4 * sizeof(bfloat16));
 
-  // CPU LoDTensor to GPU LoDTensor
+  // CPU DenseTensor to GPU DenseTensor
   phi::GPUPlace gpu_place(0);
   phi::GPUContext gpu_ctx(gpu_place);
   gpu_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
@@ -77,10 +76,10 @@ TEST(bfloat16, lod_tensor_on_gpu) {
   gpu_ctx.PartialInitWithAllocator();
   framework::TensorCopy(src_tensor, gpu_place, gpu_ctx, &gpu_tensor);
 
-  // GPU LoDTensor to CPU LoDTensor
+  // GPU DenseTensor to CPU DenseTensor
   framework::TensorCopy(gpu_tensor, CPUPlace(), gpu_ctx, &dst_tensor);
 
-  // Sync before comparing LoDTensors
+  // Sync before comparing DenseTensors
   gpu_ctx.Wait();
   const bfloat16 *dst_ptr = dst_tensor.data<bfloat16>();
   ASSERT_NE(src_ptr, dst_ptr);

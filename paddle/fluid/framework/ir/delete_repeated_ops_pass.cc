@@ -23,15 +23,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 bool HasOutVarName(Node* op_node, std::string name) {
   auto* op_desc = op_node->Op();
@@ -45,7 +41,8 @@ bool HasOutVarName(Node* op_node, std::string name) {
   return false;
 }
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 
 struct VarWithRepeatedOpsPattern : public PatternBase {
   VarWithRepeatedOpsPattern(PDPattern* pattern,
@@ -78,7 +75,8 @@ VarWithRepeatedOpsPattern::VarWithRepeatedOpsPattern(
       });
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 /*
 Delete repeated ops, for example:
@@ -300,9 +298,7 @@ void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
   LOG(INFO) << "Total delete op counts: " << total_delete_op_count;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_repeated_ops_pass,
               paddle::framework::ir::DeleteRepeatedOpsPass);

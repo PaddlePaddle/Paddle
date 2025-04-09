@@ -57,14 +57,14 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             softmax = main_prog.current_block().create_var(
                 name="Softmax",
                 dtype=logits.dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )
             loss = main_prog.current_block().create_var(
                 name="Loss",
                 dtype=logits.dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )
@@ -72,7 +72,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
                 name="Loss@GRAD",
                 shape=self.label_shape,
                 dtype=logits.dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )

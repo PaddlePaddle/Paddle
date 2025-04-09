@@ -11,7 +11,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/float16.h"
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -122,7 +121,7 @@ TEST(float16, lod_tensor_cpu) {
   EXPECT_EQ(input_data[3].x, 0x0000);
 
   lod_tensor.Resize({4, 1});
-  lod_tensor.set_lod(phi::LoD({{0, 2, 4}}));
+  lod_tensor.set_lod(phi::LegacyLoD({{0, 2, 4}}));
   float16* data_ptr = lod_tensor.mutable_data<float16>(CPUPlace());
 
   EXPECT_NE(data_ptr, nullptr);

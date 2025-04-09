@@ -132,39 +132,21 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   const auto& place = dev_ctx.GetPlace();  // old code
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  const auto& comm_context_manager =
-      phi::distributed::CommContextManager::GetInstance();
   phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-  distributed::ProcessGroup* pg = nullptr;
   gpuStream_t stream;
   if (nranks > 1) {
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(ring_id)) {
-      // Use ProcessGroup
-      pg = map->get(ring_id);
-    } else {
-      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-                        true,
-                        common::errors::InvalidArgument(
-                            "You choose to use new communication library by "
-                            "setting environment "
-                            "variable FLAGS_dynamic_static_unified_comm True. "
-                            "But ring_id(%d) is "
-                            "not found in comm_context_manager.",
-                            std::to_string(ring_id)));
-      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(std::to_string(ring_id)));
-      PADDLE_ENFORCE_NE(comm_ctx,
-                        nullptr,
-                        common::errors::Unavailable(
-                            "NCCLCommContext is nullptr, collective op should "
-                            "has ring_id attr."));
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
 
-      // use global calculate stream
-      stream = static_cast<GPUContext*>(
-                   phi::DeviceContextPool::Instance().Get(place))
-                   ->stream();
-    }
+    // use global calculate stream
+    stream =
+        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
+            ->stream();
   }
 #endif
 
@@ -261,19 +243,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    if (pg) {
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(logits_max);
-      out_tensor.push_back(logits_max);
-
-      distributed::AllreduceOptions opts;
-      opts.reduce_op = distributed::ReduceOp::MAX;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
-    }
+    comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
   }
 #endif
 
@@ -295,19 +265,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    if (pg) {
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(sum_exp_logits);
-      out_tensor.push_back(sum_exp_logits);
-
-      distributed::AllreduceOptions opts;
-      opts.reduce_op = distributed::ReduceOp::SUM;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
-    }
+    comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
   }
 #endif
 
@@ -346,19 +304,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   if (nranks > 1) {
-    if (pg) {
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(*loss);
-      out_tensor.push_back(*loss);
-
-      distributed::AllreduceOptions opts;
-      opts.reduce_op = distributed::ReduceOp::SUM;
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-    } else {
-      comm_ctx->AllReduce(loss, *loss, ncclSum, stream);
-    }
+    comm_ctx->AllReduce(loss, *loss, ncclSum, stream);
   }
 #endif
 }

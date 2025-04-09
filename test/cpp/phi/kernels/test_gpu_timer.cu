@@ -86,11 +86,11 @@ TEST(GpuTimer, Sum) {
 #endif
 
   using Functor = std::function<void(float *, float *, size_t)>;
-  Functor alog0 = Algo<4, 256, 1024>;
+  Functor algo0 = Algo<4, 256, 1024>;
   Functor algo1 = Algo<1, 256, 1024>;
-  Functor alog2 = Algo<1, 256, 8>;
+  Functor algo2 = Algo<1, 256, 8>;
 
-  std::vector<Functor> algos = {alog0, algo1, alog2};
+  std::vector<Functor> algos = {algo0, algo1, algo2};
 
   for (int j = 0; j < algos.size(); ++j) {
     auto algo = algos[j];
@@ -98,7 +98,7 @@ TEST(GpuTimer, Sum) {
     timer.Start(0);
     algo(d_in1, d_in2, N);
     timer.Stop(0);
-    VLOG(3) << "alog: " << j << " cost: " << timer.ElapsedTime() << "ms";
+    VLOG(3) << "algo: " << j << " cost: " << timer.ElapsedTime() << "ms";
   }
 
 #ifdef __HIPCC__

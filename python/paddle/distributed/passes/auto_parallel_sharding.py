@@ -196,7 +196,7 @@ class ShardingPass(PassBase):
         # NOTE Multi / Sub-Block Support
         # we assume that only parameter are present and partitioned in main_block,
         # there is NO new param in sub_block, and all params in sub_block follows the same
-        # partition as main_block. the above constraint fullfill the 3 most common use-cases in Paddle sub_block:
+        # partition as main_block. the above constraint fulfill the 3 most common use-cases in Paddle sub_block:
         # 1. subblock for lr scheduler
         # 2. sub-block uses the same or partial network of main-block, e.g. GPT3 generation model
         # 3. sub-block used for double backward
@@ -405,13 +405,13 @@ class ShardingPass(PassBase):
                 for i, sharding_info in enumerate(self.sharding_infos):
                     new_op = main_block._insert_op(
                         idx + i + 1,
-                        type='c_allreduce_sum',
-                        inputs={'X': [sum_op_output]},
-                        outputs={'Out': [sum_op_output]},
+                        type='all_reduce',
+                        inputs={'x': [sum_op_output]},
+                        outputs={'out': [sum_op_output]},
                         attrs={
                             'ring_id': sharding_info.group.id,
                             'op_namescope': "/gradient_clip_model_parallelism",
-                            'use_calc_stream': True,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
@@ -535,9 +535,16 @@ class ShardingPass(PassBase):
         dp_ring_ids = [group.id for group in self.dp_groups]
         for idx, op in reversed(list(enumerate(main_block.ops))):
             if _is_param_grad_allreduce_op(op, main_block):
-                if op.type == "c_allreduce_sum" or (
-                    op.type == "reduce"
-                    and op.attr("reduce_type") == dist.ReduceOp.SUM
+                if (
+                    op.type == "c_allreduce_sum"
+                    or (
+                        op.type == "all_reduce"
+                        and op.attr("reduce_type") == dist.ReduceOp.SUM
+                    )
+                    or (
+                        op.type == "reduce"
+                        and op.attr("reduce_type") == dist.ReduceOp.SUM
+                    )
                 ):
                     reduce_op_type = "reduce"
                     reduce_type = dist.ReduceOp.SUM
@@ -1035,9 +1042,14 @@ class ShardingPass(PassBase):
                 ):
                     cur_group.is_in_local_shard = True
                     assert ops[i + 1].type in [
-                        "c_allreduce_avg",
                         "c_allreduce_sum",
-                    ], "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
+                    ] or (
+                        ops[i + 1].type == 'all_reduce'
+                        and ops[i + 1].attr('reduce_type')
+                        in [
+                            paddle.distributed.ReduceOp.SUM,
+                        ]
+                    ), "Sharding should reduce grad first and than allreduce if Hybrid Sharding with Data-Parallel"
                     assert (
                         ops[i + 1].output_arg_names[0] == grad_name
                     ), "Hybrid Sharding with Data-Parallel should sync same gradient var"
@@ -1237,7 +1249,13 @@ class ShardingPass(PassBase):
         grad_comm_op_to_stream_idx = {}
         for idx, op in enumerate(ops):
             if is_data_parallel_reduce_op(op):
-                if op.type in ["c_allreduce_avg", "c_allreduce_sum"]:
+                if op.type in ["c_allreduce_sum"] or (
+                    op.type == 'all_reduce'
+                    and op.attr('reduce_type')
+                    in [
+                        paddle.distributed.ReduceOp.SUM,
+                    ]
+                ):
                     continue
                 stream_idx = reduce_op_count % self.grad_comm_stream_num
                 grad_comm_op_to_stream_idx[op] = stream_idx
@@ -1291,9 +1309,14 @@ class ShardingPass(PassBase):
                 if self.sharding_hybrid_dp and grad_group.is_in_local_shard:
                     next_op = ops[idx + 1]
                     assert next_op.type in [
-                        "c_allreduce_avg",
                         "c_allreduce_sum",
-                    ]
+                    ] or (
+                        next_op.type == 'all_reduce'
+                        and next_op.attr('reduce_type')
+                        in [
+                            paddle.distributed.ReduceOp.SUM,
+                        ]
+                    )
                     assert next_op.output("Out")[0] == reduce_varname
                     # FIXME hybrid sharding-dp support multi comm & stream in feature
                     # next_op._set_attr("ring_id", comm_group.id)
@@ -1303,13 +1326,13 @@ class ShardingPass(PassBase):
                     )
                     idx += 1
 
-                # NOTE(Ruibiao): Why add dependecy here?
+                # NOTE(Ruibiao): Why add dependency here?
                 # It is hack to delay GC for coalesce_var, which significantly reduce memory usage.
                 # With the pattern of reduce_sum + scale, the coalesce_var is used by the reduce_sum
                 # op on the comm-stream, and then released by the scale op on the comp-stream. Since
                 # the generated and released op are both in comp-stream, the allocation of the
                 # coalesce_var can be fast-GC and reused by subsequent comp-op. However in reduce_avg
-                # parrent, the coalesce_var is released on the reduce_avg op in comm-stream,
+                # parent, the coalesce_var is released on the reduce_avg op in comm-stream,
                 # triggering a cross-stream GC. In such case, an event is recorded on the underlying
                 # allocation, and the memory is unable to reused by other comp-ops, resulting in an
                 # increase in memory usage. For more details, see the code of StreamSafeCUDAAllocator.
@@ -1926,7 +1949,7 @@ class ShardingInfo:
         fp16_params = set()
         fp16_to_fp32 = {}
 
-        param_usage = {x: 0 for x in self.param_names}
+        param_usage = dict.fromkeys(self.param_names, 0)
         for op in block.ops:
             if is_optimize_op(op):
                 continue

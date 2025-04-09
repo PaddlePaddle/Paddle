@@ -147,7 +147,7 @@ class TestNanmedianModeMin(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        self.axis_candiate_list = [
+        self.axis_candidate_list = [
             None,
             0,
             2,
@@ -231,7 +231,7 @@ class TestNanmedianModeMin(unittest.TestCase):
         for name, data in self.fake_data.items():
             test_data_case(data, name)
 
-        for axis in self.axis_candiate_list:
+        for axis in self.axis_candidate_list:
             test_axis_case(self.fake_data["row_nan_even"], axis)
             test_axis_case(self.fake_data["col_nan_odd"], axis)
 
@@ -402,7 +402,7 @@ class TestNanmedianModeMean(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        self.axis_candiate_list = [
+        self.axis_candidate_list = [
             None,
             0,
             2,
@@ -480,7 +480,7 @@ class TestNanmedianModeMean(unittest.TestCase):
         for name, data in self.fake_data.items():
             test_data_case(data, name)
 
-        for axis in self.axis_candiate_list:
+        for axis in self.axis_candidate_list:
             test_axis_case(self.fake_data["row_nan_even"], axis)
             test_axis_case(self.fake_data["col_nan_odd"], axis)
 

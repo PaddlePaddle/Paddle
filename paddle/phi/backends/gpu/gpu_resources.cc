@@ -166,7 +166,7 @@ void InitGpuProperties(Place place,
                           << get_cudnn_major(cudnn_dso_ver) << "."
                           << get_cudnn_minor(cudnn_dso_ver) << ".";
 
-  // Check CUDA/CUDNN version compatiblity
+  // Check CUDA/CUDNN version compatibility
   auto local_cuda_version =
       (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
   auto compile_cuda_version =
@@ -216,7 +216,7 @@ void InitStream(gpuStream_t* stream) {
 #endif
 }
 
-void DestoryStream(gpuStream_t stream) {
+void DestroyStream(gpuStream_t stream) {
   if (stream != nullptr) {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream));
@@ -335,16 +335,24 @@ void DestroyDnnHandle(dnnHandle_t handle) {
 }
 
 void InitSolverHandle(solverHandle_t* handle, gpuStream_t stream) {
-#ifndef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_CUDA)
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusolverDnCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cusolverDnSetStream(*handle, stream));
+#elif defined(PADDLE_WITH_HIP)
+  phi::dynload::rocblas_create_handle(handle);
+  phi::dynload::rocblas_set_stream(*handle, stream);
 #endif
 }
 
 void DestroySolverHandle(solverHandle_t solver_handle) {
-#ifndef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_CUDA)
   if (solver_handle != nullptr) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDestroy(solver_handle));
+    solver_handle = nullptr;
+  }
+#elif defined(PADDLE_WITH_HIP)
+  if (solver_handle != nullptr) {
+    phi::dynload::rocblas_destroy_handle(solver_handle);
     solver_handle = nullptr;
   }
 #endif

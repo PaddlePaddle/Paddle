@@ -89,7 +89,7 @@ class Independent(distribution.Distribution):
     def variance(self) -> Tensor:
         return self._base.variance
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         return self._base.sample(shape)
 
     def log_prob(self, value: Tensor) -> Tensor:

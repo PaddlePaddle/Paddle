@@ -15,14 +15,14 @@
 import numpy as np
 
 from . import core
-from .data_feeder import DataToLoDTensorConverter
+from .data_feeder import DataToDenseTensorConverter
 
 __all__ = []
 
 
 def create_lod_tensor(data, recursive_seq_lens, place):
     """
-    Create a LoDTensor from a numpy array, list or existing LoDTensor.
+    Create a DenseTensor from a numpy array, list or existing DenseTensor.
 
     The implementation is as follows:
 
@@ -32,13 +32,13 @@ def create_lod_tensor(data, recursive_seq_lens, place):
     2. Convert :code:`recursive_seq_lens` to a offset-based LoD.
 
     3. Based on :code:`place` , copy the :code:`data` from a numpy array, list
-       or existing LoDTensor to CPU or GPU device.
+       or existing DenseTensor to CPU or GPU device.
 
-    4. Set offset-based LoD to the output LoDTensor.
+    4. Set offset-based LoD to the output DenseTensor.
 
-    Suppose we want to create a LoDTensor to hold data for word sequences,
+    Suppose we want to create a DenseTensor to hold data for word sequences,
     where each word is represented by an integer. If we want to create
-    a LoDTensor to represent two sentences, one of 2 words, and one of 3 words.
+    a DenseTensor to represent two sentences, one of 2 words, and one of 3 words.
 
     Then :code:`data` would be a numpy array of integers with shape (5, 1).
     :code:`recursive_seq_lens` would be [[2, 3]], indicating the word number
@@ -48,15 +48,15 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 
 
     Args:
-        data (numpy.ndarray|list|LoDTensor): a numpy array, a list or ad LoDTensor
+        data (numpy.ndarray|list|DenseTensor): a numpy array, a list or ad DenseTensor
                 holding the data to be copied.
         recursive_seq_lens (list[list[int]]): a list of lists indicating the
                 length-based LoD info.
         place (CPUPlace|CUDAPlace): CPU or GPU place indicating where the data
-                in the created LoDTensor will be stored.
+                in the created DenseTensor will be stored.
 
     Returns:
-         A LoDTensor with tensor data and recursive_seq_lens info.
+         A DenseTensor with tensor data and recursive_seq_lens info.
 
     Examples:
 
@@ -67,12 +67,12 @@ def create_lod_tensor(data, recursive_seq_lens, place):
 
             >>> t = base.create_lod_tensor(np.ndarray([5, 30]), [[2, 3]], base.CPUPlace())
     """
-    if isinstance(data, core.LoDTensor):
+    if isinstance(data, core.DenseTensor):
         return create_lod_tensor(np.array(data), recursive_seq_lens, place)
     elif isinstance(data, list):
         # dtype and shape are not important here,
-        # we only want to reuse code of DataToLoDTensorConverter
-        converter = DataToLoDTensorConverter(
+        # we only want to reuse code of DataToDenseTensorConverter
+        converter = DataToDenseTensorConverter(
             place=place,
             lod_level=len(recursive_seq_lens),
             shape=[],
@@ -94,21 +94,18 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         # 1 to the shape. Maybe it is not a right way? Currently, we only
         # follow the previous logic
         arr = arr.reshape((*arr.shape, 1))
-        tensor = core.LoDTensor()
+        tensor = core.DenseTensor()
         tensor.set(arr, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
         return tensor
     elif isinstance(data, np.ndarray):
-        tensor = core.LoDTensor()
+        tensor = core.DenseTensor()
         tensor.set(data, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
-        assert (
-            tensor.has_valid_recursive_sequence_lengths()
-        ), "the provided lod info is invalid"
         return tensor
     else:
         raise TypeError(
-            "data should be either a LoDTensor, a Numpy array or a list"
+            "data should be either a DenseTensor, a Numpy array or a list"
         )
 
 
@@ -118,39 +115,39 @@ def create_random_int_lodtensor(
     """
         :api_attr: Static Graph
 
-    Create a LoDTensor containing random integers.
+    Create a DenseTensor containing random integers.
 
     The implementation is as follows:
 
-    1. Obtain the shape of output LoDTensor based on :code:`recursive_seq_lens`
+    1. Obtain the shape of output DenseTensor based on :code:`recursive_seq_lens`
        and :code:`base_shape` . The first dimension of the shape is the total
        length of sequences, while the other dimensions are the same as
        :code:`base_shape` .
 
     2. Create a numpy array of random integers, and parse the created numpy
        array as parameter :code:`data` of :ref:`api_paddle_base_create_lod_tensor` to
-       create the output LoDTensor.
+       create the output DenseTensor.
 
-    Suppose we want to create a LoDTensor to hold data for 2 sequences, where
+    Suppose we want to create a DenseTensor to hold data for 2 sequences, where
     the dimension of the sequences are [2, 30] and [3, 30] respectively.
     The :code:`recursive_seq_lens` would be [[2, 3]], and :code:`base_shape`
     would be [30] (the other dimensions excluding the sequence length).
-    Therefore, the shape of the output LoDTensor would be [5, 30], where
+    Therefore, the shape of the output DenseTensor would be [5, 30], where
     the first dimension 5 is the total lengths of the sequences, and the
     other dimensions are :code:`base_shape`.
 
     Args:
         recursive_seq_lens (list[list[int]]): a list of lists indicating the
                 length-based LoD info.
-        base_shape (list[int]): the shape of the output LoDTensor excluding
+        base_shape (list[int]): the shape of the output DenseTensor excluding
                 the first dimension.
         place (CPUPlace|CUDAPlace): CPU or GPU place indicating where
-                the data in the created LoDTensor will be stored.
+                the data in the created DenseTensor will be stored.
         low (int): the lower bound of the random integers.
         high (int): the upper bound of the random integers.
 
     Returns:
-        A LoDTensor with tensor data and recursive_seq_lens info, whose data
+        A DenseTensor with tensor data and recursive_seq_lens info, whose data
         is inside [low, high].
 
     Examples:

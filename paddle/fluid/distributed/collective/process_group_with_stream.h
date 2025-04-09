@@ -22,7 +22,7 @@ namespace paddle {
 namespace distributed {
 
 // NOTE: Notice that some backends use `stream` as an abstract conception of
-// hardward resource. We provide this base class allowing users to put
+// hardware resource. We provide this base class allowing users to put
 // communications on calculation stream. In some scenarios, we found this will
 // save the time of switching streams.
 class ProcessGroupWithStream : public ProcessGroup {
@@ -158,6 +158,27 @@ class ProcessGroupWithStream : public ProcessGroup {
       bool use_calc_stream UNUSED) override {
     PADDLE_THROW(common::errors::Unimplemented(
         "ProcessGroupWithStream (%s) does not support all_to_all.",
+        GetBackendName()));
+  }
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors,
+      const std::vector<phi::DenseTensor>& in_tensors,
+      bool sync_op) {
+    return AllToAll(out_tensors,
+                    in_tensors,
+                    sync_op,
+                    /*use_calc_stream*/ false);
+  }
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors UNUSED,
+      const std::vector<phi::DenseTensor>& in_tensors UNUSED,
+      bool sync_op UNUSED,
+      bool use_calc_stream UNUSED) override {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "ProcessGroup%s does not support all_to_all "
+        "with sync_op and use_calc_stream flag.",
         GetBackendName()));
   }
 

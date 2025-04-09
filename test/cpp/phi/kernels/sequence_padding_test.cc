@@ -20,7 +20,7 @@ limitations under the License. */
 
 template <typename DeviceContext, typename T>
 void TestSequencePadding(const DeviceContext &context,
-                         const phi::LoD &lod,
+                         const phi::LegacyLoD &lod,
                          const size_t sequence_width) {
   phi::DenseTensor cpu_seq;
   phi::DenseTensor cpu_seq_back;
@@ -72,7 +72,7 @@ void TestSequencePadding(const DeviceContext &context,
     phi::Copy(context, cpu_pad_value, place, true, &pad_value);
   }
 
-  phi::funcs::PaddingLoDTensorFunctor<DeviceContext, T>()(
+  phi::funcs::PaddingDenseTensorFunctor<DeviceContext, T>()(
       context,
       seq,
       &padding,
@@ -85,7 +85,7 @@ void TestSequencePadding(const DeviceContext &context,
   seq_back.set_lod(lod);
   seq_back.Resize(seq_dims);
   context.template Alloc<T>(&seq_back);
-  phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+  phi::funcs::UnpaddingDenseTensorFunctor<DeviceContext, T>()(
       context, padding, &seq_back, -1, 0, false, phi::funcs::kLengthBatchWidth);
 
   if (place.GetType() == phi::AllocationType::CPU) {
@@ -107,11 +107,11 @@ TEST(Seq2BatchPadding, CPU) {
   auto *context = static_cast<phi::CPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
 
-  phi::LoD lod1;
+  phi::LegacyLoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<phi::CPUContext, float>(*context, lod1, 16);
 
-  phi::LoD lod2;
+  phi::LegacyLoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
   TestSequencePadding<phi::CPUContext, float>(*context, lod2, 128);
 }
@@ -122,11 +122,11 @@ TEST(SequencePadding, CUDA) {
   auto *context = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
 
-  phi::LoD lod1;
+  phi::LegacyLoD lod1;
   lod1.push_back(std::vector<size_t>{0, 10});
   TestSequencePadding<phi::GPUContext, float>(*context, lod1, 16);
 
-  phi::LoD lod2;
+  phi::LegacyLoD lod2;
   lod2.push_back(std::vector<size_t>{0, 2, 7, 10});
   TestSequencePadding<phi::GPUContext, float>(*context, lod2, 128);
 }

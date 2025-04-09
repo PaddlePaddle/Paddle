@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -109,9 +107,7 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
                     op_type);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(operator_unsqueeze2_onednn_fuse_pass,
               paddle::framework::ir::FuseOperatorUnsqueeze2OneDNNPass);

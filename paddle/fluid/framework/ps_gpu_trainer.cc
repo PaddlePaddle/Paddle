@@ -277,7 +277,7 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       if (var->Persistable()) {
         auto name = var->Name();
         auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
         Variable* root_var = root_scope_->FindVar(name);
         if (!root_var) {
           continue;
@@ -309,7 +309,7 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         continue;
       }
       auto* ptr = scope->Var(need_merge_var_names_[i]);
-      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+      InitializeVariable(ptr, proto::VarType::DENSE_TENSOR);
     }
   }
 

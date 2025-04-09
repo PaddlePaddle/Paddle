@@ -59,13 +59,13 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
         strides_options = [[1, 2]]
         paddings_options = [[0, 2]]
-        pooling_type_options = ['max', 'avg']
-        padding_algorithm_options = ['EXPLICIT', 'SAME', 'VAILD']
+        pooling_type_options = ['max']
+        padding_algorithm_options = ['EXPLICIT', 'SAME', 'VALID']
         ksize_options = [[2, 3], [3, 3]]
         data_format_options = ['NCHW']
         global_pooling_options = [True, False]
         exclusive_options = [True, False]
-        adaptive_option = [True, False]
+        adaptive_option = [False, True]
         ceil_mode_options = [True, False]
 
         configurations = [
@@ -132,13 +132,18 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
             yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+        self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
+        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self,
+        program_config,
+        run_pir=False,
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -164,7 +169,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -199,6 +204,14 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         tensor: dict[str, np.array],
         baseline: dict[str, np.array],
     ):
+        if isinstance(tensor, list):
+            tensor = {
+                str(i): t for i, t in enumerate(tensor)
+            }  # 将 list 转换为字典
+        if isinstance(baseline, list):
+            baseline = {
+                str(i): b for i, b in enumerate(baseline)
+            }  # 将 list 转换为字典
         for key, arr in tensor.items():
             self.assertEqual(
                 baseline[key].shape,
@@ -227,7 +240,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

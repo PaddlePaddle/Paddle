@@ -23,16 +23,11 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 //     input
 //       |q     k       v
@@ -206,7 +201,8 @@ PDNode* TrtFlashMultiHeadMatmulPattern::operator()() {
   return reshape2_qkv_out_var;
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 TrtFlashMultiHeadMatmulFusePass::TrtFlashMultiHeadMatmulFusePass() {
   AddOpCompat(OpCompat("reshape2"))
@@ -281,7 +277,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
                                                              name_scope);
 
   multihead_pattern();
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* mul0,
                           Node* mul1,
                           Node* mul2,
@@ -448,7 +444,7 @@ int TrtFlashMultiHeadMatmulFusePass::BuildFlashFusion(
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
-    fuse_creater(input0,
+    fuse_creator(input0,
                  mul0,
                  mul1,
                  mul2,
@@ -534,9 +530,7 @@ void TrtFlashMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_flash_multihead_matmul_fuse_pass,
               paddle::framework::ir::TrtFlashMultiHeadMatmulFusePass);

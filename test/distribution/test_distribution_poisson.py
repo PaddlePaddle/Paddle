@@ -27,8 +27,9 @@ from paddle.distribution import Poisson
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate'),
     [
+        ('zero-dim', np.array(100.0).astype('float64')),
         ('one-dim', np.array([100.0]).astype('float64')),
-        # bondary case and extreme case (`scipy.stats.poisson.entropy` cannot converge for very extreme cases such as rate=10000.0)
+        # boundary case and extreme case (`scipy.stats.poisson.entropy` cannot converge for very extreme cases such as rate=10000.0)
         ('multi-dim', np.array([0.0, 1000.0]).astype('float32')),
     ],
 )
@@ -129,6 +130,17 @@ class TestPoissonProbs(unittest.TestCase):
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'rate_1', 'rate_2'),
     [
+        (
+            'zero-dim',
+            parameterize.xrand((1,), min=1, max=20)
+            .astype('int32')
+            .astype('float64')
+            .reshape([]),
+            parameterize.xrand((1,), min=1, max=20)
+            .astype('int32')
+            .astype('float64')
+            .reshape([]),
+        ),
         (
             'one-dim',
             parameterize.xrand((1,), min=1, max=20)

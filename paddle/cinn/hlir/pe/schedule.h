@@ -41,6 +41,10 @@ class ScheduleParam {
     static ScheduleParam instance{cinn::common::HygonDCUArchHIP{}};
     return instance;
   }
+  static ScheduleParam &get_sycl_instance() {
+    static ScheduleParam instance{cinn::common::HygonDCUArchSYCL{}};
+    return instance;
+  }
   static ScheduleParam &get_x86_instance() {
     static ScheduleParam instance{cinn::common::X86Arch{}};
     return instance;

@@ -46,7 +46,8 @@ def try_add(x, y):
 class TestRollback(TestCaseBase):
     def test_rollback(self):
         frame = inspect.currentframe()
-        graph = FunctionGraph(frame)
+        assert frame is not None
+        graph = FunctionGraph(frame.f_code, frame.f_globals)
         a = paddle.to_tensor(1.0)
         b = paddle.to_tensor(2.0)
         a = VariableFactory().from_value(a, graph, LocalTracker("a"))

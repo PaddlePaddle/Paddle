@@ -27,19 +27,19 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   ProgramDesc program;
   auto* global_block = program.MutableBlock(0);
   auto* mul_1_x = global_block->Var("Mul_1_X");
-  mul_1_x->SetType(proto::VarType::LOD_TENSOR);
+  mul_1_x->SetType(proto::VarType::DENSE_TENSOR);
   mul_1_x->SetLoDLevel(0);
   mul_1_x->SetDataType(proto::VarType::FP32);
   mul_1_x->SetShape({1000, 784});
 
   auto* mul_1_y = global_block->Var("Mul_1_Y");
-  mul_1_y->SetType(proto::VarType::LOD_TENSOR);
+  mul_1_y->SetType(proto::VarType::DENSE_TENSOR);
   mul_1_y->SetLoDLevel(0);
   mul_1_y->SetDataType(proto::VarType::FP32);
   mul_1_y->SetShape({784, 100});
 
   auto* mul_1_out = global_block->Var("Mul_1_Out");
-  mul_1_out->SetType(proto::VarType::LOD_TENSOR);
+  mul_1_out->SetType(proto::VarType::DENSE_TENSOR);
   auto* mul_op_1 = global_block->AppendOp();
 
   mul_op_1->SetType("mul");
@@ -51,13 +51,13 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   auto* less_than_op_1 = global_block->AppendOp();
   less_than_op_1->SetType("less_than");
   auto* less_than_1_x = global_block->Var("Less_than_1_X");
-  less_than_1_x->SetType(proto::VarType::LOD_TENSOR);
+  less_than_1_x->SetType(proto::VarType::DENSE_TENSOR);
   less_than_1_x->SetLoDLevel(0);
   less_than_1_x->SetDataType(proto::VarType::FP32);
   less_than_1_x->SetShape({1});
 
   auto* less_than_1_y = global_block->Var("Less_than_1_Y");
-  less_than_1_y->SetType(proto::VarType::LOD_TENSOR);
+  less_than_1_y->SetType(proto::VarType::DENSE_TENSOR);
   less_than_1_y->SetLoDLevel(0);
   less_than_1_y->SetDataType(proto::VarType::FP32);
   less_than_1_y->SetShape({1});
@@ -83,7 +83,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   while_op->SetAttr("sub_block", sub_blocks[0]);
 
   auto* while_x = global_block->Var("While_X");
-  while_x->SetType(proto::VarType::LOD_TENSOR);
+  while_x->SetType(proto::VarType::DENSE_TENSOR);
   while_x->SetLoDLevel(0);
   while_x->SetDataType(proto::VarType::FP32);
   while_x->SetShape({1});
@@ -92,7 +92,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   while_op->SetInput("kCondition", {less_than_1_out->Name()});
 
   auto* while_out = global_block->Var("While_Out");
-  while_out->SetType(proto::VarType::LOD_TENSOR);
+  while_out->SetType(proto::VarType::DENSE_TENSOR);
   while_out->SetLoDLevel(0);
   while_out->SetDataType(proto::VarType::FP32);
   while_out->SetShape({1});
@@ -103,13 +103,13 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   while_op->SetOutput("kStepScopes", {steps->Name()});
 
   auto* mul_2_x = global_block->Var("Mul_2_X");
-  mul_2_x->SetType(proto::VarType::LOD_TENSOR);
+  mul_2_x->SetType(proto::VarType::DENSE_TENSOR);
   mul_2_x->SetLoDLevel(0);
   mul_2_x->SetDataType(proto::VarType::FP32);
   mul_2_x->SetShape({1000, 784});
 
   auto* mul_2_y = global_block->Var("Mul_2_Y");
-  mul_2_y->SetType(proto::VarType::LOD_TENSOR);
+  mul_2_y->SetType(proto::VarType::DENSE_TENSOR);
   mul_2_y->SetLoDLevel(0);
   mul_2_y->SetDataType(proto::VarType::FP32);
   mul_2_y->SetShape({784, 100});
@@ -120,19 +120,19 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   mul_op_2->SetInput("Y", {mul_2_y->Name()});
 
   auto* mul_2_out = global_block->Var("Mul_2_Out");
-  mul_2_out->SetType(proto::VarType::LOD_TENSOR);
+  mul_2_out->SetType(proto::VarType::DENSE_TENSOR);
   mul_op_2->SetOutput("Y", {mul_2_out->Name()});
 
   auto* less_than_op_2 = sub_blocks[0]->AppendOp();
   less_than_op_2->SetType("less_than");
   auto* less_than_2_x = global_block->Var("Less_than_2_X");
-  less_than_2_x->SetType(proto::VarType::LOD_TENSOR);
+  less_than_2_x->SetType(proto::VarType::DENSE_TENSOR);
   less_than_2_x->SetLoDLevel(0);
   less_than_2_x->SetDataType(proto::VarType::FP32);
   less_than_2_x->SetShape({1});
 
   auto* less_than_2_y = global_block->Var("Less_than_2_Y");
-  less_than_2_y->SetType(proto::VarType::LOD_TENSOR);
+  less_than_2_y->SetType(proto::VarType::DENSE_TENSOR);
   less_than_2_y->SetLoDLevel(0);
   less_than_2_y->SetDataType(proto::VarType::FP32);
   less_than_2_y->SetShape({1});
@@ -149,7 +149,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   cond_op->SetAttr("sub_block", sub_blocks[1]);
 
   auto* cond_x = sub_blocks[0]->Var("Cond_X");
-  cond_x->SetType(proto::VarType::LOD_TENSOR);
+  cond_x->SetType(proto::VarType::DENSE_TENSOR);
   cond_x->SetLoDLevel(0);
   cond_x->SetDataType(proto::VarType::FP32);
   cond_x->SetShape({1});
@@ -158,7 +158,7 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   cond_op->SetInput("kCondition", {less_than_2_out->Name()});
 
   auto* cond_out = sub_blocks[0]->Var("Cond_Out");
-  cond_out->SetType(proto::VarType::LOD_TENSOR);
+  cond_out->SetType(proto::VarType::DENSE_TENSOR);
   cond_out->SetLoDLevel(0);
   cond_out->SetDataType(proto::VarType::FP32);
   cond_out->SetShape({1});
@@ -170,19 +170,19 @@ TEST(ProgramDesc, GetInputsOutputsInBlock) {
   cond_op->SetOutput("kScope", {scope->Name()});
 
   auto* mul_3_x = global_block->Var("Mul_3_X");
-  mul_3_x->SetType(proto::VarType::LOD_TENSOR);
+  mul_3_x->SetType(proto::VarType::DENSE_TENSOR);
   mul_3_x->SetLoDLevel(0);
   mul_3_x->SetDataType(proto::VarType::FP32);
   mul_3_x->SetShape({1000, 784});
 
   auto* mul_3_y = global_block->Var("Mul_3_Y");
-  mul_3_y->SetType(proto::VarType::LOD_TENSOR);
+  mul_3_y->SetType(proto::VarType::DENSE_TENSOR);
   mul_3_y->SetLoDLevel(0);
   mul_3_y->SetDataType(proto::VarType::FP32);
   mul_3_y->SetShape({784, 100});
 
   auto* mul_3_out = global_block->Var("Mul_3_Out");
-  mul_3_out->SetType(proto::VarType::LOD_TENSOR);
+  mul_3_out->SetType(proto::VarType::DENSE_TENSOR);
 
   auto* mul_op_3 = sub_blocks[1]->AppendOp();
   mul_op_3->SetType("mul");

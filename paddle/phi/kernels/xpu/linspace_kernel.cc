@@ -58,18 +58,19 @@ void LinspaceKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   T start_value = GetValueOfExpectedType<T, Context>(ctx, start);
   T stop_value = GetValueOfExpectedType<T, Context>(ctx, stop);
-  int32_t num = GetValueOfExpectedType<int32_t, Context>(ctx, number);
-
-  PADDLE_ENFORCE_GT(
-      num,
-      0,
-      common::errors::InvalidArgument("The num of linspace op should be larger "
-                                      "than 0, but received num is %d",
-                                      num));
+  int64_t num = GetValueOfExpectedType<int64_t, Context>(ctx, number);
+  PADDLE_ENFORCE_GE(num,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The num of linspace op should be larger "
+                        "than or equal to 0, but received num is %d",
+                        num));
 
   out->Resize(common::make_ddim({num}));
   T* out_data = ctx.template Alloc<T>(out);
-
+  if (num == 0) {
+    return;
+  }
   int r = xpu::linspace(ctx.x_context(),
                         reinterpret_cast<XPUType*>(out_data),
                         static_cast<XPUType>(start_value),

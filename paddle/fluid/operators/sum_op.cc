@@ -53,7 +53,7 @@ class SumOp : public framework::OperatorWithKernel {
             common::errors::NotFound("Input var[%s] should not be nullptr",
                                      x_vars_name[idx]));
         auto tensor =
-            framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
+            framework::GetDenseTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
         if (!tensor->IsInitialized()) {
           continue;
         }
@@ -116,8 +116,8 @@ class SumOp : public framework::OperatorWithKernel {
     }
     PADDLE_THROW(common::errors::InvalidArgument(
         "Expected type of Input(X) must be Tensor,  SelectedRows or "
-        "LodTensorArray. But got "
-        "unsupport type: %s.",
+        "DenseTensorArray. But got "
+        "unsupported type: %s.",
         framework::ToTypeName(x_vars[0]->Type())));
   }
 };
@@ -155,9 +155,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
       }
 
       if (ctx->InputTypeAnyOf("X",
-                              framework::proto::VarType::LOD_TENSOR_ARRAY)) {
-        if (!ctx->InputTypeAllOf("X",
-                                 framework::proto::VarType::LOD_TENSOR_ARRAY)) {
+                              framework::proto::VarType::DENSE_TENSOR_ARRAY)) {
+        if (!ctx->InputTypeAllOf(
+                "X", framework::proto::VarType::DENSE_TENSOR_ARRAY)) {
           std::ostringstream os;
           for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
             os << "    " << ctx->InputVarName("X", static_cast<int>(ind))
@@ -167,10 +167,10 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
           PADDLE_THROW(common::errors::InvalidArgument(
               "Not all inputs are tensor array:\n%s", os.str()));
         }
-        var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
+        var_type = framework::proto::VarType::DENSE_TENSOR_ARRAY;
       } else if (ctx->InputTypeAnyOf("X",
-                                     framework::proto::VarType::LOD_TENSOR)) {
-        var_type = framework::proto::VarType::LOD_TENSOR;
+                                     framework::proto::VarType::DENSE_TENSOR)) {
+        var_type = framework::proto::VarType::DENSE_TENSOR;
       }
 
       ctx->SetOutputType("Out", var_type);

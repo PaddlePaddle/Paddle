@@ -330,7 +330,7 @@ class FusedFcClipFusePattern : public paddle::drr::DrrPatternBase {
 class FcActivationFusePass : public pir::PatternRewritePass {
  public:
   FcActivationFusePass()
-      : pir::PatternRewritePass("fc_activation_fuse_pass", 3) {}
+      : pir::PatternRewritePass("fc_activation_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

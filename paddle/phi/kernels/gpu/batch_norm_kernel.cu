@@ -130,7 +130,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
   int inner_size = N * HxW;
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage mean_storage;
-  __shared__ typename BlockReduce::TempStorage variance_storeage;
+  __shared__ typename BlockReduce::TempStorage variance_storage;
   __shared__ BatchNormParamType<T> mean_val;
   __shared__ BatchNormParamType<T> variance_val;
   __shared__ BatchNormParamType<T> inv_var_val;
@@ -149,7 +149,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
     }
     x_sum = BlockReduce(mean_storage).Reduce(x_sum, cub::Sum());
     x_square_sum =
-        BlockReduce(variance_storeage).Reduce(x_square_sum, cub::Sum());
+        BlockReduce(variance_storage).Reduce(x_square_sum, cub::Sum());
     if (threadIdx.x == 0) {
       mean_val = x_sum / inner_size;
       variance_val = x_square_sum / inner_size - mean_val * mean_val;
@@ -178,7 +178,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
 }
 
 template <typename T>
-__device__ __forceinline__ void merge_block_horizonal(
+__device__ __forceinline__ void merge_block_horizontal(
     BatchNormParamType<T> x_sum,
     BatchNormParamType<T> x_square_sum,
     BatchNormParamType<T> *smem_sum,
@@ -247,12 +247,12 @@ static __global__ void BNForwardTraining2DChannelLastCompStat(
     }
 
     // vertical block sum
-    funcs::BlockReduceByVetical<T, BatchNormParamType<T>>(x_sum,
-                                                          x_square_sum,
-                                                          &smem_sum[0],
-                                                          &smem_square_sum[0],
-                                                          &x_sum,
-                                                          &x_square_sum);
+    funcs::BlockReduceByVertical<T, BatchNormParamType<T>>(x_sum,
+                                                           x_square_sum,
+                                                           &smem_sum[0],
+                                                           &smem_square_sum[0],
+                                                           &x_sum,
+                                                           &x_square_sum);
 
     if (gridDim.y > 1) {
       __shared__ bool is_last_block_done;
@@ -387,13 +387,13 @@ static __global__ void BNForwardTraining2DCompStat(
       x_square_sum += x_i * x_i;
     }
 
-    // horizonal block sum
-    merge_block_horizonal<T>(x_sum,
-                             x_square_sum,
-                             &smem_sum[0],
-                             &smem_square_sum[0],
-                             &x_sum,
-                             &x_square_sum);
+    // horizontal block sum
+    merge_block_horizontal<T>(x_sum,
+                              x_square_sum,
+                              &smem_sum[0],
+                              &smem_square_sum[0],
+                              &x_sum,
+                              &x_square_sum);
 
     if (gridDim.x > 1) {
       volatile BatchNormParamType<T> *staging_sum = block_data_ptr;
@@ -427,13 +427,13 @@ static __global__ void BNForwardTraining2DCompStat(
           x_square_sum += staging_square_sum[i + x * C];
         }
 
-        // horizonal block sum
-        merge_block_horizonal<T>(x_sum,
-                                 x_square_sum,
-                                 &smem_sum[0],
-                                 &smem_square_sum[0],
-                                 &x_sum,
-                                 &x_square_sum);
+        // horizontal block sum
+        merge_block_horizontal<T>(x_sum,
+                                  x_square_sum,
+                                  &smem_sum[0],
+                                  &smem_square_sum[0],
+                                  &x_sum,
+                                  &x_square_sum);
 
         // final compute
         if (threadIdx.x == 0) {
@@ -644,7 +644,9 @@ void BatchNormKernel(const Context &ctx,
     mode_ = miopenBNSpatial;
   }
 #elif CUDNN_VERSION_MIN(7, 0, 1)
-  if (FLAGS_cudnn_batchnorm_spatial_persistent) {
+  // CUDNN_BATCHNORM_SPATIAL_PERSISTENT will cause precisio issue in NCHW
+  // format.
+  if (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent) {
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
   } else if (H == 1 && W == 1) {
     mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;

@@ -55,6 +55,8 @@ class TestBuildOp(unittest.TestCase):
                 .name(),
                 "pd_op.tanh",
             )
+        paddle.pir.create_shaped_type(tanh_out.type(), [3148873728])
+        paddle.pir.create_shaped_type(tanh_out.type(), [1])
 
 
 class TestBuildOp2(unittest.TestCase):
@@ -172,6 +174,41 @@ class TestBuildOp6(unittest.TestCase):
                 .get_defining_op()
                 .name(),
                 "pd_op.tensorrt_engine",
+            )
+
+
+class TestGetValueByOpId(unittest.TestCase):
+    def test_get_value_by_op_id(self):
+        def true_func():
+            return paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='int32', value=2
+            )
+
+        def false_func():
+            return paddle.tensor.fill_constant(
+                shape=[3, 2], dtype='int32', value=-1
+            )
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
+            pred = paddle.less_than(y, x)
+            out = paddle.static.nn.cond(pred, true_func, false_func)
+            value1 = main_program.get_value_by_op_id(69)
+            self.assertEqual(
+                out.get_defining_op().id(),
+                value1[0].get_defining_op().id(),
+            )
+            value2 = main_program.get_value_by_op_id([58, 69])
+            self.assertEqual(
+                69,
+                value2[0].get_defining_op().id(),
             )
 
 

@@ -21,6 +21,23 @@
 namespace cinn {
 namespace ir {
 
+IndexExpr operator-(const IndexExpr& a);
+
+#define DEFINE_INDEX_OPERATORS(OP)                               \
+  IndexExpr operator OP(const IndexExpr& a, const IndexExpr& b); \
+  IndexExpr operator OP(int64_t a, const IndexExpr& b);          \
+  IndexExpr operator OP(const IndexExpr& a, int64_t b);          \
+  IndexExpr operator OP(int32_t a, const IndexExpr& b);          \
+  IndexExpr operator OP(const IndexExpr& a, int32_t b);
+
+DEFINE_INDEX_OPERATORS(+)
+DEFINE_INDEX_OPERATORS(-)
+DEFINE_INDEX_OPERATORS(*)
+DEFINE_INDEX_OPERATORS(/)
+DEFINE_INDEX_OPERATORS(%)
+
+#undef DEFINE_INDEX_OPERATORS
+
 //-- left hand --
 template <typename POD,
           typename = typename std::enable_if<std::is_pod<POD>::value>::type>
@@ -126,11 +143,24 @@ Expr operator==(POD a, Expr b) {
 }
 
 //--
-inline Expr operator+(Expr a, Expr b) { return Add::Make(a, b); }
-inline Expr operator-(Expr a, Expr b) { return Sub::Make(a, b); }
-inline Expr operator*(Expr a, Expr b) { return Mul::Make(a, b); }
-inline Expr operator/(Expr a, Expr b) { return Div::Make(a, b); }
-inline Expr operator%(Expr a, Expr b) { return Mod::Make(a, b); }
+#define DEFINE_EXPR_OPERATOR(OP, FUNC)                         \
+  inline Expr operator OP(const Expr& a, const Expr& b) {      \
+    return FUNC::Make(a, b);                                   \
+  }                                                            \
+  inline Expr operator OP(const Expr& a, const IndexExpr& b) { \
+    return FUNC::Make(a, Expr(b));                             \
+  }                                                            \
+  inline Expr operator OP(const IndexExpr& a, const Expr& b) { \
+    return FUNC::Make(Expr(a), b);                             \
+  }
+
+DEFINE_EXPR_OPERATOR(+, Add)
+DEFINE_EXPR_OPERATOR(-, Sub)
+DEFINE_EXPR_OPERATOR(*, Mul)
+DEFINE_EXPR_OPERATOR(/, Div)
+DEFINE_EXPR_OPERATOR(%, Mod)
+
+#undef DEFINE_EXPR_OPERATOR
 
 inline Expr operator&&(Expr a, Expr b) { return And::Make(Expr(a), Expr(b)); }
 inline Expr operator||(Expr a, Expr b) { return Or::Make(Expr(a), Expr(b)); }
@@ -139,7 +169,10 @@ inline Expr operator<=(Expr a, Expr b) { return LE::Make(Expr(a), Expr(b)); }
 inline Expr operator>(Expr a, Expr b) { return GT::Make(Expr(a), Expr(b)); }
 inline Expr operator<(Expr a, Expr b) { return LT::Make(Expr(a), Expr(b)); }
 
-inline Expr operator-(Expr a) { return Minus::Make(Expr(a)); }
+inline Expr operator-(Expr a) {
+  return (a.is_index()) ? Expr(-(a.as_index())).set_index(1)
+                        : Minus::Make(Expr(a));
+}
 inline Expr operator!(Expr a) { return Not::Make(Expr(a)); }
 
 Expr operator<<(Expr a, Expr b);

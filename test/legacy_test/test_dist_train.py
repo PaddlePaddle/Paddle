@@ -46,7 +46,7 @@ class TestSendOp(unittest.TestCase):
         self.ps_timeout = 5
         self._wait_ps_ready(p.pid)
 
-        with open("/tmp/paddle.%d.port" % p.pid, "r") as fn:
+        with open(f"/tmp/paddle.{p.pid}.port", "r") as fn:
             selected_port = int(fn.readlines()[0])
         self.init_client(place, selected_port)
 
@@ -65,7 +65,7 @@ class TestSendOp(unittest.TestCase):
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
                 # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
+                os.stat(f"/tmp/paddle.{pid}.port")
                 return
             except OSError:
                 start_left_time -= sleep_time
@@ -129,8 +129,8 @@ class TestSendOp(unittest.TestCase):
             #
             # BTW, `Send` is not a public API to users. So I set
             # `x.persistable = True` to be a hot fix of this unittest.
-            Send("127.0.0.1:%d" % port, [x])
-            o = Recv("127.0.0.1:%d" % port, [get_var])
+            Send(f"127.0.0.1:{port}", [x])
+            o = Recv(f"127.0.0.1:{port}", [get_var])
 
         exe = base.Executor(place)
         self.dist_out = exe.run(main, fetch_list=o)  # o is a list

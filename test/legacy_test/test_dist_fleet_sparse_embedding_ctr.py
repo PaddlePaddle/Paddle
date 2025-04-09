@@ -134,7 +134,7 @@ class TestDistMnistAsync2x2WithDecay(TestFleetBase):
         )
 
 
-class TestDistMnistAsync2x2WithUnifrom(TestFleetBase):
+class TestDistMnistAsync2x2WithUniform(TestFleetBase):
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
@@ -185,7 +185,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 batch_size(int): the size of mini-batch for training
                 lr(float): learning rate of training
             Returns:
-                avg_cost: LoDTensor of cost.
+                avg_cost: DenseTensor of cost.
             """
             dnn_input_dim, lr_input_dim = 10, 10
 
@@ -193,19 +193,16 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 name="dnn_data",
                 shape=[-1, 1],
                 dtype="int64",
-                lod_level=1,
             )
             lr_data = paddle.static.data(
                 name="lr_data",
                 shape=[-1, 1],
                 dtype="int64",
-                lod_level=1,
             )
             label = paddle.static.data(
                 name="click",
                 shape=[-1, 1],
                 dtype="int64",
-                lod_level=0,
             )
 
             datas = [dnn_data, lr_data, label]
@@ -234,7 +231,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     weight_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
-                    name='dnn-fc-%d' % i,
+                    name=f'dnn-fc-{i}',
                 )
                 dnn_out = fc
 

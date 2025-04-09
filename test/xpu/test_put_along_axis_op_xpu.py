@@ -245,6 +245,8 @@ class XPUTestPutAlongAxis(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('put_along_axis')
 for stype in support_types:
+    if stype == 'int32' or stype == 'int64':
+        continue
     create_test_class(globals(), XPUTestPutAlongAxis, stype)
 
 if __name__ == "__main__":

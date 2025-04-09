@@ -26,7 +26,8 @@ import paddle.distributed as dist
 from paddle import Tensor
 from paddle.autograd import PyLayer
 
-from .placement_type import check_placements_equal
+from .placement_type import check_placements_equal, to_dim_map
+from .static.reshard_funcs.base_reshard_func import choose_reshard_func
 from .static.reshard_funcs.nd_mesh_reshard_func import get_1D_sub_process_mesh
 
 if TYPE_CHECKING:
@@ -44,8 +45,12 @@ def _specific_alltoall_dim(
         return None
 
     mesh_dim = None
-    src_mesh = dist_tensor.process_mesh
-    src_placements = dist_tensor.placements
+    if paddle.in_dynamic_mode():
+        src_mesh = dist_tensor.process_mesh
+        src_placements = dist_tensor.placements
+    elif paddle.framework.in_pir_mode():
+        src_mesh = dist_tensor.process_mesh
+        src_placements = dist_tensor.dist_attr().placements_attr
 
     if src_mesh != mesh or src_mesh.ndim == 1:
         return None
@@ -71,6 +76,115 @@ def _specific_alltoall_dim(
     return mesh_dim
 
 
+def _dtensor_from_local(
+    local_tensor, mesh, placements, local_tensor_shape=None
+):
+    # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
+    global_dims = list(local_tensor.shape)
+    if local_tensor_shape is not None:
+        global_dims = local_tensor_shape
+    for idx, placement in enumerate(placements):
+        if placement.is_shard():
+            shard_dim = placement.get_dim()
+            local_dim_size = global_dims[shard_dim]
+            global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
+
+    if paddle.in_dynamic_mode():
+        place = paddle.framework._current_expected_place()
+        place = paddle.framework._get_paddle_place(place)
+
+        return paddle.Tensor(
+            local_tensor,
+            dims=global_dims,
+            process_mesh=mesh,
+            placements=placements,
+            place=place,
+        )
+
+    # TODO Adopt Mix2Dist Pass to allow the program could be executed actually.
+    elif paddle.framework.in_pir_mode():
+        assert isinstance(
+            local_tensor, (type(None), paddle.pir.Value)
+        ), "input tensor is not pir value."
+        assert (
+            local_tensor.is_dense_tensor_type()
+        ), "dtensor_from_local() are only supported dense tensor type right."
+        sharding_specs = (
+            paddle.distributed.auto_parallel.placement_type.get_shard_spec(
+                mesh, placements, local_tensor.ndim
+            )
+        )
+        dims_mapping = paddle.distributed.auto_parallel.static.utils.convert_to_dims_mapping(
+            sharding_specs, mesh
+        )
+        local_shape = local_tensor.shape
+        global_tensor_type = paddle.pir.create_shaped_type(
+            local_tensor.type(), global_dims
+        )
+        dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
+            global_tensor_type, local_shape, mesh, dims_mapping
+        )
+        local_tensor.set_type(dist_dense_tensor_type)
+        return local_tensor
+    else:
+        raise RuntimeError(
+            "dtensor_from_local() are only supported in dynamic or pir mode."
+        )
+
+
+def _pir_nd_mesh_all2all(src_value, dst_type, mesh, placements, dim):
+    """
+    Use all to all communication in nd_mesh reshard.
+    """
+    # create value on sub 1D mesh
+    sub_value = paddle._C_ops.share_data(src_value)
+    sub_mesh = get_1D_sub_process_mesh(mesh, dim)
+    sub_placements = [src_value.dist_attr().placements_attr[dim]]
+    sub_value_shape = dist.auto_parallel.api._cal_global_shape(
+        src_value._local_shape, sub_mesh, sub_placements
+    )
+    sub_value_type = paddle.pir.create_shaped_type(
+        sub_value.type(), sub_value_shape
+    )
+    sub_dims_mapping, partial_status = to_dim_map(
+        sub_placements, len(sub_value_shape)
+    )
+    sub_value_dist_attr = (
+        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            sub_mesh, sub_dims_mapping, partial_status
+        )
+    )
+    sub_value_dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+        sub_value_type, sub_value_dist_attr
+    )
+    sub_value.set_type(sub_value_dist_type)
+
+    # 1D mesh reshard
+    dst_placements = [placements[dim]]
+    sub_dst_dims_mapping, partial_status = to_dim_map(
+        dst_placements, len(sub_value_shape)
+    )
+    sub_dst_type = paddle.pir.create_shaped_type(
+        sub_value.type(), sub_value_shape
+    )
+    sub_dst_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+        sub_mesh, sub_dst_dims_mapping, partial_status
+    )
+    sub_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+        sub_dst_type, sub_dst_dist_attr
+    )
+    reshard_func = choose_reshard_func(sub_value_dist_attr, sub_dst_dist_attr)
+    out = reshard_func.reshard(
+        sub_value_dist_attr, sub_dst_dist_attr, sub_value, sub_dst_type
+    )
+
+    # set the type of the output value with global mesh
+    if out is not None:
+        out.set_type(dst_type)
+
+    return out
+
+
 class _NdMeshAlltoAll(PyLayer):
     @staticmethod
     def forward(
@@ -87,12 +201,19 @@ class _NdMeshAlltoAll(PyLayer):
         ctx.out_mesh = copy.deepcopy(mesh)
         ctx.out_placements = copy.deepcopy(placements)
 
-        out = dist.auto_parallel.api.dtensor_from_local(
-            dist_tensor._local_value(), sub_mesh, [dist_tensor.placements[dim]]
+        local_shape = _cal_local_shape(
+            dist_tensor.shape, sub_mesh, dist_tensor.placements
+        )
+        out = _dtensor_from_local(
+            dist_tensor._local_value(),
+            sub_mesh,
+            [dist_tensor.placements[dim]],
+            local_shape,
         )
         out = dist.reshard(out, sub_mesh, [placements[dim]])
-        out = dist.auto_parallel.api.dtensor_from_local(
-            out._local_value(), mesh, placements
+        local_shape = _cal_local_shape(out.shape, mesh, out.placements)
+        out = _dtensor_from_local(
+            out._local_value(), mesh, placements, local_shape
         )
         out.stop_gradient = dist_tensor.stop_gradient
         return out
@@ -148,7 +269,10 @@ class _local_reshape(PyLayer):
         place = paddle.framework._current_expected_place()
         place = paddle.framework._get_paddle_place(place)
 
-        local_tensor = dist_tensor._local_value().clone()
+        if dist_tensor._local_value()._is_initialized():
+            local_tensor = dist_tensor._local_value().clone()
+        else:
+            local_tensor = dist_tensor._local_value()
         ctx.x_global_shape = copy.deepcopy(dist_tensor.shape)
         ctx.x_local_shape = copy.deepcopy(local_tensor.shape)
         ctx.x_mesh = copy.deepcopy(dist_tensor.process_mesh)
@@ -170,8 +294,13 @@ class _local_reshape(PyLayer):
         place = paddle.framework._current_expected_place()
         place = paddle.framework._get_paddle_place(place)
 
-        local_grad = out_grad._local_value().clone()
-        local_grad = local_grad.reshape(ctx.x_local_shape)
+        if out_grad._local_value()._is_initialized():
+            local_grad = out_grad._local_value().clone()
+            x_local_shape = ctx.x_local_shape
+        else:
+            local_grad = out_grad._local_value()
+            x_local_shape = [0]
+        local_grad = local_grad.reshape(x_local_shape)
         ret = paddle.Tensor(
             local_grad,
             dims=ctx.x_global_shape,
@@ -190,11 +319,26 @@ def _dist_reshape(
 ):
     """
     Reshape the local tensors of the dist tensor on each rank,
-    and mannualy set the process_mesh and placements of the output.
+    and manually set the process_mesh and placements of the output.
     """
     tgt_global_shape = infer_positive_shape(dist_tensor.shape, global_shape)
     tgt_local_shape = _cal_local_shape(tgt_global_shape, mesh, placements)
-    src_local_shape = dist_tensor._local_value().shape
+    if paddle.in_dynamic_mode():
+        src_local_shape = dist_tensor._local_value().shape
+        if not dist_tensor._local_value()._is_initialized():
+            tgt_local_shape = dist_tensor._local_value().shape
+    elif paddle.framework.in_pir_mode():
+        # src_local_shape = dist_tensor._local_shape
+        src_local_shape = _cal_local_shape(
+            dist_tensor.shape,
+            dist_tensor.dist_attr().process_mesh,
+            dist_tensor.dist_attr().placements_attr,
+        )
+    else:
+        raise NotImplementedError(
+            "dist_reshape is only supported in dynamic and pir mode."
+        )
+
     assert np.prod(tgt_local_shape) == np.prod(
         src_local_shape
     ), f"The local shapes {src_local_shape} and {tgt_local_shape} are mismatched."
@@ -203,9 +347,14 @@ def _dist_reshape(
         return _local_reshape.apply(
             dist_tensor, tgt_global_shape, tgt_local_shape, mesh, placements
         )
-    else:
-        raise NotImplementedError(
-            "dist_reshape is only supported in dynamic mode."
+    elif paddle.framework.in_pir_mode():
+        return paddle._C_ops.dist_reshape(
+            dist_tensor,
+            dist_tensor.placements,
+            tgt_global_shape,
+            tgt_local_shape,
+            mesh,
+            placements,
         )
 
 

@@ -43,7 +43,7 @@ void IndexSelectKernel(const Context& ctx,
                         phi::DataType::INT64));
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
-  std::vector<int> in_shape = common::vectorize<int>(input_dim);
+  std::vector<int64_t> in_shape = common::vectorize<int64_t>(input_dim);
   int index_len = output->dims()[dim];
   ctx.template Alloc<T>(output);
   int r = 0;
@@ -69,7 +69,7 @@ void IndexSelectKernel(const Context& ctx,
     const int64_t* index_data =
         index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
                   : index.template data<int64_t>();
-    r = xpu::gather<XPUType, int64_t>(
+    r = xpu::paddle_gather<XPUType, int64_t>(
         ctx.x_context(),
         reinterpret_cast<const XPUType*>(in_data),
         reinterpret_cast<const int64_t*>(index_data),
@@ -80,15 +80,16 @@ void IndexSelectKernel(const Context& ctx,
   } else {
     const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
                                       : index.template data<int>();
-    r = xpu::gather<XPUType, int>(ctx.x_context(),
-                                  reinterpret_cast<const XPUType*>(in_data),
-                                  reinterpret_cast<const int*>(index_data),
-                                  reinterpret_cast<XPUType*>(output->data<T>()),
-                                  in_shape,
-                                  index_len,
-                                  dim);
+    r = xpu::paddle_gather<XPUType, int>(
+        ctx.x_context(),
+        reinterpret_cast<const XPUType*>(in_data),
+        reinterpret_cast<const int*>(index_data),
+        reinterpret_cast<XPUType*>(output->data<T>()),
+        in_shape,
+        index_len,
+        dim);
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
 }
 
 }  // namespace phi

@@ -99,7 +99,7 @@ static std::string DebugString(
       ss << "NOT_INITED_VAR";
     } else if (var.IsType<phi::DenseTensor>()) {
       auto& tensor = var.Get<phi::DenseTensor>();
-      ss << "LoDTensor<";
+      ss << "DenseTensor<";
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(
                   framework::TransToProtoVarType(tensor.dtype()))
@@ -287,7 +287,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const phi::Place& dst_place,
       true,
       common::errors::InvalidArgument(
           "Variable is not initialized or Variable's type is not "
-          "LoDTensor or SelectedRows when getting numpy tensor"));
+          "DenseTensor or SelectedRows when getting numpy tensor"));
 
   if (Var().IsType<phi::DenseTensor>()) {
     auto& src_tensor = Var().Get<phi::DenseTensor>();
@@ -586,7 +586,7 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
                         true,
                         common::errors::PermissionDenied(
-                            "NoNeedBufferVars only support LoDTensor"));
+                            "NoNeedBufferVars only support DenseTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
       auto* new_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
       auto& old_tensor = var.Get<phi::DenseTensor>();

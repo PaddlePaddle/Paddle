@@ -35,7 +35,6 @@
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/ir_printer.h"
-#include "paddle/pir/include/core/parser/ir_parser.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -72,7 +71,7 @@ TEST(OperatorDialectTest, MainProgram) {
   // ops.size() = op size in BlockDesc + parameter_op + combine op + int
   // array op + full op (Note: p already has a full)
   EXPECT_EQ(program->block()->size(),
-            p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 9);
+            p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 9 + 2);
   EXPECT_GT(ss.str().size(), 0u);
 }
 
@@ -165,7 +164,7 @@ TEST(OperatorDialectTest, StartupProgram) {
   size_t op_size = program->block()->size();
   // ops.size() = op size in BlockDesc + parameter_op +
   // consant_op_for_uniform
-  // + consant_op for guassian
+  // + consant_op for gaussian
   EXPECT_EQ(op_size, p.Block(0).OpSize() + program->parameters_num() + 3 + 53);
 
   std::stringstream ss;
@@ -189,40 +188,6 @@ TEST(RegisterInfoTest, MainProgram) {
   unregistered_ops = paddle::translator::CheckUnregisteredOperation(ctx, p);
   EXPECT_EQ(unregistered_ops.size(), 1u);
   EXPECT_EQ(unregistered_ops[0], "something must not be registered");
-}
-
-TEST(IrParserTest, MainProgram) {
-  auto p = load_from_file("resnet50_main.prog");
-  EXPECT_EQ(p.Size(), 1u);
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  auto program = paddle::TranslateLegacyProgramToProgram(p);
-
-  std::stringstream ss;
-  program->Print(ss);
-  std::unique_ptr<pir::Program> parser_program = pir::Program::Parse(ss, ctx);
-  std::stringstream ssp;
-  parser_program->Print(ssp);
-
-  EXPECT_TRUE(ssp.str() == ss.str());
-}
-
-TEST(IrParserTest, StartupProgram) {
-  auto p = load_from_file("resnet50_startup.prog");
-  EXPECT_EQ(p.Size(), 1u);
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
-  auto program = paddle::TranslateLegacyProgramToProgram(p);
-
-  std::stringstream ss;
-  program->Print(ss);
-  std::unique_ptr<pir::Program> parser_program = pir::Program::Parse(ss, ctx);
-  std::stringstream ssp;
-  parser_program->Print(ssp);
-
-  EXPECT_TRUE(ssp.str() == ss.str());
 }
 
 TEST(OperatorDialectTest, WhileOpProgram) {

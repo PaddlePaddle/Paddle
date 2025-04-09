@@ -72,7 +72,7 @@ def tensor_share_external_data(self, data: Tensor) -> None:
     '''
     Support input type check based on tensor.share_external_data.
     '''
-    if isinstance(data, core.LoDTensor):
+    if isinstance(data, core.DenseTensor):
         self._share_external_data_bind(data)
     elif isinstance(data, paddle.Tensor):
         self._share_external_data_paddle_tensor_bind(data)
@@ -84,8 +84,15 @@ def tensor_share_external_data(self, data: Tensor) -> None:
         )
     else:
         raise TypeError(
-            "In share_external_data, we only support Tensor and LoDTensor."
+            "In share_external_data, we only support Tensor and DenseTensor."
         )
+
+
+def tensor_share_external_data_by_ptr_name(self, data, shape, dtype, place):
+    '''
+    Support tensor.share_external_data_by_ptr_name.
+    '''
+    self._share_external_data_by_ptr_name_bind(data, shape, dtype, place)
 
 
 def convert_to_mixed_precision(
@@ -147,3 +154,4 @@ def convert_to_mixed_precision(
 
 Tensor.copy_from_cpu = tensor_copy_from_cpu
 Tensor.share_external_data = tensor_share_external_data
+Tensor.share_external_data_by_ptr_name = tensor_share_external_data_by_ptr_name

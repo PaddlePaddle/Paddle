@@ -228,7 +228,7 @@ class YOLOv3(paddle.nn.Layer):
         ch_in_list = [1024, 768, 384]
         for i in range(3):
             yolo_block = self.add_sublayer(
-                "yolo_detecton_block_%d" % (i),
+                f"yolo_detecton_block_{i}",
                 YoloDetectionBlock(
                     ch_in_list[i],
                     channel=512 // (2**i),
@@ -240,7 +240,7 @@ class YOLOv3(paddle.nn.Layer):
             num_filters = len(cfg.anchor_masks[i]) * (cfg.class_num + 5)
 
             block_out = self.add_sublayer(
-                "block_out_%d" % (i),
+                f"block_out_{i}",
                 paddle.nn.Conv2D(
                     in_channels=1024 // (2**i),
                     out_channels=num_filters,
@@ -259,7 +259,7 @@ class YOLOv3(paddle.nn.Layer):
             self.block_outputs.append(block_out)
             if i < 2:
                 route = self.add_sublayer(
-                    "route2_%d" % i,
+                    f"route2_{i}",
                     ConvBNLayer(
                         ch_in=512 // (2**i),
                         ch_out=256 // (2**i),

@@ -16,7 +16,6 @@
 
 #include <optional>
 
-#include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
@@ -49,7 +48,7 @@ enum class CompilationStatus {
   // An error occurred during codegen and jit.
   CODEGEN_JIT_FAIL = 2,
   // An error occurred during build instruction.
-  INSTUCTION_FAIL = 3,
+  INSTRUCTION_FAIL = 3,
   // An error occurred during build runtime program.
   PROGRAM_FAIL = 4,
   // Compile successfully.

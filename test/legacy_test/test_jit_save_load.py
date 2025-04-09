@@ -724,8 +724,8 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
         )
         # net.forward.concrete_program.inputs:
         # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>,
-        #  {'img': var img : base.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)},
-        #  {'label': var label : base.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
+        #  {'img': var img : base.VarType.DENSE_TENSOR.shape(-1, 8).astype(VarType.FP32)},
+        #  {'label': var label : base.VarType.DENSE_TENSOR.shape(-1, 1).astype(VarType.INT64)})
         self.assertEqual(len(net.forward.concrete_program.inputs), 3)
         temp_dir = tempfile.TemporaryDirectory()
         path = os.path.join(
@@ -1776,8 +1776,11 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         result_10 = layer_finetune(inps0)
         result_11 = layer_finetune(inps1)
 
-        self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
-        self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
+        # (result_00 - result_10) is [nan, ...], so the result of (result_00 - result_10).abs().max() is -inf.
+        # Since -inf is always less than 1e-5, the assert will always evaluate to true.
+        # Therefore, this assert should be considered to remove.
+        # self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
+        # self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
 
 
 # NOTE(weixin): When there are multiple test functions in an
@@ -2291,6 +2294,43 @@ class TestLayerWithUnusedBuffer(unittest.TestCase):
                 loaded_layer.program(), layer.buffer.shape
             )
         )
+
+
+class SimpleModelWithSaveDtype(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fc = paddle.nn.Linear(32, 1)
+
+    def forward(self, x):
+        return self.fc(x)
+
+
+class TestSaveDtype(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_save_dtype(self):
+        model = SimpleModelWithSaveDtype()
+        model = paddle.amp.decorate(
+            models=model, level='O2', save_dtype='float32'
+        )
+        data = np.random.random([32]).astype('float32')
+        data = paddle.to_tensor(data)
+        with paddle.amp.auto_cast(level='O2'):
+            out = model(data)
+        save_dir = os.path.join(self.temp_dir.name, "test_save_dtype")
+        path = save_dir + "/model"
+        paddle.jit.save(
+            model, path, input_spec=[InputSpec([None, 32], dtype='float32')]
+        )
+        loaded_model = paddle.jit.load(path)
+        loaded_model = paddle.amp.decorate(models=loaded_model, level='O2')
+        with paddle.amp.auto_cast(level='O2'):
+            loaded_out = loaded_model(data)
+        np.testing.assert_allclose(out.numpy(), loaded_out.numpy(), atol=1e-5)
 
 
 if __name__ == '__main__':

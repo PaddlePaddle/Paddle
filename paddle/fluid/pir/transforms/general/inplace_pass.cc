@@ -75,11 +75,11 @@ bool IsLastUser(const pir::Value& value,
   auto current_value = value;
   while (use_count_map.at(current_value) == 0) {
     if (inplace_map.count(current_value) == 0) {
-      return false;
+      return true;
     }
     current_value = inplace_map.at(current_value);
   }
-  return true;
+  return false;
 }
 
 bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
@@ -238,10 +238,16 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 
 // NOTE(zhangbo): pd_op.feed's output and pd_op.fetch's input can not be eager
 // deleted.
-std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
+std::unordered_set<pir::Value> GetSkipDeletionValues(
+    const pir::Block& block,
+    const std::set<std::string>& no_need_buffer_values) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : block) {
-    if (op.name() == "builtin.shadow_output") {
+    if (op.name() == "builtin.shadow_output" &&
+        no_need_buffer_values.count(op.attributes()
+                                        .at("output_name")
+                                        .dyn_cast<pir::StrAttribute>()
+                                        .AsString()) == 0) {
       skip_dels.insert(op.operand_source(0));
       continue;
     }
@@ -291,14 +297,20 @@ void GetEagerDelValueOfOp(
                           .AsString();
     }
 
+    if (upper_op_name == "builtin.shadow_output") {
+      continue;
+    }
+
     for (size_t i = 0; i < op.num_operands(); ++i) {
       auto input = op.operand_source(i);
-      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input)) {
+      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input) ||
+          IsNoNeedBuffer(&op, input)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
                 << upper_op_name << ") can not be deleted.";
         VLOG(8) << " -- skip dels: " << skip_dels.count(input);
         VLOG(8) << " -- value is null: " << !input;
         VLOG(8) << " -- can be deleted: " << !CanBeDeleted(input);
+        VLOG(8) << " -- is no_need_buffer: " << IsNoNeedBuffer(&op, input);
         continue;
       }
       (*del_value_2_op)[input] = &op;
@@ -323,8 +335,10 @@ void GetEagerDelValueOfOp(
 }
 
 std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
-GetEagerDeletionValues(const pir::Block& block) {
-  std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
+GetEagerDeletionValues(const pir::Block& block,
+                       const std::set<std::string>& no_need_buffer_values) {
+  std::unordered_set<pir::Value> skip_dels =
+      GetSkipDeletionValues(block, no_need_buffer_values);
   std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
   GetEagerDelValueOfOp(block, skip_dels, &del_value_2_op);
   std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
@@ -336,13 +350,31 @@ GetEagerDeletionValues(const pir::Block& block) {
 }
 
 std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
-    const pir::Block& block) {
-  const auto eager_dels = GetEagerDeletionValues(block);
-  auto use_count_map = [](const pir::Block& block) {
+    const pir::Block& block,
+    const std::set<std::string>& no_need_buffer_values) {
+  const auto eager_dels = GetEagerDeletionValues(block, no_need_buffer_values);
+
+  auto is_no_need_buffer = [&no_need_buffer_values](pir::Operation* op,
+                                                    pir::Value value) {
+    if (auto shadow_output_op = op->dyn_cast<pir::ShadowOutputOp>()) {
+      if (no_need_buffer_values.count(shadow_output_op.attributes()
+                                          .at("output_name")
+                                          .dyn_cast<pir::StrAttribute>()
+                                          .AsString())) {
+        return true;
+      }
+    }
+    return IsNoNeedBuffer(op, value);
+  };
+  auto use_count_map = [&is_no_need_buffer](const pir::Block& block) {
     std::unordered_map<pir::Value, size_t> use_count_map;
     for (auto& op : block) {
       for (auto value : op.results()) {
-        use_count_map[value] = value.use_count();
+        size_t use_count = 0;
+        for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+          use_count += is_no_need_buffer(it->owner(), value) ? 0 : 1;
+        }
+        use_count_map[value] = use_count;
       }
     }
     return use_count_map;
@@ -356,7 +388,8 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
   for (auto& op : block) {
     for (size_t i = 0; i < op.num_operands(); ++i) {
       visited_values.insert(op.operand_source(i));
-      use_count_map[op.operand_source(i)]--;
+      use_count_map[op.operand_source(i)] -=
+          is_no_need_buffer(&op, op.operand_source(i)) ? 0 : 1;
     }
 
     if (op.dialect()->name() != paddle::dialect::KernelDialect::name()) {
@@ -468,7 +501,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
                          upper_op_name)) ||
           (visited_values.count(op.result(out_slot)) > 0) ||
           (!CanBeDeleted(op.result(out_slot))) ||
-          IsLastUser(op.operand_source(in_slot), use_count_map, inplace_map) ||
+          !IsLastUser(op.operand_source(in_slot), use_count_map, inplace_map) ||
           (std::find(used_external_values.begin(),
                      used_external_values.end(),
                      op.operand_source(in_slot)) !=
@@ -493,7 +526,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
             << " -- result " << out_slot
             << " visited: " << (visited_values.count(op.result(out_slot)) > 0);
         VLOG_IF(8, in_slot < op.num_operands())
-            << " -- operand " << in_slot << " has not user: "
+            << " -- operand " << in_slot << " is last user: "
             << IsLastUser(
                    op.operand_source(in_slot), use_count_map, inplace_map);
         break;
@@ -525,12 +558,17 @@ class InplacePass : public pir::Pass {
  public:
   InplacePass() : pir::Pass("inplace_pass", 3) {}
 
+  explicit InplacePass(const std::set<std::string>& no_need_buffer_values)
+      : pir::Pass("inplace_pass", 3) {
+    no_need_buffer_values_ = no_need_buffer_values;
+  }
+
   void Run(pir::Operation* op) override {
     int64_t num_rewrites_{0};
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
       for (auto& block : region) {
-        auto inplace_ops = GetInplaceOps(block);
+        auto inplace_ops = GetInplaceOps(block, no_need_buffer_values_);
 
         for (const auto& kv : inplace_ops) {
           VLOG(6) << "Do inplace for: "
@@ -558,12 +596,16 @@ class InplacePass : public pir::Pass {
     }
     AddStatistics(num_rewrites_);
   }
+
+ private:
+  std::set<std::string> no_need_buffer_values_;
 };
 
 namespace pir {
 
-std::unique_ptr<pir::Pass> CreateInplacePass() {
-  return std::make_unique<InplacePass>();
+std::unique_ptr<pir::Pass> CreateInplacePass(
+    const std::set<std::string>& no_need_buffer_values) {
+  return std::make_unique<InplacePass>(no_need_buffer_values);
 }
 
 }  // namespace pir

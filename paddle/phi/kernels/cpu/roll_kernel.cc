@@ -18,6 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/cpu/roll_kernel_impl.h"
 
 namespace phi {
@@ -28,8 +29,21 @@ void RollKernel(const Context& dev_ctx,
                 const IntArray& shifts,
                 const std::vector<int64_t>& axis,
                 DenseTensor* out) {
-  std::vector<T> out_vec;
-  phi::TensorToVector(x, dev_ctx, &out_vec);
+  if (x.numel() == 0) {
+    out->Resize(out->dims());
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  using Type =
+      typename std::conditional<std::is_same<T, bool>::value, int16_t, T>::type;
+  std::vector<Type> out_vec;
+  if (std::is_same<T, bool>::value) {
+    DenseTensor tmp_int_tensor;
+    tmp_int_tensor = phi::Cast<T, Context>(dev_ctx, x, phi::DataType::INT16);
+    phi::TensorToVector(tmp_int_tensor, dev_ctx, &out_vec);
+  } else {
+    phi::TensorToVector(x, dev_ctx, &out_vec);
+  }
 
   auto shifts_data = shifts.GetData();
   size_t nums = shifts_data.size();
@@ -57,7 +71,14 @@ void RollKernel(const Context& dev_ctx,
     ShiftAlongDim(out_vec.data(), input_dim, dims[i], shifts_data[i]);
   }
   dev_ctx.template Alloc<T>(out);
-  phi::TensorFromVector(out_vec, dev_ctx, out);
+  if (std::is_same<T, bool>::value) {
+    DenseTensor tmp_bool_tensor;
+    phi::TensorFromVector(out_vec, dev_ctx, &tmp_bool_tensor);
+    *out =
+        phi::Cast<Type, Context>(dev_ctx, tmp_bool_tensor, phi::DataType::BOOL);
+  } else {
+    phi::TensorFromVector(out_vec, dev_ctx, out);
+  }
   out->Resize(x.dims());
 }
 
@@ -67,6 +88,7 @@ PD_REGISTER_KERNEL(roll,
                    CPU,
                    ALL_LAYOUT,
                    phi::RollKernel,
+                   bool,
                    float,
                    double,
                    int,

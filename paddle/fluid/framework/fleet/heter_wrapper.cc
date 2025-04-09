@@ -31,8 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<HeterWrapper> HeterWrapper::s_instance_ = NULL;
 bool HeterWrapper::is_initialized_ = false;
@@ -91,14 +90,14 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
   }
   phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
   req_var->set_varname(varname);
-  req_var->set_type(LOD_TENSOR);
+  req_var->set_type(DENSE_TENSOR);
   req_var->set_data_type(static_cast<VariableMessage::Type>(
       framework::TransToProtoVarType(tensor->dtype())));
 
   for (auto& dim : common::vectorize(tensor->dims())) {
     req_var->add_dims(dim);
   }
-  const phi::LoD lod = tensor->lod();
+  const phi::LegacyLoD lod = tensor->lod();
   if (lod.size() > 0) {
     req_var->set_lod_level(lod.size());
     for (auto& each : lod) {
@@ -358,6 +357,5 @@ void HeterWrapper::CallRemoteXpuSync(
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

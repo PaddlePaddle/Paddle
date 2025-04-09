@@ -24,6 +24,10 @@ from test_prim_sub_graph_backward_dynamic_shape import (
 import paddle
 
 
+def kron_net(x, y):
+    return paddle.kron(x, y)
+
+
 def kthvalue_net1(x):
     return paddle.kthvalue(x, k=2)[0]
 
@@ -134,6 +138,54 @@ def minimum_net(x, y):
 
 def multiply_net(x, y):
     return x * y
+
+
+class TestPrimKronWithGrad1(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kron"
+        self.dtype = "float32"
+        self.x_shape = [10, 10]
+        self.init_x_shape = [None, None]
+        self.y_shape = [5, 5, 4]
+        self.init_y_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = kron_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimKronWithGrad2(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kron"
+        self.dtype = "float32"
+        self.x_shape = [10, 10]
+        self.init_x_shape = [None, None]
+        self.y_shape = [5, 5, 4, 3, 2]
+        self.init_y_shape = [None, None, None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = kron_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimKronWithGrad3(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.op_name = "pd_op.kron"
+        self.dtype = "float32"
+        self.x_shape = [5, 5, 4, 3, 5, 6]
+        self.init_x_shape = [None, None, None, None, None, None]
+        self.y_shape = [3, 5, 4]
+        self.init_y_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = kron_net
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimKthvalueWithGrad1(TestPrimBaseWithGrad):

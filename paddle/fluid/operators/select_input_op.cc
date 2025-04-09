@@ -61,7 +61,7 @@ class SelectInputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input LoDTensors or LoDTensorArray or SelectedRows. All "
+             "The input DenseTensors or DenseTensorArray or SelectedRows. All "
              "inputs must have same variable type")
         .AsDuplicable();
     AddInput("Mask",

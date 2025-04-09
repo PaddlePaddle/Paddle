@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/utils/variant.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -132,6 +133,47 @@ struct paddle_variant_caster<V<Ts...>> {
 template <class... Args>
 struct type_caster<paddle::variant<Args...>>
     : paddle_variant_caster<paddle::variant<Args...>> {};
+
+using Attribute =
+    std::variant<paddle::drr::NormalAttribute, paddle::drr::ComputeAttribute>;
+// caster for paddle::drr::Attribute
+template <>
+struct type_caster<Attribute> {
+ public:
+  PYBIND11_TYPE_CASTER(Attribute, _("Variant"));
+
+  bool load(handle src, bool) {
+    try {
+      // if NormalAttribute
+      if (pybind11::isinstance<paddle::drr::NormalAttribute>(src)) {
+        value = src.cast<paddle::drr::NormalAttribute>();
+        return true;
+      }
+      // if ComputeAttribute
+      if (pybind11::isinstance<paddle::drr::ComputeAttribute>(src)) {
+        value = src.cast<paddle::drr::ComputeAttribute>();
+        return true;
+      }
+    } catch (const pybind11::cast_error&) {
+      return false;
+    }
+    return false;
+  }
+
+  // Conversion from C++ to Python
+  static handle cast(const Attribute& src,
+                     return_value_policy /* policy */,
+                     handle /* parent */) {
+    if (std::holds_alternative<paddle::drr::NormalAttribute>(src)) {
+      return pybind11::cast(std::get<paddle::drr::NormalAttribute>(src))
+          .release();
+    } else if (std::holds_alternative<paddle::drr::ComputeAttribute>(src)) {
+      return pybind11::cast(std::get<paddle::drr::ComputeAttribute>(src))
+          .release();
+    }
+    return pybind11::none().release();
+  }
+};
 
 }  // namespace detail
 }  // namespace pybind11

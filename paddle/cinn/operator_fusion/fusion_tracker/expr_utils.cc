@@ -23,37 +23,44 @@ using namespace cinn::hlir::framework::pir::trivial_fusion_detail;  // NOLINT
 using namespace ExprSetFinderUtils;                                 // NOLINT
 using namespace ExprTransformerUtils;                               // NOLINT
 
-ir::Expr ApplyItersTransform::operator()(const TransposeItersTransform& trans) {
-  auto result = TransposeForsTransformer(trans.perm_)(expr_);
-  VLOG(4) << "[ItersTransform] After TransposeItersTransform: " << result;
+ir::Expr ApplyAxisTransform::operator()(const TransposeTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto result = TransposeForsTransformer(trans->perm)(expr_);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
   return result;
 }
 
-ir::Expr ApplyItersTransform::operator()(const RemoveOnesTransform& trans) {
-  VLOG(4) << "[ItersTransform] Before RemoveOnesTransform("
-          << utils::Join(trans.ones_, ",") << "'): " << expr_;
-  auto result = RemoveOnesTransformer(trans.ones_)(expr_);
-  VLOG(4) << "[ItersTransform] After  RemoveOnesTransform: " << result;
-  return result;
-}
-
-ir::Expr ApplyItersTransform::operator()(const AppendItersTransform& trans) {
-  VLOG(4) << "[ItersTransform] Start AppendItersTransform: "
-          << trans.DebugStr();
-  auto aligned_vars = GetAllLoopVars(aligned_expr_);
-  PADDLE_ENFORCE_LT(trans.axis_.back(),
-                    aligned_vars.size(),
-                    ::common::errors::InvalidArgument(
-                        "The last axis to append iters should be less than the "
-                        "size of aligned_vars."));
-
+ir::Expr ApplyAxisTransform::operator()(const AppendAxisTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto unique_var_name = []() {
+    static thread_local std::atomic<int> counter(0);
+    return "append_var_" + std::to_string(counter.fetch_add(1));
+  };
   std::vector<ir::Var> append_vars;
-  for (size_t i = 0; i < trans.axis_.size(); ++i) {
-    const auto upper_bound = aligned_vars[trans.axis_[i]]->upper_bound;
-    append_vars.push_back(ir::Var(upper_bound, trans.var_names_[i]));
+  for (size_t i = 0; i < trans->axis.size(); ++i) {
+    const auto upper_bound =
+        cinn::common::DimExprConverter().ConvertToIrExpr(trans->shape[i]);
+    append_vars.push_back(ir::Var(upper_bound, unique_var_name()));
   }
-  auto result = InsertForsTransformer(trans.axis_, append_vars)(expr_);
-  VLOG(4) << "[ItersTransform] After AppendItersTransform: " << result;
+  auto result = (InsertForsTransformer(
+                     CastVector<int64_t, int32_t>(trans->axis), append_vars) *
+                 InsertIfForAppendVarsTransformer(append_vars))(expr_);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
+  return result;
+}
+
+ir::Expr ApplyAxisTransform::operator()(const DeleteAxisTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto result =
+      RemoveForsTransformer(CastVector<int64_t, int32_t>(trans->axis))(expr_);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
+  return result;
+}
+
+ir::Expr ApplyAxisTransform::operator()(const ReshapeTransformPtr& trans) {
+  VLOG(4) << "[AxisTransform] Start " << trans->DebugStr();
+  auto result = ReshapeLoop(expr_, trans->in_shape, trans->out_shape);
+  VLOG(4) << "[AxisTransform] After " << trans->DebugStr() << ": \n" << result;
   return result;
 }
 
@@ -181,7 +188,7 @@ static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
   return vars;
 }
 
-static int counter = 0;
+static thread_local std::atomic<int> counter = 0;
 ir::Expr UnSqueezeExpr(const ir::Expr& expr,
                        const std::vector<int>& padding_vec) {
   VLOG(4) << "UnSqueezeExpr: " << expr
@@ -223,21 +230,6 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
     }
   }
   return result;
-}
-
-std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
-                                 const std::vector<int>& padding_pos) {
-  std::vector<FusibleOp> results;
-  auto expr_vec = std::visit(FusibleOp2Expr(), fusion_op);
-  for (auto expr : expr_vec) {
-    auto squeezed = UnSqueezeExpr(expr, padding_pos);
-    if (IsReduceBody(expr)) {
-      results.emplace_back(ReduceOp(squeezed));
-    } else {
-      results.emplace_back(TrivialOp(squeezed));
-    }
-  }
-  return results;
 }
 
 }  // namespace cinn::fusion

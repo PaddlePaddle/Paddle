@@ -249,7 +249,7 @@ class TestLogsumexpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
-            x1 = paddle.static.data(name='x1', shape=[120], dtype="int32")
+            x1 = paddle.static.data(name='x1', shape=[120], dtype="bool")
             self.assertRaises(TypeError, paddle.logsumexp, x1)
 
 

@@ -493,13 +493,15 @@ if __name__ == '__main__':
                 file=sys.stderr,
             )
             subprocess.check_output(
-                'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
+                'pip install --no-cache clang-tidy=="15.0.2.1"',
+                shell=True,
             )
     except:
         print(
             "clang-tidy not found, attempting auto-install...", file=sys.stderr
         )
         subprocess.check_output(
-            'pip install --no-cache clang-tidy=="15.0.2.1"', shell=True
+            'pip install --no-cache clang-tidy=="15.0.2.1"',
+            shell=True,
         )
     main()

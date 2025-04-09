@@ -118,7 +118,7 @@ def add_import_skip_return(file, pattern_import, pattern_skip, pattern_return):
             match_obj = pattern_2.search(line)
             if match_obj is not None:
                 file_data += (
-                    "@skip_check_grad_ci(reason='jetson do n0t neeed this !')\n"
+                    "@skip_check_grad_ci(reason='jetson do n0t need this !')\n"
                 )
                 print("### add @skip_check_grad_ci ####")
 

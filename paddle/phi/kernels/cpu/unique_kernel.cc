@@ -83,15 +83,15 @@ void UniqueRawKernel(const Context& context,
   if (axis.empty()) {
     phi::VisitDataTypeTiny(
         dtype,
-        phi::funcs::UniqueFlattendTensorFunctor<Context, T>(context,
-                                                            x,
-                                                            out,
-                                                            indices,
-                                                            index,
-                                                            counts,
-                                                            return_index,
-                                                            return_inverse,
-                                                            return_counts));
+        phi::funcs::UniqueFlattenedTensorFunctor<Context, T>(context,
+                                                             x,
+                                                             out,
+                                                             indices,
+                                                             index,
+                                                             counts,
+                                                             return_index,
+                                                             return_inverse,
+                                                             return_counts));
   } else {
     int axis_value = axis[0];
     axis_value = (axis_value == -1) ? (x.dims().size() - 1) : axis_value;

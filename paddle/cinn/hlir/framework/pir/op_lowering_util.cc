@@ -17,15 +17,20 @@
 #include <algorithm>
 #include <unordered_set>
 #include "glog/logging.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
+#include "paddle/cinn/optim/longlong2int_pass.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+
+PD_DECLARE_bool(cinn_longlong2int);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -889,7 +894,7 @@ void MergeReduceToReduce(
       }
     } else {
       PADDLE_THROW(::common::errors::InvalidArgument(
-          "Error! Unkown Reduce Type, Please Check!"));
+          "Error! Unknown Reduce Type, Please Check!"));
     }
   }
 }
@@ -1222,20 +1227,160 @@ void LoopAssignReduce(
       copy_loop_info(nloops, rloops);
     } else {
       PADDLE_THROW(
-          ::common::errors::InvalidArgument("Error! Unkown Reduce Type!"));
+          ::common::errors::InvalidArgument("Error! Unknown Reduce Type!"));
     }
   }
 }
 
-std::unordered_map<std::string, ::pir::Value> GetOutValueSet(
-    PrettyNamer* pretty_name,
-    const std::unordered_set<::pir::Operation*>& ops_set) {
-  std::unordered_map<std::string, ::pir::Value> out_value_set;
-  for (auto* op : ops_set) {
-    out_value_set[pretty_name->GetOrNew(
-        op->result(0), CompatibleInfo::kNamePrefix)] = op->result(0);
+void UnifyTempSpaceArgs(std::vector<ir::LoweredFunc>* funcs) {
+  auto InsertPlaceholders = [&](ir::LoweredFunc func, int count) {
+    auto insert_pos = std::find_if(
+        func->args.begin(), func->args.end(), [&](const ir::Argument& arg) {
+          return arg.is_var();
+        });
+
+    for (int i = 0; i < count; ++i) {
+      std::string name = "_plchdr_" + std::to_string(i);
+      ir::Buffer buffer = ir::_Buffer_::Make(name, cinn::common::UInt(8));
+      ir::Argument arg(buffer, ir::Argument::IO::kOutput);
+      insert_pos = func->args.insert(insert_pos, arg);
+      int arg_idx = insert_pos - func->args.begin();
+      func->temp_spaces.emplace_back(ir::Expr(0), arg_idx);
+      ++insert_pos;
+    }
+  };
+
+  size_t max_count = 0;
+  for (int i = 0; i + 1 < funcs->size(); ++i) {  // ignore the last X86 kernel
+    max_count = std::max(max_count, (*funcs)[i]->temp_spaces.size());
   }
-  return out_value_set;
+  for (int i = 0; i + 1 < funcs->size(); ++i) {
+    size_t cur_count = (*funcs)[i]->temp_spaces.size();
+    if (cur_count < max_count) {
+      InsertPlaceholders((*funcs)[i], max_count - cur_count);
+    }
+  }
+}
+
+std::vector<int64_t> CollectTempSpaceSizes(
+    const std::vector<ir::LoweredFunc>& funcs) {
+  std::vector<int64_t> sizes;
+  // Ignore the last X86 kernel
+  for (int func_idx = 0; func_idx + 1 < funcs.size(); ++func_idx) {
+    auto& temp_spaces = funcs[func_idx]->temp_spaces;
+    if (func_idx == 0) {
+      sizes.resize(temp_spaces.size());
+    }
+    for (int i = 0; i < temp_spaces.size(); ++i) {
+      int64_t size = -1;
+      if (temp_spaces[i].size().is_constant()) {
+        size = temp_spaces[i].size().as_int64();
+      }
+      if (func_idx == 0) {
+        sizes[i] = size;
+      } else if (sizes[i] != size) {
+        sizes[i] = -1;
+      }
+    }
+  }
+  return sizes;
+}
+
+void LongLong2Int(const std::unordered_set<std::string> symbol_args_set,
+                  const std::vector<ir::Expr>& loop_ranges_expr,
+                  const std::vector<Expr>& inputs_element_size,
+                  int priorities,
+                  ir::Expr* predicates,
+                  ir::LoweredFunc* func,
+                  std::vector<ir::Expr>* ret_predicates,
+                  std::vector<ir::LoweredFunc>* ret_lowered_funcs,
+                  std::vector<int>* ret_priorities) {
+  if (!FLAGS_cinn_longlong2int) return;
+  // Helper func for lonnglong2int pass.
+  auto JudgeDynamic = [](const std::vector<cinn::ir::Expr>& loops) {
+    for (const auto& loop : loops) {
+      if (!loop.is_constant()) return true;
+    }
+    return false;
+  };
+
+  auto DealPerdicateCond =
+      [](const ir::Expr& max_output_size,
+         const std::vector<ir::Expr>& inputs_element_size) {
+        ir::Expr pred_longlong2int = ir::Expr(true);
+        std::unordered_set<ir::Expr> perd_set;
+        for (const auto& size : inputs_element_size) {
+          if (!size.is_constant() && perd_set.count(size) == 0) {
+            pred_longlong2int = ir::And::Make(
+                pred_longlong2int, ir::LE::Make(size, ir::Expr(INT32_MAX)));
+            perd_set.insert(size);
+          }
+        }
+        if (!max_output_size.is_constant() &&
+            perd_set.count(max_output_size) == 0) {
+          pred_longlong2int =
+              ir::And::Make(pred_longlong2int,
+                            ir::LE::Make(max_output_size, ir::Expr(INT32_MAX)));
+        }
+        return pred_longlong2int;
+      };
+  // The loop ranges product of Fusion group info is the max elements size
+  // for output, we dont need to calculate every output independently.
+  ir::Expr outputs_element_max_size = common::FoldExpr(
+      [](const Expr& a, const Expr& b) { return ir::Mul::Make(a, b); },
+      loop_ranges_expr);
+
+  // If the max output size is a null, we set output size to zero.
+  outputs_element_max_size =
+      outputs_element_max_size.defined() ? outputs_element_max_size : Expr(0);
+
+  outputs_element_max_size =
+      cinn::optim::ArithSimplify(outputs_element_max_size);
+  bool is_dynamic = JudgeDynamic(inputs_element_size) ||
+                    !outputs_element_max_size.is_constant();
+  if (is_dynamic) {
+    // Copy lowered_func and predicate for type int32 in dynamic branch.
+    ir::LoweredFunc func_copied = ir::ir_utils::IRCopy(*func);
+    ir::Expr predicates_copied = ir::ir_utils::IRCopy(*predicates);
+
+    // Deal longlong2int predicates, calculate all elements size.
+    ir::Expr pred_longlong2int =
+        DealPerdicateCond(outputs_element_max_size, inputs_element_size);
+
+    // New predicate for int32.
+    ir::Expr predicate_int32 =
+        ir::And::Make(predicates_copied, pred_longlong2int);
+
+    // Old predicate for int64.
+    *predicates = ir::And::Make(*predicates, ir::Not::Make(pred_longlong2int));
+
+    // Enforce cast the func copied in dynamic branch.
+    VLOG(10) << "Before CastLonglong2Int In Dynamic Branch: \n" << func_copied;
+    optim::TryCastLonglong2Int(
+        func_copied, symbol_args_set, /*enforce_cast*/ true);
+    VLOG(10) << "After CastLonglong2Int In Dynamic Branch: \n" << func_copied;
+
+    // Add int32 func and predicate. int64 branch is handled by default.
+    ret_predicates->push_back(std::move(predicate_int32));
+    ret_lowered_funcs->push_back(std::move(func_copied));
+    ret_priorities->push_back(priorities);
+  } else {
+    // static branch, Here we have enough information to determine whether
+    // it is safe to transpose, so there is no need to enter the pass to
+    // determine according to the for loop range.
+    auto can_cast = [&]() {
+      for (const auto& size : inputs_element_size) {
+        if (size.as_int64() >= INT32_MAX) return false;
+      }
+      if (outputs_element_max_size.as_int64() >= INT32_MAX) return false;
+      return true;
+    }();
+
+    VLOG(10) << "Before CastLonglong2Int In Static Branch: \n" << *func;
+    optim::TryCastLonglong2Int(
+        *func, symbol_args_set, /*enforce_cast*/ can_cast);
+    VLOG(10) << "After CastLonglong2Int In Static Branch: \n" << *func;
+  }
 }
 
 }  // namespace pir

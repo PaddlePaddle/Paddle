@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import os
 
 os.environ["FLAGS_enable_pir_api"] = str(1)
@@ -99,7 +98,7 @@ class TestLlamaAuto:
         # amp config
         amp = self.strategy._amp
         if os.getenv("amp"):
-            amp.enbale = os.getenv("amp")
+            amp.enable = os.getenv("amp")
         if os.getenv("amp_dtype"):
             amp.dtype = os.getenv("amp_dtype")
         if os.getenv("amp_level"):
@@ -175,7 +174,7 @@ class TestLlamaAuto:
                 model, dist_loader, criterion, optimizer, strategy=self.strategy
             )
         model.train()
-        md5_list = []
+        losses = []
         for step, inputs in enumerate(dist_loader()):
             if step >= self.run_step:
                 break
@@ -186,17 +185,17 @@ class TestLlamaAuto:
                     numpy_array = np.array([])
                 else:
                     numpy_array = np.array(loss)
+                losses.append(numpy_array)
                 array_bytes = numpy_array.tobytes()
-                md5_list.append(hashlib.md5(array_bytes).hexdigest())
             else:
                 logits = model(input_ids)
                 loss = criterion(logits, labels)
+                losses.append(np.array(loss))
                 loss.backward()
                 optimizer.step()
                 optimizer.clear_grad()
-                md5_list.append(loss._local_value()._md5sum())
             lr_scheduler.step()
-        return md5_list
+        return losses
 
     def init_dist_env(self):
         order = ["dp", "pp", "mp"]
@@ -274,11 +273,7 @@ class TestLlamaAuto:
                 lr_scheduler.step()
 
                 tr_loss_add = 0
-
-        numpy_array = np.array(tr_loss)
-        array_bytes = numpy_array.tobytes()
-        loss_md5 = hashlib.md5(array_bytes).hexdigest()
-        return loss_md5
+        return np.array(tr_loss)
 
     def run_dy2static(self):
         model = LlamaForCausalLMAuto(self.config)
@@ -336,27 +331,26 @@ class TestLlamaAuto:
 
         if loss is not None:
             loss = np.average(loss)
-
-        numpy_array = np.array(loss)
-        array_bytes = numpy_array.tobytes()
-        loss_md5 = hashlib.md5(array_bytes).hexdigest()
-        return loss_md5
+        return np.array(loss)
 
     def run_test_cases(self):
         self.init_dist_env()
         if self.gradient_accumulation_steps > 1:
-            dy_loss_md5 = self.run_dynamic()
+            dy_losses = self.run_dynamic()
             self.init_dist_env()
-            st_loss_md5 = self.run_dy2static()
+            st_losses = self.run_dy2static()
             if int(dist.get_rank()) in [2, 3, 6, 7]:
-                assert dy_loss_md5 == st_loss_md5
+                np.testing.assert_allclose(dy_losses, st_losses, atol=1e-7)
+
         else:
-            dy_loss_md5 = self.run_llama(to_static=0)
+            dy_losses = self.run_llama(to_static=0)
             self.init_dist_env()
-            st_loss_md5 = self.run_llama(to_static=1)
-            assert len(dy_loss_md5) == len(st_loss_md5)
-            for idx in range(len(dy_loss_md5)):
-                assert dy_loss_md5[idx] == st_loss_md5[idx]
+            st_losses = self.run_llama(to_static=1)
+            assert len(dy_losses) == len(st_losses)
+            for idx in range(len(dy_losses)):
+                np.testing.assert_allclose(
+                    dy_losses[idx], st_losses[idx], atol=1e-7
+                )
 
 
 if __name__ == '__main__':

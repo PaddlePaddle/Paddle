@@ -43,7 +43,7 @@ void RnnGradKernel(const Context& dev_ctx,
                    DenseTensor* x_grad,
                    std::vector<DenseTensor*> pre_state_grad,
                    std::vector<DenseTensor*> weight_grad_list) {
-  using XPUTyp = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(
       mode,
@@ -178,23 +178,22 @@ void RnnGradKernel(const Context& dev_ctx,
     auto i_f_g_o = i_f_g_o_ptr + i * block_size * 4;
     auto c = c_ptr + i * block_size;
 
-    DenseTensor layer_input_t;
+    DenseTensor temp_tensor;
     auto layer_input = x_data;
     if (i > 0) {
-      layer_input_t.Resize(out.dims());
-      layer_input = dev_ctx.template Alloc<T>(&layer_input_t);
+      temp_tensor.Resize(out.dims());
+      auto temp_tensor_ptr = dev_ctx.template Alloc<T>(&temp_tensor);
       float scale = static_cast<float>(1.0f - dropout_prob);
       auto hidden_data = hidden_data_ptr + (i - 1) * block_size;
       int r = xpu::scale(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUTyp*>(hidden_data),
-                         const_cast<XPUTyp*>(layer_input),
+                         reinterpret_cast<const XPUType*>(hidden_data),
+                         reinterpret_cast<XPUType*>(temp_tensor_ptr),
                          out.numel(),
                          false,
                          scale,
                          0.0f);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
-    } else {
-      layer_input = x_data;
+      layer_input = temp_tensor_ptr;
     }
 
     auto layer_output = y;

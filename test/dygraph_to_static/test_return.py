@@ -190,7 +190,7 @@ def two_value(x):
     return x * 2, x + 1
 
 
-def diff_return_hepler(x):
+def diff_return_helper(x):
     if False:
         y = x + 1
         z = x - 1
@@ -201,7 +201,7 @@ def diff_return_hepler(x):
 
 def test_diff_return(x):
     x = paddle.to_tensor(x)
-    y, z = diff_return_hepler(x)
+    y, z = diff_return_helper(x)
     if y.shape[0] > 1:
         y = y + 1
     return y, z

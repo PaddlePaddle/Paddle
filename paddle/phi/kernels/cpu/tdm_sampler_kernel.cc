@@ -33,11 +33,11 @@ template <typename T,
           typename OutT = int>
 void TDMSamplerInner(const Context &dev_ctx,
                      const phi::DenseTensor &input_tensor,
-                     const phi::DenseTensor &travel_lod_tensor,
-                     const phi::DenseTensor &layer_lod_tensor,
+                     const phi::DenseTensor &travel_dense_tensor,
+                     const phi::DenseTensor &layer_dense_tensor,
                      bool output_positive,
                      std::vector<int> neg_samples_num_list,
-                     std::vector<int> layer_offset_lod,
+                     std::vector<int> layer_offset,
                      int seed,
                      phi::DenseTensor *out,
                      phi::DenseTensor *label,
@@ -55,13 +55,13 @@ void TDMSamplerInner(const Context &dev_ctx,
   }
   VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
-  auto travel_dim = common::vectorize<int>(travel_lod_tensor.dims());
+  auto travel_dim = common::vectorize<int>(travel_dense_tensor.dims());
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data
   auto *input_data = input_tensor.data<T>();
-  auto *travel_data = travel_lod_tensor.data<TreeT>();
-  auto *layer_data = layer_lod_tensor.data<TreeT>();
+  auto *travel_data = travel_dense_tensor.data<TreeT>();
+  auto *layer_data = layer_dense_tensor.data<TreeT>();
 
   OutT zero = 0;
   OutT one = 1;
@@ -75,7 +75,7 @@ void TDMSamplerInner(const Context &dev_ctx,
   std::vector<Sampler *> sampler_vec{};
   for (size_t layer_index = 0; layer_index < layer_nums; layer_index++) {
     int layer_node_nums =
-        layer_offset_lod[layer_index + 1] - layer_offset_lod[layer_index];
+        layer_offset[layer_index + 1] - layer_offset[layer_index];
     Sampler *sampler = new math::UniformSampler(layer_node_nums - 1, seed);
     sampler_vec.push_back(sampler);
   }
@@ -112,8 +112,7 @@ void TDMSamplerInner(const Context &dev_ctx,
       int sample_num = neg_samples_num_list[layer_idx];
       VLOG(3) << "TDM: Sample num: " << sample_num;
 
-      int node_nums =
-          layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
+      int node_nums = layer_offset[layer_idx + 1] - layer_offset[layer_idx];
       VLOG(3) << "TDM: layer - " << layer_idx + 1
               << " - has node_nums: " << node_nums;
 
@@ -128,8 +127,8 @@ void TDMSamplerInner(const Context &dev_ctx,
               node_nums,
               sample_num));
 
-      int node_id_min = layer_offset_lod[layer_idx];
-      int node_id_max = layer_offset_lod[layer_idx + 1];
+      int node_id_min = layer_offset[layer_idx];
+      int node_id_max = layer_offset[layer_idx + 1];
 
       OutT positive_node_id =
           static_cast<OutT>(travel_data[start_offset + layer_idx]);
@@ -197,14 +196,14 @@ void TDMSamplerInner(const Context &dev_ctx,
         do {
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==
-                     layer_data[layer_offset_lod[layer_idx] + sample_res] ||
+                     layer_data[layer_offset[layer_idx] + sample_res] ||
                  find(sample_res_vec.begin(),
                       sample_res_vec.end(),
                       sample_res) != sample_res_vec.end());
         sample_res_vec.push_back(sample_res);
 
-        output_vec[i * sample_res_length + offset] = static_cast<OutT>(
-            layer_data[layer_offset_lod[layer_idx] + sample_res]);
+        output_vec[i * sample_res_length + offset] =
+            static_cast<OutT>(layer_data[layer_offset[layer_idx] + sample_res]);
         label_vec[i * sample_res_length + offset] = 0;
         mask_vec[i * sample_res_length + offset] = 1;
         VLOG(3) << "TDM: node id: " << travel_data[start_offset + layer_idx]
@@ -216,7 +215,7 @@ void TDMSamplerInner(const Context &dev_ctx,
                 << mask_vec[i * sample_res_length + offset];
 
         PADDLE_ENFORCE_LE(
-            layer_data[layer_offset_lod[layer_idx] + sample_res],
+            layer_data[layer_offset[layer_idx] + sample_res],
             node_id_max,
             common::errors::InvalidArgument(
                 "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
@@ -225,7 +224,7 @@ void TDMSamplerInner(const Context &dev_ctx,
                 layer_idx,
                 node_id_min,
                 node_id_max,
-                layer_data[layer_offset_lod[layer_idx] + sample_res]));
+                layer_data[layer_offset[layer_idx] + sample_res]));
 
         offset += 1;
       }  // end layer nce
@@ -252,7 +251,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                       const DenseTensor &layer,
                       bool output_positive,
                       const std::vector<int> &neg_samples_num_list,
-                      const std::vector<int> &layer_offset_lod,
+                      const std::vector<int> &layer_offset,
                       int seed,
                       int dtype,
                       DenseTensor *out,
@@ -311,7 +310,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                           layer,
                                           output_positive,
                                           neg_samples_num_list,
-                                          layer_offset_lod,
+                                          layer_offset,
                                           seed,
                                           out,
                                           labels,
@@ -324,7 +323,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                               layer,
                                               output_positive,
                                               neg_samples_num_list,
-                                              layer_offset_lod,
+                                              layer_offset,
                                               seed,
                                               out,
                                               labels,
@@ -337,7 +336,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                               layer,
                                               output_positive,
                                               neg_samples_num_list,
-                                              layer_offset_lod,
+                                              layer_offset,
                                               seed,
                                               out,
                                               labels,
@@ -350,7 +349,7 @@ void TDMSamplerKernel(const Context &dev_ctx,
                                                   layer,
                                                   output_positive,
                                                   neg_samples_num_list,
-                                                  layer_offset_lod,
+                                                  layer_offset,
                                                   seed,
                                                   out,
                                                   labels,

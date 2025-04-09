@@ -33,12 +33,11 @@ def unittest_use_cinn():
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
+    backend = "CINN" if use_cinn else None
     return paddle.jit.to_static(
         net,
         input_spec=input_spec,
-        build_strategy=build_strategy,
+        backend=backend,
         full_graph=True,
     )
 
@@ -77,7 +76,7 @@ def check_jit_kernel_number(static_fn, expected_number):
 
 def get_jit_kernel_structure_helper(block, map_info, if_op_idx='_0'):
     """
-    Recursivly generate JIT_KERNEL map_info for Static/Dynmaic Shape UT.
+    Recursively generate JIT_KERNEL map_info for Static/Dynamic Shape UT.
     """
     if_count = 0
     for op in block.ops:

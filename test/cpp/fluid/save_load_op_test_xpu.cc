@@ -31,7 +31,7 @@ int SaveLoadOpTest(Place place, int dim_1, int dim_2) {
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({dim_1, dim_2});
-  phi::LoD expect_lod;
+  phi::LegacyLoD expect_lod;
   expect_lod.resize(1);
   for (int i = 0; i < dim_1; i++) {
     expect_lod[0].push_back(i);

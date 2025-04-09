@@ -148,9 +148,13 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& dims,
                                  DataLayout layout,
-                                 const LoD& lod,
+                                 const LegacyLoD& legacy_lod,
                                  size_t offset)
-    : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
+    : dims(dims),
+      dtype(dtype),
+      layout(layout),
+      legacy_lod(legacy_lod),
+      offset(offset) {
   strides = calc_strides(dims);
   use_gpudnn = true;
 }
@@ -161,7 +165,7 @@ DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   dims = other.dims;
   dtype = other.dtype;
   layout = other.layout;
-  lod = other.lod;
+  legacy_lod = other.legacy_lod;
   offset = other.offset;
   if (other.strides.size() == -1) {
     strides = calc_strides(dims);
@@ -176,7 +180,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   dims = other.dims;
   dtype = other.dtype;
   layout = other.layout;
-  lod = other.lod;
+  legacy_lod = other.legacy_lod;
   offset = other.offset;
   if (other.strides.size() == -1) {
     strides = calc_strides(dims);
@@ -193,7 +197,7 @@ DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
   dims = other.dims;
   dtype = other.dtype;
   layout = other.layout;
-  lod = std::move(other.lod);
+  legacy_lod = std::move(other.legacy_lod);
   offset = other.offset;
   if (other.strides.size() == -1) {
     strides = calc_strides(dims);

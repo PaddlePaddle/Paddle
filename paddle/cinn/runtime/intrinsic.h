@@ -103,16 +103,26 @@ static const char* pod_value_to_void_p = "cinn_pod_value_to_void_p";
 static const char* print_debug_args_repr = "cinn_print_debug_args";
 
 static const char* call_cuda_kernel = "cinn_call_cuda_kernel";
+static const char* call_cuda_cooperative_kernel =
+    "cinn_call_cuda_cooperative_kernel";
 
 static const char* call_hip_kernel = "cinn_call_hip_kernel";
+
+static const char* call_sycl_kernel = "cinn_call_sycl_kernel";
 
 static const char* call_cuda_memset = "cinn_call_cuda_memset";
 
 static const char* get_value_in_cuda_kernel_args =
     "cinn_get_value_in_cuda_kernel_args";
 
+static const char* get_value_in_hip_kernel_args =
+    "cinn_get_value_in_hip_kernel_args";
+
 static const char* get_item_in_cuda_kernel_args =
     "cinn_get_item_in_cuda_kernel_args";
+
+static const char* get_item_in_hip_kernel_args =
+    "cinn_get_item_in_hip_kernel_args";
 
 static const char* infer_shape_set_value = "infer_shape_set_value";
 
@@ -128,6 +138,8 @@ static const char* builtin_intrin_repr = "cinn_builtin_intrin";
 static const char* debug_log_repr = "cinn_print_debug_string";
 
 static const char* cuda_sync_threads = "__syncthreads";
+
+static const char* cuda_builtin_assume = "__builtin_assume";
 
 static const char* parallel_launch = "cinn_backend_parallel_launch";
 

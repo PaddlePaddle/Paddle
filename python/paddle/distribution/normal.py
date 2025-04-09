@@ -272,7 +272,7 @@ class Normal(distribution.Distribution):
         """
         return self.scale.pow(2)
 
-    def sample(self, shape: Sequence[int] = (), seed: int = 0) -> Tensor:
+    def sample(self, shape: Sequence[int] = [], seed: int = 0) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -325,7 +325,7 @@ class Normal(distribution.Distribution):
             else:
                 return output
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:

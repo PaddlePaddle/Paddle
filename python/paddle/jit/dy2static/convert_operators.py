@@ -193,7 +193,7 @@ def convert_while_loop(
         _run_py_while(cond, body, getter, setter)
 
 
-def _convert_tensor_arrray_if_necessary(setterhelper, push_pop_names):
+def _convert_tensor_array_if_necessary(setterhelper, push_pop_names):
     push_pop_vars = setterhelper.get(push_pop_names)
     if push_pop_vars is None:
         return
@@ -219,7 +219,7 @@ def _run_paddle_while(
 ):
     # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Tensors.
     helper = GetterSetterHelper(getter, setter, return_name_ids, push_pop_names)
-    _convert_tensor_arrray_if_necessary(helper, push_pop_names)
+    _convert_tensor_array_if_necessary(helper, push_pop_names)
 
     union_name = (
         OrderedSet(return_name_ids) if return_name_ids else OrderedSet()
@@ -447,7 +447,7 @@ def _run_paddle_cond(
     helper = GetterSetterHelper(
         get_args, set_args, return_name_ids, push_pop_names
     )
-    _convert_tensor_arrray_if_necessary(helper, push_pop_names)
+    _convert_tensor_array_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
     from paddle.jit.dy2static.program_translator import ProgramTranslator
@@ -506,11 +506,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                f"Your if/else have different return type. TODO: add link to modifty. {e}"
+                f"Your if/else have different return type. TODO: add link to modify. {e}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                f"Your if/else have different number of return value. TODO: add link to modifty. {e}"
+                f"Your if/else have different number of return value. TODO: add link to modify. {e}"
             )
         raise e
     get_args = lambda: helper.get(union_name)
@@ -615,20 +615,23 @@ def convert_len(var):
     if isinstance(var, Variable):
         assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type in [
-            core.VarDesc.VarType.LOD_TENSOR,
+            core.VarDesc.VarType.DENSE_TENSOR,
             core.VarDesc.VarType.SELECTED_ROWS,
         ]:
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
-            if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
+            if (
+                var.shape[0] > 0
+                and var.type == core.VarDesc.VarType.DENSE_TENSOR
+            ):
                 return var.shape[0]
             return paddle.shape(var)[0]
-        elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        elif var.type == core.VarDesc.VarType.DENSE_TENSOR_ARRAY:
             return paddle.tensor.array_length(var)
         else:
             raise TypeError(
-                f'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received {type(var)}.'
+                f'len(var) only supports DenseTensor/DenseTensorArray/SelectedRows, but received {type(var)}.'
             )
     elif isinstance(var, Value):
         if var.is_dense_tensor_type() or var.is_selected_row_type():
@@ -672,7 +675,7 @@ def convert_super(super_fn):
 class VariableTuple:
     """
     this class will cause enumerate can't be wrapped by other iterator change function.
-    this will be fixed when list<Variable> is producted.
+    this will be fixed when list<Variable> is produced.
     VariableTuple can only deal with variables which is fixed.
     """
 
@@ -722,7 +725,7 @@ def convert_shape(x):
     #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
     #      where var = paddle.shape(x)[1]
 
-    #  (2) if x.shape does not contains -1, return lsit(x.shape) directly
+    #  (2) if x.shape does not contains -1, return list(x.shape) directly
 
     if isinstance(x, (Variable, Value)):
         values = list(x.shape)
@@ -759,11 +762,13 @@ def convert_var_dtype(var, dtype):
             'bool',
             'int',
             'float',
+            'complex',
         ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         cast_map = {
             'bool': 'bool',
             'int': 'int32',
             'float': 'float32',
+            'complex': 'complex64',
         }
         return paddle.cast(var, dtype=cast_map[dtype])
     else:
@@ -771,6 +776,7 @@ def convert_var_dtype(var, dtype):
             'bool',
             'int',
             'float',
+            'complex',
         ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         return eval(dtype)(var)
 

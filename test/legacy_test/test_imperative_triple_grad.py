@@ -183,7 +183,7 @@ class TestDygraphTripleGrad(TestCase):
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)
-        # Theoritical result based on math calculation
+        # Theoretical result based on math calculation
         dout = np.ones(self.shape).astype('float32')
         dx_expected = np.matmul(
             dout * out_np * (1 - out_np), np.transpose(y_np)
@@ -191,7 +191,7 @@ class TestDygraphTripleGrad(TestCase):
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         (ddx_actual,) = self.grad([dx_actual], [x], create_graph=True)
-        # Theoritical result based on math calculation
+        # Theoretical result based on math calculation
         DDY = np.zeros(self.shape).astype('float32')
         DDX = np.ones(self.shape).astype('float32')
         double_grad_tmp1 = np.matmul(
@@ -206,7 +206,7 @@ class TestDygraphTripleGrad(TestCase):
         )
         np.testing.assert_allclose(ddx_actual.numpy(), ddx_expected, rtol=1e-05)
 
-        # Theoritical result based on math calculation
+        # Theoretical result based on math calculation
         d_ddout = np.zeros(self.shape).astype('float32')
         tmp0 = np.matmul(DDX, y_np) + np.matmul(x_np, DDY)
         tmp1 = (1 - 2 * out_np) * ((1 - 2 * out_np) * dout * tmp0 * tmp0)
@@ -227,7 +227,7 @@ class TestDygraphTripleGrad(TestCase):
         self.func_example_with_gradient_and_create_graph()
 
 
-class TestDygraphTripleGradBradcastCase(TestCase):
+class TestDygraphTripleGradBroadcastCase(TestCase):
     def setUp(self):
         self.sort_sum_gradient = False
         self.x_shape = [3, 2, 2]
@@ -275,7 +275,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         out_np = out.numpy()
 
         (dx_actual,) = self.grad([out], [x], create_graph=True)
-        # Theoritical result based on math calculation
+        # Theoretical result based on math calculation
         dout = np.ones(self.x_shape).astype('float32')
         dx_expected = np.matmul(
             dout * out_np * (1 - out_np), np.transpose(y_np, axes=(0, 2, 1))
@@ -283,7 +283,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         np.testing.assert_allclose(dx_actual.numpy(), dx_expected, rtol=1e-05)
 
         (ddx_actual,) = self.grad([dx_actual], [x], create_graph=True)
-        # Theoritical result based on math calculation
+        # Theoretical result based on math calculation
         DDY = np.zeros(self.y_shape).astype('float32')
         DDX = np.ones(self.x_shape).astype('float32')
         double_grad_tmp1 = np.matmul(
@@ -298,7 +298,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         )
         np.testing.assert_allclose(ddx_actual.numpy(), ddx_expected, rtol=1e-05)
 
-        # Theoritical result based on math calculation
+        # Theoretical result based on math calculation
         d_ddout = np.zeros(self.x_shape).astype('float32')
         tmp0 = np.matmul(DDX, y_np) + np.matmul(x_np, DDY)
         tmp1 = (1 - 2 * out_np) * ((1 - 2 * out_np) * dout * tmp0 * tmp0)

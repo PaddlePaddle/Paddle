@@ -52,7 +52,7 @@ void ShadowFeedKernel(const Context& ctx,
       break;
   }
 
-  if (!x.initialized()) {
+  if (!(x.has_allocation())) {
     if (target_place == CPUPlace()) {
       ctx.HostAlloc(out, out->dtype());
     } else {

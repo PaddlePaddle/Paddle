@@ -63,13 +63,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "uninited";
     } else {
       return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
@@ -94,13 +94,13 @@ static std::string GetPlace(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return to_string(tensor.place());
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (UNLIKELY(!tensor.IsInitialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "uninited";
     } else {
       return to_string(tensor.place());
@@ -127,9 +127,9 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
+static LegacyLoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
-  auto default_lod = LoD({{}});
+  auto default_lod = LegacyLoD({{}});
 
   if (var == nullptr) {
     return default_lod;
@@ -217,20 +217,20 @@ const phi::DeviceContext& InstructionBase::DeviceContext() const {
 }
 
 void InstructionBase::RecordEvent(const Place& place) const {
-  phi::RecordEvent record(
-      "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
+    phi::RecordEvent record(
+        "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
     VLOG(6) << "Record event at instruction: " << id_;
     event_to_record_->event_->Record(dev_ctx_);
   }
 }
 
 void InstructionBase::WaitEvent(const Place& place) const {
-  // If InterpreterCore in on CPUPlace, do nothing.
-  if (phi::is_cpu_place(place)) {
-    return;
-  }
   for (const EventInter& event_iter : events_to_wait_) {
+    // If InterpreterCore in on CPUPlace, do nothing.
+    if (phi::is_cpu_place(place)) {
+      continue;
+    }
     phi::RecordEvent record(
         "WaitStreamEvent", phi::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_

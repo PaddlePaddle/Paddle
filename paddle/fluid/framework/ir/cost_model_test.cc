@@ -76,13 +76,13 @@ ProgramDesc CreateTestProgram() {
   auto *global_block = program.MutableBlock(0);
 
   auto *x = global_block->Var("X");
-  x->SetType(proto::VarType::LOD_TENSOR);
+  x->SetType(proto::VarType::DENSE_TENSOR);
   x->SetLoDLevel(0);
   x->SetDataType(proto::VarType::FP32);
   x->SetShape({1000, 784});
 
   auto *y = global_block->Var("Y");
-  y->SetType(proto::VarType::LOD_TENSOR);
+  y->SetType(proto::VarType::DENSE_TENSOR);
   y->SetLoDLevel(0);
   y->SetDataType(proto::VarType::FP32);
   y->SetShape({784, 100});
@@ -93,11 +93,11 @@ ProgramDesc CreateTestProgram() {
   op0->SetInput("Y", {y->Name()});
 
   auto *z = global_block->Var("Z");
-  z->SetType(proto::VarType::LOD_TENSOR);
+  z->SetType(proto::VarType::DENSE_TENSOR);
   op0->SetOutput("Out", {z->Name()});
 
   auto *w = global_block->Var("W");
-  w->SetType(proto::VarType::LOD_TENSOR);
+  w->SetType(proto::VarType::DENSE_TENSOR);
   w->SetLoDLevel(0);
   w->SetDataType(proto::VarType::FP32);
   w->SetShape({100, 10});
@@ -108,7 +108,7 @@ ProgramDesc CreateTestProgram() {
   op1->SetInput("Y", {w->Name()});
 
   auto *out = global_block->Var("Out");
-  out->SetType(proto::VarType::LOD_TENSOR);
+  out->SetType(proto::VarType::DENSE_TENSOR);
   op1->SetOutput("Out", {out->Name()});
   return program;
 }

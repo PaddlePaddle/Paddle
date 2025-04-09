@@ -190,6 +190,7 @@ def auc(
         .. code-block:: python
             :name: example-1
 
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
@@ -219,6 +220,7 @@ def auc(
 
             # you can learn the usage of ins_tag_weight by the following code.
 
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
             >>> import numpy as np
             >>> paddle.enable_static()
@@ -226,7 +228,7 @@ def auc(
             >>> paddle.seed(2023)
             >>> data = paddle.static.data(name="input", shape=[-1, 32,32], dtype="float32")
             >>> label = paddle.static.data(name="label", shape=[-1], dtype="int64")
-            >>> ins_tag_weight = paddle.static.data(name='ins_tag_weight', shape=[-1,16], lod_level=0, dtype='float64')
+            >>> ins_tag_weight = paddle.static.data(name='ins_tag_weight', shape=[-1,16], dtype='float64')
             >>> fc_out = paddle.static.nn.fc(x=data, size=2)
             >>> predict = paddle.nn.functional.softmax(x=fc_out)
             >>> result=paddle.static.auc(input=predict, label=label, ins_tag_weight=ins_tag_weight)
@@ -390,7 +392,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
                          data. The height is batch size and width is always 1.
         ins_tag_weight(Tensor): A 2D int Tensor indicating the ins_tag_weight of the training
                          data. 1 means real data, 0 means fake data.
-                         A LoDTensor or Tensor with type float32,float64.
+                         A DenseTensor or Tensor with type float32,float64.
 
     Returns:
         local_sqrerr(Tensor): Local sum of squared error
@@ -404,6 +406,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         .. code-block:: python
             :name: example-1
 
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
             >>> paddle.enable_static()
             >>> data = paddle.static.data(name="data", shape=[-1, 32], dtype="float32")
@@ -414,12 +417,13 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         .. code-block:: python
             :name: example-2
 
+            >>> # doctest: +SKIP("This has diff in xdoctest env")
             >>> import paddle
             >>> paddle.enable_static()
             >>> data = paddle.static.data(name="data", shape=[-1, 32], dtype="float32")
             >>> label = paddle.static.data(name="label", shape=[-1, 1], dtype="int32")
             >>> predict = paddle.nn.functional.sigmoid(paddle.static.nn.fc(x=data, size=1))
-            >>> ins_tag_weight = paddle.static.data(name='ins_tag_weight', shape=[-1, 1], lod_level=0, dtype='int64')
+            >>> ins_tag_weight = paddle.static.data(name='ins_tag_weight', shape=[-1, 1], dtype='int64')
             >>> auc_out = paddle.static.ctr_metric_bundle(input=predict, label=label, ins_tag_weight=ins_tag_weight)
     """
     if ins_tag_weight is None:

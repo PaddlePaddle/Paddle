@@ -149,8 +149,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
       auto *in_var = block_.FindVarRecursive(in_var_names[i]);
       auto *out_var = block_.FindVarRecursive(out_var_names[i]);
-      if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
-          in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+      if (in_var->GetType() != proto::VarType::DENSE_TENSOR &&
+          in_var->GetType() != proto::VarType::DENSE_TENSOR_ARRAY) {
         VLOG(3) << "input " << in
                 << " is not phi::DenseTensor or phi::TensorArray.";
         return;
@@ -187,8 +187,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                           "The output variable %s[%d] is empty.", out, j));
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
-        in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+    if (in_var->GetType() != proto::VarType::DENSE_TENSOR &&
+        in_var->GetType() != proto::VarType::DENSE_TENSOR_ARRAY) {
       VLOG(3) << "input " << in
               << " is not phi::DenseTensor or phi::TensorArray.";
       return;
@@ -1144,8 +1144,8 @@ void OpDesc::InferShape(const BlockDesc &block) {
 
 void OpDesc::InferVarType(BlockDesc *block) const {
   // There are a few places that var type can be set.
-  // When VarDesc is created, default set to LOD_TENSOR.
-  // When output variable is created, default is default set to LOD_TENSOR.
+  // When VarDesc is created, default set to DENSE_TENSOR.
+  // When output variable is created, default is default set to DENSE_TENSOR.
   // We limit here to be the only place that operator defines its customized
   // var type inference. Hence, we don't do any "default" setting here.
   auto &info = OpInfoMap::Instance().Get(this->Type());

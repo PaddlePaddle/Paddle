@@ -49,7 +49,11 @@ __all__ = []
 def _varbase_help(param):
     state = copy.deepcopy(param.__dict__)
     new_param = EagerParamBase(
-        shape=param.shape, dtype=param.dtype, name=param.name, **state
+        shape=param.shape,
+        dtype=param.dtype,
+        trainable=param.trainable,
+        name=param.name,
+        **state,
     )
     param._share_buffer_to(new_param)
     return new_param
@@ -176,7 +180,11 @@ class RecomputeFunction(PyLayer):
         for i, arg in enumerate(args):
             if paddle.is_tensor(arg):
                 if i in ctx.offload_indices:
-                    cpu_arg = arg.pin_memory()
+                    cpu_arg = (
+                        arg.pin_memory()
+                        if core.is_compiled_with_cuda()
+                        else arg.cpu()
+                    )
                     cpu_arg._share_buffer_to(arg)
                 tensor_inputs.append(arg)
                 ctx.tensor_indices.append(i)
@@ -233,7 +241,9 @@ class RecomputeFunction(PyLayer):
                     if i in ctx.offload_indices
                     else tensors[i]
                 )
-
+                if i in ctx.offload_indices:
+                    # NOTE(zhiqiu): tensor.to(device) will set stop_gradient=True, which may break the gragh
+                    inputs[idx].stop_gradient = tensors[i].stop_gradient
             # paddle.enable_grad()
             tracer = framework._dygraph_tracer()
             tracer._has_grad = True
@@ -391,7 +401,7 @@ def _recompute_without_reentrant(
                             inner_x.dtype,
                             inner_x.shape,
                             inner_x.name + "cpy",
-                            core.VarDesc.VarType.LOD_TENSOR,
+                            core.VarDesc.VarType.DENSE_TENSOR,
                             inner_x.persistable,
                             inner_x.process_mesh,
                             inner_x.placements,
@@ -401,7 +411,7 @@ def _recompute_without_reentrant(
                             inner_x.dtype,
                             inner_x.shape,
                             inner_x.name + "cpy",
-                            core.VarDesc.VarType.LOD_TENSOR,
+                            core.VarDesc.VarType.DENSE_TENSOR,
                             inner_x.persistable,
                         )
                     inner_x._unsafe_share_buffer_to(tmp_tensor)
@@ -426,7 +436,7 @@ def _recompute_without_reentrant(
                             with paddle.autograd.saved_tensors_hooks(
                                 inner_pack, inner_unpack
                             ):
-                                unused_outputs = function(*args, **kwargs)
+                                function(*args, **kwargs)
             else:
                 with paddle.set_grad_enabled(True), paddle.amp.auto_cast(
                     enable=is_fw_autocast,
@@ -437,14 +447,14 @@ def _recompute_without_reentrant(
                 ), paddle.autograd.saved_tensors_hooks(
                     inner_pack, inner_unpack
                 ):
-                    unused_outputs = function(*args, **kwargs)
+                    function(*args, **kwargs)
 
         if x not in storage:
             raise Exception(
                 "Not supported to retrieve a tensor saved by autograd multiple times that is no need to recompute."
             )
 
-        return storage[x]
+        return storage.pop(x)
 
     with paddle.autograd.saved_tensors_hooks(pack, unpack):
         outputs = function(*args, **kwargs)

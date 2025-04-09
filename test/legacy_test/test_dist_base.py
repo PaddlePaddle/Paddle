@@ -225,7 +225,7 @@ class TestDistRunnerBase:
         )
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        eprint(type(self).__name__, "device_id: %d." % device_id)
+        eprint(type(self).__name__, f"device_id: {device_id}.")
         place = base.CUDAPlace(device_id)
 
         exe = base.Executor(place)
@@ -243,7 +243,7 @@ class TestDistRunnerBase:
             loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
-            print_to_err(type(self).__name__, "run step %d finished" % i)
+            print_to_err(type(self).__name__, f"run step {i} finished")
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
@@ -327,7 +327,7 @@ class TestDistRunnerBase:
                 feed=feeder.feed(get_data()),
             )
             out_losses.append(float(loss))
-            print_to_err(type(self).__name__, "run step %d finished" % i)
+            print_to_err(type(self).__name__, f"run step {i} finished")
         print_to_err(type(self).__name__, "trainer run finished")
         print_to_err(type(self).__name__, f"dist losses: {out_losses}")
 
@@ -421,7 +421,7 @@ class TestDistRunnerBase:
                 feed=feeder.feed(get_data()),
             )
             out_losses.append(float(loss))
-            print_to_err(type(self).__name__, "run step %d finished" % i)
+            print_to_err(type(self).__name__, f"run step {i} finished")
         print_to_err(type(self).__name__, "trainer run finished")
 
         dump_output(out_losses)
@@ -654,7 +654,7 @@ class TestDistRunnerBase:
                 binary, fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
             )
             out_losses.append(float(loss))
-            print_to_err(type(self).__name__, "run step %d finished" % i)
+            print_to_err(type(self).__name__, f"run step {i} finished")
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
@@ -775,7 +775,7 @@ class TestParallelDyGraphRunnerBase:
                 if step_id % 10 == 0:
                     print_to_err(
                         type(self).__name__,
-                        "loss at step %d: %f" % (step_id, loss.numpy()),
+                        f"loss at step {step_id}: {loss.numpy().item():f}",
                     )
                 out_losses.append(loss.numpy())
 
@@ -1128,9 +1128,9 @@ class TestDistBase(unittest.TestCase):
         )
 
         if batch_size != DEFAULT_BATCH_SIZE:
-            cmd += " --batch_size %d" % batch_size
+            cmd += f" --batch_size {batch_size}"
         if batch_merge_repeat > 1:
-            cmd += " --batch_merge_repeat %d" % batch_merge_repeat
+            cmd += f" --batch_merge_repeat {batch_merge_repeat}"
         if self._nccl2_reduce_layer:
             cmd += " --nccl2_reduce_layer_local_run 1"
 

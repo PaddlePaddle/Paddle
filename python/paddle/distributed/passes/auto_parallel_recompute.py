@@ -157,7 +157,7 @@ class RecomputeState(ProgramStats):
             seed_var = self.block.create_var(
                 name=var_unique_name,
                 dtype='int32',
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=False,
             )
@@ -442,7 +442,7 @@ class RecomputePass(PassBase):
         buffer_block = main_block.program._create_block()
         for i, segment in enumerate(segments[::-1]):
             fwd_ops = op_path[segment[0] : segment[1]]
-            var_suffix = ".subprog_%d" % i
+            var_suffix = f".subprog_{i}"
             for op in fwd_ops:
                 input_and_output_names = []
                 input_and_output_names.extend(op.input_arg_names)

@@ -14,12 +14,10 @@
 
 #include "paddle/phi/core/memory/allocation/custom_allocator.h"
 
-#include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
-
-COMMON_DECLARE_bool(custom_device_mem_record);
 
 namespace paddle {
 namespace memory {
@@ -37,14 +35,12 @@ void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
     phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryDeallocate(
         allocation->ptr(), allocation->size());
   }
-  if (FLAGS_custom_device_mem_record) {
-    DEVICE_MEMORY_STAT_UPDATE(
-        Reserved, place_.GetDeviceId(), -allocation->size());
-    platform::RecordMemEvent(allocation->ptr(),
-                             place_,
-                             allocation->size(),
-                             phi::TracerMemEventType::ReservedFree);
-  }
+  DEVICE_MEMORY_STAT_UPDATE(
+      Reserved, place_.GetDeviceId(), -allocation->size());
+  platform::RecordMemEvent(allocation->ptr(),
+                           place_,
+                           allocation->size(),
+                           phi::TracerMemEventType::ReservedFree);
   delete allocation;
 }
 
@@ -54,11 +50,9 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
   void* ptr =
       phi::DeviceManager::GetDeviceWithPlace(place_)->MemoryAllocate(size);
   if (LIKELY(ptr)) {
-    if (FLAGS_custom_device_mem_record) {
-      DEVICE_MEMORY_STAT_UPDATE(Reserved, place_.GetDeviceId(), size);
-      platform::RecordMemEvent(
-          ptr, place_, size, phi::TracerMemEventType::ReservedAllocate);
-    }
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, place_.GetDeviceId(), size);
+    platform::RecordMemEvent(
+        ptr, place_, size, phi::TracerMemEventType::ReservedAllocate);
     return new Allocation(ptr, size, place_);
   }
 

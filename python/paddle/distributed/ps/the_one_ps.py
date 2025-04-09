@@ -1760,6 +1760,12 @@ class TheOnePSRuntime(RuntimeBase):
             self._worker.set_date(table_id, day_id)
         fleet.util.barrier()
 
+    def _print_table_stat(self, table_id, pass_id, threshold):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.print_table_stat(table_id, pass_id, threshold)
+        fleet.util.barrier()
+
     def _shrink(self, threshold=None):
         if threshold is not None:
             warnings.warn(

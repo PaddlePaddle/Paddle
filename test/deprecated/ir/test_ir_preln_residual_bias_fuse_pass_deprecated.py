@@ -27,13 +27,9 @@ class PrelnResidualBiasFusePassTest(PassTest):
         with paddle.static.program_guard(
             self.main_program, self.startup_program
         ):
-            x = paddle.static.data(
-                name="x", shape=[128, 768], dtype="float32", lod_level=0
-            )
+            x = paddle.static.data(name="x", shape=[128, 768], dtype="float32")
             bias = paddle.static.create_parameter(shape=[768], dtype='float32')
-            y = paddle.static.data(
-                name="y", shape=[128, 768], dtype="float32", lod_level=0
-            )
+            y = paddle.static.data(name="y", shape=[128, 768], dtype="float32")
             x = x + bias
             elementwise_out = x + y
             out = paddle.static.nn.layer_norm(input=elementwise_out)
@@ -63,12 +59,8 @@ class PrelnResidualBiasFusePassNoBiasTest(PassTest):
         with paddle.static.program_guard(
             self.main_program, self.startup_program
         ):
-            x = paddle.static.data(
-                name="x", shape=[128, 768], dtype="float32", lod_level=0
-            )
-            y = paddle.static.data(
-                name="y", shape=[128, 768], dtype="float32", lod_level=0
-            )
+            x = paddle.static.data(name="x", shape=[128, 768], dtype="float32")
+            y = paddle.static.data(name="y", shape=[128, 768], dtype="float32")
             elementwise_out = x + y
             out = paddle.static.nn.layer_norm(input=elementwise_out)
 

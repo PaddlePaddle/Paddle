@@ -32,9 +32,32 @@ def foo(x: paddle.Tensor):
     return x
 
 
+def fstring_with_convert_test(x: paddle.Tensor):
+    obj = 42
+    formatted_string = f"{obj!r}"
+    z = assert_true(formatted_string == "42")
+    x = x + 1
+    return x
+
+
+def fstring_with_spec(x: paddle.Tensor):
+    int_num = 42
+    float_num = 3.1415
+    formatted_string = f"{int_num} and {float_num:.2f}"
+    z = assert_true(formatted_string == "42 and 3.14")
+    x = x + 1
+    return x
+
+
 class TestFString(TestCaseBase):
-    def test_fstring(self):
+    def test_f_string(self):
         self.assert_results(foo, paddle.to_tensor(1))
+
+    def test_f_string_with_spec(self):
+        self.assert_results(fstring_with_spec, paddle.to_tensor(1))
+
+    def test_f_string_with_convert_test(self):
+        self.assert_results(fstring_with_convert_test, paddle.to_tensor(1))
 
 
 if __name__ == "__main__":

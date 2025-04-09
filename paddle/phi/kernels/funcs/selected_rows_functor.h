@@ -31,7 +31,7 @@ namespace phi {
 namespace funcs {
 
 // SelectedRows + SelectedRows will simply concat value and rows.
-// The real computation happens in dealing with LoDTensor.
+// The real computation happens in dealing with DenseTensor.
 template <typename DeviceContext, typename T>
 struct SelectedRowsAdd {
   void operator()(const DeviceContext& context,

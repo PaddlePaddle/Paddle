@@ -369,6 +369,6 @@ template void HashTable<unsigned long, paddle::framework::FeatureValue>::update<
 //                          size_t len, XPUStream stream);
 
 #endif
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

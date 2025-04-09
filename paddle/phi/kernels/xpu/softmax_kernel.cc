@@ -52,13 +52,13 @@ void SoftmaxKernel(const Context& dev_ctx,
   if (version == phi::backends::xpu::XPUVersion::XPU1) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     XPUType* clip_x_data_l3 = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
-    r = xpu::clip_v2(dev_ctx.x_context(),
-                     reinterpret_cast<const XPUType*>(x.data<T>()),
-                     clip_x_data_l3,
-                     x.numel(),
-                     static_cast<XPUType>(-1e20),
-                     static_cast<XPUType>(1e20));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
+    r = xpu::clamp(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(x.data<T>()),
+                   clip_x_data_l3,
+                   x.numel(),
+                   static_cast<XPUType>(-1e20),
+                   static_cast<XPUType>(1e20));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clamp");
     r = xpu::softmax<XPUType>(dev_ctx.x_context(),
                               clip_x_data_l3,
                               reinterpret_cast<XPUType*>(out->data<T>()),

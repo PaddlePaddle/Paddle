@@ -54,17 +54,17 @@ class AdamW(Optimizer):
 
     .. math::
 
-        t & = t + 1
-
-        moment\_1\_out & = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad
-
-        moment\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
-
-        learning\_rate & = learning\_rate *
-            \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
-
-        param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
-
+        \begin{aligned}
+            &\hspace{5mm} t = t + 1 \\
+            &\hspace{5mm} moment\_1\_out = {\beta}_1 * moment\_1 + (1 - {\beta}_1) * grad \\
+            &\hspace{5mm} moment\_2\_out = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad \\
+            &\hspace{5mm} learning\_rate = learning\_rate * \frac{\sqrt{1 - {\beta}_2^t}}{1 - {\beta}_1^t} \\
+            &\hspace{5mm}\textbf{if} \: \textit{amsgrad}: \\
+            &\hspace{15mm} moment\_2\_max\_out = max(moment\_2\_out, moment\_2\_max) \\
+            &\hspace{15mm} param\_out = param - learning\_rate * (\frac{moment\_1\_out}{\sqrt{moment\_2\_max\_out} + \epsilon} + \lambda * param) \\
+            &\hspace{5mm}\textbf{else}: \: \\
+            &\hspace{15mm} param\_out = param - learning\_rate * (\frac{moment\_1\_out}{\sqrt{moment\_2\_out} + \epsilon} + \lambda * param) \\
+        \end{aligned}
 
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
@@ -104,6 +104,8 @@ class AdamW(Optimizer):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        amsgrad (bool, optional): Whether to use the AMSGrad variant of this algorithm from the paper
+            `On the Convergence of Adam and Beyond <https://openreview.net/forum?id=ryQu7f-RZ>`_. Default is false.
         name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -165,6 +167,7 @@ class AdamW(Optimizer):
     type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
+    _moment2_acc_max_str = "moment2_max"
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -178,11 +181,13 @@ class AdamW(Optimizer):
             Sequence[Tensor] | Sequence[_AdamParameterConfig] | None
         ) = None,
         weight_decay: float | Tensor = 0.01,
+        use_lowprecision_moment: bool = False,
         lr_ratio: Callable[[Tensor], float] | None = None,
         apply_decay_param_fun: Callable[[str], bool] | None = None,
         grad_clip: GradientClipBase | None = None,
         lazy_mode: bool = False,
         multi_precision: bool = False,
+        amsgrad: bool = False,
         name: str | None = None,
     ) -> None:
         assert learning_rate is not None
@@ -276,6 +281,7 @@ class AdamW(Optimizer):
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
         self._weight_decay = float(weight_decay)
+        self._use_lowprecision_moment = use_lowprecision_moment
         self._grad_clip = grad_clip
         self._lr_ratio = lr_ratio
         self._beta1 = beta1
@@ -284,6 +290,8 @@ class AdamW(Optimizer):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        # whether to use AMSGrad
+        self._amsgrad = amsgrad
 
         self._default_dict = {
             'weight_decay': float(weight_decay),
@@ -307,6 +315,12 @@ class AdamW(Optimizer):
         self._already_create_accumulator = set()
 
         self._create_master_grad_states()
+
+        self._use_fusion_storage = False
+        self._need_refuse = True
+        self.fusion_storage = None
+        self._fuse_buffer_version = 0
+        self.merged_model_params = None
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -358,7 +372,10 @@ class AdamW(Optimizer):
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
-        if self._is_dtype_fp16_or_bf16(acc_dtype):
+        if (
+            self._is_dtype_fp16_or_bf16(acc_dtype)
+            and not self._use_lowprecision_moment
+        ):
             acc_dtype = (
                 DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
             )
@@ -375,12 +392,26 @@ class AdamW(Optimizer):
                 self._add_accumulator(
                     self._moment2_acc_str, p, dtype=core.VarDesc.VarType.FP16
                 )
+                if self._amsgrad:
+                    self._add_accumulator(
+                        self._moment2_acc_max_str,
+                        p,
+                        dtype=core.VarDesc.VarType.FP16,
+                    )
             else:
                 self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
                 self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+                if self._amsgrad:
+                    self._add_accumulator(
+                        self._moment2_acc_max_str, p, dtype=acc_dtype
+                    )
         else:
             self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
             self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+            if self._amsgrad:
+                self._add_accumulator(
+                    self._moment2_acc_max_str, p, dtype=acc_dtype
+                )
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
@@ -391,7 +422,7 @@ class AdamW(Optimizer):
                 else self._beta1
             ),
             shape=[1],
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             device='cpu',
         )
         self._add_accumulator(
@@ -404,7 +435,7 @@ class AdamW(Optimizer):
                 else self._beta2
             ),
             shape=[1],
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             device='cpu',
         )
 
@@ -453,6 +484,13 @@ class AdamW(Optimizer):
         moment2 = self._get_accumulator_master(
             self._moment2_acc_str, param_and_grad[0]
         )
+        moment2_max = (
+            self._get_accumulator_master(
+                self._moment2_acc_max_str, param_and_grad[0]
+            )
+            if self._amsgrad
+            else None
+        )
         beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
@@ -492,12 +530,13 @@ class AdamW(Optimizer):
                 self._get_auxiliary_var('found_inf') if in_pir_mode() else None
             )
 
-            _, _, _, _, _, _ = _C_ops.adamw_(
+            _, _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
                 lr,
                 moment1,
                 moment2,
+                moment2_max,
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
@@ -512,6 +551,7 @@ class AdamW(Optimizer):
                 1000,
                 find_master,
                 False,
+                self._amsgrad,
             )
             return None
         else:
@@ -549,6 +589,7 @@ class AdamW(Optimizer):
                     if self._lr_ratio is None
                     else self._lr_ratio(param_and_grad[0])
                 ),
+                "amsgrad": self._amsgrad,
             }
 
             if isinstance(self._beta1, Variable):
@@ -563,6 +604,10 @@ class AdamW(Optimizer):
                 inputs['EpsilonTensor'] = self._epsilon
             else:
                 attrs['epsilon'] = self._epsilon
+
+            if self._amsgrad:
+                inputs["Moment2Max"] = [moment2_max]
+                outputs["Moment2MaxOut"] = [moment2_max]
 
             if find_master:
                 inputs["MasterParam"] = master_weight

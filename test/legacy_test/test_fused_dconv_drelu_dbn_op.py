@@ -102,7 +102,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
     def get_feed_map(self, inputs, place):
         feed_map = {}
         for name in inputs:
-            tensor = core.LoDTensor()
+            tensor = core.DenseTensor()
             tensor.set(inputs[name], place)
             feed_map[name] = tensor
         return feed_map

@@ -294,7 +294,7 @@ class TestPirConcatDygraph(unittest.TestCase):
             return paddle.concat([paddle.shape(x), y], -1)
 
         x = paddle.ones([2, 2], dtype='float32')
-        y = paddle.ones([2], dtype='int32') * 2
+        y = paddle.ones([2], dtype='int64') * 2
 
         z = func(x, y)
 

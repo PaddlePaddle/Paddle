@@ -22,8 +22,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
+
 namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
@@ -52,6 +54,22 @@ std::vector<pir::Value> add_n_grad(const std::vector<pir::Value>& inputs,
     inputs_grad.push_back(scale_op.result(0));
   }
   return inputs_grad;
+}
+
+pir::Value full(const std::vector<int64_t>& shape,
+                double real,
+                double imag,
+                phi::DataType dtype,
+                const phi::Place& place) {
+  CheckDataType(dtype, "dtype", "full");
+  if (dtype == phi::DataType::COMPLEX64) {
+    dtype = phi::DataType::FLOAT32;
+  } else {
+    dtype = phi::DataType::FLOAT64;
+  }
+  pir::Value real_tmp = full(shape, real, dtype, place);
+  pir::Value imag_tmp = full(shape, imag, dtype, place);
+  return paddle::dialect::complex(real_tmp, imag_tmp);
 }
 
 pir::Value zeros_like(const pir::Value& x,
@@ -329,6 +347,78 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
   }
   return std::make_tuple(fused_gemm_epilogue_op.result(0),
                          fused_gemm_epilogue_op.result(1));
+}
+
+std::tuple<pir::Value, pir::Value, pir::Value> fused_gemm_epilogue_grad(
+    pir::Value x,
+    pir::Value y,
+    paddle::optional<pir::Value> reserve_space,
+    pir::Value out_grad,
+    bool trans_x,
+    bool trans_y,
+    std::string activation_grad) {
+  // AMP Logic
+  if (egr::Controller::Instance().GetCurrentAmpAttrs()->GetAmpLevel() !=
+      paddle::imperative::AmpLevel::O0) {
+    VLOG(5) << "Check and Prepare For AMP: fused_gemm_epilogue_grad";
+    auto op_name = phi::TransToFluidOpName("fused_gemm_epilogue_grad");
+    paddle::small_vector<std::vector<pir::Value>, egr::kSlotSmallVectorSize>
+        amp_values_vector = {{x}, {y}};
+    if (reserve_space) {
+      amp_values_vector.push_back({*reserve_space});
+    }
+
+    auto amp_dst_dtype =
+        paddle::imperative::GetAmpDestDtype(op_name, amp_values_vector);
+    auto new_x =
+        paddle::imperative::AmpAutoCast("x", x, amp_dst_dtype, op_name);
+    auto new_y =
+        paddle::imperative::AmpAutoCast("y", y, amp_dst_dtype, op_name);
+    auto new_reserve_space = paddle::imperative::AmpAutoCast(
+        "reserve_space", reserve_space, amp_dst_dtype, op_name);
+    auto new_out_grad = paddle::imperative::AmpAutoCast(
+        "out_grad", out_grad, amp_dst_dtype, op_name);
+
+    {
+      paddle::imperative::AutoCastGuard guard(
+          egr::Controller::Instance().GetCurrentAmpAttrs(),
+          paddle::imperative::AmpLevel::O0);
+      return paddle::dialect::fused_gemm_epilogue_grad(new_x,
+                                                       new_y,
+                                                       new_reserve_space,
+                                                       new_out_grad,
+                                                       trans_x,
+                                                       trans_y,
+                                                       activation_grad);
+    }
+  }
+
+  // Type Promotion Logic
+  VLOG(5) << " No Type Promotion for fused_gemm_epilogue api. ";
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::AttributeMap attribute_map = {
+      {"trans_x", pir::BoolAttribute::get(ctx, trans_x)},
+      {"trans_y", pir::BoolAttribute::get(ctx, trans_y)},
+      {"activation_grad", pir::StrAttribute::get(ctx, activation_grad)}};
+  paddle::optional<pir::Value> optional_reserve_space;
+  if (!reserve_space) {
+    optional_reserve_space = paddle::make_optional<pir::Value>(pir::Value());
+  } else {
+    optional_reserve_space = reserve_space;
+  }
+  auto fused_gemm_epilogue_grad_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::FusedGemmEpilogueGradOp>(
+              x, y, optional_reserve_space.get(), out_grad, attribute_map);
+  if (!egr::Controller::Instance().HasGrad()) {
+    SetStopGradient(fused_gemm_epilogue_grad_op.result(0),
+                    fused_gemm_epilogue_grad_op.result(1),
+                    fused_gemm_epilogue_grad_op.result(2));
+  }
+  return std::make_tuple(fused_gemm_epilogue_grad_op.result(0),
+                         fused_gemm_epilogue_grad_op.result(1),
+                         fused_gemm_epilogue_grad_op.result(2));
 }
 
 pir::Value array_pop(pir::Value input, int index) {

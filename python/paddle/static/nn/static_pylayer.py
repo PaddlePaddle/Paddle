@@ -223,7 +223,7 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
     current_block = prog.current_block()
 
     if (
-        parent_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+        parent_block_var.type == core.VarDesc.VarType.DENSE_TENSOR_ARRAY
         and current_block._find_var_recursive(parent_block_var.name)
     ):
         current_block_var = parent_block_var
@@ -269,6 +269,11 @@ class PyLayerBackwardFunction:
             input_grads = (input_grads,)
 
         self._hook_check_func(output_grads, input_grads)
+        input_grads = [
+            input_grad
+            for input_grad in flatten(input_grads)
+            if isinstance(input_grad, (paddle.pir.Value, type(None)))
+        ]
 
         return input_grads
 
@@ -369,7 +374,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
 
     if in_pir_mode():
         fwd_inputs = [
-            inp for inp in inputs if isinstance(inp, paddle.pir.Value)
+            inp for inp in flatten(inputs) if isinstance(inp, paddle.pir.Value)
         ]
         pylayer_op = build_pylayer_op(fwd_inputs)
         outputs = None
@@ -404,9 +409,14 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                     for x in flatten(inputs)
                     if isinstance(x, paddle.pir.Value)
                 ]
+                input_grads = [
+                    x
+                    for x in flatten(input_grads)
+                    if isinstance(x, (paddle.pir.Value, type(None)))
+                ]
                 if len(input_grads) != len(forward_inputs):
                     raise ValueError(
-                        f"The number of input grads should be equal to the number of inputs, but got {len(input_grads)} and {len(inputs)}."
+                        f"The number of input grads should be equal to the number of inputs, but got {len(input_grads)} and {len(forward_inputs)}."
                     )
                 for inp_grad, fwd_input in zip(input_grads, forward_inputs):
                     # NOTE: inp_grad will be None if fwd_input.stop_gradients=True

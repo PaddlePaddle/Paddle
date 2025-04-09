@@ -33,8 +33,7 @@ using paddle::framework::compatible::OpUpdateType;
 using paddle::framework::compatible::OpVersion;
 using paddle::framework::compatible::OpVersionDesc;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace {
 using paddle::framework::compatible::PassVersionCheckerRegistrar;
@@ -150,5 +149,4 @@ void BindCompatible(py::module *m) {
   BindOpVersion(m);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -31,7 +31,7 @@ void FrameKernel(const Context& dev_ctx,
   const int n_frames = (axis == 0) ? out->dims()[0] : out->dims()[out_rank - 1];
   const int seq_length = (axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1];
   // When the number of input dims is larger than 2, it needs to copy
-  // from x to resize input into 2d and output into 3d. Morevoer, output
+  // from x to resize input into 2d and output into 3d. Moreover, output
   // dims will be restored at the last step.
   DenseTensor x_tmp = x;
 

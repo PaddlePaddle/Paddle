@@ -99,7 +99,7 @@ class OneDNNContext : public CPUContext {
   using ShapeBlob = umap_key_string_t<KeyBlob>;
   using BlobMap = umap_value_smart_t<int, ShapeBlob>;
 
-  // Auxillary two-level structure (shape, executor) to easier control
+  // Auxiliary two-level structure (shape, executor) to easier control
   // clearing cache objects related to specific executor
 
   using ExecKey = void*;

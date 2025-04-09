@@ -63,7 +63,7 @@ class Graph:
         return self.__str__()
 
     def rank_group(self, kind, priority):
-        name = "rankgroup-%d" % Graph.rank_counter
+        name = f"rankgroup-{Graph.rank_counter}"
         Graph.rank_counter += 1
         rank = Rank(kind, name, priority)
         self.rank_groups[name] = rank
@@ -148,7 +148,7 @@ class Node:
 
     def __init__(self, label, prefix, description="", **attrs):
         self.label = label
-        self.name = "%s_%d" % (prefix, Node.counter)
+        self.name = f"{prefix}_{Node.counter}"
         self.description = description
         self.attrs = attrs
         Node.counter += 1

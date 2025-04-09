@@ -23,16 +23,30 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 import paddle
 
 from ....profiler import event_register
-from ....utils import NameGenerator, get_unbound_method, log
+from ....utils import (
+    NameGenerator,
+    get_unbound_method,
+    log,
+)
 from ....utils.exceptions import FallbackError, HasNoAttributeError
 from ..dispatcher import Dispatcher
-from ..guard import StringifiedExpression, check_guard, union_free_vars
+from ..guard import (
+    FasterStringifiedExpression,
+    StringifiedExpression,
+    check_faster_guard,
+    check_guard,
+    union_free_vars,
+)
 from ..mutable_data import MutableDictLikeData
 from ..tracker import (
+    BuiltinTracker,
+    ConstTracker,
     DummyTracker,
     GetAttrTracker,
     GetItemTracker,
     GetIterTracker,
+    GlobalTracker,
+    LocalTracker,
     Tracker,
 )
 
@@ -220,8 +234,6 @@ class VariableFactory:
         value: Any,
         graph: FunctionGraph,
         tracker: Tracker,
-        *,
-        debug_name: str | None = None,
     ) -> VariableBase:
         """
         Create a new variable object from the given value.
@@ -234,7 +246,6 @@ class VariableFactory:
             value (Any): The input value.
             graph (FunctionGraph): The FunctionGraph object that this variable is associated with.
             tracker (Tracker): The Tracker object that tracks the information of this variable.
-            debug_name (str | None): An optional debug name for the variable.
 
         Returns:
             VariableBase: A new variable object representing the input value.
@@ -261,8 +272,20 @@ class VariableFactory:
             var = VariableFactory.default_from_value(
                 value, graph, tracker
             )  # If a Variable could not be found using the registered functions, use the default function to create a new Variable
-        var.debug_name = debug_name
         return var
+
+
+def infer_debug_name_from_tracker(tracker: Tracker) -> str:
+    res = None
+    if isinstance(tracker, (LocalTracker, GlobalTracker, BuiltinTracker)):
+        res = f"{tracker.name}"
+    elif isinstance(tracker, ConstTracker):
+        res = f"{tracker.value}"
+    elif isinstance(tracker, GetItemTracker) and tracker.container.debug_name:
+        res = f"{tracker.container.debug_name}[{tracker.key}]"
+    elif isinstance(tracker, GetAttrTracker) and tracker.obj.debug_name:
+        res = f"{tracker.obj.debug_name}.{tracker.attr}"
+    return res
 
 
 class VariableBase:
@@ -291,10 +314,11 @@ class VariableBase:
     mutable_attrs = []
 
     def __init__(self, graph: FunctionGraph, tracker: Tracker):
+
         self.graph = graph
         self.tracker = tracker
         self.id = VariableBase.name_generator.next()
-        self._debug_name: str | None = None
+        self.debug_name = infer_debug_name_from_tracker(tracker)
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -311,47 +335,25 @@ class VariableBase:
         """
         Property method to return a dictionary of debug information about the variable
         """
-        return {
-            "debug_name": self.debug_name,
+        info = {
             "id": self.id,
         }
-
-    @property
-    def debug_name(self) -> str:
-        """
-        Generate a debug_name for each variable.
-
-        Returns:
-            _debug_name: the name of variable.
-        """
-        if self._debug_name is not None:
-            # Return the self._debug_name cache if it is not None.
-            return self._debug_name
-        inputs = self.tracker.inputs
-        if isinstance(self.tracker, GetItemTracker):
-            self._debug_name = (
-                f"{self.tracker.container.debug_name}[{self.tracker.key}]"
-            )
-        elif isinstance(self.tracker, GetAttrTracker):
-            self._debug_name = (
-                f"{self.tracker.obj.debug_name}.{self.tracker.attr}"
-            )
-        elif len(inputs) == 0:
-            self._debug_name = "tmp_var"
-        else:  # len(inputs) >= 0
-            for input in inputs:
-                assert input is not None
-            self._debug_name = "tmp_var_" + "_".join(
-                input.debug_name for input in inputs
-            )
-        return self._debug_name
-
-    @debug_name.setter
-    def debug_name(self, name):
-        self._debug_name = name
+        if self.debug_name:
+            info["debug_name"] = self.debug_name
+        return info
 
     def __hash__(self):
         return hash(self.id)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                frame_value_tracer,
+            )
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -364,18 +366,13 @@ class VariableBase:
 
         # Get a ValueTracer object from the Tracker object associated with the variable
         frame_value_tracer = self.tracker.trace_value_from_frame()
-
         return [
-            StringifiedExpression(
-                f"id(type({{}})) == {id(self.get_py_type())}",
+            FasterStringifiedExpression(
+                f"id(type({{0}})) == {id(self.get_py_type())} and {{0}} == {self.get_py_value()!r}",
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
-            ),
-            StringifiedExpression(
-                f"{{}} == {self.get_py_value()!r}",
-                [frame_value_tracer],
-                union_free_vars(frame_value_tracer.free_vars),
-            ),
+            )
         ]
 
     def get_py_value(self, allow_tensor=False) -> Any:
@@ -418,21 +415,14 @@ class VariableBase:
             f'{self.__class__.__name__} does not implement "_reconstruct" method'
         )
 
-    def flatten_items(self) -> list[VariableBase]:
+    def flatten_inner_vars(self) -> list[VariableBase]:
         """
         Recursively flatten the items in this container variable to a list of Variable objects.
 
         Returns:
             list[VariableBase]: Flattened items of a container variable.
         """
-        from .container import ContainerVariable
-
-        if not isinstance(self, ContainerVariable):
-            return [self]
-        flattened_items = []
-        for item in self.get_items():
-            flattened_items.extend(item.flatten_items())
-        return flattened_items
+        return [self]
 
     def get_inputs(self) -> list[VariableBase]:
         """
@@ -496,7 +486,6 @@ class VariableBase:
                 fn=fn,
                 graph=self.graph,
                 tracker=GetAttrTracker(self, name),
-                method_name=name,
             )
 
         return VariableFactory.from_value(
@@ -616,9 +605,35 @@ class VariableBase:
         return output
 
     def get_iter(self):
-        from .iter import UserDefinedIterVariable
+        from . import (
+            BuiltinVariable,
+            ConstantVariable,
+            SequenceIterVariable,
+            UserDefinedFunctionVariable,
+            UserDefinedIterVariable,
+        )
 
-        return UserDefinedIterVariable(self, self.graph, GetIterTracker(self))
+        if not hasattr(self.value, "__iter__"):
+            return UserDefinedIterVariable(
+                self, self.graph, GetIterTracker(self)
+            )
+        iter_name_var = ConstantVariable.wrap_literal("__iter__", self.graph)
+        iter_method = BuiltinVariable(
+            getattr, graph=self.graph, tracker=DummyTracker([self])
+        )(self, iter_name_var)
+        # If the target object is a builtin object like list_iterator, the iter_method's fn will be a ObjectVariable instead of UserDefinedFunctionVariable.
+        if not isinstance(iter_method.fn, UserDefinedFunctionVariable):
+            return UserDefinedIterVariable(
+                self, self.graph, GetIterTracker(self)
+            )
+        iter_result = iter_method()
+
+        if not isinstance(iter_result, SequenceIterVariable):
+            return UserDefinedIterVariable(
+                self, self.graph, GetIterTracker(self)
+            )
+
+        return iter_result
 
     @VariableFactory.register_from_value()
     def from_value(

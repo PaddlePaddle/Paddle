@@ -551,6 +551,50 @@ class TestStackDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestIndexSelectDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [2, 2, 2, 2]
+        axis = 2
+        index_shape = [3]
+        dtype = np.float64
+
+        x = paddle.static.data('x', x_shape, dtype)
+        x.persistable = True
+        x.stop_gradient = False
+        index = paddle.static.data('index', index_shape, 'int64')
+        index.persistable = True
+        out = paddle.index_select(x, index, axis)
+
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+        index_arr = np.random.uniform(
+            -x_shape[axis], x_shape[axis], index_shape
+        ).astype('int64')
+        gradient_checker.double_grad_check(
+            [x, index], out, x_init=[x_arr, index_arr], place=place
+        )
+
+        def index_select_wrapper(args):
+            return paddle.index_select(*args, axis=axis)
+
+        gradient_checker.double_grad_check_for_dygraph(
+            index_select_wrapper,
+            [x, index],
+            out,
+            x_init=[x_arr, index_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        places = []
+        # free(): invalid next size (fast) may occurs when
+        # execute in CPU
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestAvgPool2DDoubleGradCheckCase1(unittest.TestCase):
 
     @prog_scope()

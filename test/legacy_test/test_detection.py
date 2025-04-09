@@ -235,7 +235,7 @@ class TestDistributeFpnProposals(LayerTest):
         program = Program()
         with program_guard(program):
             fpn_rois = paddle.static.data(
-                name='data_error', shape=[10, 4], dtype='int32', lod_level=1
+                name='data_error', shape=[10, 4], dtype='int32'
             )
             rois_num = paddle.static.data(
                 name='rois_num', shape=[None], dtype='int32'
@@ -258,7 +258,6 @@ class TestDistributeFpnProposals(LayerTest):
                 name='min_max_level_error1',
                 shape=[10, 4],
                 dtype='float32',
-                lod_level=1,
             )
             self.assertRaises(
                 AssertionError,
@@ -277,7 +276,6 @@ class TestDistributeFpnProposals(LayerTest):
                 name='min_max_level_error2',
                 shape=[10, 4],
                 dtype='float32',
-                lod_level=1,
             )
             self.assertRaises(
                 AssertionError,
@@ -296,7 +294,6 @@ class TestDistributeFpnProposals(LayerTest):
                 name='min_max_level_error3',
                 shape=[10, 4],
                 dtype='float32',
-                lod_level=1,
             )
             self.assertRaises(
                 AssertionError,

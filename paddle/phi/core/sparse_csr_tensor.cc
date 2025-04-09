@@ -160,4 +160,16 @@ void SparseCsrTensor::set_meta(const SparseTensorMeta& meta) {
   meta_.dtype = meta.dtype;
   meta_.layout = meta.layout;
 }
+
+int32_t SparseCsrTensor::sparse_dim() const { return 2; }
+
+int32_t SparseCsrTensor::dense_dim() const {
+  int32_t nze_dim = this->non_zero_elements_.dims().size();
+  int32_t batch_dim = this->non_zero_crows_.dims().size() - 1;
+  // layout of SparseCsrTensor has not been implemented yet
+  // int32_t block_dim =  = (layout_ == kSparseBsr || layout_ == kSparseBsc ? 2
+  // : 0);
+  int32_t block_dim = 0;
+  return nze_dim - batch_dim - block_dim - 1;
+}
 }  // namespace phi

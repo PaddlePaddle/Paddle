@@ -443,7 +443,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     int* parent_idx_data =
         parent_idx ? context.template Alloc<int>(parent_idx) : nullptr;
 
-    phi::LoD selected_lod(2);
+    phi::LegacyLoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
     phi::MixVector<size_t> mix_vector(&selected_lod[1]);
@@ -511,7 +511,7 @@ class BeamSearchFunctor<phi::GPUContext, T> {
 
     context.Wait();
     mix_vector.CopyToCPU();
-    if (!CheckLoD(selected_lod)) {
+    if (!CheckLegacyLoD(selected_lod)) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "lod %s is not right in"
           " beam_search, please check your code.",

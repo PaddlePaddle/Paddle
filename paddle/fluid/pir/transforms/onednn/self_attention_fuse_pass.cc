@@ -158,7 +158,7 @@ class SelfAttentionFusePattern : public paddle::drr::DrrPatternBase {
 class SelfAttentionFusePass : public pir::PatternRewritePass {
  public:
   SelfAttentionFusePass()
-      : pir::PatternRewritePass("self_attention_fuse_pass", 3) {}
+      : pir::PatternRewritePass("self_attention_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

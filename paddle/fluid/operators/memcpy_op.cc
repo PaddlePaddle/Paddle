@@ -45,9 +45,9 @@ class MemcpyOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::SELECTED_ROWS ||
-        type == framework::proto::VarType::LOD_TENSOR) {
+        type == framework::proto::VarType::DENSE_TENSOR) {
       ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-      if (type == framework::proto::VarType::LOD_TENSOR) {
+      if (type == framework::proto::VarType::DENSE_TENSOR) {
         ctx->ShareLoD("X", /*->*/ "Out");
       }
     }

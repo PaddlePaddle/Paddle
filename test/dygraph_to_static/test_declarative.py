@@ -115,7 +115,7 @@ class TestStaticFunctionInstance(Dy2StTestBase):
         self.assertTrue(isinstance(net_2.forward, StaticFunction))
         self.assertNotEqual(net_1.forward, net_2.forward)
 
-        # convert layer into static progam of net_1
+        # convert layer into static program of net_1
         net_1.forward.concrete_program  # noqa: B018
         self.assertTrue(len(net_1.forward.program_cache) == 1)
         # check no conversion applid with net_2
@@ -163,7 +163,7 @@ class TestInputSpec(Dy2StTestBase):
         # 6. test input with dict
         out = net.func_with_dict({'x': x, 'y': y})
 
-        # 7. test input with lits contains dict
+        # 7. test input with list contains dict
         int_np = np.ones([1]).astype('float32')
         out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
@@ -174,7 +174,7 @@ class TestInputSpec(Dy2StTestBase):
 
         net = SimpleNet()
 
-        # 1. kwargs and input_spec should not be specificed in same time
+        # 1. kwargs and input_spec should not be specified in same time
         with self.assertRaises(ValueError):
             net(x, a=1, other_kwarg=2)
 

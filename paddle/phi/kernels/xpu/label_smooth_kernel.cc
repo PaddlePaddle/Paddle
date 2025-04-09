@@ -34,13 +34,7 @@ void LabelSmoothKernel(const Context& ctx,
                                  label.numel(),
                                  epsilon,
                                  label_dim);
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        common::errors::External("XPU API(label_smooth) return wrong "
-                                 "value[%d %s]",
-                                 r,
-                                 XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "label_smooth");
   }
 }
 }  // namespace phi

@@ -18,6 +18,7 @@ from paddle.framework.dtype import bind_datatype, bind_vartype
 
 
 def _switch_to_pir_():
+    bind_datatype()
     paddle.base.framework.global_var._use_pir_api_ = True
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
     paddle.pir.register_paddle_dialect()
@@ -39,6 +40,7 @@ def _switch_to_pir_():
 
 
 def _switch_to_old_ir_():
+    bind_vartype()
     paddle.base.framework.global_var._use_pir_api_ = False
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": False})
 
@@ -71,7 +73,6 @@ class IrGuard:
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
             paddle.base.framework.global_var._use_pir_api_ = True
-            bind_datatype()
             self._switch_to_pir()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -80,7 +81,6 @@ class IrGuard:
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
             paddle.base.framework.global_var._use_pir_api_ = False
-            bind_vartype()
             self._switch_to_old_ir()
 
     def _switch_to_pir(self):
@@ -111,8 +111,6 @@ class OldIrGuard:
             paddle.enable_static()
         if self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
-            paddle.base.framework.global_var._use_pir_api_ = False
-            bind_vartype()
             _switch_to_old_ir_()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -120,8 +118,6 @@ class OldIrGuard:
             paddle.disable_static()
         if self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
-            paddle.base.framework.global_var._use_pir_api_ = True
-            bind_datatype()
             _switch_to_pir_()
 
 
@@ -132,15 +128,11 @@ class DygraphPirGuard:
         ]
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
-            paddle.base.framework.global_var._use_pir_api_ = True
-            bind_datatype()
             self._switch_to_pir()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
-            paddle.base.framework.global_var._use_pir_api_ = False
-            bind_vartype()
             self._switch_to_old_ir()
 
     def _switch_to_pir(self):
@@ -168,15 +160,11 @@ class DygraphOldIrGuard:
         ]
         if self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": False})
-            paddle.base.framework.global_var._use_pir_api_ = False
-            bind_vartype()
             _switch_to_old_ir_()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.old_flag:
             paddle.framework.set_flags({"FLAGS_enable_pir_api": True})
-            paddle.base.framework.global_var._use_pir_api_ = True
-            bind_datatype()
             _switch_to_pir_()
 
 

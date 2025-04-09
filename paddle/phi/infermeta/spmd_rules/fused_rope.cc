@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using auto_parallel::str_join;
 const int kNumHeadsDimIndex = 2;
@@ -571,5 +570,4 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
   return {dist_attrs, spmd_info.second};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

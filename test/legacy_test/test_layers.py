@@ -399,6 +399,7 @@ class TestLayer(LayerTest):
             a = paddle.static.data(name='a', shape=[-1, 1], dtype='int64')
             b = paddle.static.data(name='b', shape=[-1, 1], dtype='int64')
             cond = paddle.less_than(x=a, y=b)
+            cond_ = paddle.less(x=a, y=b)
             static_ret = self.get_static_graph_result(
                 feed={"a": value_a, "b": value_b}, fetch_list=[cond]
             )[0]
@@ -406,9 +407,11 @@ class TestLayer(LayerTest):
             da = paddle.to_tensor(value_a)
             db = paddle.to_tensor(value_b)
             dcond = paddle.less_than(x=da, y=db)
+            dcond_ = paddle.less(x=da, y=db)
 
             for i in range(len(static_ret)):
                 self.assertTrue(dcond.numpy()[i] == static_ret[i])
+                self.assertTrue(dcond_.numpy()[i] == static_ret[i])
 
         # less equal
         with self.static_graph():

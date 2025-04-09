@@ -88,7 +88,7 @@ def sequence_mask(
     Args:
         x (Variable): Input tensor of sequence_mask layer, \
             whose elements are integers less than :code:`maxlen`. \
-            Tensor or LodTensor with shape [d_1, d_2, ..., d_n].
+            Tensor with shape [d_1, d_2, ..., d_n].
         maxlen (int|None, optional): Maximum length of the sequence. If :code:`maxlen` \
                            is None, it would be replace with :math:`max(x)`.
         dtype (np.dtype|paddle.dtype|str, optional): Data type of the output, \

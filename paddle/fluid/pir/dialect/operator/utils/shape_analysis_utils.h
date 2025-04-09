@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include "paddle/pir/include/dialect/shape/utils/original_attributes_filter.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace paddle {
 namespace dialect {
+std::unordered_map<std::string, std::set<std::string>>
+GetAllOpOriginalAttributes();
 
 const symbol::ShapeOrDataDimExprs& GetInputShape(
     const pir::InferSymbolicShapeContext* infer_context,

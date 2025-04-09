@@ -108,7 +108,6 @@ class cus_tanh_2(PyLayer):
 class cus_tanh_3(PyLayer):
     @staticmethod
     def forward(ctx, x1, x2, func1, func2=paddle.square):
-        ctx.func = func2
         y1 = func1(x1)
         y2 = func1(x2)
         ctx.save_for_backward(y1, y2)
@@ -117,7 +116,7 @@ class cus_tanh_3(PyLayer):
     @staticmethod
     def backward(ctx, dy1, dy2):
         y1, y2 = ctx.saved_tensor()
-        re1 = dy1 * (1 - ctx.func(y1))
+        re1 = dy1 * (1 - paddle.square(y1))
         re2 = dy2 * (1 - paddle.square(y2))
         return re1, None
 
@@ -286,7 +285,11 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
 
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
-        self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
+        self.place = "cpu"
+        if paddle.is_compiled_with_cuda():
+            self.place = "gpu"
+        if paddle.is_compiled_with_xpu():
+            self.place = "xpu"
         self.to_static: bool = False
 
     def _run(self, *input_args, **input_kwargs):
@@ -510,15 +513,8 @@ class TestPyLayerWithContext(TestPyLayerBase):
 
         self.run_in_pir = False
         self._run_and_compare(input1, input2)
-
-        # TODO(MarioLulab): pylayer_op.backward have not supported return `None` yet. Will be supported soon.
-        with self.assertRaises(Exception) as e:
-            self.run_in_pir = True
-            self._run_and_compare(input1, input2)
-        self.assertTrue(
-            "pylayer_op.backward have not supported return `None` yet. Will be supported soon."
-            in str(e.exception)
-        )
+        self.run_in_pir = True
+        self._run_and_compare(input1, input2)
 
     def test_simple_pylayer_return_none(self):
         @paddle.jit.to_static(full_graph=True)
@@ -618,7 +614,11 @@ class TestPyLayerInsideNet(TestPyLayerBase):
 
 class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
-        self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
+        self.place = "cpu"
+        if paddle.is_compiled_with_cuda():
+            self.place = "gpu"
+        if paddle.is_compiled_with_xpu():
+            self.place = "xpu"
 
     def _run_train(
         self, to_static: bool, layer_builder, build_strategy=None, in_pir=True
@@ -783,6 +783,199 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         infer_layer_result = infer_layer(x).numpy()
 
         np.testing.assert_array_equal(train_layer_result, infer_layer_result)
+
+
+class PyLayerWrongUsage(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        ctx.x = x
+        x1 = paddle.tanh(x)
+        return x1
+
+    @staticmethod
+    def backward(ctx, grad):
+        x = ctx.x
+        x_grad = grad * (1 - paddle.square(x))
+        return x_grad
+
+
+class PyLayerWrongUsageWrapper(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.layer = PyLayerWrongUsage()
+
+    def forward(self, x):
+        return PyLayerWrongUsage.apply(x)
+
+
+class TestPyLayerWrongUsage(unittest.TestCase):
+    def test_wrong_usage(self):
+        layer = PyLayerWrongUsageWrapper()
+        static_layer = paddle.jit.to_static(layer, full_graph=True)
+        x = paddle.to_tensor(np.random.random((1, 784)).astype('float32'))
+        with self.assertRaisesRegex(
+            AttributeError,
+            r"`ctx.x = tensor` is not allowed in static mode, please use `ctx.save_for_backward\(tensor\)` instead.",
+        ):
+            static_layer(x)
+
+
+class NestedStructurePyLayer(PyLayer):
+    @staticmethod
+    def forward(ctx, x, y):
+        ctx.save_for_backward(x, y)
+        x1 = paddle.tanh(x[0])
+        y1 = paddle.tanh(x[1])
+        z1 = paddle.tanh(y)
+        return [x1, y1, z1]
+
+    @staticmethod
+    def backward(ctx, *grad1):
+        x0, x1 = ctx.saved_tensor()
+        x_grad = grad1[0] * (1 - paddle.square(x0[0]))
+        y_grad = grad1[1] * (1 - paddle.square(x0[1]))
+        z_grad = grad1[2] * (1 - paddle.square(x1))
+
+        return [x_grad, y_grad], z_grad
+
+
+class NestedStructurePyLayerModel(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.w0 = self.create_parameter(shape=[42, 42])
+        self.w1 = self.create_parameter(shape=[42, 42])
+        self.w2 = self.create_parameter(shape=[42, 42])
+
+    def forward(self, x):
+        y1 = paddle.matmul(x, self.w0)
+        y2 = paddle.matmul(x, self.w1)
+        y3 = paddle.matmul(x, self.w2)
+
+        z = NestedStructurePyLayer.apply([y1, y2], y3)
+        return z[0] + z[1] + z[2]
+
+
+class TestNestedStructurePyLayer(unittest.TestCase):
+    def test_nested_structure(self):
+        input = paddle.randn([2, 42]).astype("float32")
+        input.stop_gradient = False
+
+        model = NestedStructurePyLayerModel()
+        dygraph_res = model(input)
+        dygraph_res.backward()
+        dygraph_input_grads = [
+            paddle.assign(input.grad),
+            paddle.assign(model.w0.grad),
+            paddle.assign(model.w1.grad),
+            paddle.assign(model.w2.grad),
+        ]
+        input.clear_grad()
+        model.w0.clear_grad()
+        model.w1.clear_grad()
+        model.w2.clear_grad()
+
+        static_model = paddle.jit.to_static(model, full_graph=True)
+        static_res = static_model(input)
+        static_res.backward()
+        static_input_grads = [
+            paddle.assign(input.grad),
+            paddle.assign(model.w0.grad),
+            paddle.assign(model.w1.grad),
+            paddle.assign(model.w2.grad),
+        ]
+        input.clear_grad()
+        model.w0.clear_grad()
+        model.w1.clear_grad()
+        model.w2.clear_grad()
+        for i, (dygraph_grad, static_grad) in enumerate(
+            zip(dygraph_input_grads, static_input_grads)
+        ):
+            np.testing.assert_allclose(
+                dygraph_grad.numpy(),
+                static_grad.numpy(),
+                rtol=1e-5,
+                atol=0,
+                err_msg=f"dygraph_grad[{i}]: {dygraph_grad} \n static_grad[{i}]: {static_grad}",
+            )
+
+
+class NestedStructureWithNonePyLayer(PyLayer):
+    @staticmethod
+    def forward(ctx, x, y):
+        ctx.save_for_backward(x, y)
+        x1 = paddle.tanh(x[0])
+        y1 = paddle.tanh(x[1])
+        z1 = paddle.tanh(y)
+        return [x1, y1, z1]
+
+    @staticmethod
+    def backward(ctx, *grad1):
+        x0, x1 = ctx.saved_tensor()
+        x_grad = grad1[0] * (1 - paddle.square(x0[0]))
+        z_grad = grad1[2] * (1 - paddle.square(x1))
+
+        return [x_grad, None], z_grad
+
+
+class NestedStructureWithNonePyLayerModel(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.w0 = self.create_parameter(shape=[42, 42])
+        self.w1 = self.create_parameter(shape=[42, 42])
+        self.w2 = self.create_parameter(shape=[42, 42])
+
+    def forward(self, x):
+        y1 = paddle.matmul(x, self.w0)
+        y2 = paddle.matmul(x, self.w1)
+        y2.stop_gradient = True
+        y3 = paddle.matmul(x, self.w2)
+
+        z = NestedStructurePyLayer.apply([y1, y2], y3)
+        return z[0] + z[1] + z[2]
+
+
+class TestNestedStructureWithNonePyLayer(unittest.TestCase):
+    def test_nested_structure(self):
+        input = paddle.randn([2, 42]).astype("float32")
+        input.stop_gradient = False
+
+        model = NestedStructurePyLayerModel()
+        dygraph_res = model(input)
+        dygraph_res.backward()
+        dygraph_input_grads = [
+            paddle.assign(input.grad),
+            paddle.assign(model.w0.grad),
+            paddle.assign(model.w1.grad),
+            paddle.assign(model.w2.grad),
+        ]
+        input.clear_grad()
+        model.w0.clear_grad()
+        model.w1.clear_grad()
+        model.w2.clear_grad()
+
+        static_model = paddle.jit.to_static(model, full_graph=True)
+        static_res = static_model(input)
+        static_res.backward()
+        static_input_grads = [
+            paddle.assign(input.grad),
+            paddle.assign(model.w0.grad),
+            paddle.assign(model.w1.grad),
+            paddle.assign(model.w2.grad),
+        ]
+        input.clear_grad()
+        model.w0.clear_grad()
+        model.w1.clear_grad()
+        model.w2.clear_grad()
+        for i, (dygraph_grad, static_grad) in enumerate(
+            zip(dygraph_input_grads, static_input_grads)
+        ):
+            np.testing.assert_allclose(
+                dygraph_grad.numpy(),
+                static_grad.numpy(),
+                rtol=1e-5,
+                atol=0,
+                err_msg=f"dygraph_grad[{i}]: {dygraph_grad} \n static_grad[{i}]: {static_grad}",
+            )
 
 
 if __name__ == "__main__":

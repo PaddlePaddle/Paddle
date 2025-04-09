@@ -58,25 +58,23 @@ class Poisson(distribution.Distribution):
             >>> rv = Poisson(paddle.to_tensor(30.0))
 
             >>> print(rv.sample([3]))
-            Tensor(shape=[3, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[35.],
-             [35.],
-             [30.]])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [32., 27., 25.])
 
             >>> print(rv.mean)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             30.)
 
             >>> print(rv.entropy())
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [3.11671066])
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.11671519)
 
             >>> rv1 = Poisson(paddle.to_tensor([[30.,40.],[8.,5.]]))
             >>> rv2 = Poisson(paddle.to_tensor([[1000.,40.],[7.,10.]]))
             >>> print(rv1.kl_divergence(rv2))
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[864.80285645, 0.          ],
-             [0.06825157  , 1.53426421  ]])
+            [[864.80499268, 0.          ],
+             [0.06825146  , 1.53426409  ]])
     """
 
     rate: Tensor
@@ -86,10 +84,7 @@ class Poisson(distribution.Distribution):
         self.dtype = paddle.get_default_dtype()
         self.rate = self._to_tensor(rate)
 
-        if self.rate.shape == []:
-            batch_shape = (1,)
-        else:
-            batch_shape = self.rate.shape
+        batch_shape = self.rate.shape
         super().__init__(batch_shape)
 
     def _to_tensor(self, rate: float | Tensor) -> Tensor:
@@ -123,7 +118,7 @@ class Poisson(distribution.Distribution):
         """
         return self.rate
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate poisson samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:

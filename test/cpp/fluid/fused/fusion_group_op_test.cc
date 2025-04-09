@@ -67,13 +67,13 @@ framework::OpDesc* CreateFusionGroupOp(
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto* var = program->MutableBlock(0)->Var(input_names[i]);
-    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetType(framework::proto::VarType::DENSE_TENSOR);
     var->SetDataType(framework::proto::VarType::FP32);
     var->SetShape(input_shapes[i]);
   }
   for (const auto& output_name : output_names) {
     auto* var = program->MutableBlock(0)->Var(output_name);
-    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetType(framework::proto::VarType::DENSE_TENSOR);
     var->SetDataType(framework::proto::VarType::FP32);
   }
 

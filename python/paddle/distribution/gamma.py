@@ -177,7 +177,7 @@ class Gamma(exponential_family.ExponentialFamily):
             + (1.0 - self.concentration) * paddle.digamma(self.concentration)
         )
 
-    def sample(self, shape: Sequence[int] = ()) -> Tensor:
+    def sample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -189,7 +189,7 @@ class Gamma(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
+    def rsample(self, shape: Sequence[int] = []) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:

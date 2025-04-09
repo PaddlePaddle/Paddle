@@ -71,7 +71,7 @@ class AttrTypeWriter {
  * If the pir type has value, it should have a data() method,
  * which returns the value of type. The data() method is better
  * suited to return TYPE  which supported by json like std::vector,
- * std::string, int, float and so on. if not, serailizeTypeToJson
+ * std::string, int, float and so on. if not, serializeTypeToJson
  * need to be specialized.
  */
 
@@ -95,7 +95,7 @@ Json serializeTypeToJson(const T& type) {
  * It also need have a data() method, which returns the value of
  * attribute. The data() method is better suited to return TYPE
  * which supported by json like std::vector, std::string, int,
- * float and so on. if not, serailizeAttrToJson
+ * float and so on. if not, serializeAttrToJson
  * need to be specialized.
  */
 
@@ -264,6 +264,11 @@ Json writeType(const pir::Type& type) {
 SERIALIZE_ATTR_TO_JSON(pir::TypeAttribute, writeType(attr.data()));
 
 Json writeAttr(const pir::Attribute& attr) {
+  if (!attr) {
+    Json attr_json = Json::object();
+    attr_json[ID] = NULL_TYPE;
+    return attr_json;
+  }
   if (attr.dialect().name() == pir::BuiltinDialect::name()) {
     VLOG(8) << "write BuiltinAttr ... ";
     return AttrTypeWriter::WriteBuiltInAttr(attr);
@@ -415,7 +420,7 @@ Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(false,
                    common::errors::InvalidArgument(
-                       "Unknown Attr %s when write Buitin dialect attr"));
+                       "Unknown Attr %s when write Builtin dialect attr"));
   }
   return attr_json;
 }
@@ -602,6 +607,14 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write IndexType ... ";
     return pir::serializeTypeToJson<pir::IndexType>(
         type.dyn_cast<pir::IndexType>());
+  } else if (type.isa<pir::Float8E4M3FNType>()) {
+    VLOG(8) << "Write Float8E4M3FNType ... ";
+    return pir::serializeTypeToJson<pir::Float8E4M3FNType>(
+        type.dyn_cast<pir::Float8E4M3FNType>());
+  } else if (type.isa<pir::Float8E5M2Type>()) {
+    VLOG(8) << "Write Float8E5M2Type ... ";
+    return pir::serializeTypeToJson<pir::Float8E5M2Type>(
+        type.dyn_cast<pir::Float8E5M2Type>());
   } else if (type.isa<pir::Complex64Type>()) {
     VLOG(8) << "Write Complex64Type ... ";
     return pir::serializeTypeToJson<pir::Complex64Type>(

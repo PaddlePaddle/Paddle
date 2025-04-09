@@ -112,6 +112,13 @@ static void RaiseNonOutOfMemoryError(int status) {
   PADDLE_ENFORCE_XRE_SUCCESS(status);
 }
 
+void EmptyCache() {
+  std::vector<int> devices = GetXPUSelectedDevices();
+  for (auto device : devices) {
+    memory::Release(phi::XPUPlace(device));
+  }
+}
+
 class RecordedXPUMallocHelper {
  private:
   explicit RecordedXPUMallocHelper(int dev_id, uint64_t limit_size = 0)

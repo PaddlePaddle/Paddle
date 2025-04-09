@@ -86,8 +86,19 @@ class FusionOpInfo {
 
  private:
   OperationInfo op_info_;
-  // oprand_source id : OperationInfo hash
+  // operand_source id : OperationInfo hash
   std::map<size_t, OpDepInfo> inner_deps_;
+};
+
+class ProgramInfo {
+ public:
+  explicit ProgramInfo(const ::pir::Program &program);
+
+  std::size_t hash() const;
+  friend std::ostream &operator<<(std::ostream &os, const ProgramInfo &info);
+
+ private:
+  uint64_t id_;
 };
 
 class FusionInfo {
@@ -109,9 +120,11 @@ class FusionInfo {
  private:
   void ParseOpInfos(const OpLoweringGroup &group);
   void ParseInputDimExprs(const OpLoweringGroup &group);
+  void ParseProgramInfo(const OpLoweringGroup &group);
 
   std::vector<FusionOpInfo> op_infos_;
   std::vector<::symbol::ShapeOrDataDimExprs> input_dim_exprs_;
+  std::shared_ptr<ProgramInfo> program_info_;
   std::size_t cached_hash_value_{0};
 
   // Used to make same subgraphs have unique FusionInfo while
@@ -149,10 +162,11 @@ namespace std {
     }                                                              \
   };
 
-REGISTER_STD_HASH(AttributeInfo);
-REGISTER_STD_HASH(ValueInfo);
-REGISTER_STD_HASH(OperationInfo);
+REGISTER_STD_HASH(AttributeInfo)
+REGISTER_STD_HASH(ValueInfo)
+REGISTER_STD_HASH(OperationInfo)
 REGISTER_STD_HASH(OpDepInfo)
-REGISTER_STD_HASH(FusionOpInfo);
+REGISTER_STD_HASH(FusionOpInfo)
+REGISTER_STD_HASH(ProgramInfo)
 REGISTER_STD_HASH(FusionInfo)
 }  // namespace std

@@ -75,6 +75,22 @@ class ParameterChecks(unittest.TestCase):
             pram_copy2 = copy.deepcopy(param, memo)
             self.assertEqual(id(param_copy), id(pram_copy2))
 
+    def test_create_0_size_param(self):
+        with guard():
+            shape = [0, 4]
+            for dtype in [
+                paddle.float32,
+                paddle.float64,
+            ]:
+                zero_size_param = paddle.create_parameter(
+                    shape,
+                    dtype,
+                )
+                self.assertEqual(zero_size_param.shape, shape)
+                self.assertEqual(zero_size_param.data_ptr(), 0)
+                # strides will be same with shape for 0-size tensor in paddle
+                self.assertEqual(zero_size_param.strides, shape)
+
     def func_exception(self):
         b = main_program.global_block()
         with self.assertRaises(ValueError):

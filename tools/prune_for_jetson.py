@@ -93,8 +93,8 @@ def prune_phi_kernels():
             f.write(content)
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
-    print('%50s%10s' % ('type', 'count'))
-    print('%50s%10s' % ('REGISTER_OPERATOR', register_op_count))
+    print(f'{"type":>50}{"count":>10}')
+    print(f'{"REGISTER_OPERATOR":>50}{register_op_count:>10}')
     return True
 
 

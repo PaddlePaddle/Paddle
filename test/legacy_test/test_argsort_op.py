@@ -57,7 +57,7 @@ class PyArgsort:
 
 
 def create_tensor(np_data, place):
-    tensor = core.LoDTensor()
+    tensor = core.DenseTensor()
     tensor.set(np_data, place)
     return tensor
 
@@ -152,6 +152,30 @@ class TestArgsort3(TestArgsort):
 class TestArgsort4(TestArgsort):
     def init(self):
         self.input_shape = [2, 3, 4]
+        self.axis = 1
+
+
+class TestArgsortZeroSize(TestArgsort):
+    def init(self):
+        self.input_shape = [0, 3]
+        self.axis = 0
+
+
+class TestArgsortZeroSize2(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 4]
+        self.axis = 0
+
+
+class TestArgsortZeroSize3(TestArgsort):
+    def init(self):
+        self.input_shape = [0, 3]
+        self.axis = 1
+
+
+class TestArgsortZeroSize4(TestArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 4]
         self.axis = 1
 
 
@@ -281,6 +305,34 @@ class TestStableArgsort4(TestStableArgsort):
             ]
             * 20
         )
+
+
+class TestStableArgsortZeroSize(TestStableArgsort):
+    def init(self):
+        self.input_shape = [0, 30]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsortZeroSize2(TestStableArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 40]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 0
+
+
+class TestStableArgsortZeroSize3(TestStableArgsort):
+    def init(self):
+        self.input_shape = [0, 30]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 1
+
+
+class TestStableArgsortZeroSize4(TestStableArgsort):
+    def init(self):
+        self.input_shape = [2, 0, 40]
+        self.data = np.random.rand(*self.input_shape)
+        self.axis = 1
 
 
 class TestArgsortImperative(unittest.TestCase):
@@ -468,6 +520,7 @@ class TestArgsortFP16Op(OpTest):
         self.init()
         self.init_direction()
         self.op_type = "argsort"
+        self.prim_op_type = "prim"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
         self.python_out_sig = ["Out"]
@@ -496,7 +549,13 @@ class TestArgsortFP16Op(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False, check_pir=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_dygraph=False,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
@@ -514,6 +573,7 @@ class TestArgsortBF16Op(OpTest):
         self.init()
         self.init_direction()
         self.op_type = "argsort"
+        self.prim_op_type = "prim"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
         self.python_out_sig = ["Out"]
@@ -546,7 +606,12 @@ class TestArgsortBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', check_dygraph=False, check_pir=True
+            place,
+            ['X'],
+            'Out',
+            check_dygraph=False,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

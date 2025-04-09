@@ -85,22 +85,19 @@ std::shared_ptr<OpImpl> OpStrategy::SelectImpl(
   return res;
 }
 
-void OpStrategy::AddImpl(CINNCompute fcompute,
-                         CINNSchedule fschedule,
-                         std::string name,
-                         int plevel) {
+void OpStrategy::AddImpl(CINNCompute fcompute, std::string name, int plevel) {
   //! TODO(haozech) : here curr_cond should get the condition from outside.
   //! Expected : auto curr_cond = SpecializedCondition::Current();
   std::string curr_condition = "default";
   for (auto& op_spec : specializations) {
     if (op_spec->condition == curr_condition) {
-      op_spec->AddImpl(fcompute, fschedule, std::move(name), plevel);
+      op_spec->AddImpl(fcompute, std::move(name), plevel);
       return;
     }
   }
   std::shared_ptr<OpSpec> n = std::make_shared<OpSpec>();
   n->condition = curr_condition;
-  n->AddImpl(fcompute, fschedule, std::move(name), plevel);
+  n->AddImpl(fcompute, std::move(name), plevel);
   this->specializations.push_back(n);
 }
 

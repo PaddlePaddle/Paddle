@@ -146,13 +146,13 @@ class TestDigammaAPI(unittest.TestCase):
         # in static graph mode
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
-                x = static.data(name="x", shape=self._shape, dtype="int32")
+                x = static.data(name="x", shape=self._shape, dtype="bool")
                 out = paddle.digamma(x, name="digamma_res")
 
         # in dynamic mode
         with self.assertRaises(RuntimeError):
             with base.dygraph.guard():
-                input = np.random.random(self._shape).astype("int32")
+                input = np.random.random(self._shape).astype("bool")
                 input_t = paddle.to_tensor(input)
                 res = paddle.digamma(input_t)
 

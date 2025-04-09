@@ -38,7 +38,7 @@ def len_with_tensor(x):
     return x_len
 
 
-def len_with_lod_tensor_array(x):
+def len_with_dense_tensor_array(x):
     x = paddle.to_tensor(x)
 
     i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
@@ -75,7 +75,7 @@ class TestLen(Dy2StTestBase):
 
 class TestLenWithTensorArray(TestLen):
     def init_func(self):
-        self.func = len_with_lod_tensor_array
+        self.func = len_with_dense_tensor_array
 
 
 # Note: Variable(SelectedRows) is not exposed directly in dygraph.

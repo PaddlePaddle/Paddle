@@ -330,8 +330,8 @@ void FusedAttentionGradKernel(
   r = xpu::reduce_sum(xpu_ctx,
                       d_dropout_grad_ptr,
                       d_out_linear_bias_ptr,
-                      {batch_size * seq_len, embed_dims},
-                      {0});
+                      {(int64_t)batch_size * seq_len, (int64_t)embed_dims},
+                      {0LL});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
   {
     int qkv_size = batch_size * seq_len * num_heads * head_dims;
@@ -344,8 +344,11 @@ void FusedAttentionGradKernel(
     r = xpu::transpose<XPUTypeT>(xpu_ctx,
                                  d_fmha_out_ptr,
                                  d_fmha_out_transpose_tmp_ptr,
-                                 {batch_size, seq_len, num_heads, head_dims},
-                                 {0, 2, 1, 3});
+                                 {(int64_t)batch_size,
+                                  (int64_t)seq_len,
+                                  (int64_t)num_heads,
+                                  (int64_t)head_dims},
+                                 {0LL, 2LL, 1LL, 3LL});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
     phi::XpuFcInfo qktv_fc_info;
@@ -499,8 +502,8 @@ void FusedAttentionGradKernel(
   r = xpu::reduce_sum(xpu_ctx,
                       d_transpose_qkv_ptr,
                       d_qkv_bias_ptr,
-                      {batch_size * seq_len, 3 * embed_dims},
-                      {0});
+                      {(int64_t)batch_size * seq_len, 3LL * embed_dims},
+                      {0LL});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
 
   if (pre_layer_norm) {

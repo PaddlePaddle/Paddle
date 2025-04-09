@@ -110,7 +110,7 @@ _logger = get_logger(
 
 def _clone_var_in_block(block, var):
     assert isinstance(var, Variable)
-    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+    if var.desc.type() == core.VarDesc.VarType.DENSE_TENSOR:
         return block.create_var(
             name=var.name,
             shape=var.shape,
@@ -620,7 +620,14 @@ def save_inference_model(
         legacy_format=legacy_format,
     )
 
-    save_to_file(model_path, program_bytes)
+    save_to_file(
+        (
+            os.path.join(os.path.dirname(model_path), "__model__")
+            if kwargs.get('separate_parameters', False)
+            else model_path
+        ),
+        program_bytes,
+    )
 
     vars = list(filter(is_persistable, program.list_vars()))
 
@@ -637,7 +644,11 @@ def save_inference_model(
             dirname=save_dirname,
             main_program=program,
             predicate=is_persistable,
-            filename=params_filename,
+            filename=(
+                None
+                if kwargs.get('separate_parameters', False)
+                else params_filename
+            ),
         )
 
 
@@ -681,9 +692,7 @@ def deserialize_program(data: bytes) -> Program:
     """
     program = Program.parse_from_string(data)
     if not core._is_program_version_supported(program._version()):
-        raise ValueError(
-            "Unsupported program version: %d\n" % program._version()
-        )
+        raise ValueError(f"Unsupported program version: {program._version()}\n")
     return program
 
 
@@ -2010,7 +2019,7 @@ def load_program_state(
                     type=var.type,
                     lod_level=(
                         var.lod_level
-                        if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR
+                        if var.desc.type() == core.VarDesc.VarType.DENSE_TENSOR
                         else None
                     ),
                     persistable=True,

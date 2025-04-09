@@ -173,7 +173,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "XPU unsupported variable type %s for imperative allreduce, only "
-        "LoDTensor are supported.",
+        "DenseTensor are supported.",
         common::demangle(framework::ToTypeName(src.Type()))));
   }
 }

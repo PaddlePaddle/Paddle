@@ -21,8 +21,7 @@
 #include "paddle/fluid/distributed/collective/process_group_custom.h"
 #endif
 
-namespace phi {
-namespace detail {
+namespace phi::detail {
 
 // FIXME(paddle-dev): Since the singleton of ProcessGroup in fluid is used in
 // SyncBN, the fluid symbol will be dependent on external hardware access.
@@ -63,5 +62,4 @@ ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
   }
 }
 
-}  // namespace detail
-}  // namespace phi
+}  // namespace phi::detail

@@ -18,9 +18,11 @@
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -28,6 +30,13 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/utils/none.h"
+
+#ifdef PADDLE_WITH_FLASHATTN_V3
+#include "paddle/phi/kernels/gpu/flash_attn_v3_kernel.h"
+#endif
+
+COMMON_DECLARE_int32(flash_attn_version);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 template <typename OutT>
@@ -47,8 +56,8 @@ void FlashAttnUnpaddedBaseKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q_,
+    const Scalar& max_seqlen_k_,
     float scale,
     float dropout,
     bool causal,
@@ -104,8 +113,12 @@ void FlashAttnUnpaddedBaseKernel(
 
   // TODO(umiswing): add shape check
 
+  int64_t max_seqlen_q = max_seqlen_q_.to<int64_t>();
+  int64_t max_seqlen_k = max_seqlen_k_.to<int64_t>();
+
   FlashAttnFwdParamsV2<T> params =
       FlashAttnFwdParamsV2<T>(ctx,
+                              /*version=*/2,
                               batch_size,
                               max_seqlen_q,
                               max_seqlen_k,
@@ -128,38 +141,6 @@ void FlashAttnUnpaddedBaseKernel(
 
   VLOG(10) << "FlashAttn fwd seed: " << params.seed
            << ", offset: " << params.offset;
-#ifdef PADDLE_WITH_HIP
-  bool succ = phi::dynload::flash_attn_varlen_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      cu_seqlens_q.data<int32_t>(),
-      cu_seqlens_k.data<int32_t>(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? softmax->data() : nullptr,
-      softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      1.0f / params.softmax_scale,
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
-#else
   bool succ = phi::dynload::flash_attn_varlen_fwd(
       q.data(),
       k.data(),
@@ -203,7 +184,6 @@ void FlashAttnUnpaddedBaseKernel(
       max_seqlen_k * v.strides()[0],
       max_seqlen_q * out->strides()[0],
       varlen_padded);
-#endif
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -220,8 +200,8 @@ void FlashAttnUnpaddedKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q,
+    const Scalar& max_seqlen_k,
     float scale,
     float dropout,
     bool causal,
@@ -297,8 +277,8 @@ void FlashAttnVarlenQKVPackedKernel(
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
     const paddle::optional<DenseTensor>& attn_mask,
-    int64_t max_seqlen_q,
-    int64_t max_seqlen_k,
+    const Scalar& max_seqlen_q,
+    const Scalar& max_seqlen_k,
     float scale,
     float dropout,
     bool causal,
@@ -384,32 +364,26 @@ void FlashAttnBaseKernel(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
   const int64_t batch_size = dims[0];
-#ifdef PADDLE_WITH_HIP
-  int64_t seqlen_q = dims[1];
-  int64_t num_heads = dims[2];
-  int64_t head_size = dims[3];
-  int64_t seqlen_k = k.dims()[1];
-  int64_t num_heads_k = k.dims()[2];
-  if (is_test) {
-    seqlen_q = dims[2];
-    num_heads = dims[1];
-    head_size = dims[3];
-    seqlen_k = k.dims()[2];
-    num_heads_k = k.dims()[1];
-  }
-#else
   const int64_t seqlen_q = dims[1];
   const int64_t num_heads = dims[2];
   const int64_t head_size = dims[3];
   const int64_t seqlen_k = k.dims()[1];
   const int64_t num_heads_k = k.dims()[2];
-#endif
+
   // TODO(umiswing): Add check shape
 
+  // TODO(GuoxiaWang): implement use_gqa_packing logic
+  bool use_gqa_packing = false;
   const float softmax_scale = 1.0f / std::sqrt(head_size);
   const float softmax_unscale = std::sqrt(head_size);
 
+  int version =
+      FLAGS_flash_attn_version == 3 && !FLAGS_cudnn_deterministic &&
+              (head_size == 64 || head_size == 128 || head_size == 256)
+          ? FLAGS_flash_attn_version
+          : 2;
   FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
+                                                           version,
                                                            batch_size,
                                                            seqlen_q,
                                                            seqlen_k,
@@ -430,14 +404,15 @@ void FlashAttnBaseKernel(
                                                            softmax_lse,
                                                            seed_offset);
 
-  VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
-           << k.dims() << "], v.shape=[" << v.dims() << "]";
-  VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
+  VLOG(10) << "[FlashAttn Forward" << version << "] q.shape=[" << q.dims()
+           << "], k.shape=[" << k.dims() << "], v.shape=[" << v.dims() << "]";
+  VLOG(10) << "[FlashAttn Forward" << version << "] dropout=" << dropout
            << ", seed=" << params.seed << ", offset=" << params.offset;
-  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
+  VLOG(10) << "[FlashAttn Forward" << version
+           << "] softmax_scale=" << softmax_scale
            << ", softmax_unscale=" << softmax_unscale;
   if (attn_mask.get_ptr()) {
-    VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
+    VLOG(10) << "[FlashAttn Forward" << version << "] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
   if (!out->IsInitialized()) ctx.template Alloc<T>(out);
@@ -528,36 +503,6 @@ void FlashAttnBaseKernel(
       params.offset,
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.mask_dims.data(),
-      is_test);
-#else
-  bool succ = phi::dynload::flash_attn_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? params.softmax->data() : nullptr,
-      params.softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      softmax_unscale,
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data(),
       is_flashmask ? downstart_row_indices_data : nullptr,
       is_flashmask ? params.startend_row_indices_dims.data() : nullptr,
       is_flashmask ? upend_row_indices_data : nullptr,
@@ -576,8 +521,96 @@ void FlashAttnBaseKernel(
       k.strides()[0],
       v.strides()[0],
       out->strides()[0]);
+#else
+  bool succ;
+  int arch =
+      backends::gpu::GetGPUComputeCapability(ctx.GetPlace().GetDeviceId());
+
+  if (arch == 80 && version == 3) {
+    RaiseNotSupportedError(3);
+  }
+
+  if (arch == 90 && version == 3) {
+#ifdef PADDLE_WITH_FLASHATTN_V3
+    if (is_flashmask || params.attn_mask_tensor) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "FlashMask or Dense Mask is unsupported in FlashAttention V3"));
+    }
+
+    FlashAttnV3Kernel<T, Context>(ctx,
+                                  q,
+                                  k,
+                                  v,
+                                  paddle::none,  // q_v_
+                                  paddle::none,  // q_descale_
+                                  paddle::none,  // k_descale_
+                                  paddle::none,  // v_descale_
+                                  params.softmax_scale,
+                                  params.causal,
+                                  -1,     // window_size_left
+                                  -1,     // window_size_right
+                                  0.f,    // softcap
+                                  1,      // num_splits
+                                  false,  // manual_set_pack_gqa
+                                  false,  // pack_gqa_
+                                  0,      // sm_margin
+                                  out,
+                                  softmax_lse);
+#else
+    RaiseNotSupportedError(3);
 #endif
-  CheckFlashAttnStatus(succ);
+  } else {
+    succ = phi::dynload::flash_attn_fwd(
+        q.data(),
+        k.data(),
+        v.data(),
+        params.rng_state.data(),
+        out->data(),
+        params.return_softmax ? params.softmax->data() : nullptr,
+        params.softmax_lse->data(),
+        params.batch_size,
+        params.max_seqlen_q,
+        params.max_seqlen_k,
+        params.seqlen_q_rounded,
+        params.seqlen_k_rounded,
+        params.num_heads,
+        params.num_heads_k,
+        params.head_size,
+        params.head_size_rounded,
+        params.dropout,
+        params.softmax_scale,
+        softmax_unscale,
+        params.causal,
+        params.return_softmax,
+        params.is_bf16,
+        stream,
+        params.seed,
+        params.offset,
+        params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+        params.mask_dims.data(),
+        is_flashmask ? downstart_row_indices_data : nullptr,
+        is_flashmask ? params.startend_row_indices_dims.data() : nullptr,
+        is_flashmask ? upend_row_indices_data : nullptr,
+        is_flashmask ? downend_row_indices_data : nullptr,
+        is_flashmask ? upstart_row_indices_data : nullptr,
+        is_flashmask ? flashmask_maxmin.data() : nullptr,
+        q.strides()[1],
+        k.strides()[1],
+        v.strides()[1],
+        q.strides()[2],
+        k.strides()[2],
+        v.strides()[2],
+        out->strides()[1],
+        out->strides()[2],
+        q.strides()[0],
+        k.strides()[0],
+        v.strides()[0],
+        out->strides()[0]);
+  }
+#endif
+  if (version != 3) {
+    CheckFlashAttnStatus(succ);  // umiswing: no return status in fa3
+  }
 #else
   RaiseNotSupportedError();
 #endif

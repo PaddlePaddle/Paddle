@@ -412,7 +412,7 @@ class MFCC(nn.Layer):
         super().__init__()
         assert (
             n_mfcc <= n_mels
-        ), 'n_mfcc cannot be larger than n_mels: %d vs %d' % (n_mfcc, n_mels)
+        ), f'n_mfcc cannot be larger than n_mels: {n_mfcc} vs {n_mels}'
         self._log_melspectrogram = LogMelSpectrogram(
             sr=sr,
             n_fft=n_fft,

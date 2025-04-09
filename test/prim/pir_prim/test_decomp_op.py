@@ -38,6 +38,11 @@ def get_ir_program():
             y_s = paddle.mean(y_s)
             y_s = paddle.tanh(y_s)
         pir_program = pir.translate_to_pir(main_program.desc)
+
+        all_ops = pir_program.global_block().ops
+        for op in all_ops:
+            op.op_role = 1
+
         return pir_program
 
 
@@ -62,11 +67,16 @@ class TestBuildOp(unittest.TestCase):
                     'pd_op.matmul',
                     'pd_op.add',
                     'pd_op.full_int_array',
+                    'pd_op.full_int_array',
                     'pd_op.sum',
                     'pd_op.full',
                     'pd_op.divide',
                     'pd_op.tanh',
                 ],
+            )
+            op_role_list = [op.op_role for op in pir_program.global_block().ops]
+            self.assertEqual(
+                all(op_role == 1 for op_role in op_role_list), True
             )
 
 

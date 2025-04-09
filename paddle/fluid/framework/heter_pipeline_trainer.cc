@@ -19,8 +19,7 @@
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/phi/core/framework/trainer_desc.pb.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class Variable;
 
@@ -335,6 +334,5 @@ Scope* HeterPipelineTrainer::GetWorkerScope(int thread_id) {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

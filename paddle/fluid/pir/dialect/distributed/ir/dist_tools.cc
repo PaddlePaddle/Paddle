@@ -202,35 +202,43 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
   }
   return false;
 }
+void GetConnectedValues(
+    pir::Value value,
+    std::unordered_set<pir::Value>& connected_values);  // NOLINT
+void GetConnectedValues(
+    pir::Operation* op,
+    std::unordered_set<pir::Value>& connected_values) {  // NOLINT
+  if (nullptr == op) return;
+  for (auto input : op->operands_source()) {
+    GetConnectedValues(input, connected_values);
+  }
+  for (auto output : op->results()) {
+    GetConnectedValues(output, connected_values);
+  }
 
-void GetConnectedSubgraph(pir::Operation* op,
-                          std::unordered_set<pir::Operation*>& ops,  // NOLINT
-                          std::unordered_set<pir::Value>& args) {    // NOLINT
-  if (ops.find(op) != ops.end()) return;
-  ops.insert(op);
-  for (auto prev_var : op->operands_source()) {
-    if (auto prev_op = prev_var.defining_op()) {
-      GetConnectedSubgraph(prev_op, ops, args);
-    } else {
-      args.insert(prev_var);
+  for (auto& block : op->blocks()) {
+    for (auto arg : block.args()) {
+      GetConnectedValues(arg, connected_values);
     }
   }
-  for (auto result : op->results()) {
-    for (auto iter = result.use_begin(); iter != result.use_end(); ++iter) {
-      GetConnectedSubgraph(iter->owner(), ops, args);
-    }
+}
+
+void GetConnectedValues(
+    pir::Value value,
+    std::unordered_set<pir::Value>& connected_values) {  // NOLINT
+  if (connected_values.find(value) != connected_values.end()) return;
+  connected_values.insert(value);
+  GetConnectedValues(value.defining_op(), connected_values);
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    GetConnectedValues(iter->owner(), connected_values);
   }
 }
 
 // convert a single value type to dist type.
 pir::Type CvtTypeToDist(pir::Type type, ProcessMeshAttribute mesh_attr) {
   if (!type) return nullptr;
+  if (type.isa<DistTypeInterface>()) return type;
   auto ctx = pir::IrContext::Instance();
-  PADDLE_ENFORCE_EQ(
-      type.isa<DistTypeInterface>(),
-      false,
-      common::errors::InvalidArgument(
-          "Can't convert type to dist. Because it is already a dist type"));
   if (auto dense_type = type.dyn_cast<pir::DenseTensorType>()) {
     return DistDenseTensorType::get(ctx, dense_type, mesh_attr);
   } else if (auto vec_type = type.dyn_cast<pir::VectorType>()) {
@@ -239,11 +247,8 @@ pir::Type CvtTypeToDist(pir::Type type, ProcessMeshAttribute mesh_attr) {
       vec_dist_types.push_back(CvtTypeToDist(vec_type[idx], mesh_attr));
     }
     return pir::VectorType::get(ctx, vec_dist_types);
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Currently only support convert dense_tensor_type or vector type to "
-        "dist type."));
   }
+  return type;
 }
 
 pir::Attribute GetTensorDistAttr(pir::Type type) {
@@ -261,39 +266,14 @@ pir::Attribute GetTensorDistAttr(pir::Type type) {
         "Can't get tensor dist attribute with a non-dist type."));
   }
 }
-// return the tensor dist attribute of converted value.
+
 void CvtValueToDist(pir::Value value, ProcessMeshAttribute mesh_attr) {
-  std::unordered_set<pir::Operation*> ops;
-  std::unordered_set<pir::Value> args;
-  if (auto op = value.defining_op()) {
-    GetConnectedSubgraph(op, ops, args);
-  } else {
-    args.insert(value);
-  }
-  args.erase(pir::Value());
-  for (auto arg : args) {
-    arg.set_type(CvtTypeToDist(arg.type(), mesh_attr));
-  }
-  for (auto op : ops) {
-    for (auto result : op->results()) {
-      result.set_type(CvtTypeToDist(result.type(), mesh_attr));
+  std::unordered_set<pir::Value> connected_values;
+  GetConnectedValues(value, connected_values);
+  for (auto value : connected_values) {
+    if (value.impl()) {
+      value.set_type(CvtTypeToDist(value.type(), mesh_attr));
     }
-  }
-  std::vector<pir::Attribute> operand_dist_attrs, result_dist_attrs;
-  for (auto op : ops) {
-    for (auto pre_value : op->operands_source()) {
-      operand_dist_attrs.push_back(GetTensorDistAttr(pre_value.type()));
-    }
-    for (auto result : op->results()) {
-      result_dist_attrs.push_back(GetTensorDistAttr(result.type()));
-    }
-    op->set_attribute(kAttrOpDistAttr,
-                      OperationDistAttribute::get(pir::IrContext::Instance(),
-                                                  mesh_attr,
-                                                  operand_dist_attrs,
-                                                  result_dist_attrs));
-    operand_dist_attrs.clear();
-    result_dist_attrs.clear();
   }
 }
 

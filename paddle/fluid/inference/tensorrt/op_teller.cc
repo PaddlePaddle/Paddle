@@ -201,9 +201,16 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
-#if !IS_TRT_VERSION_GE(8600)
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      auto x_dtype = x_var_desc->GetDataType();
+      if (x_dtype == framework::proto::VarType::COMPLEX64 ||
+          x_dtype == framework::proto::VarType::COMPLEX128) {
+        VLOG(3) << op_type
+                << " op does not support COMPLEX64 or COMPLEX128 input";
+        return false;
+      }
+#if !IS_TRT_VERSION_GE(8600)
       const auto x_shape = x_var_desc->GetShape();
       if (x_shape.empty() && unary_list.find(op_type) != unary_list.end()) {
         VLOG(3) << op_type
@@ -368,8 +375,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(8600)
 #else
           LOG(INFO)
-              << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TensorRT.";
+              << "Trt below 8.6 not support conv2d's filter is a intermediate "
+                 "tensor in conv2d op, please upgrade your TensorRT.";
           return false;
 #endif
         }
@@ -946,12 +953,43 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       auto resize_inputs = desc.Inputs();
       if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+#if IS_TRT_VERSION_GE(8200)
+        if (desc.Input("SizeTensor").size() == 2) {
+          // TODO(lizexu123): When SizeTensor exists, at least one of the input
+          // variable names must contain 'shape' in order for TRT conversion to
+          // proceed; otherwise, TRT conversion will be disallowed."
+          auto* block = desc.Block();
+          if (block == nullptr) {
+            VLOG(3)
+                << "The block desc is nullptr,we can't continue to analyze.";
+            return false;
+          }
+          bool valid_source = false;
+          //
+          std::vector<std::string> size_tensor_names = desc.Input("SizeTensor");
+          for (const auto& tensor_name : size_tensor_names) {
+            auto* var_desc = block->FindVarRecursive(tensor_name);
+            if (!var_desc) continue;
+            if (tensor_name.find("shape") != std::string::npos) {
+              valid_source = true;
+              break;
+            }
+          }
+          if (!valid_source) {
+            VLOG(3) << "The SizeTensor for bilinear_interp_v2 doesn't come "
+                       "from a valid source.";
+            return false;
+          }
+          return true;
+        }
+#else
         if (!desc.Input("SizeTensor").empty()) {
           VLOG(3)
               << "The Paddle-TRT doesn't support the SizeTensor for op_type "
               << op_type;
           return false;
         }
+#endif
       }
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
         if (!with_dynamic_shape) {
@@ -1017,48 +1055,90 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
     }
+    if (op_type == "linear_interp_v2") {
+#if IS_TRT_VERSION_LT(7100)
+      return false;
+#endif
+      std::vector<std::string> attrs{"data_layout",
+                                     "interp_method",
+                                     "align_corners",
+                                     "scale",
+                                     "out_h",
+                                     "out_w"};
+      for (auto const& attr : attrs) {
+        if (!desc.HasAttr(attr)) {
+          VLOG(3) << "The op_type " << op_type << " doesn't have the attr "
+                  << attr << " and return false";
+          return false;
+        }
+      }
 
-    if (op_type == "squeeze2") {
-      // If Attribute is Variable(s), HasAttr() will return False
-      if (!desc.HasAttr("axes", /*with_attr_var=*/false)) {
-        VLOG(3) << "Skip to convert into TRT while found Attribute('axes') is "
-                   "Variable type in squeeze2.";
+      auto resize_inputs = desc.Inputs();
+      if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
+#if IS_TRT_VERSION_GE(8200)
+        if (desc.Input("SizeTensor").size() == 1) {
+          return true;
+        }
+#else
+        if (!desc.Input("SizeTensor").empty()) {
+          VLOG(3)
+              << "The Paddle-TRT doesn't support the SizeTensor for op_type "
+              << op_type;
+          return false;
+        }
+#endif
+      }
+      if (resize_inputs.find("OutSize") != resize_inputs.end()) {
+        if (!with_dynamic_shape) {
+          VLOG(3) << "Static shape don't support the OutSize for op_type "
+                  << op_type;
+          return false;
+        }
+      }
+
+      auto data_layout = common::StringToDataLayout(
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC) {
+        VLOG(3) << "The op_type " << op_type
+                << " is not NCHW or NHWC return false";
         return false;
       }
-
-      std::vector<int> axes;
-      if (desc.HasAttr("axes")) {
-        axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+      auto interp_method =
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
+      if (interp_method != "linear") {
+        VLOG(3) << "The interp_method of op_type " << op_type
+                << " is not linear";
+        return false;
       }
-      if (axes.empty()) {
-        auto* block = desc.Block();
-        if (block) {
-          auto input_var_name = desc.Input("X")[0];
-          auto* input_var_desc = block->FindVarRecursive(input_var_name);
-          const auto input_shape = input_var_desc->GetShape();
-          for (int s : input_shape) {
-            if (s == -1) {
-              VLOG(3) << "The necessary attributes of the squeeze2 operator "
-                         "axes is "
-                         "missing. ss ==== -1";
+      bool has_scale_input_size =
+          (resize_inputs.find("Scale") != resize_inputs.end());
+      if (!has_scale_input_size ||
+          (has_scale_input_size && desc.Input("Scale").size() != 1)) {
+        const std::vector<float> scale =
+            PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+        if (scale.size() == 0) {
+          if (!desc.HasAttr("out_w")) {
+            VLOG(3) << "The op_type " << op_type
+                    << " doesn't have Scale and the scale size <=1 and without "
+                       " out_w, it will return false";
+            return false;
+          }
+          auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
+          if (out_w <= 0) {
+            VLOG(3) << "The op_type " << op_type
+                    << "'s out_w must be greater than 0 if scale is not set.";
+            return false;
+          }
+        } else {
+          for (size_t i = 0; i < scale.size(); i++) {
+            if (scale[i] <= 0 && with_dynamic_shape) {
+              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) "
+                      << scale[i]
+                      << " less than 1 and Input(Scale) vector not set.";
               return false;
-            } else if (s == 1) {
-              axes.push_back(s);
             }
           }
-        }
-        if (axes.empty()) {
-          VLOG(3)
-              << "The necessary attributes of the squeeze2 operator axes is "
-                 "missing.";
-          return false;
-        }
-      }
-      if (!with_dynamic_shape) {
-        if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
-          VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
-                     "supported in static shape";
-          return false;
         }
       }
     }
@@ -2377,7 +2457,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     // conv3d_transpose
     if (op_type == "conv3d_transpose") {
-      // trt doen't support output_padding when < 8406
+      // trt doesn't support output_padding when < 8406
       // output_padding is usually set when stride > 1
 #if !IS_TRT_VERSION_GE(8400)
       if (desc.HasAttr("output_padding")) {
@@ -2397,7 +2477,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         std::string padding_algorithm =
             PADDLE_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
 
-        // trt error is arised if conv3d_transpose and SAME
+        // trt error is raised if conv3d_transpose and SAME
         if (op_type == "conv3d_transpose" && padding_algorithm == "SAME" &&
             !with_dynamic_shape) {
           return false;
@@ -3096,6 +3176,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mish",
       "nearest_interp_v2",
       "bilinear_interp_v2",
+      "linear_interp_v2",
       "pool3d",
       "deformable_conv",
       "relu6",
@@ -3111,9 +3192,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "fused_bias_dropout_residual_layer_norm",
       "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
       "roll",
       "cast",
       "preln_skip_layernorm",
@@ -3270,6 +3348,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "conv3d_transpose",
       "mish",
       "bilinear_interp_v2",
+      "linear_interp_v2",
       "nearest_interp_v2",
       "pool3d",
       "deformable_conv",
@@ -3287,9 +3366,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "fused_bias_dropout_residual_layer_norm",
       "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
       "roll",
       "cast",
       "transformer_input_convert",
@@ -3461,9 +3537,9 @@ struct CustomGenericPluginTeller : public Teller {
                    "SetTrtInferShapeFn.";
         return false;
       }
-      auto& trt_supports_formate_config =
+      auto& trt_supports_format_config =
           OpMetaInfoHelper::GetTrtSupportsFormatConfig(op_info);
-      if (trt_supports_formate_config.empty()) {
+      if (trt_supports_format_config.empty()) {
         VLOG(3)
             << op_type
             << " has no trt supportsFormatCombination config. Please set by "
@@ -3509,7 +3585,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                                with_dynamic_shape,
                                forbid_dynamic_op_enter_into_trt,
                                use_explicit_quantization)) {
-    SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
+    SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreator);
     return true;
   }
   auto& custom_plugin_teller = GetCustomPluginTeller();
@@ -3518,7 +3594,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                               with_dynamic_shape,
                               forbid_dynamic_op_enter_into_trt,
                               use_explicit_quantization)) {
-    SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
+    SetOpConverterType(
+        node->Op(),
+        OpConverterType::CustomPluginCreater);  // typos: disable-line
     return true;
   }
   auto& custom_generic_plugin_teller = GetCustomGenericPluginTeller();
@@ -3527,7 +3605,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                                       with_dynamic_shape,
                                       forbid_dynamic_op_enter_into_trt,
                                       use_explicit_quantization)) {
-    SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreater);
+    SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreator);
     return true;
   }
   return false;

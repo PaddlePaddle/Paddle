@@ -73,10 +73,13 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::ExpFunctor<T>>(
       dev_ctx, temp_x, out_y, kps::ExpFunctor<T>(), axis_vec);
 
-  phi::LogKernel<T, Context>(dev_ctx, *out_y, &temp_x);
-  temp_x.Resize(outdim);
+  DenseTensor log_out;
+  log_out.Resize(outdim);
+  dev_ctx.template Alloc<T>(&log_out);
+  phi::LogKernel<T, Context>(dev_ctx, *out_y, &log_out);
+  log_out.Resize(outdim);
   out->Resize(outdim);
-  phi::AddKernel<T, Context>(dev_ctx, temp_x, max_x, out);
+  phi::AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
 }
 
 template <typename T, typename Context>

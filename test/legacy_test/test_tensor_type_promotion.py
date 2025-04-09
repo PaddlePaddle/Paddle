@@ -3299,7 +3299,7 @@ class TestAPIMaximumInStatic(TestOperatorOverloadAddInStatic):
 create_test_case(TestAPIMaximumInStatic, 'float32', 'float64', 'float64')
 
 
-class TestAPIMiniumInStatic(TestOperatorOverloadAddInStatic):
+class TestAPIMinimumInStatic(TestOperatorOverloadAddInStatic):
     def run_api(self):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog):
@@ -3312,7 +3312,7 @@ class TestAPIMiniumInStatic(TestOperatorOverloadAddInStatic):
         return res
 
 
-create_test_case(TestAPIMiniumInStatic, 'float32', 'float64', 'float64')
+create_test_case(TestAPIMinimumInStatic, 'float32', 'float64', 'float64')
 
 
 class TestAPINextAfterInStatic(TestOperatorOverloadAddInStatic):

@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/lowered_func.h"
+#include "paddle/cinn/ir/stmt.h"
 
 namespace cinn {
 
@@ -33,6 +34,9 @@ Expr IRCopy(const Expr& x, bool copy_buffer_node = true);
 std::vector<Expr> IRCopy(const std::vector<Expr>& x,
                          bool copy_buffer_node = true);
 
+std::vector<stmt::StmtRef> IRCopy(const std::vector<stmt::StmtRef>& x,
+                                  bool copy_buffer_node = true);
+stmt::BlockRef IRCopy(const stmt::BlockRef& x, bool copy_buffer_node = true);
 ir::ModuleExpr IRCopy(const ir::ModuleExpr& x, bool copy_buffer_node = true);
 
 ir::Module IRCopy(const Module& m, bool copy_buffer_node = true);

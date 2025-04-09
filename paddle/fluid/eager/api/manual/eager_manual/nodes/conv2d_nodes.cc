@@ -20,13 +20,16 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/backward/backward_api.h"
-#include "paddle/phi/api/backward/sparse_bw_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
+#include "paddle/phi/api/backward/sparse_backward_api_base.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/phi/api/include/sparse_api.h"
+
+using egr::ConvertAllInputsToDistTensor;
+using egr::InputsContainDistTensor;
 
 COMMON_DECLARE_bool(check_nan_inf);
 
@@ -62,6 +65,14 @@ Conv2dGradNodeFinal::operator()(
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
+
+  // Convert All Inputs to DistTensor if Necessary
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  bool inputs_contain_dist_tensor = InputsContainDistTensor(&mesh, grad_out);
+  if (inputs_contain_dist_tensor) {
+    ConvertAllInputsToDistTensor(mesh, input, filter);
+  }
+
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
@@ -82,9 +93,9 @@ Conv2dGradNodeFinal::operator()(
           : &returns[1][0];
 
   // Set DistAttr of Out Tensor for semi-auto parallel
-  if (IsRunAutoParallel()) {
+  if (IsRunAutoParallel() || inputs_contain_dist_tensor) {
     egr::EagerUtils::SetGradOutputDistAttr(
-        out_metas, {0, 1}, api_output_0, api_output_1);
+        out_metas, {0, 1}, *mesh, api_output_0, api_output_1);
   }
 
   // Runtime check if we need next grad
@@ -117,8 +128,9 @@ Conv2dGradNodeFinal::operator()(
 
   auto& grad_input = returns[0][0];
   egr::AutogradMeta* grad_input_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&grad_input)
-                                  : nullptr;
+      returns[0][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&grad_input)
+          : nullptr;
   if (grad_input_autograd_meta)
     grad_input_autograd_meta->SetStopGradient(false);
   VLOG(3) << "Conv2dGradNodeFinal grad_input_autograd_meta: "
@@ -126,8 +138,9 @@ Conv2dGradNodeFinal::operator()(
 
   auto& grad_filter = returns[1][0];
   egr::AutogradMeta* grad_filter_autograd_meta =
-      returns[1][0].initialized() ? egr::EagerUtils::autograd_meta(&grad_filter)
-                                  : nullptr;
+      returns[1][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&grad_filter)
+          : nullptr;
   if (grad_filter_autograd_meta)
     grad_filter_autograd_meta->SetStopGradient(false);
   VLOG(3) << "Conv2dGradNodeFinal grad_filter_autograd_meta: "
@@ -213,6 +226,10 @@ Conv2dGradNodeFinal::operator()(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
+  if (HasNodePostHook()) {
+    returns = ApplyNodePostHooks(returns, hooked_grads);
+  }
+
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
@@ -253,14 +270,14 @@ Conv2dDoubleGradNodeFinal::operator()(
   auto& grad_input_grad = hooked_grads[0][0];
 
   paddle::optional<paddle::Tensor> grad_input_grad_optional;
-  if (grad_input_grad.initialized())
+  if (grad_input_grad.has_allocation())
     grad_input_grad_optional =
         paddle::make_optional<paddle::Tensor>(grad_input_grad);
 
   auto& grad_filter_grad = hooked_grads[1][0];
 
   paddle::optional<paddle::Tensor> grad_filter_grad_optional;
-  if (grad_filter_grad.initialized())
+  if (grad_filter_grad.has_allocation())
     grad_filter_grad_optional =
         paddle::make_optional<paddle::Tensor>(grad_filter_grad);
 
@@ -324,21 +341,23 @@ Conv2dDoubleGradNodeFinal::operator()(
 
   auto& input_grad = returns[0][0];
   egr::AutogradMeta* input_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&input_grad)
-                                  : nullptr;
+      returns[0][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&input_grad)
+          : nullptr;
   if (input_grad_autograd_meta)
     input_grad_autograd_meta->SetStopGradient(false);
 
   auto& filter_grad = returns[1][0];
   egr::AutogradMeta* filter_grad_autograd_meta =
-      returns[1][0].initialized() ? egr::EagerUtils::autograd_meta(&filter_grad)
-                                  : nullptr;
+      returns[1][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&filter_grad)
+          : nullptr;
   if (filter_grad_autograd_meta)
     filter_grad_autograd_meta->SetStopGradient(false);
 
   auto& grad_out_grad = returns[2][0];
   egr::AutogradMeta* grad_out_grad_autograd_meta =
-      returns[2][0].initialized()
+      returns[2][0].has_allocation()
           ? egr::EagerUtils::autograd_meta(&grad_out_grad)
           : nullptr;
   if (grad_out_grad_autograd_meta)
@@ -399,6 +418,10 @@ Conv2dDoubleGradNodeFinal::operator()(
     VLOG(6) << "gradnode_ptr = " << this;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  if (HasNodePostHook()) {
+    returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
   // Return

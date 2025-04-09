@@ -44,7 +44,7 @@ class TestProcessGroupFp32(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         device_id = paddle.distributed.ParallelEnv().dev_id
-        paddle.set_device('gpu:%d' % device_id)
+        paddle.set_device(f'gpu:{device_id}')
 
         assert paddle.distributed.is_available()
 

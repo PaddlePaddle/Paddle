@@ -14,6 +14,8 @@
 
 import logging
 
+import paddle
+
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter(
     fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
@@ -101,7 +103,7 @@ def copy_parameters(block_, params):
             type=param.type,
             lod_level=(
                 param.lod_level
-                if param.type == core.VarDesc.VarType.LOD_TENSOR
+                if param.type == core.VarDesc.VarType.DENSE_TENSOR
                 else None
             ),
             stop_gradient=param.stop_gradient,
@@ -125,13 +127,12 @@ def insert_sync_op(
     if sync_mode == "broadcast":
         block._insert_op_without_sync(
             idx,
-            type='c_broadcast',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            type='broadcast',
+            inputs={'x': varname},
+            outputs={'out': varname},
             attrs={
                 'ring_id': sync_ring_id,
                 'root': src_rank,
-                'use_calc_stream': True,
                 OP_ROLE_KEY: op_role,
             },
         )
@@ -146,12 +147,12 @@ def insert_sync_op(
         )
         block._insert_op_without_sync(
             idx,
-            type='c_allreduce_sum',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            type='all_reduce',
+            inputs={'x': varname},
+            outputs={'out': varname},
             attrs={
                 'ring_id': sync_ring_id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )
@@ -326,7 +327,7 @@ def add_extra_synchronization(
         if params_filter_fn(param):
             params_to_sync.append(param)
     logger.info(
-        "The following param are going to be synchronization everytime the optimizer update phase of the program is runned: "
+        "The following param are going to be synchronization everytime the optimizer update phase of the program is run: "
     )
     logger.info([p.name for p in params_to_sync])
 

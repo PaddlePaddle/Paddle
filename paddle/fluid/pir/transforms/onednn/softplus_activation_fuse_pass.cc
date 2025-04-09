@@ -268,7 +268,7 @@ class SoftplusClipFusePattern : public paddle::drr::DrrPatternBase {
 class SoftplusActivationFusePass : public pir::PatternRewritePass {
  public:
   SoftplusActivationFusePass()
-      : pir::PatternRewritePass("softplus_activation_fuse_pass", 3) {}
+      : pir::PatternRewritePass("softplus_activation_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

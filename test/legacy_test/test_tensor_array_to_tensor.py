@@ -42,7 +42,7 @@ class TestTensorArrayToTensorError(unittest.TestCase):
             self.assertRaises(TypeError, test_list_Variable)
 
 
-class TestLoDTensorArrayStack(unittest.TestCase):
+class TestDenseTensorArrayStack(unittest.TestCase):
     """Test case for stack mode of tensor_array_to_tensor."""
 
     def setUp(self):
@@ -86,7 +86,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         if not paddle.framework.use_pir_api():
             tensor_array_grad = scope.var(
                 self.array.name
-            ).get_lod_tensor_array()
+            ).get_dense_tensor_array()
             for i, input_grad in enumerate(self.input_grads):
                 np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
 

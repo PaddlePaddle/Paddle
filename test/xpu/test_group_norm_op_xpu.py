@@ -19,7 +19,6 @@ import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
-    get_xpu_op_support_types,
 )
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
@@ -99,9 +98,88 @@ class XPUTestGroupNormOp(XPUOpTestWrapper):
             self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NHWC"}
 
 
-support_types = get_xpu_op_support_types('group_norm')
-for stype in support_types:
+for stype in ["float32"]:
     create_test_class(globals(), XPUTestGroupNormOp, stype)
+
+
+class TestGroupNormFP16(unittest.TestCase):
+    def setUp(self):
+        self.shape = [2, 100, 3, 5]
+        self.data_format = "NCHW"
+        self.epsilon = 1e-5
+        self.groups = 2
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        inp = np.random.random(self.shape).astype("float16")
+        if self.data_format == "NHWC":
+            inp = np.transpose(inp, (0, 2, 3, 1))
+        scale = np.random.random([self.shape[1]]).astype("float16")
+        bias = np.random.random([self.shape[1]]).astype("float16")
+        inp_fp16 = paddle.to_tensor(inp, stop_gradient=False)
+        scale_fp16 = paddle.to_tensor(scale, stop_gradient=False)
+        bias_fp16 = paddle.to_tensor(bias, stop_gradient=False)
+
+        inp_fp32 = paddle.to_tensor(inp.astype("float32"), stop_gradient=False)
+        scale_fp32 = paddle.to_tensor(
+            scale.astype("float32"), stop_gradient=False
+        )
+        bias_fp32 = paddle.to_tensor(
+            bias.astype("float32"), stop_gradient=False
+        )
+
+        out_fp32 = paddle.nn.functional.group_norm(
+            inp_fp32,
+            self.groups,
+            self.epsilon,
+            scale_fp32,
+            bias_fp32,
+            self.data_format,
+        )
+        out_fp32.mean().backward()
+        inp_grad_fp32 = inp_fp32.grad.numpy()
+        scale_grad_fp32 = scale_fp32.grad.numpy()
+        bias_grad_fp32 = bias_fp32.grad.numpy()
+
+        out_fp16 = paddle.nn.functional.group_norm(
+            inp_fp16,
+            self.groups,
+            self.epsilon,
+            scale_fp16,
+            bias_fp16,
+            self.data_format,
+        )
+        out_fp16.mean().backward()
+        inp_grad_fp16 = inp_fp16.grad.numpy()
+        scale_grad_fp16 = scale_fp16.grad.numpy()
+        bias_grad_fp16 = bias_fp16.grad.numpy()
+
+        np.testing.assert_allclose(
+            out_fp32.numpy(),
+            out_fp16.numpy().astype("float32"),
+            atol=0.001,
+            rtol=0.001,
+        )
+        np.testing.assert_allclose(
+            inp_grad_fp32,
+            inp_grad_fp16.astype("float32"),
+            atol=0.001,
+            rtol=0.001,
+        )
+        np.testing.assert_allclose(
+            scale_grad_fp32,
+            scale_grad_fp16.astype("float32"),
+            atol=1e-4,
+            rtol=1e-4,
+        )
+        np.testing.assert_allclose(
+            bias_grad_fp32,
+            bias_grad_fp16.astype("float32"),
+            atol=1e-4,
+            rtol=1e-4,
+        )
+        paddle.enable_static()
+
 
 if __name__ == "__main__":
     paddle.enable_static()

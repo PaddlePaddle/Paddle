@@ -196,6 +196,11 @@ void MatrixPowerKernel(const Context& ctx,
           "X's shape[-2] = %d and shape[-1] = %d.",
           x_dims[x_ndim - 2],
           x_dims[x_ndim - 1]));
+  if (x.numel() == 0) {
+    Out->Resize(X->dims());
+    ctx.template Alloc<T>(Out);
+    return;
+  }
 
   MatrixPowerFunction<Context, T>(X, n, Out, ctx);
 }

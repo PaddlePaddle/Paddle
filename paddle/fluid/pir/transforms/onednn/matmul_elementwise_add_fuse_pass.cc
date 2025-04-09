@@ -189,7 +189,7 @@ class FusedMatmulElementwiseAddFusePattern
 class MatmulElementwiseAddFusePass : public pir::PatternRewritePass {
  public:
   MatmulElementwiseAddFusePass()
-      : pir::PatternRewritePass("matmul_elementwise_add_fuse_pass", 3) {}
+      : pir::PatternRewritePass("matmul_elementwise_add_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

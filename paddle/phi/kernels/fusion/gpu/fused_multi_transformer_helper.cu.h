@@ -160,8 +160,8 @@ class NormHelper {
  public:
   NormHelper(const phi::GPUContext &dev_ctx,
              const std::string &norm_type,
-             const int rows,
-             const int cols,
+             const int64_t rows,
+             const int64_t cols,
              const float epsilon,
              const float residual_alpha)
       : dev_ctx_(dev_ctx),
@@ -289,8 +289,8 @@ class NormHelper {
  private:
   const phi::GPUContext &dev_ctx_;
   std::string norm_type_;
-  int rows_;
-  int cols_;
+  int64_t rows_;
+  int64_t cols_;
   float epsilon_;
   float residual_alpha_;
   phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>

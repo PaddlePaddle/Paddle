@@ -145,7 +145,7 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
 class OneDNNBf16TypePass : public pir::PatternRewritePass {
  public:
   OneDNNBf16TypePass()
-      : pir::PatternRewritePass("cpu_bfloat16_type_placement_pass", 3) {}
+      : pir::PatternRewritePass("cpu_bfloat16_type_placement_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);

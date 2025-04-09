@@ -121,7 +121,7 @@ class FakeQuantAbsMax(Layer):
 
             if not out_scale:
                 out_scale = _create_tensor(
-                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    type=core.VarDesc.VarType.DENSE_TENSOR,
                     name=self._scale_name,
                     shape=[1],
                     dtype=self._dtype,
@@ -144,7 +144,7 @@ class FakeQuantAbsMax(Layer):
         quant_out = self._helper.create_variable(
             name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             persistable=False,
             stop_gradient=False,
         )
@@ -153,7 +153,7 @@ class FakeQuantAbsMax(Layer):
             out_scale = self._helper.create_variable(
                 name=self._scale_name,
                 dtype=self._dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=True,
             )
@@ -285,7 +285,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
         quant_out = self._helper.create_variable(
             name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             persistable=False,
             stop_gradient=False,
         )
@@ -366,7 +366,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
                 )
             if out_scale is None:
                 out_scale = _create_tensor(
-                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    type=core.VarDesc.VarType.DENSE_TENSOR,
                     name=self._scale_name,
                     shape=[self._channel_num],
                     dtype=self._dtype,
@@ -396,7 +396,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
         quant_out = self._helper.create_variable(
             name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             persistable=False,
             stop_gradient=False,
         )
@@ -405,7 +405,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
             out_scale = self._helper.create_variable(
                 name=self._scale_name,
                 dtype=self._dtype,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 persistable=False,
                 stop_gradient=True,
             )
@@ -516,7 +516,7 @@ class MovingAverageAbsMaxScale(Layer):
         quant_out = self._helper.create_variable(
             name=f"{input.name}.tmp",
             dtype=input.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+            type=core.VarDesc.VarType.DENSE_TENSOR,
             persistable=False,
             stop_gradient=False,
         )

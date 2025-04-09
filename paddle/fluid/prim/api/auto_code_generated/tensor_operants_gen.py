@@ -303,9 +303,9 @@ Tensor StaticTensorOperants::pow(const Tensor& x, const Tensor& y) {
 
 Tensor StaticTensorOperants::pow(const Tensor& x, const Scalar& y) {
   if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
-    return paddle::primitive::backend::elementwise_pow<LazyTensor>(x, paddle::primitive::backend::full<LazyTensor>(x.shape(), y, x.dtype(), x.place()));
+    return paddle::primitive::backend::pow<LazyTensor>(x, y);
   } else {
-    return paddle::prim::elementwise_pow<DescTensor>(x, paddle::prim::full<DescTensor>(x.shape(), y, x.dtype(), x.place()));
+    return paddle::prim::pow<DescTensor>(x, y);
   }
 }
 """

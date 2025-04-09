@@ -158,7 +158,7 @@ struct PD_INFER_DECL PaddleTensor {
   std::vector<int> shape;
   PaddleBuf data;  ///<  blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
+  std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals DenseTensor
 };
 
 /// \brief Represents an n-dimensional array of values.

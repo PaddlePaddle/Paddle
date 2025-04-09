@@ -33,7 +33,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define FINAL_MASK 0xffffffff
+#ifdef PADDLE_WITH_HIP
+#define WARP_SIZE 64
+#else
 #define WARP_SIZE 32
+#endif
 #define MAX_NUM_THREADS 1024
 
 inline static size_t divide_round_up(size_t n, size_t q) {
@@ -309,7 +313,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
                                               const bool& largest) {
   if (largest) {
 #pragma unroll
-    for (int offset = 16; offset > 0; offset >>= 1) {
+    for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int tmp_id =
@@ -321,7 +325,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     }
   } else {
 #pragma unroll
-    for (int offset = 16; offset > 0; offset >>= 1) {
+    for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int tmp_id =
@@ -356,11 +360,11 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     }
     __syncthreads();
     if (largest) {
-      input_now = (tid < BlockSize / 32)
+      input_now = (tid < BlockSize / WARP_SIZE)
                       ? shared_max[lane]
                       : Pair<T>(-static_cast<T>(INFINITY), -1);
     } else {
-      input_now = (tid < BlockSize / 32)
+      input_now = (tid < BlockSize / WARP_SIZE)
                       ? shared_max[lane]
                       : Pair<T>(static_cast<T>(INFINITY), -1);
     }
@@ -387,9 +391,9 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
 
     unsigned mask = 0u;
     CREATE_SHFL_MASK(mask, true);
-    if (tid_max / 32 == wid) {
-      if (phi::backends::gpu::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
-          MaxLength)
+    if (tid_max / WARP_SIZE == wid) {
+      if (phi::backends::gpu::CudaShuffleSync(
+              mask, *beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
         break;
     }
   }
@@ -416,12 +420,12 @@ __global__ void KeMatrixTopK(T* output,
                              int num,
                              bool largest = true) {
   const int tid = threadIdx.x;
-  const int wid = tid / 32;
-  const int lane = tid % 32;
+  const int wid = tid / WARP_SIZE;
+  const int lane = tid % WARP_SIZE;
   const int bid = blockIdx.x;
   for (int i = bid; i < num; i += grid_dim) {
     int top_num = k;
-    __shared__ Pair<T> shared_max[BlockSize / 32];
+    __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
     T* out = output + i * output_stride;
     int64_t* inds = indices + i * k;
     Pair<T> topk[MaxLength];

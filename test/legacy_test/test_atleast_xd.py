@@ -174,7 +174,7 @@ class BaseTest(unittest.TestCase):
                         _x.stop_gradient = False
                         x.append(_x)
 
-                        # the data feeded should NOT be a Tensor
+                        # the data fed should NOT be a Tensor
                         feed[name] = (
                             input.numpy()
                             if isinstance(input, paddle.Tensor)

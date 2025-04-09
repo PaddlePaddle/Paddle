@@ -84,8 +84,8 @@ class TensorConfig:
 
 
 class VarType(enum.Enum):
-    LOD_TENSOR = 1
-    LOD_TENSOR_ARRAY = 2
+    DENSE_TENSOR = 1
+    DENSE_TENSOR_ARRAY = 2
     STEP_SCOPES = 3
 
 
@@ -164,7 +164,7 @@ class BlockConfig:
     def fill_block_desc(self, block_desc):
         for name in self.vars:
             var_desc = block_desc.var(name.encode())
-            var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+            var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
             if (
                 self.vars_lod_level is not None
                 and name in self.vars_lod_level.keys()
@@ -174,8 +174,8 @@ class BlockConfig:
                 self.vars_var_type is not None
                 and name in self.vars_var_type.keys()
             ):
-                if self.vars_var_type[name] == VarType.LOD_TENSOR_ARRAY:
-                    var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+                if self.vars_var_type[name] == VarType.DENSE_TENSOR_ARRAY:
+                    var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR_ARRAY)
                 elif self.vars_var_type[name] == VarType.STEP_SCOPES:
                     var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                     continue
@@ -206,17 +206,17 @@ class BlockConfig:
                     if block_desc.has_var_recursive(v.encode()):
                         continue
                     var_desc = block_desc.var(v.encode())
-                    var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+                    var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
                     if (
                         op_config.outputs_var_type is not None
                         and v in op_config.outputs_var_type.keys()
                     ):
                         if (
                             op_config.outputs_var_type[v]
-                            == VarType.LOD_TENSOR_ARRAY
+                            == VarType.DENSE_TENSOR_ARRAY
                         ):
                             var_desc.set_type(
-                                core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                                core.VarDesc.VarType.DENSE_TENSOR_ARRAY
                             )
                         elif (
                             op_config.outputs_var_type[v] == VarType.STEP_SCOPES
@@ -360,7 +360,7 @@ def create_fake_model(program_config):
         index = 0
         for name, tensor_config in program_config.inputs.items():
             var_desc = main_block_desc.var(name.encode())
-            var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+            var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
             var_desc.set_dtype(
                 convert_np_dtype_to_proto_type(tensor_config.dtype)
             )
@@ -378,7 +378,7 @@ def create_fake_model(program_config):
         save_var_map = {}
         for name, tensor_config in program_config.weights.items():
             var_desc = main_block_desc.var(name.encode())
-            var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+            var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
             var_desc.set_dtype(
                 convert_np_dtype_to_proto_type(tensor_config.dtype)
             )
@@ -388,7 +388,7 @@ def create_fake_model(program_config):
             save_var_map[name] = util_program.global_block().create_parameter(
                 dtype=tensor_config.dtype,
                 shape=tensor_config.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR,
+                type=core.VarDesc.VarType.DENSE_TENSOR,
                 name=name,
                 initializer=paddle.nn.initializer.Assign(tensor_config.data),
             )
@@ -435,17 +435,17 @@ def create_fake_model(program_config):
                     if main_block_desc.has_var_recursive(v.encode()):
                         continue
                     var_desc = main_block_desc.var(v.encode())
-                    var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
+                    var_desc.set_type(core.VarDesc.VarType.DENSE_TENSOR)
                     if (
                         op_config.outputs_var_type is not None
                         and v in op_config.outputs_var_type.keys()
                     ):
                         if (
                             op_config.outputs_var_type[v]
-                            == VarType.LOD_TENSOR_ARRAY
+                            == VarType.DENSE_TENSOR_ARRAY
                         ):
                             var_desc.set_type(
-                                core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                                core.VarDesc.VarType.DENSE_TENSOR_ARRAY
                             )
                         elif (
                             op_config.outputs_var_type[v] == VarType.STEP_SCOPES

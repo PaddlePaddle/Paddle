@@ -93,10 +93,10 @@ class BeamSearchFunctor<phi::CPUContext, T> {
     low_level.push_back(low_offset);
 
     // fill lod
-    phi::LoD lod(2);
+    phi::LegacyLoD lod(2);
     lod[0].assign(high_level.begin(), high_level.end());
     lod[1].assign(low_level.begin(), low_level.end());
-    if (!CheckLoD(lod)) {
+    if (!CheckLegacyLoD(lod)) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "lod %s is not right in"
           " beam_search, please check your code.",
@@ -150,12 +150,12 @@ class BeamSearchFunctor<phi::CPUContext, T> {
 
  protected:
   /*
-   * Prune the source sentences all branchs finished, and it is optional.
+   * Prune the source sentences all branches finished, and it is optional.
    * Pruning must one step later than finishing (thus pre_ids is needed here),
-   * since the end tokens must be writed out.
+   * since the end tokens must be written out.
    */
   void PruneEndBeams(const phi::DenseTensor *pre_ids,
-                     const phi::LoD &abs_lod,
+                     const phi::LegacyLoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id) {
@@ -176,7 +176,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
         }
         if (!finish_flag) break;
       }
-      if (finish_flag) {  // all branchs of the beam (source sentence) end and
+      if (finish_flag) {  // all branches of the beam (source sentence) end and
                           // prune this beam
         for (size_t offset = src_prefix_start; offset < src_prefix_end;
              offset++)
@@ -268,7 +268,7 @@ class BeamSearchFunctor<phi::CPUContext, T> {
         auto pre_id = pre_ids_data[offset];
         auto pre_score = pre_scores_data[offset];
         if (pre_id == end_id) {
-          // Allocate all probability mass to end_id for finished branchs and
+          // Allocate all probability mass to end_id for finished branches and
           // the other candidate ids can be ignored.
           Item item(offset, end_id, pre_score);
           Insert(&top_beam, item, beam_size);

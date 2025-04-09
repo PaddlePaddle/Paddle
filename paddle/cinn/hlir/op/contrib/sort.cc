@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -33,6 +32,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace hlir {
@@ -65,6 +65,9 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
       },
       [&](common::HygonDCUArchHIP) {
         find_func_name.assign("cinn_hip_next_smallest_int32");
+      },
+      [&](common::HygonDCUArchSYCL) {
+        find_func_name.assign("cinn_sycl_next_smallest_int32");
       });
   if (is_ascend) {
     index_func_name =
@@ -92,8 +95,8 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
             stride = stride * A->shape[i];
           }
         }
-        offset = cinn::common::AutoSimplify(offset);
-        stride = cinn::common::AutoSimplify(stride);
+        offset = optim::ArithSimplify(offset);
+        stride = optim::ArithSimplify(stride);
         auto A_shape_axis = A->shape[pos_axis];
         return lang::CallExtern(index_func_name,
                                 {A, A_shape_axis, A(indices), offset, stride});
@@ -114,8 +117,8 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
             stride = stride * A->shape[i];
           }
         }
-        offset = cinn::common::AutoSimplify(offset);
-        stride = cinn::common::AutoSimplify(stride);
+        offset = optim::ArithSimplify(offset);
+        stride = optim::ArithSimplify(stride);
 
         auto A_shape_axis = A->shape[pos_axis];
         auto idx = lang::CallExtern(
@@ -215,50 +218,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule sort_schedule([=](lang::Args args,
-                                            lang::RetValue *ret) {
-    PADDLE_ENFORCE_NE(
-        args.empty(),
-        true,
-        ::common::errors::InvalidArgument("The input argument of sort_schedule "
-                                          "compute is empty! Please check."));
-
-    cinn::common::CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_NE(
-        vec_ast.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The vec_ast of sort_schedule compute is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    auto blocks = ir_sch.GetAllBlocks();
-    // TODO(Shixiaowei02): remove external calls, do not use local
-    // variables, because the size will exceed the limit.
-    ir_sch.SetBuffer(blocks[0], "local");
-    ir_sch.SetBuffer(blocks[1], "local");
-
-    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
-                                        output_shapes[0].end(),
-                                        1,
-                                        std::multiplies<int>());
-    if (prod_size > 1 && std::holds_alternative<common::X86Arch>(target.arch)) {
-      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-    }
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(sort_compute, sort_schedule, "strategy.sort", 1);
+  strategy->AddImpl(sort_compute, "strategy.sort", 1);
   return strategy;
 }
 
@@ -328,49 +289,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule argsort_schedule([=](lang::Args args,
-                                               lang::RetValue *ret) {
-    PADDLE_ENFORCE_NE(args.empty(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The input argument of argsort_schedule "
-                          "compute is empty! Please check."));
-    cinn::common::CINNValuePack arg_pack = args[0];
-    std::vector<Expr> vec_ast;
-    for (int i = 0; i < arg_pack.size(); i++) {
-      if (arg_pack[i].is_expr()) {
-        Expr temp = arg_pack[i];
-        vec_ast.emplace_back(temp);
-      }
-    }
-    PADDLE_ENFORCE_NE(
-        vec_ast.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The vec_ast of argsort_schedule compute is empty! Please check."));
-    ir::ModuleExpr mod_expr(vec_ast);
-    ir::IRSchedule ir_sch(mod_expr);
-    ir_sch.MergeExprs();
-    auto blocks = ir_sch.GetAllBlocks();
-    // TODO(Shixiaowei02): remove external calls, do not use local variables,
-    // because the size will exceed the limit.
-    // TODO(lanxianghit): There is a bug, setting buffer to "local" here will
-    // cause the var declared twice at CodeGen. ir_sch.SetBuffer(blocks[0],
-    // "local");
-    int64_t prod_size = std::accumulate(output_shapes[0].begin(),
-                                        output_shapes[0].end(),
-                                        1,
-                                        std::multiplies<int>());
-    if (prod_size > 1 && std::holds_alternative<common::X86Arch>(target.arch)) {
-      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-    }
-    std::vector<cinn::common::CINNValue> res{
-        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-    *ret = cinn::common::CINNValuePack{res};
-  });
-
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(argsort_compute, argsort_schedule, "strategy.argsort", 1);
+  strategy->AddImpl(argsort_compute, "strategy.argsort", 1);
   return strategy;
 }
 

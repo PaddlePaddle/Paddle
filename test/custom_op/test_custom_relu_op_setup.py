@@ -149,9 +149,8 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         if os.name == 'nt':
             cmd = f'cd /d {cur_dir} && python custom_relu_setup.py install'
         else:
-            cmd = (
-                f'cd {cur_dir} && {sys.executable} custom_relu_setup.py install'
-            )
+            site_dir = site.getsitepackages()[0]
+            cmd = f'cd {cur_dir} && {sys.executable} custom_relu_setup.py install --install-lib={site_dir}'
         run_cmd(cmd)
 
         # NOTE(Aurelius84): Normally, it's no need to add following codes for users.
@@ -167,9 +166,9 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'custom_relu_module_setup' in x
         ]
-        assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
-            custom_egg_path
-        )
+        assert (
+            len(custom_egg_path) == 1
+        ), f"Matched egg number is {len(custom_egg_path)}."
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
         # usage: import the package directly

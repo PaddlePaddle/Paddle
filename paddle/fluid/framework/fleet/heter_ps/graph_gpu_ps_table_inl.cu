@@ -987,7 +987,7 @@ int GpuPsGraphTable::init_cpu_table(
  gpu i triggers a neighbor_sample task,
  when this task is done,
  this function is called to move the sample result on other gpu back
- to gup i and aggragate the result.
+ to gup i and aggregate the result.
  the sample_result is saved on src_sample_res and the actual sample size for
  each node is saved on actual_sample_size.
  the number of actual sample_result for
@@ -1024,7 +1024,7 @@ void GpuPsGraphTable::display_sample_res(
            *reinterpret_cast<int64_t*>(val_buffer + i * sizeof(uint64_t)));
     int ac_size = *reinterpret_cast<int*>(val_buffer + i * sizeof(int) +
                                           len * sizeof(int64_t));
-    printf("sampled %d neigbhors\n", ac_size);
+    printf("sampled %d neighbors\n", ac_size);
     for (int j = 0; j < ac_size; j++) {
       printf("%llu ", sample_val[i * sample_len + j]);
     }

@@ -46,7 +46,7 @@ struct TestBaseProgram {
                                  framework::proto::VarType::Type data_type =
                                      framework::proto::VarType::FP32) {
     auto* var = program_.MutableBlock(0)->Var(name);
-    var->SetType(framework::proto::VarType::LOD_TENSOR);
+    var->SetType(framework::proto::VarType::DENSE_TENSOR);
     var->SetDataType(data_type);
     var->SetShape(shape);
     var->SetPersistable(is_persistable);

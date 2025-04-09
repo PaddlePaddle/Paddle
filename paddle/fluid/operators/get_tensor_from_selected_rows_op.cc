@@ -37,7 +37,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
                           ctx->GetInputsVarType("X").front()));
     PADDLE_ENFORCE_EQ(
         ctx->GetOutputsVarType("Out").front(),
-        framework::proto::VarType::LOD_TENSOR,
+        framework::proto::VarType::DENSE_TENSOR,
         common::errors::InvalidArgument(
             "The output Out(%s)'s type should be phi::DenseTensor, "
             "but the received is %s",
@@ -87,7 +87,7 @@ class GetTensorFromSelectedRowsOpVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const {  // NOLINT
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR);
+    ctx->SetOutputType("Out", framework::proto::VarType::DENSE_TENSOR);
     ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
   }
 };

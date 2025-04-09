@@ -60,4 +60,43 @@ __device__ __forceinline__ float inline_pow(float base, float exponent) {
 __device__ __forceinline__ double inline_pow(double base, double exponent) {
   return pow(base, exponent);
 }
+
+#ifndef _WIN32
+// To avoid large .so size in Windows cuda11.8
+__device__ __forceinline__ dtype::float16 inline_fabs(dtype::float16 x) {
+  return static_cast<dtype::float16>(fabs(static_cast<float>(x)));
+}
+__device__ __forceinline__ dtype::bfloat16 inline_fabs(dtype::bfloat16 x) {
+  return static_cast<dtype::bfloat16>(fabs(static_cast<float>(x)));
+}
+__device__ __forceinline__ float inline_fabs(float x) { return fabs(x); }
+__device__ __forceinline__ double inline_fabs(double x) { return fabs(x); }
+
+__device__ __forceinline__ dtype::float16 inline_square(dtype::float16 x) {
+  return static_cast<dtype::float16>(static_cast<float>(x) *
+                                     static_cast<float>(x));
+}
+__device__ __forceinline__ dtype::bfloat16 inline_square(dtype::bfloat16 x) {
+  return static_cast<dtype::bfloat16>(static_cast<float>(x) *
+                                      static_cast<float>(x));
+}
+__device__ __forceinline__ float inline_square(float x) { return x * x; }
+__device__ __forceinline__ double inline_square(double x) { return x * x; }
+
+__device__ __forceinline__ dtype::float16 inline_fabs_cubic(dtype::float16 x) {
+  return static_cast<dtype::float16>(fabs(
+      static_cast<float>(x) * static_cast<float>(x) * static_cast<float>(x)));
+}
+__device__ __forceinline__ dtype::bfloat16 inline_fabs_cubic(
+    dtype::bfloat16 x) {
+  return static_cast<dtype::bfloat16>(fabs(
+      static_cast<float>(x) * static_cast<float>(x) * static_cast<float>(x)));
+}
+__device__ __forceinline__ float inline_fabs_cubic(float x) {
+  return fabs(x * x * x);
+}
+__device__ __forceinline__ double inline_fabs_cubic(double x) {
+  return fabs(x * x * x);
+}
+#endif
 }  // namespace phi

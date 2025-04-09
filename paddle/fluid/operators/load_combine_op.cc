@@ -17,8 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class LoadCombineOp : public framework::OperatorWithKernel {
  public:
@@ -36,9 +35,9 @@ class LoadCombineOp : public framework::OperatorWithKernel {
 class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput(
-        "Out",
-        "(vector) The output LoDTensors that will be read from the input file.")
+    AddOutput("Out",
+              "(vector) The output DenseTensors that will be read from the "
+              "input file.")
         .AsDuplicable();
     AddAttr<bool>(
         "load_as_fp16",
@@ -49,32 +48,31 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<std::string>("file_path",
                          "(string) "
-                         "LoDTensors will be loaded from \"file_path\".")
+                         "DenseTensors will be loaded from \"file_path\".")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
     AddAttr<bool>("model_from_memory",
                   "(boolean, default false)"
-                  "If true, file_path is in memory, and LoDTensors will be "
+                  "If true, file_path is in memory, and DenseTensors will be "
                   "loaded directly from memory")
         .SetDefault(false);
     AddComment(R"DOC(
 LoadCombine Operator.
 
 LoadCombine operator loads phi::DenseTensor variables from a file, which could be
-loaded in memory already. The file should contain one or more LoDTensors
+loaded in memory already. The file should contain one or more DenseTensors
 serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load
-the LodTensors, and this strategy complements the serialization strategy used
+the DenseTensors, and this strategy complements the serialization strategy used
 in the SaveCombine operator. Hence, the LoadCombine operator is tightly coupled
-with the SaveCombine operator, and can only deserialize one or more LoDTensors
+with the SaveCombine operator, and can only deserialize one or more DenseTensors
 that were saved using the SaveCombine operator.
 
 )DOC");
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;  // NOLINT
 

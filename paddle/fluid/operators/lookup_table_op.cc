@@ -62,7 +62,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", common::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
-        framework::proto::VarType::LOD_TENSOR) {
+        framework::proto::VarType::DENSE_TENSOR) {
       ctx->ShareLoD("Ids", /*->*/ "Out");
     }
   }
@@ -214,7 +214,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to phi::DenseTensor";
-      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::DENSE_TENSOR);
     }
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }

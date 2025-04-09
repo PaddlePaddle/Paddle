@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/c_embedding_kernel.h"
 #include "glog/logging.h"
-#include "paddle/phi/api/backward/backward_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/float16.h"

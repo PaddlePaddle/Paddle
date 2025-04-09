@@ -18,20 +18,11 @@ import unittest
 import numpy
 import utils
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
-os.environ['FLAGS_group_schedule_tiling_first'] = '1'
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
-os.environ['FLAGS_cinn_bucket_compile'] = '1'
-os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 def generate_input_spec(rank_dtype_list):
@@ -57,7 +48,7 @@ class TestAnchorFusion(unittest.TestCase):
         dy_out = dy_compute(*inputs)
         static_compute = paddle.jit.to_static(
             full_graph=True,
-            build_strategy=build_strategy,
+            backend="CINN",
             input_spec=input_spec,
         )(dy_compute)
         st_out = static_compute(*inputs)
@@ -68,7 +59,7 @@ class TestAnchorFusion(unittest.TestCase):
         if kernel_num is not None:
             utils.check_jit_kernel_number(static_compute, kernel_num)
 
-    def test_identiy_iters_fusion(self):
+    def test_identity_iters_fusion(self):
         #        T
         #      / | \
         #     /  |  \
@@ -93,11 +84,11 @@ class TestAnchorFusion(unittest.TestCase):
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
     def test_transpose_iters_fusion(self):
-        #     Tranpose
+        #     Transpose
         #      /  \
-        #     T   Tranpose
+        #     T   Transpose
         #    / \
-        #   T  Tranpose
+        #   T  Transpose
         def func(x):
             x = paddle.transpose(x, [2, 0, 1, 3])
             a = x + 1
@@ -110,7 +101,7 @@ class TestAnchorFusion(unittest.TestCase):
             x = paddle.ones((16, 32, 64, 128))
             return (x,)
 
-        # This case can't be fused to one kernel because muti-downstream
+        # This case can't be fused to one kernel because multi-downstream
         # transpose op will sink currently.
         self.check_accuracy_and_kernel_num(init, func)
 
@@ -218,7 +209,7 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
-    def test_recompute_multidownstrema_trivial(self):
+    def test_recompute_multidownstream_trivial(self):
         #     T
         #    / \
         #   S   S
@@ -249,7 +240,7 @@ class TestAnchorFusion(unittest.TestCase):
             x = paddle.rand((128, 2048, 7, 7))
             return (x,)
 
-        self.check_accuracy_and_kernel_num(init, func)
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
     def test_split_fusion(self):
         def func(x):
@@ -259,6 +250,59 @@ class TestAnchorFusion(unittest.TestCase):
 
         def init():
             x = paddle.rand((1, 3, 192, 288))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func)
+
+    def test_reduce_cant_anchor_fusion(self):
+        def func(x):
+            a = x * 2
+            b = paddle.max(a, axis=2, keepdim=True)
+            c = paddle.max(a, axis=3, keepdim=True)
+            return a, b, c
+
+        def init():
+            x = paddle.rand((4, 256, 16, 16), dtype="float16")
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
+    def test_align_leaf_reshape_to_input(self):
+        def func(x):
+            x = x * 2
+            a = paddle.reshape(x + 2, [1, 6, 1, 8, 1, 4, 1, 8, 1])
+            return x, a
+
+        def init():
+            x = paddle.rand((1, 3, 1, 16, 1, 32, 1))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
+    def test_0d_fusion(self):
+        def func(x):
+            a = x + 1
+            b = a[16, 8]
+            b = b.reshape([1, 1])
+            c = b.expand([16, 32])
+            return a, b, c
+
+        def init():
+            x = paddle.rand((32, 16))
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=2)
+
+    def test_broadcast_transpose(self):
+        def func(x):
+            y = x.sum(axis=0)
+            y = y.broadcast_to([128, 128])
+            y = y.transpose([1, 0])
+            y = x + y
+            return y.sum(axis=0)
+
+        def init():
+            x = paddle.rand((128, 128))
             return (x,)
 
         self.check_accuracy_and_kernel_num(init, func)

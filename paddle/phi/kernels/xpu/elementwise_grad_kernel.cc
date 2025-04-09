@@ -17,6 +17,7 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -27,6 +28,26 @@ void MaximumGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        DenseTensor* dx,
                        DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = -1;
   auto f = [](xpu::Context* ctx,
@@ -36,8 +57,8 @@ void MaximumGradKernel(const Context& dev_ctx,
               const XPUType* dz,
               XPUType* dy,
               XPUType* dx,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_max_grad<XPUType>(
         ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };
@@ -52,6 +73,25 @@ void MinimumGradKernel(const Context& dev_ctx,
                        const DenseTensor& dout,
                        DenseTensor* dx,
                        DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = -1;
   auto f = [](xpu::Context* ctx,
@@ -61,8 +101,8 @@ void MinimumGradKernel(const Context& dev_ctx,
               const XPUType* dz,
               XPUType* dy,
               XPUType* dx,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_min_grad<XPUType>(
         ctx, x, y, z, dz, dy, dx, xshape, yshape);
   };

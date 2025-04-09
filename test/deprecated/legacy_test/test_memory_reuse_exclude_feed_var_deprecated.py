@@ -45,7 +45,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
             base.default_main_program(), build_strategy=build_strategy
         )
 
-        image_tensor = base.LoDTensor()
+        image_tensor = base.DenseTensor()
         np_image = np.random.uniform(
             low=-10, high=10, size=self.image_shape
         ).astype('float32')

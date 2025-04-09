@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 class QuantizeLinearOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -118,8 +117,7 @@ $$0 \leq c \lt \ the\ channel\ number\ of\ X$$
 )DOC");
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

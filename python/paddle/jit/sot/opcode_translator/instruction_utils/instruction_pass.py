@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import dis
 import sys
 from typing import TYPE_CHECKING
 
@@ -38,6 +39,9 @@ def apply_instr_pass(instrs: list[Instruction], code_options):
 
     if sys.version_info >= (3, 12):
         supported_passes.append(check_for_iter_jump_to)
+
+    if sys.version_info >= (3, 13):
+        supported_passes.append(fuse_double_super_instrs)
 
     for instr_pass in supported_passes:
         instr_pass(instrs, code_options)
@@ -247,33 +251,6 @@ def remove_load_store_pass(instrs: list[Instruction], code_options):
                             instr.argval = b_name
                             instr.arg = store_b.arg
 
-    # remove store load
-    loaded_once = find_loaded_once_local_vars(instrs, code_options)
-
-    modified = True
-    while modified:
-        modified = False
-
-        idx = 0
-        while idx + 1 < len(instrs):
-            opcode1 = instrs[idx]
-            opcode2 = instrs[idx + 1]
-
-            if (
-                opcode1 not in jump_target
-                and opcode2 not in jump_target
-                and opcode1.opname == "STORE_FAST"
-                and opcode2.opname == "LOAD_FAST"
-                and opcode2.opname == "LOAD_FAST_CHECK"
-                and opcode1.argval == opcode2.argval
-                and opcode1.argval in loaded_once
-            ):
-                instrs.remove(opcode1)
-                instrs.remove(opcode2)
-                modified = True
-            else:
-                idx += 1
-
 
 def remove_duplicate_resume(instrs: list[Instruction], code_options):
     resumes = list(filter(lambda instr: instr.opname == "RESUME", instrs))
@@ -303,3 +280,43 @@ def check_for_iter_jump_to(instrs: list[Instruction], code_options):
             assert instr.jump_to is not None
             if instr.jump_to.opname != "END_FOR":
                 raise InnerError("FOR_ITER jump_to is not END_FOR")
+
+
+def fuse_double_super_instrs(instrs: list[Instruction], code_options):
+    """
+    Fuse two consecutive LOAD_FAST or STORE_FAST instructions into one.
+    """
+    co_varnames = code_options['co_varnames']
+    TO_FUSE_INSTS: dict[tuple[str, str], str] = {
+        ("LOAD_FAST", "LOAD_FAST"): "LOAD_FAST_LOAD_FAST",
+        ("STORE_FAST", "STORE_FAST"): "STORE_FAST_STORE_FAST",
+        ("STORE_FAST", "LOAD_FAST"): "STORE_FAST_LOAD_FAST",
+    }
+
+    def able_to_merge(idx: int):
+        return (
+            idx > 0
+            and (instrs[idx - 1].opname, instrs[idx].opname)
+            in TO_FUSE_INSTS.keys()
+            and not instrs[idx].is_jump_target
+            and not instrs[idx - 1].is_jump_target
+            and co_varnames.index(instrs[idx - 1].argval) < 16
+            and co_varnames.index(instrs[idx].argval) < 16
+        )
+
+    def merge_two_op(prev_instr: Instruction, instr: Instruction):
+        merge_key = (instrs[idx - 1].opname, instrs[idx].opname)
+        prev_instr.opname = TO_FUSE_INSTS[merge_key]
+        prev_instr.opcode = dis.opmap[prev_instr.opname]
+        prev_instr.is_generated = True
+        prev_instr.argval = (prev_instr.argval, instr.argval)
+        instrs.remove(instr)
+
+    idx = 0
+    # We must manually control the indices, so we cannot use a for loop.
+    while idx < len(instrs):
+        if able_to_merge(idx):
+            merge_two_op(instrs[idx - 1], instrs[idx])
+            continue
+
+        idx += 1

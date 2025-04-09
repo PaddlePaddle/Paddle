@@ -1365,7 +1365,7 @@ PDNode *patterns::BatchNormActGrad::operator()(
   auto *act_out_var = pattern->NewNode(act_out_repr())
                           ->assert_is_ops_input(act_grad_types, "Out");
   auto *d_intermediate_var =
-      pattern->NewNode(d_itermediate_out_repr())
+      pattern->NewNode(d_intermediate_out_repr())
           ->assert_is_ops_output(act_grad_types, GradVarName("X"))
           ->assert_has_n_outputs(1);
   auto *bn_x_var = pattern->NewNode(bn_x_repr())
@@ -1600,7 +1600,7 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
       pattern->NewNode(act_out_repr())->assert_is_ops_input(act_types, "Out");
 
   auto *d_intermediate_var =
-      pattern->NewNode(d_itermediate_out_repr())
+      pattern->NewNode(d_intermediate_out_repr())
           ->assert_is_ops_output(act_types, GradVarName("X"));
 
   act_grad->LinksFrom({d_act_out_var, act_out_var})
@@ -2391,7 +2391,7 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-PDNode *patterns::ConvElementwiseaddAct::operator()(
+PDNode *patterns::ConvElementwiseAddAct::operator()(
     PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
@@ -3003,7 +3003,7 @@ PDNode *patterns::ConvElementwiseAdd2Act::operator()(
   return act_out;
 }
 
-PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseAdd::operator()(PDNode *conv_in) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())
@@ -4646,7 +4646,7 @@ PDNode *patterns::FusedFeedForwardBwd::operator()(
   // other cases: may delete residual_add_grad, dropout1_grad, dropout2_grad
   // operators
 
-  // intermediate input_grad, and final pattern ouput_grad
+  // intermediate input_grad, and final pattern output_grad
   PDNode *out_grad = x_grad;
   // LayerNorm: in["Mean", "Variance", "Scale", "Bias", "Y@GRAD"],
   // out["X@GRAD", "Scale@GRAD", "Bias@GRAD"]

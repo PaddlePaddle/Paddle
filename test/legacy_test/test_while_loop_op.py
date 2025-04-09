@@ -366,7 +366,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[2]), x_grad, rtol=1e-05)
 
 
-class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
+class TestApiWhileLoop_NestedWithBackwardAndDenseTensorArray(unittest.TestCase):
     # TODO(zhangbo): Support while grad exe for pir
 
     def test_nested_net_with_backward_and_lodtensor(self):

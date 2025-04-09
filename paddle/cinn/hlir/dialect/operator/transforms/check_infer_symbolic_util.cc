@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <random>
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/local_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
@@ -31,7 +32,8 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
-PD_DECLARE_bool(prim_all);
+PD_DECLARE_bool(prim_forward);
+PD_DECLARE_bool(prim_backward);
 
 namespace cinn {
 namespace dialect {
@@ -54,7 +56,7 @@ std::ostream& operator<<(std::ostream& stream,
 }
 
 DimExprs4ValueT MakeDimExprs4Value(
-    pir::Program* program, const PassManagerCreater& CreatePassManager) {
+    pir::Program* program, const PassManagerCreator& CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   pass_manager->Run(program);
@@ -137,9 +139,6 @@ struct ShapeSignatureGenerator {
         [&](const symbol::Negative<symbol::DimExpr>& negative) {
           GetSymbolsForOneDimExpr(negative->data, symbols);
         },
-        [&](const symbol::Reciprocal<symbol::DimExpr>& reciprocal) {
-          GetSymbolsForOneDimExpr(reciprocal->data, symbols);
-        },
         [&](const symbol::Add<symbol::DimExpr>& add) {
           for (const auto& dim_expr : *add.operands) {
             GetSymbolsForOneDimExpr(dim_expr, symbols);
@@ -149,6 +148,10 @@ struct ShapeSignatureGenerator {
           for (const auto& dim_expr : *mul.operands) {
             GetSymbolsForOneDimExpr(dim_expr, symbols);
           }
+        },
+        [&](const symbol::Div<symbol::DimExpr>& div) {
+          GetSymbolsForOneDimExpr(div->lhs, symbols);
+          GetSymbolsForOneDimExpr(div->rhs, symbols);
         },
         [&](const symbol::Max<symbol::DimExpr>& max) {
           for (const auto& dim_expr : *max.operands) {
@@ -404,13 +407,13 @@ struct ShapeSignatureGenerator {
                        const DoEachT& DoEach) {
     if (set_size <= 0) return DoEach(is_subset_flags);
 
-    const auto& RecusiveVisit = [&](bool is_subset) {
+    const auto& RecursiveVisit = [&](bool is_subset) {
       std::vector<IsSubset> current_is_subset_flags(is_subset_flags);
       current_is_subset_flags.push_back(static_cast<int>(is_subset));
       VisitEachSubSet(set_size - 1, current_is_subset_flags, DoEach);
     };
-    RecusiveVisit(true);
-    RecusiveVisit(false);
+    RecursiveVisit(true);
+    RecursiveVisit(false);
   }
 
   std::optional<ConstrainedSymbolNamesList> GetConstrainedSymbolNamesList(
@@ -623,8 +626,10 @@ void CheckProgramDimExprConstraints(
 }  // namespace
 
 void CheckInferSymbolicIfNeed(pir::Program* program,
-                              const PassManagerCreater& CreatePassManager) {
-  if (!FLAGS_prim_all || !FLAGS_check_infer_symbolic) return;
+                              const PassManagerCreator& CreatePassManager) {
+  if (!(FLAGS_prim_forward && FLAGS_prim_backward) ||
+      !FLAGS_check_infer_symbolic)
+    return;
   const auto& GraphDimExprs4Value =
       MakeDimExprs4Value(program, CreatePassManager);
   // CheckProgramDimExprConstraints has some bug, so we comment it.

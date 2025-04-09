@@ -321,7 +321,7 @@ void GenerateProposalsKernel(const Context& ctx,
   trans(ctx, bbox_deltas, &bbox_deltas_swap, axis);
   trans(ctx, scores, &scores_swap, axis);
 
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   lod.resize(1);
   auto& lod0 = lod[0];
   lod0.push_back(0);

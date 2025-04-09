@@ -44,7 +44,7 @@ class CopyMatrixRowsFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class LoDTensor2BatchFunctor {
+class DenseTensor2BatchFunctor {
   // Calculate the length of each sequence and
   // sort sequence index by the length.
   // example:  sequences = {s0, s1, s2}
@@ -71,7 +71,7 @@ class LoDTensor2BatchFunctor {
           lods.size(),
           2UL,
           common::errors::InvalidArgument(
-              "The LoD of LoDTensor should include at least 2-level "
+              "The LoD of DenseTensor should include at least 2-level "
               "sequence information, but got the LoD level is %lu. Please "
               "check the input value.",
               lods.size()));
@@ -129,19 +129,19 @@ class LoDTensor2BatchFunctor {
     //                     0 is the first sequence,
     //                     2 is the third sequence.
     // The max_seqlen represents batch size after rearranging the
-    // input LodTensor. It is also the maximum length of input sequence.
+    // input DenseTensor. It is also the maximum length of input sequence.
 
-    phi::LoD batch_lods;
+    phi::LegacyLoD batch_lods;
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
 
-    // batch_lods[0] is the start positions for batch LoDTensor
+    // batch_lods[0] is the start positions for batch DenseTensor
     size_t max_seqlen = seq_info[0].length;
     batch_lods[0].resize(max_seqlen + 1);
-    // batch_lods[1] is the raw index in the input LoDTensor
+    // batch_lods[1] is the raw index in the input DenseTensor
     batch_lods[1].resize(static_cast<size_t>(lod_tensor.dims()[0]));
-    // batch_lods[2] is the sort order for the input LoDTensor.
+    // batch_lods[2] is the sort order for the input DenseTensor.
     batch_lods[2].resize(seq_info.size());
 
     size_t* batch_starts = batch_lods[0].data();
@@ -174,7 +174,7 @@ class LoDTensor2BatchFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class Batch2LoDTensorFunctor {
+class Batch2DenseTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& batch,
@@ -184,7 +184,7 @@ class Batch2LoDTensorFunctor {
         in_lod.size(),
         2UL,
         common::errors::InvalidArgument(
-            "The LoD of LoDTensor should include at least 2-level "
+            "The LoD of DenseTensor should include at least 2-level "
             "sequence information, but got the LoD level is %lu. Please check "
             "the input value.",
             in_lod.size()));

@@ -88,7 +88,7 @@ class RecomputeOptimizer(Optimizer):
             ...             program=paddle.static.default_main_program(),
             ...             fetch_list=[cost.name])
             ...     print("step=%d cost=%f" % (i, cost_val[0]))
-            var x : LOD_TENSOR.shape(-1, 32).dtype(float32).stop_gradient(True)
+            var x : DENSE_TENSOR.shape(-1, 32).dtype(float32).stop_gradient(True)
             Finished optimize
             step=0 cost=0.737203
             step=1 cost=1.308077
