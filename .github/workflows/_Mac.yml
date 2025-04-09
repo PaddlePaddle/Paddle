@@ -67,7 +67,7 @@ jobs:
     - name: Build with mac python3.9
       run: |
         cd ${work_dir}/Paddle
-        bash ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
+        bash ${work_dir}/Paddle/ci/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
         EXCODE=$?
         exit $EXCODE
 
