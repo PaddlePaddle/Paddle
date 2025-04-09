@@ -73,7 +73,7 @@ function run_setup(){
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
 		echo 123
-		pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+		pip3 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             fi
         elif [ "$1" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
@@ -293,9 +293,9 @@ EOF
         fi
     else
         if [ "$SYSTEM" == "Darwin" ]; then
-            python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+            python3 setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
         else
-            python setup.py $2;build_error=$?
+            python3 setup.py $2;build_error=$?
         fi
     fi
     echo "::endgroup::"
