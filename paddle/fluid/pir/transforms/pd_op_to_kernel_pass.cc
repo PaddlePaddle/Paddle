@@ -3049,6 +3049,7 @@ std::vector<pir::Value> BuildInputs(
         }
       }
     }
+    (*map_value_pair)[op_item->operand_source(i)] = new_in;
 
     vec_inputs.push_back(new_in);
   }
@@ -3459,7 +3460,7 @@ void ProcessBlock(
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
-    VLOG(6) << "op name " << op_item->name();
+    VLOG(6) << "op name " << op_item->name() << ", op id " << op_item->id();
     if ((op_item->isa<FeedOp>()) &&
         inputs_by_data_op.count(op_item->attributes()
                                     .at("name")
@@ -3619,7 +3620,6 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
 #endif
   std::unordered_map<pir::Operation*, pir::Operation*> map_op_pair;
   std::unordered_map<pir::Value, pir::Value> map_value_pair;
-
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
