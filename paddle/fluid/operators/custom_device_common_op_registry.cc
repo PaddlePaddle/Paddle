@@ -1314,11 +1314,7 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
                            int col,
                            phi::DenseTensor* out);
 
-void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-
-#endif
-}
+void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {}
 
 }  // namespace operators
 }  // namespace paddle
