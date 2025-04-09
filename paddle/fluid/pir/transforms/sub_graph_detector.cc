@@ -701,8 +701,8 @@ std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
   return subgraph_detector.BuildGroups();
 }
 
-std::vector<pir::Value> AnalysisOutputs(
-    const GroupOpsVec& group_ops) {  // NOLINT
+std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops,
+                                        bool at_least_one_output) {
   // Get output by ud chain
   std::unordered_set<pir::Operation*> op_set(group_ops.begin(),
                                              group_ops.end());
@@ -724,7 +724,7 @@ std::vector<pir::Value> AnalysisOutputs(
 
   // NOTE: If all value are not used outside, we mark last op's results
   // as outputs. But keep in mind that is risky.
-  if (outputs.size() == 0) {
+  if (at_least_one_output && outputs.size() == 0) {
     for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
       outputs.push_back(group_ops.back()->result(i));
     }
@@ -864,7 +864,8 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 }
 
 void ReplaceWithGroupOp(pir::Block* block,
-                        const GroupOpsVec& group_ops) {  // NOLINT
+                        const GroupOpsVec& group_ops,
+                        bool at_least_one_output) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
 #ifdef PADDLE_WITH_CINN
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
@@ -873,7 +874,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
   ::pir::Builder builder = ::pir::Builder(ctx, block);
-  const std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
+  const std::vector<pir::Value> outputs =
+      AnalysisOutputs(group_ops, at_least_one_output);
 
   // step 1: Analysis and insert group op before insert_point.
   auto* insert_point = FindInsertPoint(group_ops, outputs);
