@@ -191,8 +191,9 @@ void SvdvalsKernel(const Context& dev_ctx,
                    const DenseTensor& X,
                    DenseTensor* S) {
   auto& dims = X.dims();
-  int rows = static_cast<int>(dims[dims.size() - 2]);
-  int cols = static_cast<int>(dims[dims.size() - 1]);
+  int rank = dims.size();
+  int rows = dims[rank - 2];
+  int cols = dims[rank - 1];
   PADDLE_ENFORCE_GT(
       rows,
       0,
@@ -209,13 +210,6 @@ void SvdvalsKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument("Batch size must be greater than 0."));
 
-  DDim S_dims;
-  if (dims.size() <= 2) {
-    S_dims = {k};
-  } else {
-    S_dims = {batches, k};
-  }
-  S->Resize(S_dims);
   auto* S_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
 
   auto info = Empty<int, Context>(dev_ctx, {batches});
