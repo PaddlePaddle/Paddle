@@ -1479,9 +1479,9 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : digamma
-    spmd_rule : ElementwiseUnaryInferSpmd
   inplace: (x -> out)
   backward : digamma_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
