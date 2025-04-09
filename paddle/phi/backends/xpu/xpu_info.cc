@@ -13,7 +13,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <xpu/xpuml.h>
 #endif
 
 #include <algorithm>
@@ -230,9 +229,10 @@ int GetXPUDeviceUtilizationRate(int dev_id) {
     dev_id = GetXPUCurrentDeviceId();
   }
   xpumlDevice_t dev_handle;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
   xpumlUtilization_t dev_util;
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetUtilizationRates(dev_handle, &dev_util));
   return dev_util.xpu;
 }
@@ -244,9 +244,10 @@ int GetXPUDeviceTotalMemory(int dev_id) {
   }
 
   xpumlDevice_t dev_handle;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
   xpumlMemory_t dev_mem_info;
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
   return dev_mem_info.totalGlobalMemory / 1024 / 1024;  // MB
 }
@@ -258,9 +259,10 @@ int GetXPUDeviceUsedMemory(int dev_id) {
   }
 
   xpumlDevice_t dev_handle;
-  PADDLE_ENFORCE_XPU_SUCCESS(xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
   xpumlMemory_t dev_mem_info;
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_XPUML_SUCCESS(
       xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
   return dev_mem_info.usedGlobalMemory / 1024 / 1024;  // MB
 }
