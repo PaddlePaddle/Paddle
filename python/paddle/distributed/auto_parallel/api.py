@@ -1388,43 +1388,27 @@ class _ShardOptimizer(Optimizer):
             param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
 
-    def _fused_comm_before_apply_optimize(self, params_grads):
+    def _fused_comm_before_apply_optimize(self, flags, params_grads):
         '''
         In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
         Below are 2 methods to modify grad partial state by fusing comms before optimize:
-            1) FLAGS_fuse_reducescatter_in_opt: Change all partial state in placements to replicate
-               via `allreduce` comms,
+            1) fuse allreduce: Change all partial state in placements to replicate via `allreduce` comms,
                 e.g.
                     a) sharding_axis = 0, tensor rank = 2,
                        placements: [partial, shard(0), partial] -> [replicate, shard(0), replicate].
 
-            2) FLAGS_fuse_reducescatter_in_opt: Keep shard states in placements unchanged, transform others
-               to `shard(dim)` states via `reduce_scatter` comms if possible, or replicate states otherwise.
-               In particular, the `placement[sharding_axis]` should be `shard(0)` if possible.
+            2) fuse reduce_scatter: Keep shard states in placements unchanged, transform others to `shard(dim)`
+               states via `reduce_scatter` comms if possible, or replicate states otherwise. In particular,
+               the `placement[sharding_axis]` should be `shard(0)` if possible.
                 e.g.
                     a) sharding_axis = 0, tensor rank = 2,
                        placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
                     b) sharding_axis = 0, tensor rank = 2,
                        placements: [partial, shard(0), partial ] -> [shard(1), shard(0), replicate]
         '''
-
-        # Get fuse optimization flag.
-        def get_env(flag_name):
-            if os.getenv(flag_name) in ['True', 'true', '1']:
-                return True
-            return False
-
-        # TODO: This optimization hasn't been verified on a wide range of models. Currently,
-        # it's controlled by a flag switch and will be removed later.
-        fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
-        fuse_reducescatter_in_opt = get_env("FLAGS_fuse_reducescatter_in_opt")
-        assert not (
-            fuse_allreduce_in_opt and fuse_reducescatter_in_opt
-        ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
-
         new_params_grads = []
 
-        if fuse_allreduce_in_opt:
+        if flags["fuse_allreduce"]:
             for param, grad in params_grads:
                 new_grad = grad
                 new_placements = copy.deepcopy(grad.placements)
@@ -1440,7 +1424,7 @@ class _ShardOptimizer(Optimizer):
                     )
                 new_params_grads.append((param, new_grad))
 
-        if fuse_reducescatter_in_opt:
+        elif flags["fuse_reducescatter"]:
             # Get the first non-shard dim of tensor shape in ascending order.
             # `shard_dims_set` records if dim is marked as shard in placement.
             def get_first_can_shard_dim(tensor_shape, shard_dims_set):
@@ -1491,7 +1475,8 @@ class _ShardOptimizer(Optimizer):
                     )
 
                 new_params_grads.append((param, new_grad))
-
+        else:
+            new_params_grads = params_grads
         return new_params_grads
 
     def _apply_optimize(
@@ -1499,7 +1484,29 @@ class _ShardOptimizer(Optimizer):
     ):
         # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
         if paddle.in_dynamic_mode():
-            params_grads = self._fused_comm_before_apply_optimize(params_grads)
+            # Get fuse optimization flag.
+            def get_env(flag_name):
+                if os.getenv(flag_name) in ['True', 'true', '1']:
+                    return True
+                return False
+
+            # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+            # it's controlled by a flag switch and will be removed later.
+            fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+            fuse_reducescatter_in_opt = get_env(
+                "FLAGS_fuse_reducescatter_in_opt"
+            )
+            assert not (
+                fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+            ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+            if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                flags = {}
+                flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                params_grads = self._fused_comm_before_apply_optimize(
+                    flags, params_grads
+                )
 
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx
