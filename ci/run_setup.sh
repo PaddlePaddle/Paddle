@@ -61,6 +61,7 @@ function run_setup(){
                 exit 1
             fi
         elif [ "$1" == "cp39-cp39" ]; then
+	    echo 111
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
@@ -71,7 +72,8 @@ function run_setup(){
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
                 pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
-                exit 1
+		echo 123
+		pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
             fi
         elif [ "$1" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
