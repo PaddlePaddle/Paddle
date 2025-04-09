@@ -1745,6 +1745,7 @@ Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
         workspace,
         launch_stream,
         phases);
+    VLOG(1) << "Dispatch launch over";
   };
   launcher(return_recv_hook
                ? LOW_LATENCY_SEND_PHASE
@@ -1765,7 +1766,7 @@ Buffer::low_latency_dispatch(const deep_ep::detail::Tensor& x,
   std::optional<std::function<void()>> recv_hook = std::nullopt;
   if (return_recv_hook) recv_hook = [=]() { launcher(LOW_LATENCY_RECV_PHASE); };
 
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+  // PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   VLOG(1) << "kernel end";
 
   // Return values
