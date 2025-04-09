@@ -36,6 +36,7 @@ from paddle.tensorrt.util import (
     RefitManager,
     RefitRole,
     TensorRTConstantManager,
+    support_fp32_mix_precision,
 )
 
 _logger = get_logger(

@@ -177,6 +177,15 @@ static std::string CurTailFnName(const std::string &origin_fn_name) {
   return new_fn_name;
 }
 
+bool RequiresCooperativeLaunch(const ir::LoweredFunc &func) {
+  for (auto &space : func->temp_spaces) {
+    if (space.size() != ir::Expr(0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::string
 detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
     const std::string &fn_name, ir::Expr predicate) {
@@ -257,10 +266,8 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         CINN_NOT_IMPLEMENTED;
       },
       [&](common::NVGPUArch) {
-        // TODO(liangshuhao): when cooperative group is supported, change the
-        // second call to `call_cuda_cooperative_kernel`.
-        call_kernel = func->temp_spaces.empty()
-                          ? runtime::intrinsic::call_cuda_kernel
+        call_kernel = RequiresCooperativeLaunch(func)
+                          ? runtime::intrinsic::call_cuda_cooperative_kernel
                           : runtime::intrinsic::call_cuda_kernel;
       },
       [&](common::HygonDCUArchHIP) {

@@ -664,12 +664,18 @@ def is_data_parallel_reduce_op(op):
         "c_allreduce_sum",
         "c_allreduce_avg",
     ]
+    is_all_reduce_op = op.type == "all_reduce" and op.desc.attr(
+        "reduce_type"
+    ) in [
+        dist.ReduceOp.SUM,
+        dist.ReduceOp.AVG,
+    ]
     is_reduce_op = op.type == "reduce" and op.desc.attr("reduce_type") in [
         dist.ReduceOp.SUM,
         dist.ReduceOp.AVG,
     ]
     return (
-        (is_allreduce_op or is_reduce_op)
+        (is_allreduce_op or is_all_reduce_op or is_reduce_op)
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
@@ -686,7 +692,13 @@ def is_amp_flag_sync_op(op):
 
 def is_global_norm_sync_op(op):
     return (
-        op.type == "c_allreduce_sum"
+        (
+            op.type == "c_allreduce_sum"
+            or (
+                op.type == "all_reduce"
+                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+            )
+        )
         and op.desc.has_attr("op_namescope")
         and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )
