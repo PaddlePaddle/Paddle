@@ -96,7 +96,6 @@ class TestDisableDPSpmd:
 
         program = model._engine._pir_dist_main_progs["train"]
         for op in program.global_block().ops:
-            print(op.name())
             if op.name() == "pd_op.sum":
                 out = op.result(0)
                 assert out.placements[0] == dist.Shard(0)
