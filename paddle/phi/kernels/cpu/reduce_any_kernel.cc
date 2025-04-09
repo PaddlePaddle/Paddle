@@ -14,10 +14,16 @@
 
 #include "paddle/phi/kernels/reduce_any_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
+
+using complex64 = ::phi::dtype::complex<float>;
+using complex128 = ::phi::dtype::complex<double>;
 
 namespace phi {
 
@@ -29,7 +35,7 @@ void AnyRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  phi::BoolReduceKernel<CPUContext, T, phi::funcs::AnyFunctor>(
+  phi::BoolReduceKernel<CPUContext, T, phi::funcs::AnyFunctor<T>>(
       dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
@@ -43,6 +49,8 @@ PD_REGISTER_KERNEL(any_raw,
                    double,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   complex64,
+                   complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }

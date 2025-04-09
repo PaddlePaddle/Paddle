@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class NOP : public OperatorBase {
  public:
@@ -70,8 +69,7 @@ class DummyOpVarTypeInference : public VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 REGISTER_OPERATOR(fake_sum,
                   paddle::framework::NOP,
@@ -85,8 +83,7 @@ REGISTER_OPERATOR(sum_without_infer_var_type,
                   paddle::framework::NOP,
                   paddle::framework::SumOpMaker);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 TEST(GraphTest, Basic) {
   ProgramDesc prog;
@@ -337,5 +334,4 @@ TEST(GraphTest, TestMultiBlock) {
   FLAGS_convert_all_blocks = flag_temp;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -979,7 +979,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
   auto stream = dev_ctx.stream();
   if (cols == 1024 || cols == 384 || cols == 256) {
     // step-1: compute dx and reduced part results of dscale and dbias.
-    const int WARPS_M = 4;  // how many rows delt in a cta.
+    const int WARPS_M = 4;  // how many rows deal in a cta.
     const int WARPS_N = 1;  // how many warps to deal with a row.
     const int BYTES_PER_LDG = 16;
     const int VecSize = BYTES_PER_LDG / sizeof(T);

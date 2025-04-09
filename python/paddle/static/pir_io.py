@@ -310,7 +310,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
             global_block.remove_op(op)
 
     skip_prune_program = kwargs.get('skip_prune_program', False)
-    # if feed var is not conect with target_vars, it will be delete.
+    # if feed var is not connect with target_vars, it will be delete.
     if not skip_prune_program:
         pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
     _inference_optimize(copy_program, prune_read_op=True)
@@ -318,10 +318,11 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     fetch_vars_tuple = []
     for i, var in enumerate(clone_fetch_vars):
         scale_op = var.get_defining_op()
+        orig_var = var
         if scale_op.name() == "pd_op.scale":
-            orig_var = scale_op.operand_source(0)
-        else:
-            orig_var = var
+            full_op = scale_op.operand_source(1).get_defining_op()
+            if full_op.has_attr("value") and full_op.attrs()['value'] == 1.0:
+                orig_var = scale_op.operand_source(0)
         if orig_var.has_name:
             fetch_vars_tuple.append((orig_var, orig_var.name))
         else:
@@ -764,7 +765,16 @@ def save_inference_model_pir(
     readable = kwargs.get('readable', False)
     trainable = kwargs.get('trainable', True)
     paddle.core.serialize_pir_program(
-        program, model_path, 1, True, readable, trainable
+        program,
+        (
+            os.path.join(os.path.dirname(model_path), "__model__.json")
+            if kwargs.get('separate_parameters', False)
+            else model_path
+        ),
+        1,
+        True,
+        readable,
+        trainable,
     )
 
     # serialize and save params
@@ -773,7 +783,11 @@ def save_inference_model_pir(
     save_vars_pir(
         dirname=save_dirname,
         main_program=program,
-        filename=params_filename,
+        filename=(
+            None
+            if kwargs.get('separate_parameters', False)
+            else params_filename
+        ),
     )
 
 

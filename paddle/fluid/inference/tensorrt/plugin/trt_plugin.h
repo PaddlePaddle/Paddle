@@ -25,6 +25,7 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 namespace nvinfer1 {
@@ -379,48 +380,10 @@ class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
   std::vector<nvinfer1::PluginField> plugin_attributes_;
 };
 
-class TrtPluginRegistry {
- public:
-  static TrtPluginRegistry* Global() {
-    static TrtPluginRegistry registry;
-    return &registry;
-  }
-  bool Regist(const std::string& name, const std::function<void()>& func) {
-    map.emplace(name, func);
-    return true;
-  }
-  void RegistToTrt() {
-    for (auto& it : map) {
-      it.second();
-    }
-  }
-
- private:
-  std::unordered_map<std::string, std::function<void()>> map;
-};
+using TrtPluginRegistry = paddle::platform::TrtPluginRegistry;
 
 template <typename T>
-class TrtPluginRegistrarV2 {
- public:
-  TrtPluginRegistrarV2() {
-    static auto func_ptr = GetPluginRegistry();
-    if (func_ptr != nullptr) {
-      func_ptr->registerCreator(creator, "");
-    }
-  }
-
- private:
-  T creator;
-};
-
-#define REGISTER_TRT_PLUGIN_V2(name) REGISTER_TRT_PLUGIN_V2_HELPER(name)
-
-#define REGISTER_TRT_PLUGIN_V2_HELPER(name)                                    \
-  UNUSED static bool REGISTER_TRT_PLUGIN_V2_HELPER##name =                     \
-      TrtPluginRegistry::Global()->Regist(#name, []() -> void {                \
-        static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
-            plugin_registrar_##name{};                                         \
-      });
+using TrtPluginRegistrarV2 = paddle::platform::TrtPluginRegistrarV2<T>;
 
 }  // namespace plugin
 }  // namespace tensorrt

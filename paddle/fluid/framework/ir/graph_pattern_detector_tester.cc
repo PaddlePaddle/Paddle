@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -207,6 +205,4 @@ TEST(GraphPatternDetector, IntermediateCheck) {
   ASSERT_EQ(count, 1);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

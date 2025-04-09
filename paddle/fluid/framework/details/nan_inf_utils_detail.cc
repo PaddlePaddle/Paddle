@@ -23,9 +23,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 struct DebugTools {
   DebugTools() = default;
   std::string path = "";
@@ -288,6 +286,4 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
   }
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

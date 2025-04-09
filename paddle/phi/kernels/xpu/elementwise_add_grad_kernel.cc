@@ -61,14 +61,14 @@ void AddGradKernel(const Context& dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);
-      std::vector<int> dz_vector = common::vectorize<int>(dz_dims);
+      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
 
-      int ret =
-          xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
-                                   reinterpret_cast<const XPUType*>(dz_data),
-                                   reinterpret_cast<XPUType*>(dx->data<T>()),
-                                   dz_vector,
-                                   reduce_dims);
+      int ret = xpu::reduce_sum<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dz_data),
+          reinterpret_cast<XPUType*>(dx->data<T>()),
+          dz_vector,
+          std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
   }
@@ -86,13 +86,13 @@ void AddGradKernel(const Context& dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dy->dims(), dz_dims, axis);
-      std::vector<int> dz_vector = common::vectorize<int>(dz_dims);
-      int ret =
-          xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
-                                   reinterpret_cast<const XPUType*>(dz_data),
-                                   reinterpret_cast<XPUType*>(dy_data),
-                                   dz_vector,
-                                   reduce_dims);
+      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+      int ret = xpu::reduce_sum<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dz_data),
+          reinterpret_cast<XPUType*>(dy_data),
+          dz_vector,
+          std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
   }

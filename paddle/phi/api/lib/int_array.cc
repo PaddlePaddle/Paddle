@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 template <>
 IntArrayBase<Tensor>::IntArrayBase(const Tensor& tensor) {  // NOLINT
@@ -69,5 +68,4 @@ IntArrayBase<Tensor>::IntArrayBase(const std::vector<Tensor>& tensor_list) {
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

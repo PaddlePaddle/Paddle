@@ -17,12 +17,12 @@
 #include <algorithm>
 #include <string>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
@@ -163,11 +163,11 @@ ir::Tensor Squeeze(const ir::Tensor& A,
   auto res = Compute(
       output_shape,
       [=](const std::vector<Expr>& indices) {
-        std::vector<Expr> indexs(A->shape.size(), Expr(0));
+        std::vector<Expr> out_indices(A->shape.size(), Expr(0));
         for (int idx = 0; idx < indices.size(); ++idx) {
-          indexs[position[idx]] = indices[idx];
+          out_indices[position[idx]] = indices[idx];
         }
-        return A(indexs);
+        return A(out_indices);
       },
       output_name);
   return res;
@@ -222,7 +222,7 @@ Expr ReshapeHandler(const ir::Tensor& A,
       if (i > A_s) {
         temp = temp % A->shape[i];
       }
-      A_indice[i] = common::AutoSimplify(temp);
+      A_indice[i] = optim::ArithSimplify(temp);
     }
   };
 
@@ -351,6 +351,7 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
                          const cinn::dialect::SymbolBindings& symbol_bindings,
                          const std::vector<symbol::DimExpr>& output_dim_exprs,
                          const std::vector<ir::Dim>& out_shape,
+                         const std::vector<Type>& out_type,
                          const std::string& name) {
   if (output_dim_exprs.size() != 1) {
     VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
@@ -365,7 +366,13 @@ ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
   auto res = Compute(
       ToCinnExprs(out_shape),
       [=, &converter](const std::vector<Expr>& indice) {
-        return converter.ConvertToIrExpr(output_dim_exprs[0]);
+        auto dim_expr = converter.ConvertToIrExpr(output_dim_exprs[0]);
+
+        if (out_type[0] == type_of<int32_t>()) {
+          dim_expr = ir::Cast::Make(type_of<int32_t>(), dim_expr);
+        }
+
+        return dim_expr;
       },
       name);
   return res;

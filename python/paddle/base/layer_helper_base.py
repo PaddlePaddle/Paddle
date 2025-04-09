@@ -360,8 +360,8 @@ class LayerHelperBase:
             return None
         assert isinstance(attr, ParamAttr)
         for i, size in enumerate(shape):
-            assert size > 0, (
-                "Expected every dim's size to be larger than 0, "
+            assert size >= 0, (
+                "Expected every dim's size to be larger than or equal to 0, "
                 f"but the size of the {i}-th dim is {size}"
             )
         # set global dtype

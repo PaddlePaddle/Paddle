@@ -110,9 +110,9 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());
-      framework::SerializeToStream(ss, out, dev_ctx);
+      phi::SerializeToStream(ss, out, dev_ctx);
     } else {
-      framework::SerializeToStream(ss, tensor, dev_ctx);
+      phi::SerializeToStream(ss, tensor, dev_ctx);
     }
   }
 

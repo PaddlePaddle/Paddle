@@ -182,14 +182,14 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
       std::get<ReduceTreePattern>(downstream->stmt_pattern());
 
   VLOG(4) << "upstream: \n" << OpsDebugStr(GetOpsInPattern(upstream_tree));
-  VLOG(4) << "upstream->childs_num: " << upstream_tree.childs().size();
+  VLOG(4) << "upstream->children_num: " << upstream_tree.children().size();
   VLOG(4) << "downstream: \n" << OpsDebugStr(GetOpsInPattern(downstream_tree));
-  VLOG(4) << "downstream->childs_num: " << downstream_tree.childs().size();
+  VLOG(4) << "downstream->children_num: " << downstream_tree.children().size();
 
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
       upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
   int idx = 0;
-  for (const auto& r_pattern : downstream_tree.childs()) {
+  for (const auto& r_pattern : downstream_tree.children()) {
     idx += 1;
     VLOG(4) << "downstream_tree.reduce_patterns_"
             << "[" << idx << "]" << OpsDebugStr(GetOpsInPattern(r_pattern));
@@ -256,7 +256,8 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
       GetValueUsage(downstream->sink_op()->result(0), 0), fakes);
 
   // TODO(huangjiyi): support fusion when fake_reduce.size < reduce.size
-  bool res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
+  bool res = (ElementwiseEqual(non_related_dims, upstream_reduce_dims) &&
+              fakes.size() == upstream_reduce_dims.size()) ||
              (IsProductSmallerOrEqual(downstream_free_dims,
                                       upstream_non_reduce_dims) &&
               (fakes.empty() || fakes.size() == upstream_reduce_dims.size()));
@@ -298,15 +299,23 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
       upstream_non_reduce_dims);
 
   std::unordered_set<DimUsage, DimUsageHash> visited_dims;
-  std::vector<size_t> result;
+  std::vector<size_t> fake_reduce_indices;
   for (auto& reduce_dim : upstream_reduce_dims) {
     for (auto& trivial_dim : trivial_reorder_dims) {
       if (visited_dims.find(trivial_dim) == visited_dims.end() &&
           trivial_dim.SymbolicEqualTo(reduce_dim)) {
         visited_dims.emplace(trivial_dim);
-        result.emplace_back(trivial_dim.idx_);
+        fake_reduce_indices.emplace_back(trivial_dim.idx_);
         break;
       }
+    }
+  }
+  // Skip fake reduce dim which is 1
+  std::vector<size_t> result;
+  for (auto& fake_reduce_idx : fake_reduce_indices) {
+    if (downstream->loop_axis_mapping().loop[fake_reduce_idx] !=
+        symbol::DimExpr(1)) {
+      result.push_back(fake_reduce_idx);
     }
   }
   VLOG(4) << "FakeReduceIterIdx: " << cinn::utils::Join(result, ", ");

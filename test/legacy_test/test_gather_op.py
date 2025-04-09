@@ -471,7 +471,7 @@ class TestGatherNegativeAxis(OpTest):
 
 
 class TestOutOfRangeError(unittest.TestCase):
-    def test_dygraph_forwad_and_backward(self):
+    def test_dygraph_forward_and_backward(self):
         with dygraph_guard():
             x = paddle.randn([100, 3]).cpu()
             x.stop_gradient = False

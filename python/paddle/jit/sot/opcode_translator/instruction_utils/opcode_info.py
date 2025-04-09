@@ -23,6 +23,7 @@ REL_FWD_JUMP = REL_JUMP - REL_BWD_JUMP
 ABS_JUMP = {opcode.opname[x] for x in opcode.hasjabs}
 HAS_LOCAL = {opcode.opname[x] for x in opcode.haslocal}
 HAS_FREE = {opcode.opname[x] for x in opcode.hasfree}
+NEED_TO_BOOL = {"UNARY_NOT", "POP_JUMP_IF_FALSE", "POP_JUMP_IF_TRUE"}
 ALL_JUMP = REL_JUMP | ABS_JUMP
 UNCONDITIONAL_JUMP = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
 if sys.version_info >= (3, 11):

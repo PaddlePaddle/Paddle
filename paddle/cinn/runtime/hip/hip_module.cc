@@ -43,7 +43,7 @@ HIPModule::HIPModule(const std::string& data) : data_(data) {
 
 hipFunction_t HIPModule::GetFunction(int device_id,
                                      const std::string& func_name) {
-  VLOG(3) << "GetFuncion : " << func_name << " with device_id : " << device_id;
+  VLOG(3) << "GetFunction : " << func_name << " with device_id : " << device_id;
   cinn::utils::RecordEvent record_run("hipGetFunction",
                                       cinn::utils::EventType::kOrdinary);
   if (!module_per_card_[device_id]) {

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/trainer.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/fluid/platform/densetensor_printer.h"
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
@@ -28,8 +28,7 @@ PHI_DEFINE_EXPORTED_bool(enable_dump_main_program,
                          false,
                          "enable dump main program, default false");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 extern Barrier g_barrier;
 
@@ -436,5 +435,4 @@ void MultiTrainer::ResetDataset(Dataset* dataset) {
 }
 #endif
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

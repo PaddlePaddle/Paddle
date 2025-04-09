@@ -45,7 +45,9 @@
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"
 #endif
-
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/framework/new_executor/instruction/custom_engine_instruction.h"
+#endif
 #include "paddle/fluid/framework/new_executor/instruction/builtin_combine_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/assert_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/control_flow/has_elements_instruction.h"
@@ -79,7 +81,6 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
 #include "paddle/fluid/framework/new_executor/nan_inf_utils.h"
@@ -88,6 +89,7 @@ COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 COMMON_DECLARE_bool(enable_collect_shape);
 COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(pir_interpreter_record_stream_for_gc_cache);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -477,12 +479,12 @@ void PirInterpreter::CheckCUDAGraphBeforeRun(
 #endif
 }
 
-void PirInterpreter::ClearLoDTensorArrayInLocalScope() {
+void PirInterpreter::ClearDenseTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
     if (var->IsType<phi::TensorArray>()) {
-      auto* lod_tensor_arr = var->GetMutable<phi::TensorArray>();
-      lod_tensor_arr->clear();
+      auto* dense_tensor_arr = var->GetMutable<phi::TensorArray>();
+      dense_tensor_arr->clear();
     }
   }
 }
@@ -531,17 +533,8 @@ void PirInterpreter::UpdateSyncOpNum() {
 void PirInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
       "pd_op.c_softmax_with_cross_entropy",
-      "pd_op.c_allgather",
-      "pd_op.c_allreduce_avg",
-      "pd_op.c_allreduce_max",
-      "pd_op.c_allreduce_min",
+      "pd_op.c_softmax_with_multi_label_cross_entropy",
       "pd_op.c_allreduce_sum",
-      "pd_op.c_allreduce_prod",
-      "pd_op.c_reduce_avg",
-      "pd_op.c_reduce_max",
-      "pd_op.c_reduce_min",
-      "pd_op.c_reduce_prod",
-      "pd_op.c_reducescatter",
       "pd_op.c_broadcast",
       "pd_op.c_scatter",
       "pd_op.partial_send",
@@ -568,15 +561,8 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.all_reduce",
       "pd_op.reduce",
       "pd_op.c_softmax_with_cross_entropy_grad",
-      "pd_op.c_allgather_grad",
-      "pd_op.c_allreduce_max_grad",
-      "pd_op.c_allreduce_min_grad",
+      "pd_op.c_softmax_with_multi_label_cross_entropy_grad",
       "pd_op.c_allreduce_sum_grad",
-      "pd_op.c_allreduce_prod_grad",
-      "pd_op.c_reduce_max_grad",
-      "pd_op.c_reduce_min_grad",
-      "pd_op.c_reduce_prod_grad",
-      "pd_op.c_reducescatter_grad",
       "pd_op.c_broadcast_grad",
       "pd_op.c_scatter_grad",
       "pd_op.partial_send_grad",
@@ -588,6 +574,7 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.barrier_grad",
       "pd_op.alltoall_grad",
       "pd_op.global_gather_grad",
+      "pd_op.c_concat_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
       "pd_op.sync_batch_norm_grad",
@@ -603,17 +590,8 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.all_reduce_grad",
       "pd_op.reduce_grad",
       "pd_op.c_softmax_with_cross_entropy_",
-      "pd_op.c_allgather_",
-      "pd_op.c_allreduce_avg_",
-      "pd_op.c_allreduce_max_",
-      "pd_op.c_allreduce_min_",
+      "pd_op.c_softmax_with_multi_label_cross_entropy_",
       "pd_op.c_allreduce_sum_",
-      "pd_op.c_allreduce_prod_",
-      "pd_op.c_reduce_avg_",
-      "pd_op.c_reduce_max_",
-      "pd_op.c_reduce_min_",
-      "pd_op.c_reduce_prod_",
-      "pd_op.c_reducescatter_",
       "pd_op.c_broadcast_",
       "pd_op.c_scatter_",
       "pd_op.partial_send_",
@@ -640,15 +618,8 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.all_reduce_",
       "pd_op.reduce_",
       "pd_op.c_softmax_with_cross_entropy_grad_",
-      "pd_op.c_allgather_grad_",
-      "pd_op.c_allreduce_max_grad_",
-      "pd_op.c_allreduce_min_grad_",
+      "pd_op.c_softmax_with_multi_label_cross_entropy_grad_",
       "pd_op.c_allreduce_sum_grad_",
-      "pd_op.c_allreduce_prod_grad_",
-      "pd_op.c_reduce_max_grad_",
-      "pd_op.c_reduce_min_grad_",
-      "pd_op.c_reduce_prod_grad_",
-      "pd_op.c_reducescatter_grad_",
       "pd_op.c_broadcast_grad_",
       "pd_op.c_scatter_grad_",
       "pd_op.partial_send_grad_",
@@ -869,6 +840,18 @@ void PirInterpreter::BuildInstruction() {
         while_instr_ptr->CheckGCEarly([this](InstructionBase* instr) {
           std::unordered_map<pir::Value, std::vector<int>> inputs;
           GetInputIds(instr->Operation(), *this->value_exe_info_, &inputs);
+          auto HasUserInLoopBody = [instr](pir::Value value) {
+            for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+              auto user_parent_op = it->owner()->GetParentOp();
+              while (user_parent_op) {
+                if (user_parent_op == instr->Operation()) {
+                  return true;
+                }
+                user_parent_op = user_parent_op->GetParentOp();
+              }
+            }
+            return false;
+          };
           for (const auto& kv : inputs) {
             if (kv.first ==
                 instr->Operation()->operand_source(0 /*cond var*/)) {
@@ -876,6 +859,9 @@ void PirInterpreter::BuildInstruction() {
               continue;
             }
             if (kv.first.isa<pir::BlockArgument>()) {
+              continue;
+            }
+            if (HasUserInLoopBody(kv.first)) {
               continue;
             }
             auto var_id = this->value_exe_info_->GetVarId(kv.first);
@@ -954,16 +940,27 @@ void PirInterpreter::BuildInstruction() {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
+    } else if (paddle::dialect::IsCustomEngineOp(&op)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      vec_instruction_base_.emplace_back(
+          std::make_unique<CustomEngineInstruction>(
+              op_idx++, place_, &op, value_exe_info_.get(), execution_config_));
+#else
+      PADDLE_THROW(common::errors::PreconditionNotMet(
+          "Program has CustomEngineOp and must compile Paddle use "
+          "-DWITH_CUSTOM_DEVICE=ON"));
+#endif
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "Now only support pd_kernel, onednn_kernel, custom_kernel, trt_op "
+          "Now only support pd_kernel, onednn_kernel, custom_kernel, trt_op, "
+          "custom_engine_op "
           "and cinn dialect."));
     }
   }
 }
 
 std::string PirInterpreter::DebugInstructions() {
-  // log formate: var[101] = pd_op.relu(var[100]) or for inplace op var[100] =
+  // log format: var[101] = pd_op.relu(var[100]) or for inplace op var[100] =
   // pd_op.relu_(var[100])
   std::stringstream ss;
   ss << "{outputs}"
@@ -1149,17 +1146,25 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
   PADDLE_THROW(common::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
+  if (FLAGS_pir_interpreter_record_stream_for_gc_cache &&
+      instr->SkipRecordStreamForGC()) {
+    return;
+  }
+
   if (!IsInterpretercoreFastGCEnabled() ||
       instr->KernelType() != OpFuncType::kGpuAsync) {
+    instr->SetSkipRecordStreamForGC(true);
     return;
   }
   if (instr->DeviceContext().GetPlace().GetType() ==
       phi::AllocationType::CUSTOM) {
+    instr->SetSkipRecordStreamForGC(true);
     return;
   }
   phi::RecordEvent record(
       "RecordStreamForGC", phi::TracerEventType::UserDefined, 10);
 
+  bool skip_record_stream = true;
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr->DeviceContext()).stream();
 // TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
@@ -1171,21 +1176,16 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
         op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
             false) {
       int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
-      if (FLAGS_dynamic_static_unified_comm) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        stream = static_cast<phi::distributed::NCCLCommContext*>(
-                     comm_context_manager.Get(std::to_string(ring_id)))
-                     ->GetStream();
-      } else {
-        stream = platform::NCCLCommContext::Instance()
-                     .Get(ring_id, instr->DeviceContext().GetPlace())
-                     ->stream();
-      }
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      stream = static_cast<phi::distributed::NCCLCommContext*>(
+                   comm_context_manager.Get(std::to_string(ring_id)))
+                   ->GetStream();
     }
   }
 #endif
-  auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
+  auto TensorRecordStream = [&stream,
+                             &skip_record_stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
       return;
@@ -1193,7 +1193,9 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
 
     const phi::Place& place = allocation->place();
     if (phi::is_gpu_place(place)) {
-      memory::RecordStream(allocation, stream);
+      if (memory::RecordStream(allocation, stream)) {
+        skip_record_stream = false;
+      }
     } else if (phi::is_cuda_pinned_place(place)) {
       // TODO(Ruibiao): Here should do something to make sure that the tensor
       // is not freed until the H2D copies done. However, simply launch a
@@ -1249,7 +1251,7 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
     } else if (
         var->IsType<
             operators::reader::
-                OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
+                OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
       // do nothing
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
@@ -1278,6 +1280,10 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
           "The variable(%s) is not supported in eager deletion.",
           framework::ToTypeName(var->Type())));
     }
+  }
+
+  if (skip_record_stream) {
+    instr->SetSkipRecordStreamForGC(true);
   }
 #endif
 }
@@ -1397,7 +1403,7 @@ void PirInterpreter::CalculateLastLiveOps() {
   }
   VLOG(4) << "var_ref_count_.size() : " << var_ref_count_.size();
   for (size_t i = 0; i < last_live_ops_.size(); ++i) {
-    std::set<size_t> minumum_last_live_ops;
+    std::set<size_t> minimum_last_live_ops;
     for (size_t item : last_live_ops_[i]) {
       bool not_before_any = true;
       // find the op that is not executed before any
@@ -1413,11 +1419,11 @@ void PirInterpreter::CalculateLastLiveOps() {
         VLOG(6) << "last live op of var " << i << " "
                 << value_exe_info_->GetNameById(static_cast<int>(i)) << " : "
                 << item << " " << vec_instruction_base_[item]->Name();
-        minumum_last_live_ops.insert(item);
+        minimum_last_live_ops.insert(item);
         vec_instruction_base_[item]->AddGCCheckVar(i);
       }
     }
-    last_live_ops_[i] = minumum_last_live_ops;
+    last_live_ops_[i] = minimum_last_live_ops;
     var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
   VLOG(4) << "shrink the last_live_ops list for all vars in skip_gc_vars";
@@ -1528,7 +1534,7 @@ paddle::framework::FetchList PirInterpreter::Run(
   }
 
   if (HasLocalScope()) {
-    ClearLoDTensorArrayInLocalScope();
+    ClearDenseTensorArrayInLocalScope();
   }
 
   // return Fetch Tensors
@@ -1607,7 +1613,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 
   if (HasLocalScope()) {
-    ClearLoDTensorArrayInLocalScope();
+    ClearDenseTensorArrayInLocalScope();
   }
 
   framework::FetchList fetch_res;
@@ -1889,7 +1895,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
       std::string op_name = instr_node->Name();
       ::pir::Operation* op = instr_node->Operation();
       if (!calculate_stream_timer_->IsStarted() && op_name != "pd_op.feed" &&
-          !op->HasAttribute("ring_id")) {
+          !op->HasAttribute("ring_id") && op_name != "pd_op.shadow_feed" &&
+          op_name != "pd_op.full" && op_name != "pd_op.full_int_array") {
         VLOG(3) << "Start calculated stream timer from op: " << op_name;
         calculate_stream_timer_->Start();
       }
@@ -1909,15 +1916,15 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
             << "Before: " << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
 
-    if (FLAGS_enable_collect_shape) {
-      CollectShapeManager::Instance().CollectShapeInfo(
-          instr_node, value_exe_info_.get(), scope_);
-    }
-
     if (execution_config_.used_for_inference) {
       for (auto& hook : pir_input_hookfuncs_) {
         hook(instr_node, value_exe_info_.get(), scope_);
       }
+    }
+
+    if (FLAGS_enable_collect_shape) {
+      CollectShapeManager::Instance().CollectShapeInfo(
+          instr_node, value_exe_info_.get(), scope_);
     }
 
     if (!instr_node->IsArtificial()) {
@@ -1935,6 +1942,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                 << "): context wait and get last error";
 #endif
       }
+
       if (FLAGS_check_nan_inf) {
         CheckTensorHasNanOrInf(instr_node, scope_, value_exe_info_.get());
       }
@@ -1960,6 +1968,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
     }
 
     VLOG(5) << "after run kernel";
+
     instr_node->RecordEvent(cur_place);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (enable_job_schedule_profiler_) {

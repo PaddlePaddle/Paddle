@@ -14,11 +14,16 @@
 
 # This file stores the customized function that will be called by the dispatch mechanism.
 
-from ...utils import BreakGraphError, FallbackError
+from __future__ import annotations
+
+from ...utils import BreakGraphError, BreakGraphReasonBase, FallbackError
 
 
-def raise_break_graph_fn(*args, **kwarg):
-    raise BreakGraphError("raise by raise_break_graph_fn.")
+def create_raise_break_graph_handler(reason: BreakGraphReasonBase):
+    def raise_break_graph_fn(*args, **kwarg):
+        raise BreakGraphError(reason)
+
+    return raise_break_graph_fn
 
 
 def raise_not_implement_fn(*args, **kwarg):
@@ -50,5 +55,17 @@ def operator_is_not_none(val):
     pass
 
 
-def tensor_numel(x):
+def tensor_dim(x):
+    pass
+
+
+def generator_send(x):
+    pass
+
+
+def place_get_device_id():
+    pass
+
+
+def place_get_device_type():
     pass

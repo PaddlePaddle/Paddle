@@ -77,7 +77,7 @@ __device__ half do_tanh<half>(half a) {
   return __float2half(tmp);
 }
 
-// the kernel below is not aligned with fluid fp32 forwrad ones, use it for
+// the kernel below is not aligned with fluid fp32 forward ones, use it for
 // fp16.
 template <typename T, unsigned TPB>
 __global__ void no_exact_gelu_kernel(
@@ -152,7 +152,7 @@ bool GeluPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument(
-          "The input of swish plugin shoule not be nullptr."));
+          "The input of swish plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,

@@ -14,9 +14,7 @@
 
 #include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const phi::Place& p)
     : place_(p) {
@@ -76,6 +74,4 @@ uint64_t ThreadLocalAllocatorImpl::ReleaseImpl() {
   return buddy_allocator_->Release();
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

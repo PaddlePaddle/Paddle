@@ -218,7 +218,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         ("shuffle_before_multihead_matmul(Output: " + output_name + ")")
             .c_str());
     auto creator = GetPluginRegistry()->getPluginCreator("fMHA_V2", "1");
-    assert("fmha_v2 plugin creater must not be null" && creator != nullptr);
+    assert("fmha_v2 plugin creator must not be null" && creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
     std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
         new nvinfer1::PluginFieldCollection);

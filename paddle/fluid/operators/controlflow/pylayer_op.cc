@@ -219,8 +219,8 @@ class PyLayerBackwardOp : public PyLayerOp {
 
     core_->Run({}, false);
 
-    // NOTE: It's neccessary. The reason of associating `inside_grads` and
-    // `outside_grads` at runtime `RunImpl` instead of `assgin` op at block is
+    // NOTE: It's necessary. The reason of associating `inside_grads` and
+    // `outside_grads` at runtime `RunImpl` instead of `assign` op at block is
     // that the Var name of grad_op's outputs may be changed in the
     // `append_backward` function (e.g. `_addup_repetitive_outputs_`).
     AssignLocalGradientToParentScope(

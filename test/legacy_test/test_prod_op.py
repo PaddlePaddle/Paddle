@@ -19,59 +19,49 @@ import numpy as np
 
 sys.path.append("../../legacy_test")
 from test_sum_op import TestReduceOPTensorAxisBase
+from utils import dygraph_guard, static_guard
 
 import paddle
+from paddle.framework import core
 
 
 class TestProdOp(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random(size=(10, 10, 5)).astype(np.float32)
 
-    def run_imperative(self):
-        input = paddle.to_tensor(self.input)
-        dy_result = paddle.prod(input)
+    def run_imperative(self, place):
+        input = paddle.to_tensor(self.input, place=place)
+        out = paddle.prod(input)
         expected_result = np.prod(self.input)
-        np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05
-        )
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
-        dy_result = paddle.prod(input, axis=1)
+        out = paddle.prod(input, axis=1)
         expected_result = np.prod(self.input, axis=1)
-        np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05
-        )
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
-        dy_result = paddle.prod(input, axis=-1)
+        out = paddle.prod(input, axis=-1)
         expected_result = np.prod(self.input, axis=-1)
-        np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05
-        )
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
-        dy_result = paddle.prod(input, axis=[0, 1])
+        out = paddle.prod(input, axis=[0, 1])
         expected_result = np.prod(self.input, axis=(0, 1))
         np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05, atol=1e-8
+            out.numpy(), expected_result, rtol=1e-05, atol=1e-8
         )
 
-        dy_result = paddle.prod(input, axis=1, keepdim=True)
+        out = paddle.prod(input, axis=1, keepdim=True)
         expected_result = np.prod(self.input, axis=1, keepdims=True)
-        np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05
-        )
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
-        dy_result = paddle.prod(input, axis=1, dtype='int64')
+        out = paddle.prod(input, axis=1, dtype='int64')
         expected_result = np.prod(self.input, axis=1, dtype=np.int64)
-        np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05
-        )
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
-        dy_result = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
+        out = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
         expected_result = np.prod(
             self.input, axis=1, keepdims=True, dtype=np.int64
         )
-        np.testing.assert_allclose(
-            dy_result.numpy(), expected_result, rtol=1e-05
-        )
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -134,44 +124,135 @@ class TestProdOp(unittest.TestCase):
         )
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.CPUPlace())
-        self.run_imperative()
-        paddle.enable_static()
-
-        self.run_static()
+        with dygraph_guard():
+            self.run_imperative(place=paddle.CPUPlace())
+        with static_guard():
+            self.run_static()
 
     def test_gpu(self):
         if not paddle.base.core.is_compiled_with_cuda():
             return
+        with dygraph_guard():
+            self.run_imperative(place=paddle.CUDAPlace(0))
+        with static_guard():
+            self.run_static()
 
-        paddle.disable_static(place=paddle.CUDAPlace(0))
-        self.run_imperative()
-        paddle.enable_static()
 
-        self.run_static(use_gpu=True)
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestProdComplexOp(TestProdOp):
+    def setUp(self):
+        real = np.random.random(size=(10, 10, 5)).astype(np.float32)
+        imag = np.random.random(size=(10, 10, 5)).astype(np.float32)
+        self.input = real + 1j * imag
+
+    def run_imperative(self, place):
+        input = paddle.to_tensor(self.input, place=place)
+        out = paddle.prod(input)
+        expected_result = np.prod(self.input)
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
+
+        out = paddle.prod(input, axis=1)
+        expected_result = np.prod(self.input, axis=1)
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
+
+        out = paddle.prod(input, axis=[0, 1])
+        expected_result = np.prod(self.input, axis=(0, 1))
+        np.testing.assert_allclose(
+            out.numpy(), expected_result, rtol=1e-05, atol=1e-8
+        )
+
+        out = paddle.prod(input, axis=1, keepdim=True)
+        expected_result = np.prod(self.input, axis=1, keepdims=True)
+        np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
+
+    def run_static(self, use_gpu=False):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data(
+                name='input', shape=[10, 10, 5], dtype='complex64'
+            )
+            result0 = paddle.prod(input)
+            result1 = paddle.prod(input, axis=1)
+            result2 = paddle.prod(input, axis=-1)
+            result3 = paddle.prod(input, axis=[0, 1])
+            result4 = paddle.prod(input, axis=1, keepdim=True)
+
+            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            static_complex_result = exe.run(
+                feed={"input": self.input},
+                fetch_list=[
+                    result0,
+                    result1,
+                    result2,
+                    result3,
+                    result4,
+                ],
+            )
+
+        expected_result = np.prod(self.input)
+        np.testing.assert_allclose(
+            static_complex_result[0], expected_result, rtol=1e-05
+        )
+        expected_result = np.prod(self.input, axis=1)
+        np.testing.assert_allclose(
+            static_complex_result[1], expected_result, rtol=1e-05
+        )
+        expected_result = np.prod(self.input, axis=-1)
+        np.testing.assert_allclose(
+            static_complex_result[2], expected_result, rtol=1e-05
+        )
+        expected_result = np.prod(self.input, axis=(0, 1))
+        np.testing.assert_allclose(
+            static_complex_result[3], expected_result, rtol=1e-05, atol=1e-8
+        )
+        expected_result = np.prod(self.input, axis=1, keepdims=True)
+        np.testing.assert_allclose(
+            static_complex_result[4], expected_result, rtol=1e-05
+        )
+
+    def test_cpu(self):
+        with dygraph_guard():
+            self.run_imperative(place=paddle.CPUPlace())
+        with static_guard():
+            self.run_static()
+
+    def test_gpu(self):
+        if not paddle.base.core.is_compiled_with_cuda():
+            return
+        with dygraph_guard():
+            self.run_imperative(place=paddle.CUDAPlace(0))
+        with static_guard():
+            self.run_static()
 
 
 class TestProdOpError(unittest.TestCase):
 
     def test_error(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x = paddle.static.data(name='x', shape=[2, 2, 4], dtype='float32')
-            bool_x = paddle.static.data(
-                name='bool_x', shape=[2, 2, 4], dtype='bool'
-            )
-            # The argument x should be a Tensor
-            self.assertRaises(TypeError, paddle.prod, [1])
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[2, 2, 4], dtype='float32'
+                )
+                bool_x = paddle.static.data(
+                    name='bool_x', shape=[2, 2, 4], dtype='bool'
+                )
+                # The argument x should be a Tensor
+                self.assertRaises(TypeError, paddle.prod, [1])
 
-            # The data type of x should be float32, float64, int32, int64
-            self.assertRaises(TypeError, paddle.prod, bool_x)
+                # The data type of x should be float32, float64, int32, int64
+                self.assertRaises(TypeError, paddle.prod, bool_x)
 
-            # The argument axis's type should be int ,list or tuple
-            self.assertRaises(TypeError, paddle.prod, x, 1.5)
+                # The argument axis's type should be int ,list or tuple
+                self.assertRaises(TypeError, paddle.prod, x, 1.5)
 
-            # The argument dtype of prod_op should be float32, float64, int32 or int64.
-            self.assertRaises(TypeError, paddle.prod, x, 'bool')
+                # The argument dtype of prod_op should be float32, float64, int32 or int64.
+                self.assertRaises(TypeError, paddle.prod, x, 'bool')
 
 
 class TestProdWithTensorAxis1(TestReduceOPTensorAxisBase):

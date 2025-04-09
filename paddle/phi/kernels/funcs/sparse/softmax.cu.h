@@ -111,7 +111,7 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
 
   DenseTensor pool_sizes = phi::Empty<IntT>(dev_ctx, {nnz});
 
-  /* reduce the elements which are groupped by pool index,
+  /* reduce the elements which are grouped by pool index,
   returns all the pool indexes with unique offset value for each. */
   auto new_end =
       thrust::reduce_by_key(policy,

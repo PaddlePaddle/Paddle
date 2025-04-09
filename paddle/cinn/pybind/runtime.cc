@@ -108,6 +108,11 @@ cinn_buffer_t *CreateBufferFromNumpyImpl(common::HygonDCUArchHIP,
   PADDLE_THROW(::common::errors::Unimplemented("CINN old obsolete code!"));
 }
 
+cinn_buffer_t *CreateBufferFromNumpyImpl(common::HygonDCUArchSYCL,
+                                         py::array data) {
+  PADDLE_THROW(::common::errors::Unimplemented("CINN old obsolete code!"));
+}
+
 cinn_buffer_t *InterfaceCreateBufferFromNumpy(common::Arch arch,
                                               py::array data) {
   return std::visit(

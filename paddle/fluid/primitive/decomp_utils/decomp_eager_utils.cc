@@ -14,8 +14,7 @@
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/primitive/decomp_utils/decomp_utils.h"
 
-namespace paddle {
-namespace primitive {
+namespace paddle::primitive {
 template <>
 void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
@@ -27,5 +26,4 @@ void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
 }
 
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive

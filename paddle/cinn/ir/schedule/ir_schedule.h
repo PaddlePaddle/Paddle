@@ -90,6 +90,9 @@ class IRSchedule {
   //! Get all blocks stored in this ModuleExpr.
   std::vector<Expr> GetAllBlocks() const;
 
+  //! Get all schedules stored in this ModuleExpr.
+  std::vector<stmt::StmtRef> GetAllSchedules() const;
+
   //! Get a block with the specific name.
   Expr GetBlock(const std::string& block_name) const;
 
@@ -102,18 +105,18 @@ class IRSchedule {
 
   /**
    * \brief Split a for loop into multiple loops, based on the factors.
-   * @param loop The loop to be splited.
+   * @param loop The loop to be split.
    * @param factors The factors we used to split the loop.
-   * @return The splited loops.
+   * @return The split loops.
    */
   std::vector<Expr> Split(const Expr& loop, const std::vector<int>& factors);
 
   /**
    * \brief Split a for loop into multiple loops, based on the factors.
    * @param block_name Name of the block we want to modify.
-   * @param loop_index Index of the loop to be splited.
+   * @param loop_index Index of the loop to be split.
    * @param factors The factors we used to split the loop.
-   * @return The splited loops.
+   * @return The split loops.
    */
   std::vector<Expr> Split(const std::string& block_name,
                           int loop_index,
@@ -122,9 +125,9 @@ class IRSchedule {
   /**
    * \brief Split a for loop into multiple loops, based on the factors, only
    * used for deserialization of trace.
-   * @param loop The loop to be splited.
+   * @param loop The loop to be split.
    * @param factors The factors we used to split the loop.
-   * @return The splited loops.
+   * @return The split loops.
    */
   std::vector<Expr> Split(const Expr& loop, const std::vector<Expr>& factors);
 

@@ -109,7 +109,7 @@ def shape(input: Tensor) -> Tensor:
             [array([  3, 100, 100], dtype=int32)]
     """
     if in_dynamic_or_pir_mode():
-        out = _C_ops.shape(input)  # type: ignore
+        out = _C_ops.shape64(input)  # type: ignore
         out.stop_gradient = True
         return out
     else:

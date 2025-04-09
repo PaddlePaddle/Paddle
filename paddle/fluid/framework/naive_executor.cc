@@ -29,6 +29,10 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 #endif
+#ifdef PADDLE_WITH_OPENVINO
+#include "paddle/fluid/operators/openvino/openvino_engine_op.h"
+#endif
+
 #ifdef PADDLE_WITH_NVTX
 #include "paddle/phi/core/platform/device/gpu/cuda/cuda_profiler.h"
 #endif

@@ -48,9 +48,9 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::CreateTask(const Place& place) {
   return std::make_shared<AsyncLoad::Task>(place);
 }
 
-void AsyncLoad::SyncCalcuStream(const Place& place,
-                                phi::GPUContext* ctx,
-                                platform::DeviceEvent& calc_event) {  // NOLINT
+void AsyncLoad::SyncCalcStream(const Place& place,
+                               phi::GPUContext* ctx,
+                               platform::DeviceEvent& calc_event) {  // NOLINT
   const auto* calc_ctx = static_cast<phi::GPUContext*>(
       phi::DeviceContextPool::Instance().Get(place));
   calc_event.Record(calc_ctx);
@@ -85,12 +85,85 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Offload(
         key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
     load_ctx_ = std::make_unique<phi::GPUContext>(place);
   }
-  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
+  SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();
   phi::memory_utils::Copy(
       dst->place(), dst_ptr, src.place(), src_ptr, size, stream);
+
+  if (FLAGS_use_stream_safe_cuda_allocator ||
+      FLAGS_use_cuda_malloc_async_allocator) {
+    memory::RecordStream(src.Holder(), stream);
+  }
+
+  // 3. record event on offload stream
+  auto task = CreateTask(place);
+  task->UpdateWaitChain(*load_ctx_);
+  return task;
+}
+
+std::shared_ptr<AsyncLoad::Task> AsyncLoad::OffloadWithOffset(
+    phi::DenseTensor* dst,
+    const phi::DenseTensor& src,
+    size_t dst_offset,
+    size_t src_offset,
+    size_t offload_size) {
+  // GPU -> GPUPinned
+  const auto& place = src.place();
+
+  PADDLE_ENFORCE_EQ(
+      phi::is_gpu_place(place),
+      true,
+      common::errors::InvalidArgument(
+          "AsyncLoad::OffloadWithOffset only support GPU src now."));
+
+  PADDLE_ENFORCE_EQ(dst->initialized(),
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "AsyncLoad::OffloadWithOffset only support on "
+                        "initialized tensors for both dst and src now."));
+
+  PADDLE_ENFORCE_LE(
+      src_offset + offload_size,
+      src.numel(),
+      common::errors::InvalidArgument(
+          "AsyncLoad::OffloadWithOffset src_offset + offload_size should be "
+          "less than or equal to src tensor size."));
+
+  PADDLE_ENFORCE_LE(
+      dst_offset + offload_size,
+      dst->numel(),
+      common::errors::InvalidArgument(
+          "AsyncLoad::OffloadWithOffset dst_offset + offload_size should be "
+          "less than or equal to dst tensor size."));
+
+  auto size_in_bytes = offload_size * phi::SizeOf(src.dtype());
+  auto src_offset_in_bytes = src_offset * phi::SizeOf(src.dtype());
+  auto dst_offset_in_bytes = dst_offset * phi::SizeOf(src.dtype());
+  auto* dst_ptr = dst->data();
+  auto* src_ptr = src.data();
+  auto* dst_ptr_tmp = static_cast<char*>(dst_ptr);
+  auto* src_ptr_tmp = static_cast<const char*>(src_ptr);
+  dst_ptr = static_cast<void*>(dst_ptr_tmp + dst_offset_in_bytes);
+  src_ptr = static_cast<const void*>(src_ptr_tmp + src_offset_in_bytes);
+
+  // 1. wait calc stream to finish
+  std::string key = "load";
+
+  if (!is_initialized_) {
+    is_initialized_ = true;
+    gpu_place_ = place;
+    place_to_calc_event_.emplace(
+        key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
+    load_ctx_ = std::make_unique<phi::GPUContext>(place);
+  }
+  SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
+
+  // 2. copy data from src to dst
+  auto stream = load_ctx_->stream();
+  phi::memory_utils::Copy(
+      dst->place(), dst_ptr, src.place(), src_ptr, size_in_bytes, stream);
 
   if (FLAGS_use_stream_safe_cuda_allocator ||
       FLAGS_use_cuda_malloc_async_allocator) {
@@ -129,7 +202,7 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::Reload(
   // 1. wait calc stream to finish
   std::string key = "load";
 
-  SyncCalcuStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
+  SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 
   // 2. copy data from src to dst
   auto stream = load_ctx_->stream();

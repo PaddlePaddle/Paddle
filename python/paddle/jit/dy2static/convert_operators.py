@@ -506,11 +506,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                f"Your if/else have different return type. TODO: add link to modifty. {e}"
+                f"Your if/else have different return type. TODO: add link to modify. {e}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                f"Your if/else have different number of return value. TODO: add link to modifty. {e}"
+                f"Your if/else have different number of return value. TODO: add link to modify. {e}"
             )
         raise e
     get_args = lambda: helper.get(union_name)
@@ -675,7 +675,7 @@ def convert_super(super_fn):
 class VariableTuple:
     """
     this class will cause enumerate can't be wrapped by other iterator change function.
-    this will be fixed when list<Variable> is producted.
+    this will be fixed when list<Variable> is produced.
     VariableTuple can only deal with variables which is fixed.
     """
 
@@ -725,7 +725,7 @@ def convert_shape(x):
     #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
     #      where var = paddle.shape(x)[1]
 
-    #  (2) if x.shape does not contains -1, return lsit(x.shape) directly
+    #  (2) if x.shape does not contains -1, return list(x.shape) directly
 
     if isinstance(x, (Variable, Value)):
         values = list(x.shape)

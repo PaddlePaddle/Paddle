@@ -78,6 +78,9 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       out_type);
   auto pd_reshape = rewriter.Build<paddle::dialect::ReshapeOp>(
       op->operand_source(0), cinn_generate_shape.result(0));
+  if (op->result(0).type() != pd_reshape.result(0).type()) {
+    pd_reshape.result(0).set_type(op->result(0).type());
+  }
 
   rewriter.ReplaceAllUsesWith(output, pd_reshape.result(0));
   rewriter.EraseOp(op);

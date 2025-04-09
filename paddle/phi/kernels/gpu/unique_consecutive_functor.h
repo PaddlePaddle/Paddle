@@ -32,7 +32,7 @@
 
 namespace phi {
 
-// The core logic of computing Unique Consecutive for a flattend Tensor
+// The core logic of computing Unique Consecutive for a flattened Tensor
 template <typename Context,
           typename InT,
           typename IndexT,
@@ -113,7 +113,7 @@ static void UniqueConsecutiveFlattenedCUDATensor(const Context& context,
   }
 }
 
-// functor for processing a flattend Tensor
+// functor for processing a flattened Tensor
 template <typename Context, typename InT>
 struct UniqueConsecutiveFlattenedCUDAFunctor {
   const Context& ctx_;

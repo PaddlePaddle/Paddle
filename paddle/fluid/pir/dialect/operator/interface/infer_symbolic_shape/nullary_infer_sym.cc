@@ -26,6 +26,24 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
   const auto &step_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
+  const auto result = op->result(0);
+  bool contain_unknown_dim = [&]() {
+    bool check = result && result.type() &&
+                 result.type().isa<paddle::dialect::DenseTensorType>();
+    PADDLE_ENFORCE_EQ(check,
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "result for arange must be DenseTensorType"));
+    const auto dims =
+        result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    return ::common::contain_unknown_dim(dims);
+  }();
+
+  if (!contain_unknown_dim) {
+    infer_context->SetSymbolForValueByStaticShape(result);
+    return true;
+  }
+
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
     if (!start_shape_or_data.data().has_value() ||
         !end_shape_or_data.data().has_value() ||
@@ -456,9 +474,22 @@ bool RandintOpInferSymbolicShape(
     return true;
 
   } else {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Currently shape must comes from FullIntArrayOp in RandintOp's "
-        "InferSymbolicShape."));
+    PADDLE_ENFORCE_EQ(
+        infer_context->HasShapeOrDataForValue(op->operand_source(0)),
+        true,
+        common::errors::PreconditionNotMet(
+            "Shape is not comes from FullIntArrayOp "
+            "should have shape or data"));
+
+    auto shape_dim_expr =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    ExprVec target_shape = paddle::dialect::details::GetOrCreateExprVecFromData(
+        shape_dim_expr, infer_context);
+
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(target_shape)};
+
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 }

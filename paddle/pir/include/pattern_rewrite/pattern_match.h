@@ -67,7 +67,7 @@ class IR_API Pattern {
     OperationInfo,
     // The pattern root is matched using an interface id.
     InterfaceId,
-    // The patter root is matched using a trait id.
+    // The pattern root is matched using a trait id.
     TraitId
   };
 
@@ -301,6 +301,8 @@ class RewriterBase : public Builder {
   virtual void NotifyOperationRemoved(Operation* op) {}
 
   virtual void NotifyOperationInserted(Operation* op) {}
+
+  virtual void NotifyValueReplaced(Value from, Value to) {}
 
   virtual void StartRootUpdate(Operation* op) {}
 

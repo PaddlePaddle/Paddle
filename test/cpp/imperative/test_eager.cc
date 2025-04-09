@@ -68,10 +68,9 @@ TEST(test_create_node, eager_node) {
                    {});
 }
 TEST(test_var_helper, eager_var_helper) {
-  framework::Variable var0, var1, var2, var3, var4, var5, var6, var7, var8;
+  framework::Variable var0, var1, var3, var4, var5, var6, var7, var8;
   InitializeVariable(&var0, paddle::framework::proto::VarType::FEED_MINIBATCH);
   InitializeVariable(&var1, paddle::framework::proto::VarType::STEP_SCOPES);
-  InitializeVariable(&var2, paddle::framework::proto::VarType::LOD_RANK_TABLE);
   InitializeVariable(&var3,
                      paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY);
   InitializeVariable(&var4, paddle::framework::proto::VarType::STRINGS);
@@ -82,12 +81,10 @@ TEST(test_var_helper, eager_var_helper) {
       InitializeVariable(&var8, paddle::framework::proto::VarType::FP64));
 
   auto egr_tensor = std::make_shared<egr::EagerVariable>();
-  auto egr_tensor2 = std::make_shared<egr::EagerVariable>();
   egr_tensor->MutableVar()
       ->GetMutable<phi::SelectedRows>()
       ->mutable_value()
       ->mutable_data<float>(phi::CPUPlace());
-  egr_tensor2->MutableVar()->GetMutable<framework::LoDRankTable>();
   VLOG(6) << "egr_tensor create with ";
   ASSERT_TRUE(phi::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));
   ASSERT_TRUE(GetDataType<egr::EagerVariable>(egr_tensor) ==
@@ -96,12 +93,6 @@ TEST(test_var_helper, eager_var_helper) {
                                      phi::KernelKey(phi::Backend::CPU,
                                                     phi::DataLayout::ALL_LAYOUT,
                                                     phi::DataType::FLOAT32));
-  SetCachedValue<egr::EagerVariable>(egr_tensor,
-                                     phi::KernelKey(phi::Backend::CPU,
-                                                    phi::DataLayout::ALL_LAYOUT,
-                                                    phi::DataType::FLOAT32),
-                                     egr_tensor2);
-  ASSERT_ANY_THROW(GetPlace<egr::EagerVariable>(egr_tensor2));
   ASSERT_ANY_THROW(SetType<egr::EagerVariable>(
       egr_tensor, paddle::framework::proto::VarType::DENSE_TENSOR_ARRAY));
 }

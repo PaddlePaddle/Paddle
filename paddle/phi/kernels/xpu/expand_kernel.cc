@@ -27,51 +27,47 @@ void ExpandKernel(const Context& ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-  std::vector<int> final_expand_shape(vec_in_dims.size());
+  auto final_expand_shape = vec_in_dims;
+  bool has_zero_dim = false;
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        expand_shape[i],
-        0,
-        common::errors::InvalidArgument("The expanded size cannot be zero."));
-    if (i < diff) {  // expand_shape = [3,4,-1,-1], X = [10,2] -->
-                     // final_expand_shape = [3,4,10,2]
-      PADDLE_ENFORCE_GT(
+    if (i < diff) {
+      PADDLE_ENFORCE_GE(
           expand_shape[i],
           0,
           common::errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand_v2 op.",
               expand_shape[i]));
+      if (expand_shape[i] == 0) has_zero_dim = true;
       final_expand_shape[i] = expand_shape[i];
-    } else if (expand_shape[i] > 0) {  // expand_shape = [3,4,10,4], X =
-                                       // [10,1] --> final_expand_shape =
-                                       // [3,4,10,4]
-      if (vec_in_dims[i] != 1) {
-        PADDLE_ENFORCE_EQ(
-            vec_in_dims[i],
-            expand_shape[i],
-            common::errors::InvalidArgument(
-                "The value (%d) of the non-singleton dimension does not match"
-                " the corresponding value (%d) in shape for expand_v2 op.",
-                vec_in_dims[i],
-                expand_shape[i]));
-        final_expand_shape[i] = expand_shape[i];
-      } else {
-        final_expand_shape[i] = expand_shape[i];
-      }
-    } else {  // expand_shape = [3,4,-1,-1], X = [10,2] --> final_expand_shape
-              // = [3,4,10,2]
-      PADDLE_ENFORCE_EQ(
-          expand_shape[i],
-          -1,
-          common::errors::InvalidArgument(
-              "When the value in shape is negative for expand_v2 op, "
-              "only -1 is supported, but the value received is %d.",
-              expand_shape[i]));
+    } else if (expand_shape[i] == -1) {
       final_expand_shape[i] = vec_in_dims[i];
+    } else if (expand_shape[i] == 0) {
+      PADDLE_ENFORCE_EQ(
+          vec_in_dims[i] == 1 || vec_in_dims[i] == expand_shape[i],
+          true,
+          common::errors::InvalidArgument(
+              "The %d-th dimension of input tensor (%d) must match or be "
+              "broadcastable to the corresponding dimension (%d) in shape.",
+              i,
+              vec_in_dims[i],
+              expand_shape[i]));
+      final_expand_shape[i] = 0;
+      has_zero_dim = true;
+    } else if (expand_shape[i] > 0) {
+      PADDLE_ENFORCE_EQ(
+          vec_in_dims[i] == 1 || vec_in_dims[i] == expand_shape[i],
+          true,
+          common::errors::InvalidArgument(
+              "The %d-th dimension of input tensor (%d) must match or be "
+              "broadcastable to the corresponding dimension (%d) in shape.",
+              i,
+              vec_in_dims[i],
+              expand_shape[i]));
+      final_expand_shape[i] = expand_shape[i];
     }
   }
 
@@ -97,8 +93,11 @@ void ExpandKernel(const Context& ctx,
   DDim out_dims = common::make_ddim(final_expand_shape);
   out->Resize(out_dims);
   ctx.template Alloc<T>(out);
+  if (has_zero_dim) {
+    return;
+  }
   auto& x_shape = vec_in_dims;
-  auto out_shape = common::vectorize<int>(out_dims);
+  auto out_shape = common::vectorize<int64_t>(out_dims);
   if (shape_size == 0) {
     x_shape = {1};
     out_shape = {1};
@@ -116,13 +115,7 @@ void ExpandKernel(const Context& ctx,
     r = xpu::broadcast<XPUType>(
         ctx.x_context(), x_data, out_data, x_shape, out_shape);
   }
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      common::errors::External("XPU API(broadcast) return wrong "
-                               "value[%d %s] in ExpandV2XPUKernel.",
-                               r,
-                               XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
 }
 }  // namespace phi
 
@@ -130,6 +123,7 @@ PD_REGISTER_KERNEL(expand,
                    XPU,
                    ALL_LAYOUT,
                    phi::ExpandKernel,
+                   double,
                    float,
                    phi::dtype::float16,
                    bool,

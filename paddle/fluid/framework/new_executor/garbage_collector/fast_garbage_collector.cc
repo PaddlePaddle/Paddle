@@ -37,10 +37,7 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
   } else if (
       var->IsType<
           operators::reader::
-              OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
-    // TODO(xiongkun03) in old executor, this type of variable is not support
-    // eager deletion. so we just leave it here ?
-  } else if (var->IsType<LoDRankTable>()) {
+              OrderedMultiDeviceDenseTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<phi::SelectedRows>()) {
@@ -53,6 +50,7 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder());
     }
+    tensor_arr->clear();
   } else if (var->IsType<phi::SparseCooTensor>()) {
     Add(var->GetMutable<phi::SparseCooTensor>()
             ->mutable_indices()

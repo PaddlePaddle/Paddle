@@ -227,6 +227,9 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim_v]
   std::string v_axes = {
       batch_axis, seq_len_kv_axis, num_heads_axis, head_dim_v_axis};
+  // [batch_size, num_heads, seq_len_q, seq_len_kv]
+  std::string attn_mask_axes = {
+      batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
   // [batch_size, seq_len_q, num_heads, head_dim_v]
   std::string out_axes = {
       batch_axis, seq_len_q_axis, num_heads_axis, head_dim_v_axis};
@@ -239,11 +242,18 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {1, 3});
   auto k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
   auto v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
+  auto attn_mask_dist_attr_dst = attn_mask_dist_attr;
+  if (!IsEmpty(attn_mask_shape)) {
+    attn_mask_dist_attr_dst = UnShardTensorDims(attn_mask_dist_attr, {2, 3});
+  }
 
   if (!is_same_num_heads && !is_divisible) {
-    q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {2});
-    k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
-    v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {2});
+    k_dist_attr_dst = UnShardTensorDims(k_dist_attr_dst, {2});
+    v_dist_attr_dst = UnShardTensorDims(v_dist_attr_dst, {2});
+    if (!IsEmpty(attn_mask_shape)) {
+      attn_mask_dist_attr_dst = UnShardTensorDims(attn_mask_dist_attr_dst, {1});
+    }
   }
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
@@ -251,16 +261,26 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   axes_sharding_info.emplace_back(q_axes, q_dist_attr_dst.dims_mapping());
   axes_sharding_info.emplace_back(k_axes, k_dist_attr_dst.dims_mapping());
   axes_sharding_info.emplace_back(v_axes, v_dist_attr_dst.dims_mapping());
+  if (!IsEmpty(attn_mask_shape)) {
+    axes_sharding_info.emplace_back(attn_mask_axes,
+                                    attn_mask_dist_attr_dst.dims_mapping());
+  }
 
   auto axis_to_dim_map = ShardingMergeForTensors(axes_sharding_info);
 
   q_dist_attr_dst = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
   k_dist_attr_dst = MapDims(k_dist_attr, axis_to_dim_map, k_axes);
   v_dist_attr_dst = MapDims(v_dist_attr, axis_to_dim_map, v_axes);
+  if (!IsEmpty(attn_mask_shape)) {
+    attn_mask_dist_attr_dst =
+        MapDims(attn_mask_dist_attr, axis_to_dim_map, attn_mask_axes);
+    if (attn_mask_shape[1] == 1) {
+      attn_mask_dist_attr_dst = UnShardTensorDims(attn_mask_dist_attr_dst, {1});
+    }
+  }
 
-  // TODO(liuzhenhai): process fixed_seed and  attn_mask
+  // TODO(liuzhenhai): process fixed_seed
   auto fixed_seed_offset_dist_attr_dst = fixed_seed_offset_dist_attr;
-  auto attn_mask_dist_attr_dst = attn_mask_dist_attr;
 
   auto out = MapDims(q_dist_attr, axis_to_dim_map, out_axes);
   auto softmax = MapDims(q_dist_attr, axis_to_dim_map, softmax_axes);
@@ -313,6 +333,37 @@ SpmdInfo FlashAttInferSpmdStatic(const DistMetaTensor& q,
                            causal,
                            return_softmax,
                            is_test);
+}
+
+SpmdInfo FlashMaskInferSpmd(const DistMetaTensor& q,
+                            const DistMetaTensor& k,
+                            const DistMetaTensor& v,
+                            const DistMetaTensor& startend_row_indices,
+                            const DistMetaTensor& fixed_seed_offset,
+                            float dropout,
+                            bool causal,
+                            bool return_softmax,
+                            bool is_test,
+                            const std::string& rng_name) {
+  auto att_info = FlashAttInferSpmd(q,
+                                    k,
+                                    v,
+                                    fixed_seed_offset,
+                                    startend_row_indices,
+                                    dropout,
+                                    causal,
+                                    return_softmax,
+                                    is_test,
+                                    rng_name);
+  return {{att_info.first[0],
+           att_info.first[1],
+           att_info.first[2],
+           att_info.first[4],
+           att_info.first[3]},
+          {att_info.second[0],
+           att_info.second[1],
+           att_info.second[2],
+           att_info.second[3]}};
 }
 
 SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
@@ -459,6 +510,11 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim_v]
   std::string v_axes = {
       batch_axis, seq_len_kv_axis, num_heads_axis, head_dim_v_axis};
+
+  // [batch_size, num_heads, seq_len_q, seq_len_kv]
+  std::string attn_mask_axes = {
+      batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
+
   // [batch_size, seq_len_q, num_heads, head_dim_v]
   std::string out_axes = {
       batch_axis, seq_len_q_axis, num_heads_axis, head_dim_v_axis};
@@ -501,11 +557,17 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   out_dist_attr_dst = MapDims(out_dist_attr_dst, axis_to_dim_map, out_axes);
   softmax_lse_dist_attr_dst =
       MapDims(softmax_lse_dist_attr_dst, axis_to_dim_map, softmax_lse_axes);
-
-  // TODO(liuzhenhai): process fixed_seed and  attn_mask
-
-  auto fixed_seed_offset_dist_attr_dst = fixed_seed_offset_dist_attr;
   auto attn_mask_dist_attr_dst = attn_mask_dist_attr;
+  if (!IsEmpty(attn_mask_shape)) {
+    attn_mask_dist_attr_dst =
+        MapDims(attn_mask_dist_attr, axis_to_dim_map, attn_mask_axes);
+    if (attn_mask_shape[1] == 1) {
+      attn_mask_dist_attr_dst = UnShardTensorDims(attn_mask_dist_attr_dst, {1});
+    }
+  }
+
+  // TODO(liuzhenhai): process fixed_seed
+  auto fixed_seed_offset_dist_attr_dst = fixed_seed_offset_dist_attr;
   auto softmax_dist_attr_dst = softmax_dist_attr;
   auto seed_offset_dist_attr_dst = seed_offset_dist_attr;
 
@@ -716,6 +778,9 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   // [batch_size, seq_len_kv, num_heads, head_dim_v]
   std::string v_axes = {
       batch_axis, seq_len_kv_axis, num_heads_axis, head_dim_v_axis};
+  // [batch_size, num_heads, seq_len_q, seq_len_kv]
+  std::string attn_mask_axes = {
+      batch_axis, num_heads_axis, seq_len_q_axis, seq_len_kv_axis};
   // [batch_size, seq_len_q, num_heads, head_dim_v]
   std::string out_axes = {
       batch_axis, seq_len_q_axis, num_heads_axis, head_dim_v_axis};
@@ -768,10 +833,17 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   out_dist_attr_dst = MapDims(out_dist_attr, axis_to_dim_map, out_axes);
   softmax_lse_dist_attr_dst =
       MapDims(softmax_lse_dist_attr, axis_to_dim_map, softmax_lse_axes);
+  auto attn_mask_dist_attr_dst = attn_mask_dist_attr;
+  if (!IsEmpty(attn_mask_shape)) {
+    attn_mask_dist_attr_dst =
+        MapDims(attn_mask_dist_attr, axis_to_dim_map, attn_mask_axes);
+    if (attn_mask_shape[1] == 1) {
+      attn_mask_dist_attr_dst = UnShardTensorDims(attn_mask_dist_attr_dst, {1});
+    }
+  }
 
   // TODO(liuzhenhai): process seed and  attn_mask
   auto& seed_offset_dist_attr_dst = seed_offset_dist_attr;
-  auto& attn_mask_dist_attr_dst = attn_mask_dist_attr;
   out_grad_dist_attr_dst = MapDims(out_dist_attr, axis_to_dim_map, out_axes);
 
   auto q_grad = MapDims(q_dist_attr, axis_to_dim_map, q_axes);
@@ -805,6 +877,37 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
            attn_mask_dist_attr_dst,
            out_grad_dist_attr_dst},
           {q_grad, k_grad, v_grad}};
+}
+
+SpmdInfo FlashMaskGradInferSpmd(const DistMetaTensor& q,
+                                const DistMetaTensor& k,
+                                const DistMetaTensor& v,
+                                const DistMetaTensor& startend_row_indices,
+                                const DistMetaTensor& out,
+                                const DistMetaTensor& softmax_lse,
+                                const DistMetaTensor& seed_offset,
+                                const DistMetaTensor& out_grad,
+                                float dropout,
+                                bool causal) {
+  auto att_info = FlashAttGradInferSpmd(q,
+                                        k,
+                                        v,
+                                        out,
+                                        softmax_lse,
+                                        seed_offset,
+                                        startend_row_indices,
+                                        out_grad,
+                                        dropout,
+                                        causal);
+  return {{att_info.first[0],
+           att_info.first[1],
+           att_info.first[2],
+           att_info.first[6],
+           att_info.first[3],
+           att_info.first[4],
+           att_info.first[5],
+           att_info.first[7]},
+          {att_info.second[0], att_info.second[1], att_info.second[2]}};
 }
 
 }  // namespace phi::distributed

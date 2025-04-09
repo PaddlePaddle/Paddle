@@ -27,9 +27,7 @@ if TYPE_CHECKING:
         XPUPlace,
         int,  # some int like 0, 1, etc.
     ]
-__all__ = [
-    'synchronize',
-]
+__all__ = ['synchronize', 'empty_cache']
 
 
 @deprecated(
@@ -117,3 +115,26 @@ def set_debug_level(level: int = 1) -> None:
             >>> paddle.device.xpu.set_debug_level(0x1)
     '''
     core.set_xpu_debug_level(level)
+
+
+def empty_cache() -> None:
+    '''
+    Releases idle cached memory held by the allocator so that those can be used in other XPU
+    application and visible in `xpu-smi`. In most cases you don't need to use this function,
+    Paddle does not release the memory back to the OS when you remove Tensors on the XPU,
+    Because it keeps xpu memory in a pool so that next allocations can be done much faster.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:XPU)
+            >>> import paddle
+            >>> paddle.device.set_device('xpu')
+
+            >>> tensor = paddle.randn([512, 512, 512], "float64")
+            >>> del tensor
+            >>> paddle.device.xpu.empty_cache()
+    '''
+
+    if core.is_compiled_with_xpu():
+        core.xpu_empty_cache()

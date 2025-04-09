@@ -19,6 +19,11 @@
 
 namespace pir {
 
-void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout);
+using TransLayoutCallbackFn =
+    std::function<void(pir::Value, common::DataLayout)>;
+
+void SetNewLayoutForValue(pir::Value value,
+                          common::DataLayout new_layout,
+                          TransLayoutCallbackFn callback = nullptr);
 
 }  // namespace pir

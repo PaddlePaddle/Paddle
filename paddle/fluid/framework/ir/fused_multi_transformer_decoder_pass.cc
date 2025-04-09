@@ -921,7 +921,7 @@ PDNode* MultiDevicesFusedMultiTransformerDecoderFuseQKVPattern::operator()() {
                                     ->AsIntermediate()
                                     ->assert_is_op_input("c_allreduce_sum");
 
-  // communication c_allreduce_sum
+  // communication all_reduce_sum
   auto* c_allreduce_sum =
       pattern->NewNode(c_allreduce_sum_repr())->assert_is_op("c_allreduce_sum");
   auto* c_allreduce_sum_out_var = pattern->NewNode(c_allreduce_sum_out_repr())
@@ -1114,7 +1114,7 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
   fused_multi_transformer_pattern();
 
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* layer_norm,
                           Node* layer_norm_scale,
                           Node* layer_norm_bias,
@@ -1548,7 +1548,7 @@ int FusedMultiTransformerDecoderPass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_out, eltadd_out, fused_multi_transformer_pattern)
 
-    fuse_creater(input0,
+    fuse_creator(input0,
                  layer_norm,
                  layer_norm_scale,
                  layer_norm_bias,
@@ -1858,7 +1858,7 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
   fused_multi_transformer_fuse_qkv_pattern();
 
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* layer_norm,
                           Node* layer_norm_scale,
                           Node* layer_norm_bias,
@@ -2277,7 +2277,7 @@ int FusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_out, eltadd_out, fused_multi_transformer_fuse_qkv_pattern)
 
-    fuse_creater(input0,
+    fuse_creator(input0,
                  layer_norm,
                  layer_norm_scale,
                  layer_norm_bias,
@@ -2592,7 +2592,7 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
   fused_multi_transformer_fuse_qkv_pattern();
 
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* layer_norm,
                           Node* layer_norm_scale,
                           Node* layer_norm_bias,
@@ -3047,7 +3047,7 @@ int MultiDevicesFusedMultiTransformerDecoderFuseQKVPass::BuildFusion(
     GET_IR_NODE_FROM_SUBGRAPH(
         eltadd_out, eltadd_out, fused_multi_transformer_fuse_qkv_pattern)
 
-    fuse_creater(input0,
+    fuse_creator(input0,
                  layer_norm,
                  layer_norm_scale,
                  layer_norm_bias,

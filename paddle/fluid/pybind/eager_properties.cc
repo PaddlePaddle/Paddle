@@ -292,10 +292,10 @@ PyObject* tensor_properties_get_grad(TensorObject* self, void* closure) {
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  if (meta && meta->Grad().initialized()) {
+  if (meta && meta->Grad().has_allocation()) {
     return ToPyObject(meta->Grad());
   } else {
-    if (meta && !meta->Grad().initialized() && meta->Grad().impl() &&
+    if (meta && !meta->Grad().has_allocation() && meta->Grad().impl() &&
         meta->Grad().is_dist_tensor()) {
       return ToPyObject(meta->Grad(), false);
     }
@@ -930,6 +930,16 @@ PyObject* tensor_properties_get_grad_fn(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+PyObject* tensor_properties___dict__(TensorObject* self, void*) {
+  EAGER_TRY
+  if (self->dict == nullptr) {
+    self->dict = PyDict_New();
+  }
+  Py_INCREF(self->dict);
+  return self->dict;
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 struct PyGetSetDef variable_properties[] = {  // NOLINT
     {"data",
      (getter)tensor_properties_get_data,
@@ -1036,6 +1046,7 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      nullptr,
      nullptr,
      nullptr},
+    {"__dict__", (getter)tensor_properties___dict__, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 // variable_properties for core.eager.StringTensor
@@ -1053,6 +1064,7 @@ struct PyGetSetDef string_tensor_variable_properties[] = {  // NOLINT
      nullptr,
      nullptr,
      nullptr},
+    {"__dict__", (getter)tensor_properties___dict__, nullptr, nullptr, nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 }  // namespace pybind

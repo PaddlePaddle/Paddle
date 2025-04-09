@@ -42,6 +42,8 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  int ret = xpu::SUCCESS;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
@@ -66,49 +68,108 @@ void GroupNormGradKernel(const Context& dev_ctx,
   auto* y_data = y.data<T>();
   auto* d_x_data = d_x->data<T>();
   auto* d_y_data = d_y.data<T>();
-  auto* mean_data = mean.data<T>();
-  auto* var_data = var.data<T>();
   T* d_scale_data = nullptr;
+  float* d_scale_data_fp32 = nullptr;
   if (d_scale) {
     dev_ctx.template Alloc<T>(d_scale);
     set_zero(dev_ctx, d_scale, static_cast<T>(0));
     d_scale_data = d_scale->data<T>();
+    if (!std::is_same_v<XPUType, float>) {
+      d_scale_data_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(d_scale->numel());
+    } else {
+      d_scale_data_fp32 = reinterpret_cast<float*>(d_scale_data);
+    }
   }
   T* d_bias_data = nullptr;
+  float* d_bias_data_fp32 = nullptr;
   if (d_bias) {
     dev_ctx.template Alloc<T>(d_bias);
     set_zero(dev_ctx, d_bias, static_cast<T>(0));
     d_bias_data = d_bias->data<T>();
+    if (!std::is_same_v<XPUType, float>) {
+      d_bias_data_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(d_bias->numel());
+    } else {
+      d_bias_data_fp32 = reinterpret_cast<float*>(d_bias_data);
+    }
   }
 
-  const T* scale_data = nullptr;
-  if (scale_ptr) scale_data = scale_ptr->data<T>();
-  const T* bias_data = nullptr;
-  if (bias_ptr) bias_data = bias_ptr->data<T>();
+  const float* scale_data = nullptr;
+  if (scale_ptr) {
+    if (!std::is_same_v<XPUType, float>) {
+      float* scale_data_tmp =
+          RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
+      ret = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(scale_ptr->data<T>()),
+          scale_data_tmp,
+          scale_ptr->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+      scale_data = scale_data_tmp;
+    } else {
+      scale_data = scale_ptr->data<float>();
+    }
+  }
+  const float* bias_data = nullptr;
+  if (bias_ptr) {
+    if (!std::is_same_v<XPUType, float>) {
+      float* bias_data_tmp =
+          RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
+      ret = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(bias_ptr->data<T>()),
+          bias_data_tmp,
+          bias_ptr->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+      bias_data = bias_data_tmp;
+    } else {
+      bias_data = bias_ptr->data<float>();
+    }
+  }
 
-  int r = xpu::group_norm_grad<XPUType>(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x_data),
-      reinterpret_cast<const XPUType*>(y_data),
-      reinterpret_cast<const XPUType*>(d_y_data),
-      reinterpret_cast<XPUType*>(d_x_data),
-      N,
-      C,
-      L,
-      1,
-      groups,
-      static_cast<XPUType>(epsilon),
-      reinterpret_cast<const XPUType*>(scale_data),
-      reinterpret_cast<const XPUType*>(bias_data),
-      reinterpret_cast<const XPUType*>(mean_data),
-      reinterpret_cast<const XPUType*>(var_data),
-      reinterpret_cast<XPUType*>(d_scale_data),
-      reinterpret_cast<XPUType*>(d_bias_data),
-      channel_first);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "group_norm_grad");
+  ret =
+      xpu::group_norm_grad<XPUType>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(x_data),
+                                    reinterpret_cast<const XPUType*>(y_data),
+                                    reinterpret_cast<const XPUType*>(d_y_data),
+                                    reinterpret_cast<XPUType*>(d_x_data),
+                                    N,
+                                    C,
+                                    L,
+                                    1,
+                                    groups,
+                                    epsilon,
+                                    scale_data,
+                                    bias_data,
+                                    mean.data<float>(),
+                                    var.data<float>(),
+                                    d_scale_data_fp32,
+                                    d_bias_data_fp32,
+                                    channel_first);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "group_norm_grad");
+  if (!std::is_same_v<XPUType, float>) {
+    if (d_scale) {
+      ret = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                      d_scale_data_fp32,
+                                      reinterpret_cast<XPUType*>(d_scale_data),
+                                      d_scale->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+    }
+
+    if (d_bias) {
+      ret = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                      d_bias_data_fp32,
+                                      reinterpret_cast<XPUType*>(d_bias_data),
+                                      d_bias->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+    }
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    group_norm_grad, XPU, ALL_LAYOUT, phi::GroupNormGradKernel, float) {}
+PD_REGISTER_KERNEL(group_norm_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GroupNormGradKernel,
+                   float,
+                   phi::dtype::float16) {}

@@ -96,9 +96,7 @@ def download_concat(cache_folder, zip_path):
 def print_processbar(done_percentage):
     done_filled = done_percentage * '='
     empty_filled = (100 - done_percentage) * ' '
-    sys.stdout.write(
-        "\r[%s%s]%d%%" % (done_filled, empty_filled, done_percentage)
-    )
+    sys.stdout.write(f"\r[{done_filled}{empty_filled}]{done_percentage}%")
     sys.stdout.flush()
 
 

@@ -38,7 +38,7 @@ class GastNodeTransformer(gast.NodeTransformer):
 
     def visit_With(self, node):
         """
-        The fileds `context_expr/optional_vars` of `ast.With` in PY2
+        The fields `context_expr/optional_vars` of `ast.With` in PY2
         is moved into `ast.With.items.withitem` in PY3.
         It will be generally represented by gast.With.items.withitem in gast.
         """
@@ -54,7 +54,7 @@ class GastNodeTransformer(gast.NodeTransformer):
 
     def visit_Call(self, node):
         """
-        The fileds `starargs/kwargs` of `ast.Call` in PY2
+        The fields `starargs/kwargs` of `ast.Call` in PY2
         is moved into `Starred/keyword` in PY3.
         It will be generally represented by gast.Starred/keyword in gast.
         """
@@ -143,7 +143,7 @@ class TestPythonCompatibility(unittest.TestCase):
 
     def test_with(self):
         """
-        The fileds `context_expr/optional_vars` of `ast.With` in PY2
+        The fields `context_expr/optional_vars` of `ast.With` in PY2
         is moved into `ast.With.items.withitem` in PY3.
         """
         source = """

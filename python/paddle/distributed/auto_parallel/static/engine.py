@@ -29,11 +29,12 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import pir, static, utils
 from paddle.base.executor import _to_name_str
 from paddle.base.framework import auto_complete_op_role
+from paddle.decomposition import decomp
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import new_pass
 from paddle.distributed.passes.pass_utils import (
     _split_program_into_forward_backward_optimize,
-    set_pir_skip_gc_vars,
+    set_skip_gc_vars,
 )
 from paddle.framework import (
     IrGraph,
@@ -229,31 +230,6 @@ class Engine:
 
         self._logger = get_logger(logging.INFO)
 
-        self._json_config = None
-        if cluster:
-            self._cluster = cluster
-        else:
-            auto_config = None
-            if os.getenv("PADDLE_AUTO_PARALLEL_CONFIG"):
-                try:
-                    path = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG")
-                    with open(path, "r") as f:
-                        self._json_config = json.load(f)
-                except Exception as e:
-                    self._logger.info(
-                        "Load json failed, please check json file, engine will run default config."
-                    )
-                    self._json_config = None
-            else:
-                if os.getenv("PADDLE_AUTO_CLUSTER"):
-                    auto_config = int(os.getenv("PADDLE_AUTO_CLUSTER"))
-            self._cluster = get_default_cluster(self._json_config, auto_config)
-
-        if self._cluster is None:
-            raise TypeError(
-                "'cluster' must be the object or class `paddle.distributed.auto_parallel.Cluster`"
-            )
-
         # for compute cost
         # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
@@ -325,6 +301,35 @@ class Engine:
 
         self.fused_ffn_qkv = None
 
+        # self._cluster is UNUSED in PIR mode
+        if not self._in_pir_mode:
+            self._json_config = None
+            if cluster:
+                self._cluster = cluster
+            else:
+                auto_config = None
+                if os.getenv("PADDLE_AUTO_PARALLEL_CONFIG"):
+                    try:
+                        path = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG")
+                        with open(path, "r") as f:
+                            self._json_config = json.load(f)
+                    except Exception as e:
+                        self._logger.info(
+                            "Load json failed, please check json file, engine will run default config."
+                        )
+                        self._json_config = None
+                else:
+                    if os.getenv("PADDLE_AUTO_CLUSTER"):
+                        auto_config = int(os.getenv("PADDLE_AUTO_CLUSTER"))
+                self._cluster = get_default_cluster(
+                    self._json_config, auto_config
+                )
+
+            if self._cluster is None:
+                raise TypeError(
+                    "'cluster' must be the object or class `paddle.distributed.auto_parallel.Cluster`"
+                )
+
     # get dist input spec from shard dataloader
     def _prepare_data_spec_from_dataloader(self, dataloader):
         inputs_spec = []
@@ -334,34 +339,47 @@ class Engine:
             batch_sampler = dataloader.batch_sampler
         else:
             batch_sampler = dataloader._dataloader.batch_sampler
-
         if hasattr(batch_sampler, "set_epoch"):
             # Get data from DataLoader iterator directly may affect data generation randomness
             # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
             # between dynamic and to_static mode.
             batch_sampler.set_epoch(0)
-
         if isinstance(data, dict):
-            data = tuple(data.values())
-            if len(data) != 2:
+            data = list(data.values())
+            if len(data) >= 2:
+                labels = data.pop()
+                inputs = data
+            else:
                 raise ValueError(
-                    f"Data should be a dict with two keys, but received {len(data)}."
+                    f"Data should be a dict at least two keys, but received {len(data)}."
                 )
-            inputs, labels = data
         elif isinstance(data, (list, tuple)):
-            if len(data) != 2:
+            if len(data) >= 2:
+                labels = data.pop()
+                inputs = data
+            else:
                 raise ValueError(
-                    f"Data should be a list or tuple with two elements, but received {len(data)}."
+                    f"Data should be a dict or list at list two element, but received {len(data)}."
                 )
-            inputs, labels = data
         else:
             raise TypeError(
                 f"Data should be a dict or list, but received {type(data)}."
             )
-
-        inputs = auto_utils.to_list(inputs)
+        if not isinstance(inputs, (list, tuple)):
+            inputs = auto_utils.to_list(inputs)
         labels = auto_utils.to_list(labels)
 
+        def flatten_list(nested_list):
+            flat_list = []
+            for item in nested_list:
+                if isinstance(item, (list, tuple)):
+                    flat_list.extend(flatten_list(item))
+                else:
+                    flat_list.append(item)
+            return flat_list
+
+        # flatten [[1,2],3] - > [1,2,3]
+        inputs = flatten_list(inputs)
         if inputs is not None:
             for i, item in enumerate(inputs):
                 assert item is not None, "Receive None input."
@@ -639,7 +657,7 @@ class Engine:
             outputs_indices = fetch_indices[group_idx]
             logs_out = {}
             for idx in outputs_indices:
-                logs_out["out%d" % (idx)] = outs[idx]
+                logs_out[f"out{idx}"] = outs[idx]
             logs["outputs"] = logs_out
             group_idx += 1
         # logging user fetches
@@ -726,6 +744,21 @@ class Engine:
                 [dist_program], [startup_program]
             )
 
+        if self._strategy.pipeline.auto_parallel_sync_shared_params:
+            config = {}
+            config["concrete_program"] = self.concrete_program
+            config["pipeline_strategy"] = self._strategy.pipeline
+            auto_parallel_sync_shared_params_pass = new_pass(
+                "auto_parallel_sync_shared_params", config
+            )
+            shared_params = (
+                auto_parallel_sync_shared_params_pass.sync_shared_parameters(
+                    dist_program, startup_program
+                )
+            )
+            for pname in shared_params:
+                self._parameter_name_list.append(pname)
+
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
@@ -803,13 +836,21 @@ class Engine:
 
         # re-run apply_mix2dist_pass to dist accumulator.
         apply_mix2dist_pass(dist_program)
+        if mode == "train" and self._strategy.recompute.enable:
+            config = copy.deepcopy(self._strategy.recompute.to_dict())
+            auto_parallel_recompute_pir_pass = new_pass(
+                "auto_parallel_recompute_pir", config
+            )
+            auto_parallel_recompute_pir_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # Part 2: Parallelism search (for full auto-parallel)
         # NOTE make all parallelis search logic work as Pass,
         # and all the Pass in this Part should be optional to allow consistence in dynamic and static mode.
         if self._strategy.auto_mode == "semi-auto":
             # TODO(xxxx) Step 2.1 Entire Graph Completion in Pir.
-            # dist_program = apply_complition_pass(dist_program)
+            # dist_program = apply_completion_pass(dist_program)
             pass
         elif self._strategy.auto_mode == "random" or "full_random":
             # TODO(caozhou) Step 2.3 Basic Random / MCMC Algorithm for Fully Auto Parallel Search.
@@ -837,7 +878,7 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        ReshardPasses.apply_reshard_pass(dist_program)
+        ReshardPasses.apply_reshard_pass(dist_program, global_params_grads)
 
         # Note(luchang): When using VPP pipeline pass, we need to split the whole graph into
         # multiple chunks and adjust the process mesh accordingly. Here, we need to store the
@@ -846,6 +887,11 @@ class Engine:
         self.program_helper.cache_whole_graph_dist_attr(all_params)
 
         RemovePasses.apply_all(dist_program, startup_program, params_grads)
+
+        if self._strategy.pipeline.auto_parallel_sync_shared_params:
+            global_params_grads = auto_parallel_sync_shared_params_pass.sync_shared_parameter_gradient(
+                dist_program, startup_program, global_params_grads
+            )
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -897,20 +943,27 @@ class Engine:
         remove_unuseful_comm_op_pass(dense_program)
 
         if core._enable_dist_prim_all():
-            from paddle.decomposition import decomp
-
+            logging.info("apply decompose in auto parallel")
             with decomp.prim_guard():
                 decomp.decompose_dist_program(dense_program)
 
         if core._enable_auto_recompute():
-            from paddle.decomposition import decomp
-
             logging.info("apply auto_recompute in auto parallel")
             dense_program = decomp.auto_recompute_pir_program(
                 dense_program,
-                lambda op: bool(
-                    op.has_attr('op_role') and op.attrs()["op_role"] == 0
-                ),
+                lambda op: bool(op.has_attr('op_role') and op.op_role == 0),
+            )
+
+        if (
+            self._strategy.fused_passes.fused_passes_list is not None
+            and "fused_gemm_epilogue_pass"
+            in self._strategy.fused_passes.fused_passes_list
+        ):
+            pm = pir.PassManager()
+            pm.add_pass("fused_gemm_epilogue_pass", {})
+            pm.run(dense_program)
+            self._strategy.fused_passes.fused_passes_list.remove(
+                "fused_gemm_epilogue_pass"
             )
 
         if self._strategy.pipeline.enable:
@@ -939,7 +992,7 @@ class Engine:
             opt_job.set_micro_batch_id(0)
             jobs.append(opt_job)
 
-            type_to_program = set_pir_skip_gc_vars(
+            type_to_program = set_skip_gc_vars(
                 self._strategy.gradient_merge.k_steps,
                 job_types,
                 sub_programs,
@@ -1334,12 +1387,12 @@ class Engine:
             )
 
         if self._in_pir_mode:
-            # FIXME(ljz) avoid shared same tensro more than once in different mode
+            # FIXME(ljz) avoid shared same tensor more than once in different mode
             if mode != "train":
                 return
             # TODO(2024-Q2)
             # 1. unify random control
-            # 2. initilization of non-parameter buffer
+            # 2. initialization of non-parameter buffer
             # 3. run startup program for pir
             # 4. lazy init adaption
             # 5. amp init adaption
@@ -1349,7 +1402,7 @@ class Engine:
             self.program_helper.init_pir(
                 self._pir_dist_main_progs[mode], self._place
             )
-            changed_ouput_op_list = []
+            changed_output_op_list = []
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
                 startup_prog = self._startup_progs[mode].clone()
@@ -1407,7 +1460,7 @@ class Engine:
                             )
                             if src_value.persistable:
                                 src_value.persistable = False
-                                changed_ouput_op_list.append(op)
+                                changed_output_op_list.append(op)
                             op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
@@ -1417,7 +1470,7 @@ class Engine:
                 paddle.base.libpaddle.pir.apply_dist2dense_pass(startup_prog)
                 remove_unuseful_comm_op_pass(startup_prog)
 
-                for op in changed_ouput_op_list:
+                for op in changed_output_op_list:
                     op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)
                 if self._job_plan is not None:
@@ -1508,7 +1561,7 @@ class Engine:
     # distributed training combined with prim mechanism (prim is behind of distributed)
     # for local main subprogram after distributed partition,
     # mark _need_decomp=True to tag this program needs to be decomposed
-    # get _grad_var_to_var from distributed context and set it to main program for futher decomposing in static executor
+    # get _grad_var_to_var from distributed context and set it to main program for further decomposing in static executor
     def _mark_prim(self, mode):
         if os.getenv("FLAGS_enable_prim_after_distribute") in [
             'True',

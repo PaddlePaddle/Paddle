@@ -452,7 +452,7 @@ class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
             y = paddle.randint(low=0, high=20, shape=[128, 1])
             _ = model(x, y)
 
-    def test_gard(self):
+    def test_grad(self):
         n_classes = 4
         in_features = 8
         cutoffs = [2]

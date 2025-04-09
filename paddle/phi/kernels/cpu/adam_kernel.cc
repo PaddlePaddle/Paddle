@@ -35,6 +35,7 @@ void AdamDenseKernel(const Context& dev_ctx,
                      const DenseTensor& learning_rate,
                      const DenseTensor& moment1,
                      const DenseTensor& moment2,
+                     const paddle::optional<DenseTensor>& moment2_max,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
                      const paddle::optional<DenseTensor>& master_param,
@@ -46,9 +47,11 @@ void AdamDenseKernel(const Context& dev_ctx,
                      int64_t min_row_size_to_use_multithread,
                      bool multi_precision,
                      bool use_global_beta_pow,
+                     bool amsgrad,
                      DenseTensor* param_out,
                      DenseTensor* moment1_out,
                      DenseTensor* moment2_out,
+                     DenseTensor* moment2_max_out,
                      DenseTensor* beta1_pow_out,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs) {
@@ -72,6 +75,13 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    if (amsgrad) {
+      phi::Copy(dev_ctx,
+                moment2_max.get(),
+                dev_ctx.GetPlace(),
+                false,
+                moment2_max_out);
+    }
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
@@ -112,17 +122,20 @@ void AdamDenseKernel(const Context& dev_ctx,
   T* param_out_ptr = dev_ctx.template Alloc<T>(param_out);
   T* mom1_out_ptr = dev_ctx.template Alloc<T>(moment1_out);
   T* mom2_out_ptr = dev_ctx.template Alloc<T>(moment2_out);
+  T* mom2_max_out_ptr =
+      amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr;
 
   T learning_rate_ =
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
   T eps = epsilon_ * sqrt(1 - beta2_p);
 
-  phi::jit::adam_attr_t attr(beta1_, beta2_);
+  phi::jit::adam_attr_t attr(beta1_, beta2_, amsgrad);
   int64_t numel = param.numel();
 
   const T* param_ptr = param.data<T>();
   const T* mom1_ptr = moment1.data<T>();
   const T* mom2_ptr = moment2.data<T>();
+  const T* mom2_max_ptr = amsgrad ? moment2_max.get().data<T>() : nullptr;
   const T* grad_ptr = grad.data<T>();
 
   auto adam =
@@ -136,6 +149,9 @@ void AdamDenseKernel(const Context& dev_ctx,
 #endif
   for (int64_t i = 0; i < numel / chunk_size; ++i) {
     const int64_t offset = i * chunk_size;
+    const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
+    T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
     adam(beta1_,
          beta2_,
          -learning_rate_,
@@ -144,15 +160,21 @@ void AdamDenseKernel(const Context& dev_ctx,
          grad_ptr + offset,
          mom1_ptr + offset,
          mom2_ptr + offset,
+         mom2_max_in_data,
          param_ptr + offset,
          mom1_out_ptr + offset,
          mom2_out_ptr + offset,
-         param_out_ptr + offset);
+         mom2_max_out_data,
+         param_out_ptr + offset,
+         amsgrad);
   }
 
   if (numel % chunk_size != 0) {
     const int64_t offset = (numel / chunk_size) * chunk_size;
     const int64_t tail_numel = numel % chunk_size;
+    const T* mom2_max_in_data = amsgrad ? mom2_max_ptr + offset : nullptr;
+    T* mom2_max_out_data = amsgrad ? mom2_max_out_ptr + offset : nullptr;
+
     adam(beta1_,
          beta2_,
          -learning_rate_,
@@ -161,10 +183,13 @@ void AdamDenseKernel(const Context& dev_ctx,
          grad_ptr + offset,
          mom1_ptr + offset,
          mom2_ptr + offset,
+         mom2_max_in_data,
          param_ptr + offset,
          mom1_out_ptr + offset,
          mom2_out_ptr + offset,
-         param_out_ptr + offset);
+         mom2_max_out_data,
+         param_out_ptr + offset,
+         amsgrad);
   }
 }
 
@@ -176,6 +201,7 @@ void MergedAdamKernel(
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& moment1,
     const std::vector<const DenseTensor*>& moment2,
+    const paddle::optional<std::vector<const DenseTensor*>>& moment2_max,
     const std::vector<const DenseTensor*>& beta1_pow,
     const std::vector<const DenseTensor*>& beta2_pow,
     const paddle::optional<std::vector<const DenseTensor*>>& master_param,
@@ -184,9 +210,11 @@ void MergedAdamKernel(
     const Scalar& epsilon,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     std::vector<DenseTensor*> param_out,
     std::vector<DenseTensor*> moment1_out,
     std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> moment2_max_out,
     std::vector<DenseTensor*> beta1_pow_out,
     std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_param_out) {
@@ -245,6 +273,11 @@ void MergedAdamKernel(
   T epsilon_ = epsilon.to<T>();
 
   for (size_t idx = 0; idx < param_num; idx++) {
+    const T* mom2_max_in_data =
+        amsgrad ? moment2_max.get()[idx]->data<T>() : nullptr;
+    T* mom2_max_out_data =
+        amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out[idx]) : nullptr;
+
     phi::funcs::AdamFunctor<T, phi::funcs::CPUAdam> functor(
         beta1_,
         beta2_,
@@ -255,10 +288,13 @@ void MergedAdamKernel(
         dev_ctx.template Alloc<T>(moment1_out[idx]),
         moment2[idx]->data<T>(),
         dev_ctx.template Alloc<T>(moment2_out[idx]),
+        mom2_max_in_data,
+        mom2_max_out_data,
         learning_rate[idx]->data<T>(),
         grad[idx]->data<T>(),
         param[idx]->data<T>(),
-        dev_ctx.template Alloc<T>(param_out[idx]));
+        dev_ctx.template Alloc<T>(param_out[idx]),
+        amsgrad);
     functor(param[idx]->numel());
     if (!use_global_beta_pow) {
       dev_ctx.template Alloc<T>(beta1_pow_out[idx])[0] =

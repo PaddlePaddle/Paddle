@@ -327,7 +327,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 ]
             else:
                 main_program = program_list[self.pp_rank]
-            with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
+            with open(f"main_{self.role_maker._worker_index()}", 'w') as f:
                 f.writelines(str(main_program))
             main_block = main_program.global_block()
             new_params_grads = []
@@ -344,7 +344,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         if self.pp_degree > 1:
             pp_optimizer._rename_gradient_var_name(main_block)
-            with open("main_%d" % self.role_maker._worker_index(), 'w') as f:
+            with open(f"main_{self.role_maker._worker_index()}", 'w') as f:
                 f.writelines(str(main_program))
 
         return optimize_ops, params_grads
@@ -645,12 +645,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
         with open(
-            "start_sharding_%d" % self.role_maker._worker_index(), 'w'
+            f"start_sharding_{self.role_maker._worker_index()}", 'w'
         ) as f:
             f.writelines(str(startup_block.program))
-        with open(
-            "main_sharding_%d" % self.role_maker._worker_index(), 'w'
-        ) as f:
+        with open(f"main_sharding_{self.role_maker._worker_index()}", 'w') as f:
             f.writelines(str(main_block.program))
 
     def minimize_impl(
@@ -707,11 +705,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
-        use_new_comm = paddle.get_flags("FLAGS_dynamic_static_unified_comm")[
-            "FLAGS_dynamic_static_unified_comm"
-        ]
-        if not use_new_comm:
-            self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
@@ -979,7 +972,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         remove ops and vars not needed in this worker
 
         1. prune regularization (weight decay)
-        2. prune cast_fp32_to_fp16; update amp_infine_checking
+        2. prune cast_fp32_to_fp16; update amp_inline_checking
         3. prune gradient_clip related; update global_norm_sum
         4. prune optimizer op + param + gradient
 
@@ -1006,6 +999,9 @@ class ShardingOptimizer(MetaOptimizerBase):
             if (
                 op.type == "c_allreduce_sum"
                 and op.attr('use_model_parallel') is False
+            ) or (
+                op.type == "all_reduce"
+                and op.attr('reduce_type') == paddle.distributed.ReduceOp.SUM
             ):
                 assert len(output_names) == 1
                 output_name = output_names[0]
@@ -1026,6 +1022,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
                 "c_allreduce_sum",
+                "all_reduce",
                 "c_sync_comm_stream",
                 "c_calc_comm_stream",
                 "c_gen_nccl_id",
@@ -1715,7 +1712,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # offload and optimize_cast will insert broadcast op
         broadcast_params = set()
         for op in startup_block.ops:
-            if op.type == 'c_broadcast':
+            if op.type == 'broadcast':
                 broadcast_params.add(op.desc.output_arg_names()[0])
 
         for param in params_name:
@@ -1731,13 +1728,12 @@ class ShardingOptimizer(MetaOptimizerBase):
 
             for ring in rings:
                 startup_block.append_op(
-                    type='c_broadcast',
-                    inputs={'X': param},
-                    outputs={'Out': param},
+                    type='broadcast',
+                    inputs={'x': param},
+                    outputs={'out': param},
                     attrs={
                         'ring_id': ring,
                         'root': 0,
-                        'use_calc_stream': True,
                         OP_ROLE_KEY: OpRole.Forward,
                     },
                 )
@@ -1890,12 +1886,12 @@ class ShardingOptimizer(MetaOptimizerBase):
             for grad, merged_grad in self._grad2merged_grad.items():
                 merged_grad_var = main_block.var(merged_grad)
                 cur_block.append_op(
-                    type='c_allreduce_sum',
+                    type='all_reduce',
                     inputs={'X': merged_grad_var},
                     outputs={'Out': merged_grad_var},
                     attrs={
                         'ring_id': self.dp_ring_id,
-                        'use_calc_stream': True,
+                        'reduce_type': paddle.distributed.ReduceOp.SUM,
                         OP_ROLE_KEY: OpRole.Optimize,
                     },
                 )

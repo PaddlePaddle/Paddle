@@ -41,14 +41,10 @@ class TestOperator(unittest.TestCase):
     def test_op_desc_creation(self):
         program = Program()
         block = program.current_block()
-        mul_x = block.create_var(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
-        )
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_x = block.create_var(dtype="float32", shape=[5, 10], name="mul.x")
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
         mul_op = block.append_op(
             type="mul",
@@ -91,18 +87,10 @@ class TestOperator(unittest.TestCase):
     def test_mult_input(self):
         program = Program()
         block = program.current_block()
-        sum_x1 = block.create_var(
-            dtype="int", shape=[3, 4], lod_level=0, name="sum.x1"
-        )
-        sum_x2 = block.create_var(
-            dtype="int", shape=[3, 4], lod_level=0, name="sum.x2"
-        )
-        sum_x3 = block.create_var(
-            dtype="int", shape=[3, 4], lod_level=0, name="sum.x3"
-        )
-        sum_out = block.create_var(
-            dtype="int", shape=[3, 4], lod_level=0, name="sum.out"
-        )
+        sum_x1 = block.create_var(dtype="int", shape=[3, 4], name="sum.x1")
+        sum_x2 = block.create_var(dtype="int", shape=[3, 4], name="sum.x2")
+        sum_x3 = block.create_var(dtype="int", shape=[3, 4], name="sum.x3")
+        sum_out = block.create_var(dtype="int", shape=[3, 4], name="sum.out")
         sum_op = block.append_op(
             type="sum",
             inputs={"X": [sum_x1, sum_x2, sum_x3]},

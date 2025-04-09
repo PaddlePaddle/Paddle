@@ -161,10 +161,10 @@ class ElasticManager:
                 node_ips, self.devices_per_proc, self.start_port
             )
             self.trainer_endpoints_list = [
-                "%s:%d" % (ip, self.start_port) for ip in node_ips
+                f"{ip}:{self.start_port}" for ip in node_ips
             ]
 
-        self.curr_host = "%s:%d" % (self.host, self.start_port)
+        self.curr_host = f"{self.host}:{self.start_port}"
         logger.info(f'start job with np={self.np}')
         logger.info(
             f"trainers={self.trainers}, trainer_endpoints_list={self.trainer_endpoints_list}"
@@ -327,7 +327,7 @@ class ElasticManager:
                 port = start_port
 
             ports = list(range(port, port + len(devices_per_proc)))
-            endpoint_list.extend(["%s:%d" % (ip, port) for port in ports])
+            endpoint_list.extend([f"{ip}:{port}" for port in ports])
 
         dist_endpoints = ','.join(endpoint_list)
         return dist_endpoints

@@ -399,7 +399,7 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* input_cos,
                           Node* input_sin,
                           Node* mul0,
@@ -649,7 +649,7 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     if (is_fc_params_shared) {
       return;
     }
-    fuse_creater(input0,
+    fuse_creator(input0,
                  input_cos,
                  input_sin,
                  mul0,

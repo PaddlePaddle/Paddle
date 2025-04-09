@@ -33,10 +33,10 @@ class SliceMultiConcatNet(nn.Layer):
 
     def forward(self, x):
         x0 = paddle.shape(x)[0].reshape([1])
-        x1 = paddle.full([1], 1, dtype="int32")
+        x1 = paddle.full([1], 1, dtype="int64")
         out0 = paddle.concat([x0, x1])
 
-        y = paddle.full([1], 1, dtype="int32")
+        y = paddle.full([1], 1, dtype="int64")
         out1 = paddle.concat([x0, y])
         return out0, out1
 
@@ -83,7 +83,7 @@ class SliceConcatNet(nn.Layer):
 
     def forward(self, x):
         x0 = paddle.shape(x)[0].reshape([1])
-        x1 = paddle.full([1], 1, dtype="int32")
+        x1 = paddle.full([1], 1, dtype="int64")
         out = paddle.concat([x0, x1])
         return out
 

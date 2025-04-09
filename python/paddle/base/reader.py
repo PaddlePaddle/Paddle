@@ -540,7 +540,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # NOTE: this process is used to load data asynchronously from self._batch_reader
             self._process = None
 
-        # NOTE: the C++ LoDTensorBlockingQueue instance
+        # NOTE: the C++ DenseTensorBlockingQueue instance
         self._blocking_queue = None
         # NOTE: 1. In multiprocess mode, this thread is used to get next batch data from
         # self._data_queue, then push it into self._blocking_queue; 2. In single process
@@ -590,7 +590,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._shapes = []
         self._dtypes = []
         self._need_check_feed = []
-        self._blocking_queue = core.init_lod_tensor_blocking_queue(
+        self._blocking_queue = core.init_dense_tensor_blocking_queue(
             core.Variable(), self._capacity, False
         )
         self._reader = None
@@ -854,7 +854,7 @@ class GeneratorLoader(DataLoaderBase):
             self._need_check_feed = [
                 v.desc.need_check_feed() for v in self._feed_list
             ]
-        self._queue = core.init_lod_tensor_blocking_queue(
+        self._queue = core.init_dense_tensor_blocking_queue(
             core.Variable(), self._capacity, self._keep_order
         )
         self._reader = None
@@ -898,7 +898,7 @@ class GeneratorLoader(DataLoaderBase):
         double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
-        self._queue = core.init_lod_tensor_blocking_queue(
+        self._queue = core.init_dense_tensor_blocking_queue(
             var, self._capacity, self._keep_order
         )
 

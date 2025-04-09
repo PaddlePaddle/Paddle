@@ -29,40 +29,16 @@
 #include "paddle/pir/include/core/builder.h"
 
 namespace pir {
-
-struct SubGraph;
-using SubGraphPtr = std::shared_ptr<SubGraph>;
+using OpClassifier = std::function<bool(const pir::Operation&)>;
 using GroupOpsVec = std::vector<pir::Operation*>;
 
-class SubgraphDetector {
- public:
-  // Tell whether a node is inside a sub-graph.
-  using OpClassifier = std::function<bool(const pir::Operation&)>;
-
-  SubgraphDetector(pir::Block* block, const OpClassifier& classifier);
-
-  std::vector<GroupOpsVec> operator()();
-
- protected:
-  // Do Op Fusion
-  void DoOpFusion();
-
-  void BuildSubGraph();
-
- private:
-  pir::Block* block_;
-  OpClassifier op_classifier_;
-
-  std::vector<pir::Operation*> sort_ops_;
-  std::unordered_map<pir::Operation*, size_t> op2id_;
-  std::vector<SubGraphPtr> subgraph_list_;
-  std::unordered_map<pir::Operation*, SubGraphPtr> subgraph_map_;
-  std::unordered_map<pir::Operation*, std::unordered_map<pir::Operation*, bool>>
-      can_apply_fusion_map_;
-};
+std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
+                                         const OpClassifier& classifier);
 
 std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
-void ReplaceWithGroupOp(pir::Block* block, const GroupOpsVec& group_ops);
+void ReplaceWithGroupOp(pir::Block* block,
+                        const GroupOpsVec& group_ops,
+                        bool at_least_one_output = true);
 
 pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
                                 const std::vector<pir::Value>& outputs);

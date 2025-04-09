@@ -11,7 +11,7 @@ function(windows_symbolic TARGET)
     if(NOT EXISTS ${final_path}/${src}.cc OR NOT EXISTS ${final_path}/${src}.cu)
       message(
         FATAL
-        " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file."
+        " ${src}.cc and ${src}.cu must exists, and ${src}.cu must be symbolic file."
       )
     endif()
 
@@ -268,49 +268,35 @@ else()
     DEPS lod_tensor selected_rows_utils phi common var_type_traits op_info)
 endif()
 
-if(WITH_XPU)
-  cc_library(
-    operator
-    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
-         infershape_utils.cc
-    DEPS op_info
-         proto_desc
-         tensor
-         scope
-         glog
-         shape_inference
-         data_transform
-         lod_tensor
-         op_kernel_type
-         op_call_stack
-         detail_op_handle
-         phi_utils
-         phi
-         common
-         op_compat_infos
-         type_info)
-else()
-  cc_library(
-    operator
-    SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
-         infershape_utils.cc
-    DEPS op_info
-         proto_desc
-         tensor
-         scope
-         glog
-         shape_inference
-         data_transform
-         lod_tensor
-         op_kernel_type
-         op_call_stack
-         detail_op_handle
-         phi_utils
-         phi
-         common
-         op_compat_infos
-         type_info)
+set(OPERETER_DEPS
+    op_info
+    proto_desc
+    tensor
+    scope
+    glog
+    shape_inference
+    data_transform
+    lod_tensor
+    op_kernel_type
+    op_call_stack
+    detail_op_handle
+    phi_utils
+    phi
+    common
+    op_compat_infos
+    type_info)
+
+if(WITH_NCCL OR WITH_RCCL)
+  set(OPERETER_DEPS ${OPERETER_DEPS} process_group_nccl)
+elseif(WITH_CUSTOM_DEVICE)
+  set(OPERETER_DEPS ${OPERETER_DEPS} process_group_custom)
 endif()
+
+cc_library(
+  operator
+  SRCS operator.cc transfer_scope_cache.cc unused_var_check.cc
+       infershape_utils.cc
+  DEPS ${OPERETER_DEPS})
 
 cc_library(version SRCS version.cc)
 
@@ -397,18 +383,6 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if(NOT WITH_ROCM)
-      add_custom_target(
-        fleet_executor_proto_init ALL
-        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
-        COMMAND
-          cp
-          ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
-          ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
-        COMMENT
-          "Copy generated python proto into directory paddle/distributed/fleet/proto."
-      )
-    endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
                    "${PADDLE_BINARY_DIR}/python/paddle/base/proto/")
@@ -443,11 +417,6 @@ if(WITH_PSCORE)
 endif()
 
 cc_library(
-  lod_rank_table
-  SRCS lod_rank_table.cc
-  DEPS lod_tensor)
-
-cc_library(
   feed_fetch_method
   SRCS feed_fetch_method.cc
   DEPS lod_tensor scope glog)
@@ -467,7 +436,6 @@ set(NAIVE_EXECUTOR_DEPS
     scope
     phi
     glog
-    lod_rank_table
     feed_fetch_method
     feed_hook
     graph_to_program_pass
@@ -476,6 +444,10 @@ set(NAIVE_EXECUTOR_DEPS
 
 if(TENSORRT_FOUND)
   set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
+endif()
+
+if(WITH_OPENVINO)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} openvino_engine_op)
 endif()
 
 cc_library(
@@ -529,8 +501,7 @@ if(WITH_DISTRIBUTE)
            ps_gpu_wrapper
            box_wrapper
            metrics
-           lodtensor_printer
-           lod_rank_table
+           densetensor_printer
            feed_fetch_method
            feed_hook
            ${GLOB_DISTRIBUTE_DEPS}
@@ -558,9 +529,9 @@ if(WITH_DISTRIBUTE)
     #         pull_dense_worker.cc section_worker.cc heter_section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
     #         device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
     #         index_sampler index_wrapper sampler index_dataset_proto
-    #         lod_rank_table framework_io fleet_wrapper heter_wrapper box_wrapper metrics lodtensor_printer feed_fetch_method feed_hook
+    #         framework_io fleet_wrapper heter_wrapper box_wrapper metrics densetensor_printer feed_fetch_method feed_hook
     #         graph_to_program_pass variable_helper
-    #         heter_service_proto fleet heter_server brpc fleet_executor
+    #         heter_service_proto fleet heter_server brpc
     #         graph_gpu_wrapper)
 
     cc_library(
@@ -594,13 +565,12 @@ if(WITH_DISTRIBUTE)
            index_sampler
            index_wrapper
            index_dataset_proto
-           lod_rank_table
            framework_io
            fleet_wrapper
            heter_wrapper
            box_wrapper
            metrics
-           lodtensor_printer
+           densetensor_printer
            feed_fetch_method
            feed_hook
            graph_to_program_pass
@@ -659,14 +629,13 @@ if(WITH_DISTRIBUTE)
       DEPS op_registry
            scope
            glog
-           lod_rank_table
            framework_io
            fleet_wrapper
            heter_wrapper
            ps_gpu_wrapper
            box_wrapper
            metrics
-           lodtensor_printer
+           densetensor_printer
            feed_fetch_method
            feed_hook
            graph_to_program_pass
@@ -712,13 +681,12 @@ elseif(WITH_PSLIB)
     DEPS op_registry
          scope
          glog
-         lod_rank_table
          framework_io
          fleet_wrapper
          heter_wrapper
          ps_gpu_wrapper
          box_wrapper
-         lodtensor_printer
+         densetensor_printer
          feed_fetch_method
          feed_hook
          graph_to_program_pass
@@ -752,13 +720,12 @@ else()
     DEPS op_registry
          scope
          glog
-         lod_rank_table
          framework_io
          fleet_wrapper
          heter_wrapper
          ps_gpu_wrapper
          box_wrapper
-         lodtensor_printer
+         densetensor_printer
          feed_fetch_method
          feed_hook
          graph_to_program_pass

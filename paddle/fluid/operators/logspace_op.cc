@@ -53,7 +53,7 @@ class LogspaceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype", "The output data type.");
     AddOutput("Out", "A sequence of numbers.");
     AddComment(R"DOC(
-        Return fixed number of logarithmical-evenly spaced values within a given
+        Return fixed number of logarithmically-evenly spaced values within a given
         interval. First entry is exponential of Start with base Base, and last
         entry is exponential of Stop with base Base. In the case when Num is 1,
         only exponential of Start with base Base is returned. If dtype is int32

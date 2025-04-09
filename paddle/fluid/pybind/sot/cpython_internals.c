@@ -14,9 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/cpython_internals.h"
 
-#include <frameobject.h>
-
 #if SOT_IS_SUPPORTED
+
+#if !PY_3_11_PLUS
+#include <frameobject.h>
+#endif
 
 #if PY_3_11_PLUS
 #include <internal/pycore_code.h>
@@ -167,127 +169,59 @@ void Internal_PyEvalFrameClearAndPop(PyThreadState *tstate,
 }
 
 #if PY_3_13_PLUS
-// Returns borrowed reference or NULL
-static PyObject *framelocalsproxy_getval(_PyInterpreterFrame *frame,
-                                         PyCodeObject *co,
-                                         int i) {
-  PyObject **fast = _PyFrame_GetLocalsArray(frame);
-  _PyLocals_Kind kind = _PyLocals_GetKind(co->co_localspluskinds, i);
+// This function is used to get the locals mapping of the frame.
+void update_framelocals_mapping(PyObject *mapping,
+                                PyCodeObject *code,
+                                int i,
+                                PyObject *value) {
+  _PyLocals_Kind kind = _PyLocals_GetKind(code->co_localspluskinds, i);
 
-  PyObject *value = fast[i];
-  PyObject *cell = NULL;
-
-  if (value == NULL) {
-    return NULL;
+  if (kind & CO_FAST_FREE && !(code->co_flags & CO_OPTIMIZED)) {
+    return;
   }
 
-  if (kind == CO_FAST_FREE || kind & CO_FAST_CELL) {
-    // The cell was set when the frame was created from
-    // the function's closure.
-    assert(PyCell_Check(value));
-    cell = value;
+  if (kind & CO_FAST_HIDDEN) {
+    return;
   }
 
-  if (cell != NULL) {
-    value = PyCell_GET(cell);
+  if (kind & CO_FAST_FREE) {
+    assert(value != NULL && PyCell_Check(value));
+    value = PyCell_GET(value);
   }
 
-  if (value == NULL) {
-    return NULL;
+  if (value != NULL) {
+    PyDict_SetItem(
+        mapping, PyTuple_GET_ITEM(code->co_localsplusnames, i), value);
   }
-
-  return value;
 }
 
-bool Internal_PyFrame_HasHiddenLocals(_PyInterpreterFrame *frame) {
-  /*
-   * This function returns if there are hidden locals introduced by PEP 709,
-   * which are the isolated fast locals for inline comprehensions
-   */
-  PyCodeObject *co = _PyFrame_GetCode(frame);
+// simplified version `frame_get_var`, `frame_init_get_vars` and
+// `PyFrame_GetLocals`
+PyObject *get_framelocals_mapping(_PyInterpreterFrame *frame) {
+  PyObject *mapping = PyDict_New();
 
-  for (int i = 0; i < co->co_nlocalsplus; i++) {
-    _PyLocals_Kind kind = _PyLocals_GetKind(co->co_localspluskinds, i);
-
-    if (kind & CO_FAST_HIDDEN) {
-      PyObject *value = framelocalsproxy_getval(frame, co, i);
-
-      if (value != NULL) {
-        return true;
-      }
-    }
+  // If the frame is not yet executed, return an empty mapping, see
+  // `frame_get_var` function
+  if (!frame->stacktop) {
+    return mapping;
   }
 
-  return false;
-}
-static PyObject *Internal_framelocalsproxy_new(PyTypeObject *type,
-                                               PyObject *args,
-                                               PyObject *kwds) {
-  if (PyTuple_GET_SIZE(args) != 1) {
-    PyErr_Format(PyExc_TypeError,
-                 "FrameLocalsProxy expected 1 argument, got %zd",
-                 PyTuple_GET_SIZE(args));
-    return NULL;
-  }
-  PyObject *item = PyTuple_GET_ITEM(args, 0);
+  PyCodeObject *co = PyFrame_GET_CODE(frame);
 
-  if (!PyFrame_Check(item)) {
-    PyErr_Format(PyExc_TypeError, "expect frame, not %T", item);
-    return NULL;
-  }
-  PyFrameObject *frame = (PyFrameObject *)item;
-
-  if (kwds != NULL && PyDict_Size(kwds) != 0) {
-    PyErr_SetString(PyExc_TypeError,
-                    "FrameLocalsProxy takes no keyword arguments");
-    return 0;
+  // Get local variables, see `frame_get_var` function
+  int offset = co->co_nlocalsplus - co->co_nfreevars;
+  for (int i = 0; i < offset; i++) {
+    update_framelocals_mapping(mapping, co, i, frame->localsplus[i]);
   }
 
-  PyFrameLocalsProxyObject *self =
-      (PyFrameLocalsProxyObject *)type->tp_alloc(type, 0);
-  if (self == NULL) {
-    return NULL;
+  // Get closure variables, see `frame_init_get_vars` function
+  PyObject *closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+  for (int i = 0; i < co->co_nfreevars; ++i) {
+    update_framelocals_mapping(
+        mapping, co, offset + i, PyTuple_GET_ITEM(closure, i));
   }
 
-  ((PyFrameLocalsProxyObject *)self)->frame = (PyFrameObject *)Py_NewRef(frame);
-
-  return (PyObject *)self;
-}
-
-PyObject *Internal_PyFrameLocalsProxy_New(PyFrameObject *frame) {
-  PyObject *args = PyTuple_Pack(1, frame);
-  if (args == NULL) {
-    return NULL;
-  }
-
-  PyObject *proxy = (PyObject *)Internal_framelocalsproxy_new(
-      &PyFrameLocalsProxy_Type, args, NULL);
-  Py_DECREF(args);
-  return proxy;
-}
-
-PyObject *Internal_PyFrame_GetLocals(_PyInterpreterFrame *frame) {
-  // We should try to avoid creating the FrameObject if possible.
-  // So we check if the frame is a module or class level scope
-  PyCodeObject *co = _PyFrame_GetCode(frame);
-
-  if (!(co->co_flags & CO_OPTIMIZED) &&
-      !Internal_PyFrame_HasHiddenLocals(frame)) {
-    if (frame->f_locals == NULL) {
-      // We found cases when f_locals is NULL for non-optimized code.
-      // We fill the f_locals with an empty dict to avoid crash until
-      // we find the root cause.
-      frame->f_locals = PyDict_New();
-      if (frame->f_locals == NULL) {
-        return NULL;
-      }
-    }
-    return Py_NewRef(frame->f_locals);
-  }
-
-  PyFrameObject *f = Internal_PyFrame_GetFrameObject(frame);
-
-  return Internal_PyFrameLocalsProxy_New(f);
+  return mapping;
 }
 
 #else
@@ -311,7 +245,7 @@ static void Internal_frame_init_get_vars(_PyInterpreterFrame *frame) {
     PyObject *o = PyTuple_GET_ITEM(closure, i);
     frame->localsplus[offset + i] = Py_NewRef(o);
   }
-  // COPY_FREE_VARS doesn't have inline CACHEs, either:
+  // COPY_FREE_VARS doesn't have inline caches, either:
   frame->prev_instr = _PyCode_CODE(frame->f_code);
 }
 
@@ -534,7 +468,7 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
       Py_INCREF(o);
       frame->localsplus[offset + i] = o;
     }
-    // COPY_FREE_VARS doesn't have inline CACHEs, either:
+    // COPY_FREE_VARS doesn't have inline caches, either:
     frame->prev_instr = _PyCode_CODE(frame->f_code);
   }
   for (int i = 0; i < co->co_nlocalsplus; i++) {
@@ -750,7 +684,7 @@ static void Internal_take_ownership(PyFrameObject *f,
     } else {
       f->f_back = (PyFrameObject *)Py_NewRef(back);
     }
-#if PY_VERSION_HEX < PY_3_12_0_HEX
+#if !PY_3_12_PLUS
     frame->previous = NULL;
 #endif
   }

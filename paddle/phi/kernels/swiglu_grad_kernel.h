@@ -36,6 +36,15 @@ void SwiGLUGradKernel(const Context &ctx,
                       const DenseTensor &dz,
                       DenseTensor *dx,
                       DenseTensor *dy) {
+  if (x.numel() == 0) {
+    if (dx) {
+      ctx.template Alloc<T>(dx);
+    }
+    if (dy) {
+      ctx.template Alloc<T>(dy);
+    }
+    return;
+  }
   const auto *x_ptr = x.data<T>();
   const auto *dz_ptr = dz.data<T>();
   auto *dx_ptr = dx ? ctx.template Alloc<T>(dx) : nullptr;

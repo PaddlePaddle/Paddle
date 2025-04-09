@@ -13,9 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/op_handle_base.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 std::string OpHandleBase::DebugString() const {
   std::stringstream ss;
   ss << Name() << "(";
@@ -315,6 +313,4 @@ void OpHandleBase::SetLocalExecScopes(
   }
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

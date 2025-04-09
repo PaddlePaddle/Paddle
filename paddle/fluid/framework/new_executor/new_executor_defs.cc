@@ -175,14 +175,11 @@ Instruction::Instruction(size_t id,
 }
 
 void Instruction::WaitEvent(const Place& place) const {
-  // If InterpreterCore in on CPUPlace, do nothing.
-  if (phi::is_cpu_place(place)) {
-    return;
-  }
-
-  VLOG(6) << "Deal StreamWaitEventOrSync for " << this->OpBase()->Type();
-
   for (const EventInter& event_iter : events_to_wait_) {
+    // If InterpreterCore in on CPUPlace, do nothing.
+    if (phi::is_cpu_place(place)) {
+      continue;
+    }
     phi::RecordEvent record(
         "WaitStreamEvent", phi::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_
@@ -192,9 +189,9 @@ void Instruction::WaitEvent(const Place& place) const {
 }
 
 void Instruction::RecordEvent(const Place& place) const {
-  phi::RecordEvent record(
-      "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
+    phi::RecordEvent record(
+        "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
     VLOG(6) << "Record event at instruction: " << id_;
     event_to_record_->event_->Record(&dev_ctx_);
   }
@@ -335,17 +332,11 @@ void Instruction::UpdateRecordStreamForGcInfo() {
   if ((operator_base_ptr->Type() == "send_v2") &&
       (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
     int ring_id = operator_base_ptr->Attr<int>("ring_id");
-    if (FLAGS_dynamic_static_unified_comm) {
-      const auto& comm_context_manager =
-          phi::distributed::CommContextManager::GetInstance();
-      stream_ = static_cast<phi::distributed::NCCLCommContext*>(
-                    comm_context_manager.Get(std::to_string(ring_id)))
-                    ->GetStream();
-    } else {
-      stream_ = platform::NCCLCommContext::Instance()
-                    .Get(ring_id, DeviceContext().GetPlace())
-                    ->stream();
-    }
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    stream_ = static_cast<phi::distributed::NCCLCommContext*>(
+                  comm_context_manager.Get(std::to_string(ring_id)))
+                  ->GetStream();
   }
 #endif
 }

@@ -177,11 +177,11 @@ bool RunPassAndAssert(Graph* graph,
 }
 
 template <typename T>
-void InitLoDTensorHolder(const Scope& scope,
-                         const phi::Place& place,
-                         const std::string& var_name,
-                         const std::vector<int64_t>& dims,
-                         const T* data) {
+void InitDenseTensorHolder(const Scope& scope,
+                           const phi::Place& place,
+                           const std::string& var_name,
+                           const std::vector<int64_t>& dims,
+                           const T* data) {
   auto var = scope.FindLocalVar(var_name);
   auto tensor = var->GetMutable<phi::DenseTensor>();
   auto* tensor_mem_ptr =
@@ -194,21 +194,21 @@ void InitLoDTensorHolder(const Scope& scope,
 }
 
 // Instantiate for below data types.
-template void InitLoDTensorHolder<float>(const Scope&,
+template void InitDenseTensorHolder<float>(const Scope&,
+                                           const phi::Place&,
+                                           const std::string&,
+                                           const std::vector<int64_t>&,
+                                           const float*);
+template void InitDenseTensorHolder<int>(const Scope&,
                                          const phi::Place&,
                                          const std::string&,
                                          const std::vector<int64_t>&,
-                                         const float*);
-template void InitLoDTensorHolder<int>(const Scope&,
-                                       const phi::Place&,
-                                       const std::string&,
-                                       const std::vector<int64_t>&,
-                                       const int*);
-template void InitLoDTensorHolder<double>(const Scope&,
-                                          const phi::Place&,
-                                          const std::string&,
-                                          const std::vector<int64_t>&,
-                                          const double*);
+                                         const int*);
+template void InitDenseTensorHolder<double>(const Scope&,
+                                            const phi::Place&,
+                                            const std::string&,
+                                            const std::vector<int64_t>&,
+                                            const double*);
 
 OpDesc* GetOp(const ProgramDesc& prog,
               const std::string& op_type,

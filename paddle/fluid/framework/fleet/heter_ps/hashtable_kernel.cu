@@ -744,6 +744,6 @@ template void HashTable<uint64_t, float*>::update<
 //                  cudaStream_t stream);
 
 #endif
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

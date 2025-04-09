@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn {
@@ -40,8 +41,8 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
 
   ast_gen_ius::TensorGroup tensor_group({A, B, C});
   auto func = lang::LowerToAst("reduce_sum_sqrt", {C}, &tensor_group);
-
-  ir::ModuleExpr mod_expr({func->body});
+  ir::Expr expr_func_body = ir::ConvertStmtBlockToExprBlock(func->body_block);
+  ir::ModuleExpr mod_expr({expr_func_body});
   ir::IRSchedule ir_sch(mod_expr);
 
   ir_sch.Bind(ir_sch.GetLoops("B")[0], "blockIdx.x");
@@ -58,7 +59,7 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
   VLOG(6) << "After ReplaceCrossBlockReduction: " << func;
 
   EXPECT_EQ(utils::GetStreamCnt(func),
-            utils::Trim(R"ROC(function reduce_sum_sqrt (_C, _A, _semaphore)
+            utils::Trim(R"ROC(function reduce_sum_sqrt (_C, _A)
 {
   ScheduleBlock(root)
   {
@@ -68,15 +69,16 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
         ScheduleBlock(B__reduce_init)
         {
           i0 = axis.bind(i)
-          B__reduce_init[i0] = 0.00000000f
+          {
+            B__reduce_init[i0] = 0.00000000f
+          }
         }
         thread_bind[blockIdx.y] for (reduce_k, 0, 8)
         {
-          is_last_block_done[0] = cinn_grid_reduce_update_semaphore(Tensor(semaphore, [16]))
-          if (is_last_block_done[0]) {
-            ScheduleBlock(B)
+          ScheduleBlock(B)
+          {
+            i0_0, i1 = axis.bind(i, reduce_k)
             {
-              i0_0, i1 = axis.bind(i, reduce_k)
               B[i0_0] = cinn_grid_reduce_sum_fp32(Tensor(A, [8,16]), 16, i0_0)
             }
           }
@@ -84,10 +86,10 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
       }
       thread_bind[blockIdx.x] for (i, 0, 16)
       {
-        if (is_last_block_done[0]) {
-          ScheduleBlock(C)
+        ScheduleBlock(C)
+        {
+          i0_1 = axis.bind(i)
           {
-            i0_1 = axis.bind(i)
             C[i0_1] = sqrt(B[i0_1])
           }
         }
@@ -96,13 +98,10 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
   }
 }
 )ROC"));
-  EXPECT_EQ(func->temp_spaces.size(), 2);
+  EXPECT_EQ(func->temp_spaces.size(), 1);
   EXPECT_EQ(func->temp_spaces[0].size().as_int64(), 512);
   EXPECT_EQ(func->temp_spaces[0].arg_idx(), 1);
   EXPECT_EQ(func->temp_spaces[0].need_zero_init(), false);
-  EXPECT_EQ(func->temp_spaces[1].size().as_int64(), 64);
-  EXPECT_EQ(func->temp_spaces[1].arg_idx(), 2);
-  EXPECT_EQ(func->temp_spaces[1].need_zero_init(), true);
 }
 
 TEST(CrossBlockReductionReplacer, RSLayout) {
@@ -124,7 +123,8 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
   ast_gen_ius::TensorGroup tensor_group({A, B, C});
   auto func = lang::LowerToAst("reduce_max_exp", {C}, &tensor_group);
 
-  ir::ModuleExpr mod_expr({func->body});
+  ir::Expr expr_func_body = ir::ConvertStmtBlockToExprBlock(func->body_block);
+  ir::ModuleExpr mod_expr({expr_func_body});
   ir::IRSchedule ir_sch(mod_expr);
 
   ir_sch.Bind(ir_sch.GetLoops("B")[0], "blockIdx.x");
@@ -143,7 +143,7 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
   VLOG(6) << "After ReplaceCrossBlockReduction: " << func;
 
   EXPECT_EQ(utils::GetStreamCnt(func),
-            utils::Trim(R"ROC(function reduce_max_exp (_C, _A, _semaphore)
+            utils::Trim(R"ROC(function reduce_max_exp (_C, _A)
 {
   ScheduleBlock(root)
   {
@@ -155,15 +155,16 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
           ScheduleBlock(B__reduce_init)
           {
             i0, i1 = axis.bind(i, j)
-            B__reduce_init[i0, i1] = -3.40282346e+38f
+            {
+              B__reduce_init[i0, i1] = -3.40282347e+38f
+            }
           }
           thread_bind[blockIdx.y] for (reduce_k, 0, 8)
           {
-            is_last_block_done[0] = cinn_grid_reduce_update_semaphore(Tensor(semaphore, [4]))
-            if (is_last_block_done[0]) {
-              ScheduleBlock(B)
+            ScheduleBlock(B)
+            {
+              i0_0, i1_0, i2 = axis.bind(i, j, reduce_k)
               {
-                i0_0, i1_0, i2 = axis.bind(i, j, reduce_k)
                 B[i0_0, i1_0] = cinn_grid_reduce_max_fp32(Tensor(A, [8,4,32]), 128, ((i0_0 * 32) + i1_0))
               }
             }
@@ -174,10 +175,10 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
       {
         thread_bind[threadIdx.x] for (j, 0, 32)
         {
-          if (is_last_block_done[0]) {
-            ScheduleBlock(C)
+          ScheduleBlock(C)
+          {
+            i0_1, i1_1 = axis.bind(i, j)
             {
-              i0_1, i1_1 = axis.bind(i, j)
               C[i0_1, i1_1] = exp(B[i0_1, i1_1])
             }
           }
@@ -187,13 +188,10 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
   }
 }
 )ROC"));
-  EXPECT_EQ(func->temp_spaces.size(), 2);
+  EXPECT_EQ(func->temp_spaces.size(), 1);
   EXPECT_EQ(func->temp_spaces[0].size().as_int64(), 4096);
   EXPECT_EQ(func->temp_spaces[0].arg_idx(), 1);
   EXPECT_EQ(func->temp_spaces[0].need_zero_init(), false);
-  EXPECT_EQ(func->temp_spaces[1].size().as_int64(), 16);
-  EXPECT_EQ(func->temp_spaces[1].arg_idx(), 2);
-  EXPECT_EQ(func->temp_spaces[1].need_zero_init(), true);
 }
 
 }  // namespace optim

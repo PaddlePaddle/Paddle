@@ -17,9 +17,24 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/core/xpu_cuda_stream.h"
+#include "xpu/runtime.h"
+#include "xpu/runtime_ex.h"
+#else
+namespace phi {
+class XPUCUDAStream {};
+}  // namespace phi
+#endif
+
 namespace py = pybind11;
 
 namespace paddle {
+namespace platform {
+#ifdef PADDLE_WITH_XPU
+XPUStream get_current_stream(int device_id = -1);
+#endif
+}  // namespace platform
 namespace pybind {
 
 void BindXpuStream(py::module* m);

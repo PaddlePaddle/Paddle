@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 struct InputsVisitor {
   template <typename OpType>
@@ -98,5 +97,4 @@ void AppendOpVariantByOpName(
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators

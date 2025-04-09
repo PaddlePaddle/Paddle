@@ -115,7 +115,7 @@ class TestRegularizer(unittest.TestCase):
             main_prog=main_prog, startup_prog=startup_prog
         ):
             data = paddle.static.data(
-                name="words", shape=[-1, 1], dtype="int64", lod_level=1
+                name="words", shape=[-1, 1], dtype="int64"
             )
             label = paddle.static.data(
                 name="label", shape=[-1, 1], dtype="int64"
@@ -141,7 +141,7 @@ class TestRegularizer(unittest.TestCase):
             main_prog=main_prog, startup_prog=startup_prog
         ):
             data = paddle.static.data(
-                name="words", shape=[-1, 1], dtype="int64", lod_level=1
+                name="words", shape=[-1, 1], dtype="int64"
             )
             label = paddle.static.data(
                 name="label", shape=[-1, 1], dtype="int64"

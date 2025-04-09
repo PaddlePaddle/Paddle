@@ -810,7 +810,7 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
   std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
   for (size_t i = 0; i < all_inputs->size(); ++i) {
     auto& tensor = all_inputs->at(i);
-    if (tensor.initialized() && tensor.is_dense_tensor() &&
+    if (tensor.has_allocation() && tensor.is_dense_tensor() &&
         !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
              ->meta()
              .is_contiguous()) {

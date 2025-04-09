@@ -34,17 +34,14 @@ class TestL2Decay(unittest.TestCase):
         mul_x = block.create_parameter(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="mul.x",
             regularizer=regularizer.L2Decay(0.5),
         )
         self.assertIsNotNone(mul_x.regularizer)
         self.assertTrue(isinstance(mul_x.regularizer, regularizer.L2Decay))
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
         block.append_op(
             type="mul",
@@ -52,9 +49,7 @@ class TestL2Decay(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1},
         )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
@@ -77,17 +72,14 @@ class TestL1Decay(unittest.TestCase):
         mul_x = block.create_parameter(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="mul.x",
             regularizer=regularizer.L1Decay(0.5),
         )
         self.assertIsNotNone(mul_x.regularizer)
         self.assertTrue(isinstance(mul_x.regularizer, regularizer.L1Decay))
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
         block.append_op(
             type="mul",
@@ -95,9 +87,7 @@ class TestL1Decay(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1},
         )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )

@@ -605,7 +605,7 @@ class TestAPICase_Error(unittest.TestCase):
 
 
 # when optimizer in case
-class TestMutiTask(unittest.TestCase):
+class TestMultiTask(unittest.TestCase):
 
     def test_optimizer_in_case(self):
         BATCH_SIZE = 1

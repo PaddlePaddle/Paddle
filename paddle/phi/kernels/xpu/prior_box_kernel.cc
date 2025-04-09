@@ -100,11 +100,10 @@ void PriorBoxKernel(const Context& ctx,
     std::copy(variances.begin(), variances.end(), var_cpu.begin() + i * vlen);
   }
   ctx.Wait();
-  ret = xpu_memcpy(var_data,
-                   var_cpu.data(),
-                   var_cpu.size() * sizeof(T),
-                   XPUMemcpyKind::XPU_HOST_TO_DEVICE);
-  PADDLE_ENFORCE_XPU_SUCCESS(ret);
+  PADDLE_ENFORCE_XPU_SUCCESS(xpu_memcpy(var_data,
+                                        var_cpu.data(),
+                                        var_cpu.size() * sizeof(T),
+                                        XPUMemcpyKind::XPU_HOST_TO_DEVICE));
 }
 
 }  // namespace phi

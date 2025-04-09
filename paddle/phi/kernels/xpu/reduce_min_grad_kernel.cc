@@ -40,7 +40,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   const T* out_grad_data = out_grad.data<T>();
   auto* x_grad_data = x_grad->data<T>();
   const auto& input_dim_size = x.dims().size();
-  std::vector<int> true_dims;
+  std::vector<int64_t> true_dims;
   for (size_t i = 0; i < dims.size(); ++i) {
     if (dims[i] < 0) {
       true_dims.push_back(dims[i] + input_dim_size);
@@ -48,8 +48,8 @@ void ReduceMinGradKernel(const Context& dev_ctx,
       true_dims.push_back(dims[i]);
     }
   }
-  std::vector<int> ydims(input_dim_size);
-  std::vector<int> xdims((input_dim_size));
+  std::vector<int64_t> ydims(input_dim_size);
+  std::vector<int64_t> xdims((input_dim_size));
   std::set<int> dims_set(true_dims.begin(), true_dims.end());
   for (auto i = 0; i < input_dim_size; i++) {
     xdims[i] = x.dims()[i];
@@ -80,10 +80,10 @@ void ReduceMinGradKernel(const Context& dev_ctx,
 
   // use [1] to replace [], because xpu not support []
   if (xdims.size() == 0) {
-    xdims = std::vector<int>({1});
+    xdims = std::vector<int64_t>({1});
   }
   if (ydims.size() == 0) {
-    ydims = std::vector<int>({1});
+    ydims = std::vector<int64_t>({1});
   }
 
   // step 1. broadcast out and out_grad

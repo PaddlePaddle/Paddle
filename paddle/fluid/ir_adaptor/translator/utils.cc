@@ -28,8 +28,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 bool HaveOpToMultiKernelsMap(std::string op_name) {
   for (const auto& map :
        {&op_to_multi_kernels_map, &sp_op_to_multi_kernels_map}) {
@@ -54,11 +53,9 @@ bool IsOneDNNOnlyOp(std::string op_name) {
 }
 #endif
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 pir::Operation* InsertSliceOperationForTarget(
     pir::IrContext* ctx,
@@ -129,5 +126,4 @@ std::vector<std::string> CheckUnregisteredOperation(
   return unregistered_ops;
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

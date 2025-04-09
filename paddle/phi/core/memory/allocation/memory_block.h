@@ -37,7 +37,7 @@ struct MemoryBlock {
   // init saves the MemoryBlock::Desc of the memory block in a MetadataCache.
   // If it is a CPU memory block, the MetadataCache writes the
   // MemoryBlock::Desc to the beginning of the block; or, if it is a GPU memory
-  // block, the MetadataCache writes the Meatadata to a std::map in
+  // block, the MetadataCache writes the Metadata to a std::map in
   // the CPU.
   void Init(MetadataCache* cache,
             Type t,
@@ -123,7 +123,7 @@ class MetadataCache {
   // Returns the MemoryBlock::Desc for a memory block.  When MetadataCache is
   // used to manage CPU memory, the MemoryBlock::Desc resides at the beginning
   // of the memory block; when used to manage GPU memory, the
-  // Meatadata resides in CPU memory indexed by cache_.
+  // Metadata resides in CPU memory indexed by cache_.
   MemoryBlock::Desc* LoadDesc(MemoryBlock* memory_block);
 
   // Saves the MemoryBlock::Desc of a memory block into the cache.  For CPU

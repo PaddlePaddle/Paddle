@@ -721,7 +721,7 @@ def _compute_quantile(
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
-            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
@@ -905,7 +905,7 @@ def quantile(
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
-            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
@@ -989,7 +989,7 @@ def nanquantile(
         axis (int|list, optional): The axis along which to calculate quantile. ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
-            If ``axis`` is a list, quantile is calculated over all elements of given axises.
+            If ``axis`` is a list, quantile is calculated over all elements of given axes.
             If ``axis`` is None, quantile is calculated over all elements of ``x``. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of

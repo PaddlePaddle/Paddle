@@ -664,6 +664,33 @@ class TestStride(unittest.TestCase):
 
         self.assertTrue(out_c._is_shared_buffer_with(out))
 
+    # test invoke of view_reshape_grad for high order derivative
+    def call_view8(self):
+        x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        y = x.view([10, -1]).tanh()
+        dx = paddle.grad(y, x, create_graph=True)[0]
+        np.testing.assert_allclose(
+            dx.numpy(), (1 - y**2).reshape(x.shape).numpy(), 1e-6, 1e-6
+        )
+        dxx = paddle.grad(dx, x, create_graph=True)[0]
+        np.testing.assert_allclose(
+            dxx.numpy(),
+            (-2 * y * (1 - y**2)).reshape(x.shape).numpy(),
+            1e-6,
+            1e-6,
+        )
+        dxxx = paddle.grad(dxx, x, create_graph=True)[0]
+        np.testing.assert_allclose(
+            dxxx.numpy(),
+            (-2 * (1 - y**2) ** 2 + -2 * y * (-2 * y) * (1 - y**2))
+            .reshape(x.shape)
+            .numpy(),
+            1e-6,
+            1e-6,
+        )
+
     def call_view_as(self):
         x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
         x = paddle.to_tensor(x_np)

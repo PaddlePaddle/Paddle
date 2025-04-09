@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+from paddle import base
 from paddle.base import core
 
 
@@ -180,6 +181,36 @@ class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
+class TestElementwiseMulOp_ZeroSize1(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [3]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestElementwiseMulOp_ZeroSize2(TestElementwiseMulOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 3, 4]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [0, 3, 4]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+
+class TestElementwiseMulOp_ZeroSize3(TestElementwiseMulOp_ZeroSize1):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [1, 0, 2]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [3, 0, 1]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
 
@@ -634,6 +665,67 @@ class TestElementwiseMulop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
+
+
+class TestMulApiZeroSize(unittest.TestCase):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 3, 4).astype('float32')
+        self.y_numpy = np.random.rand(0, 3, 4).astype('float32')
+
+    def _executed_api(self, x, y, name=None):
+        return paddle.multiply(x, y, name)
+
+    def test_declarative(self):
+        self.init_data()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(
+                name="x", shape=self.x_numpy.shape, dtype=self.x_numpy.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_numpy.shape, dtype=self.y_numpy.dtype
+            )
+            z = self._executed_api(x, y)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            z_value = exe.run(
+                feed={"x": self.x_numpy, "y": self.y_numpy}, fetch_list=[z]
+            )
+            np_z = np.multiply(self.x_numpy, self.y_numpy)
+            np.testing.assert_allclose(z_value[0], np_z, rtol=1e-05, atol=1e-05)
+
+    def test_dygraph(self):
+        self.init_data()
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_numpy)
+                y = paddle.to_tensor(self.y_numpy)
+                z = self._executed_api(x, y)
+                np_z = np.multiply(self.x_numpy, self.y_numpy)
+                np.testing.assert_allclose(z, np_z, rtol=1e-05, atol=1e-05)
+
+
+class TestMulApiZeroSize2(TestMulApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(3).astype('float32')
+        self.y_numpy = np.random.rand(0, 3).astype('float32')
+
+
+class TestMulApiZeroSize3(TestMulApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 0).astype('float32')
+        self.y_numpy = np.random.rand(1, 0).astype('float32')
+
+
+class TestMulApiZeroSize4(TestMulApiZeroSize):
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 0, 2).astype('float32')
+        self.y_numpy = np.random.rand(3, 0, 1).astype('float32')
 
 
 if __name__ == '__main__':

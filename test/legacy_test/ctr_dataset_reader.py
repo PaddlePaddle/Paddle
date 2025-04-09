@@ -119,8 +119,8 @@ def prepare_data():
     res = list(res)
     dnn_input_dim = res[0]
     lr_input_dim = res[1]
-    logger.info('dnn input dim: %d' % dnn_input_dim)
-    logger.info('lr input dim: %d' % lr_input_dim)
+    logger.info(f'dnn input dim: {dnn_input_dim}')
+    logger.info(f'lr input dim: {lr_input_dim}')
 
     return dnn_input_dim, lr_input_dim, train_file_path
 

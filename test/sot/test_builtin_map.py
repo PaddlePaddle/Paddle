@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 from test_case_base import TestCaseBase
 
+from paddle import Tensor, to_tensor
 from paddle.jit import sot
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
@@ -98,6 +99,20 @@ def test_map_for_loop(x: list):
     return res
 
 
+@check_no_breakgraph
+def test_map_multi_input(func, a: Tensor, b: tuple[int, ...]):
+    x, y, z = map(func, a, b)
+    return x, y, z
+
+
+@check_no_breakgraph
+def test_map_with_zip_and_call_fn_ex(x: list[tuple[int, int]]):
+    fn = lambda x: (0,) + x  # noqa: RUF005
+    map_results = map(fn, x)
+    res = tuple(map(list, zip(*map_results)))
+    return res
+
+
 class TestMap(TestCaseBase):
     def test_map(self):
         self.assert_results(test_map_list, [1, 2, 3, 4])
@@ -119,9 +134,20 @@ class TestMap(TestCaseBase):
 
     def test_map_unpack(self):
         self.assert_results(test_map_unpack, [1, 2, 3, 4])
+        self.assert_results(
+            test_map_multi_input,
+            lambda x, y: x + y,
+            to_tensor([1, 2, 3]),
+            (2, 4, 6),
+        )
 
     def test_map_for_loop(self):
         self.assert_results(test_map_for_loop, [7, 8, 9, 10])
+
+    def test_map_with_zip_and_call_fn_ex(self):
+        self.assert_results(
+            test_map_with_zip_and_call_fn_ex, [(1, 2), (3, 4), (5, 6)]
+        )
 
 
 if __name__ == "__main__":

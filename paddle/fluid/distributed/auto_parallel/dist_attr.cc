@@ -23,9 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
-namespace paddle {
-namespace distributed {
-namespace auto_parallel {
+namespace paddle::distributed::auto_parallel {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -487,6 +485,4 @@ bool operator==(const OperatorDistAttr& lhs, const OperatorDistAttr& rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed::auto_parallel

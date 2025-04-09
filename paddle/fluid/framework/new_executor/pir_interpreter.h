@@ -138,7 +138,7 @@ class PirInterpreter : public InterpreterBaseImpl {
   void CalculateLastLiveOps();
 
   // gc
-  void ClearLoDTensorArrayInLocalScope();
+  void ClearDenseTensorArrayInLocalScope();
 
   // cuda graph
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);

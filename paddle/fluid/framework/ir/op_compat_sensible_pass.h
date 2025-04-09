@@ -123,9 +123,9 @@ class InputOrOutputCompat {
  *         .AddInput("Bias").IsTensor().IsOptional().End()
  *         .AddOutput("Out").IsTensor().End()
  *
- * All the inference-aware Op defition is as above, all the other attributes not
- * contained in the definition should be set default value or it would be judged
- * incompatible.
+ * All the inference-aware Op definition is as above, all the other attributes
+ * not contained in the definition should be set default value or it would be
+ * judged incompatible.
  */
 class OpCompat {
  public:
@@ -152,13 +152,13 @@ class OpCompat {
 };
 
 /**
- * OpCompatSensiblePass is a base class for all the passes thouse is sensitive
+ * OpCompatSensiblePass is a base class for all the passes those is sensitive
  * to Op update.
- * There are two methods to help tell the compability of an Op
+ * There are two methods to help tell the compatibility of an Op
  *   bool IsCompat(const GraphPatternDetector::subgraph_t& subgraph, Graph* g);
  *   bool IsCompat(const OpDesc& op_desc);
  *
- * One can register the related Op compabilities using
+ * One can register the related Op compatibilities using
  *   void AddOpCompat(OpCompat&& judger);
  *
  * Most of the Passes are used for fusing ops, so we define a method for such
@@ -172,7 +172,7 @@ class OpCompat {
  * class FcFusePass : public OpCompatSensiblePass {
  *  public:
  *   FcFusePass() {
- *     // define Mul op compatiblity.
+ *     // define Mul op compatibility.
  *     AddOpCompat(OpCompat("Mul"))
  *        .AddInput("Input").IsTensor().End()
  *        .AddAttr("in_num_col_dims").IsNumGE(1);
@@ -195,12 +195,12 @@ class OpCompatSensiblePass : public Pass {
   /**
    * Developer should push the compatibility `teller` for each kind of Op in the
    * subgraph.
-   * NOTE One should add all the related op compatiblity in the construct so
+   * NOTE One should add all the related op compatibility in the construct so
    * that all the following methods are valid.
    */
   OpCompat& AddOpCompat(OpCompat&& op_compat);
 
-  //! Tell the Op compability of a subgraph.
+  //! Tell the Op compatibility of a subgraph.
   bool IsCompat(const GraphPatternDetector::subgraph_t& subgraph,
                 Graph* g) const;
 

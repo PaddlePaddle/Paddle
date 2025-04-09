@@ -140,18 +140,6 @@ std::vector<T> ToPodVector(const std::vector<Expr> &args) {
   return shape_v;
 }
 
-using CINNSchedule = lang::PackedFunc;
-
-CINNSchedule GetElementwiseScheduleFunc(
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target,
-    bool vectorizable = true);
-
-CINNSchedule GetInjectiveScheduleFunc(
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target,
-    bool vectorizable = true);
-
 std::string GetExternFuncName(const cinn::common::Target &target,
                               const cinn::common::Type &type,
                               const std::string &func_name,

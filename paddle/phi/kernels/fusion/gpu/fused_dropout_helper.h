@@ -337,8 +337,8 @@ class FusedDropoutHelper {
   }
 
  protected:
-  int rows_;
-  int cols_;
+  int64_t rows_;
+  int64_t cols_;
   DropoutParam dropout_param_;
   float residual_alpha_;
 };
@@ -351,8 +351,8 @@ class FusedDropoutLayerNormHelper
     : public FusedDropoutHelper<T, MaskType, InType, OutType> {
  public:
   FusedDropoutLayerNormHelper() {}
-  FusedDropoutLayerNormHelper(const int rows,
-                              const int cols,
+  FusedDropoutLayerNormHelper(const int64_t rows,
+                              const int64_t cols,
                               const float epsilon,
                               const float residual_alpha = 1.0) {
     using U = phi::funcs::LayerNormParamType<T>;
@@ -363,8 +363,8 @@ class FusedDropoutLayerNormHelper
   }
 
   FusedDropoutLayerNormHelper(const phi::GPUContext& ctx,
-                              const int rows,
-                              const int cols,
+                              const int64_t rows,
+                              const int64_t cols,
                               const DropoutParam& dropout_param,
                               const float epsilon,
                               const float residual_alpha = 1.0)
@@ -388,7 +388,7 @@ class FusedDropoutLayerNormHelper
     phi::LayerNormDirectCUDAFunctor<InDataType,
                                     phi::funcs::LayerNormParamType<T>>
         layer_norm;
-    std::vector<int> src_shape{this->rows_, this->cols_};
+    std::vector<int64_t> src_shape{this->rows_, this->cols_};
     layer_norm(ctx.stream(),
                reinterpret_cast<const InDataType*>(src),
                src_shape,

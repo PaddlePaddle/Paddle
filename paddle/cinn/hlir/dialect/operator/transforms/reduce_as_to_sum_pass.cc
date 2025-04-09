@@ -59,10 +59,7 @@ class ReduceAsOpPattern
 
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
-    if (y_rank == 1 && y_shape[0] == 1) {
-      // TODO(phrain): reduce to shape [1] will failed in codegen
-      return false;
-    }
+
     int64_t compare_offset = x_rank - y_rank;
     std::vector<int64_t> reduce_axis;
 
@@ -71,7 +68,7 @@ class ReduceAsOpPattern
     }
 
     bool x_y_shape_equal = false;
-    bool is_static_shape = IsStaicShape(x_shape, y_shape);
+    bool is_static_shape = IsStaticShape(x_shape, y_shape);
     bool keep_dim = true;
     bool need_squeeze = false;
     if (is_static_shape) {
@@ -79,9 +76,9 @@ class ReduceAsOpPattern
       ProcessStaticShape(
           x_shape, y_shape, &reduce_axis, &keep_dim, &need_squeeze);
     } else {
-      bool can_repalce = ProcessDynamicShape(
+      bool can_replace = ProcessDynamicShape(
           op, &reduce_axis, &x_y_shape_equal, &keep_dim, &need_squeeze);
-      if (!can_repalce) {
+      if (!can_replace) {
         return true;
       }
     }
@@ -117,8 +114,8 @@ class ReduceAsOpPattern
   }
 
  private:
-  bool IsStaicShape(const std::vector<int64_t> &x_shape,
-                    const std::vector<int64_t> &y_shape) const {
+  bool IsStaticShape(const std::vector<int64_t> &x_shape,
+                     const std::vector<int64_t> &y_shape) const {
     bool x_has_dynamic_shape =
         std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end();
     bool y_has_dynamic_shape =
@@ -152,7 +149,7 @@ class ReduceAsOpPattern
     size_t x_rank = x_shape.size();
     size_t y_rank = y_shape.size();
 
-    // Get reduc aixs and
+    // Get reduc axis and
     int64_t compare_offset = x_rank - y_rank;
 
     for (size_t i = 0; i < y_rank; ++i) {

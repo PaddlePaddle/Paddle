@@ -209,7 +209,7 @@ CUDA_ATOMIC_WRAPPER(Add, phi::dtype::float16) {
 }
 #else
 CUDA_ATOMIC_WRAPPER(Add, phi::dtype::float16) {
-  // concrete packed float16 value may exsits in lower or higher 16bits
+  // concrete packed float16 value may exist in lower or higher 16bits
   // of the 32bits address.
   uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
       reinterpret_cast<char *>(address) -
@@ -347,7 +347,7 @@ CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
 }
 #else
 CUDA_ATOMIC_WRAPPER(Add, phi::dtype::bfloat16) {
-  // concrete packed bfloat16 value may exsits in lower or higher 16bits
+  // concrete packed bfloat16 value may exist in lower or higher 16bits
   // of the 32bits address.
   uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
       reinterpret_cast<char *>(address) -

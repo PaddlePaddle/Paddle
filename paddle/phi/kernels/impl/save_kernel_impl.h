@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/framework/lod_tensor_serialize.h"
+#include "paddle/phi/core/framework/dense_tensor_serialize.h"
 #include "paddle/phi/core/framework/var_type_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"

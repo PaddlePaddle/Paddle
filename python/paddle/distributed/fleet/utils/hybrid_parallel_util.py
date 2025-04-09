@@ -105,6 +105,9 @@ def _apply_collective_grads_eager(
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
 
+    if len(grad_vars) == 0:
+        return
+
     coalesced_grads_and_vars = build_groups(grad_vars, bucket_size)
 
     nranks = (
@@ -165,6 +168,37 @@ def _broadcast_object_list_help(object_list, hcg):
     )
 
 
+def _process_element(hcg, dev, place, element):
+    if isinstance(element, core.eager.Tensor):
+        with framework.no_grad():
+            if (
+                in_dynamic_mode()
+                and not eval(f"element.place.is_{dev}_place")()
+            ):
+                element_gpu = element._copy_to(place, True)
+                element._clear_data()
+                element_gpu._share_buffer_to(element)
+            _broadcast_data_help(element, element.shape, element.dtype, hcg)
+    elif isinstance(element, (dict, list, tuple)):
+        return _broadcast_nested_data(hcg, dev, place, element)
+    else:
+        _broadcast_object_list_help([element], hcg)
+
+
+def _broadcast_nested_data(hcg, dev, place, data):
+    if isinstance(data, dict):
+        return {
+            key: _process_element(hcg, dev, place, value)
+            for key, value in data.items()
+        }
+    elif isinstance(data, list):
+        return [_process_element(hcg, dev, place, item) for item in data]
+    elif isinstance(data, tuple):
+        return tuple(_process_element(hcg, dev, place, item) for item in data)
+    else:
+        raise TypeError(f"Unsupported data type: {type(data)}")
+
+
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     dev = cur_device.split(":")[0]
@@ -185,28 +219,10 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     else:
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 
-    for v in inputs:
-        if isinstance(v, core.eager.Tensor):
-            with framework.no_grad():
-                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
-                    v_gpu = v._copy_to(place, True)
-                    v._clear_data()
-                    v_gpu._share_buffer_to(v)
-                _broadcast_data_help(v, v.shape, v.dtype, hcg)
-        else:
-            _broadcast_object_list_help(v, hcg)
-
-    for k, v in kwargs.items():
-        if isinstance(v, core.eager.Tensor):
-            with framework.no_grad():
-                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
-                    v_gpu = v._copy_to(place, True)
-                    v._clear_data()
-                    v_gpu._share_buffer_to(v)
-                _broadcast_data_help(v, v.shape, v.dtype, hcg)
-            kwargs[k] = v
-        else:
-            kwargs[k] = _broadcast_object_list_help(v, hcg)
+    if len(inputs) > 0:
+        inputs = _broadcast_nested_data(hcg, dev, place, inputs)
+    if len(kwargs) > 0:
+        kwargs = _broadcast_nested_data(hcg, dev, place, kwargs)
     return inputs, kwargs
 
 
@@ -267,6 +283,10 @@ def fused_allreduce_gradients(parameter_list, hcg):
             group = sep_group if group is None else dp_sep_group
 
     logger.debug("dp or sep start fuse allreduce gradients")
+    from paddle.distributed import in_auto_parallel_align_mode
+
+    if in_auto_parallel_align_mode():
+        scale = 1.0
     fused_allreduce_gradients_with_group(parameter_list, group, scale=scale)
 
 

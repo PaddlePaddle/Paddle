@@ -1856,16 +1856,9 @@ MatmulJudgeDtypeKernel(const Context& ctx,
                 std::is_same<T, int8_t>::value) {
     if (x.dtype() == phi::DataType::INT8 && x_dims[0] <= 4 &&
         y_dims.size() == 2 && y_dims[0] % 16 == 0 && y_dims[1] % 16 == 0 &&
-        FLAGS_cuda_core_int8_gemm) {
-      if (!transpose_y) {
-        DenseTensor delta;
-        phi::EmptyKernel<float, Context>(
-            ctx, {y.dims()[1], y.dims()[0]}, DataType::INT8, &delta);
-        phi::TransposeKernel<int8_t, Context>(ctx, y, {1, 0}, &delta);
-        phi::CudaGemm<T, Context>(ctx, x, delta, out);
-      } else {
-        phi::CudaGemm<T, Context>(ctx, x, y, out);
-      }
+        FLAGS_cuda_core_int8_gemm && ctx.GetComputeCapability() >= 70 &&
+        transpose_y) {
+      phi::CudaGemm<T, Context>(ctx, x, y, out);
       return;
     }
   }
@@ -2007,16 +2000,36 @@ void MatmulKernel(const Context& ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
-  PADDLE_ENFORCE_NE(common::product(x.dims()),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(X) dims size must not be equal "
-                        "0, but received dims size is 0."));
-  PADDLE_ENFORCE_NE(common::product(y.dims()),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The Input(Y) dims size must not be equal "
-                        "0, but received dims size is 0."));
+  if (x.numel() == 0 || y.numel() == 0) {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    if (transpose_x) {
+      std::swap(x_dims[x_dims.size() - 1], x_dims[x_dims.size() - 2]);
+    }
+    if (transpose_y) {
+      std::swap(y_dims[y_dims.size() - 1], y_dims[y_dims.size() - 2]);
+    }
+    std::vector<std::int64_t> out_dims(x_dims.size() - 1 + y_dims.size() - 1);
+    for (int64_t i = 0; i < x_dims.size() - 1; ++i) {
+      out_dims[i] = x_dims[i];
+    }
+    for (int64_t i = 1; i < y_dims.size(); ++i) {
+      out_dims[x_dims.size() - 1 + i - 1] = y_dims[i];
+    }
+    out->Resize(phi::make_ddim(out_dims));
+    ctx.template Alloc<T>(out);
+    return;
+  }
+  PADDLE_ENFORCE_GE(
+      common::product(x.dims()),
+      0,
+      common::errors::InvalidArgument(
+          "The dims of Input(X) should be greater than or equal to 0."));
+  PADDLE_ENFORCE_GE(
+      common::product(y.dims()),
+      0,
+      common::errors::InvalidArgument(
+          "The dims of Input(Y) should be greater than or equal to 0."));
   const std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
   const std::vector<std::int64_t> y_dims = common::vectorize(y.dims());
   MatmulJudgeDtypeKernel<Context, T>(

@@ -15,20 +15,17 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class OpDesc;
 class InferShapeContext;
 template <typename T>
 class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
+}  // namespace paddle::framework
+namespace paddle::imperative {
 class OpBase;
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class MemcpyD2HOp : public framework::OperatorWithKernel {
  public:
@@ -81,8 +78,7 @@ raise error if the type is not listed above.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

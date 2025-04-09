@@ -185,7 +185,7 @@ class TestLogitAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name='X1', shape=[100], dtype='int32')
+            x = paddle.static.data(name='X1', shape=[100], dtype='bool')
             self.assertRaises(TypeError, paddle.logit, x)
 
             x = paddle.static.data(name='X2', shape=[100], dtype='float32')

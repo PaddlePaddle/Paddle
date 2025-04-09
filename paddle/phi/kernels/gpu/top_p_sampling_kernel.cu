@@ -27,7 +27,7 @@ namespace cub = hipcub;
 #endif
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 11060
-#define CUDA_BFLOAT16_AVALIABLE
+#define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
 #endif
 
@@ -60,7 +60,7 @@ struct DataTypeTraits<phi::dtype::float16> {
   using DataType = half;
 };
 
-#ifdef CUDA_BFLOAT16_AVALIABLE
+#ifdef CUDA_BFLOAT16_AVAILABLE
 template <>
 struct DataTypeTraits<phi::dtype::bfloat16> {
   using DataType = __nv_bfloat16;
@@ -1246,7 +1246,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-#ifdef CUDA_BFLOAT16_AVALIABLE
+#ifdef CUDA_BFLOAT16_AVAILABLE
 PD_REGISTER_KERNEL(top_p_sampling,
                    GPU,
                    ALL_LAYOUT,

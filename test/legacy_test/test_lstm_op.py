@@ -207,7 +207,7 @@ class TestLstmOp(OpTest):
         self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
-        # TODO(qingqing) remove folowing lines after the check_grad is refined.
+        # TODO(qingqing) remove following lines after the check_grad is refined.
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
@@ -259,7 +259,7 @@ class TestLstmOpInference(TestLstmOp):
 #         self.use_peepholes = True
 
 #     def test_check_grad(self):
-#         # TODO(qingqing) remove folowing lines after the check_grad is refined.
+#         # TODO(qingqing) remove following lines after the check_grad is refined.
 #         N = len(self.lod[0])
 #         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
 #         self.outputs['BatchCellPreAct'] = np.zeros(

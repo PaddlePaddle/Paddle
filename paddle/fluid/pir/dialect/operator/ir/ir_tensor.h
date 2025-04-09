@@ -23,7 +23,7 @@
 namespace paddle {
 namespace dialect {
 
-using LoD = std::vector<std::vector<size_t>>;
+using LegacyLoD = std::vector<std::vector<size_t>>;
 
 class IrTensor : public phi::TensorBase,
                  public phi::TypeInfoTraits<phi::TensorBase, IrTensor> {
@@ -33,7 +33,7 @@ class IrTensor : public phi::TensorBase,
   IrTensor(phi::DataType dtype,
            const phi::DDim& dims,
            phi::DataLayout layout,
-           LoD lod,
+           LegacyLoD lod,
            size_t offset = 0);
 
   IrTensor(IrTensor&& other) = default;
@@ -65,9 +65,9 @@ class IrTensor : public phi::TensorBase,
 
   void SetLayout(phi::DataLayout layout) { layout_ = layout; }
 
-  const LoD& lod() const noexcept { return lod_; }
+  const LegacyLoD& lod() const noexcept { return lod_; }
 
-  void SetLod(LoD lod) { lod_ = lod; }
+  void SetLod(LegacyLoD lod) { lod_ = lod; }
 
   size_t offset() const noexcept { return offset_; }
 
@@ -89,7 +89,7 @@ class IrTensor : public phi::TensorBase,
   phi::DDim dims_;
   phi::DataType dtype_{phi::DataType::FLOAT32};
   phi::DataLayout layout_{phi::DataLayout::NCHW};
-  LoD lod_;
+  LegacyLoD lod_;
   size_t offset_{0};
 };
 

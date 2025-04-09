@@ -91,7 +91,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         x = paddle.base.framework.EagerParamBase(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="x",
             optimize_attr={'learning_rate': 1.0},
         )
@@ -110,7 +109,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         x = paddle.base.framework.EagerParamBase(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="x",
             optimize_attr={'learning_rate': 0.12},
         )

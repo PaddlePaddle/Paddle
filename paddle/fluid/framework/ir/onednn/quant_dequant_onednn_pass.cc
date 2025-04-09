@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/ir/onednn/onednn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void QuantDequantMkldnnPass::MarkSkipQuantizedOps(
     ir::Graph* graph, const std::unordered_set<std::string>& skip_ops) const {
@@ -758,9 +756,7 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(quant_dequant_onednn_pass,
               paddle::framework::ir::QuantDequantMkldnnPass);

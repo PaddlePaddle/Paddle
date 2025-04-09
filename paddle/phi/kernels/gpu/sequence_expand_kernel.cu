@@ -31,7 +31,7 @@ static inline int ExpandByMemoryCopy(const phi::GPUContext& context,
 
   int x_item_length = x.numel() / x.dims()[0];
   int out_offset = 0;
-  int num_copys = 0;
+  int num_copies = 0;
   for (size_t i = 1; i < ref_lod.size(); ++i) {
     int repeat_num = ref_lod[i] - ref_lod[i - 1];
     int x_start = x_lod[i - 1];
@@ -55,12 +55,12 @@ static inline int ExpandByMemoryCopy(const phi::GPUContext& context,
           }
         }
       } else {
-        num_copys += repeat_num * x_seq_len;
+        num_copies += repeat_num * x_seq_len;
       }
     }
     out_offset += repeat_num;
   }
-  return num_copys;
+  return num_copies;
 }
 
 template <typename T>
@@ -98,10 +98,10 @@ struct SequenceExpandFunctor<phi::GPUContext, T> {
                   const phi::Vector<size_t>& x_lod,   /*expand source lod*/
                   const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
                   DenseTensor* out) {
-    int num_copys =
+    int num_copies =
         ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, false);
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
-    if (num_copys < 5) {
+    if (num_copies < 5) {
       ExpandByMemoryCopy<T>(context, x, out, x_lod, ref_lod, true);
     } else {
       int x_item_length = x.numel() / x.dims()[0];

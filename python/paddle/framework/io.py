@@ -431,7 +431,7 @@ def _pickle_save(obj, f, protocol):
 
         return (tuple, ((name, data),))
 
-    def reduce_LoDTensor(self):
+    def reduce_DenseTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
         if self._place().is_custom_place():
@@ -462,7 +462,7 @@ def _pickle_save(obj, f, protocol):
         # This is not a good method, because the pickle module has been modified.
         pickle.dispatch_table[core.eager.Tensor] = reduce_varbase
         pickle.dispatch_table[EagerParamBase] = reduce_varbase
-        pickle.dispatch_table[core.DenseTensor] = reduce_LoDTensor
+        pickle.dispatch_table[core.DenseTensor] = reduce_DenseTensor
         pickle.dispatch_table.update(dispatch_table_layer)
 
     def pop_dispatch_table():
@@ -485,7 +485,7 @@ def _pickle_save(obj, f, protocol):
         pickler = pickle.Pickler(f, protocol)
         pickler.dispatch_table = copyreg.dispatch_table.copy()
 
-        pickler.dispatch_table[core.DenseTensor] = reduce_LoDTensor
+        pickler.dispatch_table[core.DenseTensor] = reduce_DenseTensor
         pickler.dispatch_table[core.eager.Tensor] = reduce_varbase
         pickler.dispatch_table[EagerParamBase] = reduce_varbase
         pickler.dispatch_table.update(dispatch_table_layer)
@@ -672,17 +672,17 @@ def _parse_load_result(obj, return_numpy):
         )
 
 
-def _save_lod_tensor(tensor, file_name):
+def _save_dense_tensor(tensor, file_name):
     if not tensor._is_initialized():
         raise ValueError(
             "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model firstly."
         )
     if _is_file_path(file_name):
-        _seek = core.save_lod_tensor(tensor, file_name)
+        _seek = core.save_dense_tensor(tensor, file_name)
         # '_seek' is the end position of this tensor in the file.
 
     elif _is_memory_buffer(file_name):
-        tensor_bytes = core.save_lod_tensor_to_memory(tensor)
+        tensor_bytes = core.save_dense_tensor_to_memory(tensor)
 
         with _open_file_buffer(file_name, 'wb') as f:
             f.write(tensor_bytes)
@@ -695,16 +695,16 @@ def _save_lod_tensor(tensor, file_name):
     return _seek
 
 
-def _load_lod_tensor(file_name):
+def _load_dense_tensor(file_name):
     temp_t = paddle.base.core.DenseTensor()
     if _is_file_path(file_name):
         # '_seek' is the end position of this tensor in the file.
-        _seek = paddle.base.core.load_lod_tensor(temp_t, file_name)
+        _seek = paddle.base.core.load_dense_tensor(temp_t, file_name)
 
     elif _is_memory_buffer(file_name):
         with _open_file_buffer(file_name, 'rb') as f:
             tensor_bytes = f.read()
-            paddle.base.core.load_lod_tensor_from_memory(temp_t, tensor_bytes)
+            paddle.base.core.load_dense_tensor_from_memory(temp_t, tensor_bytes)
             _seek = f.tell()
 
     else:
@@ -758,11 +758,11 @@ def _load_selected_rows(file_name):
 
 def _save_binary_var(obj, path):
     if isinstance(obj, core.DenseTensor):
-        _save_lod_tensor(obj, path)
+        _save_dense_tensor(obj, path)
     elif isinstance(obj, core.SelectedRows):
         _save_selected_rows(obj, path)
     elif isinstance(obj, core.eager.Tensor):
-        _save_lod_tensor(obj.value().get_tensor(), path)
+        _save_dense_tensor(obj.value().get_tensor(), path)
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'DenseTensor' or 'SelectedRows'
         raise NotImplementedError(
@@ -1237,7 +1237,7 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 return tensor
             except:
                 try:
-                    tensor, _ = _load_lod_tensor(path)
+                    tensor, _ = _load_dense_tensor(path)
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())

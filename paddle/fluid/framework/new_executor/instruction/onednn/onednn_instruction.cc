@@ -40,8 +40,7 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
     pir::Attribute attr,
@@ -516,5 +515,4 @@ void OneDNNPhiKernelInstruction::Run() {
   one_dnn_ctx->ClearDnnAttr();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

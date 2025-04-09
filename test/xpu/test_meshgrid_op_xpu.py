@@ -66,9 +66,9 @@ class XPUTestMeshGridOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             ins, outs = self.init_test_data()
-            self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
+            self.inputs = {'X': [(f'x{i}', ins[i]) for i in range(len(ins))]}
             self.outputs = {
-                'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
+                'Out': [(f'out{i}', outs[i]) for i in range(len(outs))]
             }
 
         def set_output(self):

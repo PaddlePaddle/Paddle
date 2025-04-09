@@ -211,7 +211,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
 
             start = time.time()
             predictor.run()
-            batch_time = (time.time() - start) * 1000  # in miliseconds
+            batch_time = (time.time() - start) * 1000  # in milliseconds
 
             out = []
             out = predictor.get_output_handle(output_names[0]).copy_to_cpu()

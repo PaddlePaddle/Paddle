@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-// MIOPEN do not have epslion definition
+// MIOPEN do not have epsilon definition
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
 COMMON_DECLARE_bool(cudnn_deterministic);
@@ -45,8 +45,8 @@ inline const char* miopenGetErrorString(miopenStatus_t status) {
       return "miopenStatusNotInitialized";
     case miopenStatusAllocFailed:
       return "miopenStatusAllocFailed";
-    case miopenStatusBadParm:
-      return "miopenStatusBadParm";
+    case miopenStatusBadParm:        // typos: disable-line
+      return "miopenStatusBadParm";  // typos: disable-line
     case miopenStatusInternalError:
       return "miopenStatusInternalError";
     case miopenStatusInvalidValue:

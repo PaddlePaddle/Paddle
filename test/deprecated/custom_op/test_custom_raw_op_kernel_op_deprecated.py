@@ -38,9 +38,9 @@ def prepare_module_path():
     else:
         site_dir = site.getsitepackages()[0]
     custom_egg_path = [x for x in os.listdir(site_dir) if MODULE_NAME in x]
-    assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
-        custom_egg_path
-    )
+    assert (
+        len(custom_egg_path) == 1
+    ), f"Matched egg number is {len(custom_egg_path)}."
     sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
 
@@ -54,6 +54,9 @@ class TestCustomRawReluOp(unittest.TestCase):
         path = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(path, "custom_raw_op_kernel_op_setup.py")
         cmd = [sys.executable, path, "install", "--force"]
+        if os.name != 'nt':
+            install_lib = f"--install-lib={site.getsitepackages()[0]}"
+            cmd.append(install_lib)
         cmd = " ".join([shlex.quote(c) for c in cmd])
         os.environ['MODULE_NAME'] = MODULE_NAME
         assert os.system(cmd) == 0

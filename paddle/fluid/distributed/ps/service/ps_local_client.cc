@@ -256,11 +256,18 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
-::std::future<int32_t> PsLocalClient::PrintTableStat(uint32_t table_id) {
+::std::future<int32_t> PsLocalClient::PrintTableStat(uint32_t table_id,
+                                                     uint16_t pass_id,
+                                                     size_t threshold) {
   auto* table_ptr = GetTable(table_id);
   std::pair<int64_t, int64_t> ret = table_ptr->PrintTableStat();
   VLOG(0) << "table id: " << table_id << ", feasign size: " << ret.first
           << ", mf size: " << ret.second;
+  // > 50亿，40%内存
+  if (static_cast<size_t>(ret.first) > threshold) {
+    VLOG(0) << "run cache table";
+    table_ptr->CacheTable(pass_id);
+  }
   return done();
 }
 

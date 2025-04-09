@@ -34,6 +34,7 @@ enum class AllocationType : int8_t {
   GPU = 2,
   GPUPINNED = 3,
   XPU = 4,
+  XPUPINNED = 5,
   IPU = 7,
   CUSTOM = 9,
 };
@@ -98,7 +99,7 @@ class TEST_API Place {
   struct TEST_API Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
-    // but now we don’t over-design.
+    // but now we don't over-design.
     uint32_t operator()(const Place& place) const;
   };
 
@@ -160,6 +161,20 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
+class XPUPinnedPlace : public Place {
+ public:
+  // Default constructor: no device id is needed, as with XPU pinned memory.
+  XPUPinnedPlace() : Place(AllocationType::XPUPINNED) {}
+
+  // Use the default copy-constructor.
+  XPUPinnedPlace(const XPUPinnedPlace&) = default;
+
+  // Allow construction from a generic Place.
+  // (Typically the passed Place should be an XPUPlace.)
+  XPUPinnedPlace(const Place& place)         // NOLINT
+      : Place(AllocationType::XPUPINNED) {}  // NOLINT
+};
+
 class IPUPlace : public Place {
  public:
   IPUPlace() : Place(AllocationType::IPU, 0) {}
@@ -207,6 +222,7 @@ bool is_xpu_place(const Place&);
 bool is_ipu_place(const Place&);
 TEST_API bool is_cpu_place(const Place&);
 bool is_cuda_pinned_place(const Place&);
+bool is_xpu_pinned_place(const Place&);
 bool is_custom_place(const Place& p);
 bool is_accelerat_place(const Place& p);
 bool places_are_same_class(const Place&, const Place&);
@@ -219,6 +235,7 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
+using XPUPinnedPlace = phi::XPUPinnedPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;
@@ -260,5 +277,7 @@ PADDLE_API bool operator==(const Place& place, PlaceType place_type);
 PADDLE_API bool operator==(PlaceType place_type, const Place& place);
 
 PADDLE_API GPUPlace DefaultGPUPlace();
+
+PADDLE_API phi::XPUPlace DefaultXPUPlace();
 
 }  // namespace paddle

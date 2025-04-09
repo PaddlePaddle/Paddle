@@ -24,6 +24,7 @@ import paddle
 from ...profiler import EventGuard
 from ...utils import (
     ENV_SOT_ENABLE_FASTER_GUARD,
+    ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     current_symbol_registry,
     log,
     log_do,
@@ -99,14 +100,14 @@ class FasterStringifiedExpression(StringifiedExpression):
     ):
         self.faster_guard = faster_guard
         if ENV_SOT_ENABLE_FASTER_GUARD.get():
-            original_expr_template = expr_template
-            guard_cls_name = faster_guard.__class__.__name__
-            guard_name = f"{guard_cls_name}_{id(faster_guard)}"
-            expr_template = (
-                guard_name + "(" + ", ".join(["{}"] * len(sub_exprs)) + ")"
-            )
-            free_vars = union_free_vars(
-                free_vars, {guard_name: faster_guard.check}
+            if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+                self.py_guard_expr_template = original_expr_template = (
+                    expr_template
+                )
+            else:
+                original_expr_template = expr_template
+            expr_template, free_vars = gen_faster_guard_expr_template(
+                faster_guard, sub_exprs, free_vars
             )
             log(
                 3,
@@ -114,6 +115,36 @@ class FasterStringifiedExpression(StringifiedExpression):
             )
 
         super().__init__(expr_template, sub_exprs, free_vars)
+
+    def gen_mirror_guard(
+        self, enable_faster_gurad: bool
+    ) -> StringifiedExpression:
+        if not enable_faster_gurad:
+            # gen faster_guard_expr
+            expr_template, expr_free_vars = gen_faster_guard_expr_template(
+                self.faster_guard,
+                self.sub_exprs,
+                self.free_vars,
+            )
+            return StringifiedExpression(
+                expr_template, self.sub_exprs, expr_free_vars
+            )
+        # gen pyGuard_expr
+        return StringifiedExpression(
+            self.py_guard_expr_template, self.sub_exprs, self.free_vars
+        )
+
+
+def gen_faster_guard_expr_template(
+    faster_guard: GuardBase,
+    sub_exprs: list[StringifiedExpression],
+    free_vars: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    guard_cls_name = faster_guard.__class__.__name__
+    guard_name = f"{guard_cls_name}_{id(faster_guard)}"
+    expr_template = guard_name + "(" + ", ".join(["{}"] * len(sub_exprs)) + ")"
+    free_vars = union_free_vars(free_vars, {guard_name: faster_guard.check})
+    return expr_template, free_vars
 
 
 def union_free_vars(*free_vars: dict[str, Any]):
@@ -135,6 +166,8 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
             guard = lambda frame: True
             guard.expr = "lambda frame: True"
             guard.original_guard = guard
+            if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+                guard.mirror_guard = lambda frame: True
             return guard
 
         free_vars = union_free_vars(
@@ -153,8 +186,43 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
         guard.inlined_expr = inlined_guard_expr
         guard.expr = guard_expr
 
-        assert callable(guard), "guard must be callable."
+        def check_guard_callable(guard: GuardBase):
+            assert callable(guard), "guard must be callable."
 
+        if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+            mirror_guard_expr_list: list[str] = []
+            mirror_guard_temp_free_vars: dict[str, Any] = {}
+            enable_faster_gurad = ENV_SOT_ENABLE_FASTER_GUARD.get()
+            for expr in stringified_guards:
+                if isinstance(expr, FasterStringifiedExpression):
+                    expr = expr.gen_mirror_guard(enable_faster_gurad)
+                mirror_guard_expr_list.append(expr.inlined_expr)
+                mirror_guard_temp_free_vars.update(expr.free_vars)
+            mirror_guard_expr = "lambda frame: " + " and ".join(
+                mirror_guard_expr_list
+            )
+            mirror_guard_free_vars = union_free_vars(
+                mirror_guard_temp_free_vars
+            )
+            guard.mirror_guard = eval(mirror_guard_expr, mirror_guard_free_vars)
+            guard.mirror_guard.expr = mirror_guard_expr
+            check_guard_callable(guard.mirror_guard)
+
+        check_guard_callable(guard)
+
+        return guard
+
+
+def make_faster_guard(
+    guard_nodes: list[paddle.framework.core.GuardNode],
+) -> Guard:
+    with EventGuard("make_guard"):
+        num_guards = len(guard_nodes)
+        if not num_guards:
+            guard = lambda frame: True
+            return guard
+        guard_tree = paddle.framework.core.GuardTree([guard_nodes])
+        guard = lambda frame: guard_tree.check(frame) is not None
         return guard
 
 
@@ -164,6 +232,7 @@ def support_weak_ref(obj):
     return False
 
 
+# TODO(zrr1999): unify check_guard and check_faster_guard
 def check_guard(
     fn: Callable[[CheckGuardInputT], list[StringifiedExpression]],
 ) -> Callable[[CheckGuardInputT], list[StringifiedExpression]]:
@@ -184,6 +253,28 @@ def check_guard(
     return wrapper
 
 
+def check_faster_guard(
+    fn: Callable[[CheckGuardInputT], list[paddle.framework.core.GuardNode]],
+) -> Callable[[CheckGuardInputT], list[paddle.framework.core.GuardNode]]:
+    def wrapper(
+        self: CheckGuardInputT,
+    ) -> list[paddle.framework.core.GuardNode]:
+        assert (
+            self.tracker.is_traceable()
+        ), "Cannot make guard from a non-tracable guard variable."
+
+        def guard_log():
+            frame_value_tracer = self.tracker.trace_value_from_frame()
+            print(
+                f"[Guard Tree]: guard_fn for {self}, tracker={self.tracker.__class__.__name__}, value={frame_value_tracer.registered_expr}"
+            )
+
+        log_do(4, guard_log)
+        return fn(self)
+
+    return wrapper
+
+
 @check_guard
 def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     frame_value_tracer = self.tracker.trace_value_from_frame()
@@ -193,8 +284,9 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     if support_weak_ref(weak_ref_obj):
         weak_ref_obj = weakref.ref(self.get_py_value())
         return [
-            StringifiedExpression(
+            FasterStringifiedExpression(
                 f"{obj_free_var_name}() is not None and {{}} == {obj_free_var_name}()",
+                paddle.framework.core.WeakRefMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(
                     frame_value_tracer.free_vars,
@@ -203,8 +295,9 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
             )
         ]
     return [
-        StringifiedExpression(
+        FasterStringifiedExpression(
             f"{{}} == {obj_free_var_name}",
+            paddle.framework.core.ValueMatchGuard(weak_ref_obj),
             [frame_value_tracer],
             union_free_vars(
                 frame_value_tracer.free_vars,

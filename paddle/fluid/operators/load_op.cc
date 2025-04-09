@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/phi/core/framework/lod_tensor_serialize.h"
 #include "paddle/phi/core/framework/selected_rows_serialize.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 

@@ -69,11 +69,17 @@ void PirCallPythonFunc(py::object *callable,
 
   for (size_t i = 0; i < out_num; ++i) {
     try {
-      auto py_out_value = py::cast<pir::Value>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_value.impl(),
-                              common::errors::InvalidArgument(
-                                  "Output value %d should not be nullptr", i));
-      (*outs)[i] = py_out_value;
+      if (ret_tuple[i].is_none()) {
+        VLOG(6) << "Set Output( " << i << " ) value as fake_value";
+        (*outs)[i] = pir::Value(nullptr);
+      } else {
+        auto py_out_value = py::cast<pir::Value>(ret_tuple[i]);
+        PADDLE_ENFORCE_NOT_NULL(
+            py_out_value.impl(),
+            common::errors::InvalidArgument(
+                "Output value %d should not be nullptr", i));
+        (*outs)[i] = py_out_value;
+      }
     } catch (py::cast_error &) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "pybind11::cast to pir::Value error. The %d-th output exception is "

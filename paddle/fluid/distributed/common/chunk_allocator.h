@@ -29,8 +29,8 @@ class ChunkAllocator {
         std::max(sizeof(void*), sizeof(T)),
         common::errors::InvalidArgument(
             "The size of Node is invalid. Expected sizeof(Node) == "
-            "max(sizeof(void*), sizeif(T)).\nBut recieved sizeof(Node) = %u "
-            "and max(sizeof(void*), sizeif(T)) = %u.",
+            "max(sizeof(void*), sizeof(T)).\nBut received sizeof(Node) = %u "
+            "and max(sizeof(void*), sizeof(T)) = %u.",
             sizeof(Node),
             std::max(sizeof(void*), sizeof(T))));
     _chunk_size = chunk_size;

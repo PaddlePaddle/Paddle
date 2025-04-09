@@ -42,6 +42,8 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(replace_cross_block_reduction_test SRCS
               replace_cross_block_reduction_test.cc)
 
+  paddle_test(ir_simplify_test SRCS ir_simplify_test.cc)
+
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
   set(cinn_unit_tests
@@ -63,9 +65,7 @@ if(WITH_TESTING AND WITH_CINN)
       env
       TEST ${test_name}
       PROPERTY ENVIRONMENT)
-    set_property(
-      TEST ${test_name} PROPERTY ENVIRONMENT "FLAGS_cinn_bucket_compile=1"
-                                 "FLAGS_group_schedule_tiling_first=1" ${env})
+    set_property(TEST ${test_name} PROPERTY ENVIRONMENT ${env})
     set_tests_properties(${test_name} PROPERTIES LABELS "RUN_TYPE=CINN")
   endforeach()
 

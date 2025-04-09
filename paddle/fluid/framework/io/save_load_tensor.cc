@@ -34,7 +34,7 @@ void SaveTensor(const phi::DenseTensor& x,
                     true,
                     common::errors::Unavailable(
                         "Cannot open %s to save variables.", new_path));
-  framework::SerializeToStream(fout, x);
+  phi::SerializeToStream(fout, x);
 
   fout.close();
 }
@@ -51,6 +51,6 @@ void LoadTensor(const std::string& file_path, phi::DenseTensor* out) {
                           common::errors::InvalidArgument(
                               "The variable to be loaded cannot be found."));
 
-  framework::DeserializeFromStream(fin, out);
+  phi::DeserializeFromStream(fin, out);
 }
 }  // namespace paddle::framework

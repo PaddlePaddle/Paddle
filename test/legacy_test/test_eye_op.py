@@ -35,6 +35,8 @@ class TestEyeOp(OpTest):
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.eye
         self.init_dtype()
         self.init_attrs()
 
@@ -49,7 +51,10 @@ class TestEyeOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(check_pir=True)
+        else:
+            self.check_output(check_pir=True, check_prim_pir=True)
 
     def init_dtype(self):
         self.dtype = np.int32
@@ -66,13 +71,15 @@ class TestEyeOp1(OpTest):
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.eye
 
         self.inputs = {}
         self.attrs = {'num_rows': 50}
         self.outputs = {'Out': np.eye(50, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestEyeOp2(OpTest):
@@ -82,13 +89,15 @@ class TestEyeOp2(OpTest):
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.eye
 
         self.inputs = {}
         self.attrs = {'num_rows': 99, 'num_columns': 1}
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestEyeOp3(OpTest):
@@ -98,13 +107,15 @@ class TestEyeOp3(OpTest):
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.eye
 
         self.inputs = {}
         self.attrs = {'num_rows': np.int32(99), 'num_columns': np.int32(1)}
         self.outputs = {'Out': np.eye(99, 1, dtype=float)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class API_TestTensorEye(unittest.TestCase):
@@ -242,6 +253,8 @@ class TestEyeBF16OP(OpTest):
         self.op_type = "eye"
         self.dtype = np.uint16
         self.python_api = paddle.eye
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.eye
         self.inputs = {}
         self.attrs = {
             'num_rows': 219,
@@ -251,7 +264,7 @@ class TestEyeBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
 
 if __name__ == "__main__":

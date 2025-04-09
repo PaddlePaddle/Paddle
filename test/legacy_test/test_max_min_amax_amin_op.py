@@ -200,7 +200,7 @@ class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
         self.keepdim = False
 
 
-# test input grad when out is operated like mutiply
+# test input grad when out is operated like multiply
 class TestMaxMinAmaxAminAPI7(TestMaxMinAmaxAminAPI):
     def init_case(self):
         self.x_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype(

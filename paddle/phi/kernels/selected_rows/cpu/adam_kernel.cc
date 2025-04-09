@@ -26,8 +26,7 @@
 
 PD_DECLARE_int32(inner_op_parallelism);
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 template <typename T, typename Context>
 void AdamDenseParamSparseGradKernel(
@@ -37,6 +36,7 @@ void AdamDenseParamSparseGradKernel(
     const DenseTensor& learning_rate,
     const DenseTensor& moment1,
     const DenseTensor& moment2,
+    const paddle::optional<DenseTensor>& moment2_max,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
     const paddle::optional<DenseTensor>& master_param UNUSED,
@@ -48,9 +48,11 @@ void AdamDenseParamSparseGradKernel(
     int64_t min_row_size_to_use_multithread,
     bool multi_precision UNUSED,
     bool use_global_beta_pow,
+    bool amsgrad,
     DenseTensor* param_out,
     DenseTensor* moment1_out,
     DenseTensor* moment2_out,
+    DenseTensor* moment2_max_out,
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs UNUSED) {
@@ -74,6 +76,13 @@ void AdamDenseParamSparseGradKernel(
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    if (amsgrad) {
+      phi::Copy(dev_ctx,
+                moment2_max.get(),
+                dev_ctx.GetPlace(),
+                false,
+                moment2_max_out);
+    }
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, beta2_pow_out);
@@ -147,6 +156,8 @@ void AdamDenseParamSparseGradKernel(
       dev_ctx.template Alloc<T>(moment1_out),
       moment2.data<T>(),
       dev_ctx.template Alloc<T>(moment2_out),
+      amsgrad ? moment2_max.get().data<T>() : nullptr,
+      amsgrad ? dev_ctx.template Alloc<T>(moment2_max_out) : nullptr,
       learning_rate.data<T>(),
       grad_data,
       param.data<T>(),
@@ -154,7 +165,8 @@ void AdamDenseParamSparseGradKernel(
       rows,
       row_numel,
       grad_merge.rows().size(),
-      lazy_mode);
+      lazy_mode,
+      amsgrad);
   // update beta1 and beta2
   if (!use_global_beta_pow) {
     dev_ctx.template Alloc<T>(beta1_pow_out)[0] =
@@ -237,8 +249,7 @@ void AdamDenseParamSparseGradKernel(
   }
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    CPU,

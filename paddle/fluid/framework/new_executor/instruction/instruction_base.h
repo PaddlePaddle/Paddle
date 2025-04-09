@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_defs.h"
 #include "paddle/phi/api/profiler/event.h"
 
 namespace pir {
@@ -29,8 +29,8 @@ class Value;
 namespace paddle {
 namespace framework {
 class ValueExecutionInfo;
-
-using SchedulingPriority = int64_t;
+class Variable;
+class Scope;
 
 class InstructionBase {
  public:
@@ -175,6 +175,10 @@ class InstructionBase {
   // if scope is not null, also show dimensions of arguments
   virtual std::string DebugStringEx(const paddle::framework::Scope* scope,
                                     ValueExecutionInfo* value_exe_info) const;
+  bool SkipRecordStreamForGC() const { return skip_record_stream_for_gc_; }
+  void SetSkipRecordStreamForGC(bool skip) {
+    skip_record_stream_for_gc_ = skip;
+  }
 
  protected:
   size_t id_;
@@ -224,6 +228,8 @@ class InstructionBase {
   std::unordered_map<::pir::Value, std::vector<int>> output_index_;
 
   std::unordered_set<::pir::Value> no_need_buffer_values_;
+
+  bool skip_record_stream_for_gc_{false};
 };
 
 }  // namespace framework

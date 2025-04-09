@@ -96,13 +96,17 @@ auto op_res = backend::{{api.name}}<LazyTensor>({{common.args(input_names, attr_
     {% for i in range(outputs|length) %}
       {% if outputs[i].typename=='Tensor' %}
         {% if outputs[i].optional %}
-vjp_res[{{i}}][0] = std::get<{{i}}>(op_res).get();
+if(std::get<{{i}}>(op_res)){
+  vjp_res[{{i}}][0] = std::get<{{i}}>(op_res).get();
+}
         {% else %}
 vjp_res[{{i}}][0] = std::get<{{i}}>(op_res);
         {% endif %}
       {% else %}
         {% if outputs[i].optional %}
-vjp_res[{{i}}] = std::get<{{i}}>(op_res).get();
+if(std::get<{{i}}>(op_res)){
+  vjp_res[{{i}}] = std::get<{{i}}>(op_res).get();
+}
         {% else %}
 vjp_res[{{i}}] = std::get<{{i}}>(op_res);
         {% endif %}
@@ -111,13 +115,17 @@ vjp_res[{{i}}] = std::get<{{i}}>(op_res);
   {% elif outputs|length == 1 %}
     {% if outputs[0].typename=='Tensor' %}
       {% if outputs[0].optional %}
-vjp_res[0][0] = op_res.get();
+if(op_res){
+  vjp_res[0][0] = op_res.get();
+}
       {% else %}
 vjp_res[0][0] = op_res;
       {% endif %}
     {% else %}
        {% if outputs[0].optional %}
-vjp_res[0] = op_res.get();
+if(op_res){
+  vjp_res[0] = op_res.get();
+}
        {% else %}
 vjp_res[0] = op_res;
        {% endif %}

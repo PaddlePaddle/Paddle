@@ -57,6 +57,7 @@ class StatBase {
   virtual int64_t GetCurrentValue() = 0;
   virtual int64_t GetPeakValue() = 0;
   virtual void Update(int64_t) = 0;
+  virtual void ResetPeakValue() = 0;
 
  private:
   DISABLE_COPY_AND_ASSIGN(StatBase);
@@ -112,6 +113,22 @@ class Stat : public StatBase {
     }
   }
 
+  void ResetPeakValue() override {
+    int64_t current_value = GetCurrentValue();
+    peak_value_.store(current_value, std::memory_order_relaxed);
+
+    std::unordered_map<uint64_t, std::reference_wrapper<ThreadLocalStatType>>
+        thread_local_stats =
+            ThreadDataRegistry<ThreadLocalStatType>::GetInstance()
+                .GetAllThreadDataByRef();
+
+    for (auto pair : thread_local_stats) {
+      pair.second.get().peak = pair.second.get().current;
+    }
+
+    VLOG(8) << "Reset peak_value to current_value = " << current_value;
+  }
+
  private:
   Stat() {}
   ~Stat() {}
@@ -128,12 +145,14 @@ int64_t DeviceMemoryStatPeakValue(const std::string& stat_type, int dev_id);
 void DeviceMemoryStatUpdate(const std::string& stat_type,
                             int dev_id,
                             int64_t increment);
+void DeviceMemoryStatResetPeakValue(const std::string& stat_type, int dev_id);
 
 int64_t HostMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 int64_t HostMemoryStatPeakValue(const std::string& stat_type, int dev_id);
 void HostMemoryStatUpdate(const std::string& stat_type,
                           int dev_id,
                           int64_t increment);
+void HostMemoryStatResetPeakValue(const std::string& stat_type, int dev_id);
 
 void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
 
@@ -179,6 +198,8 @@ void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
   DEVICE_MEMORY_STAT_FUNC(item, id, GetPeakValue)
 #define DEVICE_MEMORY_STAT_UPDATE(item, id, increment) \
   DEVICE_MEMORY_STAT_FUNC(item, id, Update, increment)
+#define DEVICE_MEMORY_STAT_RESET_PEAK_VALUE(item, id) \
+  DEVICE_MEMORY_STAT_FUNC(item, id, ResetPeakValue)
 
 #define HOST_MEMORY_STAT_FUNC(item, id, func, ...)                             \
   [&] {                                                                        \
@@ -199,6 +220,8 @@ void LogDeviceMemoryStats(const phi::Place& place, const std::string& op_name);
   HOST_MEMORY_STAT_FUNC(item, id, GetPeakValue)
 #define HOST_MEMORY_STAT_UPDATE(item, id, increment) \
   HOST_MEMORY_STAT_FUNC(item, id, Update, increment)
+#define HOST_MEMORY_STAT_RESET_PEAK_VALUE(item, id) \
+  HOST_MEMORY_STAT_FUNC(item, id, ResetPeakValue)
 
 #define DEVICE_MEMORY_STAT_DECLARE_WITH_ID(item, id) \
   struct DeviceMemoryStat##item##id : public ThreadLocalStatBase {}

@@ -44,7 +44,7 @@ namespace detail {
  */
 struct indeterminate_t {};
 
-}  // end namespace detail
+}  // namespace detail
 
 class tribool;
 
@@ -168,7 +168,7 @@ inline tribool operator!(tribool x) {
 }
 
 /**
- * \brief Computes the logical conjuction of two tribools
+ * \brief Computes the logical conjunction of two tribools
  *
  * \returns the result of logically ANDing the two tribool values,
  * according to the following table:

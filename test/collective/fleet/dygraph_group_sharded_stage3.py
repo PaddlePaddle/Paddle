@@ -366,10 +366,9 @@ def test_stage2_stage3():
         )
 
     # bfp16
-    nccl_version = core.nccl_version()
-
     if (
-        nccl_version >= 21000
+        paddle.is_compiled_with_xpu()
+        or core.nccl_version() >= 21000
         and paddle.device.cuda.get_device_properties().major >= 8
     ):
         stage2_params = train_mlp(

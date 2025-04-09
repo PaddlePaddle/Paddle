@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/platform/gloo_context.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 #if defined(PADDLE_WITH_GLOO)
 void GlooParallelContext::Init() {
   auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
@@ -45,5 +44,4 @@ void GlooParallelContext::ReleaseContext() {
 }
 #endif
 
-}  //  namespace platform
-}  //  namespace paddle
+}  // namespace paddle::platform

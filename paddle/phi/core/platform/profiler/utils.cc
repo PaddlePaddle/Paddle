@@ -20,8 +20,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 template <>
 std::string json_vector<std::string>(
@@ -171,5 +170,4 @@ const char* StringTracerEventType(phi::TracerEventType type) {
   }
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

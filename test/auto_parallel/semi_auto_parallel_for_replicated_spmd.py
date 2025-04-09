@@ -173,7 +173,7 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         self.check_tensor_eq(local_inf_norm_out, dist_inf_norm_out)
         self.check_tensor_eq(local_master_param_out, dist_master_param_out)
 
-    # mutiple operators
+    # multiple operators
     def test_mse_loss(self):
         x = np.random.random(size=[4, 4]).astype(self._dtype)
         y = np.random.random(size=[4]).astype(self._dtype)

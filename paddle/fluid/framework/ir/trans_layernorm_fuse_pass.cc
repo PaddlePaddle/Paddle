@@ -17,18 +17,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 struct TransLayernormPattern : public PatternBase {
   TransLayernormPattern(PDPattern *pattern, const std::string &name_scope)
       : PatternBase(pattern, name_scope, "trans_layernorm") {}
@@ -71,7 +64,8 @@ void TransLayernormPattern::operator()(PDNode *x) {
   layernorm->LinksFrom({reshape_output, layernorm_scale, layernorm_bias})
       .LinksTo({layernorm_output});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 // this pass make a fusion as below:
 //
@@ -199,9 +193,7 @@ void TransLayernormFusePass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trans_layernorm_fuse_pass,
               paddle::framework::ir::TransLayernormFusePass);

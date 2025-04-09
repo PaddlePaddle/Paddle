@@ -23,9 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class TopKOpConverter : public OpConverter {
  public:
@@ -97,9 +95,7 @@ class TopKOpConverter : public OpConverter {
         ("top_k (Output: " + out_name + "," + indices_name + ")").c_str());
   }
 };
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(top_k, TopKOpConverter);
 REGISTER_TRT_OP_CONVERTER(top_k_v2, TopKOpConverter);

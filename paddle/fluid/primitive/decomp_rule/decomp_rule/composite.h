@@ -36,7 +36,7 @@ Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 
 template <typename T>
 Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
-  auto x_tmp = ConverToMT<T>(x);
+  auto x_tmp = ConvertToMT<T>(x);
 
   std::vector<int64_t> x_dim = x_tmp.shape();
   int64_t axis_size = axis.size();
@@ -64,7 +64,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     }
   }
   if (switch_dynamic) {
-    auto x_shape = shape<T>(x);
+    auto x_shape = shape64<T>(x);
     value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
     for (size_t i = 1; i < axis_.size(); ++i) {
       value =
@@ -77,12 +77,12 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     for (size_t i = 0; i < axis_.size(); i++) {
       value_ *= x_dim[axis_[i]];
     }
-    value = full_scalar<T>(value_, sum_x.dtype());
+    value = full_scalar<T>(value_, sum_x.dtype(), sum_x.place());
   }
 
   Tensor res = sum_x / value;
 
-  return ConverToOrig<T>(res, x.dtype());
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 static void check_valid_type(const DataType& dtype) {
@@ -112,50 +112,48 @@ Tensor p_norm_decomp(const Tensor& x,
                      const float epsilon = 1.0e-12f,
                      const bool& keepdim = false,
                      const bool& asvector = false) {
-  auto x_tmp = ConverToMT<T>(x);
+  // NOTE: if asvector is True, then axis will be ignored
+  // and will reduce all elements in x
+
+  auto x_tmp = ConvertToMT<T>(x);
 
   Tensor res;
+  std::vector<int> reduce_axis = {};
+  if (!asvector) {
+    reduce_axis.push_back(axis);
+  }
   if (porder == 0.0) {
     // 0-norm
-    auto zero = full_scalar<T>(0, x_tmp.dtype());
+    auto zero = full_scalar<T>(0, x_tmp.dtype(), x_tmp.place());
     auto none_zero = not_equal<T>(x_tmp, zero);
     res = cast<T>(none_zero, x_tmp.dtype());
-    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    res = sum<T>(res, reduce_axis, x_tmp.dtype(), keepdim);
   } else if (porder == 1.0) {
     // 1-norm
     res = abs<T>(x_tmp);
-    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    res = sum<T>(res, reduce_axis, x_tmp.dtype(), keepdim);
   } else if (porder == 2.0) {
     // 2-norm
-    res = sqrt<T>(sum<T>(x_tmp * x_tmp, {axis}, x_tmp.dtype(), keepdim));
+    res = sqrt<T>(sum<T>(x_tmp * x_tmp, reduce_axis, x_tmp.dtype(), keepdim));
   } else if (porder == INFINITY) {
     // +INF-norm
     res = abs<T>(x_tmp);
-    res = max<T>(x_tmp, {axis}, keepdim);
+    res = max<T>(x_tmp, reduce_axis, keepdim);
   } else if (porder == -INFINITY) {
     // -INF-norm
     res = abs<T>(x_tmp);
-    res = min<T>(x_tmp, {axis}, keepdim);
+    res = min<T>(x_tmp, reduce_axis, keepdim);
   } else {
     // vanilla p-norm
-    auto porder_tensor = full_scalar<T>(porder, x_tmp.dtype());
-    auto inv_porder_tensor = full_scalar<T>(1 / porder, x_tmp.dtype());
-    res = elementwise_pow<T>(x_tmp, porder_tensor);
-    res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
+    auto porder_tensor = full_scalar<T>(porder, x_tmp.dtype(), x_tmp.place());
+    auto inv_porder_tensor =
+        full_scalar<T>(1 / porder, x_tmp.dtype(), x_tmp.place());
+    res = elementwise_pow<T>(abs<T>(x_tmp), porder_tensor);
+    res = sum<T>(res, reduce_axis, x_tmp.dtype(), keepdim);
     res = elementwise_pow<T>(res, inv_porder_tensor);
   }
 
-  return ConverToOrig<T>(res, x.dtype());
-}
-
-template <typename T>
-Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
-  auto x_cast = ConverToMT<T>(x);
-
-  check_valid_type(y.dtype());
-  Tensor y_full = full_scalar<T>(y, x_cast.dtype());
-  auto ans = elementwise_pow<T>(x_cast, y_full);
-  return ConverToOrig<T>(ans, x.dtype());
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 template <typename T>
@@ -165,13 +163,13 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
   Tensor delta_full;
   if (has_dynamic_shape(input.shape())) {
     delta_full =
-        backend::full_with_tensor<T>(shape<T>(input), delta, input.dtype());
+        backend::full_with_tensor<T>(shape64<T>(input), delta, input.dtype());
   } else {
-    delta_full = full<T>(input.shape(), delta, input.dtype());
+    delta_full = full<T>(input.shape(), delta, input.dtype(), input.place());
   }
   auto val = label - input;
   auto abs_val = abs<T>(val);
-  auto factor = full_scalar<T>(0.5, input.dtype());
+  auto factor = full_scalar<T>(0.5, input.dtype(), input.place());
   auto ans = where<T>(abs_val <= delta_full,
                       factor * val * val,
                       delta_full * (abs_val - factor * delta_full));
@@ -180,10 +178,10 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
 
 template <typename T>
 Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
-  auto start = full<T>({1}, 0, x.dtype());
-  auto step = full<T>({1}, 1, x.dtype());
+  auto start = full<T>({1}, 0, x.dtype(), x.place());
+  auto step = full<T>({1}, 1, x.dtype(), x.place());
   auto arange_class =
-      backend::arange_with_tensor<T>(start, num_classes, step, x.dtype());
+      backend::arange<T>(start, num_classes, step, x.dtype(), x.place());
   auto reshape_x = backend::unsqueeze<T>(x, {-1});
   auto equal_res = backend::equal<T>(reshape_x, arange_class);
   return cast<T>(equal_res, phi::DataType::FLOAT32);
@@ -197,14 +195,24 @@ Tensor squared_l2_norm_decomp(const Tensor& x) {
 
 template <typename T>
 Tensor reciprocal_decomp(const Tensor& x) {
-  return full_scalar<T>(1.0, x.dtype()) / x;
+  return full_scalar<T>(1.0, x.dtype(), x.place()) / x;
 }
 
 template <typename T>
 Tensor bce_loss_decomp(const Tensor& x, const Tensor& label) {
-  auto one = full_scalar<T>(1, x.dtype());
-  auto ans = full_scalar<T>(-1, x.dtype()) *
-             (label * log<T>(x) + (one - label) * log<T>(one - x));
+  auto org_dtype = x.dtype();
+  auto x_mt = ConvertToMT<T>(x);
+
+  auto neg_100 = full_scalar<T>(-100, x_mt.dtype(), x.place());
+  auto one = full_scalar<T>(1, x_mt.dtype(), x.place());
+
+  auto log_x = maximum<T>(log<T>(x_mt), neg_100);
+  auto log_1_x = maximum<T>(log<T>(one - x_mt), neg_100);
+
+  auto ans = full_scalar<T>(-1, x_mt.dtype(), x.place()) *
+             (label * log_x + (one - label) * log_1_x);
+  ans = ConvertToOrig<T>(ans, org_dtype);
+
   return ans;
 }
 
@@ -262,7 +270,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     bool use_global_stats,
     bool trainable_statistics) {
   auto org_dtype = x.dtype();
-  Tensor x_cast = ConverToMT<T>(x);
+  Tensor x_cast = ConvertToMT<T>(x);
 
   BatchNormDecompHelper<T> decomp_help(x, scale, bias, data_layout);
 
@@ -275,15 +283,14 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
 
   std::vector<int64_t> x_dim = x_cast.shape();
   std::vector<int64_t> stats_shape;
-  Tensor eps = full_scalar<T>(epsilon, x_cast.dtype());
+  Tensor eps = full_scalar<T>(epsilon, x_cast.dtype(), x_cast.place());
 
   Tensor x_hat;
   Tensor batch_mean;
   Tensor inv_std;
   if (!use_run_stat) {
     batch_mean = mean_decomp<T>(x_cast, reduce_axes, true);
-    auto temp = mean_decomp<T>(x_cast * x_cast, reduce_axes, true);
-    auto batch_var = temp - batch_mean * batch_mean;
+    auto batch_var = variance<T>(x_cast, reduce_axes, true);
     inv_std = rsqrt<T>(batch_var + eps);
 
     x_hat = (x_cast - batch_mean) * inv_std;
@@ -318,7 +325,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
                  : bias.get());
   }
 
-  y = ConverToOrig<T>(y, org_dtype);
+  y = ConvertToOrig<T>(y, org_dtype);
 
   if (!use_run_stat) {
     batch_mean_ = squeeze<T>(batch_mean, reduce_axes);
@@ -335,25 +342,25 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
 
 template <typename T>
 Tensor softmax_decomp(const Tensor& x, const int& axis) {
-  auto x_tmp = ConverToMT<T>(x);
+  auto x_tmp = ConvertToMT<T>(x);
 
   auto max_tmp = max<T>(x_tmp, {axis}, true);
   auto molecular = exp<T>(x_tmp - max_tmp);
   auto res = molecular / sum<T>(molecular, {axis}, molecular.dtype(), true);
 
-  return ConverToOrig<T>(res, x.dtype());
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 template <typename T>
 Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
-  auto x_tmp = ConverToMT<T>(x);
+  auto x_tmp = ConvertToMT<T>(x);
 
   auto max_tmp = max<T>(x_tmp, {axis}, true);
   auto sub = x_tmp - max_tmp;
   auto molecular = exp<T>(sub);
   auto res = sub - log<T>(sum<T>(molecular, {axis}, molecular.dtype(), true));
 
-  return ConverToOrig<T>(res, x.dtype());
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 template <typename T>
@@ -376,19 +383,21 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
 
   if (is_dynamic && has_dynamic_shape(combined_shape)) {
     std::vector<Tensor> shapes;
-    Tensor temp_shape = shape<T>(x[0]);
+    Tensor temp_shape = shape64<T>(x[0]);
     for (size_t j = 0; j < rank; j++) {
       if (combined_shape[j] == -1) {
         shapes.push_back(get_slice<T>(temp_shape, j));
       } else {
-        shapes.push_back(full<T>({1}, combined_shape[j], temp_shape.type()));
+        shapes.push_back(
+            full<T>({1}, combined_shape[j], temp_shape.type(), x[0].place()));
       }
     }
     if (axis < 0) {
       shapes.insert(shapes.begin() + (axis + rank + 1),
-                    full<T>({1}, 1, temp_shape.type()));
+                    full<T>({1}, 1, temp_shape.type(), x[0].place()));
     } else {
-      shapes.insert(shapes.begin() + axis, full<T>({1}, 1, temp_shape.type()));
+      shapes.insert(shapes.begin() + axis,
+                    full<T>({1}, 1, temp_shape.type(), x[0].place()));
     }
 
     Tensor out_shape = concat<T>(shapes);
@@ -408,9 +417,9 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
 
 template <typename T>
 Tensor silu_decomp(const Tensor& x) {
-  auto x_tmp = ConverToMT<T>(x);
+  auto x_tmp = ConvertToMT<T>(x);
   auto res = x_tmp * sigmoid<T>(x_tmp);
-  return ConverToOrig<T>(res, x.dtype());
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 template <typename T>
@@ -427,13 +436,13 @@ Tensor swiglu_decomp(const Tensor& x, const paddle::optional<Tensor>& y) {
 
 template <typename T>
 Tensor relu_decomp(const Tensor& x) {
-  return maximum<T>(x, full_scalar<T>(0.0, x.dtype()));
+  return maximum<T>(x, full_scalar<T>(0.0, x.dtype(), x.place()));
 }
 
 template <typename T>
 Tensor relu6_decomp(const Tensor& x) {
-  auto tmp = maximum<T>(x, full_scalar<T>(0.0, x.dtype()));
-  auto res = minimum<T>(tmp, full_scalar<T>(6.0, x.dtype()));
+  auto tmp = maximum<T>(x, full_scalar<T>(0.0, x.dtype(), x.place()));
+  auto res = minimum<T>(tmp, full_scalar<T>(6.0, x.dtype(), x.place()));
   return res;
 }
 
@@ -475,9 +484,10 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
     std::vector<Tensor> tmp_shape;
     for (int64_t i = 0; i < rank; i++) {
       if (tar_shape[i] == 1) {
-        tmp_shape.push_back(full<T>({1}, tar_shape[i], DataType::INT32));
+        tmp_shape.push_back(
+            full<T>({1}, tar_shape[i], DataType::INT64, x[0].place()));
       } else {
-        tmp_shape.push_back(shape<T>(x[i]));
+        tmp_shape.push_back(shape64<T>(x[i]));
       }
     }
     auto tar_tensor_shape = concat<T>(tmp_shape);
@@ -537,7 +547,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
     int begin_norm_axis) {
   std::vector<int64_t> reduce_axis;
   auto org_dtype = x.dtype();
-  Tensor x_cast = ConverToMT<T>(x);
+  Tensor x_cast = ConvertToMT<T>(x);
 
   auto x_dims = x.dims();
 
@@ -550,20 +560,21 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   auto difference = x_cast - mean_;
   auto var_tmp1 = difference * difference;
   auto variance = mean_decomp<T>(var_tmp1, reduce_axis, true);
-  auto var_tmp3 = variance + full_scalar<T>(epsilon, variance.dtype());
+  auto var_tmp3 =
+      variance + full_scalar<T>(epsilon, variance.dtype(), variance.place());
   auto rsqrt_var = rsqrt<T>(var_tmp3);
   auto out = difference * rsqrt_var;
 
   Tensor scale_cast;
   if (scale) {
     scale_cast = decomp_helper.Process<T>(scale.get(), x_cast);
-    scale_cast = ConverToMT<T>(scale_cast);
+    scale_cast = ConvertToMT<T>(scale_cast);
     out = out * scale_cast;
   }
   Tensor bias_cast;
   if (bias) {
     bias_cast = decomp_helper.Process<T>(bias.get(), x_cast);
-    bias_cast = ConverToMT<T>(bias_cast);
+    bias_cast = ConvertToMT<T>(bias_cast);
     out = out + bias_cast;
   }
   mean_ = squeeze<T>(mean_, reduce_axis);
@@ -572,7 +583,7 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   // same as LayerNormInferMeta
   // x: float32 --> out: float32, mean: float32, variance: float32
   // x: float16 --> out: float16, mean: float32, variance: float32
-  out = ConverToOrig<T>(out, org_dtype);
+  out = ConvertToOrig<T>(out, org_dtype);
   return std::make_tuple(out, mean_, variance);
 }
 
@@ -583,7 +594,7 @@ Tensor full_like_decomp(const Tensor& x,
                         const Place& place) {
   std::vector<int64_t> x_shape = x.shape();
   if (has_dynamic_shape(x_shape)) {
-    return backend::full_with_tensor<T>(shape<T>(x), value, x.dtype());
+    return backend::full_with_tensor<T>(shape64<T>(x), value, dtype);
   } else {
     return full<T>(x_shape, value, dtype, place);
   }
@@ -615,19 +626,20 @@ std::tuple<Tensor, Tensor> dropout_decomp(
   }
   Tensor uniform_tensor;
   if (has_dynamic_shape(x.shape())) {
-    auto shape_tensor = shape<T>(x);
-    auto zero = full_scalar<T>(0.0, dtype_tmp);
-    auto one = full_scalar<T>(1.0, dtype_tmp);
-    uniform_tensor =
-        backend::uniform<T>(shape_tensor, zero, one, dtype_tmp, seed_tmp);
+    auto shape_tensor = shape64<T>(x);
+    auto zero = full_scalar<T>(0.0, dtype_tmp, x.place());
+    auto one = full_scalar<T>(1.0, dtype_tmp, x.place());
+    uniform_tensor = backend::uniform<T>(
+        shape_tensor, zero, one, org_dtype, seed_tmp, x.place());
   } else {
-    uniform_tensor =
-        uniform<T>(phi::vectorize(x.dims()), dtype_tmp, 0.0, 1.0, seed_tmp);
+    uniform_tensor = uniform<T>(
+        phi::vectorize(x.dims()), org_dtype, 0.0, 1.0, seed_tmp, x.place());
   }
-  auto mask =
-      cast<T>(greater_equal<T>(uniform_tensor, full_scalar<T>(p, dtype_tmp)),
-              org_dtype);
-  auto ones_p = full_scalar<T>(1.0 - p.to<float>(), org_dtype);
+  auto mask = cast<T>(
+      greater_equal<T>(uniform_tensor,
+                       full_scalar<T>(p, org_dtype, uniform_tensor.place())),
+      org_dtype);
+  auto ones_p = full_scalar<T>(1.0 - p.to<float>(), org_dtype, x.place());
   if (upscale_in_train) {
     if (is_test) {
       // inference: out = input
@@ -660,20 +672,22 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
   const double PM_SQRT1_2 = 0.70710678118654752440;  /* 1/sqrt(2) */
 
   auto org_dtype = x.dtype();
-  auto half = full_scalar<T>(0.5, org_dtype);
-  auto one = full_scalar<T>(1.0, org_dtype);
+  auto half = full_scalar<T>(0.5, org_dtype, x.place());
+  auto one = full_scalar<T>(1.0, org_dtype, x.place());
   if (approximate) {
     // gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
-    auto kAlpha = full_scalar<T>(PM_2_SQRTPI * PM_SQRT1_2, org_dtype);
-    auto GELU_CONSTANT = full_scalar<T>(0.044715, org_dtype);
-    auto x_pow3 = elementwise_pow<T>(x, full_scalar<T>(3, org_dtype));
+    auto kAlpha =
+        full_scalar<T>(PM_2_SQRTPI * PM_SQRT1_2, org_dtype, x.place());
+    auto GELU_CONSTANT = full_scalar<T>(0.044715, org_dtype, x.place());
+    auto x_pow3 =
+        elementwise_pow<T>(x, full_scalar<T>(3, org_dtype, x.place()));
     auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
 
     auto res = x * half * (one + tanh_out);
     return res;
   } else {
     // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-    auto M_SQRT1_2T = full_scalar<T>(PM_SQRT1_2, org_dtype);
+    auto M_SQRT1_2T = full_scalar<T>(PM_SQRT1_2, org_dtype, x.place());
     auto erf_out = one + erf<T>(x * M_SQRT1_2T);
 
     auto res = x * half * erf_out;
@@ -685,10 +699,10 @@ template <typename T>
 Tensor hardsigmoid_decomp(const Tensor& x, float slope, float offset) {
   const double MAX_VALUE = 1.0;
   const double MIN_VALUE = 0.0;
-  return maximum<T>(minimum<T>(x * full_scalar<T>(slope, x.dtype()) +
-                                   full_scalar<T>(offset, x.dtype()),
-                               full_scalar<T>(MAX_VALUE, x.dtype())),
-                    full_scalar<T>(MIN_VALUE, x.dtype()));
+  return maximum<T>(minimum<T>(x * full_scalar<T>(slope, x.dtype(), x.place()) +
+                                   full_scalar<T>(offset, x.dtype(), x.place()),
+                               full_scalar<T>(MAX_VALUE, x.dtype(), x.place())),
+                    full_scalar<T>(MIN_VALUE, x.dtype(), x.place()));
 }
 
 template <typename T>
@@ -699,24 +713,24 @@ Tensor hardswish_decomp(const Tensor& x) {
 
   // out = minimum(maximum(x + offset, 0), threshold) * x / scale
   auto minimum_out =
-      minimum<T>(maximum<T>(x + full_scalar<T>(OFFSET, x.dtype()),
-                            full_scalar<T>(0.0, x.dtype())),
+      minimum<T>(maximum<T>(x + full_scalar<T>(OFFSET, x.dtype(), x.place()),
+                            full_scalar<T>(0.0, x.dtype(), x.place())),
                  full_scalar<T>(THRESHOLD, x.dtype()));
-  return (minimum_out * x) / full_scalar<T>(SCALE, x.dtype());
+  return (minimum_out * x) / full_scalar<T>(SCALE, x.dtype(), x.place());
 }
 
 template <typename T>
 Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
   Tensor zero, one;
   if (has_dynamic_shape(x.shape())) {
-    Tensor zero_x = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
-    Tensor zero_y = backend::full_with_tensor<T>(shape<T>(y), 0.0, x.dtype());
+    Tensor zero_x = backend::full_with_tensor<T>(shape64<T>(x), 0.0, x.dtype());
+    Tensor zero_y = backend::full_with_tensor<T>(shape64<T>(y), 0.0, x.dtype());
     zero = zero_x + zero_y;
-    one = backend::full_with_tensor<T>(shape<T>(zero), 1.0, x.dtype());
+    one = backend::full_with_tensor<T>(shape64<T>(zero), 1.0, x.dtype());
   } else {
     auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), y.dims());
-    zero = full<T>(phi::vectorize(out_dims), 0.0, x.dtype());
-    one = full<T>(phi::vectorize(out_dims), 1.0, x.dtype());
+    zero = full<T>(phi::vectorize(out_dims), 0.0, x.dtype(), x.place());
+    one = full<T>(phi::vectorize(out_dims), 1.0, x.dtype(), x.place());
   }
   Tensor broadcast_x = x + zero;
   Tensor broadcast_y = y + zero;
@@ -728,7 +742,7 @@ Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
 
 template <typename T>
 Tensor leaky_relu_decomp(const Tensor& x, float negative_slope) {
-  auto multiply_tmp = full_scalar<T>(negative_slope, x.dtype()) * x;
+  auto multiply_tmp = full_scalar<T>(negative_slope, x.dtype(), x.place()) * x;
   if (negative_slope < 1.0) {
     return maximum<T>(x, multiply_tmp);
   } else {
@@ -742,104 +756,101 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
     const paddle::optional<Tensor>& scale,
     const paddle::optional<Tensor>& bias,
     float epsilon) {
-  if (has_dynamic_shape(x.shape())) {
-    auto org_dtype = x.dtype();
-    Tensor x_cast = ConverToMT<T>(x);
+  auto org_dtype = x.dtype();
+  Tensor x_cast = ConvertToMT<T>(x);
+  const std::vector<int64_t> x_dims = x.shape();
 
+  if (has_dynamic_shape(x_dims)) {
     std::vector<int64_t> axis;
-    auto x_dim = x.shape();
-    for (size_t i = 2; i < x_dim.size(); i++) {
+    for (size_t i = 2; i < x_dims.size(); i++) {
       axis.push_back(static_cast<int64_t>(i));
     }
+    bool reduce_axes_empty = axis.empty();
 
     // out = (x - mean(x)) / sqrt(var + epsilon))
     // var = mean((x-mean(x))^2)
-    auto mean_ = mean_decomp<T>(x_cast, axis, true);
+    auto mean_ =
+        reduce_axes_empty ? x_cast : mean_decomp<T>(x_cast, axis, true);
     auto difference = x_cast - mean_;
     auto var_tmp1 = difference * difference;
-    auto variance = mean_decomp<T>(var_tmp1, axis, true);
-    auto var_shape = shape<T>(variance);
-    auto var_tmp3 = variance + full_scalar<T>(epsilon, variance.dtype());
+    auto variance =
+        reduce_axes_empty ? var_tmp1 : mean_decomp<T>(var_tmp1, axis, true);
+    auto var_shape = shape64<T>(variance);
+    auto var_tmp3 =
+        variance + full_scalar<T>(epsilon, variance.dtype(), variance.place());
     auto rsqrt_var = rsqrt<T>(var_tmp3);
     auto out = difference * rsqrt_var;
 
-    int dim_size = x_dim.size();
-    auto x_shape_tensor = shape<T>(x);
+    int dim_size = x_dims.size();
+    auto x_shape_tensor = shape64<T>(x);
     std::vector<Tensor> slice_shape_concat;
 
-    auto shape_1 = full<T>({1}, 1, x_shape_tensor.dtype());
-    auto shape_2 =
-        cast<T>(get_slice<T>(x_shape_tensor, 1), x_shape_tensor.dtype());
-    auto shape_3 = full<T>({dim_size - 2}, 1, x_shape_tensor.dtype());
-
-    slice_shape_concat.push_back(shape_1);
-    slice_shape_concat.push_back(shape_2);
-    slice_shape_concat.push_back(shape_3);
+    slice_shape_concat.push_back(full<T>({1}, 1, x_shape_tensor.dtype()));
+    slice_shape_concat.push_back(
+        cast<T>(get_slice<T>(x_shape_tensor, 1), x_shape_tensor.dtype()));
+    if (dim_size > 2) {
+      slice_shape_concat.push_back(
+          full<T>({dim_size - 2}, 1, x_shape_tensor.dtype()));
+    }
     auto slice_shape_tensor = concat<T>(slice_shape_concat, 0);
 
-    Tensor scale_cast;
     if (scale) {
-      scale_cast = backend::reshape<T>(scale.get(), slice_shape_tensor);
-      scale_cast = ConverToMT<T>(scale_cast);
+      auto scale_cast = backend::reshape<T>(scale.get(), slice_shape_tensor);
+      scale_cast = ConvertToMT<T>(scale_cast);
       out = out * scale_cast;
     }
-    Tensor bias_cast;
+
     if (bias) {
-      bias_cast = backend::reshape<T>(bias.get(), slice_shape_tensor);
-      bias_cast = ConverToMT<T>(bias_cast);
+      auto bias_cast = backend::reshape<T>(bias.get(), slice_shape_tensor);
+      bias_cast = ConvertToMT<T>(bias_cast);
       out = out + bias_cast;
     }
 
     std::vector<int64_t> res_shape(1, -1);
     auto mean_out = reshape<T>(mean_, res_shape);
     auto variance_out = reshape<T>(rsqrt_var, res_shape);
-
-    Tensor res;
-    res = ConverToOrig<T>(out, org_dtype);
+    auto res = ConvertToOrig<T>(out, org_dtype);
 
     return std::make_tuple(res, mean_out, variance_out);
   }
-  auto org_dtype = x.dtype();
-  Tensor x_cast = ConverToMT<T>(x);
 
-  std::vector<int64_t> axis;
-  auto x_dim = x.shape();
-  for (size_t i = 2; i < x_dim.size(); i++) {
-    axis.push_back(static_cast<int64_t>(i));
-  }
+  // static shape
+  const int64_t N = x_dims[0];
+  const int64_t C = x_dims[1];
+  const int64_t NxC = N * C;
+  const int64_t sample_size = x.numel() / N / C;
+  const std::vector<int64_t> shape{NxC, sample_size};
+  const std::vector<int64_t> rdims{1};
 
-  // out = (x - mean(x)) / sqrt(var + epsilon))
-  // var = mean((x-mean(x))^2)
-  auto mean_ = mean_decomp<T>(x_cast, axis, true);
-  auto difference = x_cast - mean_;
-  auto var_tmp1 = difference * difference;
-  auto variance = mean_decomp<T>(var_tmp1, axis, true);
+  auto x_arr = reshape<T>(x_cast, shape);
+  auto mean_ = mean_decomp<T>(x_arr, rdims, true);
+  auto difference = x_arr - mean_;
+  auto variance = mean_decomp<T>(difference * difference, rdims, true);
   auto var_tmp3 = variance + epsilon;
   auto rsqrt_var = rsqrt<T>(var_tmp3);
   auto out = difference * rsqrt_var;
 
-  std::vector<int64_t> slice_shape(x_dim.size(), 1);
-  slice_shape[1] = x_dim[1];
+  std::vector<int64_t> slice_shape(x_dims.size(), 1);
+  slice_shape[1] = x_dims[1];
 
-  Tensor scale_cast;
+  out = reshape<T>(out, x_dims);
   if (scale) {
-    scale_cast = reshape<T>(scale.get(), slice_shape);
-    scale_cast = ConverToMT<T>(scale_cast);
+    auto scale_cast = reshape<T>(scale.get(), slice_shape);
+    scale_cast = ConvertToMT<T>(scale_cast);
     out = out * scale_cast;
   }
-  Tensor bias_cast;
+
   if (bias) {
-    bias_cast = reshape<T>(bias.get(), slice_shape);
-    bias_cast = ConverToMT<T>(bias_cast);
+    auto bias_cast = reshape<T>(bias.get(), slice_shape);
+    bias_cast = ConvertToMT<T>(bias_cast);
     out = out + bias_cast;
   }
 
   std::vector<int64_t> res_shape(1, -1);
   auto mean_out = reshape<T>(mean_, res_shape);
   auto variance_out = reshape<T>(rsqrt_var, res_shape);
+  auto res = ConvertToOrig<T>(out, org_dtype);
 
-  Tensor res;
-  res = ConverToOrig<T>(out, org_dtype);
   return std::make_tuple(res, mean_out, variance_out);
 }
 
@@ -864,7 +875,7 @@ Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
   }
 
   if (has_dynamic_shape(x.shape())) {
-    auto x_shape = shape<T>(x);
+    auto x_shape = shape64<T>(x);
     if (end_axis == start_axis) {
       return backend::reshape<T>(x, x_shape);
     }
@@ -926,8 +937,8 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   }
 
   if (has_dynamic_shape(x.shape())) {
-    min_reshape = backend::expand<T>(min_reshape, shape<T>(x));
-    max_reshape = backend::expand<T>(max_reshape, shape<T>(x));
+    min_reshape = backend::expand<T>(min_reshape, shape64<T>(x));
+    max_reshape = backend::expand<T>(max_reshape, shape64<T>(x));
   } else {
     min_reshape = expand<T>(min_reshape, x.shape());
     max_reshape = expand<T>(max_reshape, x.shape());
@@ -962,16 +973,12 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     const float epsilon,
     const int groups,
     const std::string& data_format) {
-  std::vector<int64_t> c_axis;
-  if (data_format == "NCHW") {
-    c_axis = {1};
-  } else if (data_format == "NHWC") {
-    c_axis = {1, 3};
-  } else {
-    PADDLE_THROW(
-        common::errors::Unimplemented("Only support NCHW and NHWC format."));
-  }
   size_t rank = x.shape().size();
+  GroupNormDecompHelper<T> decomp_helper(x, scale, bias, groups, data_format);
+  const std::vector<int64_t>& c_axis = decomp_helper.GetReduceAxis();
+  const std::vector<int64_t>& scale_bias_new_shape =
+      decomp_helper.GetScaleBiasNewShape();
+
   if (rank < 3) {
     PADDLE_THROW(common::errors::Unimplemented(
         "Only support NCHW and NHWC format in rank higher or equal to 3. "
@@ -980,103 +987,47 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   }
 
   auto org_dtype = x.dtype();
-  Tensor x_cast = ConverToMT<T>(x);
+  Tensor x_cast = ConvertToMT<T>(x);
 
-  Tensor x_dim_t;
-  Tensor out, mean_, var_;
-  if (has_dynamic_shape(x_cast.shape())) {
-    x_dim_t = shape<T>(x_cast);
-    Tensor tar_shape;
-    if (data_format == "NCHW") {
-      tar_shape = get_slice<T>(x_dim_t, 0) * groups;
-      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
-      tar_shape = concat<T>({tar_shape, dim_1});
-    } else {
-      Tensor N_shape = get_slice<T>(x_dim_t, 0);
-      Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
-      Tensor C_shape = get_slice<T>(x_dim_t, rank - 1);
-      Tensor dim_g = full<T>({1}, groups, x_dim_t.type());
-      Tensor dim_c_div_g = cast<T>(C_shape / dim_g, x_dim_t.type());
-      tar_shape = concat<T>({N_shape, dim_1, dim_g, dim_c_div_g});
-    }
-    x_cast = backend::reshape<T>(x_cast, tar_shape);
-    mean_ = mean_decomp<T>(x_cast, c_axis, true);
-    Tensor var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
-    var_ = maximum<T>(
-        var_tmp_,
-        backend::full_with_tensor<T>(shape<T>(var_tmp_), 0, var_tmp_.dtype()));
-    Tensor var_inv = rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype()));
-    Tensor res = (x_cast - mean_) * var_inv;
-    out = backend::reshape<T>(res, x_dim_t);
-  } else {
-    auto x_dim = x_cast.shape();
-    if (data_format == "NCHW") {
-      x_cast = reshape<T>(x_cast, {x_dim[0] * groups, -1});
-    } else {
-      int c_div_g = x_dim[rank - 1] / groups;
-      x_cast = reshape<T>(x_cast, {x_dim[0], -1, groups, c_div_g});
-    }
-    mean_ = mean_decomp<T>(x_cast, c_axis, true);
-    auto var_tmp_ =
-        mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
-    var_ = maximum<T>(var_tmp_, full<T>(var_tmp_.shape(), 0, var_tmp_.dtype()));
-    auto var_inv = rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype()));
-    auto res = (x_cast - mean_) * var_inv;
-    out = reshape<T>(res, x_dim);
-  }
+  auto x_dim = x_cast.shape();
+  x_cast = decomp_helper.Split(x_cast);
 
-  std::vector<int64_t> slice_bias_shape;
-  slice_bias_shape = {-1};
-  for (size_t i = 0; i < rank - 2; i++) {
-    slice_bias_shape.push_back(1);
-  }
+  auto mean_ = mean_decomp<T>(x_cast, c_axis, true);
+  auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
+  auto var_ = maximum<T>(var_tmp_, full<T>({}, 0, var_tmp_.dtype()));
+  auto var_inv = rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype()));
+  auto out = (x_cast - mean_) * var_inv;
+
   Tensor scale_cast;
   if (scale) {
-    if (data_format == "NCHW") {
-      scale_cast = reshape<T>(scale.get(), slice_bias_shape);
-    } else {
-      scale_cast = scale.get();
-    }
-    scale_cast = ConverToMT<T>(scale_cast);
+    scale_cast = reshape<T>(scale.get(), scale_bias_new_shape);
+    scale_cast = ConvertToMT<T>(scale_cast);
     out = out * scale_cast;
   }
   Tensor bias_cast;
   if (bias) {
-    if (data_format == "NCHW") {
-      bias_cast = reshape<T>(bias.get(), slice_bias_shape);
-    } else {
-      bias_cast = bias.get();
-    }
-    bias_cast = ConverToMT<T>(bias_cast);
+    bias_cast = reshape<T>(bias.get(), scale_bias_new_shape);
+    bias_cast = ConvertToMT<T>(bias_cast);
     out = out + bias_cast;
   }
-  Tensor mean_out, var_out;
-  if (has_dynamic_shape(x_cast.shape())) {
-    Tensor x_shape = get_slice<T>(x_dim_t, 0);
-    Tensor dim_1 = full<T>({1}, groups, x_shape.type());
-    x_shape = concat<T>({x_shape, dim_1});
-    mean_out = backend::reshape<T>(mean_, x_shape);
-    var_out = backend::reshape<T>(var_, x_shape);
-  } else {
-    std::vector<int64_t> res_shape{x.shape().at(0), groups};
-    mean_out = reshape<T>(mean_, res_shape);
-    var_out = reshape<T>(var_, res_shape);
-  }
-  out = ConverToOrig<T>(out, org_dtype);
+
+  Tensor mean_out = squeeze<T>(mean_, c_axis);
+  Tensor var_out = squeeze<T>(var_, c_axis);
+  out = decomp_helper.Merge(out);
+  out = ConvertToOrig<T>(out, org_dtype);
 
   return std::make_tuple(out, mean_out, var_out);
 }
 
 template <typename T>
 Tensor square_decomp(const Tensor& x) {
-  auto x_cast = ConverToMT<T>(x);
+  auto x_cast = ConvertToMT<T>(x);
 
   Tensor two;
-  two = full_scalar<T>(2, x_cast.dtype());
+  two = full_scalar<T>(2, x_cast.dtype(), x_cast.place());
 
   auto ans = elementwise_pow<T>(x_cast, two);
-  return ConverToOrig<T>(ans, x.dtype());
+  return ConvertToOrig<T>(ans, x.dtype());
 }
 
 template <typename T>
@@ -1113,7 +1064,7 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
     const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
     // Follow the implementation in
     // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
-    const Tensor eps2 = full_scalar<T>(1e-5, x.type());
+    const Tensor eps2 = full_scalar<T>(1e-5, x.type(), x.place());
     auto norm = where<T>(tmp_norm > eps2, tmp_norm, eps2);
     out = out / norm;
   }
@@ -1122,12 +1073,12 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
 
 template <typename T>
 Tensor mean_all_decomp(const Tensor& x) {
-  auto x_cast = ConverToMT<T>(x);
+  auto x_cast = ConvertToMT<T>(x);
   auto x_shape = x.shape();
 
   Tensor ans;
   if (has_dynamic_shape(x_shape)) {
-    Tensor x_shape_tensor = shape<T>(x_cast);
+    Tensor x_shape_tensor = shape64<T>(x_cast);
     Tensor value = get_slice<T>(x_shape_tensor, 0);
     for (size_t i = 1; i < x_shape.size(); i++) {
       value = value * get_slice<T>(x_shape_tensor, i);
@@ -1138,7 +1089,7 @@ Tensor mean_all_decomp(const Tensor& x) {
     ans = sum<T>(x_cast) / x_cast.numel();
   }
 
-  return ConverToOrig<T>(ans, x.dtype());
+  return ConvertToOrig<T>(ans, x.dtype());
 }
 
 template <typename T>
@@ -1156,7 +1107,7 @@ Tensor embedding_decomp(const Tensor& x,
   Tensor res;
   if (has_dynamic_shape(x.shape())) {
     if (padding_idx != NoPadding) {
-      Tensor put_shape = shape<T>(sum<T>(weight, {0}, weight.dtype(), true));
+      Tensor put_shape = shape64<T>(sum<T>(weight, {0}, weight.dtype(), true));
       Tensor padding_idx_tensor =
           backend::full_with_tensor<T>(put_shape, padding_idx, DataType::INT64);
       Tensor zeros =
@@ -1173,8 +1124,8 @@ Tensor embedding_decomp(const Tensor& x,
       std::vector<int64_t> tar_shape{-1};
       auto x_reshape = reshape<T>(x, tar_shape);
       auto out = gather<T>(weight_tmp, x_reshape);
-      auto x_t_shape = shape<T>(x);
-      auto token_dim = get_slice<T>(shape<T>(out), 1);
+      auto x_t_shape = shape64<T>(x);
+      auto token_dim = get_slice<T>(shape64<T>(out), 1);
       auto res_t_shape = concat<T>({x_t_shape, token_dim}, 0);
       res = backend::reshape<T>(out, res_t_shape);
     }
@@ -1182,8 +1133,8 @@ Tensor embedding_decomp(const Tensor& x,
     if (padding_idx != NoPadding) {
       std::vector<int64_t> put_shape{1, weight.dims()[1]};
       Tensor padding_idx_tensor =
-          full<T>(put_shape, padding_idx, DataType::INT64);
-      Tensor zeros = full<T>(put_shape, 0.0, weight.dtype());
+          full<T>(put_shape, padding_idx, DataType::INT64, x.place());
+      Tensor zeros = full<T>(put_shape, 0.0, weight.dtype(), weight.place());
       weight_tmp = put_along_axis<T>(weight, padding_idx_tensor, zeros, 0);
     }
 
@@ -1211,18 +1162,19 @@ Tensor embedding_decomp(const Tensor& x,
 template <typename T>
 Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
   std::vector<int64_t> tmp_shape{-1, 1};
-  auto index_dim = get_slice<T>(shape<T>(index), 0);
+  auto index_dim = get_slice<T>(shape64<T>(index), 0);
   auto start = full<T>({1}, 0, index_dim.dtype());
   auto step = full<T>({1}, 1, index_dim.dtype());
   auto arange_tmp = reshape<T>(
-      backend::arange_with_tensor<T>(start, index_dim, step, index.dtype()),
+      backend::arange<T>(start, index_dim, step, index.dtype(), index.place()),
       tmp_shape);
 
   auto index_res =
-      reshape<T>(backend::expand<T>(arange_tmp, shape<T>(index)), tmp_shape);
+      reshape<T>(backend::expand<T>(arange_tmp, shape64<T>(index)), tmp_shape);
   auto index_ = reshape<T>(index, tmp_shape);
   auto concat_res = concat<T>({index_res, index_}, 1);
-  auto res = backend::reshape<T>(gather_nd<T>(x, concat_res), shape<T>(index));
+  auto res =
+      backend::reshape<T>(gather_nd<T>(x, concat_res), shape64<T>(index));
 
   if (res.dtype() != x.dtype()) {
     return cast<T>(res, x.dtype());
@@ -1233,38 +1185,39 @@ Tensor index_sample_decomp(const Tensor& x, const Tensor& index) {
 
 template <typename T>
 Tensor elu_decomp(const Tensor& x, const float alpha) {
-  auto x_cast = ConverToMT<T>(x);
+  auto x_cast = ConvertToMT<T>(x);
 
   Tensor zero;
   Tensor tmp_res;
 
   if (has_dynamic_shape(x_cast.shape())) {
-    zero = backend::full_with_tensor<T>(shape<T>(x_cast), 0, x_cast.dtype());
-    tmp_res = full_scalar<T>(alpha, x_cast.dtype()) *
-              (exp<T>(x_cast) - full_scalar<T>(1, x_cast.dtype()));
+    zero = backend::full_with_tensor<T>(shape64<T>(x_cast), 0, x_cast.dtype());
+    tmp_res =
+        full_scalar<T>(alpha, x_cast.dtype(), x_cast.place()) *
+        (exp<T>(x_cast) - full_scalar<T>(1, x_cast.dtype(), x_cast.place()));
   } else {
-    zero = full<T>(x_cast.shape(), 0, x_cast.type());
+    zero = full<T>(x_cast.shape(), 0, x_cast.type(), x_cast.place());
     tmp_res = alpha * (exp<T>(x_cast) - 1);
   }
   auto ans = where<T>(x_cast > zero, x_cast, tmp_res);
-  return ConverToOrig<T>(ans, x.dtype());
+  return ConvertToOrig<T>(ans, x.dtype());
 }
 
 template <typename T>
 Tensor lerp_decomp(const Tensor& x, const Tensor& y, const Tensor& weight) {
-  Tensor x_cast = ConverToMT<T>(x);
-  Tensor y_cast = ConverToMT<T>(y);
-  Tensor weight_cast = ConverToMT<T>(weight);
+  Tensor x_cast = ConvertToMT<T>(x);
+  Tensor y_cast = ConvertToMT<T>(y);
+  Tensor weight_cast = ConvertToMT<T>(weight);
   Tensor res = x_cast + weight_cast * (y_cast - x_cast);
-  return ConverToOrig<T>(res, x.dtype());
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 template <typename T>
 Tensor log_loss_decomp(const Tensor& input,
                        const Tensor& label,
                        float epsilon) {
-  Tensor ones = full_scalar<T>(1.0, input.dtype());
-  Tensor eps = full_scalar<T>(epsilon);
+  Tensor ones = full_scalar<T>(1.0, input.dtype(), input.place());
+  Tensor eps = full_scalar<T>(epsilon, input.dtype(), input.place());
   Tensor term1 = -label * log<T>(input + eps);
   Tensor term2 = (ones - label) * log<T>(ones - input + eps);
   return term1 - term2;
@@ -1281,12 +1234,12 @@ Tensor kldiv_loss_decomp(const Tensor& x,
     loss = exp<T>(label) * (label - x);
   } else {
     Tensor output = label * (log<T>(label) - x);
-    Tensor zero = full_scalar<T>(0.0, label.dtype());
+    Tensor zero = full_scalar<T>(0.0, label.dtype(), label.place());
     Tensor zeros;
     if (dynamic_shape) {
-      zeros = backend::full_with_tensor<T>(shape<T>(x), 0, x.dtype());
+      zeros = backend::full_with_tensor<T>(shape64<T>(x), 0, x.dtype());
     } else {
-      zeros = full<T>(x.shape(), 0, x.dtype());
+      zeros = full<T>(x.shape(), 0, x.dtype(), x.place());
     }
     loss = where<T>(label > zero, output, zeros);
   }
@@ -1294,7 +1247,7 @@ Tensor kldiv_loss_decomp(const Tensor& x,
   if (reduction == "batchmean") {
     if (x.shape().size() > 0) {
       if (dynamic_shape) {
-        return sum<T>(loss) / get_slice<T>(shape<T>(x), 0);
+        return sum<T>(loss) / get_slice<T>(shape64<T>(x), 0);
       } else {
         return sum<T>(loss) / x.shape()[0];
       }
@@ -1316,7 +1269,7 @@ Tensor softsign_decomp(const Tensor& x) {
   // softsign = x / (1 + abs(x))
 
   Tensor x_abs = abs<T>(x);
-  Tensor one = full_scalar<T>(1.0, x.dtype());
+  Tensor one = full_scalar<T>(1.0, x.dtype(), x.place());
   return x / (one + x_abs);
 }
 
@@ -1342,7 +1295,7 @@ std::vector<Tensor> unstack_decomp(const Tensor& x, int axis, const int num) {
   std::vector<int> sections(num, 1);
   std::vector<Tensor> res = backend::split<T>(x, sections, axis);
   if (has_dynamic_shape(x_shape)) {
-    const Tensor x_shape_tensor = shape<T>(x);
+    const Tensor x_shape_tensor = shape64<T>(x);
 
     // find new shape of each tensor.
     std::vector<Tensor> new_shape_vec;
@@ -1374,20 +1327,126 @@ template <typename T>
 Tensor numel_decomp(const Tensor& x) {
   auto x_shape = x.shape();
   if (has_dynamic_shape(x_shape)) {
-    const Tensor x_shape_tensor = shape<T>(x);
+    const Tensor x_shape_tensor = shape64<T>(x);
     Tensor value = full<T>({1}, 1, x_shape_tensor.dtype());
     for (size_t i = 0; i < x_shape.size(); ++i) {
       value = value * get_slice<T>(x_shape_tensor, i);
     }
     return cast<T>(reshape<T>(value, {}), DataType::INT64);
   } else {
-    return full_scalar<T>(x.numel(), DataType::INT64);
+    return full_scalar<T>(x.numel(), DataType::INT64, x.place());
   }
 }
 
 template <typename T>
 Tensor swish_decomp(const Tensor& x) {
   return x * sigmoid<T>(x);
+}
+
+template <typename T>
+Tensor addmm_decomp(const Tensor& input,
+                    const Tensor& x,
+                    const Tensor& y,
+                    const float beta,
+                    const float alpha) {
+  Tensor x_y_mat = matmul<T>(x, y);
+  return full_scalar<T>(alpha, x_y_mat.dtype()) * x_y_mat +
+         full_scalar<T>(beta, input.dtype()) * input;
+}
+
+template <typename T>
+Tensor baddbmm_decomp(const Tensor& input,
+                      const Tensor& x,
+                      const Tensor& y,
+                      const float beta,
+                      const float alpha) {
+  int batch_size = x.shape()[0];
+  std::vector<Tensor> batch_results;
+
+  for (int i = 0; i < batch_size; ++i) {
+    Tensor x_batch = get_slice<T>(x, i);
+    Tensor y_batch = get_slice<T>(y, i);
+    Tensor result = matmul<T>(x_batch, y_batch);
+    batch_results.push_back(result);
+  }
+
+  Tensor x_y_mat = concat<T>(batch_results);
+
+  return full_scalar<T>(alpha, x_y_mat.dtype()) * x_y_mat +
+         full_scalar<T>(beta, input.dtype()) * input;
+}
+
+template <typename T>
+Tensor eye_decomp(const paddle::Scalar& num_rows,
+                  const paddle::Scalar& num_columns,
+                  const DataType dtype,
+                  const Place& place) {
+  int32_t min_num = std::min(num_rows.to<int>(), num_columns.to<int>());
+  Tensor zero_tensor =
+      full<T>({num_rows.to<int>(), num_columns.to<int>()}, 0, dtype, place);
+  auto zero_tensor_cast = ConvertToMT<T>(zero_tensor);
+  Tensor diag_one = unsqueeze<T>(full<T>({min_num}, 1, dtype, place), {1});
+  auto diag_one_cast = ConvertToMT<T>(diag_one);
+
+  auto start = full<T>({1}, 0, dtype, place);
+  auto stop = full<T>({1}, min_num, dtype, place);
+  auto step = full<T>({1}, 1, dtype, place);
+  Tensor index = unsqueeze<T>(
+      backend::arange<T>(start, stop, step, DataType::INT32, place), {1});
+
+  auto index_cast = ConvertToMT<T>(index);
+  Tensor res = put_along_axis<T>(zero_tensor_cast, index, diag_one_cast, 1);
+
+  return ConvertToOrig<T>(res, dtype);
+}
+
+template <typename T>
+Tensor diag_decomp(const Tensor& x,
+                   const int& offset = 0,
+                   const float& padding_value = 0.0) {
+  Tensor cast_x = ConvertToMT<T>(x);
+  int64_t rank = cast_x.dims().size();
+  Tensor res;
+  if (rank == 1) {
+    std::vector<int64_t> x_dims = cast_x.shape();
+    int64_t n = x_dims[0];
+    int64_t abs_offset = std::abs(offset);
+    int64_t m = n + abs_offset;
+
+    Tensor result =
+        full<T>({m, m}, padding_value, cast_x.dtype(), cast_x.place());
+    Tensor insert_value = cast_x;
+    Tensor indices = backend::arange<T>(
+        abs_offset, abs_offset + n, 1, DataType::INT64, cast_x.place());
+    if (offset >= 0) {
+      insert_value = reshape<T>(insert_value, {n, 1});
+      indices = reshape<T>(indices, {n, 1});
+      res = put_along_axis<T>(result, indices, insert_value, 1);
+    } else {
+      insert_value = reshape<T>(insert_value, {1, n});
+      indices = reshape<T>(indices, {1, n});
+      res = put_along_axis<T>(result, indices, insert_value, 0);
+    }
+  } else {
+    // This is the case for 2D tensor.
+    std::vector<int64_t> x_dims = cast_x.shape();
+    int64_t n = x_dims[0];
+    int64_t m = x_dims[1];
+    if (offset <= -n || offset >= m) {
+      return res;
+    }
+    Tensor x_flat = reshape<T>(cast_x, {n * m});
+    int64_t start = offset >= 0 ? offset : -offset * m;
+    int64_t num =
+        offset >= 0 ? std::min(n, m - offset) : std::min(n + offset, m);
+    int64_t stride = m + 1;
+    int64_t end = start + num * stride;
+
+    Tensor indices =
+        backend::arange<T>(start, end, stride, DataType::INT64, cast_x.place());
+    res = take_along_axis<T>(x_flat, indices, 0);
+  }
+  return ConvertToOrig<T>(res, x.dtype());
 }
 
 }  // namespace details

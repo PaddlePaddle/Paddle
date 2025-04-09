@@ -39,7 +39,7 @@ struct Layers {
                 std::vector<int64_t> shape = {},
                 bool is_persistable = false,
                 proto::VarType::Type data_type = proto::VarType::FP32) {
-    return lod_tensor(name, shape, is_persistable, data_type);
+    return dense_tensor(name, shape, is_persistable, data_type);
   }
 
   VarDesc* conv2d(VarDesc* input,
@@ -52,7 +52,7 @@ struct Layers {
                   std::vector<int> dilations = {1, 1},
                   std::string data_format = "NCHW",
                   bool use_cudnn = false) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d");
     op->SetInput("Input", {input->Name()});
@@ -80,7 +80,7 @@ struct Layers {
                             std::string padding_algorithm = "EXPLICIT",
                             std::vector<int> dilations = {1, 1},
                             std::string data_format = "NCHW") {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("conv2d_transpose");
     op->SetInput("Input", {input->Name()});
@@ -102,7 +102,7 @@ struct Layers {
                             VarDesc* filter,
                             VarDesc* bias,
                             bool use_cudnn) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("depthwise_conv2d");
     op->SetInput("Input", {input->Name()});
@@ -118,7 +118,7 @@ struct Layers {
   VarDesc* pool2d(VarDesc* x,
                   bool use_cudnn,
                   const AttributeMap* attrs = nullptr) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("pool2d");
     op->SetInput("X", {x->Name()});
@@ -137,21 +137,21 @@ struct Layers {
   VarDesc* squeeze2(VarDesc* x,
                     const std::vector<int> axes = {-1},
                     bool with_xshape = false) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("squeeze2");
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
     op->SetAttr("axes", axes);
     if (with_xshape) {
-      VarDesc* xshape = lod_tensor(unique_name());
+      VarDesc* xshape = dense_tensor(unique_name());
       op->SetOutput("XShape", {xshape->Name()});
     }
     return out;
   }
 
   VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes = {-1}) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("unsqueeze2");
     op->SetInput("X", {x->Name()});
@@ -197,7 +197,7 @@ struct Layers {
               VarDesc* bias,
               int in_num_col_dims = 1,
               std::string activation_type = "") {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("fc");
     op->SetInput("Input", {input->Name()});
@@ -322,7 +322,7 @@ struct Layers {
   VarDesc* dropout(VarDesc* x,
                    float dropout_prob,
                    std::string dropout_implementation) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("dropout");
     op->SetInput("X", {x->Name()});
@@ -336,7 +336,7 @@ struct Layers {
   }
 
   VarDesc* concat(std::vector<VarDesc*> inputs, int axis = -1) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("concat");
     std::vector<std::string> input_names(inputs.size());
@@ -354,9 +354,9 @@ struct Layers {
   std::vector<VarDesc*> layer_norm(VarDesc* x,
                                    VarDesc* scale = nullptr,
                                    VarDesc* bias = nullptr) {
-    VarDesc* y = lod_tensor(unique_name());
-    VarDesc* mean = lod_tensor(unique_name());
-    VarDesc* variance = lod_tensor(unique_name());
+    VarDesc* y = dense_tensor(unique_name());
+    VarDesc* mean = dense_tensor(unique_name());
+    VarDesc* variance = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("layer_norm");
     op->SetInput("X", {x->Name()});
@@ -387,7 +387,7 @@ struct Layers {
     }
     std::vector<VarDesc*> outs(out_num);
     for (int i = 0; i < out_num; i++) {
-      outs[i] = lod_tensor(unique_name());
+      outs[i] = dense_tensor(unique_name());
     }
     std::vector<std::string> out_names(out_num);
     for (int i = 0; i < out_num; i++) {
@@ -409,7 +409,7 @@ struct Layers {
   }
 
   VarDesc* assign(VarDesc* x) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("assign");
     op->SetInput("X", {x->Name()});
@@ -424,7 +424,7 @@ struct Layers {
                   VarDesc* alpha = nullptr,
                   bool transpose_x = false,
                   bool transpose_y = false) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("matmul");
     op->SetInput("X", {x->Name()});
@@ -437,7 +437,7 @@ struct Layers {
   }
 
   VarDesc* clip(VarDesc* x, VarDesc* min, VarDesc* max) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("clip");
     op->SetInput("X", {x->Name()});
@@ -452,7 +452,7 @@ struct Layers {
                      VarDesc* alpha = nullptr,
                      bool trans_x = false,
                      bool trans_y = false) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("matmul_v2");
     op->SetInput("X", {x->Name()});
@@ -466,14 +466,14 @@ struct Layers {
   VarDesc* transpose2(VarDesc* x,
                       std::vector<int> axis,
                       bool with_xshape = false) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("transpose2");
     op->SetInput("X", {x->Name()});
     op->SetAttr("axis", axis);
     op->SetOutput("Out", {out->Name()});
     if (with_xshape) {
-      VarDesc* xshape = lod_tensor(unique_name());
+      VarDesc* xshape = dense_tensor(unique_name());
       op->SetOutput("XShape", {xshape->Name()});
     }
     return out;
@@ -482,21 +482,21 @@ struct Layers {
   VarDesc* reshape2(VarDesc* x,
                     std::vector<int> shape,
                     bool with_xshape = false) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("reshape2");
     op->SetInput("X", {x->Name()});
     op->SetAttr("shape", shape);
     op->SetOutput("Out", {out->Name()});
     if (with_xshape) {
-      VarDesc* xshape = lod_tensor(unique_name());
+      VarDesc* xshape = dense_tensor(unique_name());
       op->SetOutput("XShape", {xshape->Name()});
     }
     return out;
   }
 
   VarDesc* softmax(VarDesc* x, int axis) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("softmax");
     op->SetInput("X", {x->Name()});
@@ -509,7 +509,7 @@ struct Layers {
                  float scale = 1.,
                  float bias = 0.,
                  bool bias_after = true) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("scale");
     op->SetInput("X", {x->Name()});
@@ -525,11 +525,11 @@ struct Layers {
                                    VarDesc* bias,
                                    VarDesc* mean,
                                    VarDesc* variance) {
-    VarDesc* y = lod_tensor(unique_name());
-    VarDesc* mean_out = lod_tensor(unique_name());
-    VarDesc* variance_out = lod_tensor(unique_name());
-    VarDesc* saved_mean = lod_tensor(unique_name());
-    VarDesc* saved_variance = lod_tensor(unique_name());
+    VarDesc* y = dense_tensor(unique_name());
+    VarDesc* mean_out = dense_tensor(unique_name());
+    VarDesc* variance_out = dense_tensor(unique_name());
+    VarDesc* saved_mean = dense_tensor(unique_name());
+    VarDesc* saved_variance = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("batch_norm");
     op->SetInput("X", {x->Name()});
@@ -551,7 +551,7 @@ struct Layers {
   }
 
   VarDesc* embedding(VarDesc* x, VarDesc* weights) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("lookup_table");
     op->SetInput("Ids", {x->Name()});
@@ -561,9 +561,9 @@ struct Layers {
   }
 
   VarDesc* while_loop(std::vector<VarDesc*> xs, VarDesc* cond = nullptr) {
-    VarDesc* out = lod_tensor(unique_name());
-    VarDesc* step_scopes = lod_tensor(unique_name());
-    if (cond == nullptr) cond = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
+    VarDesc* step_scopes = dense_tensor(unique_name());
+    if (cond == nullptr) cond = dense_tensor(unique_name());
 
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("while");
@@ -579,7 +579,7 @@ struct Layers {
   }
 
   VarDesc* shape(VarDesc* input) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("shape");
     op->SetInput("Input", {input->Name()});
@@ -591,7 +591,7 @@ struct Layers {
                  std::vector<int> axes,
                  std::vector<int> starts,
                  std::vector<int> ends) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("slice");
     op->SetInput("Input", {input->Name()});
@@ -608,7 +608,7 @@ struct Layers {
                                          int output_dim_idx,
                                          std::vector<int> shape,
                                          float value) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("fill_constant_batch_size_like");
     op->SetInput("Input", {x->Name()});
@@ -648,8 +648,8 @@ struct Layers {
       std::vector<float> out_linear_in_scale = {},
       std::vector<float> ffn1_in_scale = {},
       std::vector<float> ffn2_in_scale = {}) {
-    VarDesc* out = lod_tensor(unique_name());
-    VarDesc* cache_kv_out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
+    VarDesc* cache_kv_out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     std::string op_type = qkv_out_scale ? "fused_multi_transformer_int8"
                                         : "fused_multi_transformer";
@@ -700,7 +700,7 @@ struct Layers {
                              VarDesc* zero_point,
                              int bit_length = 8,
                              int quant_axis = -1) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("dequantize_linear");
     op->SetInput("X", {x->Name()});
@@ -722,7 +722,7 @@ struct Layers {
       none_op->SetType("none");
       none_op->SetInput("X", {var->Name()});
       VarDesc* grad_var =
-          lod_tensor(GradVarName(var->Name()), var->GetShape(), false);
+          dense_tensor(GradVarName(var->Name()), var->GetShape(), false);
       none_op->SetOutput("Out", {grad_var->Name()});
     }
     for (int i = forward_ops.size() - 1; i >= 0; --i) {
@@ -743,7 +743,7 @@ struct Layers {
         for (auto var_name : op->Output(name)) {
           VarDesc* var = block->FindVar(var_name);
           VarDesc* grad_var =
-              lod_tensor(GradVarName(var_name), var->GetShape(), false);
+              dense_tensor(GradVarName(var_name), var->GetShape(), false);
           grad_var_names.push_back(grad_var->Name());
         }
         grad_op->SetInput(GradVarName(name), grad_var_names);
@@ -754,7 +754,7 @@ struct Layers {
         for (auto var_name : op->Input(name)) {
           VarDesc* var = block->FindVar(var_name);
           VarDesc* grad_var =
-              lod_tensor(GradVarName(var_name), var->GetShape(), false);
+              dense_tensor(GradVarName(var_name), var->GetShape(), false);
           grad_var_names.push_back(grad_var->Name());
         }
         grad_op->SetOutput(GradVarName(name), grad_var_names);
@@ -764,7 +764,7 @@ struct Layers {
   }
 
   VarDesc* cast(VarDesc* input, int in_dtype = 5, int out_dtype = 5) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("cast");
     op->SetInput("X", {input->Name()});
@@ -775,7 +775,7 @@ struct Layers {
   }
 
   VarDesc* range(VarDesc* start, VarDesc* end, VarDesc* step) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("range");
     op->SetInput("Start", {start->Name()});
@@ -786,7 +786,7 @@ struct Layers {
   }
 
   VarDesc* flatten_contiguous_range(VarDesc* input) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("flatten_contiguous_range");
     op->SetInput("X", {input->Name()});
@@ -799,9 +799,9 @@ struct Layers {
                                     VarDesc* pre_ids,
                                     VarDesc* pre_scores,
                                     int beam_size = 1) {
-    VarDesc* parent_idx = lod_tensor(unique_name());
-    VarDesc* selected_ids = lod_tensor(unique_name());
-    VarDesc* selected_scores = lod_tensor(unique_name());
+    VarDesc* parent_idx = dense_tensor(unique_name());
+    VarDesc* selected_ids = dense_tensor(unique_name());
+    VarDesc* selected_scores = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("beam_search");
     op->SetInput("ids", {ids->Name()});
@@ -816,7 +816,7 @@ struct Layers {
   }
 
   VarDesc* lod_reset(VarDesc* x, VarDesc* y) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("lod_reset");
     op->SetInput("X", {x->Name()});
@@ -826,7 +826,7 @@ struct Layers {
   }
 
   VarDesc* write_to_array(VarDesc* x, VarDesc* i) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("write_to_array");
     op->SetInput("X", {x->Name()});
@@ -836,7 +836,7 @@ struct Layers {
   }
 
   VarDesc* read_from_array(VarDesc* x, VarDesc* i) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("read_from_array");
     op->SetInput("X", {x->Name()});
@@ -846,7 +846,7 @@ struct Layers {
   }
 
   VarDesc* gather(VarDesc* x, VarDesc* index, int axis) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("gather");
     op->SetInput("X", {x->Name()});
@@ -863,7 +863,7 @@ struct Layers {
   }
 
   VarDesc* not_equal(VarDesc* x, VarDesc* y, int axis = -1) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("not_equal");
     op->SetInput("X", {x->Name()});
@@ -874,7 +874,7 @@ struct Layers {
   }
 
   VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("stack");
     std::vector<std::string> input_names;
@@ -888,7 +888,7 @@ struct Layers {
   }
 
   VarDesc* tile(VarDesc* x, const std::vector<int>& repeat_times = {2}) {
-    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* out = dense_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("tile");
     op->SetInput("X", {x->Name()});
@@ -898,10 +898,10 @@ struct Layers {
   }
 
  private:
-  VarDesc* lod_tensor(std::string name,
-                      std::vector<int64_t> shape = {},
-                      bool is_persistable = false,
-                      proto::VarType::Type data_type = proto::VarType::FP32) {
+  VarDesc* dense_tensor(std::string name,
+                        std::vector<int64_t> shape = {},
+                        bool is_persistable = false,
+                        proto::VarType::Type data_type = proto::VarType::FP32) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::DENSE_TENSOR);
     var->SetDataType(data_type);
@@ -915,7 +915,7 @@ struct Layers {
                     VarDesc* out = nullptr,
                     const AttributeMap* attrs = nullptr) {
     if (!out) {
-      out = lod_tensor(unique_name());
+      out = dense_tensor(unique_name());
     }
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType(type);
@@ -937,7 +937,7 @@ struct Layers {
                      VarDesc* out = nullptr,
                      const AttributeMap* attrs = nullptr) {
     if (!out) {
-      out = lod_tensor(unique_name());
+      out = dense_tensor(unique_name());
     }
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType(type);

@@ -32,7 +32,7 @@ ir::Tensor CreatePlaceHolder(const std::vector<int> &shape,
     expr_shape.push_back(Expr(s));
   }
   return CreatePlaceHolder(
-      ir::utils::GetCompitableShape(expr_shape), type, name);
+      ir::utils::GetCompatibleShape(expr_shape), type, name);
 }
 
 ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
@@ -75,7 +75,7 @@ ir::Tensor CreatePlaceHolder(const std::vector<ir::Dim> &shape,
 ir::Tensor CreatePlaceHolder(const std::vector<Expr> &origin_shape,
                              Type type,
                              const std::string &name) {
-  const auto shape = ir::utils::GetCompitableShape(origin_shape);
+  const auto shape = ir::utils::GetCompatibleShape(origin_shape);
   if (type.is_float(32)) {
     return Placeholder<float>(name, shape);
   } else if (type.is_float(64)) {

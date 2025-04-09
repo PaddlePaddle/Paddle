@@ -224,15 +224,15 @@ TEST(test_layer, test_debug_string) {
   ASSERT_TRUE(res_ut.find("UNRESOLVED_TYPE") != std::string::npos);
 
   // 4. test uninit lod tensor
-  std::shared_ptr<imperative::VarBase> lod_tensor(
-      new imperative::VarBase(false, "lod_tensor"));
-  auto tensor_l = lod_tensor->MutableVar()->GetMutable<phi::DenseTensor>();
-  std::string res_ui_lod_t = test_func(lod_tensor);
-  ASSERT_TRUE(res_ui_lod_t.find("NOT_INITED") != std::string::npos);
+  std::shared_ptr<imperative::VarBase> dense_tensor(
+      new imperative::VarBase(false, "dense_tensor"));
+  auto tensor_l = dense_tensor->MutableVar()->GetMutable<phi::DenseTensor>();
+  std::string res_ui_dense_t = test_func(dense_tensor);
+  ASSERT_TRUE(res_ui_dense_t.find("NOT_INITED") != std::string::npos);
 
   // 5. test init lod tensor
   tensor_l->mutable_data<float>(place);
-  std::string res_lod_t = test_func(lod_tensor);
+  std::string res_lod_t = test_func(dense_tensor);
   ASSERT_TRUE(res_lod_t.find("DenseTensor") != std::string::npos);
 
   // 6. test uninit selected rows

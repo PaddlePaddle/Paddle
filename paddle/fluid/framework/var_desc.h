@@ -135,6 +135,15 @@ class TEST_API VarDesc {
 
   std::vector<int32_t> GetLoDLevels() const;
 
+  void SetLegacyLoDLevel(int32_t legacy_lod_level);
+
+  void SetLegacyLoDLevels(
+      const std::vector<int32_t> &multiple_legacy_lod_level);
+
+  int32_t GetLegacyLoDLevel() const;
+
+  std::vector<int32_t> GetLegacyLoDLevels() const;
+
   proto::VarType::Type GetType() const;
 
   void SetType(proto::VarType::Type type);
@@ -213,7 +222,7 @@ class TEST_API VarDesc {
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
-  // Is it really needed? Or just mantain a ptr from the block?
+  // Is it really needed? Or just maintain a ptr from the block?
   proto::VarDesc desc_;
   AttributeMap attrs_;
 

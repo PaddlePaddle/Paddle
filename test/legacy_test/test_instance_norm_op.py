@@ -25,8 +25,8 @@ from paddle.base import core
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
     x_shape = x.shape
-    if len(x_shape) == 2:
-        x = np.reshape(x, (x.shape[0], x.shape[1], 1, 1))
+    if len(x_shape) < 4:
+        x = np.reshape(x, (x.shape[0], x.shape[1], -1, 1))
     n, c, h, w = x.shape
 
     mean_tile = np.reshape(mean, (n, c, 1, 1))
@@ -40,7 +40,7 @@ def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
     bias_tile = np.reshape(bias, (1, c, 1, 1))
     bias_tile = np.tile(bias_tile, (n, 1, h, w))
     y = scale_tile * x_norm + bias_tile
-    if len(x_shape) == 2:
+    if len(x_shape) < 4:
         y = np.reshape(y, x_shape)
     return y, mean, var
 
@@ -80,6 +80,8 @@ def _reference_instance_norm_grad(x, d_y, scale, mean, var, epsilon):
 
 
 def _cal_mean_variance(x, epsilon, mean_shape):
+    if len(x.shape) < 4:
+        x = np.reshape(x, (x.shape[0], x.shape[1], -1, 1))
     mean = np.reshape(np.mean(x, axis=(2, 3)), mean_shape)
     var = np.reshape(np.var(x, axis=(2, 3)), mean_shape)
     return mean, var
@@ -194,6 +196,64 @@ class TestInstanceNormCase1(TestInstanceNormOp):
         self.bias_np = np.zeros(scale_shape).astype(dtype)
         self.mean_np, self.var_np = _cal_mean_variance(
             self.x_np, self.epsilon, mean_shape
+        )
+
+
+class TestInstanceNormCaseNCL(TestInstanceNormOp):
+    def init_test_case(self):
+        x_shape = [2, 100, 4]
+        n, c = x_shape[0], x_shape[1]
+        self.epsilon = 1e-05
+        dtype = np.float32
+        scale_shape = [c]
+        mean_shape = [n * c]
+        np.random.seed()
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.ones(scale_shape).astype(dtype)
+        self.bias_np = np.zeros(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
+        )
+        self.fw_comp_atol = 1e-5
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_prim_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+
+class TestInstanceNormCaseNC(TestInstanceNormOp):
+    def init_test_case(self):
+        x_shape = [2, 100]
+        n, c = x_shape[0], x_shape[1]
+        self.epsilon = 1e-05
+        dtype = np.float32
+        scale_shape = [c]
+        mean_shape = [n * c]
+        np.random.seed()
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.ones(scale_shape).astype(dtype)
+        self.bias_np = np.zeros(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
+        )
+        self.fw_comp_atol = 2e-5
+
+    def test_check_output(self):
+        self.check_output(atol=2e-5, check_pir=True, check_prim_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 

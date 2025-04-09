@@ -132,7 +132,7 @@ void DistributeFpnProposalsKernel(
   }
   // merge lod information into DenseTensor
   for (int i = 0; i < num_level; ++i) {
-    LoD lod;
+    LegacyLoD lod;
     lod.emplace_back(multi_fpn_rois_lod0[i]);
     multi_fpn_rois[i]->set_lod(lod);
   }

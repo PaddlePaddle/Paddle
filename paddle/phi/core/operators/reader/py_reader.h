@@ -19,18 +19,18 @@
 #include <vector>
 
 #include "paddle/phi/core/framework/reader.h"
-#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/operators/reader/dense_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
 namespace reader {
 
-class LoDTensorBlockingQueue;
+class DenseTensorBlockingQueue;
 
 class PyReader : public framework::FileReader {
  public:
   explicit PyReader(
-      const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+      const std::shared_ptr<DenseTensorBlockingQueue>& queue,
       const std::vector<phi::DDim>& dims,
       const std::vector<framework::proto::VarType::Type>& var_types,
       const std::vector<bool>& need_check_feed);
@@ -44,7 +44,7 @@ class PyReader : public framework::FileReader {
   void Start() override;
 
  private:
-  std::shared_ptr<LoDTensorBlockingQueue> queue_;
+  std::shared_ptr<DenseTensorBlockingQueue> queue_;
 };
 
 }  // namespace reader

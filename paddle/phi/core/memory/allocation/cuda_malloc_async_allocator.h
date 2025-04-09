@@ -54,7 +54,7 @@ class CUDAMallocAsyncAllocation : public Allocation {
 
   gpuStream_t GetOwningStream() const { return malloc_stream_; }
 
-  void RecordStream(gpuStream_t stream);
+  bool RecordStream(gpuStream_t stream);
   void EraseStream(gpuStream_t stream);
   size_t Free();
 

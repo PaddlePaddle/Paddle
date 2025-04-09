@@ -27,6 +27,15 @@ void EighKernel(const Context& dev_ctx,
                 const std::string& uplo,
                 DenseTensor* out_w,
                 DenseTensor* out_v) {
+  if (x.numel() == 0) {
+    auto x_dim = x.dims();
+    auto w_dim = slice_ddim(x_dim, 0, x_dim.size() - 1);
+    out_w->Resize(w_dim);
+    out_v->Resize(x_dim);
+    dev_ctx.template Alloc<T>(out_w);
+    dev_ctx.template Alloc<T>(out_v);
+    return;
+  }
   bool is_lower = (uplo == "L");
   phi::funcs::MatrixEighFunctor<Context, T> functor;
   functor(dev_ctx, x, out_w, out_v, is_lower, true);

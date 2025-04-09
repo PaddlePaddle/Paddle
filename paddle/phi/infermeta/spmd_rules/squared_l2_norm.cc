@@ -29,7 +29,7 @@ using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo SquaredL2NormInferSpmd(const DistMetaTensor& x) {
   VLOG(4) << "SquaredL2NormInferSpmd:";
-  VLOG(4) << "Using ReductionInferSpmd Rule as interal implement.";
+  VLOG(4) << "Using ReductionInferSpmd Rule as internal implement.";
   SpmdInfo info = ReductionInferSpmdBase(
       x, {}, false, static_cast<int>(ReduceType::kRedSum));
   // NOTE: reduce output is 0D tensor which has a dims_mapping as {}, while

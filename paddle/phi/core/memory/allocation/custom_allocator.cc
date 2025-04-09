@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/memory/allocation/custom_allocator.h"
 
-#include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"

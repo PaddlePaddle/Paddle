@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -83,6 +84,17 @@ struct IdentityFunctor {
   }
 };
 
+template <typename T>
+struct IdentityFunctor<phi::dtype::complex<T>, bool> {
+  HOSTDEVICE inline IdentityFunctor() {}
+
+  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+
+  HOSTDEVICE inline bool operator()(const phi::dtype::complex<T>& x) const {
+    return x.real != 0 || x.imag != 0;
+  }
+};
+
 /**
  * @brief Default unary div functor. Divide by a constant
  */
@@ -142,7 +154,26 @@ struct MinFunctor {
   inline T initial() { return static_cast<T>(std::numeric_limits<T>::max()); }
 
   __device__ __forceinline__ T operator()(const T a, const T b) const {
+    if constexpr ((std::is_floating_point<T>::value) &&
+                  (!(std::is_same<T, int32_t>::value ||
+                     (std::is_same<T, int64_t>::value)))) {
+      if (isnan(a)) {
+        return a;
+      }
+      if (isnan(b)) {
+        return b;
+      }
+    }
     return (b < a) ? b : a;
+  }
+};
+
+template <>
+struct MinFunctor<bool> {
+  inline bool initial() { return false; }
+
+  __device__ __forceinline__ bool operator()(const bool a, const bool b) const {
+    return a & b;
   }
 };
 
@@ -156,7 +187,26 @@ struct MaxFunctor {
   }
 
   __device__ __forceinline__ T operator()(const T a, const T b) const {
+    if constexpr ((std::is_floating_point<T>::value) &&
+                  (!(std::is_same<T, int32_t>::value ||
+                     (std::is_same<T, int64_t>::value)))) {
+      if (isnan(a)) {
+        return a;
+      }
+      if (isnan(b)) {
+        return b;
+      }
+    }
     return (b > a) ? b : a;
+  }
+};
+
+template <>
+struct MaxFunctor<bool> {
+  inline bool initial() { return true; }
+
+  __device__ __forceinline__ bool operator()(const bool a, const bool b) const {
+    return a | b;
   }
 };
 

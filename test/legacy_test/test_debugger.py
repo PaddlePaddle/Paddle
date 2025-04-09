@@ -40,15 +40,9 @@ class TestDrawBlockGraphviz(unittest.TestCase):
         )
 
         # operator
-        mul_x = b.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
-        )
-        mul_y = b.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
-        mul_out = b.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
-        )
+        mul_x = b.create_parameter(dtype="float32", shape=[5, 10], name="mul.x")
+        mul_y = b.create_var(dtype="float32", shape=[10, 8], name="mul.y")
+        mul_out = b.create_var(dtype="float32", shape=[5, 8], name="mul.out")
         b.append_op(
             type="mul",
             inputs={"X": mul_x, "Y": mul_y},

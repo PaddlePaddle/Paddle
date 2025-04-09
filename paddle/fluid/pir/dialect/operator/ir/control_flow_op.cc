@@ -188,11 +188,9 @@ void IfOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\"";
-
-  if (VLOG_IS_ON(1)) {
-    os << " [id:" << op->id() << "]";
-  }
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
 
   printer.PrintOpOperands(*op);
   printer.PrintAttributeMap(*op);
@@ -342,60 +340,130 @@ bool IfOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
   // infer false block
   pir::InferSymExprForBlock(false_block(), infer_context);
 
-  auto GetSymExprForBlockResult =
-      [infer_context](const pir::Operation &op,
-                      uint32_t idx) -> const std::vector<symbol::DimExpr> & {
-    return infer_context->GetShapeOrDataForValue(op.operand_source(idx))
-        .shape();
+  auto GetShapeDataForBlockResult = [infer_context](const pir::Operation &op,
+                                                    uint32_t idx) {
+    const auto &operand_shape_data =
+        infer_context->GetShapeOrDataForValue(op.operand_source(idx));
+    return operand_shape_data;
+  };
+
+  auto IsScalar = [](const symbol::ShapeOrDataDimExprs &shape_or_data) -> bool {
+    if (shape_or_data.isa<symbol::TensorShapeOrDataDimExprs>()) {
+      if (shape_or_data.data().has_value() && shape_or_data.shape().empty()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto MergeShape =
+      [infer_context](const auto &true_dims,
+                      const auto &false_dims) -> std::vector<symbol::DimExpr> {
+    // merge shape for true and false block, new symbol will be assigned when
+    // the dims is not equal in true and false block, even if the dims are all
+    // constant, since we don't know which will be returned in compile time
+    // examples:
+    // true_block    false_block    return
+    // [1, 128]       [1, 256]      [1, S0]
+    // [1, S0]        [1, S1]       [1, S2]
+    // [1, S0]        [S1, S2]      [S1, S3]
+    // [1, S0]        [1, S0]       [1, S0]
+
+    std::vector<symbol::DimExpr> out_dims = true_dims;
+    if (false_dims.size() != 0) {
+      // now only support results of true and false block have same rank.
+      PADDLE_ENFORCE_EQ(true_dims.size(),
+                        false_dims.size(),
+                        common::errors::PreconditionNotMet(
+                            "The true and false block should have same rank, "
+                            "but got true_rank(%d) and false_rank(%d)",
+                            true_dims.size(),
+                            false_dims.size()));
+      for (size_t i = 0; i < true_dims.size(); i++) {
+        if (true_dims[i] != false_dims[i]) {
+          out_dims[i] = symbol::DimExpr{infer_context->GetNextSymName()};
+        }
+      }
+    }
+    return out_dims;
   };
 
   // TODO(lanxianghit): for llama, `if` op's result num always > 0, but
   // result_num == 0 should be supported in future
   if (num_results() > 0) {
     for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
-      const auto &true_dims =
-          GetSymExprForBlockResult(true_block().back(), rst_idx);
-      const auto &false_dims =
-          GetSymExprForBlockResult(false_block().back(), rst_idx);
+      const auto &true_shape_data =
+          GetShapeDataForBlockResult(true_block().back(), rst_idx);
+      const auto &false_shape_data =
+          GetShapeDataForBlockResult(false_block().back(), rst_idx);
 
-      // merge shape for true and false block, new symbol will be assigned when
-      // the dims is not equal in true and false block, even if the dims are all
-      // constant, since we don't know which will be returned in compile time
-      // examples:
-      // true_block    false_block    return
-      // [1, 128]       [1, 256]      [1, S0]
-      // [1, S0]        [1, S1]       [1, S2]
-      // [1, S0]        [S1, S2]      [S1, S3]
-      // [1, S0]        [1, S0]       [1, S0]
-
-      std::vector<symbol::DimExpr> out_dims = true_dims;
-      if (false_dims.size() != 0) {
-        // now only support results of true and false block have same rank.
-        PADDLE_ENFORCE_EQ(true_dims.size(),
-                          false_dims.size(),
-                          common::errors::PreconditionNotMet(
-                              "The true and false block should have same rank, "
-                              "but got true_rank(%d) and false_rank(%d)",
-                              true_dims.size(),
-                              false_dims.size()));
-        for (size_t i = 0; i < true_dims.size(); i++) {
-          if (true_dims[i] != false_dims[i]) {
-            out_dims[i] = symbol::DimExpr{infer_context->GetNextSymName()};
-          }
+      if (true_shape_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+          false_shape_data.isa<symbol::TensorShapeOrDataDimExprs>()) {
+        // 0-D tensor
+        if (IsScalar(true_shape_data) && IsScalar(false_shape_data)) {
+          const auto &out_data = MergeShape(true_shape_data.data().value(),
+                                            false_shape_data.data().value());
+          infer_context->SetShapeOrDataForValue(
+              result(rst_idx),
+              symbol::ShapeOrDataDimExprs{
+                  symbol::TensorShapeOrDataDimExprs({}, out_data)});
         }
+
+        const auto &out_dims =
+            MergeShape(true_shape_data.shape(), false_shape_data.shape());
+        infer_context->SetShapeOrDataForValue(
+            result(rst_idx),
+            symbol::ShapeOrDataDimExprs{
+                symbol::TensorShapeOrDataDimExprs(out_dims)});
+      } else if (true_shape_data.isa<symbol::NullShapeOrDataDimExpr>() &&
+                 false_shape_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+        infer_context->SetShapeOrDataForValue(
+            result(rst_idx),
+            symbol::ShapeOrDataDimExprs{symbol::NullShapeOrDataDimExpr()});
+      } else if (true_shape_data.isa<symbol::TensorListShapeOrDataDimExprs>() &&
+                 false_shape_data
+                     .isa<symbol::TensorListShapeOrDataDimExprs>()) {
+        const symbol::TensorListShapeOrDataDimExprs &true_list =
+            true_shape_data.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+        const symbol::TensorListShapeOrDataDimExprs &false_list =
+            false_shape_data.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+        PADDLE_ENFORCE_EQ(
+            true_list.size(),
+            false_list.size(),
+            common::errors::PreconditionNotMet(
+                "The result(%d) of true and false block should have same rank, "
+                "but got true_rank(%d) and false_rank(%d)",
+                rst_idx,
+                true_list.size(),
+                false_list.size()));
+        symbol::TensorListShapeOrDataDimExprs result_list(true_list.size());
+        for (size_t i = 0; i < true_list.size(); ++i) {
+          const auto &out_dims =
+              MergeShape(true_list[i].shape(), false_list[i].shape());
+          result_list[i] = symbol::TensorShapeOrDataDimExprs(out_dims);
+        }
+        infer_context->SetShapeOrDataForValue(
+            result(rst_idx), symbol::ShapeOrDataDimExprs{result_list});
+      } else if (false_shape_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+        infer_context->SetShapeOrDataForValue(result(rst_idx), true_shape_data);
+      } else if (true_shape_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+        infer_context->SetShapeOrDataForValue(result(rst_idx),
+                                              false_shape_data);
+      } else {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "IfOp::InferSymbolicShape: now only support "
+            "TensorShapeOrDataDimExprs, TensorListShapeOrDataDimExprs, "
+            "NullShapeOrDataDimExpr.Please check the type of %dth output of "
+            "true and false block.",
+            rst_idx));
       }
-
-      infer_context->SetShapeOrDataForValue(
-          result(rst_idx),
-          symbol::ShapeOrDataDimExprs{
-              symbol::TensorShapeOrDataDimExprs(out_dims)});
     }
-
     return true;
   } else {
     PADDLE_THROW(
         common::errors::Unimplemented("IfOp::InferSymbolicShape: now only "
-                                      "support num_results() == 1."));
+                                      "support num_results() >= 1."));
   }
 }
 
@@ -869,17 +937,54 @@ bool WhileOp::InferSymbolicShape(
   }
 
   // Set ShapeOrDataDimExpr for results
-  const auto &last_op = body().back();
-  for (size_t i = 1; i < last_op.operands_source().size(); ++i) {
-    infer_context->SetShapeOrDataForValue(
-        result(i - 1),
-        infer_context->GetShapeOrDataForValue(last_op.operand_source(i)));
-  }
-
   PADDLE_ENFORCE_EQ(body_args.size(),
                     num_results(),
                     common::errors::InvalidArgument(
                         "The body_args.size and num_results is not equal"));
+  const auto &yield_op = body().back();
+  bool need_infer_block_again = false;
+  for (size_t i = 1; i < yield_op.num_operands(); ++i) {
+    const symbol::ShapeOrDataDimExprs &yield_op_input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(yield_op.operand_source(i));
+    if (!yield_op_input_shape_or_data
+             .isa<symbol::TensorShapeOrDataDimExprs>()) {
+      continue;
+    }
+    const std::vector<symbol::DimExpr> &yield_op_input_shape =
+        yield_op_input_shape_or_data.shape();
+    const std::vector<symbol::DimExpr> &block_arg_shape =
+        infer_context->GetShapeOrDataForValue(body_args[i - 1]).shape();
+    std::vector<symbol::DimExpr> new_block_arg_dims = block_arg_shape;
+
+    bool need_set_block_args_again = false;
+    for (size_t j = 0; j < yield_op_input_shape.size(); j++) {
+      if (block_arg_shape[j].isa<int64_t>() &&
+          (yield_op_input_shape[j] != block_arg_shape[j])) {
+        need_infer_block_again = true;
+        need_set_block_args_again = true;
+        new_block_arg_dims[j] =
+            symbol::DimExpr{infer_context->GetNextSymName()};
+      }
+    }
+    // Reset block_args.
+    if (need_set_block_args_again) {
+      infer_context->SetShapeOrDataForValue(
+          body_args[i - 1],
+          symbol::ShapeOrDataDimExprs(
+              symbol::TensorShapeOrDataDimExprs(new_block_arg_dims)));
+    }
+  }
+
+  if (need_infer_block_again) {
+    pir::InferSymExprForBlock(body(), infer_context);
+  }
+
+  for (size_t i = 0; i < num_results(); ++i) {
+    infer_context->SetShapeOrDataForValue(
+        result(i),
+        infer_context->GetShapeOrDataForValue(yield_op.operand_source(i + 1)));
+  }
+
   for (size_t i = 0; i < num_results(); ++i) {
     AddCstrForOutputs(
         operand_source(i + 1), result(i), body_args[i], infer_context);
@@ -910,6 +1015,20 @@ std::vector<std::vector<pir::Value>> TuplePushOpVjpInterfaceModel::Vjp(
     res[i].resize(1);
     res[i][0] = pop_op.result(i - 1);
   }
+
+  // set pop op stop_gradient attribute.
+  std::vector<pir::Attribute> outs_stop_gradient;
+  for (auto i = 1u; i < op->num_operands(); ++i) {
+    auto value = op->operand_source(i);
+    auto bool_attr = value.attribute<pir::BoolAttribute>(kStopGradientAttrName);
+    outs_stop_gradient.push_back(
+        bool_attr ? bool_attr
+                  : pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+  }
+
+  pop_op->set_attribute(
+      kStopGradientAttrName,
+      pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
   return res;
 }
 

@@ -44,7 +44,7 @@ class CopyMatrixRowsFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class LoDTensor2BatchFunctor {
+class DenseTensor2BatchFunctor {
   // Calculate the length of each sequence and
   // sort sequence index by the length.
   // example:  sequences = {s0, s1, s2}
@@ -131,7 +131,7 @@ class LoDTensor2BatchFunctor {
     // The max_seqlen represents batch size after rearranging the
     // input DenseTensor. It is also the maximum length of input sequence.
 
-    phi::LoD batch_lods;
+    phi::LegacyLoD batch_lods;
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
     batch_lods.emplace_back(std::vector<size_t>{0});
@@ -174,7 +174,7 @@ class LoDTensor2BatchFunctor {
 };
 
 template <typename DeviceContext, typename T>
-class Batch2LoDTensorFunctor {
+class Batch2DenseTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const phi::DenseTensor& batch,

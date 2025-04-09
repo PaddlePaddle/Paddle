@@ -98,21 +98,22 @@ class Statement:
         self.type = type
 
     def __str__(self):
-        def to_string(inps):
-            inps = [x.__str__() for x in flatten(inps) if isinstance(x, Symbol)]
-            if len(inps) == 0:
-                return "(Empty)"
-            return ", ".join(inps)
-
         return "{} || {} = {} ({}) ".format(
             self.type + " " * (10 - len(self.type)),
-            to_string(self.outputs),
+            self.to_string(self.outputs),
             self.name,
-            to_string(self.inputs),
+            self.to_string(self.inputs),
         )
 
     def __repr__(self):
         return self.__str__()
+
+    @staticmethod
+    def to_string(inps):
+        inps = [x.__str__() for x in flatten(inps) if isinstance(x, Symbol)]
+        if len(inps) == 0:
+            return "(Empty)"
+        return ", ".join(inps)
 
 
 class CallStatement(Statement):
@@ -208,7 +209,7 @@ class StatementIR:
     In this way, we can reuse the original `to_static` function to realize the execution of the static graph.
 
     Note:
-        Don't create by yourself, just use the StatementIRCache.get()
+        Don't create by yourself, just use the StatementIRFactory.create()
     """
 
     def __init__(self, name: str):

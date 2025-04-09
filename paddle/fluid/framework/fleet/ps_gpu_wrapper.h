@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
-
 #include <google/protobuf/text_format.h>
+#include <stdlib.h>
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -390,6 +390,22 @@ class PSGPUWrapper {
     if (s_instance_ != NULL && is_initialized_ == false) {
       VLOG(3) << "PSGPUWrapper Begin InitializeGPU";
       is_initialized_ = true;
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_NCCL)
+      const char* launch_mode = std::getenv("NCCL_LAUNCH_MODE");
+      if (launch_mode != nullptr) {
+        if (std::string(launch_mode) == "PARALLEL") {
+          PADDLE_THROW(common::errors::Unavailable(
+              "on heterps-mode you must export NCCL_LAUNCH_MODE=GROUP for no "
+              "hang, but received [%s]",
+              launch_mode));
+        }
+      } else {
+        PADDLE_THROW(
+            common::errors::Unavailable("on heterps-mode you must export "
+                                        "NCCL_LAUNCH_MODE=GROUP for no hang"));
+      }
+#endif
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_device());
@@ -1196,6 +1212,6 @@ class PSGPUWrapper {
   static bool is_initialized_;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

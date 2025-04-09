@@ -32,7 +32,6 @@
 #include <vector>
 
 #include "paddle/phi/core/enforce.h"
-
 // Utility functions for TCP socket.
 namespace phi {
 namespace distributed {
@@ -45,7 +44,6 @@ using SocketType = int;
 
 namespace tcputils {
 
-constexpr int LISTENQ = 2048;
 constexpr std::chrono::seconds kDelay = std::chrono::seconds(3);
 constexpr std::chrono::seconds kNoTimeout = std::chrono::seconds::zero();
 constexpr std::chrono::seconds kDefaultTimeout = std::chrono::seconds(360);

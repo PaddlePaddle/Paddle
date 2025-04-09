@@ -34,8 +34,7 @@
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static const phi::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<phi::DenseTensor>()) {
@@ -271,7 +270,6 @@ void AllReduce(const framework::Variable &src,
   AllReduce(src, dst, strategy, 0, true);
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
 #endif

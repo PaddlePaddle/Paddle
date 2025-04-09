@@ -103,7 +103,7 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots,
   PADDLE_ENFORCE_EQ(
       batch_size,
       static_cast<int>(one_batch.lod.size() - 1),
-      ::common::errors::Fatal("The lod size of one batch is invaild."));
+      ::common::errors::Fatal("The lod size of one batch is invalid."));
   input_slots->assign({input_tensor});
 }
 
@@ -157,7 +157,7 @@ TEST(Analyzer_LAC, profile) {
     size_t batch1_size = sizeof(lac_ref_data) / sizeof(int64_t);
     PADDLE_ENFORCE_GE(size,
                       batch1_size,
-                      ::common::errors::Fatal("The size of batch is invaild."));
+                      ::common::errors::Fatal("The size of batch is invalid."));
     int64_t *pdata = static_cast<int64_t *>(output[0].data.data());
     for (size_t i = 0; i < batch1_size; ++i) {
       EXPECT_EQ(pdata[i], lac_ref_data[i]);

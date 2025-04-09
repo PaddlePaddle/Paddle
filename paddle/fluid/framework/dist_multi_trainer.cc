@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
                                   Dataset *dataset) {
@@ -115,7 +114,7 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
                     thread_num_,
                     common::errors::InvalidArgument(
                         "static_cast<int>(pool.size()) is invalid, "
-                        "expected %d but recieved %d.",
+                        "expected %d but received %d.",
                         thread_num_,
                         static_cast<int>(pool.size())));
   for (int i = 0; i < thread_num_; ++i) {
@@ -164,7 +163,7 @@ void DistMultiTrainer::Run() {
                     thread_num_,
                     common::errors::InvalidArgument(
                         "static_cast<int>(pool.size()) is invalid, "
-                        "expected %d but recieved %d.",
+                        "expected %d but received %d.",
                         thread_num_,
                         static_cast<int>(pool.size())));
   for (int i = 0; i < thread_num_; ++i) {
@@ -243,5 +242,4 @@ void DistMultiTrainer::MergeToRootScope(phi::DenseTensor *root_tensor,
     root_data[i] += data[i];
   }
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

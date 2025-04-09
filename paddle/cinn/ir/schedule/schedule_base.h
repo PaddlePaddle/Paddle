@@ -108,6 +108,7 @@ class ScheduleBase {
   virtual std::vector<Expr> GetLoops(const Expr& block) const = 0;
   virtual std::vector<Expr> GetLoops(const std::string& block_name) const = 0;
   virtual std::vector<Expr> GetAllBlocks() const = 0;
+  virtual std::vector<stmt::StmtRef> GetAllSchedules() const = 0;
   virtual std::vector<Expr> GetChildBlocks(const Expr& expr) const = 0;
   virtual Expr GetBlock(const std::string& block_name) const = 0;
 

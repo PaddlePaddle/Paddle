@@ -37,9 +37,17 @@
 
 namespace paddle::platform {
 
+#ifdef PADDLE_WITH_XPTI
+using XPTIEvent = baidu::xpu::xpti::XPTIEvent;
+using XPTIEventAPI = baidu::xpu::xpti::XPTIEventAPI;
+using XPTIEventKernel = baidu::xpu::xpti::XPTIEventKernel;
+using XPTIEventMem = baidu::xpu::xpti::XPTIEventMem;
+using XPTIEventWait = baidu::xpu::xpti::XPTIEventWait;
+#endif
+
 void XPUTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
-      state_ == TracerState::UNINITED || state_ == TracerState::STOPED,
+      state_ == TracerState::UNINITED || state_ == TracerState::STOPPED,
       true,
       common::errors::PreconditionNotMet("XPUTracer must be UNINITED"));
 #ifdef PADDLE_WITH_XPTI
@@ -71,61 +79,76 @@ void XPUTracer::StopTracing() {
   XPTI_CALL(phi::dynload::xptiActivityDisable());
   VLOG(3) << "disable xpti activity";
 #endif
-  state_ = TracerState::STOPED;
+  state_ = TracerState::STOPPED;
 }
 
 #ifdef PADDLE_WITH_XPTI
-void AddApiRecord(const baidu::xpu::xpti::XPTIEventApi* api,
-                  uint64_t start_ns,
-                  TraceEventCollector* collector) {
+static void AddApiRecord(const XPTIEvent* xpti_event,
+                         uint64_t start_ns,
+                         TraceEventCollector* collector) {
+  const auto* api = dynamic_cast<const XPTIEventAPI*>(xpti_event);
+  if (api == nullptr) {
+    VLOG(4) << "xpu event " << xpti_event->name << " is not a API event";
+    return;
+  }
   if (api->start < start_ns) {
-    VLOG(4) << "xpu event " << api->get_name() << " start " << api->start
+    VLOG(4) << "xpu event " << api->name << " start " << api->start
             << " is before profiler start " << start_ns << ", drop event";
     return;
   }
   RuntimeTraceEvent event;
-  event.name = api->get_name();
+  event.name = api->name;
   event.start_ns = api->start;
   event.end_ns = api->end;
   event.process_id = api->pid;
   event.thread_id = api->tid;
-  event.correlation_id = api->args.token;
+  event.correlation_id = api->token;
 
   collector->AddRuntimeEvent(std::move(event));
   VLOG(4) << "Add api event " << event.name;
 }
 
-void AddKernelRecord(const baidu::xpu::xpti::XPTIEventKernel* kernel,
-                     uint64_t start_ns,
-                     TraceEventCollector* collector) {
+static void AddKernelRecord(const XPTIEvent* xpti_event,
+                            uint64_t start_ns,
+                            TraceEventCollector* collector) {
+  const auto* kernel = dynamic_cast<const XPTIEventKernel*>(xpti_event);
+  if (kernel == nullptr) {
+    VLOG(4) << "xpu event " << xpti_event->name << " is not a kernel event";
+    return;
+  }
   if (kernel->start < start_ns) {
-    VLOG(4) << "xpu event " << kernel->get_name() << "start " << kernel->start
+    VLOG(4) << "xpu event " << kernel->name << "start " << kernel->start
             << "is before profiler start " << start_ns << ", drop event";
     return;
   }
   DeviceTraceEvent event;
-  event.name = kernel->get_name();
+  event.name = kernel->name;
   event.type = TracerEventType::Kernel;
   event.start_ns = kernel->start;
   event.end_ns = kernel->end;
-  event.device_id = kernel->args.board_id;
-  event.stream_id = kernel->args.stream_id;
-  event.correlation_id = kernel->args.token;
+  event.device_id = kernel->device_id;
+  event.stream_id = kernel->stream_id;
+  event.correlation_id = kernel->token;
 
   collector->AddDeviceEvent(std::move(event));
   VLOG(4) << "Add kernel event " << event.name;
 }
 
-void AddWaitRecord(const baidu::xpu::xpti::XPTIEventWait* wait,
-                   uint64_t start_ns,
-                   TraceEventCollector* collector) {
+static void AddWaitRecord(const XPTIEvent* xpti_event,
+                          uint64_t start_ns,
+                          TraceEventCollector* collector) {
+  const auto* wait = dynamic_cast<const XPTIEventWait*>(xpti_event);
+  if (wait == nullptr) {
+    VLOG(4) << "xpu event" << xpti_event->name << "is not a wait event";
+    return;
+  }
   if (wait->start < start_ns) {
-    VLOG(4) << "xpu event " << wait->get_name() << "start " << wait->start
+    VLOG(4) << "xpu event " << wait->name << "start " << wait->start
             << "is before profiler start " << start_ns << ", drop event";
     return;
   }
   RuntimeTraceEvent event;
-  event.name = wait->get_name();
+  event.name = wait->name;
   event.start_ns = wait->start;
   event.end_ns = wait->end;
   event.process_id = wait->pid;
@@ -135,16 +158,21 @@ void AddWaitRecord(const baidu::xpu::xpti::XPTIEventWait* wait,
   VLOG(4) << "Add wait event " << event.name;
 }
 
-void AddMemcpyRecord(const baidu::xpu::xpti::XPTIEventMem* memcpy,
-                     uint64_t start_ns,
-                     TraceEventCollector* collector) {
+static void AddMemcpyRecord(const XPTIEvent* xpti_event,
+                            uint64_t start_ns,
+                            TraceEventCollector* collector) {
+  const auto* memcpy = dynamic_cast<const XPTIEventMem*>(xpti_event);
+  if (memcpy == nullptr) {
+    VLOG(4) << "xpu event" << xpti_event->name << "is not a memcpy event";
+    return;
+  }
   if (memcpy->start < start_ns) {
-    VLOG(4) << "xpu event " << memcpy->get_name() << "start " << memcpy->start
+    VLOG(4) << "xpu event " << memcpy->name << "start " << memcpy->start
             << "is before profiler start " << start_ns << ", drop event";
     return;
   }
   RuntimeTraceEvent event;
-  event.name = memcpy->get_name();
+  event.name = memcpy->name;
   event.start_ns = memcpy->start;
   event.end_ns = memcpy->end;
   event.process_id = memcpy->pid;
@@ -158,44 +186,31 @@ void AddMemcpyRecord(const baidu::xpu::xpti::XPTIEventMem* memcpy,
 void XPUTracer::CollectTraceData(TraceEventCollector* collector) {
   PADDLE_ENFORCE_EQ(
       state_,
-      TracerState::STOPED,
-      common::errors::PreconditionNotMet("Tracer must be STOPED"));
+      TracerState::STOPPED,
+      common::errors::PreconditionNotMet("Tracer must be STOPPED"));
 #ifdef PADDLE_WITH_XPTI
   XPTI_CALL(phi::dynload::xptiActivityFlushAll());
   baidu::xpu::xpti::XPTIEvent* record = nullptr;
   while (true) {
     XPTIResult status = phi::dynload::xptiActivityGetNextRecord(&record);
     if (status == XPTI_SUCCESS) {
-      record->PrintForDebug();
       switch (record->type) {
         case XPTI_EVENT_TYPE_API:
-          AddApiRecord(
-              reinterpret_cast<const baidu::xpu::xpti::XPTIEventApi*>(record),
-              tracing_start_ns_,
-              collector);
+          AddApiRecord(record, tracing_start_ns_, collector);
           break;
         case XPTI_EVENT_TYPE_KERNEL:
-          AddKernelRecord(
-              reinterpret_cast<const baidu::xpu::xpti::XPTIEventKernel*>(
-                  record),
-              tracing_start_ns_,
-              collector);
+          AddKernelRecord(record, tracing_start_ns_, collector);
           break;
         case XPTI_EVENT_TYPE_MEMCPY:
-          AddMemcpyRecord(
-              reinterpret_cast<const baidu::xpu::xpti::XPTIEventMem*>(record),
-              tracing_start_ns_,
-              collector);
+          AddMemcpyRecord(record, tracing_start_ns_, collector);
           break;
         case XPTI_EVENT_TYPE_WAIT:
-          AddWaitRecord(
-              reinterpret_cast<const baidu::xpu::xpti::XPTIEventWait*>(record),
-              tracing_start_ns_,
-              collector);
+          AddWaitRecord(record, tracing_start_ns_, collector);
           break;
         default:
           break;
       }
+      phi::dynload::xptiActivityPopRecord();
     } else if (status == XPTI_INVALID_DATA) {
       // data queue already empty
       VLOG(4) << "xpti data queue is empty now, collect trace data done";

@@ -151,14 +151,14 @@ class Timeline:
                             self._chrome_trace.emit_pid(f"{k}:cuda_api", pid)
                         else:
                             self._chrome_trace.emit_pid(
-                                "%s:cpu:block:%d" % (k, event.device_id), pid
+                                f"{k}:cpu:block:{event.device_id}", pid
                             )
                 elif event.type == profiler_pb2.Event.GPUKernel:
                     if (k, event.device_id, "GPUKernel") not in self._devices:
                         pid = self._allocate_pid()
                         self._devices[(k, event.device_id, "GPUKernel")] = pid
                         self._chrome_trace.emit_pid(
-                            "%s:gpu:%d" % (k, event.device_id), pid
+                            f"{k}:gpu:{event.device_id}", pid
                         )
             if not hasattr(profile_pb, "mem_events"):
                 continue
@@ -168,7 +168,7 @@ class Timeline:
                         pid = self._allocate_pid()
                         self._mem_devices[(k, mevent.device_id, "GPU")] = pid
                         self._chrome_trace.emit_pid(
-                            "memory usage on %s:gpu:%d" % (k, mevent.device_id),
+                            f"memory usage on {k}:gpu:{mevent.device_id}",
                             pid,
                         )
                 elif mevent.place == profiler_pb2.MemEvent.CPUPlace:
@@ -176,7 +176,7 @@ class Timeline:
                         pid = self._allocate_pid()
                         self._mem_devices[(k, mevent.device_id, "CPU")] = pid
                         self._chrome_trace.emit_pid(
-                            "memory usage on %s:cpu:%d" % (k, mevent.device_id),
+                            f"memory usage on {k}:cpu:{mevent.device_id}",
                             pid,
                         )
                 elif mevent.place == profiler_pb2.MemEvent.CUDAPinnedPlace:
@@ -190,27 +190,26 @@ class Timeline:
                             (k, mevent.device_id, "CUDAPinnedPlace")
                         ] = pid
                         self._chrome_trace.emit_pid(
-                            "memory usage on %s:cudapinnedplace:%d"
-                            % (k, mevent.device_id),
+                            f"memory usage on {k}:cudapinnedplace:{mevent.device_id}",
                             pid,
                         )
                 if (k, 0, "CPU") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "CPU")] = pid
                     self._chrome_trace.emit_pid(
-                        "memory usage on %s:cpu:%d" % (k, 0), pid
+                        f"memory usage on {k}:cpu:{0}", pid
                     )
                 if (k, 0, "GPU") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "GPU")] = pid
                     self._chrome_trace.emit_pid(
-                        "memory usage on %s:gpu:%d" % (k, 0), pid
+                        f"memory usage on {k}:gpu:{0}", pid
                     )
                 if (k, 0, "CUDAPinnedPlace") not in self._mem_devices:
                     pid = self._allocate_pid()
                     self._mem_devices[(k, 0, "CUDAPinnedPlace")] = pid
                     self._chrome_trace.emit_pid(
-                        "memory usage on %s:cudapinnedplace:%d" % (k, 0), pid
+                        f"memory usage on {k}:cudapinnedplace:{0}", pid
                     )
 
     def _allocate_events(self):

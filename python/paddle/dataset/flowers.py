@@ -114,7 +114,7 @@ def reader_creator(
 
         img2label = {}
         for i in indexes:
-            img = "jpg/image_%05d.jpg" % i
+            img = f"jpg/image_{i:05}.jpg"
             img2label[img] = labels[i - 1]
 
         tf = tarfile.open(data_file)

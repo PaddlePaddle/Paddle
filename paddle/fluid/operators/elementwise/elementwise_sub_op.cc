@@ -125,7 +125,7 @@ class ElementwiseSubCompositeDoubleGradOpMaker
                       -1,
                       common::errors::InvalidArgument(
                           "We only support axis = -1 in composite "
-                          "subtract_doubel_grad but we got: ",
+                          "subtract_double_grad but we got: ",
                           axis));
 
     paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);

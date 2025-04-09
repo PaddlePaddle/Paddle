@@ -81,7 +81,7 @@ def convert_pascalvoc_local2bin(args):
 
     boxes = []
     lbls = []
-    difficults = []
+    difficulties = []
     object_nums = []
 
     for line in lines:
@@ -127,12 +127,12 @@ def convert_pascalvoc_local2bin(args):
 
         lbls.extend(bbox_labels[:, 0])
         boxes.extend(bbox_labels[:, 1:5])
-        difficults.extend(bbox_labels[:, -1])
+        difficulties.extend(bbox_labels[:, -1])
 
     f1.write(np.array(object_nums).astype('uint64').tobytes())
     f1.write(np.array(lbls).astype('int64').tobytes())
     f1.write(np.array(boxes).astype('float32').tobytes())
-    f1.write(np.array(difficults).astype('int64').tobytes())
+    f1.write(np.array(difficulties).astype('int64').tobytes())
     f1.close()
 
     object_nums_sum = sum(object_nums)
@@ -158,9 +158,7 @@ def convert_pascalvoc_local2bin(args):
 def print_processbar(done_percentage):
     done_filled = done_percentage * '='
     empty_filled = (100 - done_percentage) * ' '
-    sys.stdout.write(
-        "\r[%s%s]%d%%" % (done_filled, empty_filled, done_percentage)
-    )
+    sys.stdout.write(f"\r[{done_filled}{empty_filled}]{done_percentage}%")
     sys.stdout.flush()
 
 
@@ -170,7 +168,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
     gt_labels = {}
     boxes = []
     lbls = []
-    difficults = []
+    difficulties = []
     object_nums = []
 
     # map label to number (index)
@@ -256,7 +254,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
             continue
         lbls.extend(bbox_labels[:, 0])
         boxes.extend(bbox_labels[:, 1:5])
-        difficults.extend(bbox_labels[:, -1])
+        difficulties.extend(bbox_labels[:, -1])
 
         if line_idx % per_percentage:
             print_processbar(line_idx / per_percentage)
@@ -267,7 +265,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
     f1.write(np.array(object_nums).astype('uint64').tobytes())
     f1.write(np.array(lbls).astype('int64').tobytes())
     f1.write(np.array(boxes).astype('float32').tobytes())
-    f1.write(np.array(difficults).astype('int64').tobytes())
+    f1.write(np.array(difficulties).astype('int64').tobytes())
     f1.close()
     print_processbar(100)
     print("Conversion finished!\n")

@@ -110,7 +110,7 @@ namespace flags {
 /**
  * @brief Parse commandline flags.
  *
- * It recieves commandline arguments passed in argc and argv from main function,
+ * It receives commandline arguments passed in argc and argv from main function,
  * argv[0] is the program name, and argv[1:] are the commandline arguments
  * which matching the format "--name=value" or "--name value". After parsing,
  * the corresponding flag value will be reset.

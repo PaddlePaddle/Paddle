@@ -125,9 +125,7 @@ class TestCollectiveAPIRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args['static_mode'] and (
-            args["use_comm_context"] or args["dynamic_static_unified_comm"]
-        ):
+        if args['static_mode']:
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
             paddle.distributed.init_parallel_env()
@@ -187,9 +185,6 @@ def runtime_main(test_class, col_type):
     args["dtype"] = os.getenv("DTYPE")
     args["reduce_type"] = os.getenv("REDUCE_TYPE")
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
-    args["dynamic_static_unified_comm"] = bool(
-        os.getenv("FLAGS_dynamic_static_unified_comm", "true").lower() == "true"
-    )
     model.run_trainer(args)
 
 
@@ -248,6 +243,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w0_ep,
+                # 'XPUAPI_DEBUG': '0x1',
             }
 
             env1 = {
@@ -256,6 +252,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "2",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": w1_ep,
+                # 'XPUAPI_DEBUG': '0x1',
             }
         # update environment
         env0.update(envs)
@@ -274,10 +271,10 @@ class TestDistBase(unittest.TestCase):
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         path0 = os.path.join(
-            self.temp_dir.name, "/tmp/tr0_err_%d.log" % os.getpid()
+            self.temp_dir.name, f"/tmp/tr0_err_{os.getpid()}.log"
         )
         path1 = os.path.join(
-            self.temp_dir.name, "/tmp/tr1_err_%d.log" % os.getpid()
+            self.temp_dir.name, f"/tmp/tr1_err_{os.getpid()}.log"
         )
         tr0_pipe = open(path0, "w")
         tr1_pipe = open(path1, "w")
@@ -302,6 +299,8 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+        # sys.stdout.write(f'trainer 0 stdout: {tr0_out}\n')
+        # sys.stdout.write(f'trainer 1 stdout: {tr1_out}\n')
         with open(path0, "r") as f:
             sys.stderr.write(f'trainer 0 stderr file: {f.read()}\n')
         with open(path1, "r") as f:
@@ -501,7 +500,7 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
-        elif col_type == "all_to_all":
+        elif col_type in ["alltoall_single", "alltoall_tensor", "alltoall"]:
             need_result1 = np.vstack(
                 (
                     input1[0 : input1.shape[0] // 2, :],
@@ -514,6 +513,80 @@ class TestDistBase(unittest.TestCase):
                     input2[input2.shape[0] // 2 :, :],
                 )
             )
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type in ["alltoall_single_unequal_split"]:
+            need_result1 = np.vstack(
+                (
+                    input1[0 : input1.shape[0] // 2 - 1, :],
+                    input2[0 : input2.shape[0] // 2 - 2, :],
+                )
+            )
+            need_result2 = np.vstack(
+                (
+                    input1[input1.shape[0] // 2 - 1 :, :],
+                    input2[input2.shape[0] // 2 - 2 :, :],
+                )
+            )
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_single_unequal_split_empty":
+            none_shape = list(input1.shape)
+            none_shape[0] = 0
+
+            need_result1 = np.empty(none_shape, dtype=input1.dtype)
+            need_result2 = input2
+            tr0_out = np.vstack(tr0_out)
+            tr1_out = np.vstack(tr1_out)
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_unequal_split":
+            half_dim0 = input1.shape[0] // 2
+            half_dim1 = input1.shape[1] // 2
+            need_result1 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, : half_dim1 - 1].flatten(),
+                    input2[half_dim0 - 1 :, : half_dim1 - 2].flatten(),
+                ],
+                axis=0,
+            )
+            need_result2 = np.concatenate(
+                [
+                    input1[: half_dim0 - 1, half_dim1 - 1 :].flatten(),
+                    input2[half_dim0 - 1 :, half_dim1 - 2 :].flatten(),
+                ],
+                axis=0,
+            )
+            tr0_out = np.concatenate([out.flatten() for out in tr0_out])
+            tr1_out = np.concatenate([out.flatten() for out in tr1_out])
+            np.testing.assert_allclose(
+                tr0_out, need_result1, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out, need_result2, rtol=1e-05, atol=1e-05
+            )
+        elif col_type == "alltoall_unequal_split_empty":
+            none_shape = list(input1.shape)
+            none_shape[0] = 0
+
+            need_result1 = input2
+            need_result2 = np.empty(none_shape, dtype=input1.dtype)
             tr0_out = np.vstack(tr0_out)
             tr1_out = np.vstack(tr1_out)
             np.testing.assert_allclose(
@@ -731,4 +804,6 @@ class TestDistBase(unittest.TestCase):
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
         else:
-            pass
+            raise NotImplementedError(
+                f"col_type {col_type} check_with_place not implemented"
+            )

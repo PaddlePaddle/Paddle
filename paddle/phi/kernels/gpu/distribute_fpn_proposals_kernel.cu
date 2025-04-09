@@ -36,13 +36,13 @@ namespace cub = hipcub;
 namespace phi {
 
 static constexpr int kNumCUDAThreads = 64;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumMaximumNumBlocks = 4096;
 
 int const BBoxSize = 4;
 
 static inline int NumBlocks(const int N) {
   return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <class T>
@@ -253,7 +253,7 @@ void DistributeFpnProposalsKernel(
       Copy(dev_ctx, sub_lod, dev_ctx.GetPlace(), true, rois_num_t);
       rois_num_t->Resize({lod_size});
     }
-    LoD lod;
+    LegacyLoD lod;
     lod.emplace_back(offset);
     multi_fpn_rois[i]->set_lod(lod);
   }

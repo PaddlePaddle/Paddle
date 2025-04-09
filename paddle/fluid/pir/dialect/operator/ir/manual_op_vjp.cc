@@ -24,8 +24,7 @@
 // TODO(wanghao107)
 // this file will be generated in pd_op.cc
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 using IntArray = paddle::experimental::IntArray;
 
 std::vector<std::vector<pir::Value>> ExpandOp::Vjp(
@@ -300,5 +299,77 @@ std::vector<std::vector<pir::Value>> ArrayToTensorOp::Vjp(
   return res;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+std::vector<std::vector<pir::Value>> FusedGemmEpilogueOp::Vjp(
+    pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs_,
+    const std::vector<std::vector<pir::Value>>& outputs,
+    const std::vector<std::vector<pir::Value>>& out_grads,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      3,
+      common::errors::InvalidArgument(
+          "fused_gemm_epilogue op's inputs size should be 3, but now is %d.",
+          inputs_.size()));
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      2,
+      common::errors::InvalidArgument(
+          "fused_gemm_epilogue op's outputs size should be 2, but now is %d.",
+          outputs.size()));
+
+  VLOG(6) << "Prepare inputs of fused_gemm_epilogue_grad";
+
+  Tensor x(std::make_shared<primitive::LazyTensor>(inputs_[0][0]));
+  Tensor y(std::make_shared<primitive::LazyTensor>(inputs_[1][0]));
+  paddle::optional<Tensor> reserve_space;
+  if (!IsEmptyValue(outputs[1][0])) {
+    reserve_space = paddle::make_optional<Tensor>(
+        Tensor(std::make_shared<primitive::LazyTensor>(outputs[1][0])));
+  }
+  Tensor out_grad(std::make_shared<primitive::LazyTensor>(out_grads[0][0]));
+
+  pir::Value reserve_space_value = outputs[1][0];
+
+  PADDLE_ENFORCE_EQ(
+      !reserve_space_value.type(),
+      true,
+      common::errors::InvalidArgument(
+          "fused_gemm_epilogue op could not run backward with activation"));
+
+  VLOG(6) << "Vjp prepare Prepare attributes of fused_gemm_epilogue_grad";
+
+  bool trans_x = op->attribute("trans_x").dyn_cast<pir::BoolAttribute>().data();
+  bool trans_y = op->attribute("trans_y").dyn_cast<pir::BoolAttribute>().data();
+  std::string activation =
+      op->attribute("activation").dyn_cast<pir::StrAttribute>().AsString();
+
+  VLOG(6) << "Vjp prepare call fused_gemm_epilogue's vjp interface";
+
+  std::vector<std::vector<Tensor>> tensor_res =
+      primitive::fused_gemm_epilogue_vjp(x,
+                                         y,
+                                         reserve_space,
+                                         out_grad,
+                                         trans_x,
+                                         trans_y,
+                                         activation,
+                                         stop_gradients);
+
+  VLOG(6) << "Vjp prepare stop gradient of fused_gemm_epilogue_grad";
+
+  std::vector<std::vector<pir::Value>> res(tensor_res.size());
+  for (size_t i = 0; i < tensor_res.size(); ++i) {
+    res[i].resize(tensor_res[i].size());
+    for (size_t j = 0; j < tensor_res[i].size(); ++j) {
+      if (tensor_res[i][j].defined()) {
+        res[i][j] = std::static_pointer_cast<primitive::LazyTensor>(
+                        tensor_res[i][j].impl())
+                        ->value();
+      }
+    }
+  }
+  return res;
+}
+
+}  // namespace paddle::dialect

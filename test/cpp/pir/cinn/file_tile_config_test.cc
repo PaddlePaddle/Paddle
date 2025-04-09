@@ -64,9 +64,9 @@ void RemoveDir(const cinn::common::Target target,
     if (PathExists(test_path)) {
       std::string full_test_name = test_path + file_name;
       std::remove(full_test_name.c_str());
-      LOG(INFO) << "File exsit.";
+      LOG(INFO) << "File exist.";
     } else {
-      LOG(INFO) << "File doesn't exsit.";
+      LOG(INFO) << "File doesn't exist.";
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;

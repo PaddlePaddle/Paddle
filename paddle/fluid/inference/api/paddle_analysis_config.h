@@ -120,54 +120,6 @@ struct PD_INFER_DECL XpuConfig {
   std::map<std::string, int> quant_post_dynamic_weight_methods;
 };
 
-struct DistConfig {
-  bool use_dist_model() const { return use_dist_model_; }
-  void EnableDistModel(bool use_dist_model) {
-    use_dist_model_ = use_dist_model;
-  }
-
-  std::vector<std::string> trainer_endpoints() const {
-    return trainer_endpoints_;
-  }
-
-  std::string current_endpoint() const { return current_endpoint_; }
-
-  void SetEndpoints(const std::vector<std::string>& trainer_endpoints,
-                    const std::string& current_endpoint) {
-    trainer_endpoints_ = trainer_endpoints;
-    current_endpoint_ = current_endpoint;
-  }
-
-  int64_t nranks() const { return nranks_; }
-
-  int64_t rank() const { return rank_; }
-
-  void SetRanks(int64_t nranks, int64_t rank) {
-    nranks_ = nranks;
-    rank_ = rank;
-  }
-
-  std::string comm_init_config() const { return comm_init_config_; }
-
-  void SetCommInitConfig(const std::string& comm_init_config) {
-    comm_init_config_ = comm_init_config;
-  }
-
-  void SetCarrierId(const std::string& carrier_id) { carrier_id_ = carrier_id; }
-
-  std::string carrier_id() const { return carrier_id_; }
-
- protected:
-  // DistModel Inference related
-  bool use_dist_model_{false};  // whether use DistModel or not
-  std::vector<std::string> trainer_endpoints_{};  // all trainers' endpoints
-  std::string current_endpoint_{};                // current trainer's endpoint
-  int64_t nranks_{1};               // total ranks (number of trainers)
-  int64_t rank_{0};                 // rank
-  std::string comm_init_config_{};  // converter config path
-  std::string carrier_id_{"inference"};
-};
-
 ///
 /// \brief configuration manager for AnalysisPredictor.
 /// \since 1.7.0
@@ -616,6 +568,21 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether to specify the inputs' names.
   ///
   bool specify_input_name() const { return specify_input_name_; }
+
+  ///
+  /// \brief Turn on the OpenVINO engine.
+  /// The OpenVINO engine will accelerate some subgraphs in the original Fluid
+  /// computation graph. In some models such as resnet50, GoogleNet and so on,
+  /// it gains significant performance acceleration.
+  ///
+  void EnableOpenVINOEngine(Precision inference_precision);
+
+  ///
+  /// \brief A boolean state telling whether the OpenVINO engine is used.
+  ///
+  /// \return bool Whether the OpenVINO engine is used.
+  ///
+  bool openvino_engine_enabled() const;
 
   ///
   /// \brief Turn on the TensorRT engine.
@@ -1106,12 +1073,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   std::string Summary();
 
-  void SetDistConfig(const DistConfig& dist_config) {
-    dist_config_ = dist_config;
-  }
-
-  const DistConfig& dist_config() const { return dist_config_; }
-
   ///
   /// \brief Set a list of operators that do not support mixed precision. This
   /// interface is in the experimental stage and may change in the future. Note
@@ -1127,6 +1088,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void Exp_EnableMixedPrecisionOps(
       const std::unordered_set<std::string>& white_list);
+
+  /// \brief SparseConv(not subm) will use host buffer when true. This
+  /// may decrease the time of memory copy but increase the latency and GPU
+  /// memory cost slightly.
+  void Exp_SparseConvUsingBuffer(const std::vector<std::vector<int>>& kernels,
+                                 const std::vector<std::vector<int>>& strides);
 
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
@@ -1218,6 +1185,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // Padding related
   bool use_fc_padding_{true};
+
+  // OpenVINO related.
+  bool use_openvino_{false};
+  Precision openvino_inference_precision_{Precision::kFloat32};
 
   // TensorRT related.
   bool use_tensorrt_{false};
@@ -1364,9 +1335,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool save_optimized_model_{false};
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
-
-  // fleet exe related
-  DistConfig dist_config_{};
 
   // jit engine related
   // NOTE(Aureliue84): In case of Predictor in JITLayer, program is from outer

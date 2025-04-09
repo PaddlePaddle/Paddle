@@ -29,7 +29,7 @@ class EntryAttrChecks(unittest.TestCase):
         with base.scope_guard(scope):
             with base.program_guard(prog):
                 input = paddle.static.data(
-                    name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
+                    name="dnn_data", shape=[-1, 1], dtype="int64"
                 )
                 emb = paddle.static.nn.embedding(
                     input=input,

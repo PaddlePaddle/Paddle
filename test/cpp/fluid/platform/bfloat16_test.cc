@@ -13,13 +13,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 using bfloat16 = phi::dtype::bfloat16;
 using namespace phi::dtype;  // NOLINT
@@ -103,8 +101,8 @@ TEST(bfloat16, comparison_cpu) {
   EXPECT_TRUE(bfloat16(2.0f) >= bfloat16(2.0f));
 }
 
-TEST(bfloat16, lod_tensor_cpu) {
-  phi::DenseTensor lod_tensor;
+TEST(bfloat16, dense_tensor_cpu) {
+  phi::DenseTensor dense_tensor;
 
   std::vector<bfloat16> input_data = {
       bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f), bfloat16(0.0f)};
@@ -113,12 +111,12 @@ TEST(bfloat16, lod_tensor_cpu) {
   EXPECT_EQ(input_data[2].x, 0x3eab);
   EXPECT_EQ(input_data[3].x, 0x0000);
 
-  lod_tensor.Resize({4, 1});
-  lod_tensor.set_lod(phi::LoD({{0, 2, 4}}));
-  bfloat16* data_ptr = lod_tensor.mutable_data<bfloat16>(CPUPlace());
+  dense_tensor.Resize({4, 1});
+  dense_tensor.set_lod(phi::LegacyLoD({{0, 2, 4}}));
+  bfloat16* data_ptr = dense_tensor.mutable_data<bfloat16>(CPUPlace());
 
   EXPECT_NE(data_ptr, nullptr);
-  EXPECT_EQ(input_data.size(), static_cast<size_t>(lod_tensor.numel()));
+  EXPECT_EQ(input_data.size(), static_cast<size_t>(dense_tensor.numel()));
   for (size_t i = 0; i < input_data.size(); ++i) {
     data_ptr[i] = input_data[i];
     EXPECT_EQ(data_ptr[i].x, input_data[i].x);
@@ -164,5 +162,4 @@ TEST(bfloat16, isnan) {
   EXPECT_EQ(std::isnan(c), true);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

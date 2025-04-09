@@ -42,8 +42,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 WhileInstruction::WhileInstruction(
     size_t id,
@@ -111,7 +110,7 @@ WhileInstruction::WhileInstruction(
       outputs.emplace(value, outputs_id);
     }
   }
-  InsertTuplePushContinerToOuts(body_block_, *parent_exe_info, &outputs);
+  InsertTuplePushContainerToOuts(body_block_, *parent_exe_info, &outputs);
   InsertInplacedExternalInputsToOuts(
       body_block_, body_outside_inputs, *parent_exe_info, &outputs);
   SetOutputs(outputs);
@@ -237,5 +236,4 @@ void WhileInstruction::Run() {
   VLOG(6) << "while instruction run done";
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

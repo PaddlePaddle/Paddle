@@ -20,36 +20,58 @@ _INFERMETA_NEED_META_CONFIG = {
     'ArrayWriteInferMeta',
     'ArrayReadInferMeta',
     'BCELossInferMeta',
+    'BeamSearchDecodeInferMeta',
     'BinomialInferMeta',
+    'BoxClipInferMeta',
     'ConvInferMeta',
     'Conv3DInferMeta',
     'ConvTransposeInferMeta',
     'Conv2dTransposeInferMeta',
+    'CrossEntropyInferMeta',
+    'CrossEntropy2InferMeta',
     'CrossEntropyWithSoftmaxInferMeta',
     'CSoftmaxWithCrossEntropyInferMeta',
+    'CSoftmaxWithMultiLabelCrossEntropyInferMeta',
     'DepthwiseConvInferMeta',
     'DistributeFpnProposalsInferMeta',
     'ElementwiseRawInferMeta',
     'GridSampleBaseInferMeta',
     'HuberLossInferMeta',
+    'Im2sequenceInferMeta',
     'IndexSampleInferMeta',
+    'LodResetInferMeta',
     'LogLossInferMeta',
     'MarginCrossEntropyInferMeta',
     'MatrixNMSInferMeta',
+    'MulticlassNmsv1InferMeta',
     'PReluInferMeta',
+    'SequenceExpandInferMeta',
     'SegmentPoolInferMeta',
     'YoloBoxInferMeta',
+    'YoloBoxHeadInferMeta',
     'ValueCompareInferMeta',
     'UnpoolInferMeta',
     'Unpool3dInferMeta',
     # fusion.h
     'FusedAttentionInferMeta',
+    'FusedGemmEpilogueInferMeta',
     'BNActXPUInferMeta',
     'FusedFCElementwiseLayerNormInferMeta',
     'FusedConv2dAddActInferMeta',
+    'FusionSeqpoolCvmConcatInferMeta',
+    'FusedElemwiseActivationInferMeta',
+    'FusedElemwiseActivationGradInferMeta',
+    'FusedSeqpoolCvmInferMeta',
+    'FusedSeqpoolCvmGradInferMeta',
+    'FusionSeqpoolConcatInferMeta',
+    'FusedGateAttentionInferMeta',
+    'FusedGateAttentionGradInferMeta',
+    'ResnetBasicBlockInferMeta',
+    'ResnetBasicBlockGradInferMeta',
     # multiary.h
-    'AddNTensorArrayInferMeta',
     'AddNInferMeta',
+    'AddNTensorArrayInferMeta',
+    'AttentionLstmInferMeta',
     'AucInferMeta',
     'BatchNormInferMeta',
     'BatchNormInferInferMeta',
@@ -57,21 +79,33 @@ _INFERMETA_NEED_META_CONFIG = {
     'CoalesceTensorInferMeta',
     'CheckMemoryContinueInferMeta',
     'ConcatInferMeta',
+    'CrfDecodingInferMeta',
+    'LSTMInferMeta',
     'DeformableConvInferMeta',
+    'DetectionMapInferMeta',
     'FusedBiasActInferMeta',
     'FusedLayerNormInferMeta',
+    'GruInferMeta',
     'InterpolateInferMeta',
+    'LegacyInterpolateInferMeta',
     'NceInferMeta',
+    'PyramidHashInferMeta',
     'SigmoidCrossEntropyWithLogitsInferMeta',
     'StackInferMeta',
+    'YoloBoxPostInferMeta',
     'FusedConvInferMeta',
     # nullary.h
     'CreateInferMeta',
     'EyeInferMeta',
+    'LoadInferMeta',
     # ternary.h
     'AccuracyInferMeta',
+    'AffineChannelInferMeta',
     'BoxCoderInferMeta',
+    'CollectFpnProposalsInferMeta',
+    'CSoftmaxWithMultiLabelCrossEntropyInferMeta',
     'InstanceNormInferMeta',
+    'FasterTokenizerInferMeta',
     'GroupNormInferMeta',
     'LayerNormInferMeta',
     'MatchMatrixTensorInferMeta',
@@ -87,7 +121,11 @@ _INFERMETA_NEED_META_CONFIG = {
     'ArrayToTensorInferMeta',
     'CropInferMeta',
     'EigvalsInferMeta',
+    'FFTC2CInferMeta',
+    'FFTC2RInferMeta',
+    'FFTR2CInferMeta',
     'FractionalMaxPoolInferMeta',
+    'FrameInferMeta',
     'KthvalueInferMeta',
     'MaxPoolWithIndexInferMeta',
     'MaxPoolV2InferMeta',
@@ -103,6 +141,8 @@ _INFERMETA_NEED_META_CONFIG = {
     'ReshapeWithXShapeInferMeta',
     'ReverseInferMeta',
     'ReverseArrayInferMeta',
+    'SequencePoolInferMeta',
+    'Shape64InferMeta',
     'ShardIndexInferMeta',
     'SliceArrayInferMeta',
     'SliceArrayDenseInferMeta',
@@ -114,11 +154,16 @@ _INFERMETA_NEED_META_CONFIG = {
     'StridedSliceRawInferMeta',
     'StridedSliceInferMeta',
     'SumInferMeta',
+    'DetInferMeta',
     'SumRawInferMeta',
+    'PartialConcatInferMeta',
+    'PartialSumInferMeta',
     'TemporalShiftInferMeta',
     'TileInferMeta',
     'TopKInferMeta',
+    'TopkV1InferMeta',
     'UnfoldInferMeta',
+    'UniformRandomBatchSizeLikeInferMeta',
     'UnsqueezeInferMeta',
     'UnsqueezeWithXShapeInferMeta',
     'ArrayPopInferMeta',
@@ -127,7 +172,9 @@ _INFERMETA_NEED_META_CONFIG = {
     'CrossEntropyGrad2InferMeta',
     'CrossEntropyWithSoftmaxGradInferMeta',
     'CSoftmaxWithCrossEntropyGradInferMeta',
+    'CSoftmaxWithMultiLabelCrossEntropyGradInferMeta',
     'LSTMGradInferMeta',
+    'LodResetGradInferMeta',
     'FFTC2RGradInferMeta',
     'GruGradInferMeta',
     'GruUnitGradInferMeta',
@@ -136,6 +183,28 @@ _INFERMETA_NEED_META_CONFIG = {
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
 
+LOGIC_OP_LIST = {
+    'LogicalAndOp',
+    'LogicalAnd_Op',
+    'LogicalOrOp',
+    'LogicalOr_Op',
+    'LogicalNotOp',
+    'LogicalNot_Op',
+    'LogicalXorOp',
+    'GreaterEqualOp',
+    'GreaterEqual_Op',
+    'GreaterThanOp',
+    'GreaterThan_Op',
+    'LessEqualOp',
+    'LessEqual_Op',
+    'LessThanOp',
+    'LessThan_Op',
+    'EqualOp',
+    'Equal_Op',
+    'EqualAllOp',
+    'NotEqualOp',
+    'NotEqual_Op',
+}
 OP_BUILD_TEMPLATE = """
 void {op_name}::Build({build_args}) {{
 {build_info}
@@ -569,7 +638,7 @@ def GenBuildOutputs(
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
 """
-    # Prepar input type
+    # Prepare input type
     for idx in range(len(op_input_name_list)):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
@@ -841,8 +910,11 @@ def gen_build_func_str(
     build_outputs_str = f"""
   std::vector<pir::Type> argument_outputs = {op_info.class_name}::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
-  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);"""
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());\n"""
+    if op_info.class_name in LOGIC_OP_LIST:
+        build_outputs_str += "::pir::TrueStopGradientsDefaultly(argument);\n"
+    else:
+        build_outputs_str += "::pir::PassStopGradientsDefaultly(argument);" ""
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
   PADDLE_ENFORCE_NE(

@@ -30,14 +30,22 @@ namespace pir {
 
 class BasicIrPrinter {
  public:
-  explicit BasicIrPrinter(std::ostream& os) : os(os) {}
+  explicit BasicIrPrinter(std::ostream& os) : os(os), id_(GenerateId()) {}
 
   virtual void PrintType(Type type);
 
   virtual void PrintAttribute(Attribute attr);
+  uint64_t id() const { return id_; }
 
  public:
   std::ostream& os;
+
+ private:
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
+  const uint64_t id_ = -1;
 };
 
 class IR_API IrPrinter : public BasicIrPrinter {
@@ -63,6 +71,10 @@ class IR_API IrPrinter : public BasicIrPrinter {
   void PrintOpResult(const Operation& op);
 
   void PrintAttributeMap(const Operation& op);
+
+  void PrintOpName(const Operation& op);
+
+  void PrintOpId(const Operation& op);
 
   void PrintOpOperands(const Operation& op);
 

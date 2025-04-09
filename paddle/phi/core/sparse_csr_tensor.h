@@ -110,6 +110,14 @@ class SparseCsrTensor : public TensorBase,
   /// \return The data type of the tensor.
   DataType dtype() const noexcept override { return meta_.dtype; }
 
+  /// \brief get the sparse dim
+  /// \return The sparse dim of the tensor.
+  int32_t sparse_dim() const;
+
+  /// \brief get the dense dim
+  /// \return The dense dim of the tensor.
+  int32_t dense_dim() const;
+
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
   void set_type(const DataType dtype);
 #endif

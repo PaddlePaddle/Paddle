@@ -14,9 +14,7 @@
 
 #include "paddle/phi/common/memory_utils.h"
 
-namespace phi {
-
-namespace memory_utils {
+namespace phi::memory_utils {
 
 Allocator::AllocationPtr Alloc(const phi::Place& place,
                                size_t size,
@@ -133,14 +131,10 @@ const phi::Allocator* GetHostZeroAllocator() {
   return MemoryUtils::Instance().GetHostZeroAllocator();
 }
 
-// XPUs do not have the concept of pinned memory,
-// so the get_pinned_allocator function is not set.
 std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
     int device_id) {
   return MemoryUtils::Instance().GetXpuEvent(device_id);
 }
 #endif
 
-}  // namespace memory_utils
-
-}  // namespace phi
+}  // namespace phi::memory_utils

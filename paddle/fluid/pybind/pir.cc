@@ -23,12 +23,13 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
@@ -48,15 +49,22 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/shape_analysis_utils.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/pir_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
@@ -64,7 +72,8 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_mapping.h"
-#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
@@ -74,6 +83,7 @@
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
+#include "paddle/pir/include/dialect/shape/utils/original_attributes_filter.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -84,7 +94,10 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/specify_input_dynamic_dim_util.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #endif
 
 using paddle::dialect::ApiBuilder;
@@ -93,6 +106,7 @@ using paddle::dialect::DenseTensorType;
 using paddle::dialect::DistDenseTensorType;
 using paddle::dialect::DistTypeInterface;
 using paddle::dialect::IfOp;
+using paddle::dialect::PrintOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::SparseCooTensorType;
@@ -114,7 +128,6 @@ using pir::Int32Attribute;
 using pir::Int64Attribute;
 using pir::IrContext;
 using pir::IrMapping;
-using pir::IrParser;
 using pir::Operation;
 using pir::OpOperand;
 using pir::OpResult;
@@ -130,12 +143,12 @@ using pybind11::return_value_policy;
 namespace name_analysis = pir::utils::name_analysis;
 
 COMMON_DECLARE_bool(print_ir);
-COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
 namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_ir_value_pytype = nullptr;
+namespace py = pybind11;
 
 void BindOpsAPI(pybind11::module *module);
 
@@ -204,35 +217,6 @@ std::string GetValueInfo(Value v) {
   return ss.str();
 }
 
-phi::DataType GetTensorDtype(Type type) {
-  if (!type) {
-    PADDLE_THROW(
-        common::errors::InvalidArgument("The type of value is nullptr."));
-  }
-  if (auto dense_tensor_type = type.dyn_cast<DenseTensorType>()) {
-    return dialect::TransToPhiDataType(dense_tensor_type.dtype());
-  } else if (auto sparse_coo_tensor_type =
-                 type.dyn_cast<SparseCooTensorType>()) {
-    return dialect::TransToPhiDataType(sparse_coo_tensor_type.dtype());
-  } else if (auto sparse_csr_tensor_type =
-                 type.dyn_cast<SparseCsrTensorType>()) {
-    return dialect::TransToPhiDataType(sparse_csr_tensor_type.dtype());
-  } else if (auto select_rows = type.dyn_cast<SelectedRowsType>()) {
-    return dialect::TransToPhiDataType(select_rows.dtype());
-  } else if (auto dense_array = type.dyn_cast<DenseTensorArrayType>()) {
-    return dialect::TransToPhiDataType(dense_array.dtype());
-  } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Currently, we can only get phi::DataType from DenseTensorType and "
-        "SelectedRowsType, DenseTensorArrayType,SparseCooTensorType or "
-        "SparseCsrTensorType."));
-  }
-}
-
-phi::DataType GetValueDtype(Value value) {
-  return GetTensorDtype(value.type());
-}
-
 py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
   IrMapping mapper;
   if (p_mapper == nullptr) {
@@ -268,7 +252,7 @@ pir::Value AppendDataOp(pir::Block *block,
        paddle::dialect::IntArrayAttribute::get(
            ctx, phi::IntArray(phi::vectorize(GetValueDims(value))))},
       {"dtype",
-       paddle::dialect::DataTypeAttribute::get(ctx, GetValueDtype(value))},
+       paddle::dialect::DataTypeAttribute::get(ctx, pir::GetValueDtype(value))},
       {"place", PlaceAttribute::get(ctx, phi::Place())}};
   std::vector<pir::Type> output_types{value.type()};
   pir::Operation *operation =
@@ -369,6 +353,61 @@ void SetIsTestAttr(const std::shared_ptr<Program> &prog) {
   }
 }
 
+using ComputeReturnType = std::variant<float,
+                                       double,
+                                       int32_t,
+                                       int64_t,
+                                       bool,
+                                       std::string,
+                                       std::vector<int32_t>,
+                                       std::vector<int64_t>,
+                                       std::vector<float>,
+                                       phi::DataType,
+                                       phi::Place>;
+ComputeReturnType CastPyObjectToAny(const pybind11::object &obj,
+                                    const std::string &type_name) {
+  static const std::unordered_map<
+      std::string,
+      std::function<ComputeReturnType(const pybind11::object &)>>
+      type_casters = {
+          {"float",
+           [](const pybind11::object &obj) { return obj.cast<float>(); }},
+          {"double",
+           [](const pybind11::object &obj) { return obj.cast<double>(); }},
+          {"int32",
+           [](const pybind11::object &obj) { return obj.cast<int32_t>(); }},
+          {"int64",
+           [](const pybind11::object &obj) { return obj.cast<int64_t>(); }},
+          {"bool",
+           [](const pybind11::object &obj) { return obj.cast<bool>(); }},
+          {"string",
+           [](const pybind11::object &obj) { return obj.cast<std::string>(); }},
+          {"vector<int32>",
+           [](const pybind11::object &obj) {
+             return obj.cast<std::vector<int32_t>>();
+           }},
+          {"vector<int64>",
+           [](const pybind11::object &obj) {
+             return obj.cast<std::vector<int64_t>>();
+           }},
+          {"vector<float>",
+           [](const pybind11::object &obj) {
+             return obj.cast<std::vector<float>>();
+           }},
+          {"datatype",
+           [](const pybind11::object &obj) {
+             return obj.cast<phi::DataType>();
+           }},
+          {"place",
+           [](const pybind11::object &obj) { return obj.cast<phi::Place>(); }}};
+
+  auto it = type_casters.find(type_name);
+  if (it == type_casters.end()) {
+    throw std::runtime_error("Unsupported type: " + type_name);
+  }
+  return it->second(obj);
+}
+
 void BindProgram(py::module *m) {
   static int64_t global_prog_seed = 0;
   py::class_<Program, std::shared_ptr<Program>> program(
@@ -390,6 +429,7 @@ void BindProgram(py::module *m) {
         **we have** :ref:`api_paddle_static_default_startup_program` **and** :ref:`api_paddle_static_default_main_program`
         **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_static_default_startup_program` **only run once to initialize parameters,**
         :ref:`api_paddle_static_default_main_program` **run in every mini batch and adjust the weights.**
+
 
     Returns:
         Program: An empty Program.
@@ -512,6 +552,40 @@ void BindProgram(py::module *m) {
             return op_list;
           },
           return_value_policy::reference)
+      .def(
+          "get_value_by_op_id",
+          [](Program &self, py::object op_ids) {
+            std::vector<int> op_ids_list;
+            if (py::isinstance<py::int_>(op_ids)) {
+              op_ids_list.push_back(op_ids.cast<int>());
+            } else if (py::isinstance<py::list>(op_ids)) {
+              for (auto item : op_ids) {
+                op_ids_list.push_back(item.cast<int>());
+              }
+            } else {
+              PADDLE_THROW(
+                  "Invalid op_ids format. Please provide either a single "
+                  "integer or a list of integers.");
+            }
+
+            std::list<Operation *> all_ops = self.block()->get_recursive_ops();
+            std::vector<pir::Value> value_list;
+
+            for (auto op : all_ops) {
+              if (std::find(op_ids_list.begin(), op_ids_list.end(), op->id()) !=
+                  op_ids_list.end()) {
+                for (auto value : op->results()) {
+                  value_list.push_back(value);
+                }
+              }
+            }
+
+            if (value_list.empty()) {
+              PADDLE_THROW(
+                  "Can't find the corresponding opresult from the op ids");
+            }
+            return value_list;
+          })
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
              return name_analysis::GetOutputValueByName(self, name);
@@ -526,7 +600,7 @@ void BindProgram(py::module *m) {
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(
-          "state_dict",
+          "_state_dict",
           [](std::shared_ptr<Program> self,
              const std::string &mode = "all",
              const framework::Scope &scope = framework::Scope()) {
@@ -568,21 +642,32 @@ void BindProgram(py::module *m) {
                   "The mode is not supported."));
             }
           })
-      .def("set_state_dict",
-           [](std::shared_ptr<Program> self,
-              const std::unordered_map<std::string, phi::DenseTensor>
-                  &state_dict,
-              const framework::Scope &scope = framework::Scope()) {
-             for (auto item : state_dict) {
-               auto var = scope.FindVar(item.first);
-               if (var == nullptr) {
-                 PADDLE_THROW(common::errors::NotFound(
-                     "The variable %s is not found.", item.first));
-               } else {
-                 *var->GetMutable<phi::DenseTensor>() = item.second;
-               }
-             }
-           })
+      .def(
+          "set_state_dict",
+          [](std::shared_ptr<Program> self,
+             const std::unordered_map<std::string, phi::DenseTensor>
+                 &state_dict,
+             const framework::Scope &scope = framework::Scope(),
+             bool copy_tensor = false) {
+            for (auto item : state_dict) {
+              auto var = scope.FindVar(item.first);
+              if (var == nullptr) {
+                PADDLE_THROW(common::errors::NotFound(
+                    "The variable %s is not found.", item.first));
+              } else {
+                if (copy_tensor) {
+                  auto *mutable_tensor = var->GetMutable<phi::DenseTensor>();
+                  paddle::framework::TensorCopy(
+                      item.second, item.second.place(), mutable_tensor);
+                } else {
+                  *var->GetMutable<phi::DenseTensor>() = item.second;
+                }
+              }
+            }
+          },
+          py::arg("state_dict"),
+          py::arg("scope"),
+          py::arg("copy_tensor") = false)
       .def(
           "_prune",
           [](Program &self, std::vector<pir::Value> output_vars) {
@@ -604,18 +689,9 @@ void BindProgram(py::module *m) {
           py::arg("targets"))
       .def("_sync_with_cpp", [](const std::shared_ptr<Program> &self) {
         // It's not need _sync_with_cpp in pir, but it's necessary in old static
-        // graph. Add empyt function to avoid python call error.
+        // graph. Add empty function to avoid python call error.
       });
 }
-
-std::shared_ptr<Program> ParseProgram(const std::string &program_str) {
-  std::stringstream ss(program_str);
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  auto program = IrParser(ctx, ss).ParseProgram();
-  return program;
-}
-
-void BindIrParser(py::module *m) { m->def("parse_program", &ParseProgram); }
 
 void RefreshOpStopgradients(Operation *op) {
   if (op->num_operands() == 0 || op->isa<pir::ParameterOp>() ||
@@ -639,6 +715,15 @@ void BindBlock(py::module *m) {
         use `Program.block()` to get a block.
   )DOC");
   block.def("empty", &Block::empty)
+      .def(
+          "__str__",
+          [](Block &self) {
+            std::ostringstream print_stream;
+            pir::IrPrinter printer(print_stream);
+            printer.PrintBlock(self);
+            return print_stream.str();
+          },
+          return_value_policy::reference)
       .def(
           "front",
           [](Block &self) { return &self.front(); },
@@ -686,6 +771,23 @@ void BindBlock(py::module *m) {
       .def("add_arg", &Block::AddArg)
       .def("add_kwarg", &Block::AddKwarg)
       .def("erase_kwarg", &Block::EraseKwarg)
+      .def("get_values_by_op_idx",
+           [](Block &self, const py::list &op_idxs) -> py::list {
+             py::list value_list;
+             auto it = self.begin();
+             std::set<int> idxs_set;
+             for (py::handle item : op_idxs) {
+               idxs_set.insert(item.cast<int>());
+             }
+             for (int i = 0; it != self.end(); ++i, ++it) {
+               if (idxs_set.find(i) != idxs_set.end()) {
+                 for (uint32_t j = 0; j < it->num_results(); ++j) {
+                   value_list.append(static_cast<pir::Value>(it->result(j)));
+                 }
+               }
+             }
+             return value_list;
+           })
       .def("remove_op",
            [](Block &self, const Operation &op) { self.erase(op); })
       .def(
@@ -747,7 +849,7 @@ void BindBlock(py::module *m) {
            })
       .def("_sync_with_cpp", [](const Block &self) {
         // It's not need _sync_with_cpp in pir, but it's necessary in old static
-        // graph. Add empyt function to avoid python call error.
+        // graph. Add empty function to avoid python call error.
       });
 }
 
@@ -850,6 +952,19 @@ void BindOperation(py::module *m) {
                                                 phi::IntArray(val));
              self.set_attribute(attr_name, attr);
            })
+      .def("set_str_array_attr",
+           [](Operation &self,
+              std::string &attr_name,
+              const std::vector<std::string> &val) {
+             std::vector<Attribute> val_attr;
+             for (auto &str : val) {
+               val_attr.emplace_back(
+                   StrAttribute::get(pir::IrContext::Instance(), str));
+             }
+             auto attr =
+                 pir::ArrayAttribute::get(pir::IrContext::Instance(), val_attr);
+             self.set_attribute(attr_name, attr);
+           })
       .def("set_str_attr",
            [](Operation &self, std::string &attr_name, std::string &val) {
              self.set_attribute(
@@ -861,6 +976,10 @@ void BindOperation(py::module *m) {
                  attr_name,
                  pir::Int32Attribute::get(pir::IrContext::Instance(), val));
            })
+      .def("erase_attr",
+           [](Operation &self, std::string &attr_name) {
+             self.erase_attribute(attr_name);
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -871,12 +990,18 @@ void BindOperation(py::module *m) {
                  attrs_dict[pair.first.c_str()] =
                      pair.second.dyn_cast<OperationDistAttribute>();
                } else {
+                 if (pair.second.isa<pir::FloatAttribute>()) {
+                   VLOG(2) << "The value is stored with float32 precision, "
+                              "which may cause precision issues for higher "
+                              "precision requirements.";
+                 }
                  attrs_dict[pair.first.c_str()] =
                      paddle::dialect::GetAttributeData(pair.second);
                }
              }
              return attrs_dict;
            })
+
       .def("copy_attrs_from",
            [](Operation &self, Operation &other) {
              for (auto &pair : other.attributes()) {
@@ -1107,7 +1232,27 @@ void BindOperation(py::module *m) {
             self.set_attribute(
                 "chunk_id",
                 Int32Attribute::get(pir::IrContext::Instance(), chunk_id));
-          });
+          })
+      .def("is_no_need_buffer",
+           [](Operation &self, const Value &operand_source) -> bool {
+             paddle::dialect::OpYamlInfoInterface op_info_interface =
+                 self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+             std::unique_ptr<paddle::dialect::OpYamlInfoParser> info_parser(
+                 nullptr);
+             if (op_info_interface) {
+               info_parser =
+                   std::make_unique<paddle::dialect::OpYamlInfoParser>(
+                       op_info_interface.GetOpInfo(),
+                       paddle::dialect::IsLegacyOp(self.name()));
+               auto &no_need_buffer_ids = info_parser->NoNeedBufferIds();
+               for (auto no_need_buffer_id : no_need_buffer_ids) {
+                 if (operand_source == self.operand_source(no_need_buffer_id)) {
+                   return true;
+                 }
+               }
+             }
+             return false;
+           });
   py::class_<Operation::BlockContainer> block_container(
       *m, "Operation_BlockContainer", R"DOC(
     The Operation_BlockContainer only use to walk all blocks in the operation.
@@ -1315,7 +1460,7 @@ void BindValue(py::module *m) {
           })
       .def_property(
           "dtype",
-          [](Value self) { return GetValueDtype(self); },
+          [](Value self) { return pir::GetValueDtype(self); },
           [](Value self, phi::DataType dtype) {
             PADDLE_THROW(common::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
@@ -1323,14 +1468,14 @@ void BindValue(py::module *m) {
       .def_property(
           "place_attr",
           [](Value self) -> phi::Place {
-            auto palce_attr = self.attribute<PlaceAttribute>("place");
-            return palce_attr ? palce_attr.data() : phi::Place();
+            auto place_attr = self.attribute<PlaceAttribute>("place");
+            return place_attr ? place_attr.data() : phi::Place();
           },
           [](Value self, const phi::Place &place) {
             // auto place = CastPyArg2Place(place_obj.release().ptr(), 1);
             auto place_attr =
                 dialect::PlaceAttribute::get(pir::IrContext::Instance(), place);
-            self.set_attribute("palce", place_attr);
+            self.set_attribute("place", place_attr);
           })
       .def("initialized",
            [](Value self) {
@@ -1357,6 +1502,19 @@ void BindValue(py::module *m) {
              }
              return op_list;
            })
+      .def("all_used_ops_in_same_block",
+           [](Value &self) -> py::list {
+             py::list op_list;
+             for (auto it = self.use_begin(); it != self.use_end(); ++it) {
+               pir::Operation *used_op = it.owner();
+               while (used_op->GetParent() != self.defining_op()->GetParent() &&
+                      used_op->GetParent()->GetParentOp()) {
+                 used_op = used_op->GetParent()->GetParentOp();
+               }
+               op_list.append(used_op);
+             }
+             return op_list;
+           })
       .def(
           "get_defining_op",
           [](Value self) -> pir::Operation * { return self.defining_op(); },
@@ -1372,7 +1530,7 @@ void BindValue(py::module *m) {
                }
              }
              PADDLE_THROW(common::errors::InvalidArgument(
-                 "only support accesss index from op_result or positional "
+                 "only support accessing index from op_result or positional "
                  "block arg."));
            })
       .def("is_dense_tensor_type",
@@ -1410,6 +1568,8 @@ void BindValue(py::module *m) {
       .def("apply", &apply)
       .def("is_same", &Value::operator==)
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
+      .def("element_size",
+           [](Value self) { return phi::SizeOf(pir::GetValueDtype(self)); })
       .def("_rename", &name_analysis::RenameValue)
       .def("_has_only_one_name",
            [](Value self) -> bool {
@@ -1435,7 +1595,7 @@ void BindValue(py::module *m) {
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
       .def("update_dist_attr",
-           [](Value &self, TensorDistAttribute dist_attr) {
+           [](Value &self, Attribute dist_attr) {
              self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
            })
       .def("is_coalesced",
@@ -1461,9 +1621,42 @@ void BindValue(py::module *m) {
               return py::cast<py::none>(Py_None);
             }
           })
-      .def("_clone", [](Value self) {
-        // Return a new value owned by python side
-        return self;
+      .def("_clone",
+           [](Value self) {
+             // Return a new value owned by python side
+             return self;
+           })
+      .def("sparse_dim",
+           [](Value self) -> int32_t {
+             auto op_result = self.dyn_cast<OpResult>();
+             pir::Operation *operation = op_result.owner();
+             if (self.type().isa<SparseCooTensorType>() &&
+                 operation->name() == "pd_op.sparse_coo_tensor_sp") {
+               std::vector<Value> sources = operation->operands_source();
+               Value non_zero_indices = sources[1];
+               return phi::vectorize(GetValueDims(non_zero_indices))[0];
+             } else if (self.type().isa<SparseCsrTensorType>()) {
+               PADDLE_THROW(common::errors::InvalidType(
+                   "SparseCsrTensor is unsupported in pir mode."));
+             } else {
+               return 0;
+             }
+           })
+      .def("dense_dim", [](Value self) -> int32_t {
+        auto op_result = self.dyn_cast<OpResult>();
+        pir::Operation *operation = op_result.owner();
+        if (self.type().isa<SparseCooTensorType>() &&
+            operation->name() == "pd_op.sparse_coo_tensor_sp") {
+          std::vector<Value> sources = operation->operands_source();
+          Value non_zero_indices = sources[1];
+          int32_t dims = phi::vectorize(GetValueDims(self)).size();
+          return dims - phi::vectorize(GetValueDims(non_zero_indices))[0];
+        } else if (self.type().isa<SparseCsrTensorType>()) {
+          PADDLE_THROW(common::errors::InvalidType(
+              "SparseCsrTensor is unsupported in pir mode."));
+        } else {
+          return phi::vectorize(GetValueDims(self)).size();
+        }
       });
 }
 
@@ -1490,6 +1683,101 @@ void BindOpOperand(py::module *m) {
 bool GetValueBoolAttr(Value value, const std::string &attr_name) {
   auto bool_attr = value.attribute<BoolAttribute>(attr_name);
   return !bool_attr || bool_attr.data();
+}
+
+std::string GetAttrsMapJson(pir::Operation *op) {
+  if (!op) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Operation pointer cannot be nullptr."));
+  }
+  auto attributes = op->attributes();
+  ::pir::ProgramWriter writer(1, false);
+  auto attrs_map_info = writer.GetAttributesMapJson(op->attributes()).dump();
+  return attrs_map_info;
+}
+
+pir::AttributeMap ConvertAttrsToAttributeMap(py::dict attrs) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::AttributeMap attrs_map;
+
+  for (auto item : attrs) {
+    std::string key = py::cast<std::string>(item.first);
+    py::handle value = item.second;
+
+    if (py::isinstance<py::bool_>(value)) {
+      attrs_map[key] = pir::BoolAttribute::get(ctx, py::cast<bool>(value));
+    } else if (py::isinstance<py::float_>(value)) {
+      attrs_map[key] = pir::FloatAttribute::get(ctx, py::cast<float>(value));
+    } else if (py::isinstance<py::str>(value)) {
+      attrs_map[key] =
+          pir::StrAttribute::get(ctx, py::cast<std::string>(value));
+    } else if (py::isinstance<py::list>(value)) {
+      py::list list_value = py::cast<py::list>(value);
+      std::vector<pir::Attribute> attr_list;
+      if (list_value.size() > 0) {
+        auto first_elem = list_value[0];
+        if (py::isinstance<py::bool_>(first_elem)) {
+          for (auto elem : list_value) {
+            attr_list.push_back(
+                pir::BoolAttribute::get(ctx, py::cast<bool>(elem)));
+          }
+        } else if (py::isinstance<py::str>(first_elem)) {
+          for (auto elem : list_value) {
+            attr_list.push_back(
+                pir::StrAttribute::get(ctx, py::cast<std::string>(elem)));
+          }
+        } else if (py::isinstance<py::int_>(first_elem)) {
+          for (auto elem : list_value) {
+            int64_t val = py::cast<int64_t>(elem);
+            attr_list.push_back(pir::Int64Attribute::get(ctx, val));
+          }
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Unsupported list element type, key: %s", key));
+        }
+      }
+      attrs_map[key] = pir::ArrayAttribute::get(ctx, attr_list);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported attribute type, key: %s", key));
+    }
+  }
+  return attrs_map;
+}
+
+std::string GetAttrsMapJson(py::dict attrs) {
+  pir::AttributeMap attrs_map = ConvertAttrsToAttributeMap(attrs);
+  ::pir::ProgramWriter writer(1, false);
+  return writer.GetAttributesMapJson(attrs_map).dump();
+}
+
+std::string GetTypeJson(pir::Operation *op, bool is_input) {
+  if (!op) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Operation pointer cannot be nullptr"));
+  }
+  ::pir::ProgramWriter writer(1, false);
+  std::stringstream type_info_ss;
+  if (is_input) {
+    for (auto operand : op->operands_source()) {
+      type_info_ss << (writer.GetTypeJson(operand.type()).dump())
+                   << '\n';  // use '\n' as separator
+    }
+  } else {
+    for (auto result : op->results()) {
+      type_info_ss << (writer.GetTypeJson(result.type()).dump())
+                   << '\n';  // use '\n' as separator
+    }
+  }
+  return type_info_ss.str();
+}
+
+std::string GetInputsTypeJson(pir::Operation *op) {
+  return GetTypeJson(op, true);
+}
+
+std::string GetOutputsTypeJson(pir::Operation *op) {
+  return GetTypeJson(op, false);
 }
 
 void BindType(py::module *m) {
@@ -1544,7 +1832,7 @@ void BindType(py::module *m) {
       });
 
   m->def("create_shaped_type",
-         [](Type &type, const std::vector<int> &shape) -> Type {
+         [](Type &type, const std::vector<int64_t> &shape) -> Type {
            if (type.isa<DenseTensorType>()) {
              DenseTensorType src_type = type.dyn_cast<DenseTensorType>();
              DenseTensorType dst_type =
@@ -1656,30 +1944,27 @@ void BindInsertionPoint(pybind11::module *m) {
           return_value_policy::reference);
 }
 
-std::list<Operation *>::const_iterator list_offset(const Block *block,
-                                                   int start_idx) {
-  auto it = block->begin();
-  while (it != block->end() && start_idx--) ++it;
-  return it;
-}
-
 template <typename F, typename S>
 void range_block_do(const Block *block,
-                    std::vector<int> range,
+                    std::pair<size_t, size_t> range,
                     F fn,
                     S skip_fn) {
-  for (auto it = list_offset(block, range[0]);
-       it != list_offset(block, range[1]);
-       ++it) {
-    if (skip_fn(*it)) {
+  auto [start, end] = range;
+  if (start >= end) {
+    return;
+  }
+  auto it = block->begin();
+  std::advance(it, start);
+  for (size_t i = start; i < end && it != block->end(); ++i, ++it) {
+    if (skip_fn(it)) {
       continue;
     }
-    fn(*it);
+    fn(it);
   }
 }
 
 template <typename F>
-void range_block_do(const Block *block, std::vector<int> range, F fn) {
+void range_block_do(const Block *block, std::pair<size_t, size_t> range, F fn) {
   range_block_do(block, range, fn, [](Operation *op) { return false; });
 }
 
@@ -1720,8 +2005,8 @@ std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
 AnalysisMiddleVariable(const Program &program,
                        const std::vector<pir::Value> &forward_inputs,
                        const std::vector<pir::Value> &backward_outputs,
-                       const std::vector<int> &forward_range,
-                       const std::vector<int> &backward_range) {
+                       const std::pair<size_t, size_t> &forward_range,
+                       const std::pair<size_t, size_t> &backward_range) {
   std::vector<pir::Value> middle_values;
 
   std::unordered_set<pir::Value> backward_used_values;
@@ -1777,7 +2062,7 @@ using SplitedAttribute = std::map<std::string, std::vector<pir::Value>>;
 using SplitedResult = std::pair<SplitedProgram, SplitedAttribute>;
 
 static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
-                                 std::vector<int> range) {
+                                 std::pair<size_t, size_t> range) {
   // filter no need buffer values.
   std::unordered_set<::pir::Value> need_buffer_values;
   std::unordered_set<::pir::Value> no_need_buffer_values;
@@ -1843,6 +2128,91 @@ std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
+void AppendPrintOp(Program *program,
+                   const pir::Value &value,
+                   int first_n,
+                   std::string message,
+                   int summarize,
+                   bool print_tensor_name,
+                   bool print_tensor_type,
+                   bool print_tensor_shape,
+                   bool print_tensor_layout,
+                   bool print_tensor_lod,
+                   std::string print_phase,
+                   bool is_forward,
+                   int start_point) {
+  std::unordered_set<std::string> print_phase_set{
+      "FORWARD", "BACKWARD", "BOTH"};
+  if (!print_phase_set.count(print_phase)) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The attribute 'print_phase' must be one of 'FORWARD', 'BACKWARD', "
+        "'BOTH' but got '%s'.",
+        print_phase));
+  }
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(paddle::dialect::PrintOp::name());
+  pir::AttributeMap attribute_map = {
+      {"first_n", Int32Attribute::get(ctx, first_n)},
+      {"message", StrAttribute::get(ctx, message)},
+      {"summarize", Int32Attribute::get(ctx, summarize)},
+      {"print_tensor_name", BoolAttribute::get(ctx, print_tensor_name)},
+      {"print_tensor_type", BoolAttribute::get(ctx, print_tensor_type)},
+      {"print_tensor_shape", BoolAttribute::get(ctx, print_tensor_shape)},
+      {"print_tensor_layout", BoolAttribute::get(ctx, print_tensor_layout)},
+      {"print_tensor_lod", BoolAttribute::get(ctx, print_tensor_lod)},
+      {"print_phase", StrAttribute::get(ctx, print_phase)},
+      {"is_forward", BoolAttribute::get(ctx, is_forward)},
+  };
+  std::vector<pir::Type> output_types{value.type()};
+  pir::Operation *operation =
+      pir::Operation::Create({value}, attribute_map, output_types, op_info);
+
+  auto block = value.defining_op()->GetParent();
+  auto position = block->begin();
+  std::advance(position, start_point);
+  if (position == block->end()) {
+    block->push_back(operation);
+  } else {
+    block->insert(position, operation);
+  }
+}
+
+void AppendPrintOps(Program *program,
+                    const std::vector<pir::Value> &values,
+                    int first_n,
+                    std::string message,
+                    int summarize,
+                    bool print_tensor_name,
+                    bool print_tensor_type,
+                    bool print_tensor_shape,
+                    bool print_tensor_layout,
+                    bool print_tensor_lod,
+                    std::string print_phase,
+                    bool is_forward,
+                    int start_point) {
+  int counter = 0;
+  std::unordered_set<pir::Value> added_values;
+  for (const auto &value : values) {
+    if (!added_values.count(value)) {
+      AppendPrintOp(program,
+                    value,
+                    first_n,
+                    message,
+                    summarize,
+                    print_tensor_name,
+                    print_tensor_type,
+                    print_tensor_shape,
+                    print_tensor_layout,
+                    print_tensor_lod,
+                    print_phase,
+                    is_forward,
+                    start_point + counter);
+      ++counter;
+      added_values.insert(value);
+    }
+  }
+}
+
 void AppendShadowOutput(Program *program,
                         const pir::Value &value,
                         const std::string &name,
@@ -1892,8 +2262,8 @@ SplitedResult SplitForwardBackward(
     const std::vector<pir::Value> &forward_inputs_grads,
     const std::vector<pir::Value> &forward_params_grads,
     const std::vector<pir::Value> &forward_outputs_grads,
-    const std::vector<int> &forward_range,
-    const std::vector<int> &backward_range) {
+    const std::pair<size_t, size_t> &forward_range,
+    const std::pair<size_t, size_t> &backward_range) {
   std::vector<pir::Value> forward_in_out_values;
   for (auto &v :
        std::vector({&forward_inputs, &forward_outputs, &forward_params})) {
@@ -2157,7 +2527,7 @@ static void inline CreateVariableIfNotExist(
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
       dev_ctx = pool.Get(exe->GetPlace());
-      dev_ctx->Alloc(tensor_temp, GetValueDtype(value));
+      dev_ctx->Alloc(tensor_temp, pir::GetValueDtype(value));
     }
   }
   return;
@@ -2170,6 +2540,8 @@ void BindUtils(pybind11::module *m) {
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
+  m->def("append_print", AppendPrintOp);
+  m->def("append_prints", AppendPrintOps);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
@@ -2191,11 +2563,16 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_insertion_point_to_end",
          []() { ApiBuilder::Instance().ResetInsertionPointToEnd(); });
   m->def("set_chunk_id",
-         [](int chunk_id) { ApiBuilder::Instance().SetChunckId(chunk_id); });
-  m->def("get_chunk_id", []() { return ApiBuilder::Instance().GetChunckId(); });
+         [](int chunk_id) { ApiBuilder::Instance().SetChunkId(chunk_id); });
+  m->def("get_chunk_id", []() { return ApiBuilder::Instance().GetChunkId(); });
   m->def("set_op_role",
          [](int op_role) { ApiBuilder::Instance().SetOpRole(op_role); });
   m->def("get_op_role", []() { return ApiBuilder::Instance().GetOpRole(); });
+  m->def("set_comp_op_name", [](std::string comp_op_name) {
+    ApiBuilder::Instance().SetCompOpName(comp_op_name);
+  });
+  m->def("get_comp_op_name",
+         []() { return ApiBuilder::Instance().GetCompOpName(); });
   m->def("register_paddle_dialect", []() {
     pir::IrContext::Instance()
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2355,26 +2732,39 @@ void BindUtils(pybind11::module *m) {
     return cinn::hlir::framework::CompilationCache::Instance().Size();
 #endif
   });
+  m->def("get_attrs_map_json",
+         py::overload_cast<pir::Operation *>(&GetAttrsMapJson),
+         py::arg("op"));
+  m->def("get_attrs_map_json",
+         py::overload_cast<py::dict>(&GetAttrsMapJson),
+         py::arg("attrs"));
+  m->def("get_inputs_type_json",
+         &GetInputsTypeJson,
+         "Get operation input types as JSON string.");
+  m->def("get_outputs_type_json",
+         &GetOutputsTypeJson,
+         "Get operation output types as JSON string.");
 }
 
 namespace {
 
-#ifdef PADDLE_WITH_CINN
-std::shared_ptr<pir::PassManager> CreatePassManager() {
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  auto pass_manager = std::make_shared<pir::PassManager>(ctx);
-  if (FLAGS_print_ir) {
-    pass_manager->EnableIRPrinting();
-  }
-  return pass_manager;
-}
-#endif
-
 void ApplyCinnPass(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
+  auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir && VLOG_IS_ON(4)) {
+      pass_manager->EnableIRPrinting();
+    }
+    auto &shape_analysis = pir::ShapeAnalysisManager::Instance().Get(&program);
+    pass_manager->SetValueReplacedHook([&](pir::Value from, pir::Value to) {
+      shape_analysis.ShareShapeOrData(from, to);
+    });
+    return pass_manager;
+  };
   cinn::dialect::ir::ApplyCinnPass(&program, CreatePassManager);
 #else
   PADDLE_THROW(common::errors::Unimplemented(
@@ -2385,6 +2775,17 @@ void ApplyCinnPass(Program &program) {  // NOLINT
 
 void CheckInferSymbolicIfNeed(Program &program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
+  auto CreatePassManager = [&]() -> std::shared_ptr<pir::PassManager> {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager = std::make_shared<pir::PassManager>(ctx);
+    if (FLAGS_print_ir) {
+      pass_manager->EnableIRPrinting();
+    }
+    return pass_manager;
+  };
   cinn::dialect::ir::CheckInferSymbolicIfNeed(&program, CreatePassManager);
 #else
   // Do nothing.
@@ -2398,9 +2799,9 @@ void InferSymbolicShapePass(
     pir::Program &program) {                          // NOLINT
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (FLAGS_pir_apply_shape_optimization_pass) {
-    pass_manager->AddPass(pir::CreateShapeOptimizationPass());
-  }
+  pir::OriginalAttributesFilter::Instance().SetOriginalAttributesMap(
+      paddle::dialect::GetAllOpOriginalAttributes());
+  pass_manager->AddPass(pir::CreateShapeOptimizationPass());
 }
 
 std::shared_ptr<Program> ApplyCommonSubexpressionEliminationPass(
@@ -2415,6 +2816,20 @@ std::shared_ptr<Program> ApplyCommonSubexpressionEliminationPass(
     std::cout << *program << std::endl;
   }
   return program;
+}
+
+void ApplyReduceAsToSumPass(
+    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
+    pir::Program &program) {                          // NOLINT
+#ifdef PADDLE_WITH_CINN
+  pass_manager->AddPass(cinn::dialect::ir::CreateReduceAsToSumPass());
+  pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Currently we only support ReduceAsToSumPass Pass for Pir under "
+      "@to_static, please "
+      "compile PaddlePaddle with CINN"));
+#endif
 }
 
 std::shared_ptr<Program> ApplyFusedBnAddActPass(
@@ -2435,6 +2850,7 @@ void BindIrPass(pybind11::module *m) {
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
   m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
+  m->def("reduce_as_sum_pass", ApplyReduceAsToSumPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
@@ -2478,12 +2894,32 @@ void BindPassManager(pybind11::module *m) {
                  pass->Set(attr.first, new int(attr.second.cast<int>()));
                } else if (py::isinstance<py::float_>(attr.second)) {
                  pass->Set(attr.first, new float(attr.second.cast<float>()));
+               } else if (py::isinstance<framework::Scope>(attr.second)) {
+                 pass->SetNotOwned(attr.first,
+                                   attr.second.cast<framework::Scope *>());
+               } else if (py::isinstance<phi::GPUPlace>(attr.second)) {
+                 pass->Set(attr.first,
+                           new phi::Place(attr.second.cast<phi::GPUPlace>()));
                } else {
                  PADDLE_THROW(common::errors::InvalidArgument(
                      "The pass attr is not supported this type."));
                }
              }
              self.AddPass(std::move(pass));
+           })
+      .def("register_pass",
+           [](PassManager &self,
+              const std::string &pass_name,
+              std::shared_ptr<paddle::drr::DrrPatternContext> pattern_ctx) {
+             using AutoFinalPass =
+                 paddle::drr::AutoDrrPass<paddle::drr::AutoDrrPattern>;
+             // Instead of using static PassRegistrar which may cause lifetime
+             // issues during program termination, directly register the pass to
+             // PassRegistry. This approach provides better control over object
+             // lifetime management and avoids potential segmentation faults
+             // during static destruction.
+             self.AddPass(
+                 std::make_unique<AutoFinalPass>(pass_name, pattern_ctx));
            })
       .def("passes",
            [](PassManager &self) {
@@ -2502,6 +2938,355 @@ void BindPassManager(pybind11::module *m) {
            [](PassManager &self) { self.EnablePrintStatistics(); });
 }
 
+void BindDrrPatternContext(pybind11::module *m) {
+  // bind NormalAttribute
+  pybind11::class_<drr::NormalAttribute> normal_attribute(*m,
+                                                          "NormalAttribute");
+
+  // bind ComputeAttribute
+  pybind11::class_<drr::ComputeAttribute> compute_attribute(*m,
+                                                            "ComputeAttribute");
+
+  // bind Tensor
+  pybind11::class_<drr::Tensor> tensor(*m,
+                                       "Tensor",
+                                       R"DOC(
+        register Tensor for DRR.
+    )DOC");
+
+  // bind Op
+  pybind11::class_<drr::Op> op(*m,
+                               "Op",
+                               R"DOC(
+        Represents an operation in the DRR framework.
+    )DOC");
+  op.def(
+      "__call__",
+      [](drr::Op *self,
+         const std::vector<drr::Tensor> &input_tensors,
+         const std::vector<drr::Tensor> &output_tensors) {
+        std::vector<const drr::Tensor *> input_ptrs;
+        std::vector<const drr::Tensor *> output_ptrs;
+
+        for (const auto &t : input_tensors) {
+          input_ptrs.push_back(&t);
+        }
+        for (const auto &t : output_tensors) {
+          output_ptrs.push_back(&t);
+        }
+        (*self)(input_ptrs, output_ptrs);
+      },
+      pybind11::arg("input_tensors"),
+      pybind11::arg("output_tensors"),
+      "Call the operation with an input tensor and return the output tensor.");
+
+  // bind DrrPatternContext
+  pybind11::class_<drr::DrrPatternContext,
+                   std::shared_ptr<drr::DrrPatternContext>>
+      drr_pattern_context(*m,
+                          "DrrPatternContext",
+                          R"DOC(
+    A class that manages DRR (Dynamic Rewrite Rule) pattern context.
+
+  )DOC");
+  drr_pattern_context.def(pybind11::init<>())
+      .def("SourcePattern", &drr::DrrPatternContext::SourcePattern);
+
+  // bind drr::SourcePattern
+  pybind11::class_<drr::SourcePattern, std::shared_ptr<drr::SourcePattern>>
+      source_pattern(*m,
+                     "SourcePattern",
+                     R"DOC(
+      Represents a source pattern for matching in the DRR framework.
+
+  )DOC");
+  source_pattern.def("ResultPattern", &drr::SourcePattern::ResultPattern)
+      .def(
+          "Op",
+          [](drr::SourcePattern &self,
+             const std::string &op_type,
+             const std::unordered_map<std::string, drr::Attribute> &attributes =
+                 {}) { return self.Op(op_type, attributes); },
+          pybind11::return_value_policy::reference_internal,
+          pybind11::arg("op_type"),
+          pybind11::arg("attributes") =
+              std::unordered_map<std::string, drr::Attribute>())
+      .def(
+          "Tensor",
+          [](drr::SourcePattern &self, const std::string &name) {
+            return self.Tensor(name);
+          },
+          pybind11::return_value_policy::reference_internal,
+          pybind11::arg("name"))
+      .def(
+          "InputNoneTensor",
+          [](drr::ResultPattern &self) { return self.InputNoneTensor(); },
+          pybind11::return_value_policy::reference_internal)
+      .def(
+          "OutputNoneTensor",
+          [](drr::ResultPattern &self) { return self.OutputNoneTensor(); },
+          pybind11::return_value_policy::reference_internal)
+      .def(
+          "Attr",
+          [](drr::SourcePattern &self, const std::string &attr_name) {
+            return self.Attr(attr_name);
+          },
+          pybind11::return_value_policy::reference_internal,
+          pybind11::arg("attr_name"))
+      .def("AddConstraint",
+           [](drr::SourcePattern &self, const pybind11::function &py_func) {
+             // wrap pyfunction -> cpp function
+             paddle::drr::ConstraintFunction cpp_func =
+                 [py_func](const paddle::drr::MatchContext &context) -> bool {
+               try {
+                 pybind11::object py_context = pybind11::cast(context);
+                 pybind11::object result = py_func(py_context);
+
+                 bool ret = result.cast<bool>();
+                 return ret;
+               } catch (const pybind11::error_already_set &e) {
+                 std::cerr << "Python error in AddConstraint callback: "
+                           << e.what() << std::endl;
+                 throw;
+               }
+             };
+             self.AddConstraint(cpp_func);
+           })
+      .def("AddPostProcess",
+           [](drr::SourcePattern &self, const pybind11::function &py_func) {
+             // wrap pyfunction -> cpp function
+             paddle::drr::PostProcessFunction cpp_func =
+                 [py_func](const paddle::drr::MatchContext &context) -> void {
+               try {
+                 pybind11::object py_context = pybind11::cast(context);
+                 py_func(py_context);
+               } catch (const pybind11::error_already_set &e) {
+                 std::cerr << "Python error in AddPostProcess callback: "
+                           << e.what() << std::endl;
+                 throw;
+               }
+             };
+             self.AddPostProcess(cpp_func);
+           });
+
+  // bind MatchContext
+  pybind11::class_<drr::MatchContext, std::shared_ptr<drr::MatchContext>>
+      match_context(*m,
+                    "MatchContext",
+                    R"DOC(
+        Represents the context of a match in the DRR framework.
+    )DOC");
+  match_context
+      .def(
+          "Tensor",
+          [](drr::MatchContext &self, std::string &tensor_name) -> pir::Value {
+            return self.Tensor(tensor_name);
+          },
+          pybind11::return_value_policy::reference_internal,
+          pybind11::arg("tensor_name"))
+      // Attr
+      .def(
+          "StrAttr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<std::string>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "BoolAttr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<bool>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "Int32Attr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<int32_t>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "Int64Attr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<int64_t>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "Float32Attr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<float>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "DoubleAttr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<double>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "VectorInt32Attr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<std::vector<int32_t>>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "VectorInt64Attr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<std::vector<int64_t>>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "VectorFloat32Attr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<std::vector<int32_t>>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "DataTypeAttr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<phi::DataType>(value_name);
+          },
+          pybind11::arg("value_name"))
+      .def(
+          "PlaceAttr",
+          [](drr::MatchContext &self, const std::string &value_name) {
+            return self.Attr<phi::Place>(value_name);
+          },
+          pybind11::arg("value_name"));
+
+  // bind drr::ResultPattern
+  pybind11::class_<drr::ResultPattern, std::shared_ptr<drr::ResultPattern>>
+      result_pattern(*m,
+                     "ResultPattern",
+                     R"DOC(
+      Represents a result pattern for matching in the DRR framework
+
+  )DOC");
+
+  result_pattern
+      .def(
+          "Op",
+          [](drr::ResultPattern &self,
+             const std::string &op_type,
+             const std::unordered_map<std::string, drr::Attribute> &attributes =
+                 {}) { return self.Op(op_type, attributes); },
+          pybind11::return_value_policy::reference_internal,
+          pybind11::arg("op_type"),
+          pybind11::arg("attributes") =
+              std::unordered_map<std::string, drr::Attribute>())
+      .def(
+          "InputNoneTensor",
+          [](drr::ResultPattern &self) { return self.InputNoneTensor(); },
+          pybind11::return_value_policy::reference_internal)
+      .def(
+          "OutputNoneTensor",
+          [](drr::ResultPattern &self) { return self.OutputNoneTensor(); },
+          pybind11::return_value_policy::reference_internal)
+      .def(
+          "Tensor",
+          [](drr::ResultPattern &self, const std::string &name) {
+            return self.Tensor(name);
+          },
+          pybind11::return_value_policy::reference_internal,
+          pybind11::arg("name"))
+      // Attr
+      .def(
+          "StrAttr",
+          [](drr::ResultPattern &self, const std::string &value) {
+            return self.StrAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "BoolAttr",
+          [](drr::ResultPattern &self, bool value) {
+            return self.BoolAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "Int32Attr",
+          [](drr::ResultPattern &self, int32_t value) {
+            return self.Int32Attr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "Int64Attr",
+          [](drr::ResultPattern &self, int64_t value) {
+            return self.Int64Attr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "Float32Attr",
+          [](drr::ResultPattern &self, float value) {
+            return self.Float32Attr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "VectorInt32Attr",
+          [](drr::ResultPattern &self, const std::vector<int32_t> &value) {
+            return self.VectorInt32Attr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "VectorInt64Attr",
+          [](drr::ResultPattern &self, const std::vector<int64_t> &value) {
+            return self.VectorInt64Attr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "VectorFloat32Attr",
+          [](drr::ResultPattern &self, const std::vector<float> &value) {
+            return self.VectorFloatAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "DataTypeAttr",
+          [](drr::ResultPattern &self, const std::string &value) {
+            return self.DataTypeAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "PlaceAttr",
+          [](drr::ResultPattern &self, const std::string &value) {
+            return self.PlaceAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "DataLayoutAttr",
+          [](drr::ResultPattern &self, const std::string &value) {
+            return self.DataLayoutAttr(value);
+          },
+          pybind11::arg("value"))
+      .def(
+          "ComputeAttr",
+          [](drr::ResultPattern &self, pybind11::function py_func) {
+            paddle::drr::AttrComputeFunc cpp_func =
+                [py_func](
+                    const paddle::drr::MatchContext &context) -> std::any {
+              try {
+                pybind11::object py_context = pybind11::cast(context);
+                pybind11::object py_result = py_func(py_context);
+                pybind11::tuple result_tuple =
+                    py_result.cast<pybind11::tuple>();
+                pybind11::object result = result_tuple[0];
+                std::string type_name = result_tuple[1].cast<std::string>();
+                auto any_result = CastPyObjectToAny(result, type_name);
+
+                return std::visit(
+                    [](auto &&value) -> std::any { return std::any(value); },
+                    any_result);
+              } catch (const pybind11::error_already_set &e) {
+                std::cerr << "Python error in ComputeAttr callback: "
+                          << e.what() << std::endl;
+                throw;
+              }
+            };
+            return self.ComputeAttr(cpp_func);
+          },
+          pybind11::arg("py_func"));
+
+  m->def("value_is_persistable", [](const pir::Value &value) {
+    return pir::ValueIsPersistable(value);
+  });
+}
+
 void BindShapeOrDataDimExprs(pybind11::module *m) {
   py::class_<symbol::ShapeOrDataDimExprs,
              std::shared_ptr<symbol::ShapeOrDataDimExprs>>
@@ -2515,64 +3300,82 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
       .def("data",
            &symbol::ShapeOrDataDimExprs::data,
            return_value_policy::reference)
-      .def("is_equal",
-           [](symbol::ShapeOrDataDimExprs &self,
-              std::vector<int64_t> expect_shape,
-              std::vector<int64_t> expect_data = {}) -> bool {
-             VLOG(3) << "Start compare shape and data.";
+      .def(
+          "is_equal",
+          [](symbol::ShapeOrDataDimExprs &self,
+             std::vector<int64_t> expect_shape,
+             std::vector<int64_t> expect_data = {}) -> bool {
+            VLOG(3) << "Start compare shape and data.";
 
-             const auto &compare_func =
-                 [&](const std::vector<int64_t> &expect,
-                     const std::vector<symbol::DimExpr> &actual) -> bool {
-               const auto print_expect_and_actual = [&]() {
-                 std::ostringstream sout;
-                 sout << "expect: [";
-                 std::copy(expect.begin(),
-                           expect.end(),
-                           std::ostream_iterator<int64_t>(sout, ","));
-                 sout << "]" << std::endl;
+            const auto &CompareFunc =
+                [&](const std::vector<int64_t> &expect,
+                    const std::vector<symbol::DimExpr> &actual,
+                    const std::string &compare_type) -> bool {
+              const auto PrintExpectAndActual = [&](const std::string &prefix) {
+                std::ostringstream sout;
+                sout << prefix << " expect: [";
+                std::copy(expect.begin(),
+                          expect.end(),
+                          std::ostream_iterator<int64_t>(sout, ","));
+                sout << "]" << std::endl;
 
-                 sout << "actual:" << actual << std::endl;
-                 LOG(ERROR) << sout.str();
-               };
+                sout << prefix << " actual:" << actual << std::endl;
+                LOG(ERROR) << sout.str();
+              };
 
-               if (actual.size() != expect.size()) {
-                 LOG(ERROR) << "expect size " << expect.size()
-                            << " is not equal to actual size " << actual.size()
-                            << " . The detailed infermation is as follows:";
-                 print_expect_and_actual();
-                 return false;
-               } else if (actual.empty()) {
-                 return true;
-               }
+              if (actual.size() != expect.size()) {
+                LOG(ERROR) << compare_type << " expect size " << expect.size()
+                           << " is not equal to actual size " << actual.size()
+                           << " . The detailed infermation is as follows:";
+                PrintExpectAndActual(compare_type);
+                return false;
+              } else if (actual.empty()) {
+                return true;
+              }
 
-               for (size_t i = 0; i < actual.size(); i++) {
-                 if (!actual.at(i).isa<int64_t>()) {
-                   print_expect_and_actual();
-                   PADDLE_THROW(common::errors::InvalidArgument(
-                       "In OpTest, only supports cases where the type of "
-                       "DimExpr "
-                       "is int64_t."));
-                   return false;
-                 }
-                 if (actual.at(i) != expect.at(i)) {
-                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
-                              << " is not equal to actual[" << i
-                              << "]: " << actual.at(i)
-                              << " . The detailed infermation is as follows:";
-                   print_expect_and_actual();
-                   return false;
-                 }
-               }
-               return true;
-             };
+              for (size_t i = 0; i < actual.size(); i++) {
+                if (!actual.at(i).isa<int64_t>()) {
+                  PrintExpectAndActual(compare_type);
+                  PADDLE_THROW(common::errors::InvalidArgument(
+                      "In OpTest, only supports cases where the type of "
+                      "DimExpr "
+                      "is int64_t."));
+                  return false;
+                }
+                if (actual.at(i) != expect.at(i)) {
+                  LOG(ERROR)
+                      << compare_type << " expect[" << i
+                      << "]: " << expect.at(i) << " is not equal to actual["
+                      << i << "]: " << actual.at(i)
+                      << " . The detailed infermation is as follows:";
+                  PrintExpectAndActual(compare_type);
+                  return false;
+                }
+              }
+              return true;
+            };
 
-             // compare shape
-             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
-
-             // TODO(gongshaotian): compare data
-             return compare_func(expect_shape, actual_shape);
-           });
+            // compare shape
+            const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+            const bool shape_status =
+                CompareFunc(expect_shape, actual_shape, "shape");
+            // compare data
+            const std::optional<std::vector<symbol::DimExpr>> &actual_data_ =
+                self.data();
+            if (actual_data_.has_value()) {
+              PADDLE_ENFORCE_LE(actual_shape.size(),
+                                1,
+                                common::errors::Unimplemented(
+                                    "Now data dim expr is not supported for "
+                                    "multi-dim shape."));
+              const std::vector<symbol::DimExpr> actual_data =
+                  actual_data_.value();
+              const bool data_status =
+                  CompareFunc(expect_data, actual_data, "data");
+              return shape_status && data_status;
+            }
+            return shape_status;
+          });
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {
@@ -2597,6 +3400,122 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
            }
            return flag;
          });
+#ifdef PADDLE_WITH_CINN
+  m->def(
+      "bind_symbolic_constraints",
+      [](pir::Program *program, const py::handle &constraints) -> void {
+        // Check input is sequence
+        PADDLE_ENFORCE_EQ(
+            py::isinstance<py::sequence>(constraints),
+            true,
+            common::errors::InvalidArgument(
+                "constraints for SOT symbolic variables must be a sequence."));
+
+        const py::sequence constraints_seq =
+            py::cast<py::sequence>(constraints);
+        if (py::len(constraints_seq) == 0) {
+          return;
+        }
+
+        // Process constraints
+        std::vector<std::tuple<std::string,
+                               std::tuple<int64_t,
+                                          std::optional<int64_t>,
+                                          std::optional<int64_t>>>>
+            raw_constraints;
+
+        for (size_t idx = 0; idx < constraints_seq.size(); ++idx) {
+          const auto &constraint = constraints_seq[idx];
+
+          // Check constraint item is tuple
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::tuple>(constraint),
+              true,
+              common::errors::InvalidArgument("Constraint[%zu] must be a tuple "
+                                              "of (name, dimension_triplet).",
+                                              idx));
+
+          const py::tuple constraint_tuple = py::cast<py::tuple>(constraint);
+
+          // Check tuple has 2 elements
+          PADDLE_ENFORCE_EQ(
+              constraint_tuple.size(),
+              2,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu] must have exactly 2 elements (got %zu).",
+                  idx,
+                  constraint_tuple.size()));
+
+          // Check and get input spec name
+          const py::handle name_handle = constraint_tuple[0];
+
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::str>(name_handle),
+              true,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][0] must be a string (got %s)",
+                  idx,
+                  py::str(name_handle.get_type()).cast<std::string>().c_str()));
+          const std::string input_spec_name =
+              py::cast<std::string>(name_handle);
+
+          // Check and get dimension triplet
+          const py::handle triplet_handle = constraint_tuple[1];
+          PADDLE_ENFORCE_EQ(py::isinstance<py::tuple>(triplet_handle),
+                            true,
+                            common::errors::InvalidArgument(
+                                "Constraint[%zu][1] must be a tuple.", idx));
+
+          const py::tuple triplet = py::cast<py::tuple>(triplet_handle);
+          PADDLE_ENFORCE_EQ(
+              triplet.size(),
+              3,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][1] must have 3 elements (got %zu).",
+                  idx,
+                  triplet.size()));
+
+          // Validate and convert elements
+          auto convert_optional = [idx](const py::handle &h,
+                                        int pos) -> std::optional<int64_t> {
+            if (h.is_none()) return std::nullopt;
+
+            PADDLE_ENFORCE_EQ(
+                py::isinstance<py::int_>(h),
+                true,
+                "Constraint[%zu][1][%d] must be int or None (got %s).",
+                idx,
+                pos,
+                py::str(h.get_type()).cast<std::string>().c_str());
+            return py::cast<int64_t>(h);
+          };
+
+          // Check dim_idx
+          PADDLE_ENFORCE_EQ(
+              py::isinstance<py::int_>(triplet[0]),
+              true,
+              common::errors::InvalidArgument(
+                  "Constraint[%zu][1][0] (dim_idx) must be int (got %s).",
+                  idx,
+                  py::str(triplet[0].get_type()).cast<std::string>().c_str()));
+          const int64_t dim_idx = py::cast<int64_t>(triplet[0]);
+
+          // Convert min/max with position info
+          std::optional<int64_t> min_val = convert_optional(triplet[1], 1);
+          std::optional<int64_t> max_val = convert_optional(triplet[2], 2);
+
+          // Add to constraints
+          raw_constraints.emplace_back(
+              std::move(input_spec_name),
+              std::make_tuple(dim_idx, min_val, max_val));
+        }
+
+        ::cinn::dialect::ir::SpecifyInputDynamicDimFromPython(program,
+                                                              raw_constraints);
+      },
+      py::arg("program"),
+      py::arg("constraints").noconvert());
+#endif
 
   py::class_<pir::ShapeConstraintIRAnalysis,
              std::shared_ptr<pir::ShapeConstraintIRAnalysis>>
@@ -2635,7 +3554,7 @@ void BindPir(pybind11::module *module) {
   BindShapeConstraintIRAnalysis(&ir_module);
   auto ops_modules = ir_module.def_submodule("ops");
   BindOpsAPI(&ops_modules);
-  BindIrParser(&ir_module);
+  BindDrrPatternContext(&ir_module);
 }
 
 }  // namespace pybind

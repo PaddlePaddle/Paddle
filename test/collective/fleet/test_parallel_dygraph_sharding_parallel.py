@@ -60,6 +60,15 @@ class TestHybridParallel(TestMultipleAccelerators):
         # reset
         os.environ["FLAGS_shard_param_with_color"] = "0"
 
+    def test_hybrid_parallel_sharding_with_fuse_optimizer_states(self):
+        # test shard v2
+        os.environ["FLAGS_shard_split_param"] = "1"
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_sharding_model_with_fuse_optimizer_states_enabled.py'
+        )
+        # reset
+        os.environ["FLAGS_shard_split_param"] = "0"
+
 
 if __name__ == "__main__":
     unittest.main()

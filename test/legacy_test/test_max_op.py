@@ -20,9 +20,13 @@ import numpy as np
 from op_test import check_out_dtype
 
 sys.path.append("../../legacy_test")
+import os
+
 from test_sum_op import TestReduceOPTensorAxisBase
+from utils import dygraph_guard, static_guard
 
 import paddle
+from paddle import base
 from paddle.base import core
 
 
@@ -139,6 +143,51 @@ class TestMaxWithTensorAxis2(TestReduceOPTensorAxisBase):
             paddle.to_tensor([1], 'int64'),
             paddle.to_tensor([2], 'int64'),
         ]
+
+
+class TestMaxWithNan(unittest.TestCase):
+    def _get_places(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
+    def _test_with_nan_static(
+        self, func, shape, dtype=np.float32, place=paddle.CPUPlace()
+    ):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_np = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
+                x_np[0, 0] = np.nan
+                x = paddle.static.data(name='x', shape=shape, dtype=dtype)
+                out = func(x)
+                exe = paddle.static.Executor(place)
+                res = exe.run(feed={'x': x_np}, fetch_list=[out])
+                self.assertTrue(np.isnan(res[0]), "Result should be NaN")
+
+    def _test_with_nan_dynamic(
+        self, func, shape, dtype=np.float32, place=paddle.CPUPlace()
+    ):
+        with dygraph_guard():
+            x_np = np.arange(np.prod(shape), dtype=dtype).reshape(shape)
+            x_np[0, 0] = np.nan
+            x = paddle.to_tensor(x_np, place=place)
+            out = func(x)
+            self.assertTrue(paddle.isnan(out), "Result should be NaN")
+
+    def test_with_nan(self):
+        places = self._get_places()
+        for place in places:
+            self._test_with_nan_dynamic(paddle.max, (2, 3), place=place)
+            self._test_with_nan_static(paddle.max, (2, 3), place=place)
 
 
 if __name__ == '__main__':

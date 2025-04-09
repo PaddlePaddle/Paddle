@@ -107,7 +107,7 @@ class Jacobian:
     def __getitem__(self, indexes):
         return self._jacobian[indexes]
 
-    def __getattr__(self, __name: str):
+    def __getattr__(self, __name: str):  # noqa: PYI063
         if __name == "shape":
             return getattr(self._jacobian, __name)
         if __name == "_evaluate_all":

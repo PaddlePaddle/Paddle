@@ -27,6 +27,7 @@ template <typename T, typename Context>
 void PRecvKernel(const Context& dev_ctx UNUSED,
                  int peer UNUSED,
                  DataType dtype UNUSED,
+                 const std::vector<int>& out_shape UNUSED,
                  bool dynamic_shape UNUSED,
                  DenseTensor* out UNUSED) {
   PADDLE_THROW(errors::Unavailable("Do not support recv for cpu kernel now."));

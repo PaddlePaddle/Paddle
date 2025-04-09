@@ -155,6 +155,7 @@ from .framework import (  # noqa: F401
     CustomPlace,
     IPUPlace,
     ParamAttr,
+    XPUPinnedPlace,
     XPUPlace,
     async_save,
     clear_async_save_task_queue,
@@ -227,6 +228,7 @@ from .tensor.linalg import (  # noqa: F401
     cdist,
     cholesky,
     cross,
+    diagonal,
     dist,
     dot,
     eigvalsh,
@@ -241,6 +243,7 @@ from .tensor.linalg import (  # noqa: F401
     t_,
     transpose,
     transpose_,
+    vecdot,
 )
 from .tensor.logic import (
     allclose,
@@ -384,6 +387,8 @@ from .tensor.math import (  # noqa: F401
     atan_,
     atanh,
     atanh_,
+    baddbmm,
+    baddbmm_,
     bitwise_left_shift,
     bitwise_left_shift_,
     bitwise_right_shift,
@@ -409,7 +414,6 @@ from .tensor.math import (  # noqa: F401
     cumsum_,
     cumulative_trapezoid,
     deg2rad,
-    diagonal,
     diff,
     digamma,
     digamma_,
@@ -496,6 +500,7 @@ from .tensor.math import (  # noqa: F401
     nansum,
     neg,
     neg_,
+    negative,
     nextafter,
     outer,
     polygamma,
@@ -772,9 +777,13 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
+
 # Constants
 newaxis: None = None
 inf = math.inf
+nan = math.nan
+pi = math.pi
+e = math.e
 
 __all__ = [
     'block_diag',
@@ -799,6 +808,8 @@ __all__ = [
     'raw',
     'addmm',
     'addmm_',
+    'baddbmm',
+    'baddbmm_',
     'allclose',
     'isclose',
     't',
@@ -1005,6 +1016,7 @@ __all__ = [
     'conj',
     'neg',
     'neg_',
+    'negative',
     'lgamma',
     'lgamma_',
     'gammaincc',
@@ -1109,6 +1121,7 @@ __all__ = [
     'reverse',
     'nonzero',
     'CUDAPinnedPlace',
+    'XPUPinnedPlace',
     'logical_not',
     'logical_not_',
     'add_n',
@@ -1211,4 +1224,18 @@ __all__ = [
     'to_dlpack',
     'inf',
     'newaxis',
+    'vecdot',
+    'nan',
+    'pi',
+    'e',
 ]
+
+import os
+
+FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
+if FLAGS_trace_api is not None and FLAGS_trace_api != "":
+    from .api_tracer import start_api_tracer
+
+    api_path = FLAGS_trace_api.split(",")[0]
+    save_config_path = FLAGS_trace_api.split(",")[1]
+    start_api_tracer(api_path, save_config_path)

@@ -70,11 +70,13 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
             )
 
             main_prog.global_block().append_op(
-                type="c_allreduce_sum",
-                inputs={'X': toutdata},
-                attrs={'ring_id': ring_id},
-                outputs={'Out': toutdata},
-                attr={'use_calc_stream': False},
+                type="all_reduce",
+                inputs={'x': toutdata},
+                attrs={
+                    'ring_id': ring_id,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
+                },
+                outputs={'out': toutdata},
             )
 
             main_prog.global_block().append_op(

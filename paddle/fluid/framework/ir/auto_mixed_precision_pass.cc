@@ -200,6 +200,7 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "softmax_with_cross_entropy",
       "sigmoid_cross_entropy_with_logits",
       "c_softmax_with_cross_entropy",
+      "c_softmax_with_multi_label_cross_entropy",
       "cross_entropy",
       "cross_entropy2",
 #ifndef PADDLE_WITH_XPU
@@ -261,15 +262,15 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 
   auto graph_size = graph->SubGraphsSize();
   VLOG(4) << "graph size: " << graph_size;
-  subgraphes_.resize(graph_size);
+  subgraphs_.resize(graph_size);
   all_op_nodes_.resize(graph_size);
 
   for (size_t i = 0; i < graph_size; i++) {
-    subgraphes_[i] = graph->GetSubGraph(i);
-    all_op_nodes_[i] = TopologySortOperations(*subgraphes_[i]);
+    subgraphs_[i] = graph->GetSubGraph(i);
+    all_op_nodes_[i] = TopologySortOperations(*subgraphs_[i]);
     VLOG(4) << "subgraph " << i << " has " << all_op_nodes_[i].size()
             << " op nodes";
-    for (auto* var_node : subgraphes_[i]->Nodes()) {
+    for (auto* var_node : subgraphs_[i]->Nodes()) {
       if (!var_node->IsVar()) continue;
 
       auto var_name = var_node->Var()->Name();
@@ -565,7 +566,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
             vars_should_not_low_precision.insert(in_var_node->Var()->Name());
           }
         }
-        // when op_1 only support cpu kernel. if op_2's intput var is op_1's
+        // when op_1 only support cpu kernel. if op_2's input var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
             GetOpOriginalType(op_type) != "tensorrt_engine" &&
@@ -901,9 +902,9 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
     }
   }
 
-  // This code used to precess vars with the same name. Vars with the same
+  // This code used to process vars with the same name. Vars with the same
   // name should have the same data type.
-  for (auto* subgraph : subgraphes_) {
+  for (auto* subgraph : subgraphs_) {
     for (auto* var_node : subgraph->Nodes()) {
       if (!var_node->IsVar() || !var_node->Var()->Persistable()) continue;
       if (!VarNodeHasDtype(var_node)) continue;
@@ -1027,7 +1028,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
             prev_op->Op()->SetAttr("out_dtype", static_cast<int>(to_type));
             prev_op->Op()->Flush();
           } else {
-            DoInsertCastOp(subgraphes_[i],
+            DoInsertCastOp(subgraphs_[i],
                            in_var_node,
                            op_node,
                            in_var_type,
@@ -1046,7 +1047,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
             prev_op->Op()->SetAttr("out_dtype", static_cast<int>(to_type));
             prev_op->Op()->Flush();
           } else {
-            DoInsertCastOp(subgraphes_[i],
+            DoInsertCastOp(subgraphs_[i],
                            in_var_node,
                            op_node,
                            in_var_type,
@@ -1069,7 +1070,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
             cache_kv_outputs.size(),
             common::errors::InvalidArgument(
                 "Cache inputs should be the same size with cache outputs, but "
-                "recieved %d as inputs and %d as outputs.",
+                "received %d as inputs and %d as outputs.",
                 cache_kv_inputs.size(),
                 cache_kv_outputs.size()));
         for (size_t i = 0; i < cache_kv_inputs.size(); ++i) {

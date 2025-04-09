@@ -1,5 +1,5 @@
 # In Windows, c_api test link must link both 2 shared to avoid symbols redefinition,
-# in Linux, c_api test cant do like this or graph_to_program register more than once.
+# in Linux, c_api test can't do like this or graph_to_program register more than once.
 # Both Windows and Linux can only use paddle_inference_c, but this will increase size
 # of build folder by 30G.
 set(inference_api_tester_deps paddle_inference_api analysis_config)
@@ -211,7 +211,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --with_accuracy_layer=false)
   endfunction()
 
-  function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME
+  function(inference_analysis_api_object_detection_int8_test_run TARGET_NAME
            test_binary model_dir data_path)
     inference_analysis_test_run(
       ${TARGET_NAME}
@@ -955,6 +955,23 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     inference_analysis_api_test_with_fake_data_run(
       test_analyzer_resnet50 ${IMG_CLASS_TEST_APP} ${RESNET50_MODEL_DIR} true)
     set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)
+  endif()
+  if(WITH_OPENVINO
+     AND NOT WIN32
+     AND NOT WITH_XPU
+     AND NOT WITH_ROCM)
+    set(OPENVINO_RESNET50_MODEL_DIR
+        "${INFERENCE_DEMO_INSTALL_DIR}/openvino_resnet50")
+    download_data_without_verify(${OPENVINO_RESNET50_MODEL_DIR}
+                                 "resnet50_pdmodel.tar.gz")
+    set(OPENVINO_TEST_APP "analyzer_openvino")
+    set(OPENVINO_TEST_APP_SRC "analyzer_openvino_tester.cc")
+    inference_analysis_api_test_with_fake_data_build(${OPENVINO_TEST_APP}
+                                                     ${OPENVINO_TEST_APP_SRC})
+    inference_analysis_api_test_with_fake_data_run(
+      test_analyzer_openvino_resnet50 ${OPENVINO_TEST_APP}
+      ${OPENVINO_RESNET50_MODEL_DIR} true)
+    set_tests_properties(test_analyzer_openvino_resnet50 PROPERTIES TIMEOUT 120)
   endif()
 
   inference_analysis_test(

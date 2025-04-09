@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass_tester.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-namespace fc_gru_test {
+namespace paddle::framework::ir::fc_gru_test {
 TEST(FcGruFusePass, basic) {
   std::unique_ptr<ir::Graph> graph = PrepareGraph();
   auto pass = PassRegistry::Instance().Get("fc_gru_fuse_pass");
@@ -50,9 +46,6 @@ TEST(FcGruFusePass, basic) {
                         "expectations after fuse"));
 }
 
-}  // namespace fc_gru_test
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fc_gru_test
 
 USE_PASS(fc_gru_fuse_pass);

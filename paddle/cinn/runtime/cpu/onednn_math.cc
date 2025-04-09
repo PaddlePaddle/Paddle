@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 
 using dnnl::algorithm;
@@ -168,18 +168,18 @@ CINN_REGISTER_HELPER(cinn_cpu_onednn) {
                           16UL,
                           ::common::errors::InvalidArgument(
                               "Wrong number of arguments passed in."));
-        auto N = cinn::common::AutoSimplify(args[0]);
-        int input_h = cinn::common::AutoSimplify(args[2]).as_int32();
-        int input_w = cinn::common::AutoSimplify(args[3]).as_int32();
-        auto c_out = cinn::common::AutoSimplify(args[4]);
-        int filter_h = cinn::common::AutoSimplify(args[6]).as_int32();
-        int filter_w = cinn::common::AutoSimplify(args[7]).as_int32();
-        int pad_h = cinn::common::AutoSimplify(args[8]).as_int32();
-        int pad_w = cinn::common::AutoSimplify(args[9]).as_int32();
-        int stride_h = cinn::common::AutoSimplify(args[10]).as_int32();
-        int stride_w = cinn::common::AutoSimplify(args[11]).as_int32();
-        int dilation_h = cinn::common::AutoSimplify(args[12]).as_int32();
-        int dilation_w = cinn::common::AutoSimplify(args[13]).as_int32();
+        auto N = cinn::optim::ArithSimplify(args[0]);
+        int input_h = cinn::optim::ArithSimplify(args[2]).as_int32();
+        int input_w = cinn::optim::ArithSimplify(args[3]).as_int32();
+        auto c_out = cinn::optim::ArithSimplify(args[4]);
+        int filter_h = cinn::optim::ArithSimplify(args[6]).as_int32();
+        int filter_w = cinn::optim::ArithSimplify(args[7]).as_int32();
+        int pad_h = cinn::optim::ArithSimplify(args[8]).as_int32();
+        int pad_w = cinn::optim::ArithSimplify(args[9]).as_int32();
+        int stride_h = cinn::optim::ArithSimplify(args[10]).as_int32();
+        int stride_w = cinn::optim::ArithSimplify(args[11]).as_int32();
+        int dilation_h = cinn::optim::ArithSimplify(args[12]).as_int32();
+        int dilation_w = cinn::optim::ArithSimplify(args[13]).as_int32();
         int out_h = (input_h - ((filter_h - 1) * dilation_h + 1) + 2 * pad_h) /
                         stride_h +
                     1;

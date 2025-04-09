@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -61,11 +62,13 @@ void PNormKernel(const Context& dev_ctx,
   int pre = 0, n = 0, post = 0;
   GetDims(xdim, axis, &pre, &n, &post, asvector);
 
-  for (int i = 0; i < xdim.size(); i++) {
-    PADDLE_ENFORCE_LT(0,
-                      xdim[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
+  if (x.numel() == 0) {
+    if (out->numel() > 0) {
+      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+    }
+    return;
   }
 
   auto* place = dev_ctx.eigen_device();

@@ -593,7 +593,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               "have >0 elements, but now have %d elements. "
               "It's likely that this tensor is connected to a Concat op inside "
               "a trt-subgraph, "
-              "try to ues API to forbid this op into trt-subgraph.",
+              "try to use API to forbid this op into trt-subgraph.",
               x,
               t.numel()));
 
@@ -1053,7 +1053,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
                 model_opt_cache_dir_, engine_key_);
         trt_engine_->Deserialize(trt_engine_serialized_data);
       } else {
-        // This brach mainly used to ut.
+        // This branch mainly used to ut.
         PrepareTRTEngine(scope, trt_engine_);
       }
     }

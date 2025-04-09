@@ -402,7 +402,7 @@ class AutoAlignTool:
         return diff_var_name_list
 
     @staticmethod
-    def diff_informations(right_dir, wrong_dir):
+    def diff_information(right_dir, wrong_dir):
         """
         Find the corresponding operator according to the variable name.
         """
@@ -448,7 +448,7 @@ class AutoAlignTool:
         return diff_ops_varname_dict
 
     @staticmethod
-    def diff_informations_from_dirs(right_dirs, wrong_dirs):
+    def diff_information_from_dirs(right_dirs, wrong_dirs):
         right_vars_list = []
         right_program_list = []
         right_dist_attr_map = {}

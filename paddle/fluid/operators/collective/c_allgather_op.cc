@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CAllGatherOp : public framework::OperatorWithKernel {
  public:
@@ -70,24 +69,10 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_allgather,
                              ops::CAllGatherOp,
                              ops::CAllGatherOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(c_allgather,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::CAllGatherOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int8_t,
-                          int64_t,
-                          uint8_t,
-                          bool,
-                          phi::dtype::float16) {}

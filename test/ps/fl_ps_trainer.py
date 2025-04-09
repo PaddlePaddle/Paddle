@@ -126,8 +126,7 @@ def fl_ps_train():
             )
             end_time = time.time()
             print(
-                "trainer epoch %d finished, use time=%d\n"
-                % ((epoch), end_time - start_time)
+                f"trainer epoch {epoch} finished, use time={end_time - start_time}\n"
             )
         exe.close()
         _runtime_handle._stop_worker()

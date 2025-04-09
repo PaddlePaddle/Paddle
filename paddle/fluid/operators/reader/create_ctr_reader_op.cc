@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/operators/reader/ctr_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
-#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/operators/reader/dense_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace operators {
@@ -36,10 +36,10 @@ class CreateCTRReaderOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
         common::errors::PreconditionNotMet(
-            "No LoDTensorBlockingQueueHolder variable with name %s found",
+            "No DenseTensorBlockingQueueHolder variable with name %s found",
             queue_name));
     auto* queue_holder =
-        queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
+        queue_holder_var->template GetMutable<DenseTensorBlockingQueueHolder>();
 
     auto thread_num = Attr<int>("thread_num");
     auto sparse_slots = Attr<std::vector<std::string>>("sparse_slots");
@@ -66,7 +66,7 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
  protected:
   void Apply() override {
     AddInput("blocking_queue",
-             "Name of the `LoDTensorBlockingQueueHolder` variable");
+             "Name of the `DenseTensorBlockingQueueHolder` variable");
     AddAttr<int>("thread_num", "the thread num to read data");
     AddAttr<int>("batch_size", "the batch size of read data");
     AddAttr<std::string>("file_type", "plain or gzip").SetDefault("plain");

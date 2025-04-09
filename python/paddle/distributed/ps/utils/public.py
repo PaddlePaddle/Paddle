@@ -1303,7 +1303,7 @@ def block_append_op(program, origin_program, block, op):
         new_op_desc.copy_from(op_desc)
         new_op_desc._set_attr(RPC_OP_ROLE_ATTR_NAME, backward)
 
-        # set device gard
+        # set device grad
         if op.desc.has_attr(device_attr_name):
             op_device = op_desc.attr(device_attr_name)
             new_op_desc._set_attr(device_attr_name, op_device)

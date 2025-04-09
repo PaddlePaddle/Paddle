@@ -64,16 +64,30 @@ void RoiAlignKernel(const Context& dev_ctx,
             rois_batch_size,
             batch_size));
 
-    std::vector<int> rois_num_list(rois_batch_size);
-    memory_utils::Copy(cplace,
-                       rois_num_list.data(),
-                       xplace,
-                       boxes_num->data<int>(),
-                       sizeof(int) * rois_batch_size);
-    cpu_lod = new int[rois_batch_size + 1];
-    cpu_lod[0] = 0;
-    for (int i = 0; i < rois_batch_size; i++) {
-      cpu_lod[i + 1] = cpu_lod[i] + rois_num_list[i];
+    if (boxes_num->dtype() == phi::DataType::INT64) {
+      std::vector<int64_t> rois_num_list(rois_batch_size);
+      memory_utils::Copy(cplace,
+                         rois_num_list.data(),
+                         xplace,
+                         boxes_num->data<int64_t>(),
+                         sizeof(int64_t) * rois_batch_size);
+      cpu_lod = new int[rois_batch_size + 1];
+      cpu_lod[0] = 0;
+      for (int64_t i = 0; i < rois_batch_size; i++) {
+        cpu_lod[i + 1] = cpu_lod[i] + rois_num_list[i];
+      }
+    } else if (boxes_num->dtype() == phi::DataType::INT32) {
+      std::vector<int> rois_num_list(rois_batch_size);
+      memory_utils::Copy(cplace,
+                         rois_num_list.data(),
+                         xplace,
+                         boxes_num->data<int>(),
+                         sizeof(int) * rois_batch_size);
+      cpu_lod = new int[rois_batch_size + 1];
+      cpu_lod[0] = 0;
+      for (int i = 0; i < rois_batch_size; i++) {
+        cpu_lod[i + 1] = cpu_lod[i] + rois_num_list[i];
+      }
     }
   } else {
     auto lod = boxes.lod();

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
-#include "paddle/phi/kernels/legacy/elementwise_multipy_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_multiply_kernel.h"
 
 namespace phi {
 namespace sr {

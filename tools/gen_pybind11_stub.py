@@ -15,11 +15,11 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import functools
 import keyword
 import logging
 import os
+import py_compile
 import re
 import shutil
 import tempfile
@@ -71,7 +71,7 @@ EXTRA_IMPORTS = {
 # ref:
 # - https://pybind11.readthedocs.io/en/latest/advanced/misc.html#avoiding-cpp-types-in-docstrings
 # - https://pybind11.readthedocs.io/en/latest/advanced/functions.html#default-arguments-revisited
-# we can add some mappings for convertion, e.g. {'paddle::Tensor': 'paddle.Tensor'}
+# we can add some mappings for conversion, e.g. {'paddle::Tensor': 'paddle.Tensor'}
 PYBIND11_ATTR_MAPPING = {}
 
 # some bad full expression pybind11-stubgen can not catch as invalid exp
@@ -84,7 +84,7 @@ PYBIND11_INVALID_FULL_MAPPING = {
     'TensorLike': 'paddle._typing.TensorLike',
     'DTypeLike': 'paddle._typing.DTypeLike',
     'ShapeLike': 'paddle._typing.ShapeLike',
-    'Numberic': 'paddle._typing.Numberic',
+    'Numeric': 'paddle._typing.Numeric',
     'TypeGuard': 'typing_extensions.TypeGuard',
     '_Interpolation': 'paddle.tensor.stat._Interpolation',
     'ParamAttrLike': 'paddle._typing.ParamAttrLike',
@@ -92,7 +92,7 @@ PYBIND11_INVALID_FULL_MAPPING = {
     'TensorOrTensors': 'paddle._typing.TensorOrTensors',
 }
 
-# some bad patial expression pybind11-stubgen can not catch as invalid exp
+# some bad partial expression pybind11-stubgen can not catch as invalid exp
 _PYBIND11_INVALID_PART_MAPPING = {
     'NestedSequence': 'paddle._typing.NestedSequence',
     'Dep': 'Node.Dep',
@@ -185,7 +185,7 @@ def _patch_pybind11_invalid_name():
 
 
 def _patch_pybind11_invalid_annotation():
-    # patch invalid annotaion as `Value`, e.g. 'capsule' to 'typing_extensions.CapsuleType'
+    # patch invalid annotation as `Value`, e.g. 'capsule' to 'typing_extensions.CapsuleType'
     def wrap_name(func):
         @functools.wraps(func)
         def wrapper(self, arg: Annotation):
@@ -323,40 +323,28 @@ def insert_import_modules(filename: str):
         f.write(stub_file)
 
 
-def check_remove_syntax_error(filename, limit=1000):
+def check_remove_syntax_error(filename: str, limit: int = 10000):
     """
     Args:
         filename: xxx.pyi
-        limit: check limit, or raise error
+        limit: the max times try to check syntax error
     """
     pattern_check = re.compile(
         rf"File.*{re.escape(filename)}.*line (?P<lineno>\d+)"
     )
 
-    while limit:
+    while limit > 0:
+
         limit -= 1
 
-        # read file and check syntax error
+        # check syntax error
         err = ""
-        source = ""
-        source_lines = []
-        with open(filename, "r", encoding="utf-8") as f:
-            source_lines = f.readlines()
-            source = "".join(source_lines)
 
-            is_valid = True
-
-            try:
-                ast.parse(source, filename)
-            except SyntaxError:
-                is_valid = False
-                err = traceback.format_exc()
-
-            if is_valid:
-                break
-            else:
-                if limit <= 0:
-                    print(f">>> Syntax error detected in file: {filename}")
+        try:
+            py_compile.compile(filename, doraise=True)
+            break
+        except py_compile.PyCompileError as e:
+            err = traceback.format_exc()
 
         print(f">>> Syntax error: find syntax error in file: {filename}")
 
@@ -364,17 +352,24 @@ def check_remove_syntax_error(filename, limit=1000):
         match_obj = pattern_check.search(err)
         if match_obj is not None:
             line_no = int(match_obj.group("lineno"))
+
+            # read file
+            source_lines = []
+            with open(filename, "r", encoding="utf-8") as f:
+                source_lines = f.readlines()
+
+            del source_lines[line_no - 1]
+
+            # write new lines
+            with open(filename, "w", encoding="utf-8") as f:
+                f.writelines(source_lines)
+
             print(
                 f">>> Syntax error: remove the error line {line_no}, and continue to check ..."
             )
-            del source_lines[line_no - 1]
         else:
             print(">>> Syntax error: no match obj, just continue ...")
             break
-
-        # write new lines
-        with open(filename, "w", encoding="utf-8") as f:
-            f.writelines(source_lines)
 
 
 def post_process(output_dir: str):
@@ -399,7 +394,7 @@ def post_process(output_dir: str):
             replace_bad_attr(filename)
             check_remove_syntax_error(filename)
 
-            # insert moduels if necessary
+            # insert modules if necessary
             insert_import_modules(filename)
 
 
@@ -531,8 +526,8 @@ class OpsYamlBaseAPI:
             ')'
         ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
         args_str = args_str[1:-1]
-        patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
-        args_list = re.split(patten, args_str.strip())
+        pattern = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+        args_list = re.split(pattern, args_str.strip())
         args_list = [x.strip() for x in args_list]
 
         for item in args_list:

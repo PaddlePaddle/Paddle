@@ -360,7 +360,7 @@ void WarpctcKernel(const Context& dev_ctx,
       phi::Copy(dev_ctx, cpu_pad_value, dev_ctx.GetPlace(), true, &pad_value);
     }
 
-    phi::funcs::PaddingLoDTensorFunctor<Context, T>()(
+    phi::funcs::PaddingDenseTensorFunctor<Context, T>()(
         dev_ctx,
         logits,
         &warpctc_logits,
@@ -400,7 +400,7 @@ void WarpctcKernel(const Context& dev_ctx,
     warpctc_label.set_lod(lod);
 
     if (dev_ctx.GetPlace() == phi::CPUPlace()) {
-      phi::funcs::UnpaddingLoDTensorFunctor<Context, int>()(
+      phi::funcs::UnpaddingDenseTensorFunctor<Context, int>()(
           dev_ctx,
           label,
           &warpctc_label,
@@ -415,7 +415,7 @@ void WarpctcKernel(const Context& dev_ctx,
            1});
       dev_ctx.template Alloc<int>(&gpu_label);
       gpu_label.set_lod(lod);
-      phi::funcs::UnpaddingLoDTensorFunctor<Context, int>()(
+      phi::funcs::UnpaddingDenseTensorFunctor<Context, int>()(
           dev_ctx,
           label,
           &gpu_label,

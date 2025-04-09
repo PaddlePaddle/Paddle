@@ -26,7 +26,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/framework/convert_utils.h"
 #include "paddle/phi/core/framework/data_type_transform.h"
-#include "paddle/phi/core/framework/lod_tensor_serialize.h"
+#include "paddle/phi/core/framework/dense_tensor_serialize.h"
 #include "paddle/phi/core/framework/var_type_helper.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -58,36 +58,10 @@ inline void SaveToMemory(const std::string& file_path,
 }
 
 template <typename T, typename Context>
-void SaveCombineTensorKernel(const Context& dev_ctx,
-                             const std::vector<const phi::DenseTensor*>& x,
-                             const std::string& file_path,
-                             bool overwrite,
-                             bool save_as_fp16,
-                             bool save_to_memory,
-                             phi::ExtendedTensor* out) {
-  std::string* y = nullptr;
-  if (out != nullptr) {
-    auto raw_out = static_cast<RawTensor*>(out);
-    y = raw_out->GetMutable<std::string>();
-  }
-
-  bool is_present = FileExists(file_path);
-  if (is_present && !overwrite) {
-    PADDLE_THROW(common::errors::PreconditionNotMet(
-        "%s exists! Cannot save_combine to it when overwrite is set to "
-        "false.",
-        file_path,
-        overwrite));
-  }
-
-  std::ostringstream ss;
-  PADDLE_ENFORCE_GT(x.size(),
-                    0UL,
-                    common::errors::InvalidArgument(
-                        "The number of variables to be saved is %d, expect "
-                        "it to be greater than 0.",
-                        x.size()));
-
+void SerializeCombineTensor(const Context& dev_ctx,
+                            const std::vector<const phi::DenseTensor*>& x,
+                            bool save_as_fp16,
+                            std::ostream& ss) {
   for (size_t i = 0; i < x.size(); i++) {
     auto& tensor = *(x[i]);
     PADDLE_ENFORCE_EQ(
@@ -114,8 +88,45 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
       SerializeToStream(ss, tensor, dev_ctx);
     }
   }
+}
 
-  SaveToMemory(file_path, ss, save_to_memory, y);
+template <typename T, typename Context>
+void SaveCombineTensorKernel(const Context& dev_ctx,
+                             const std::vector<const phi::DenseTensor*>& x,
+                             const std::string& file_path,
+                             bool overwrite,
+                             bool save_as_fp16,
+                             bool save_to_memory,
+                             phi::ExtendedTensor* out) {
+  std::string* y = nullptr;
+  if (out != nullptr) {
+    auto raw_out = static_cast<RawTensor*>(out);
+    y = raw_out->GetMutable<std::string>();
+  }
+
+  bool is_present = FileExists(file_path);
+  if (is_present && !overwrite) {
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "%s exists! Cannot save_combine to it when overwrite is set to "
+        "false.",
+        file_path,
+        overwrite));
+  }
+
+  if (save_to_memory) {
+    std::ostringstream ss;
+    SerializeCombineTensor<T>(dev_ctx, x, save_as_fp16, ss);
+    SaveToMemory(file_path, ss, save_to_memory, y);
+  } else {
+    MkDirRecursively(DirName(file_path).c_str());
+    std::ofstream fout(file_path, std::ios::binary);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                      true,
+                      common::errors::Unavailable(
+                          "Cannot open %s to save variables.", file_path));
+    SerializeCombineTensor<T>(dev_ctx, x, save_as_fp16, fout);
+    fout.close();
+  }
 }
 
 template <typename T, typename Context>

@@ -25,6 +25,7 @@ from typing import Callable, Protocol, TypeVar, overload
 from typing_extensions import ParamSpec
 
 import paddle
+from paddle.base.framework import use_pir_api
 from paddle.inference import Config, PrecisionType, create_predictor
 from paddle.nn import Layer
 from paddle.static import InputSpec
@@ -73,11 +74,15 @@ def is_fixed_type(input):
         return False
 
 
+def is_list_or_tuple(args):
+    return isinstance(args, (list, tuple))
+
+
 # get paddle.Tensor for paddle inference use.
 def get_tensor(run_time_args, arg_name):
     if isinstance(run_time_args, paddle.Tensor):
         return [run_time_args]
-    elif isinstance(run_time_args, list):
+    elif is_list_or_tuple(run_time_args):
         this_input_tensor_lists = []
         for ele in run_time_args:
             assert isinstance(
@@ -89,7 +94,7 @@ def get_tensor(run_time_args, arg_name):
         return [run_time_args]
     else:
         raise AssertionError(
-            f'''we only support adding paddle.incubate.jit.inference() in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
+            f'''we only support adding paddle.incubate.jit.inference() in functions whose arguments are paddle.Tensor or list[paddle.Tensor] & tuple[paddle.Tensor] or None,
             but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
         )
 
@@ -98,7 +103,7 @@ def get_tensor(run_time_args, arg_name):
 def get_d2s_spec(run_time_args, name):
     if isinstance(run_time_args, paddle.Tensor):
         return InputSpec.from_tensor(run_time_args, name=name)
-    elif isinstance(run_time_args, list):
+    elif is_list_or_tuple(run_time_args):
         this_input_spec = []
         suffix = 0
         for ele in run_time_args:
@@ -272,7 +277,7 @@ class InferenceEngine:
                 input_specs.append(this_input)
 
         for i in range(len(input_specs)):
-            if isinstance(input_specs[i], list):
+            if is_list_or_tuple(input_specs[i]):
                 for j in range(len(input_specs[i])):
                     input_specs[i][j].stop_gradient = True
             elif isinstance(input_specs[i], paddle.static.InputSpec):
@@ -284,7 +289,7 @@ class InferenceEngine:
         if len(self.d2s_input_names) == 0:
             self.d2s_input_names.extend([None] * len(input_tensor_lists))
         for i in range(len(input_specs)):
-            if isinstance(input_specs[i], list):
+            if is_list_or_tuple(input_specs[i]):
                 for j in range(len(input_specs[i])):
                     input_specs[i][j].shape = self.d2s_input_shapes[
                         d2s_shapes_id
@@ -334,7 +339,7 @@ class InferenceEngine:
                 )
                 f.write(line)
         print(
-            f"the {func.__name__} function is sucessfully saved to {self.save_path}.pdmodel"
+            f"the {func.__name__} function is successfully saved to {self.save_path}.pdmodel"
         )
         sys.stdout.flush()
 
@@ -371,11 +376,14 @@ class InferenceEngine:
     # why we need input_tensor_lists? this is for TensorRT max/min/opt shape.
     def create_predictor(self, input_tensor_lists):
         # create predictor
-        model_file = os.path.join(self.save_model_dir, "infer.pdmodel")
+        if use_pir_api():
+            model_file = os.path.join(self.save_model_dir, "infer.json")
+        else:
+            model_file = os.path.join(self.save_model_dir, "infer.pdmodel")
         params_file = os.path.join(self.save_model_dir, "infer.pdiparams")
 
         config = Config(model_file, params_file)
-        config.enable_memory_optim()
+        config.enable_memory_optim(False)
         config.switch_ir_debug(self.switch_ir_debug)
         config.switch_ir_optim(self.switch_ir_optim)
         if self.exp_enable_use_cutlass:
@@ -392,6 +400,15 @@ class InferenceEngine:
                 gpu_id,
                 get_inference_precision(self.precision_mode),
             )
+        elif 'xpu' in device_num:
+            config.enable_xpu()
+            device_id = int(device_num.split(':')[1])
+            config.set_xpu_device_id(device_id)
+            xpu_config = paddle.inference.XpuConfig()
+            xpu_config.device_id = device_id
+            xpu_config.l3_size = 0
+            xpu_config.conv_autotune_level = 0
+            config.set_xpu_config(xpu_config)
 
         if self.with_trt:
             dynamic_names = []
@@ -627,7 +644,7 @@ def inference(
         )
 
         # This is the innermost_decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
-        # he is actually invoke this internel function.
+        # he is actually invoke this internal function.
         def innermost_decorator(*args, **kwargs):
             input_tensor_lists = infer_engine.get_input_tensor_lists(
                 *args, **kwargs

@@ -85,13 +85,13 @@ class TestListenAndServOp(unittest.TestCase):
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
                 # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
+                os.stat(f"/tmp/paddle.{pid}.port")
                 return
             except OSError:
                 start_left_time -= sleep_time
 
     def _get_pserver_port(self, pid):
-        with open("/tmp/paddle.%d.port" % pid, 'r') as f:
+        with open(f"/tmp/paddle.{pid}.port", 'r') as f:
             port = int(f.read().strip())
         return port
 

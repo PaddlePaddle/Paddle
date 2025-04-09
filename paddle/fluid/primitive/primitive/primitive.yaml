@@ -50,6 +50,7 @@
 - bitwise_xor
 - isinf
 - isnan
+- isfinite
 - remainder
 - scale
 - matmul
@@ -88,7 +89,7 @@
 - repeat_interleave
 - unbind
 - expand
-- shape
+- shape64
 - reshape
 - squeeze
 - unsqueeze
@@ -124,3 +125,5 @@
 - unique_consecutive
 - sigmoid
 - reduce_as
+- pow
+- variance

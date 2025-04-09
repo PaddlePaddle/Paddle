@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
  private:
@@ -367,8 +366,7 @@ class FusedMultiTransformerINT8OpMaker
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

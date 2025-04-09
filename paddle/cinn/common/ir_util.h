@@ -38,9 +38,6 @@ Expr PrecedingAxisToAbsOffset(const std::vector<Expr> &shape,
 
 Expr CastIfNeeded(Expr body, Type type);
 
-ir::IndexExpr MergeMulMod(SymbolicExprAnalyzer *analyzer,
-                          const ir::IndexExpr &base);
-
 //! Substitute vars to other expressions.
 //! @param expr The expression to do modification.
 //! @param var_map The map from variables to the target expressions.
@@ -177,135 +174,9 @@ inline bool IsZero(const Expr &expr) {
   return false;
 }
 
-/*!
- * \brief Apply func `fleaf` into each leaf node of `expr`.
- * which leaf node is the most outside node that has TNode type.
- * \param expr The expression to be applied.
- * \param fleaf The function to be applied.
- */
-template <typename TNode, typename FLeaf>
-inline void UnpackReduction(const ir::IndexExpr &expr, FLeaf fleaf) {
-  if (const TNode *node = expr.As<TNode>()) {
-    UnpackReduction<TNode, FLeaf>(node->a(), fleaf);
-    UnpackReduction<TNode, FLeaf>(node->b(), fleaf);
-  } else {
-    fleaf(expr);
-  }
-}
-
-/*!
- * \brief Flattern the expression into a vector of expressions splited by `Add`
- * or `Mul`.
- *
- * For example (Add):
- * 1. `S0 + S1` ==> {S0, S1}
- * 2. `S0 + S1 * S2` ==> {S0, S1 * S2}
- * 3. `S0 + S1 * (S2 + S3)` ==> {S0, S1 * (S2 + S3)}
- *
- * \param lhs The left hand side expression to be compared.
- * \param rhs The right hand side expression to be compared.
- * \return A boolean value indicating whether the priority of `lhs` is higher
- * than `rhs`.
- */
-template <typename T>
-inline std::vector<ir::IndexExpr> GetFlattenExprs(const ir::IndexExpr &expr) {
-  std::vector<ir::IndexExpr> result;
-  auto fcollect = [&](ir::IndexExpr val) { result.push_back(val); };
-  UnpackReduction<T>(expr, fcollect);
-  return result;
-}
-
-/*!
- * \brief Compare the priority of the two expressions. this func follows the
- * above rules:
- * 1. if lhs = var, rhs = const,    return true;
- * 2. if lhs = const, rhs = var,    return false;
- * 3. if lhs = var, rhs = var,      return lhs_var_name <= lhs_var_name;
- * 4. if lhs.length > rhs.length,   return true;
- * 5. if lhs.length == rhs.length,  return lhs_type <= rhs_type; (Add < Mul <
- * Div < Mod)
- * 6. if lhs.length < rhs.length    return false;
- *
- * For example:
- * 1. `ComparePriority(S0, 2)` return true;
- * 2. `ComparePriority(S0, S0)` return true;
- * 2. `ComparePriority(S0, S1)` return false;
- * 3. `ComparePriority(S0, S1 + 1)` return false;
- * 4. `ComparePriority(S0 % 2, S1 + 1)` return false;
- *
- * \param lhs The left hand side expression to be compared.
- * \param rhs The right hand side expression to be compared.
- * \return A boolean value indicating whether the priority of `lhs` is higher
- * than `rhs`.
- */
-bool ComparePriority(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs);
-
-/*!
- * \brief Determines whether there are sub-parts in the `expr` that can be
- * simplified by `Add` operation with the input `symbol`. If true is returned,
- * the operation will be attempted on each subpart in outter
- * `SimplifySymbolicAdd` function.
- *
- * For example:
- * 1. `IsSumPartialBySymbol(5, S0)` return false;
- * 2. `IsSumPartialBySymbol(S0, S0)` return true;
- * 3. `IsSumPartialBySymbol(S0 + S1, S1)` return true;
- * 4. `IsSumPartialBySymbol(S0 * 5 + S1, S0)` return true;
- * 5. `IsSumPartialBySymbol(S0 / 3, S0)` return true;
- * 6. `IsSumPartialBySymbol(S0 / 3 + S1, S0)` return true;
- * 7. `IsSumPartialBySymbol(S0 % 3, S0)` return false;
- *
- * \param expr The expression to be checked.
- * \param symbol  The symbol to be checked.
- * \return True means there are sub-parts in the `expr` that can be simplified.
- */
-bool IsSumPartialBySymbol(const ir::IndexExpr &expr,
-                          const ir::IndexExpr &symbol);
-
-/*!
- * \brief Determines whether there are sub-parts in the `expr` that can be
- * simplified by `Div` operation with the input `symbol`. If true is returned,
- * the operation will be attempted on each subpart in outter
- * `SimplifySymbolicDivide` function.
- *
- * For example:
- * 1. `IsDivisiblieBySymbol(5, S0, div)` return false;
- * 2. `IsDivisiblieBySymbol(S0, S0, div)` return true;
- * 3. `IsDivisiblieBySymbol(S0 + S1, S1, div)` return false;
- * 4. `IsDivisiblieBySymbol(S0 * 5 + S1 * S2, S0, div)` return true;
- * 5. `IsDivisiblieBySymbol(S0 / 3, S0, div)` return true;
- * 6. `IsDivisiblieBySymbol(S0 * 4 / 3, S0, div)` return true;
- * 7. `IsDivisiblieBySymbol(S0 % 3, S0, div)` return false;
- * 8. `IsDivisiblieBySymbol(S0 / 3, S0, mod)` return false;
- *
- * \param expr The expression to be checked.
- * \param symbol  The symbol to be checked.
- * \param ty ty is `Mod` or `Div`.
- * \return True means there are sub-parts in the `expr` that can be simplified.
- * \note this func dont deal the corner case, please use `ProveDivisible` for
- * exact result. e.g. `IsDivisiblieBySymbol(f % S0 - f, S0, div)` is false
- */
-bool IsDivisiblieBySymbol(const ir::IndexExpr &expr,
-                          const ir::IndexExpr &symbol,
-                          const ir::IrNodeTy &ty);
-
-/*!
- * \brief Determine whether `lhs` is divisible by `rhs`, regardless of whether
- * `rhs` is a constant or a symbol.
- * \param lhs lhs is dividend.
- * \param rhs rhs is divisor.
- * \return A boolean value indicating whether the `lhs` is divisible by `rhs`
- */
-bool ProveDivisible(const ir::IndexExpr &lhs, const ir::IndexExpr &rhs);
-
-/*!
- * \brief Judge whether `candidate` is a negated index expression.
- * \param lhs The expression to be checked.
- * \param rhs The positive part
- * \return A boolean value indicating whether `candidate` is negative.
- */
-bool IsNegatedIndexExpr(const ir::IndexExpr &candidate,
-                        ir::IndexExpr &expr);  // NOLINT
-
+// Promote int32 to int64 type if needed.
+void OpDataTypePromote(ir::Expr *expr);
+void OpDataTypePromote(ir::Module *module);
+void OpDataTypePromote(ir::LoweredFunc *func);
 }  // namespace common
 }  // namespace cinn

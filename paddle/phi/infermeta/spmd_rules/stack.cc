@@ -53,7 +53,7 @@ SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
 
   auto non_empty_index = all_empty ? 0 : non_empty_iter - tensor_shapes.begin();
   auto ndim = tensor_shapes[non_empty_index].size();
-  // normlize dim
+  // normalize dim
   auto dim = axis < 0 ? static_cast<int64_t>(ndim) + axis + 1 : axis;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(

@@ -271,13 +271,13 @@ class TestDygraphInplaceMaskedFill(TestDygraphInplace):
             self.assertEqual(var.inplace_version, 0)
 
             inplace_var = self.inplace_api_processing(var)
-            self.assertEqual(var.inplace_version, 2)
+            self.assertEqual(var.inplace_version, 1)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 3)
+            self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 5)
+            self.assertEqual(var.inplace_version, 3)
 
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
@@ -295,7 +295,7 @@ class TestDygraphInplaceMaskedFill(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
+                f"received tensor_version:{1} != wrapper_version_snapshot:{0}",
             ):
                 loss.backward()
 
@@ -1298,13 +1298,13 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
             self.assertEqual(var.inplace_version, 0)
 
             inplace_var = self.inplace_api_processing(var)
-            self.assertEqual(var.inplace_version, 2)
+            self.assertEqual(var.inplace_version, 1)
 
             inplace_var[0] = 2
-            self.assertEqual(var.inplace_version, 3)
+            self.assertEqual(var.inplace_version, 2)
 
             inplace_var = self.inplace_api_processing(inplace_var)
-            self.assertEqual(var.inplace_version, 5)
+            self.assertEqual(var.inplace_version, 3)
 
     def test_backward_error(self):
         # It raises an error because the inplace operator will result
@@ -1322,7 +1322,7 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                "received tensor_version:2 != wrapper_version_snapshot:0",
+                "received tensor_version:1 != wrapper_version_snapshot:0",
             ):
                 loss.backward()
 
@@ -2281,6 +2281,172 @@ class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
                 )
                 self.assertTrue(id(x) == id(inplace_x))
                 self.assertTrue(x._is_shared_buffer_with(new_x))
+
+
+class TestDygraphInplaceResize(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.support_dtypes = [
+            'float32',
+            'float64',
+            'bool',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'complex64',
+            'complex128',
+        ]
+
+    def init_data(self):
+        self.x_np = np.random.uniform(-5, 5, [3, 10, 2])
+        self.dtype = "float32"
+        self.new_shape1 = [20]
+        self.new_shape2 = [9, 11]
+
+    def non_inplace_api_processing(self, x, shape, fill_zero=False):
+        x = x.numpy().copy()
+        x.resize(shape, refcheck=False)
+        return paddle.to_tensor(x)
+
+    def inplace_api_processing(self, x, shape, fill_zero=False):
+        return paddle.Tensor.resize_(x, shape, fill_zero)
+
+    def test_inplace_api(self):
+        for dtype in self.support_dtypes:
+            for place in self.places:
+                with paddle.base.dygraph.guard(place):
+                    x = paddle.to_tensor(self.x_np).astype(dtype)
+                    inplace_x1 = self.inplace_api_processing(x, self.new_shape1)
+                    self.assertTrue(id(x) == id(inplace_x1))
+
+                    x = paddle.to_tensor(self.x_np).astype(dtype)
+                    inplace_x2 = self.inplace_api_processing(x, self.new_shape2)
+                    self.assertTrue(id(x) == id(inplace_x2))
+
+    def test_forward_result(self):
+        old_numel = np.prod(self.x_np.shape)
+
+        x = paddle.to_tensor(self.x_np).astype(self.dtype)
+        no_inplace_x1 = self.non_inplace_api_processing(x, self.new_shape1)
+        inplace_x1 = self.inplace_api_processing(x, self.new_shape1)
+        np.testing.assert_array_equal(no_inplace_x1.numpy(), inplace_x1.numpy())
+
+        x = paddle.to_tensor(self.x_np).astype(self.dtype)
+        no_inplace_x2 = self.non_inplace_api_processing(x, self.new_shape2)
+        inplace_x2 = self.inplace_api_processing(x, self.new_shape2)
+        np.testing.assert_array_equal(
+            no_inplace_x2.numpy().flatten()[:old_numel],
+            inplace_x2.numpy().flatten()[:old_numel],
+        )
+
+        x = paddle.to_tensor(self.x_np).astype(self.dtype)
+        no_inplace_x3 = self.non_inplace_api_processing(
+            x, self.new_shape1, fill_zero=True
+        )
+        inplace_x3 = self.inplace_api_processing(
+            x, self.new_shape1, fill_zero=True
+        )
+        np.testing.assert_array_equal(no_inplace_x3.numpy(), inplace_x3.numpy())
+
+        x = paddle.to_tensor(self.x_np).astype(self.dtype)
+        no_inplace_x2 = self.non_inplace_api_processing(
+            x, self.new_shape2, fill_zero=True
+        )
+        inplace_x2 = self.inplace_api_processing(
+            x, self.new_shape2, fill_zero=True
+        )
+        np.testing.assert_array_equal(no_inplace_x2.numpy(), inplace_x2.numpy())
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            x = paddle.to_tensor(self.x_np).astype(self.dtype)
+            self.assertEqual(x.inplace_version, 0)
+
+            x = self.inplace_api_processing(x, self.new_shape1)
+            self.assertEqual(x.inplace_version, 1)
+
+            x = self.inplace_api_processing(x, self.new_shape2)
+            self.assertEqual(x.inplace_version, 2)
+
+    def test_leaf_inplace_var_error(self):
+        with paddle.base.dygraph.guard():
+            x = paddle.to_tensor(self.x_np).astype(self.dtype)
+            x.stop_gradient = False
+
+            def leaf_inplace_error():
+                self.inplace_api_processing(x, self.new_shape1)
+
+            self.assertRaises(ValueError, leaf_inplace_error)
+
+    def test_argument_error(self):
+        with paddle.base.dygraph.guard():
+            x = paddle.to_tensor(self.x_np).astype(self.dtype)
+
+            def argument_error():
+                self.inplace_api_processing(x, 2.0)
+
+            self.assertRaises(ValueError, argument_error)
+
+
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda()
+    or not paddle.base.core.is_float16_supported(paddle.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the float16",
+)
+class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
+    def setUp(self):
+        self.init_data()
+        self.places = [paddle.CUDAPlace(0)]
+
+    def init_data(self):
+        self.x_np = np.random.uniform(-5, 5, [3, 10, 2])
+        self.dtype = "float16"
+        self.new_shape1 = [20]
+        self.new_shape2 = [8, 12]
+
+    def test_inplace_api(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_np).astype(self.dtype)
+                inplace_x1 = self.inplace_api_processing(x, self.new_shape1)
+                self.assertTrue(id(x) == id(inplace_x1))
+
+                x = paddle.to_tensor(self.x_np).astype(self.dtype)
+                inplace_x2 = self.inplace_api_processing(x, self.new_shape2)
+                self.assertTrue(id(x) == id(inplace_x2))
+
+
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda()
+    or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):
+    def setUp(self):
+        self.init_data()
+        self.places = [paddle.CUDAPlace(0)]
+
+    def init_data(self):
+        self.x_np = np.random.uniform(-5, 5, [3, 10, 2])
+        self.dtype = "bfloat16"
+        self.new_shape1 = [15]
+        self.new_shape2 = [9, 11]
+
+    def test_inplace_api(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_np).astype(self.dtype)
+                inplace_x1 = self.inplace_api_processing(x, self.new_shape1)
+                self.assertTrue(id(x) == id(inplace_x1))
+
+                x = paddle.to_tensor(self.x_np).astype(self.dtype)
+                inplace_x2 = self.inplace_api_processing(x, self.new_shape2)
+                self.assertTrue(id(x) == id(inplace_x2))
 
 
 if __name__ == '__main__':

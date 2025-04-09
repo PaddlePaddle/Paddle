@@ -88,7 +88,7 @@ class VarBlock:
         self.size = size
 
     def __str__(self):
-        return "%s:%d:%d" % (self.varname, self.offset, self.size)
+        return f"{self.varname}:{self.offset}:{self.size}"
 
 
 def same_or_split_var(p_name, var_name):
@@ -1334,7 +1334,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             ):
                 for trainer_id in range(self.trainer_num):
                     var = pserver_program.global_block().create_var(
-                        name="%s.trainer_%d" % (orig_var_name, trainer_id),
+                        name=f"{orig_var_name}.trainer_{trainer_id}",
                         persistable=False,
                         type=v.type,
                         dtype=v.dtype,
@@ -1367,7 +1367,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             for p in self.param_grad_ep_mapping[endpoint]["params"]:
                 # each parameter should have w_bak for each trainer id
                 for i in range(self.trainer_num):
-                    param_bak_name = "%s.trainer_%d_bak" % (p.name, i)
+                    param_bak_name = f"{p.name}.trainer_{i}_bak"
                     tmpvar = pserver_program.global_block().create_var(
                         # NOTE: this var name format is used in `request_get_handler`
                         name=param_bak_name,
@@ -1835,8 +1835,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if self.sync_mode:
                 self.trainer_side_table_grad_list = [
                     program.global_block().create_var(
-                        name="%s.trainer_%d.pserver_%d"
-                        % (table_grad_var.name, self.trainer_id, index),
+                        name=f"{table_grad_var.name}.trainer_{self.trainer_id}.pserver_{index}",
                         type=table_grad_var.type,
                         shape=table_grad_var.shape,
                         dtype=table_grad_var.dtype,
@@ -1846,7 +1845,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             else:
                 self.trainer_side_table_grad_list = [
                     program.global_block().create_var(
-                        name="%s.pserver_%d" % (table_grad_var.name, index),
+                        name=f"{table_grad_var.name}.pserver_{index}",
                         type=table_grad_var.type,
                         shape=table_grad_var.shape,
                         dtype=table_grad_var.dtype,
@@ -2178,8 +2177,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             table_grad_var = self.table_param_grad[1]
             pserver_side_table_grad_list = [
                 pserver_program.global_block().create_var(
-                    name="%s.trainer_%d.pserver_%d"
-                    % (table_grad_var.name, index, pserver_index),
+                    name=f"{table_grad_var.name}.trainer_{index}.pserver_{pserver_index}",
                     type=table_grad_var.type,
                     shape=table_grad_var.shape,
                     dtype=table_grad_var.dtype,
@@ -2281,10 +2279,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             orig_var = program.global_block().var(varname)
             if len(split) == 1:
                 if self.sync_mode and add_trainer_suffix:
-                    new_var_name = "%s.trainer_%d" % (
-                        orig_var.name,
-                        self.trainer_id,
-                    )
+                    new_var_name = f"{orig_var.name}.trainer_{self.trainer_id}"
                     program.global_block()._rename_var(varname, new_var_name)
                     var_mapping[varname] = [
                         program.global_block().var(new_var_name)
@@ -2310,13 +2305,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     splited_shape.extend(orig_shape[1:])
                 new_var_name = ""
                 if self.sync_mode and add_trainer_suffix:
-                    new_var_name = "%s.block%d.trainer_%d" % (
-                        varname,
-                        i,
-                        self.trainer_id,
+                    new_var_name = (
+                        f"{varname}.block{i}.trainer_{self.trainer_id}"
                     )
                 else:
-                    new_var_name = "%s.block%d" % (varname, i)
+                    new_var_name = f"{varname}.block{i}"
                 var = program.global_block().create_var(
                     name=new_var_name,
                     persistable=False,
@@ -2479,7 +2472,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         ):
             vars2merge = []
             for i in range(self.trainer_num):
-                per_trainer_name = "%s.trainer_%d" % (merged_var_name, i)
+                per_trainer_name = f"{merged_var_name}.trainer_{i}"
                 vars2merge.append(pserver_block.vars[per_trainer_name])
             optimize_block.append_op(
                 type="sum",
@@ -2864,7 +2857,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         counter_var = outputs[key]
                     all_trainer_counter_inputs = [
                         self.origin_program.global_block().create_var(
-                            name="%s.trainer_%d" % (counter_var.name, id_),
+                            name=f"{counter_var.name}.trainer_{id_}",
                             type=counter_var.type,
                             shape=counter_var.shape,
                             dtype=counter_var.dtype,
@@ -2887,9 +2880,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                                         'value', float(0.0 - self.trainer_num)
                                     )
                     for var in all_trainer_counter_inputs:
-                        if var.name == "%s.trainer_%d" % (
-                            counter_var.name,
-                            self.trainer_id,
+                        if (
+                            var.name
+                            == f"{counter_var.name}.trainer_{self.trainer_id}"
                         ):
                             self.counter_var = var
                         self.startup_program.global_block().create_var(

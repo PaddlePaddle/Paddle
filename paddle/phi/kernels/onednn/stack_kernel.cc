@@ -63,7 +63,7 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
         srcs_md.push_back(input->mem_desc().reshape(extended_input_dims));
       }
 
-      // concat primitive choses suboptimal format tag because it cannot
+      // concat primitive chooses suboptimal format tag because it cannot
       // distinguish between f.e. abcd and abdc if last dim is equal to 1 so
       // enforcing is needed for better performance
       dst_fmt = GetPlainOneDNNFormat(extended_input_dims.size());  // NOLINT

@@ -49,7 +49,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* mul0,
                           Node* mul1,
                           Node* mul2,
@@ -195,7 +195,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GET_IR_NODE_FROM_SUBGRAPH(
         transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
-    fuse_creater(input0,
+    fuse_creator(input0,
                  mul0,
                  mul1,
                  mul2,
@@ -861,7 +861,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* mul0,
                           Node* mul1,
                           Node* mul2,
@@ -1081,7 +1081,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     if (is_fc_params_shared) {
       return;
     }
-    fuse_creater(input0,
+    fuse_creator(input0,
                  mul0,
                  mul1,
                  mul2,
@@ -1312,7 +1312,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](Node* input0,
+  auto fuse_creator = [&](Node* input0,
                           Node* mul0,
                           Node* mul1,
                           Node* mul2,
@@ -1528,7 +1528,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     if (is_fc_params_shared) {
       return;
     }
-    fuse_creater(input0,
+    fuse_creator(input0,
                  mul0,
                  mul1,
                  mul2,

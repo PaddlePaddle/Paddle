@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/bfloat16.h"
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -56,7 +55,7 @@ TEST(bfloat16, convert_bfloat16_to_float32_on_gpu) {
   EXPECT_EQ(static_cast<bool>(bfloat16(true)), true);
 }
 
-TEST(bfloat16, lod_tensor_on_gpu) {
+TEST(bfloat16, dense_tensor_on_gpu) {
   phi::DenseTensor src_tensor;
   phi::DenseTensor gpu_tensor;
   phi::DenseTensor dst_tensor;

@@ -29,8 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNorm");
@@ -548,8 +547,7 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
 
 DECLARE_INPLACE_OP_INFERER(BatchNormDoubleGradOpInplaceInferer, {"DY", "DDY"});
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

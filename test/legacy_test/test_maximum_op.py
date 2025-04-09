@@ -120,6 +120,94 @@ class ApiMaximumTest(unittest.TestCase):
         res = res.numpy()
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
+    @unittest.skipIf(
+        core.is_compiled_with_xpu(),
+        "XPU need fix the bug",
+    )
+    def test_equal_tensors(self):
+        numpy_tensor = np.ones([10000]).astype("float32")
+        paddle_x = paddle.to_tensor(numpy_tensor)
+        paddle_x.stop_gradient = False
+        numpy_tensor = np.ones([10000]).astype("float32")
+        paddle_x2 = paddle.to_tensor(numpy_tensor)
+        paddle_x2.stop_gradient = False
+
+        numpy_tensor = np.ones([10000]).astype("float32")
+        paddle_outgrad = paddle.to_tensor(numpy_tensor)
+
+        paddle_out = paddle.maximum(paddle_x, paddle_x2)
+        paddle_x_grad, paddle_x2_grad = paddle.grad(
+            [paddle_out],
+            [paddle_x, paddle_x2],
+            grad_outputs=[paddle_outgrad],
+            allow_unused=True,
+        )
+
+        np.testing.assert_allclose(
+            paddle_out.numpy(),
+            numpy_tensor,
+            1e-2,
+            1e-2,
+        )
+
+        np.testing.assert_allclose(
+            paddle_x_grad.numpy(),
+            numpy_tensor * 0.5,
+            1e-2,
+            1e-2,
+        )
+
+        np.testing.assert_allclose(
+            paddle_x2_grad.numpy(),
+            numpy_tensor * 0.5,
+            1e-2,
+            1e-2,
+        )
+
+    def test_0size_input(self):
+        numpy_tensor = np.ones([0, 1, 2]).astype("float32")
+        paddle_x = paddle.to_tensor(numpy_tensor)
+        paddle_x.stop_gradient = False
+        numpy_tensor = np.ones([1, 3598, 2]).astype("float32")
+        paddle_x2 = paddle.to_tensor(numpy_tensor)
+        paddle_x2.stop_gradient = False
+
+        numpy_tensor = np.ones([0, 3598, 2]).astype("float32")
+        paddle_outgrad = paddle.to_tensor(numpy_tensor)
+
+        paddle_out = paddle.maximum(paddle_x, paddle_x2)
+        paddle_x_grad, paddle_x2_grad = paddle.grad(
+            [paddle_out],
+            [paddle_x, paddle_x2],
+            grad_outputs=[paddle_outgrad],
+            allow_unused=True,
+        )
+
+        np.testing.assert_allclose(
+            paddle_out.numpy(),
+            numpy_tensor,
+            1e-2,
+            1e-2,
+        )
+
+        numpy_tensor = np.ones([0, 1, 2]).astype("float32")
+
+        np.testing.assert_allclose(
+            paddle_x_grad.numpy(),
+            numpy_tensor,
+            1e-2,
+            1e-2,
+        )
+
+        numpy_tensor = np.zeros([1, 3598, 2]).astype("float32")
+
+        np.testing.assert_allclose(
+            paddle_x2_grad.numpy(),
+            numpy_tensor,
+            1e-2,
+            1e-2,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

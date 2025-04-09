@@ -24,7 +24,7 @@ class TestDenseTensorArray(unittest.TestCase):
     def test_get_set(self):
         scope = core.Scope()
         arr = scope.var('tmp_lod_tensor_array')
-        tensor_array = arr.get_lod_tensor_array()
+        tensor_array = arr.get_dense_tensor_array()
         self.assertEqual(0, len(tensor_array))
         cpu = core.CPUPlace()
         for i in range(10):

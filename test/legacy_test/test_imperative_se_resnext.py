@@ -263,7 +263,7 @@ class SeResNeXt(paddle.nn.Layer):
             shortcut = False
             for i in range(depth[block]):
                 bottleneck_block = self.add_sublayer(
-                    'bb_%d_%d' % (block, i),
+                    f'bb_{block}_{i}',
                     BottleneckBlock(
                         num_channels=num_channels,
                         num_filters=num_filters[block],

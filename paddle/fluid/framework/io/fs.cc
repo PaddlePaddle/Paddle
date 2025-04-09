@@ -21,8 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 static void fs_add_read_converter_internal(std::string& path,  // NOLINT
                                            bool& is_pipe,      // NOLINT
@@ -426,7 +425,7 @@ std::shared_ptr<FILE> fs_open_read(const std::string& path,
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 
@@ -445,7 +444,7 @@ std::shared_ptr<FILE> fs_open_write(const std::string& path,
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 
@@ -464,7 +463,7 @@ std::shared_ptr<FILE> fs_open_append_write(const std::string& path,
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 
@@ -484,7 +483,7 @@ std::shared_ptr<FILE> fs_open(const std::string& path,
   }
 
   PADDLE_THROW(common::errors::Unavailable(
-      "Unsupport file open mode: %s. Only supports 'r', 'rb', 'w' or 'wb'.",
+      "Unsupported file open mode: %s. Only supports 'r', 'rb', 'w' or 'wb'.",
       mode));
   return {};
 }
@@ -496,7 +495,7 @@ int64_t fs_file_size(const std::string& path) {
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system."));
+          "Unsupported file system. Now only supports local file system."));
   }
 
   return 0;
@@ -512,7 +511,7 @@ void fs_remove(const std::string& path) {
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 }
@@ -527,7 +526,7 @@ std::vector<std::string> fs_list(const std::string& path) {
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 
@@ -544,7 +543,7 @@ std::string fs_tail(const std::string& path) {
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 
@@ -561,7 +560,7 @@ bool fs_exists(const std::string& path) {
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 
@@ -578,7 +577,7 @@ void fs_mkdir(const std::string& path) {
 
     default:
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport file system. Now only supports local file system and "
+          "Unsupported file system. Now only supports local file system and "
           "HDFS."));
   }
 }
@@ -600,5 +599,4 @@ void fs_mv(const std::string& src, const std::string& dest) {
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

@@ -514,7 +514,7 @@ class ParameterList(Layer):
 class LayerList(Layer):
     """
     LayerList holds sublayers, and sublayers it contains are properly registered.
-    Holded sublayers can be indexed like a regular python list.
+    held sublayers can be indexed like a regular python list.
 
     Parameters:
         sublayers (iterable of Layer, optional): sublayers to hold
@@ -626,11 +626,14 @@ class LayerList(Layer):
                 >>> print(linears[-2] is another)
                 True
         """
-        assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
+        assert isinstance(index, int) and -len(
             self._sub_layers
-        ), f"index should be an integer in range [{-len(self)}, {len(self)})"
+        ) <= index <= len(
+            self._sub_layers
+        ), f"index should be an integer in range [{-len(self)}, {len(self)}]"
 
-        index = self._get_abs_idx(index)
+        if index < 0:
+            index += len(self)
         for i in range(len(self._sub_layers), index, -1):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer

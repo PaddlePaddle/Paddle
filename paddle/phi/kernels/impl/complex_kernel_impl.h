@@ -27,6 +27,12 @@ void ConjKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   auto numel = x.numel();
+  if (x.numel() == 0) {
+    auto x_dims = x.dims();
+    out->Resize(x_dims);
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
 

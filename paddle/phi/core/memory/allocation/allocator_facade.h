@@ -87,7 +87,7 @@ class AllocatorFacade {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
   uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
-  void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
+  bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
@@ -107,7 +107,7 @@ class AllocatorFacade {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   uint64_t Release(const phi::CustomPlace& place, phi::stream::stream_t stream);
-  void RecordStream(std::shared_ptr<Allocation> allocation,
+  bool RecordStream(std::shared_ptr<Allocation> allocation,
                     phi::stream::stream_t stream);
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, phi::stream::stream_t stream);

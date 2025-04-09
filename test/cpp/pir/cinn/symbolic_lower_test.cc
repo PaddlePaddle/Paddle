@@ -36,8 +36,6 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
-PD_DECLARE_bool(cinn_bucket_compile);
-
 using cinn::hlir::framework::pir::CompatibleInfo;
 using cinn::hlir::framework::pir::OpLoweringGroup;
 using cinn::hlir::framework::pir::OpLoweringGroupPtr;
@@ -48,7 +46,7 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ::pir::Type fp32_dtype = ::pir::Float32Type::get(ctx);
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {};
+  phi::LegacyLoD lod = {};
   size_t offset = 0;
   std::vector<::pir::Type> op_output_types = {::pir::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset)};

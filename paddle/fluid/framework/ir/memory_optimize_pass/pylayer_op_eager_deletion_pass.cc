@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 using OpVariant = operators::OpVariant;
 class PyLayerOpEagerDeletionPass : public Pass {
  protected:
@@ -76,13 +74,13 @@ class PyLayerOpEagerDeletionPass : public Pass {
           graph->OriginProgram(), pylayer_ops, pylayer_grad_ops);
     }
 
-    for (auto op_hander : all_ops) {
+    for (auto op_handler : all_ops) {
       auto *compute_op =
-          dynamic_cast<details::ComputationOpHandle *>(op_hander);
+          dynamic_cast<details::ComputationOpHandle *>(op_handler);
       if (compute_op == nullptr) continue;
       if (compute_op->Name() == "pylayer" ||
           compute_op->Name() == "pylayer_grad") {
-        ir::Node *op_node = op_hander->Node();
+        ir::Node *op_node = op_handler->Node();
         auto *op_base = compute_op->GetOp();
         if (op_base->Attrs().count("skip_eager_deletion_vars")) {
           op_node->Op()->SetAttr(
@@ -94,9 +92,7 @@ class PyLayerOpEagerDeletionPass : public Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(pylayer_op_eager_deletion_pass,
               paddle::framework::ir::PyLayerOpEagerDeletionPass);

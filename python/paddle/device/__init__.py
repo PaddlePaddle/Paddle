@@ -208,7 +208,7 @@ def _convert_to_place(device: str) -> PlaceLike:
         place = core.CustomPlace(device, device_id)
     elif lower_device == 'cpu':
         place = core.CPUPlace()
-    elif lower_device == 'gpu':
+    elif lower_device == 'gpu' or lower_device == 'dcu':
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be 'gpu', "
@@ -232,7 +232,9 @@ def _convert_to_place(device: str) -> PlaceLike:
             )
         place = core.IPUPlace()
     else:
-        available_gpu_device = re.match(r'gpu:\d+', lower_device)
+        available_gpu_device = re.match(r'gpu:\d+', lower_device) or re.match(
+            r'dcu:\d+', lower_device
+        )
         available_xpu_device = re.match(r'xpu:\d+', lower_device)
         if available_gpu_device:
             if not core.is_compiled_with_cuda():
@@ -268,6 +270,7 @@ def _convert_to_place(device: str) -> PlaceLike:
                             f"'{x}', '{x}:x'"
                             for x in [
                                 'gpu',
+                                'dcu',
                                 'xpu',
                                 'npu',
                                 *core.get_all_custom_device_type(),
@@ -338,7 +341,6 @@ def get_device() -> str:
         device = 'xpu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
-        device = f"ipus:{{0-{num_devices - 1}}}"
         device = f"ipus:{{0-{num_devices - 1}}}"
     elif isinstance(place, core.CustomPlace):
         device_id = place.get_device_id()

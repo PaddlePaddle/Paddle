@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/impl/compare_kernel_impl.h"
@@ -170,10 +171,31 @@ PD_REGISTER_KERNEL(less_than_raw,
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 
+#define PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(name, func) \
+  PD_REGISTER_KERNEL(name##_raw,                           \
+                     KPS,                                  \
+                     ALL_LAYOUT,                           \
+                     phi::func##RawKernel,                 \
+                     bool,                                 \
+                     uint8_t,                              \
+                     int16_t,                              \
+                     int,                                  \
+                     int8_t,                               \
+                     int64_t,                              \
+                     phi::dtype::complex<float>,           \
+                     phi::dtype::complex<double>,          \
+                     float,                                \
+                     double,                               \
+                     phi::dtype::float16,                  \
+                     phi::dtype::bfloat16) {               \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);  \
+  }
+
 PD_REGISTER_COMPARE_RAW_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
 PD_REGISTER_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
-PD_REGISTER_COMPARE_RAW_KERNEL(equal, Equal)
-PD_REGISTER_COMPARE_RAW_KERNEL(not_equal, NotEqual)
+
+PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(equal, Equal)
+PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(not_equal, NotEqual)
 
 #endif

@@ -568,7 +568,7 @@ inline GPU(Error_t)
     }
   }
 
-  static const bool max_smem_configed = [=]() {
+  static const bool max_smem_configured = [=]() {
     int max_smem_size = 0;
     GPU(Error_t)
     err = GPU(DeviceGetAttribute)(

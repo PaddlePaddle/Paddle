@@ -482,7 +482,7 @@ namespace detail {
 
 // Type-opaque holder for an argument to format(), with associated actions on
 // the type held as explicit function pointers.  This allows FormatArg's for
-// each argument to be allocated as a homogenous array inside FormatList
+// each argument to be allocated as a homogeneous array inside FormatList
 // whereas a naive implementation based on inheritance does not.
 class FormatArg {
  public:

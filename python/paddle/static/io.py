@@ -692,9 +692,7 @@ def deserialize_program(data: bytes) -> Program:
     """
     program = Program.parse_from_string(data)
     if not core._is_program_version_supported(program._version()):
-        raise ValueError(
-            "Unsupported program version: %d\n" % program._version()
-        )
+        raise ValueError(f"Unsupported program version: {program._version()}\n")
     return program
 
 

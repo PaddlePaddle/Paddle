@@ -20,7 +20,7 @@ import collective.test_communication_api_base as test_base
 
 class TestShardingParallelAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        super().setUp(num_of_devices=2, timeout=180, nnode=1)
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",
@@ -36,6 +36,12 @@ class TestShardingParallelAPI(test_base.CommunicationTestDistBase):
             "amp_dtype": ["bfloat16"],
             "amp_master_grad": ["False"],
             "sharding_stage": ["0", "1"],
+            "test_share_embedding": [
+                "1",
+            ],
+            "test_position_embedding": [
+                "1",
+            ],
         }
 
     def test_simple_net_dp2(self):
@@ -54,7 +60,7 @@ class TestShardingParallelAPI(test_base.CommunicationTestDistBase):
 
 class TestPipelineParallelAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        super().setUp(num_of_devices=2, timeout=180, nnode=1)
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",
@@ -69,7 +75,13 @@ class TestPipelineParallelAPI(test_base.CommunicationTestDistBase):
             "amp_level": ["O2"],
             "amp_dtype": ["bfloat16"],
             "amp_master_grad": ["False"],
-            "num_hidden_layers": ["2", "4"],
+            "num_hidden_layers": ["3", "4"],
+            "test_share_embedding": [
+                "1",
+            ],
+            "test_position_embedding": [
+                "1",
+            ],
         }
 
     def test_simple_net_pp2(self):
@@ -88,7 +100,7 @@ class TestPipelineParallelAPI(test_base.CommunicationTestDistBase):
 
 class TestTensorParallelAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120, nnode=1)
+        super().setUp(num_of_devices=2, timeout=180, nnode=1)
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",
@@ -106,6 +118,12 @@ class TestTensorParallelAPI(test_base.CommunicationTestDistBase):
             "use_lazy_init": ["true", "false"],
             "sequence_parallel": ["true", "false"],
             "prepare_input_output": ["true", "false"],
+            "test_share_embedding": [
+                "1",
+            ],
+            "test_position_embedding": [
+                "1",
+            ],
         }
 
     def test_simple_net_mp2(self):

@@ -15,6 +15,7 @@
 import copy
 import itertools
 import unittest
+import warnings
 
 import numpy as np
 from utils import dygraph_guard
@@ -23,6 +24,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.utils.dlpack import DLDeviceType
 
 
 class TestEagerTensor(unittest.TestCase):
@@ -236,10 +238,10 @@ class TestEagerTensor(unittest.TestCase):
 
                 numpy_array = np.random.randn(3, 4)
                 # covert core.DenseTensor to paddle.Tensor
-                lod_tensor = paddle.base.core.DenseTensor()
+                dense_tensor = paddle.base.core.DenseTensor()
                 place = paddle.base.framework._current_expected_place()
-                lod_tensor.set(numpy_array, place)
-                x = paddle.to_tensor(lod_tensor)
+                dense_tensor.set(numpy_array, place)
+                x = paddle.to_tensor(dense_tensor)
                 np.testing.assert_array_equal(x.numpy(), numpy_array)
                 self.assertEqual(x.type, core.VarDesc.VarType.DENSE_TENSOR)
                 self.assertEqual(str(x.place), str(place))
@@ -349,23 +351,23 @@ class TestEagerTensor(unittest.TestCase):
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
                 self.assertEqual(a.place.__repr__(), "Place(gpu_pinned)")
 
-    def test_to_tensor_with_lodtensor(self):
+    def test_to_tensor_with_densetensor(self):
         if core.is_compiled_with_cuda():
             a_np = np.random.rand(1024, 1024)
             with paddle.base.dygraph.guard(core.CPUPlace()):
-                lod_tensor = core.DenseTensor()
-                lod_tensor.set(a_np, core.CPUPlace())
-                a = paddle.to_tensor(lod_tensor)
+                dense_tensor = core.DenseTensor()
+                dense_tensor.set(a_np, core.CPUPlace())
+                a = paddle.to_tensor(dense_tensor)
                 np.testing.assert_array_equal(a_np, a.numpy())
 
             with paddle.base.dygraph.guard(core.CUDAPlace(0)):
-                lod_tensor = core.DenseTensor()
-                lod_tensor.set(a_np, core.CUDAPlace(0))
-                a = paddle.to_tensor(lod_tensor, place=core.CPUPlace())
+                dense_tensor = core.DenseTensor()
+                dense_tensor.set(a_np, core.CUDAPlace(0))
+                a = paddle.to_tensor(dense_tensor, place=core.CPUPlace())
                 np.testing.assert_array_equal(a_np, a.numpy())
                 self.assertTrue(a.place.__repr__(), "Place(cpu)")
 
-    def test_to_tensor_attribtes(self):
+    def test_to_tensor_attributes(self):
         var = paddle.to_tensor(self.array)
         np.testing.assert_array_equal(var.numpy(), self.array)
         # default value
@@ -893,7 +895,7 @@ class TestEagerTensor(unittest.TestCase):
         np.testing.assert_array_equal(var[10], np_value[..., None, :, None])
 
         # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and
-        #              indexs has int type
+        #              indices has int type
         # self.assertTrue(
         #     np.array_equal(var[11], np_value[0, 1:10:2, None, None, ...]))
 
@@ -1291,6 +1293,97 @@ class TestEagerTensor(unittest.TestCase):
 
                     self.assertIn("version", interface)
                     self.assertEqual(interface["version"], 2)
+
+    def test_to_tensor_from___cuda_array_interface__(self):
+        # only test warning message here for cuda tensor of other framework is not supported in Paddle test, more tests code can be referenced: https://github.com/PaddlePaddle/Paddle/pull/69913
+        with dygraph_guard():
+            with warnings.catch_warnings(record=True) as w:
+                x = paddle.to_tensor([1, 2, 3])
+                paddle.to_tensor(x)
+                flag = paddle.tensor.creation._warned_in_to_tensor
+                self.assertTrue(flag)
+
+    def test_dlpack_device(self):
+        """test Tensor.__dlpack_device__"""
+        with dygraph_guard():
+            # test CPU
+            tensor_cpu = paddle.to_tensor([1, 2, 3], place=base.CPUPlace())
+            device_type, device_id = tensor_cpu.__dlpack_device__()
+            self.assertEqual(device_type, DLDeviceType.kDLCPU)
+            self.assertEqual(device_id, None)
+
+            # test CUDA
+            if paddle.is_compiled_with_cuda():
+                tensor_cuda = paddle.to_tensor(
+                    [1, 2, 3], place=base.CUDAPlace(0)
+                )
+                device_type, device_id = tensor_cuda.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLCUDA)
+                self.assertEqual(device_id, 0)
+
+            # test CUDA Pinned
+            if paddle.is_compiled_with_cuda():
+                tensor_pinned = paddle.to_tensor(
+                    [1, 2, 3], place=base.CUDAPinnedPlace()
+                )
+                device_type, device_id = tensor_pinned.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLCUDAHost)
+                self.assertEqual(device_id, None)
+
+            # test XPU
+            if paddle.is_compiled_with_xpu():
+                tensor_xpu = paddle.to_tensor([1, 2, 3], place=base.XPUPlace(0))
+                device_type, device_id = tensor_xpu.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLOneAPI)
+                self.assertEqual(device_id, 0)
+
+            # zero_dim
+            # test CPU
+            tensor = paddle.to_tensor(5.0, place=base.CPUPlace())
+            device_type, device_id = tensor.__dlpack_device__()
+            self.assertEqual(device_type, DLDeviceType.kDLCPU)
+            self.assertEqual(device_id, None)
+
+            # test CUDA
+            if paddle.is_compiled_with_cuda():
+                tensor_cuda = paddle.to_tensor(5.0, place=base.CUDAPlace(0))
+                device_type, device_id = tensor_cuda.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLCUDA)
+                self.assertEqual(device_id, 0)
+
+            # test XPU
+            if paddle.is_compiled_with_xpu():
+                tensor_xpu = paddle.to_tensor(5.0, place=base.XPUPlace(0))
+                device_type, device_id = tensor_xpu.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLOneAPI)
+                self.assertEqual(device_id, 0)
+
+            # zero_size
+            # test CPU
+            tensor = paddle.to_tensor(
+                paddle.zeros([0, 10]), place=base.CPUPlace()
+            )
+            device_type, device_id = tensor.__dlpack_device__()
+            self.assertEqual(device_type, DLDeviceType.kDLCPU)
+            self.assertEqual(device_id, None)
+
+            # test CUDA
+            if paddle.is_compiled_with_cuda():
+                tensor_cuda = paddle.to_tensor(
+                    paddle.zeros([0, 10]), place=base.CUDAPlace(0)
+                )
+                device_type, device_id = tensor_cuda.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLCUDA)
+                self.assertEqual(device_id, 0)
+
+            # test XPU
+            if paddle.is_compiled_with_xpu():
+                tensor_xpu = paddle.to_tensor(
+                    paddle.zeros([0, 10]), place=base.XPUPlace(0)
+                )
+                device_type, device_id = tensor_xpu.__dlpack_device__()
+                self.assertEqual(device_type, DLDeviceType.kDLOneAPI)
+                self.assertEqual(device_id, 0)
 
     def test_tensor__format__(self):
         # test for floating point scalar
@@ -1764,6 +1857,25 @@ class TestDenseTensorToTensor(unittest.TestCase):
             y = paddle.to_tensor(x_dense, place=place)
 
             self.assertEqual(x.data_ptr(), y.data_ptr())
+
+
+class TestSetDynamicAttributeToEagerTensorInstance(unittest.TestCase):
+    def test_set_dynamic_attribute_to_eager_tensor_instance_create_via_constructor(
+        self,
+    ):
+        tensor_instance = paddle.to_tensor(1.0)
+        tensor_instance._custom_id = 0
+        self.assertEqual(tensor_instance._custom_id, 0)
+        self.assertEqual(tensor_instance.__dict__["_custom_id"], 0)
+
+    def test_set_dynamic_attribute_to_eager_tensor_instance_create_via_to_pyobject(
+        self,
+    ):
+        original_tensor = paddle.to_tensor(-1.0)
+        tensor_instance = paddle.abs(original_tensor)
+        tensor_instance._custom_flag = True
+        self.assertEqual(tensor_instance._custom_flag, True)
+        self.assertEqual(tensor_instance.__dict__["_custom_flag"], True)
 
 
 if __name__ == "__main__":

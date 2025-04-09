@@ -26,8 +26,8 @@ namespace optim {
  * (1) The loop variable is not used in any load/store indices or computation
  *     within child schedule blocks. This ensures that the loop writes the same
  *     value to the same index in each iteration.
- * (2) It doesn't contain any inplace operations, e.g. a[0] = a[0] + b[0]. In
- *     the presence of inplace operations, the loop count matters.
+ * (2) It is not a Reduce (e.g. a[0] = a[0] + b[k]), because for a Reduce, even
+ *     though its indices don't change in each iteration, its value changes.
  *
  * We can eliminate a bound loop if it also satisfies rule (3) and (4):
  * (3) It doesn't write to the local buffer (for thread-bound loop) or shared

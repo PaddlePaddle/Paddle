@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -43,9 +44,24 @@ class XPUTestClipOp(XPUOpTestWrapper):
             self.init_data()
             self.set_attrs()
             self.set_inputs()
-            self.outputs = {
-                'Out': np.clip(self.inputs['X'], self.min_v, self.max_v)
-            }
+            if self.dtype == np.uint16:
+                self.outputs = {
+                    'Out': convert_float_to_uint16(
+                        np.clip(
+                            convert_uint16_to_float(self.inputs['X']),
+                            np.array([self.min_v]).astype(np.float32).item(),
+                            np.array([self.min_v]).astype(np.float32).item(),
+                        )
+                    )
+                }
+            else:
+                self.outputs = {
+                    'Out': np.clip(
+                        self.inputs['X'],
+                        np.array([self.min_v]).astype(self.dtype).item(),
+                        np.array([self.max_v]).astype(self.dtype).item(),
+                    )
+                }
 
         def set_xpu(self):
             self.__class__.use_xpu = True
@@ -74,6 +90,10 @@ class XPUTestClipOp(XPUOpTestWrapper):
             input = np.random.random(self.shape).astype("float32")
             input[np.abs(input - min_v) < self.max_relative_error] = 0.5
             input[np.abs(input - max_v) < self.max_relative_error] = 0.5
+            if self.dtype == np.uint16:
+                input = convert_float_to_uint16(input)
+            else:
+                input = input.astype(self.dtype)
             self.inputs['X'] = input
 
         def set_attrs(self):
@@ -246,6 +266,9 @@ class TestInplaceClipAPI(TestClipAPI):
 
 support_types = get_xpu_op_support_types('clip')
 for stype in support_types:
+    # TODO(lilujia): disable int32 and int64 test temporarily, as xdnn not support corresponding resuce_mean
+    if stype in ["int32", "int64"]:
+        continue
     create_test_class(globals(), XPUTestClipOp, stype)
 
 if __name__ == '__main__':

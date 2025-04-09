@@ -335,7 +335,7 @@ __global__ void scatter_dvals_by_unit_kernel(TUnit* d_dest_vals,
   }
 }
 
-// cuda implemention of  heter_comm_kernel.h
+// cuda implementation of  heter_comm_kernel.h
 template <typename T, typename StreamType>
 void HeterCommKernel::fill_idx(T* idx,
                                int64_t len,

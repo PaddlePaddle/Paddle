@@ -73,7 +73,7 @@ class TestCloudRoleMaker(unittest.TestCase):
 
         try:
 
-            class TmpKVHander(KVHandler):
+            class TmpKVHandler(KVHandler):
                 """
                 it is a fake handler only for this test case.
                 """
@@ -159,7 +159,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             return
 
         s = TmpServer()
-        h = TmpKVHander(s)
+        h = TmpKVHandler(s)
         h.do_GET()
         h.path = "a/b"
         h.do_GET()

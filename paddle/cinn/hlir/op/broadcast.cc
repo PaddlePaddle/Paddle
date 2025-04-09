@@ -122,7 +122,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcast(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(binary_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy." + op_name + ".x86",
                     1);
   return strategy;
@@ -190,8 +190,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      binary_compute, lang::PackedFunc(), "strategy." + op_name + ".x86", 1);
+  strategy->AddImpl(binary_compute, "strategy." + op_name + ".x86", 1);
   return strategy;
 }
 
@@ -256,7 +255,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(broadcast_to_compute,
-                    GetInjectiveScheduleFunc(output_shapes, target),
+
                     "strategy.broadcast_to.x86",
                     1);
 
@@ -319,8 +318,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      broadcast_to_compute, lang::PackedFunc(), "strategy.broadcast_to.x86", 1);
+  strategy->AddImpl(broadcast_to_compute, "strategy.broadcast_to.x86", 1);
 
   return strategy;
 }

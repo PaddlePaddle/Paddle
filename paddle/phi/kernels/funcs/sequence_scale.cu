@@ -36,7 +36,7 @@ __global__ void SequenceScaleKernel(T* seq,
 }
 
 template <typename T>
-class ScaleLoDTensorFunctor<phi::GPUContext, T> {
+class ScaleDenseTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const T* scales,
@@ -72,8 +72,8 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
   }
 };
 
-template class ScaleLoDTensorFunctor<phi::GPUContext, float>;
-template class ScaleLoDTensorFunctor<phi::GPUContext, double>;
+template class ScaleDenseTensorFunctor<phi::GPUContext, float>;
+template class ScaleDenseTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

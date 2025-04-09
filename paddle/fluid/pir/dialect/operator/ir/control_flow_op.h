@@ -19,31 +19,33 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/dll_decl.h"
 #include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
 
-class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
+class IR_API IfOp
+    : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.if"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                             pir::OperationArgument &argument,  // NOLINT
-                             pir::Value cond,
-                             std::vector<pir::Type> &&output_types);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond,
+                    std::vector<pir::Type> &&output_types);
 
-  TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                             pir::OperationArgument &argument,  // NOLINT
-                             pir::Value cond,
-                             std::unique_ptr<pir::Block> &&true_block,
-                             std::unique_ptr<pir::Block> &&false_block);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond,
+                    std::unique_ptr<pir::Block> &&true_block,
+                    std::unique_ptr<pir::Block> &&false_block);
 
   pir::Value cond() { return operand_source(0); }
-  TEST_API pir::Block &true_block();
-  TEST_API pir::Block &false_block();
+  pir::Block &true_block();
+  pir::Block &false_block();
   pir::Region &true_region() { return (*this)->region(0); }
   pir::Region &false_region() { return (*this)->region(1); }
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -70,7 +72,7 @@ class IfOp : public pir::Op<IfOp, VjpInterface, InferSymbolicShapeInterface> {
 ///      cond, outputs = body(outputs)
 ///   }
 ///
-class WhileOp
+class IR_API WhileOp
     : public pir::Op<WhileOp, VjpInterface, InferSymbolicShapeInterface> {
  public:
   using Op::Op;
@@ -78,13 +80,13 @@ class WhileOp
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
-  TEST_API static void Build(pir::Builder &builder,             // NOLINT
-                             pir::OperationArgument &argument,  // NOLINT
-                             pir::Value cond,
-                             const std::vector<pir::Value> &inputs,
-                             bool construct_body = true);
-  TEST_API pir::Block &body();
-  TEST_API pir::Value cond();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value cond,
+                    const std::vector<pir::Value> &inputs,
+                    bool construct_body = true);
+  pir::Block &body();
+  pir::Value cond();
   const pir::Block::ArgsType &block_args() { return body().args(); }
   void Print(pir::IrPrinter &printer);  // NOLINT
   void VerifySig();

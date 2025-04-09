@@ -37,11 +37,11 @@
 namespace egr {
 
 static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
-  if (!pre.initialized() && post.initialized()) {
+  if (!pre.has_allocation() && post.has_allocation()) {
     PADDLE_THROW(common::errors::PermissionDenied(
         "The tensor in before and after hook are not consistent"));
   }
-  if (pre.initialized() && post.initialized()) {
+  if (pre.has_allocation() && post.has_allocation()) {
     VLOG(7) << phi::DataTypeToString(pre.dtype()) << " "
             << phi::DataTypeToString(post.dtype());
     PADDLE_ENFORCE_EQ(
@@ -105,7 +105,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     meta.SetStopGradient(fwd_out_meta->StopGradient());
   }
 
-  if (!fwd_out.initialized()) {
+  if (!fwd_out.has_allocation()) {
     if (fwd_out.defined() && fwd_out.is_dist_tensor() &&
         phi::distributed::NeedComputationClipForPP(fwd_out.impl())) {
       VLOG(3) << "Tensor " << fwd_out.name() << " is DistTensor,"
@@ -195,7 +195,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
       meta.SetStopGradient(fwd_out_meta->StopGradient());
     }
 
-    if (!fwd_out_tensor.initialized()) {
+    if (!fwd_out_tensor.has_allocation()) {
       if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
           phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
         VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
@@ -295,7 +295,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
       meta.SetStopGradient(fwd_out_meta->StopGradient());
     }
 
-    if (!fwd_out_tensor.initialized()) {
+    if (!fwd_out_tensor.has_allocation()) {
       if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
           phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
         VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
@@ -762,7 +762,7 @@ GradNodeBase::ApplyGradientHooks(
     std::vector<paddle::Tensor>& slot_out = outs[slot_id];
     slot_out.resize(tensors[slot_id].size());
     paddle::Tensor& out = slot_out[rank];
-    if (!out.defined() || !out.initialized()) {
+    if (!out.defined() || !out.has_allocation()) {
       out = (*hook)(tensors[slot_id][rank]);
     } else {
       // If more than one hook is registered, the input to the next hook func
@@ -867,4 +867,49 @@ uintptr_t GradNodeBase::GetPtr() const {
   return reinterpret_cast<uintptr_t>(this);
 }
 
+int64_t GradNodeBase::RegisterNodePostHook(
+    std::shared_ptr<NodePostHookBase>&& hook) {
+  post_hooks_.emplace(next_post_hook_id_, std::move(hook));
+  return next_post_hook_id_++;
+}
+
+bool GradNodeBase::RemoveNodePostHook(int64_t hook_id) {
+  auto remove_cnt = post_hooks_.erase(hook_id);
+  if (remove_cnt == 0) {
+    return false;
+  }
+  return true;
+}
+
+bool GradNodeBase::HasNodePostHook() { return !post_hooks_.empty(); }
+
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+GradNodeBase::ApplyNodePostHooks(
+    const paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>& grad_outputs,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
+                               egr::kSlotSmallVectorSize>& grad_inputs) {
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs =
+      grad_outputs;
+  for (auto& iter : post_hooks_) {
+    auto hook = iter.second;
+    outs = (*hook)(outs, grad_inputs);
+  }
+
+  for (size_t i = 0; i < outs.size(); i++) {
+    if (outs[i].empty() && (!grad_outputs[i].empty())) {
+      outs[i].resize(grad_outputs[i].size());
+    }
+
+    for (size_t j = 0; j < outs[i].size(); j++) {
+      if (!outs[i][j].defined() || !outs[i][j].initialized()) {
+        outs[i][j] = grad_outputs[i][j];
+      } else {
+        CheckTensor(grad_outputs[i][j], outs[i][j]);
+      }
+    }
+  }
+
+  return outs;
+}
 }  // namespace egr

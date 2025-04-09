@@ -347,6 +347,64 @@ class TestPnormOp6(TestPnormOp):
         )
 
 
+class TestPnormOpZeroSize(TestPnormOp):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = 1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
+
+    def test_check_output(self):
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        pass
+
+    def calc_gradient(self):
+        pass
+
+
+class TestPnormOpZeroSize2(TestPnormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [3, 0, 3]
+        self.axis = 1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+
+class TestPnormOpZeroSize3(TestPnormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = 2
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+
+class TestPnormOpZeroSize4(TestPnormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = -1
+        self.epsilon = 1e-12
+        self.porder = 2
+        self.keepdim = False
+        self.asvector = False
+
+
 def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -603,7 +661,7 @@ def check_linalg_vector_static(
         )
         place = base.CPUPlace()
         exe = base.Executor(place)
-        np_input = (np.random.rand(*shape_x) + 1.0).astype(dtype)
+        np_input = np.array(np.random.rand(*shape_x) + 1.0).astype(dtype)
         expected_result = np_linalg_vector_norm(
             np_input, porder=p, axis=axis, keepdims=keep_dim
         ).astype(dtype)
@@ -616,7 +674,7 @@ def check_linalg_vector_static(
 def check_linalg_vector_dygraph(
     self, p, axis, shape_x, dtype, keep_dim, check_dim=False
 ):
-    x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+    x_numpy = np.array(np.random.random(shape_x) + 1.0).astype(dtype)
     expected_result = np_linalg_vector_norm(
         x_numpy, porder=p, axis=axis, keepdims=keep_dim
     )
@@ -906,6 +964,51 @@ class API_NormTest(unittest.TestCase):
                 axis=[0, 1, 2],
                 shape_x=[2, 3, 4],
                 dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=2,
+                axis=None,
+                shape_x=[],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=np.inf,
+                axis=None,
+                shape_x=[],
+                dtype="complex64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=-np.inf,
+                axis=[0, 1, 2, 3],
+                shape_x=[1, 14, 5, 14],
+                dtype="complex128",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=np.inf,
+                axis=2,
+                shape_x=[1, 14, 5, 14],
+                dtype="complex128",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_static(
+                self,
+                p=0,
+                axis=[1, 3],
+                shape_x=[1, 14, 5, 14],
+                dtype="complex128",
                 keep_dim=keep,
                 check_dim=True,
             )
@@ -1237,6 +1340,51 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
+            check_linalg_vector_dygraph(
+                self,
+                p=2,
+                axis=None,
+                shape_x=(),
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=np.inf,
+                axis=None,
+                shape_x=[],
+                dtype="complex64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=-np.inf,
+                axis=[0, 1, 2, 3],
+                shape_x=[1, 14, 5, 14],
+                dtype="complex128",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=np.inf,
+                axis=2,
+                shape_x=[1, 14, 5, 14],
+                dtype="complex128",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_vector_dygraph(
+                self,
+                p=0,
+                axis=[1, 3],
+                shape_x=[1, 14, 5, 14],
+                dtype="complex128",
+                keep_dim=keep,
+                check_dim=True,
+            )
             check_linalg_matrix_dygraph(
                 self,
                 p=-np.inf,
@@ -1316,7 +1464,9 @@ class API_NormTest(unittest.TestCase):
             data = paddle.static.data(
                 name="data_2d", shape=[2, 2], dtype="float64"
             )
-            self.assertRaises(ValueError, paddle.norm, data, p="unsupport norm")
+            self.assertRaises(
+                ValueError, paddle.norm, data, p="unsupported norm"
+            )
             self.assertRaises(ValueError, paddle.norm, data, p=[1])
             self.assertRaises(ValueError, paddle.norm, data, p=[1], axis=-1)
             self.assertRaises(ValueError, paddle.norm, 0, [1, 0], "float64")
@@ -1326,15 +1476,6 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )
-
-        with base.dygraph.guard():
-            # The size of input in Norm should not be 0.
-            def test_0_size():
-                array = np.array([], dtype=np.float32)
-                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
-                paddle.linalg.norm(x, axis=0)
-
-            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

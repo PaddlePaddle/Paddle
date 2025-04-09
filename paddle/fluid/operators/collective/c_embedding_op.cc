@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_embedding_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CEmbeddingOp : public framework::OperatorWithKernel {
  public:
@@ -172,8 +171,7 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

@@ -164,6 +164,20 @@ class TestFoldshape(TestFoldOp):
         self.x = np.random.rand(*input_shape).astype(np.float64)
 
 
+class TestFoldshape1d(TestFoldOp):
+    def init_data(self):
+        self.batch_size = 8
+        self.input_channels = 3 * 3 * 3
+        self.length = 3
+        self.kernel_sizes = [1, 3]
+        self.strides = [1, 1]
+        self.paddings = [0, 0, 0, 0]
+        self.dilations = [1, 1]
+        self.output_sizes = [1, 5]
+        input_shape = [self.batch_size, self.input_channels, self.length]
+        self.x = np.random.rand(*input_shape).astype(np.float64)
+
+
 class TestFoldAPI(TestFoldOp):
     # This is for test on paddle.nn.Fold
 

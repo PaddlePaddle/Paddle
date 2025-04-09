@@ -39,21 +39,52 @@ class ConverterOpRegistry:
         return self._registry.get(op_name)
 
     def _version_match(self, trt_version, version_range):
-        if version_range is None:
-            return True
+        """
+        Check if a given TensorRT version matches the specified version range.
 
-        trt_major, trt_minor = map(int, trt_version.split('.')[:2])
-        if version_range.startswith('trt_version_ge='):
-            min_version = float(version_range.split('=')[1])
-            return float(trt_major) + trt_minor / 10 >= min_version
-        elif version_range.startswith('trt_version_le='):
-            max_version = float(version_range.split('=')[1])
-            return float(trt_major) + trt_minor / 10 <= max_version
-        elif 'x' in version_range:
-            major_version = int(version_range.split('.')[0])
-            return trt_major == major_version
-        else:
-            return False
+        Args:
+            trt_version (str): The TensorRT version, e.g., "8.4.1".
+            version_range (str): The version range to check against, e.g.,
+                                "trt_version_ge=8.2", "trt_version_le=7.1", or "8.x".
+
+        Returns:
+            bool: True if the version matches the range, False otherwise.
+        """
+
+        def _normalize_version(version):
+            """
+            Normalize the version string into a 3-tuple for easy comparison.
+            If the version has fewer than 3 parts, it pads with zeros.
+
+            Args:
+                version (str): The version string, e.g., "8.4.1", "8.2", or "9".
+
+            Returns:
+                tuple: A tuple representing the version, e.g., (8, 4, 1).
+            """
+            return tuple(map(int, [*version.split('.'), '0', '0'][:3]))
+
+        # Convert the given TensorRT version to a normalized tuple
+        trt_version_tuple = _normalize_version(trt_version)
+        # Split the version range into comparator and reference version
+        if '=' in version_range:
+            comparator, ref_version = version_range.split('=')
+            # Normalize the reference version into a tuple
+            ref_version_tuple = _normalize_version(ref_version)
+            # Check the comparator and compare the versions
+            return (
+                comparator == 'trt_version_ge'
+                and trt_version_tuple >= ref_version_tuple
+            ) or (
+                comparator == 'trt_version_le'
+                and trt_version_tuple <= ref_version_tuple
+            )
+        # Check if the version range includes 'x' (e.g., "8.x")
+        if 'x' in version_range:
+            # Match only the major version (first part)
+            return trt_version_tuple[0] == int(version_range.split('.')[0])
+
+        return False
 
 
 converter_registry = ConverterOpRegistry()

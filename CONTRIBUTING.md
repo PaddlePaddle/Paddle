@@ -39,7 +39,7 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
    pre-commit install
    ```
 
-   Our pre-commit configuration requires clang-format 3.8 for auto-formating C/C++ code and yapf for Python.
+   Our pre-commit configuration requires clang-format 3.8 for auto-formatting C/C++ code and yapf for Python.
 
    Once installed, `pre-commit` checks the style of code and documentation in every commit.  We will see something like the following when you run `git commit`:
 
@@ -52,7 +52,7 @@ PaddlePaddle uses this [Git branching model](http://nvie.com/posts/a-successful-
    Check for broken symlinks................................................Passed
    Detect Private Key...................................(no files to check)Skipped
    Fix End of Files.....................................(no files to check)Skipped
-   clang-formater.......................................(no files to check)Skipped
+   clang-format.........................................(no files to check)Skipped
    [my-cool-stuff c703c041] add test file
     1 file changed, 0 insertions(+), 0 deletions(-)
     create mode 100644 233

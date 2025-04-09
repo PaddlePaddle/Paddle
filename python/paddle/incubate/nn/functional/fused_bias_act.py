@@ -37,7 +37,7 @@ def fused_bias_act(
     quant_min_bound: float = 0,
 ) -> Tensor:
     """
-    Applies fused_bias_act kenerl
+    Applies fused_bias_act kernel
 
     Args:
         x (Tensor): the input Tensor.

@@ -408,21 +408,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
     auto type = result.type();
     if (type.isa<paddle::dialect::DenseTensorType>()) {
       auto dense_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
-      auto new_type = paddle::dialect::DenseTensorType::get(
-          context,
-          paddle::dialect::TransToIrDataType(precision, context),
-          dense_type.dims(),
-          dense_type.data_layout(),
-          dense_type.lod(),
-          dense_type.offset());
-      result.set_type(new_type);
-    } else if (type.isa<pir::VectorType>()) {
-      auto vec_type = type.dyn_cast<pir::VectorType>();
-      auto output_num = vec_type.size();
-      std::vector<pir::Type> results_type(output_num);
-      for (size_t idx = 0; idx < output_num; ++idx) {
-        auto dense_type =
-            vec_type[idx].dyn_cast<paddle::dialect::DenseTensorType>();
+      if (IsDenseTensorTypeFloat(dense_type)) {
         auto new_type = paddle::dialect::DenseTensorType::get(
             context,
             paddle::dialect::TransToIrDataType(precision, context),
@@ -430,7 +416,27 @@ class AutoMixedPrecisionPass : public pir::Pass {
             dense_type.data_layout(),
             dense_type.lod(),
             dense_type.offset());
-        results_type[idx] = new_type;
+        result.set_type(new_type);
+      }
+    } else if (type.isa<pir::VectorType>()) {
+      auto vec_type = type.dyn_cast<pir::VectorType>();
+      auto output_num = vec_type.size();
+      std::vector<pir::Type> results_type(output_num);
+      for (size_t idx = 0; idx < output_num; ++idx) {
+        auto dense_type =
+            vec_type[idx].dyn_cast<paddle::dialect::DenseTensorType>();
+        if (IsDenseTensorTypeFloat(dense_type)) {
+          auto new_type = paddle::dialect::DenseTensorType::get(
+              context,
+              paddle::dialect::TransToIrDataType(precision, context),
+              dense_type.dims(),
+              dense_type.data_layout(),
+              dense_type.lod(),
+              dense_type.offset());
+          results_type[idx] = new_type;
+        } else {
+          results_type[idx] = dense_type;
+        }
       }
       auto new_vec_type = pir::VectorType::get(context, results_type);
       result.set_type(new_vec_type);
@@ -640,7 +646,9 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto in_phi_dtype = input_defs[i].dtype;
         if (!IsOperandHasDenseTensorType(operand)) continue;
         auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
-        if (IsPhiDataTypeFloat(operand_phi_dtype) &&
+
+        if (!InputVarsNotConvert(op, i) &&
+            IsPhiDataTypeFloat(operand_phi_dtype) &&
             operand_phi_dtype != in_phi_dtype) {
           DoInsertCastOp(op, operand, in_phi_dtype, builder);
         }
@@ -682,7 +690,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
         if (!IsPhiDataTypeFloat(out_phi_dtype))
           continue;  // here handle op like "unequal", which has bool result
                      // type
-        SetResultDataType(result, out_phi_dtype, builder.ir_context());
+
+        if (!OutputVarsNotConvert(op, i)) {
+          SetResultDataType(result, out_phi_dtype, builder.ir_context());
+        }
       }
     } else {
       // current op doesn't support low precision
@@ -694,6 +705,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
           auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
           if (IsPhiDataTypeFloat(operand_phi_dtype) &&
               operand_phi_dtype == precision_mode_) {
+            if (IsFakeFullOperandWhileOp(op, operand)) {
+              SetFakeFullDataType(operand, builder);
+              continue;
+            }
             DoInsertCastOp(op, operand, phi_dtype, builder);
           }
         } else if (IsOperandHasDenseTensorVectorType(operand)) {
@@ -724,6 +739,56 @@ class AutoMixedPrecisionPass : public pir::Pass {
     }
   }
 
+  std::vector<int64_t> ConvertDDimToVector(const common::DDim& ddim) {
+    std::vector<int64_t> dims;
+    for (int i = 0; i < ddim.size(); ++i) {
+      dims.push_back(ddim[i]);
+    }
+    return dims;
+  }
+
+  bool IsFakeFullOp(pir::OpOperand operand) {
+    auto defining_op_ = operand.source().defining_op();
+    if (defining_op_->isa<paddle::dialect::FullOp>()) {
+      auto full_op = defining_op_->dyn_cast<paddle::dialect::FullOp>();
+      auto shape_attr = full_op.attribute("shape")
+                            .dyn_cast<paddle::dialect::IntArrayAttribute>();
+      auto shape_dims = shape_attr.data().GetData();
+      auto result_dims = full_op.out()
+                             .type()
+                             .dyn_cast<paddle::dialect::DenseTensorType>()
+                             .dims();
+      std::vector<int64_t> result_dims_vec = ConvertDDimToVector(result_dims);
+
+      if (shape_dims.size() != result_dims_vec.size()) {
+        return true;
+      }
+      for (size_t i = 0; i < shape_dims.size(); ++i) {
+        if (shape_dims[i] != result_dims_vec[i]) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
+  bool IsFakeFullOperandWhileOp(pir::Operation* op, pir::OpOperand operand) {
+    return op->isa<paddle::dialect::WhileOp>() && IsFakeFullOp(operand);
+  }
+
+  void SetFakeFullDataType(pir::OpOperand operand,
+                           pir::Builder& builder) {  // NOLINT
+    auto defining_op_ = operand.source().defining_op();
+    auto full_op = defining_op_->dyn_cast<paddle::dialect::FullOp>();
+    pir::Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
+        builder.ir_context(), phi::DataType::FLOAT32);
+    full_op->set_attribute("dtype", attr_dtype);
+
+    SetResultDataType(
+        full_op.out(), phi::DataType::FLOAT32, builder.ir_context());
+  }
+
   void SubOpRun(pir::Operation* op) {
     for (auto& region : *op) {
       for (auto& block : region) {
@@ -742,6 +807,68 @@ class AutoMixedPrecisionPass : public pir::Pass {
     for (auto& op : *block) {
       SubOpRun(&op);
     }
+  }
+
+  bool InputVarsNotConvert(pir::Operation* op, size_t index) {
+    const std::unordered_map<std::string,
+                             std::vector<std::pair<size_t, std::string>>>
+        op_input_indices = {
+            {"pd_op.batch_norm",
+             {{1, "mean"}, {2, "variance"}, {3, "scale"}, {4, "bias"}}},
+            {"pd_op.instance_norm", {{1, "scale"}, {2, "bias"}}},
+            {"pd_op.layer_norm", {{1, "scale"}, {2, "bias"}}},
+            {"pd_op.fused_multi_transformer",
+             {{1, "ln_scales"},
+              {2, "ln_biases"},
+              {14, "ffn_ln_scales"},
+              {15, "ffn_ln_biases"}}},
+            {"pd_op.fused_bias_dropout_residual_layer_norm",
+             {{3, "ln_scale"}, {4, "ln_bias"}}},
+            {"pd_op.quantize_linear", {{1, "scale"}, {2, "zero_point"}}},
+            {"pd_op.dequantize_linear", {{1, "scale"}, {2, "zero_point"}}}};
+
+    auto it = op_input_indices.find(op->name());
+    if (it != op_input_indices.end()) {
+      const auto& index_pairs = it->second;
+      for (const auto& [idx, param_name] : index_pairs) {
+        if (idx == index) {
+          VLOG(5) << "Skipping input conversion for operation: " << op->name()
+                  << ", parameter index: " << index
+                  << ", parameter name: " << param_name;
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  bool OutputVarsNotConvert(pir::Operation* op, size_t index) {
+    const std::unordered_map<std::string,
+                             std::vector<std::pair<size_t, std::string>>>
+        op_output_indices = {
+            {"pd_op.batch_norm",
+             {{1, "mean_out"},
+              {2, "variance_out"},
+              {3, "saved_mean"},
+              {4, "saved_variance"}}},
+            {"pd_op.layer_norm", {{1, "mean"}, {2, "variance"}}},
+            {"pd_op.instance_norm", {{1, "mean"}, {2, "variance"}}}};
+
+    auto it = op_output_indices.find(op->name());
+    if (it != op_output_indices.end()) {
+      const auto& index_pairs = it->second;
+      for (const auto& [idx, param_name] : index_pairs) {
+        if (idx == index) {
+          VLOG(5) << "Skipping output conversion for operation: " << op->name()
+                  << ", parameter index: " << index
+                  << ", parameter name: " << param_name;
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 };
 }  // namespace

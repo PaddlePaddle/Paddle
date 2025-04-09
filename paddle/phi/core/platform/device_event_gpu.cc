@@ -16,8 +16,7 @@
 #include "paddle/phi/core/platform/device_event_base.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 struct CUDADeviceEventWrapper {
   CUDADeviceEventWrapper(const phi::Place& place, unsigned int flag)
       : inner_event_(flag) {
@@ -99,8 +98,7 @@ void EventResetCUDA(const DeviceEvent* event) {
   // do nothing
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
 
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;

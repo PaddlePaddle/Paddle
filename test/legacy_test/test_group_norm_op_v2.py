@@ -26,7 +26,7 @@ def group_norm_naive_for_general_dimension(
     x, scale, bias, epsilon, groups, channel_last=False
 ):
     # original version group norm only support 4-D tensor
-    # this function generalizes to support differnt dimensions tensor (>= 2-D)
+    # this function generalizes to support different dimensions tensor (>= 2-D)
     if channel_last:
         shape = list(range(x.ndim))
         shape.insert(1, shape.pop(-1))

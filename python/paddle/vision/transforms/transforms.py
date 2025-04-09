@@ -1458,7 +1458,7 @@ class Pad(BaseTransform[_InputT, _RetT]):
             ``reflect`` means pads with reflection of image (without repeating the last value on the edge)
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in reflect mode
             will result in ``[3, 2, 1, 2, 3, 4, 3, 2]``.
-            ``symmetric`` menas pads with reflection of image (repeating the last value on the edge)
+            ``symmetric`` means pads with reflection of image (repeating the last value on the edge)
             padding ``[1, 2, 3, 4]`` with 2 elements on both sides in symmetric mode
             will result in ``[2, 1, 1, 2, 3, 4, 4, 3]``.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.

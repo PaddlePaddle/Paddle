@@ -63,10 +63,8 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["dynamic_static_unified_comm"]:
-            paddle.distributed.collective._init_parallel_env(args["backend"])
-        else:
-            paddle.distributed.init_parallel_env()
+
+        paddle.distributed.collective._init_parallel_env(args["backend"])
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = base.CUDAPlace(
@@ -90,11 +88,8 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             "float32"
         )
         if args['static_mode']:
-            result = (
-                self.get_model(train_prog, startup_prog, rank)
-                if args["dynamic_static_unified_comm"]
-                else self.get_model(train_prog, startup_prog, rank)
-            )
+            result = self.get_model(train_prog, startup_prog, rank)
+
             exe = base.Executor(place)
             exe.run(startup_prog)
             fetch_list = []

@@ -53,6 +53,9 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
         }
       }
     }
+    if (config.value_replaced_hook) {
+      value_replaced_hook_fn_ = config.value_replaced_hook;
+    }
   }
 
   std::pair<bool, int64_t> Simplify() {
@@ -156,6 +159,12 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     AddToWorklist(op);
   }
 
+  void NotifyValueReplaced(pir::Value from, pir::Value to) override {
+    if (value_replaced_hook_fn_) {
+      value_replaced_hook_fn_(from, to);
+    }
+  }
+
   /// Add the given operation to the worklist.
   void AddToWorklist(pir::Operation* op) {
     if (config_.strict_mode == pir::GreedyRewriteStrictness::AnyOp ||
@@ -207,6 +216,7 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
   std::unordered_set<pir::Operation*> strict_mode_filtered_ops_;
   pir::Region& region_;
   pir::PatternApplicator matcher_;
+  pir::VALUE_REPLACED_HOOK_FUNC value_replaced_hook_fn_ = nullptr;
 };
 
 }  // namespace
@@ -221,7 +231,7 @@ std::pair<bool, int64_t> ApplyPatternsGreedily(
 
   GreedyPatternRewriteDriver driver(region.ir_context(), patterns, config);
   auto [converged, num_rewrites] = driver.Simplify();
-  if (!converged) {
+  if (!converged && config.max_iterations != 1) {
     LOG(WARNING) << "The pattern rewrite did not converge after scanning "
                  << config.max_iterations << " times";
   }

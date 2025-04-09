@@ -36,7 +36,7 @@ paddle.seed(2024)
     (parameterize.TEST_CASE_NAME, 'concentration'),
     [
         (
-            'zerp-dim',
+            'zero-dim',
             parameterize.xrand(
                 (1,),
                 dtype='float32',

@@ -33,7 +33,7 @@ void CreateVarsOnScope(framework::Scope* scope,
   framework::Variable* var1 = scope->Var("x1");
   auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
   tensor1->Resize(common::make_ddim({512, 8, 4, 2}));
-  phi::LoD lod1;
+  phi::LegacyLoD lod1;
   lod1.push_back(phi::Vector<size_t>({1, 3, 8}));
   tensor1->set_lod(lod1);
   tensor1->mutable_data<float>(*place);
@@ -43,7 +43,7 @@ void CreateVarsOnScope(framework::Scope* scope,
   framework::Variable* var2 = scope->Var("x2");
   auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
   tensor2->Resize(common::make_ddim({1000, 64}));
-  phi::LoD lod2;
+  phi::LegacyLoD lod2;
   lod2.push_back(phi::Vector<size_t>({1, 1}));
   tensor2->set_lod(lod2);
   tensor2->mutable_data<int>(*place);

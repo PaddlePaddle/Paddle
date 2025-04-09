@@ -205,8 +205,8 @@ class TestEigvalsAPI(unittest.TestCase):
                 + np.random.random(self.input_dims) * 1j
             ).astype(self.dtype)
 
-    def verify_output(self, actural_outs, expect_outs):
-        actual_outs = np.array(actural_outs)
+    def verify_output(self, actual_outs, expect_outs):
+        actual_outs = np.array(actual_outs)
         expect_outs = np.array(expect_outs)
         self.assertTrue(
             actual_outs.shape == expect_outs.shape,

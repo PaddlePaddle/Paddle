@@ -32,32 +32,47 @@ void TopkKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const auto& in_dims = x.dims();
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
+    return;
+  }
+
+  // axis < 0, calculate the real axis
+  if (axis < 0) {
+    axis += in_dims.size();
+  }
+
+  int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
+
+  if (k_scalar.FromTensor()) {
+    auto out_dims_ = out->dims();
+    // according to axis to set K value in the dim
+    out_dims_[axis] = k;
+    out->Resize(out_dims_);
+    indices->Resize(out_dims_);
+  }
+
   const T* in_data = x.data<T>();
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
   T* output_data = dev_ctx.template Alloc<T>(out);
 
   const auto& out_dims = out->dims();
 
-  PADDLE_ENFORCE_EQ(
-      sorted,
-      true,
-      errors::External(
-          "XPU API does not support unsorted topk operation currently."
-          " Operator will be supported in future update."));
-  if (in_dims.size() == 0) {
-    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUType*>(x.data<T>()),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
-                               x.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-
-    phi::funcs::set_constant(dev_ctx, indices, static_cast<int64_t>(0));
-
-    return;
-  }
+  // PADDLE_ENFORCE_EQ(
+  //     sorted,
+  //     true,
+  //     errors::External(
+  //         "XPU API does not support unsorted topk operation currently."
+  //         " Operator will be supported in future update."));
   if (axis < 0) axis += in_dims.size();
 
-  size_t k = k_scalar.to<int>();
   if (axis + 1 == in_dims.size()) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     int32_t* indices_int_data =
@@ -115,12 +130,7 @@ void TopkKernel(const Context& dev_ctx,
                                     trans_in_data,
                                     x_shape_host,
                                     trans_axes);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      errors::External("XPU API 1st Transpose kernel"
-                                       " returns wrong value[%d %s]!",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
 
     XPUType* trans_out_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(trans_out_data);
@@ -172,23 +182,13 @@ void TopkKernel(const Context& dev_ctx,
         reinterpret_cast<XPUType*>(output_data),
         trans_out_shape_host,
         trans_back_axes);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      errors::External("XPU API 2nd Transpose kernel"
-                                       " returns wrong value[%d %s]",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
     r = xpu::transpose<int64_t>(dev_ctx.x_context(),
                                 trans_idx_data,
                                 indices_data,
                                 trans_out_shape_host,
                                 trans_back_axes);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      errors::External("XPU API 3rd Transpose kernel"
-                                       " returns wrong value[%d %s]",
-                                       r,
-                                       XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
   }
 }
 

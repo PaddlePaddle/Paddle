@@ -43,7 +43,7 @@ class Imikolov(Dataset):
         data_type(str): 'NGRAM' or 'SEQ'. Default 'NGRAM'.
         window_size(int): sliding window size for 'NGRAM' data. Default -1.
         mode(str): 'train' 'test' mode. Default 'train'.
-        min_word_freq(int): minimal word frequence for building word dictionary. Default 50.
+        min_word_freq(int): minimal word frequencies for building word dictionary. Default 50.
         download(bool): whether to download dataset automatically if
             :attr:`data_file` is not set. Default True
 
@@ -54,6 +54,7 @@ class Imikolov(Dataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
             >>> from paddle.text.datasets import Imikolov
 

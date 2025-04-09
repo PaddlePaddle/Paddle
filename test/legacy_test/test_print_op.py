@@ -37,9 +37,7 @@ class TestPrintOpCPU(unittest.TestCase):
         self.x_tensor.set(tensor_np, self.place)
 
     def build_network(self, only_forward, **kargs):
-        x = paddle.static.data(
-            'x', shape=[-1, 3], dtype=self.dtype, lod_level=1
-        )
+        x = paddle.static.data('x', shape=[-1, 3], dtype=self.dtype)
         x.stop_gradient = False
         paddle.static.Print(input=x, **kargs)
         loss = paddle.mean(x)
@@ -75,9 +73,7 @@ class TestPrintOpCPU(unittest.TestCase):
     def test_all_parameters(self):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog, paddle.static.Program()):
-            x = paddle.static.data(
-                'x', shape=[-1, 3], dtype=self.dtype, lod_level=1
-            )
+            x = paddle.static.data('x', shape=[-1, 3], dtype=self.dtype)
             x.stop_gradient = False
 
             for print_tensor_name in [True, False]:

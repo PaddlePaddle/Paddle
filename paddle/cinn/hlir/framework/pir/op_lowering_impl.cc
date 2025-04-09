@@ -33,14 +33,14 @@
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/operator_fusion/fusion_interface.h"
 #include "paddle/cinn/optim/check_tensor_buffer_map.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
-#include "paddle/cinn/optim/if_fusion.h"
-#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/pass/pass_manager.h"
 #include "paddle/common/ddim.h"
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -48,8 +48,8 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
-PD_DECLARE_bool(cinn_bucket_compile);
 PD_DECLARE_bool(cinn_check_tensor_buffer_map);
+PD_DECLARE_bool(cinn_longlong2int);
 const int default_priority = 100;
 
 namespace cinn {
@@ -102,9 +102,14 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
-  std::vector<ir::Expr> func_bodies =
+  std::vector<ir::stmt::BlockRef> func_body_blocks =
       LowerOps(group, ops, &group_func_arg_tensors, &tensor_map);
-
+  // TODO(Hongqing-work): delete this convert after using new IR update
+  // schedule.
+  std::vector<ir::Expr> func_bodies;
+  for (const auto& body : func_body_blocks) {
+    func_bodies.emplace_back(ir::ConvertStmtBlockToExprBlock(body));
+  }
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower LowerOps");
     VLOG(3) << "LowerOps tensor-buffer map check succeed";
@@ -113,13 +118,30 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // =========== OpFusion ============
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
-  func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
+  func_bodies = OperationFusion(ops,
+                                func_bodies,
+                                group->fusion_tracker_ptr,
+                                group->substitute_dimexpr_map());
+
+  std::unordered_set<std::string> fusion_group_args;
+  for (auto value : group->GetInputOpValues()) {
+    fusion_group_args.insert(ValueName(value));
+  }
+
+  for (auto value : group->GetGroupOutputValues()) {
+    fusion_group_args.insert(ValueName(value));
+  }
+
   std::shared_ptr<FusionGroupInfo> fusion_group_info =
-      GetFusionGroupInfo(func_bodies);
+      GetFusionGroupInfo(func_bodies, fusion_group_args);
   // TODO(liangshuhao): grid reduce is disabled for broadcast-leaf group now,
   // because grid reduce introduces extra func args that currently cannot be
   // unified with other broadcast-leaf groups.
   if (group->IsBroadcastLeaf()) {
+    fusion_group_info->can_apply_grid_reduce = false;
+  }
+
+  if (!target_.get_supports_cooperative_launch()) {
     fusion_group_info->can_apply_grid_reduce = false;
   }
 
@@ -182,46 +204,48 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
   std::vector<ir::Expr> scheduled_func_bodies;
+  std::vector<ir::SymbolicPredicate> predicates;
   for (std::pair<ir::SymbolicPredicate, ir::Expr>& cond2body :
        cond2func_bodies) {
+    predicates.push_back(cond2body.first);
     scheduled_func_bodies.push_back(cond2body.second);
   }
   std::vector<ir::Tensor> group_func_arg_tensors_copy = group_func_arg_tensors;
   std::vector<ir::Argument> group_func_args;
   std::vector<ir::Tensor> infer_shape_tensor_args;
-  std::vector<ir::LoweredFunc> funcs = PostProcess(group,
-                                                   tensor_map,
-                                                   {scheduled_func_bodies},
-                                                   &group_func_arg_tensors_copy,
-                                                   &group_func_args,
-                                                   &infer_shape_tensor_args);
+
+  std::vector<CondFuncPriorWrapper> warps_processed =
+      PostProcess(group,
+                  tensor_map,
+                  fusion_group_info,
+                  {scheduled_func_bodies},
+                  {predicates},
+                  {priorities},
+                  &group_func_arg_tensors_copy,
+                  &group_func_args,
+                  &infer_shape_tensor_args);
   if (FLAGS_cinn_check_tensor_buffer_map) {
-    for (ir::LoweredFunc& func : funcs) {
-      optim::CheckTensorBufferMap(func->body, "BucketLower PostProcess");
+    for (auto& warp : warps_processed) {
+      optim::CheckTensorBufferMap(std::get<1>(warp)->body,
+                                  "BucketLower PostProcess");
     }
     VLOG(3) << "PostProcess tensor-buffer map check succeed";
   }
-  PADDLE_ENFORCE_EQ(funcs.size(),
-                    cond2func_bodies.size(),
-                    ::common::errors::InvalidArgument(
-                        "The size of funcs and cond2func_bodies should be "
-                        "the same."));
-  PADDLE_ENFORCE_EQ(funcs.size(),
-                    priorities.size() + 1,
-                    ::common::errors::InvalidArgument(
-                        "The size of funcs should equals to the "
-                        "size of priorities plus one."));
+
   BucketLoweredFuncsWrapper funcs_wrapper;
-  for (int i = 0; i < funcs.size() - 1; ++i) {
-    funcs_wrapper.predicate2funcs.emplace_back(
-        std::make_tuple(cond2func_bodies[i].first, funcs[i], priorities[i]));
+  for (int i = 0; i < warps_processed.size() - 1; ++i) {
+    funcs_wrapper.predicate2funcs.emplace_back(warps_processed[i]);
   }
+
   // The last func is x86 kernel.
-  for (size_t i = funcs.size() - 1; i < funcs.size(); ++i) {
-    funcs[i]->name = funcs[i]->name + "_CX86";
-    funcs_wrapper.predicate2funcsCX86.emplace_back(cond2func_bodies[i].first,
-                                                   funcs[i]);
+  auto [predicate_postprocessed, func_postprocessed, _] =
+      warps_processed[warps_processed.size() - 1];
+  if (func_postprocessed->body != ir::Expr(-1)) {
+    func_postprocessed->name = func_postprocessed->name + "_CX86";
+    funcs_wrapper.predicate2funcsCX86.emplace_back(predicate_postprocessed,
+                                                   func_postprocessed);
   }
+
   funcs_wrapper.infer_shape_func =
       GenerateInferShapeFunc(group, infer_shape_tensor_args, group_func_args);
 
@@ -242,13 +266,18 @@ std::unordered_set<std::string> CollectStoreBufferNames(
   return buffer_names;
 }
 
-std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
+std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
     const OpLoweringGroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
+    const std::shared_ptr<FusionGroupInfo>& fusion_group_info,
     std::vector<ir::Expr> func_bodies,
+    std::vector<ir::SymbolicPredicate> predicates,
+    std::vector<int> priorities,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::vector<ir::Argument>* group_func_args,
     std::vector<ir::Tensor>* infer_shape_arg_tensor) {
+  std::vector<ir::Expr> inputs_element_size;
+
   // 1.Prepare function args
   group->mut_input_names().clear();
   std::unordered_set<std::string> store_buffer_names =
@@ -264,6 +293,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
             ? ir::Argument::IO::kOutput
             : ir::Argument::IO::kInput;
     (*group_func_args).emplace_back(arg_tensor->buffer, io_type);
+    // collect element size for longlong2int pass.
+    if (FLAGS_cinn_longlong2int) {
+      inputs_element_size.push_back(common::FoldExpr(
+          [](const Expr& a, const Expr& b) { return ir::Mul::Make(a, b); },
+          arg_tensor->shape));
+    }
     arg_name_set.insert(arg_tensor->buffer->name);
   }
 
@@ -275,7 +310,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     auto tensor = tensor_map.at(op_result);
-    if (group->HasShapeOrDataExprs(op_result)) {
+    bool contain_unknown_dim = [&]() {
+      bool check = op_result && op_result.type() &&
+                   op_result.type().isa<paddle::dialect::DenseTensorType>();
+      PADDLE_ENFORCE_EQ(
+          check,
+          true,
+          phi::errors::PreconditionNotMet("cinn only support DenseTensorType"));
+      const auto dims =
+          op_result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      return ::common::contain_unknown_dim(dims);
+    }();
+
+    if (contain_unknown_dim && group->HasShapeOrDataExprs(op_result)) {
       tensor->shape.clear();
       for (size_t i = 0;
            i < group->GetShapeOrDataExprs(op_result).shape().size();
@@ -302,6 +349,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::map<int, CINNKernelInfo::SymbolArgBindInfo> mps;
   // update args for dynamic dim
   int non_tensor_arg_idx = group_func_args->size();
+
   std::unordered_set<std::string> symbol_args_set;
   for (int tensor_arg_idx = 0; tensor_arg_idx < input_tensor_size;
        tensor_arg_idx++) {
@@ -353,7 +401,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     AddDimSymbolArgs();
     AddValueSymbolArgs();
   }
-  std::vector<ir::LoweredFunc> lowered_funcs;
+
+  std::vector<ir::LoweredFunc> ret_lowered_funcs;
+  std::vector<ir::SymbolicPredicate> ret_predicates;
+  std::vector<int> ret_priorities;
+
   for (int i = 0; i < func_bodies.size(); ++i) {
     ir::Expr func_body = func_bodies[i];
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names());
@@ -364,15 +416,27 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
                            common::ARMArch>) {},
           [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-            optim::EliminateCommonGlobalMemoryRead(&(func_body));
-            optim::OptimizeExprGPU(&(func_body));
+            // optim::EliminateCommonGlobalMemoryRead(&(func_body));
+            ir::stmt::BlockRef func_body_block =
+                ir::ConvertExprBlockToStmtBlock(func_body);
+            VLOG(4) << "Before OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
+            optim::OptimizeExprGPU(func_body_block);
+            VLOG(4) << "After OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
+            func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
 #endif
           },
-          [&](common::HygonDCUArchHIP) {
-#ifdef CINN_WITH_HIP
-            optim::EliminateCommonGlobalMemoryRead(&(func_body));
-            optim::OptimizeExprGPU(&(func_body));
-#endif
+          [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
+            // optim::EliminateCommonGlobalMemoryRead(&(func_body));
+            ir::stmt::BlockRef func_body_block =
+                ir::ConvertExprBlockToStmtBlock(func_body);
+            VLOG(4) << "Before OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
+            optim::OptimizeExprGPU(func_body_block);
+            VLOG(4) << "After OptimizeExprGPU in op_lowering_impl: \n"
+                    << func_body_block;
+            func_body = ir::ConvertStmtBlockToExprBlock(func_body_block);
           });
     }
 
@@ -389,31 +453,68 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     } else {
       func = optim::Optimize(func, common::DefaultHostTarget(), false);
     }
+    auto pre_load_temp_buffers =
+        lang::GetPreLoadTempBufferAfterVectorize(func->body);
+    func->temp_bufs.insert(func->temp_bufs.end(),
+                           pre_load_temp_buffers.begin(),
+                           pre_load_temp_buffers.end());
     func->num_output_tensors = infer_shape_arg_tensor->size();
-    lowered_funcs.push_back(std::move(func));
-  }
 
-  // collect temp space sizes
-  if (lowered_funcs.size() > 1) {
-    for (auto& temp_space : lowered_funcs[0]->temp_spaces) {
-      int64_t size = -1;
-      if (temp_space.size().is_constant()) {
-        size = temp_space.size().as_int64();
-      }
-      group->mut_temp_space_sizes().push_back(size);
+    // 5. Apply longlong2int pass
+    if (i != func_bodies.size() - 1) {
+      LongLong2Int(symbol_args_set,
+                   fusion_group_info->loop_ranges_expr,
+                   inputs_element_size,
+                   priorities[i],
+                   &predicates[i],
+                   &func,
+                   &ret_predicates,
+                   &ret_lowered_funcs,
+                   &ret_priorities);
+    }
+    ret_predicates.push_back(std::move(predicates[i]));
+    ret_lowered_funcs.push_back(std::move(func));
+    // host func has no priority, since tuples require alignment, set -1 here.
+    if (i != func_bodies.size() - 1) {
+      ret_priorities.push_back(std::move(priorities[i]));
+    } else {
+      ret_priorities.push_back(-1);
     }
   }
 
-  return lowered_funcs;
+  // 6. Unify temp_space args and set temp_space sizes
+  UnifyTempSpaceArgs(&ret_lowered_funcs);
+  group->mut_temp_space_sizes() = CollectTempSpaceSizes(ret_lowered_funcs);
+
+  PADDLE_ENFORCE_EQ(
+      ret_lowered_funcs.size(),
+      ret_predicates.size(),
+      ::common::errors::InvalidArgument(
+          "The size of ret_lowered_funcs and ret_predicates should be "
+          "the same."));
+  PADDLE_ENFORCE_EQ(
+      ret_lowered_funcs.size(),
+      ret_priorities.size(),
+      ::common::errors::InvalidArgument(
+          "The size of ret_lowered_funcs and ret_priorities should be "
+          "the same."));
+
+  std::vector<CondFuncPriorWrapper> ret;
+  for (size_t i = 0; i < ret_lowered_funcs.size(); ++i) {
+    ret.emplace_back(std::move(ret_predicates[i]),
+                     std::move(ret_lowered_funcs[i]),
+                     std::move(ret_priorities[i]));
+  }
+  return ret;
 }
 
-std::vector<ir::Expr> OpLowererImpl::LowerOps(
+std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
     const OpLoweringGroupPtr& group,
     const std::vector<::pir::Operation*>& ops,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
-  std::vector<Expr> func_bodies;
+  std::vector<ir::stmt::BlockRef> func_bodies;
 
   for (auto* op : ops) {
     VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
@@ -457,7 +558,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
         DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
 
     for (const ir::LoweredFunc& func : funcs) {
-      func_bodies.push_back(func->body);
+      func_bodies.push_back(func->body_block);
     }
   }
 
@@ -529,7 +630,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
           op_func_arg_tensors->push_back(expr.as_tensor_ref());
           expr.as_tensor_ref()->WithBuffer();
         },
-        [&](common::HygonDCUArchHIP) {
+        [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
           if (!expr.as_tensor_ref()->buffer.defined()) {
             op_func_arg_tensors->push_back(expr.as_tensor_ref());
             expr.as_tensor_ref()->WithBuffer();
@@ -579,31 +680,25 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     }
   };
 
-  if (FLAGS_cinn_bucket_compile) {
-    std::vector<ir::Dim> sym_shape;
-    ForEachDimExpr(
-        [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
-    if (sym_shape.empty()) {
-      sym_shape.emplace_back(input_id, symbol::DimExpr{1});
-    }
-    auto tensor = lang::CreatePlaceHolder(
-        sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-    auto IsIntType = [](const ::pir::Type& t) {
-      return t.isa<::pir::Int32Type>() || t.isa<::pir::Int64Type>();
-    };
-    if (IsIntType(dtype) && group->HasShapeOrDataExprs(value)) {
-      const auto& tensor_value = details::GetTensorValueFromShapeOrData(
-          group->GetShapeOrDataExprs(value));
-      if (tensor_value.has_value()) {
-        tensor->set_value(*tensor_value);
-      }
-    }
-    return tensor;
-  } else {
-    auto shape = ::common::vectorize<int>(type_info.dims());
-    return lang::CreatePlaceHolder(
-        shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  std::vector<ir::Dim> sym_shape;
+  ForEachDimExpr(
+      [&](const auto& sym) { sym_shape.emplace_back(input_id, sym); });
+  if (sym_shape.empty()) {
+    sym_shape.emplace_back(input_id, symbol::DimExpr{1});
   }
+  auto tensor = lang::CreatePlaceHolder(
+      sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+  auto IsIntType = [](const ::pir::Type& t) {
+    return t.isa<::pir::Int32Type>() || t.isa<::pir::Int64Type>();
+  };
+  if (IsIntType(dtype) && group->HasShapeOrDataExprs(value)) {
+    const auto& tensor_value = details::GetTensorValueFromShapeOrData(
+        group->GetShapeOrDataExprs(value));
+    if (tensor_value.has_value()) {
+      tensor->set_value(*tensor_value);
+    }
+  }
+  return tensor;
 }
 
 std::vector<ir::Tensor> OpLowererImpl::CollectInputTensor(
@@ -740,6 +835,8 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
                               group_func_args,
                               ir::Block::Make(ir_bodys),
                               {});
+  infer_shape_func->body_block =
+      ir::ConvertExprBlockToStmtBlock(infer_shape_func->body);
   return infer_shape_func;
 }
 ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
@@ -750,55 +847,46 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
 
-  auto need_lower_x86 = [&]() -> bool {
-    for (auto* op : ops) {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        auto in = op->operand_source(i);
-        if (!in || !in.type()) {
-          continue;
-        }
-        auto type_info = in.type().dyn_cast<paddle::dialect::DenseTensorType>();
-        auto dtype = type_info.dtype();
-        const auto& dims = type_info.dims();
-        std::vector<ir::Dim> sym_shape;
-        // 1. dynamic shape not need lower x86
-        if (::common::contain_unknown_dim(dims)) {
-          return false;
-        }
-        // 2. size < 4 not need lower x86
-        int64_t sym_shape_size = 1;
-        for (int i = 0; i < dims.size(); ++i) {
-          sym_shape_size *= dims[i];
-          if (sym_shape_size > 4) {
-            return false;
-          }
-        }
+  std::vector<::pir::Value> vec_inputs;
+  std::vector<::pir::Value> vec_outputs;
+  for (auto* op : ops) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto in = op->operand_source(i);
+      if (!in || !in.type()) {
+        continue;
       }
 
-      std::vector<Type> out_types;
-      std::vector<std::vector<ir::Dim>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      for (const auto& tt : out_types) {
-        // 3. float16 not need lower x86
-        if (tt.is_float16()) {
-          return false;
-        }
-      }
+      vec_inputs.push_back(in);
     }
-    return true;
-  };
-  if (!need_lower_x86()) {
+
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto out = op->result(i);
+      if (!out || !out.type()) {
+        continue;
+      }
+
+      vec_outputs.push_back(out);
+    }
+  }
+
+  if (!paddle::dialect::CanGroupOpRunCpuKernel(vec_inputs, vec_outputs)) {
     return ir::Expr(-1);
   }
 
   this->target_ = common::DefaultHostTarget();
   cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
 
-  std::vector<ir::Expr> func_bodies =
+  std::vector<ir::stmt::BlockRef> func_bodies =
       LowerOps(group, ops, &group_func_arg_tensors, &tensor_map);
   this->target_ = common::DefaultDeviceTarget();
   cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
-  ir::ModuleExpr mod_expr(func_bodies);
+  // TODO(Hongqing-work): delete this convert after using new IR update
+  // schedule.
+  std::vector<ir::Expr> expr_func_bodies;
+  for (const auto& body : func_bodies) {
+    expr_func_bodies.emplace_back(ir::ConvertStmtBlockToExprBlock(body));
+  }
+  ir::ModuleExpr mod_expr(expr_func_bodies);
   ir::IRSchedule ir_sch(
       mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
   ir_sch.MergeExprs();

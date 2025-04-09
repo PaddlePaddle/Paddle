@@ -23,9 +23,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/memory_utils.h"
 
-namespace paddle {
-namespace operators {
-namespace reader {
+namespace paddle::operators::reader {
 BufferedReader::~BufferedReader() {
   VLOG(1) << "~BufferedReader";
   reader_->Shutdown();
@@ -412,6 +410,4 @@ void BufferedReader::ReadNextImpl(phi::TensorArray *out) {
   prev_pos_ = i;
 }
 
-}  // namespace reader
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators::reader

@@ -22,7 +22,6 @@ from typing import Any, Callable
 import numpy as np
 
 import paddle
-from paddle import base
 from paddle.base import core, framework
 from paddle.base.executor import global_scope
 from paddle.base.framework import (
@@ -179,6 +178,7 @@ class BlockConfig:
                 elif self.vars_var_type[name] == VarType.STEP_SCOPES:
                     var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                     continue
+
             var_desc.set_dtype(convert_np_dtype_to_proto_type(np.float32))
             if self.vars_dtype is not None and name in self.vars_dtype.keys():
                 var_desc.set_dtype(
@@ -342,7 +342,22 @@ class ProgramConfig:
         return self
 
 
-def create_fake_model(program_config):
+def convert_to_dynamic_shape(dynamic_shape, name):
+    if dynamic_shape.min_input_shape == {}:
+        return tuple(dynamic_shape.min_input_shape)
+    min_shape = tuple(dynamic_shape.min_input_shape[name])
+    opt_shape = tuple(dynamic_shape.opt_input_shape[name])
+    max_shape = tuple(dynamic_shape.max_input_shape[name])
+    result_shape = []
+    for i in range(len(min_shape)):
+        if min_shape[i] == opt_shape[i] == max_shape[i]:
+            result_shape.append(min_shape[i])
+        else:
+            result_shape.append(-1)
+    return tuple(result_shape)
+
+
+def create_fake_model(program_config, run_pir=False, dynamic_shape=None):
     '''Create a Paddle model(in memory) according to the given config.'''
     program_config = copy.deepcopy(program_config)
     program_config._cast()
@@ -364,7 +379,13 @@ def create_fake_model(program_config):
             var_desc.set_dtype(
                 convert_np_dtype_to_proto_type(tensor_config.dtype)
             )
-            var_desc.set_shape(tensor_config.shape)
+            if dynamic_shape is not None:
+                dynamic_shape_copy = convert_to_dynamic_shape(
+                    dynamic_shape, name
+                )
+                var_desc.set_shape(dynamic_shape_copy)
+            else:
+                var_desc.set_shape(tensor_config.shape)
             var_desc.set_need_check_feed(True)
             if tensor_config.lod is not None:
                 var_desc.set_lod_level(len(tensor_config.lod))
@@ -400,12 +421,13 @@ def create_fake_model(program_config):
             type=core.VarDesc.VarType.RAW, name="out_var_0"
         )
         out_var.desc.set_persistable(True)
-        util_program.global_block().append_op(
-            type='save_combine',
-            inputs={'X': in_vars},
-            outputs={'Y': out_var},
-            attrs={'file_path': '', 'save_to_memory': True},
-        )
+        if not run_pir:
+            util_program.global_block().append_op(
+                type='save_combine',
+                inputs={'X': in_vars},
+                outputs={'Y': out_var},
+                attrs={'file_path': '', 'save_to_memory': True},
+            )
         for op_config in program_config.ops:
             op_desc = main_block_desc.append_op()
             op_desc.set_type(op_config.type)
@@ -452,9 +474,14 @@ def create_fake_model(program_config):
                         ):
                             var_desc.set_type(core.VarDesc.VarType.STEP_SCOPES)
                             continue
-                    var_desc.set_dtype(
-                        convert_np_dtype_to_proto_type(np.float32)
-                    )
+                    if run_pir:
+                        var_desc.set_dtype(
+                            convert_np_dtype_to_proto_type(tensor_config.dtype)
+                        )
+                    else:
+                        var_desc.set_dtype(
+                            convert_np_dtype_to_proto_type(np.float32)
+                        )
                     if (
                         op_config.outputs_dtype is not None
                         and v in op_config.outputs_dtype.keys()
@@ -478,18 +505,9 @@ def create_fake_model(program_config):
             op_desc.set_input('X', [name])
             op_desc.set_output('Out', ["fetch"])
             op_desc._set_attr("col", index)
-
-        model = main_program_desc.serialize_to_string()
-
         util_program._sync_with_cpp()
-        place = base.CPUPlace()
-        executor = base.Executor(place)
-        scope = base.Scope()
-        with base.scope_guard(scope):
-            executor.run(util_program)
-            params = scope.find_var("out_var_0").get_bytes()
 
-    return model, params
+    return main_program_desc, util_program
 
 
 def create_quant_model(

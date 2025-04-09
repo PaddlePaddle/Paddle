@@ -34,7 +34,7 @@ using SparseCooTensorTypeStorage = paddle::dialect::SparseCooTensorTypeStorage;
 using SparseCsrTensorType = paddle::dialect::SparseCsrTensorType;
 using SparseCsrTensorTypeStorage = paddle::dialect::SparseCsrTensorTypeStorage;
 using DataLayout = DenseTensorTypeStorage::DataLayout;
-using LoD = DenseTensorTypeStorage::LoD;
+using LegacyLoD = DenseTensorTypeStorage::LegacyLoD;
 
 TypeTranslator::TypeTranslator() {
   const auto& HandleTensor = [&](pir::IrContext* ctx,
@@ -45,7 +45,7 @@ TypeTranslator::TypeTranslator() {
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
     const auto layout = DataLayout::NCHW;
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
   };
@@ -68,7 +68,7 @@ TypeTranslator::TypeTranslator() {
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
     const auto layout = DataLayout::NCHW;
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     pir::Type SelectedRows =
         SelectedRowsType::get(ctx, dtype, dim, layout, lod, offset);
@@ -82,7 +82,7 @@ TypeTranslator::TypeTranslator() {
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     bool coalesced = false;
     const auto non_zero_dims = common::make_ddim(var_desc.GetShape());
@@ -109,7 +109,7 @@ TypeTranslator::TypeTranslator() {
     const pir::Type dtype =
         this->operator[](var_desc.GetDataType())(ctx, var_desc);
     const auto dim = common::make_ddim(var_desc.GetShape());
-    const LoD lod = {};
+    const LegacyLoD lod = {};
     const size_t offset = 0;
     const auto layout = DataLayout::NCHW;
     pir::DenseTensorType non_zero_crows =

@@ -24,5 +24,10 @@ void ShapeKernel(const Context& ctx,
                  const SelectedRows& input,
                  DenseTensor* out);
 
+template <typename T, typename Context>
+void Shape64Kernel(const Context& ctx,
+                   const SelectedRows& input,
+                   DenseTensor* out);
+
 }  // namespace sr
 }  // namespace phi

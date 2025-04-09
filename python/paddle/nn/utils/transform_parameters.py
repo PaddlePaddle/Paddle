@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from paddle._typing import ShapeLike
 
 
-# input==output, inplace strategy of reshape has no cost almostly
+# input==output, inplace strategy of reshape has no cost almost
 def _inplace_reshape_dygraph(x: Tensor, shape: ShapeLike) -> None:
     x_shape = _create_tensor(dtype='int64')
     if in_dygraph_mode():

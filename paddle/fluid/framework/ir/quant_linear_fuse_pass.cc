@@ -37,9 +37,7 @@ void ConvertTensorType(phi::DenseTensor* tensor) {
 }
 }  // namespace
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                                 \
@@ -211,7 +209,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
       input_scale = static_cast<float>(input_scale_data[0]);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupport type. The type of 'Scale' in quantize_linear op is "
+          "Unsupported type. The type of 'Scale' in quantize_linear op is "
           "expected to be float32 or float16, but the current type is %d",
           input_scale_tensor.dtype()));
     }
@@ -314,9 +312,7 @@ int QuantLinearFusePass::ApplyQuantLinearFusePattern(Graph* graph,
   return found_count;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(quant_linear_fuse_pass,
               paddle::framework::ir::QuantLinearFusePass);

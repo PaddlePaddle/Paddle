@@ -75,7 +75,7 @@ class StaticCode1:
             nonlocal x_v
             return (x_v,)
 
-        def set_args_0(__args):
+        def set_args_0(__args):  # noqa: PYI063
             nonlocal x_v
             (x_v,) = __args
 
@@ -103,7 +103,7 @@ class StaticCode1:
             nonlocal __return_0, __return_1, __return_value_0, loss
             return __return_0, __return_1, __return_value_0, loss
 
-        def set_args_1(__args):
+        def set_args_1(__args):  # noqa: PYI063
             nonlocal __return_0, __return_1, __return_value_0, loss
             __return_0, __return_1, __return_value_0, loss = __args
 
@@ -146,7 +146,7 @@ class StaticCode2:
             nonlocal x_v
             return (x_v,)
 
-        def set_args_2(__args):
+        def set_args_2(__args):  # noqa: PYI063
             nonlocal x_v
             (x_v,) = __args
 
@@ -174,7 +174,7 @@ class StaticCode2:
             nonlocal __return_2, __return_3, __return_value_1, loss
             return __return_2, __return_3, __return_value_1, loss
 
-        def set_args_3(__args):
+        def set_args_3(__args):  # noqa: PYI063
             nonlocal __return_2, __return_3, __return_value_1, loss
             __return_2, __return_3, __return_value_1, loss = __args
 

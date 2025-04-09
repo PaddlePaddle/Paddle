@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/common/macros.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/common/enforce.h"
@@ -35,6 +36,93 @@
 
 namespace cinn {
 namespace ir {
+namespace {
+
+struct CacheReadRewriter : public ir::IRMutator<> {
+  explicit CacheReadRewriter(CacheBlockInfo* info, const Expr& target_load)
+      : info_(info), target_load_(target_load) {}
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+ private:
+  void Visit(const ir::Block* expr, Expr* op) override {
+    IRMutator::Visit(expr, op);
+    if (*op == info_->loc_block) {
+      op->As<Block>()->stmts.insert(
+          op->As<Block>()->stmts.begin() + info_->loc_pos, info_->cache_block);
+    }
+  }
+
+  void Visit(const ir::Load* op, Expr* expr) override {
+    IRMutator::Visit(op, expr);
+    if (!cur_block_.defined()) return;
+    if (op->tensor != Expr(info_->read_tensor)) return;
+
+    Expr expanded_load = analyzer::CanonicalizeLoopVar(
+        analyzer::ExpandIterVar(*expr, cur_block_), parent_loops_);
+    if (expanded_load == target_load_) {
+      expr->As<ir::Load>()->tensor = Expr(info_->write_tensor);
+    }
+  }
+
+  void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
+    Expr old_block = cur_block_;
+    cur_block_ = *expr;
+    IRMutator::Visit(op, expr);
+    cur_block_ = old_block;
+  }
+
+  void Visit(const ir::For* op, Expr* expr) override {
+    parent_loops_.push_back(*expr);
+    IRMutator::Visit(op, expr);
+    parent_loops_.pop_back();
+  }
+
+ private:
+  //! \brief The info for inserting cache stage
+  CacheBlockInfo* info_;
+  //! \brief The load to be replaced by the cache read
+  Expr target_load_;
+
+  Expr cur_block_;
+  std::vector<Expr> parent_loops_;
+};
+
+Expr MakeCacheBlock(const Expr& block,
+                    const std::vector<Expr>& loops,
+                    const Expr& read_expr,
+                    CacheBlockInfo* info,
+                    const std::string& memory_type) {
+  auto* block_realize = block.As<ScheduleBlockRealize>();
+  auto* block_node = block_realize->schedule_block.As<ir::ScheduleBlock>();
+
+  Expr cache_store = ir::Store::Make(
+      info->alloc, read_expr, read_expr.As<ir::Load>()->indices);
+
+  Expr cache_block = ir::ScheduleBlockRealize::Make(
+      block_realize->iter_values,
+      ir::ScheduleBlock::Make(block_node->iter_vars,
+                              {},
+                              {},
+                              info->alloc->name,
+                              ir::Block::Make({cache_store})));
+
+  Expr new_body = cache_block;
+  for (int i = loops.size() - 1; i >= 0; --i) {
+    auto* node = loops[i].As<ir::For>();
+    new_body = ir::For::Make(node->loop_var,
+                             node->min,
+                             node->extent,
+                             node->for_type(),
+                             node->device_api,
+                             ir::Block::Make({new_body}));
+  }
+  info->cache_block = std::move(new_body);
+
+  return cache_block;
+}
+
+}  // namespace
 
 Expr DyScheduleImpl::CacheRead(const Expr& block,
                                int read_buffer_index,
@@ -58,30 +146,22 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
   ChangeBodyToBlock::Change(&root);
   Expr read_expr = GetNthAccessExpr(block, read_buffer_index, false);
 
-  PADDLE_ENFORCE_NOT_NULL(
-      block.As<ScheduleBlockRealize>(),
-      ::common::errors::InvalidArgument([&]() {
-        std::ostringstream os;
-        os << "[IRScheduleError] An error occurred in the schedule primitive <"
-           << primitive << ">.\n"
-           << "[Error info] The read_expr is not a Load!\n"
-           << "[Expr info] The Expr of current schedule is "
-           << module_expr_.GetExprs() << ".";
-        return os.str();
-      }()));
-
-  auto tensor_indices = read_expr.As<ir::Load>()->indices;
   CacheBlockInfo info;
   info.read_tensor = read_expr.As<ir::Load>()->tensor.as_tensor_ref();
   info.write_tensor = MakeCacheTensor(info.read_tensor, memory_type);
   info.alloc = info.write_tensor;
 
-  auto read_ranges =
-      CalculateTensorRegions(block, tensor_indices, info.read_tensor, root);
-  auto new_block =
-      MakeCacheBlock(read_ranges, &info, memory_type, this->GetDeviceAPI());
+  std::vector<Expr> loops = GetLoops(block);
+  Expr new_block = MakeCacheBlock(block, loops, read_expr, &info, memory_type);
+
   FindInsertionPoint(root, &info, false);
-  auto new_root = CacheReadRewriter::Rewrite(root, &info);
+
+  Expr target_load = analyzer::CanonicalizeLoopVar(
+      analyzer::ExpandIterVar(read_expr, block), this->GetLoops(block));
+  CacheReadRewriter rewriter(&info, target_load);
+  Expr new_root = ir::ir_utils::IRCopy(root);
+  rewriter(&new_root);
+
   this->Replace(
       root.As<ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>()->body,
       new_root.As<ScheduleBlockRealize>()
@@ -253,8 +333,10 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
       }()));
 
   auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
-  tensor.as_tensor_ref()->WithBuffer(
-      memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+  if (memory_type == "local") {
+    tensor.as_tensor_ref()->WithBuffer(
+        memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");
+  }
 
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {

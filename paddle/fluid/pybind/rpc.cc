@@ -21,8 +21,7 @@ namespace py = pybind11;
 using paddle::distributed::FutureWrapper;
 using paddle::distributed::RpcAgent;
 using paddle::distributed::WorkerInfo;
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 void BindWorkerInfo(py::module* m) {
   py::class_<WorkerInfo>(*m, "WorkerInfo")
@@ -130,5 +129,4 @@ void GetAllWorkerInfos(py::module* m) {
       },
       py::call_guard<py::gil_scoped_release>());
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

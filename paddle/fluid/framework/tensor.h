@@ -23,7 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using LoD = std::vector<phi::Vector<size_t>>;
+using LegacyLoD = std::vector<phi::Vector<size_t>>;
+using LoD = LegacyLoD;
 
 }  // namespace framework
 }  // namespace paddle

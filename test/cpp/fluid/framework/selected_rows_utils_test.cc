@@ -57,10 +57,10 @@ TEST_F(SelectedRowsTester, SerializeAndDeserialize) {
   phi::CPUContext cpu_ctx(place_);
   std::ostringstream oss;
 
-  SerializeToStream(oss, *selected_rows_, cpu_ctx);
+  phi::SerializeToStream(oss, *selected_rows_, cpu_ctx);
 
   std::istringstream iss(oss.str());
-  DeserializeFromStream(iss, &dst_tensor, cpu_ctx);
+  phi::DeserializeFromStream(iss, &dst_tensor, cpu_ctx);
 
   ASSERT_EQ(selected_rows_->rows(), dst_tensor.rows());
   ASSERT_EQ(selected_rows_->height(), dst_tensor.height());

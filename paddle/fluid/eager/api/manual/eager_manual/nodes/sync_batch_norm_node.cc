@@ -22,8 +22,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/backward/backward_api.h"
-#include "paddle/phi/api/backward/sparse_bw_api.h"
+#include "paddle/phi/api/backward/backward_api_base.h"
+#include "paddle/phi/api/backward/sparse_backward_api_base.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
@@ -175,21 +175,23 @@ SyncBatchNormGradNode::operator()(
 
   auto& x_grad = returns[0][0];
   egr::AutogradMeta* x_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
-                                  : nullptr;
+      returns[0][0].has_allocation() ? egr::EagerUtils::autograd_meta(&x_grad)
+                                     : nullptr;
   if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
 
   auto& scale_grad = returns[3][0];
   egr::AutogradMeta* scale_grad_autograd_meta =
-      returns[3][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
-                                  : nullptr;
+      returns[3][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&scale_grad)
+          : nullptr;
   if (scale_grad_autograd_meta)
     scale_grad_autograd_meta->SetStopGradient(false);
 
   auto& bias_grad = returns[4][0];
   egr::AutogradMeta* bias_grad_autograd_meta =
-      returns[4][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
-                                  : nullptr;
+      returns[4][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&bias_grad)
+          : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
@@ -252,6 +254,10 @@ SyncBatchNormGradNode::operator()(
     output_str += output_bias_grad_str;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  if (HasNodePostHook()) {
+    returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
   // Return
@@ -405,21 +411,23 @@ SyncBatchNormGradNode::operator()(
 
   auto& x_grad = returns[0][0];
   egr::AutogradMeta* x_grad_autograd_meta =
-      returns[0][0].initialized() ? egr::EagerUtils::autograd_meta(&x_grad)
-                                  : nullptr;
+      returns[0][0].has_allocation() ? egr::EagerUtils::autograd_meta(&x_grad)
+                                     : nullptr;
   if (x_grad_autograd_meta) x_grad_autograd_meta->SetStopGradient(false);
 
   auto& scale_grad = returns[3][0];
   egr::AutogradMeta* scale_grad_autograd_meta =
-      returns[3][0].initialized() ? egr::EagerUtils::autograd_meta(&scale_grad)
-                                  : nullptr;
+      returns[3][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&scale_grad)
+          : nullptr;
   if (scale_grad_autograd_meta)
     scale_grad_autograd_meta->SetStopGradient(false);
 
   auto& bias_grad = returns[4][0];
   egr::AutogradMeta* bias_grad_autograd_meta =
-      returns[4][0].initialized() ? egr::EagerUtils::autograd_meta(&bias_grad)
-                                  : nullptr;
+      returns[4][0].has_allocation()
+          ? egr::EagerUtils::autograd_meta(&bias_grad)
+          : nullptr;
   if (bias_grad_autograd_meta) bias_grad_autograd_meta->SetStopGradient(false);
 
   // Create Grad Node
@@ -483,6 +491,10 @@ SyncBatchNormGradNode::operator()(
     VLOG(6) << "gradnode_ptr = " << this;
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
+
+  if (HasNodePostHook()) {
+    returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
   // Return

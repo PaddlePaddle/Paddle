@@ -57,6 +57,15 @@ void OneDNNOperatorDialect::initialize() {
 #define GET_OP_LIST2
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
       >();
+  RegisterOps<
+#define GET_OP_LIST3
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
+      >();
+  RegisterOps<
+#define GET_OP_LIST4
+#include "paddle/fluid/pir/dialect/operator/ir/onednn_op_info.cc"  // NOLINT
+      >();
+
 #else
   RegisterOps<
 #define GET_OP_LIST
@@ -106,26 +115,6 @@ void OneDNNOperatorDialect::PrintAttribute(pir::Attribute attr,
     os << "DataLayout)" << data_layout_attr.data();
   } else {
     os << "<#AttrNotImplemented>";
-  }
-}
-
-pir::Attribute OneDNNOperatorDialect::ParseAttribute(
-    pir::IrParser &parser) {  // NOLINT
-  std::string type_name = parser.ConsumeToken().val_;
-  std::string attribute_name =
-      type_name.substr(type_name.find('.') + 1, std::string::npos);
-  parser.ConsumeAToken(")");
-  if (attribute_name == "IntArray") {
-    return IntArrayAttribute::Parse(parser);
-  } else if (attribute_name == "DataType") {
-    return DataTypeAttribute::Parse(parser);
-  } else if (attribute_name == "Place") {
-    return PlaceAttribute::Parse(parser);
-  } else if (attribute_name == "DataLayout") {
-    return DataLayoutAttribute::Parse(parser);
-  } else {
-    IR_THROW("No function to parse " + attribute_name + " exists!" +
-             parser.GetErrorLocationInfo());
   }
 }
 

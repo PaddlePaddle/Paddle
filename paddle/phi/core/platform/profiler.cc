@@ -53,8 +53,7 @@ thread_local std::shared_ptr<phi::EventList<phi::MemEvent>>
     phi::ProfilerHelper::g_mem_event_list;
 std::mutex phi::ProfilerHelper::g_all_mem_event_lists_mutex;
 #endif
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 MemEventRecorder MemEventRecorder::recorder;
 
@@ -957,5 +956,4 @@ static void DockHostEventRecorderDevicePart(
   EmulateCorrelation(thr_events);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

@@ -40,8 +40,7 @@ limitations under the License. */
 
 COMMON_DECLARE_int32(get_host_by_name_time);
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 std::once_flag SocketServer::init_flag_;
 
@@ -509,7 +508,6 @@ INSTANT_TEMPLATE(BKCLUniqueId)
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 INSTANT_TEMPLATE(phi::ccl::CCLRootId)
 #endif
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
 
 #endif

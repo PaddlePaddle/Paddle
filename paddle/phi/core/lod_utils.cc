@@ -18,10 +18,10 @@
 
 namespace phi {
 
-LoD ToAbsOffset(const LoD &in) {
+LegacyLoD ToAbsOffset(const LegacyLoD &in) {
   // the lowest level stores relative offsets
   if (in.empty() || in.size() == 1) return in;
-  LoD result = in;
+  LegacyLoD result = in;
   for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
     for (size_t i = 0; i < in[level].size(); ++i) {
       size_t index = in[level][i];
@@ -31,20 +31,21 @@ LoD ToAbsOffset(const LoD &in) {
   return result;
 }
 
-void AppendLoD(LoD *lod, const LoD &lod_length) {
+void AppendLegacyLoD(LegacyLoD *lod, const LegacyLoD &lod_length) {
   PADDLE_ENFORCE_EQ(
       (lod->empty() || lod->size() == lod_length.size()),
       true,
       common::errors::InvalidArgument(
-          "The input LoD length should be equal to the appended LoD size, but "
-          "received input LoD length is %d, actual LoD size is %d.",
+          "The input LegacyLoD length should be equal to the appended "
+          "LegacyLoD size, but "
+          "received input LegacyLoD length is %d, actual LegacyLoD size is %d.",
           lod_length.size(),
           lod->size()));
   if (lod->empty()) {
     for (size_t i = 0; i < lod_length.size(); ++i) {
       lod->emplace_back(1, 0);  // size = 1, value = 0;
     }
-    *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
+    *lod = LegacyLoD(lod_length.size(), std::vector<size_t>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto &level = (*lod)[i];
@@ -54,8 +55,8 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
   }
 }
 
-LoD ConvertToLengthBasedLoD(const LoD &offset_lod) {
-  LoD length_lod;
+LegacyLoD ConvertToLengthBasedLegacyLoD(const LegacyLoD &offset_lod) {
+  LegacyLoD length_lod;
   length_lod.reserve(offset_lod.size());
   for (const auto &item : offset_lod) {
     std::vector<size_t> level;

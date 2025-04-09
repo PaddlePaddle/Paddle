@@ -38,5 +38,10 @@ void GeluKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    gelu, XPU, ALL_LAYOUT, phi::GeluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(gelu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GeluKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

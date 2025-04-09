@@ -111,8 +111,10 @@ void AddmmGradKernel(const Context& dev_ctx,
           xpu_ctx,
           c_1,
           reinterpret_cast<XPUType*>(x_grad->data<T>()),
-          {info_forward.bs, info_forward.m, info_forward.k},
-          {0});
+          {(int64_t)info_forward.bs,
+           (int64_t)info_forward.m,
+           (int64_t)info_forward.k},
+          {0LL});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     }
   }
@@ -123,8 +125,10 @@ void AddmmGradKernel(const Context& dev_ctx,
           xpu_ctx,
           c_2,
           reinterpret_cast<XPUType*>(y_grad->data<T>()),
-          {info_forward.bs, info_forward.k, info_forward.n},
-          {0});
+          {(int64_t)info_forward.bs,
+           (int64_t)info_forward.k,
+           (int64_t)info_forward.n},
+          {0LL});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     }
   }

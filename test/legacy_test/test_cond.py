@@ -471,7 +471,7 @@ class TestCondInputOutput(unittest.TestCase):
                 main_program, fetch_list=[out, b, a.grad_name, b.grad_name]
             )
         # Note: fill_constant has loss of precision, you have to assertEqual
-        # with values doens't lose precision in float-point number.
+        # with values doesn't lose precision in float-point number.
         self.assertEqual(ret[0][0], ret[1][0])
         self.assertEqual(ret[2][0], 0.0)
         self.assertEqual(ret[3][0], 1.0)

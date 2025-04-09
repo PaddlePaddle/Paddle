@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -189,17 +189,75 @@ class TestAtan2BF16OP(OpTest):
         )
 
 
-class TestAtan2Error(unittest.TestCase):
+class TestAtan2Broadcasting(unittest.TestCase):
+    def _get_places(self):
+        places = [paddle.base.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.base.CUDAPlace(0))
+        return places
 
-    def test_mismatch(self):
-        paddle.enable_static()
+    def _generate_inputs_outputs(self, shapes):
+        inputs = [
+            np.random.random(shape).astype('float64') for shape in shapes[:2]
+        ]
+        out_ref = np.arctan2(inputs[0], inputs[1])
+        return inputs, out_ref
 
-        def test_mismatch_numel():
-            X = paddle.static.data('X', (1,), dtype=np.float64)
-            Y = paddle.static.data('Y', (0,), dtype=np.float64)
-            out = paddle.atan2(X, Y)
+    def _test_with_shapes(self, shapes, place=None):
+        inputs, out_ref = self._generate_inputs_outputs(shapes)
 
-        self.assertRaises(ValueError, test_mismatch_numel)
+        if place is None:  # Dygraph mode
+            with paddle.base.dygraph.guard():
+                tensors = [paddle.to_tensor(inp) for inp in inputs]
+                result = paddle.atan2(tensors[0], tensors[1])
+        else:  # Static mode
+            with paddle.static.program_guard(paddle.static.Program()):
+                data_tensors = [
+                    paddle.static.data(
+                        shape=shape, dtype='float64', name=f'x{i}'
+                    )
+                    for i, shape in enumerate(shapes)
+                ]
+                result = paddle.atan2(data_tensors[0], data_tensors[1])
+                exe = paddle.base.Executor(place=place)
+                feed_dict = {f'x{i}': inp for i, inp in enumerate(inputs)}
+                result = exe.run(
+                    paddle.static.default_main_program(),
+                    feed=feed_dict,
+                    fetch_list=[result],
+                )[0]
+
+        np.testing.assert_allclose(out_ref, result, rtol=1e-05)
+
+    def test_api_with_dygraph_empty_tensor_input(self):
+        self._test_with_shapes([(100,), (100, 100)])
+        self._test_with_shapes([(), (5, 17, 6)])
+        self._test_with_shapes([(111, 222, 333), (222, 333)])
+
+    def _test_api_with_static_empty_tensor_input(self, place):
+        self._test_with_shapes([(100,), (100, 100)], place)
+        self._test_with_shapes([(), (5, 17, 6)], place)
+        self._test_with_shapes([(111, 222, 333), (222, 333)], place)
+
+    def test_api_with_static_empty_tensor_input(self):
+        for place in self._get_places():
+            self._test_api_with_static_empty_tensor_input(place)
+
+
+class TestAtan2EmptyTensorInput(TestAtan2Broadcasting):
+    def test_api_with_dygraph_empty_tensor_input(self):
+        self._test_with_shapes([(), (0,)])
+        self._test_with_shapes([(0,), (0, 0)])
+        self._test_with_shapes([(0, 0, 0), (0,)])
+        self._test_with_shapes([(5, 17, 1, 6), (5, 17, 0, 6)])
+        self._test_with_shapes([(5, 17, 6), (0, 5, 17, 6)])
+
+    def _test_api_with_static_empty_tensor_input(self, place):
+        self._test_with_shapes([(), (0,)], place)
+        self._test_with_shapes([(0,), (0, 0)], place)
+        self._test_with_shapes([(0, 0, 0), (0,)], place)
+        self._test_with_shapes([(5, 17, 1, 6), (5, 17, 0, 6)], place)
+        self._test_with_shapes([(5, 17, 6), (0, 5, 17, 6)])
 
 
 if __name__ == '__main__':

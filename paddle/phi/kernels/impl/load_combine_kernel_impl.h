@@ -21,7 +21,7 @@
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/phi/core/framework/convert_utils.h"
 #include "paddle/phi/core/framework/data_type_transform.h"
-#include "paddle/phi/core/framework/lod_tensor_serialize.h"
+#include "paddle/phi/core/framework/dense_tensor_serialize.h"
 #include "paddle/phi/core/framework/var_type_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -213,12 +213,6 @@ void LoadCombineKernel(const Context& dev_ctx,
   auto filename = file_path;
   auto out_var_names = out;
 
-  PADDLE_ENFORCE_GT(out_var_names.size(),
-                    0UL,
-                    common::errors::InvalidArgument(
-                        "The number of variables to be loaded is %d, expect "
-                        "it to be greater than 0.",
-                        out_var_names.size()));
   if (!model_from_memory) {
     std::ifstream fin(filename, std::ios::binary);
     PADDLE_ENFORCE_EQ(

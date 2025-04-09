@@ -37,13 +37,12 @@ def instance_norm_wrapper(
 def _reference_instance_norm(x, scale, bias, epsilon):
     prev_x_shape = x.shape
     if len(x.shape) < 4:
-        N, C = x.shape[0], x.shape[1]
-        x = np.reshape(x, (N, C, -1, 1))
+        x = np.reshape(x, (x.shape[0], x.shape[1], -1, 1))
 
     N, C, H, W = x.shape
     mean = np.mean(x, axis=(2, 3), keepdims=True)
     variance = np.var(x, axis=(2, 3), keepdims=True)
-    std = np.sqrt(variance) + epsilon
+    std = np.sqrt(variance + epsilon)
     x_norm = (x - mean) / std
     scale = scale.reshape([1, C, 1, 1])
     bias = bias.reshape([1, C, 1, 1])
@@ -229,7 +228,7 @@ class TestInstanceNormFP32OP(OpTest):
         self.init_dtype()
         self.init_shape()
         self.init_value()
-        self.set_err_thre()
+        self.set_err_threshold()
         self.inputs = {'X': self.value, 'Scale': self.scale, 'Bias': self.bias}
         self.attrs = {
             'epsilon': self.eps,
@@ -285,7 +284,7 @@ class TestInstanceNormFP32OP(OpTest):
         self.scale = np.random.random([self.shape[1]]).astype(np.float32)
         self.bias = np.random.random([self.shape[1]]).astype(np.float32)
 
-    def set_err_thre(self):
+    def set_err_threshold(self):
         self.atol = 1e-3
         self.fw_comp_rtol = 1e-6
         self.fw_comp_atol = 1e-6
@@ -319,6 +318,34 @@ class TestInstanceNormWithNCL(TestInstanceNormFP32OP):
         )
 
 
+class TestInstanceNormWithNC(TestInstanceNormFP32OP):
+    def init_shape(self):
+        self.shape = [4, 100]
+
+    def set_err_threshold(self):
+        super().set_err_threshold()
+        self.fw_comp_atol = 3e-5
+
+    def test_check_output(self):
+        self.check_output(
+            atol=self.atol,
+            check_pir=True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_pir=True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
+        )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_float16_supported(core.CUDAPlace(0)),
@@ -331,7 +358,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def set_err_thre(self):
+    def set_err_threshold(self):
         self.atol = 0.03125
         self.max_relative_error = 8e-3
 
@@ -458,9 +485,7 @@ class PrimNet(paddle.nn.Layer):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
+    return paddle.jit.to_static(net, backend=None, full_graph=True)
 
 
 class TestPrimForwardAndBackward(unittest.TestCase):

@@ -86,3 +86,7 @@ endif()
 if(NOT WIN32)
   paddle_test(test_c_tcp_store SRCS test_tcp_store.cc DEPS phi common)
 endif()
+
+if(WITH_XPU)
+  paddle_test(data_type_transform_test_xpu SRCS data_type_transform_test_xpu.cc)
+endif()

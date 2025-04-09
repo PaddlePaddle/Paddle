@@ -73,8 +73,8 @@ class LBFGS(Optimizer):
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
-            some derived class of ``GradientClipBase`` . There are three cliping strategies \
+        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of \
+            some derived class of ``GradientClipBase`` . There are three clipping strategies \
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , \
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.

@@ -55,7 +55,7 @@ class TestFcFusePass(PassAutoScanTest):
             bias_shape = list(program_config.weights["bias"].shape)
 
             if predictor_config.tensorrt_engine_enabled():
-                # TensorRT cann't handle all the situation of elementwise_add
+                # TensorRT can't handle all the situation of elementwise_add
                 # disable it until this problem fixed
                 predictor_config.exp_disable_tensorrt_ops(["elementwise_add"])
 
@@ -142,7 +142,7 @@ class TestFcFusePass(PassAutoScanTest):
         # Here we will compose a program
         # Still has some risks that the program is invalid or cause bug while running
         # Use function `is_program_valid` to filter the invalid programs before running
-        # Use function `add_skip_pass_case` to ignore the programs even if they cause bug while runing
+        # Use function `add_skip_pass_case` to ignore the programs even if they cause bug while running
         mul_op = OpConfig(
             "mul",
             inputs={"X": ["mul_x"], "Y": ["mul_y"]},

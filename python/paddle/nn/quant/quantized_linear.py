@@ -20,6 +20,10 @@ import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.device import (
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
 from paddle.device.cuda import get_device_capability
 from paddle.framework import (
     LayerHelper,
@@ -40,17 +44,21 @@ if TYPE_CHECKING:
 
 def _get_arch_info():
     # Get SMVersion from device.
-    cuda_version = paddle.version.cuda()
-    if (
-        cuda_version is not None and cuda_version != 'False'
-    ) or paddle.is_compiled_with_rocm():
-        major, minor = get_device_capability()
-        arch = int(major * 10 + minor)
-        return arch
+    if is_compiled_with_cuda() or is_compiled_with_rocm():
+        cuda_version = paddle.version.cuda()
+        if (
+            cuda_version is not None and cuda_version != 'False'
+        ) or paddle.is_compiled_with_rocm():
+            major, minor = get_device_capability()
+            arch = int(major * 10 + minor)
+            return arch
+        else:
+            raise ValueError(
+                "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
+            )
     else:
-        raise ValueError(
-            "Paddle is not compiled with CUDA, we cannot get SMVersion from device, please try to compile Paddle with CUDA"
-        )
+        # Default arch value for type checking.
+        return 0
 
 
 def weight_quantize(
@@ -90,15 +98,15 @@ def weight_quantize(
     if arch is None:
         arch = _get_arch_info()
 
-    assert (
-        arch == 70
-        or arch == 75
-        or arch == 80
-        or arch == 86
-        or arch == 89
-        or arch == 90
-        or paddle.is_compiled_with_rocm()
-    ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
+    if is_compiled_with_cuda():
+        assert (
+            arch == 70
+            or arch == 75
+            or arch == 80
+            or arch == 86
+            or arch == 89
+            or arch == 90
+        ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
 
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
@@ -224,14 +232,15 @@ def weight_only_linear(
     if arch is None:
         arch = _get_arch_info()
 
-    assert (
-        arch == 70
-        or arch == 75
-        or arch == 80
-        or arch == 86
-        or arch == 89
-        or arch == 90
-    ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
+    if is_compiled_with_cuda():
+        assert (
+            arch == 70
+            or arch == 75
+            or arch == 80
+            or arch == 86
+            or arch == 89
+            or arch == 90
+        ), f"Currently weight_quantize only support SM70/75/80/86/89/90. but got {arch} "
     assert (
         group_size == -1 or group_size == 64 or group_size == 128
     ), f"Currently weight_quantize only support group size of -1, 64 or 128. but got {group_size} "

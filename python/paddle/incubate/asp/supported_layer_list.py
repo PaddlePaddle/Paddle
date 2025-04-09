@@ -72,7 +72,7 @@ def _default_pruning(
     # In sparse training, layer weight matrices is viewed sparse matrix A, so
     # the math formula should be 'Act(WX + b)'. However, default formula in PaddlePaddle
     #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed
-    # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension
+    # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune along k dimension
     # of W^T, which is m dimension of W. Moreover, all mask generating functions in
     # asp/utils is row-major pruning. That is the reason we have to transpose weight
     # matrices before invoking create_mask. Then we transpose the result mask to make

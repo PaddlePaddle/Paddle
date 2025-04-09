@@ -38,9 +38,9 @@ template <typename T,
           typename OutType = T,
           bool HasDropout = true>
 __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
-    const int row_id,
-    const int col_id,
-    const int cols,
+    const int64_t row_id,
+    const int64_t col_id,
+    const int64_t cols,
     GPURAND(StatePhilox4_32_10_t) * state,
     const float dropout_prob,
     const T factor,
@@ -279,7 +279,10 @@ __global__ void FusedResidualDropoutBias(
     const float quant_next_in_scale = 1.0,
     const float residual_alpha = 1.0) {
   int col_id = blockDim.x * blockIdx.x + threadIdx.x;
-  int row_id = blockIdx.y;
+  int row_id = blockIdx.y * gridDim.z + blockIdx.z;
+  if (row_id >= rows) {
+    return;
+  }
   int idx = row_id * cols + col_id;
   GPURAND(StatePhilox4_32_10_t) state;
   if (HasDropout) {

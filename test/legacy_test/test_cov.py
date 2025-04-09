@@ -303,7 +303,7 @@ class Cov_Test5(Cov_Test3):
         self.aw_s = 1.0
 
 
-# The value of Input(fweights) cannot be negtive
+# The value of Input(fweights) cannot be negative
 class Cov_Test6(Cov_Test3):
     def setUp(self):
         self.shape = [5, 10]
@@ -333,7 +333,7 @@ class Cov_Test8(Cov_Test3):
         self.aw_s = 1.0
 
 
-# The value of Input(aweights) cannot be negtive
+# The value of Input(aweights) cannot be negative
 class Cov_Test9(Cov_Test3):
     def setUp(self):
         self.shape = [5, 10]

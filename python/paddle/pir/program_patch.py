@@ -27,8 +27,22 @@ def monkey_patch_program():
         # be fixed in the future.
         yield
 
+    def state_dict(self, mode="all", scope=None):
+        from paddle.base import core
+        from paddle.base.executor import global_scope
+
+        if scope is not None and not isinstance(scope, core._Scope):
+            raise TypeError(
+                f"`scope` should be None or `paddle.static.Scope'` type, but received {type(scope)}."
+            )
+
+        if scope is None:
+            scope = global_scope()
+        return self._state_dict(mode, scope)
+
     program_attrs = {
         "_lr_schedule_guard": _lr_schedule_guard,
+        "state_dict": state_dict,
     }
 
     global _already_patch_program

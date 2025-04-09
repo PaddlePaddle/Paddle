@@ -53,11 +53,11 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
                 ops=ops,
                 weights={},
                 inputs={
-                    "input_data": TensorConfig(
-                        data_gen=partial(generate_input1)
-                    ),
                     "index_data": TensorConfig(
                         data_gen=partial(generate_input2)
+                    ),
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1)
                     ),
                 },
                 outputs=["output_data"],
@@ -66,22 +66,24 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
 
             yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [1],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [1],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [1],
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [1],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [1],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [1],
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -94,15 +96,16 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 4), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (0, 4), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
@@ -124,7 +127,7 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
@@ -152,8 +155,8 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input1)),
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
+                "input_data": TensorConfig(data_gen=partial(generate_input1)),
             },
             outputs=["output_data"],
             no_cast_list=["index_data"],
@@ -161,22 +164,24 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
 
         yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2],
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2],
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -189,15 +194,16 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 4), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (0, 4), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
@@ -219,7 +225,7 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
@@ -247,8 +253,8 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input1)),
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
+                "input_data": TensorConfig(data_gen=partial(generate_input1)),
             },
             outputs=["output_data"],
             no_cast_list=["index_data"],
@@ -256,22 +262,24 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
 
         yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2, 2],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2, 2],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2, 2],
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2, 2],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2, 2],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2, 2],
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -284,15 +292,16 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 4), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (0, 4), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
@@ -314,7 +323,7 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
@@ -342,8 +351,8 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input1)),
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
+                "input_data": TensorConfig(data_gen=partial(generate_input1)),
             },
             outputs=["output_data"],
             no_cast_list=["index_data"],
@@ -351,22 +360,24 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
 
         yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2, 2, 4],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2, 2, 4],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": [2, 32, 64, 64],
+            "index_data": [2, 2, 4],
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2, 2, 4],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2, 2, 4],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 32, 64, 64],
-                "index_data": [2, 2, 4],
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -379,15 +390,16 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 4), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (0, 4), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
@@ -409,7 +421,7 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
@@ -437,8 +449,8 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input1)),
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
+                "input_data": TensorConfig(data_gen=partial(generate_input1)),
             },
             outputs=["output_data"],
             no_cast_list=["index_data"],
@@ -446,22 +458,24 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
 
         yield program_config
 
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": [2, 32],
+            "index_data": [2, 2],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": [2, 32],
+            "index_data": [2, 2],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": [2, 32],
+            "index_data": [2, 2],
+        }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [2, 32],
-                "index_data": [2, 2],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [2, 32],
-                "index_data": [2, 2],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 32],
-                "index_data": [2, 2],
-            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -474,15 +488,16 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 4), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (0, 4), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
@@ -504,7 +519,7 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
@@ -534,8 +549,8 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
             ops=ops,
             weights={},
             inputs={
-                "input_data": TensorConfig(data_gen=partial(generate_input1)),
                 "index_data": TensorConfig(data_gen=partial(generate_input2)),
+                "input_data": TensorConfig(data_gen=partial(generate_input1)),
             },
             outputs=["output_data"],
             no_cast_list=["index_data"],
@@ -543,23 +558,24 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
 
         yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [16, 32, 256],
-                "index_data": [2, 2, 2],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [16, 32, 256],
-                "index_data": [2, 2, 2],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [16, 32, 256],
-                "index_data": [2, 2, 2],
-            }
+    def generate_dynamic_shape(self):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": [16, 32, 256],
+            "index_data": [2, 2, 2],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": [16, 32, 256],
+            "index_data": [2, 2, 2],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": [16, 32, 256],
+            "index_data": [2, 2, 2],
+        }
+        return self.dynamic_shape
 
+    def sample_predictor_configs(
+        self, program_config, run_pir=False
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
@@ -571,15 +587,16 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), (0, 4), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), (0, 4), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
@@ -588,7 +605,7 @@ class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

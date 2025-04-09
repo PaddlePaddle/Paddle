@@ -63,11 +63,11 @@ class DNNLayer(nn.Layer):
                     )
                 ),
             )
-            self.add_sublayer('linear_%d' % i, linear)
+            self.add_sublayer(f'linear_{i}', linear)
             self._mlp_layers.append(linear)
             if acts[i] == 'relu':
                 act = paddle.nn.ReLU()
-                self.add_sublayer('act_%d' % i, act)
+                self.add_sublayer(f'act_{i}', act)
                 self._mlp_layers.append(act)
 
     def forward(self, sparse_inputs, dense_inputs):
@@ -151,10 +151,10 @@ class FlDNNLayer(nn.Layer):
                     )
                 ),
             )
-            self.add_sublayer('linear_%d' % i, linear)
+            self.add_sublayer(f'linear_{i}', linear)
             self._mlp_layers_a.append(linear)
             act = paddle.nn.ReLU()
-            self.add_sublayer('act_%d' % i, act)
+            self.add_sublayer(f'act_{i}', act)
             self._mlp_layers_a.append(act)
 
         # part_b fc
@@ -170,10 +170,10 @@ class FlDNNLayer(nn.Layer):
                     )
                 ),
             )
-            self.add_sublayer('linear_%d' % i, linear)
+            self.add_sublayer(f'linear_{i}', linear)
             self._mlp_layers_b.append(linear)
             act = paddle.nn.ReLU()
-            self.add_sublayer('act_%d' % i, act)
+            self.add_sublayer(f'act_{i}', act)
             self._mlp_layers_b.append(act)
 
         # top fc
@@ -189,10 +189,10 @@ class FlDNNLayer(nn.Layer):
                     )
                 ),
             )
-            self.add_sublayer('linear_%d' % i, linear)
+            self.add_sublayer(f'linear_{i}', linear)
             self._mlp_layers_top.append(linear)
             act = paddle.nn.ReLU()
-            self.add_sublayer('act_%d' % i, act)
+            self.add_sublayer(f'act_{i}', act)
             self._mlp_layers_top.append(act)
 
     def bottom_a_layer(self, sparse_inputs):

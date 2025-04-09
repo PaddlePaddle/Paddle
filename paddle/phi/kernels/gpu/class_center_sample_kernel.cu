@@ -48,11 +48,11 @@ namespace phi {
        i += step)
 
 static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+static constexpr int kNumMaximumNumBlocks = 4096;
 
 inline int32_t NumBlocks(const int32_t n) {
   return std::min((n + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+                  kNumMaximumNumBlocks);
 }
 
 template <typename T>

@@ -124,7 +124,7 @@ def _keep_fp32_input(op, in_name):
 
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_output(op, out_name):
-    # TODO(lizhiyu02): Support 'custom_white_list' adn 'custom_black_list' in amp_options
+    # TODO(lizhiyu02): Support 'custom_white_list' and 'custom_black_list' in amp_options
     if not op.amp_options.enable:
         return True
     op_type = op.type

@@ -30,7 +30,7 @@ class Graph;
 
 /*
  * Remove the sum op of all gradients of the backward op.
- * And remove the dependecies of the optimizer related to the
+ * And remove the dependencies of the optimizer related to the
  * same backward op.
  *
  * Before this pass:

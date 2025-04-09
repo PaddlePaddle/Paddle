@@ -98,6 +98,12 @@ class DygraphShardingOptimizer:
         self.comm_buffer_size_MB = sharding_configs.comm_buffer_size_MB
         self.fuse_optimizer = sharding_configs.fuse_optimizer
         self.use_reduce_avg = sharding_configs.use_reduce_avg
+        self.enable_fuse_optimizer_states = (
+            sharding_configs.enable_fuse_optimizer_states
+        )
+        assert (
+            not self.enable_fuse_optimizer_states
+        ), "enable_fuse_optimizer_states is not supported on sharding optimizer V1 now."
 
         if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
             self.use_reduce_avg = False
@@ -484,7 +490,7 @@ class DygraphShardingOptimizer:
 
             if self._broadcast_order_params is None:
                 warnings.warn(
-                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ pattern, "
                     "overlap broadcast may harm the performance."
                 )
                 self._broadcast_order_params = self._parameter_list
@@ -662,9 +668,14 @@ class DygraphShardingOptimizerV2:
                 "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
             )
 
+        self.enable_fuse_optimizer_states = (
+            sharding_config.enable_fuse_optimizer_states
+        )
         self._build_comm_buffers(
             acc_steps, comm_buffer_size_MB * 1024 * 1024, free_grads_in_comm
         )
+        if self.enable_fuse_optimizer_states:
+            self._inner_opt.use_fusion_storage()
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
@@ -753,7 +764,16 @@ class DygraphShardingOptimizerV2:
         color_dict = defaultdict(list)
         for param in self._parameter_list:
             color = getattr(param, 'color', -1)
-            color_dict[color].append(param)
+            color_color = -1
+            color_group = comm_group
+            if isinstance(color, dict):
+                # if color is dict: param.color = {'color': "1", 'group': group}
+                color_color = color.get('color', -1)
+                color_group = color.get('group', comm_group)
+            else:
+                # if color is not a dict: param.color = 1
+                color_color = color
+            color_dict[(color_color, color_group)].append(param)
 
         # NOTE(shenliang03): If comm_overlap is not used, the parameter list is sorted by data type to
         # to reduce communication overhead.
@@ -764,18 +784,22 @@ class DygraphShardingOptimizerV2:
         all_var_groups = []
         group_idx = 0
         for color, params in color_dict.items():
-            logger.info(f"Tensor Fusion Color {color}: ")
+            g_color = color[0]
+            g_group = color[1]
+            logger.info(f"Tensor Fusion Color {g_color} and Group {g_group}: ")
             var_groups = assign_group_by_size(params, group_size)
             for _, parameters in var_groups.items():
                 buffer = FusedCommBuffer(
                     group_idx,
                     parameters,
-                    comm_group,
+                    g_group,
                     acc_steps,
                     act=HOOK_ACTION.REDUCE_SCATTER,
                     release_grads=self.sd_release_grads,
                     use_reduce_avg=self.use_reduce_avg,
                     free_grads_in_comm=free_grads_in_comm,
+                    init_slice_param=self.enable_fuse_optimizer_states,
+                    slice_params=self._slice_params,
                 )
                 group_idx += 1
                 self._comm_buffer_list.append(buffer)
@@ -1001,6 +1025,7 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("apply-optimize").start()
+
             self._apply_optimize(
                 loss=None,
                 startup_program=None,

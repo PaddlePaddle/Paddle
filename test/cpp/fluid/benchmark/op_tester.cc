@@ -253,7 +253,7 @@ void OpTester::CreateOpDesc() {
       case framework::proto::AttrType::LONGS:
       default:
         PADDLE_THROW(common::errors::Unimplemented(
-            "Unsupport attr type %d in OpTester.", type));
+            "Unsupported attr type %d in OpTester.", type));
     }
   }
 }
@@ -377,7 +377,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
 
     VLOG(3) << "Set lod for tensor " << var_name;
     std::vector<std::vector<size_t>> &lod_vec = item.second.lod;
-    phi::LoD lod;
+    phi::LegacyLoD lod;
     for (auto &item : lod_vec) {
       lod.push_back(item);
     }
@@ -496,7 +496,7 @@ std::string OpTester::DebugString() {
       } break;
       default:
         PADDLE_THROW(common::errors::Unimplemented(
-            "Unsupport attr type %d in OpTester.", attr_type));
+            "Unsupported attr type %d in OpTester.", attr_type));
     }
     ss << GenSpaces(--count) << "}\n";
   }

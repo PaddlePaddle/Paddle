@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
@@ -40,7 +41,16 @@ void GroupCompilationContext::SetLoweredFuncs(
     CX86_predicates_.push_back(std::move(predicate2func.first));
     CX86_lowered_funcs_.push_back(std::move(predicate2func.second));
   }
+  // TODO(Dmovic): remove expr body after update all the backend.
+  for (ir::LoweredFunc& func : lowered_funcs_) {
+    func->body_block = ir::ConvertExprBlockToStmtBlock(func->body);
+  }
+  for (ir::LoweredFunc& func : CX86_lowered_funcs_) {
+    func->body_block = ir::ConvertExprBlockToStmtBlock(func->body);
+  }
   infer_shape_lowered_func_ = std::move(funcs.infer_shape_func);
+
+  need_x86_kernel_ = (CX86_predicates_.size() > 0);
 }
 
 std::string GroupCompilationContext::PrintPredicate2Funcs() const {
@@ -61,7 +71,7 @@ void GroupCompilationContext::PrepareModuleBuilder() {
   PADDLE_ENFORCE_EQ(predicates_.size(),
                     priorities_.size(),
                     ::common::errors::InvalidArgument(
-                        "The size of predicates and priorites should be "
+                        "The size of predicates and priorities should be "
                         "the same."));
   for (const ir::Expr& predicate : predicates_) {
     module_builder_.AddPredicate(predicate);
@@ -79,6 +89,7 @@ void GroupCompilationContext::PrepareModuleBuilder() {
                     ::common::errors::InvalidArgument(
                         "The size of predicates and lowered_funcs should be "
                         "the same."));
+
   for (const ir::Expr& predicate : CX86_predicates_) {
     CX86_module_builder_.AddPredicate(predicate);
   }
@@ -90,7 +101,7 @@ void GroupCompilationContext::PrepareModuleBuilder() {
 /**
  * For functions belonging to different broadcast groups, int args and the name
  * of the tensor args may be variate, but the number of the tensor args should
- * be fixed. So we need to unify the tensor args and symbol args. For exmaple,
+ * be fixed. So we need to unify the tensor args and symbol args. For example,
  * func1(_var, _var_1, S4, S5); func2(_var, _var_2, S1) would be unified to
  * func1(_var, _var_1, S4, S5, S1); func2(_var, _var_2, S4, S5, S1).
  */
@@ -98,52 +109,83 @@ void UnifyBroadcastGroupFuncArgs(
     std::vector<GroupCompilationContext>* contexts,
     pir::OpLoweringGroupPtr origin_group,
     std::unordered_map<int, ir::Var>* symbolic_shape_var_index) {
-  std::unordered_map<ir::Var, pir::CINNKernelInfo::SymbolArgBindInfo>
-      new_args_map;
   std::vector<ir::Argument> new_args_vec;
-  int total_args_num = 0;
 
-  const auto& AddTensorArgs = [&](GroupCompilationContext& context) {
-    const auto& func_args = context.lowered_funcs_[0]->args;
-    const auto& origin_symbol_args = context.group_->symbol_args_map();
+  const auto& AddTensorArgs = [&]() {
+    const auto& func_args = (*contexts)[0].lowered_funcs_[0]->args;
     for (size_t arg_idx = 0; arg_idx < func_args.size(); ++arg_idx) {
-      if (func_args[arg_idx].is_var()) {
-        new_args_map[func_args[arg_idx].var_arg()] =
-            origin_symbol_args.at(arg_idx);
-      } else {
+      if (func_args[arg_idx].is_buffer()) {
         new_args_vec.emplace_back(func_args[arg_idx]);
       }
     }
+  };
+
+  std::unordered_set<std::string> symbol_args_set;
+  const auto& AddSymbolArgs = [&](::pir::Value input, const int& input_idx) {
+    enum ArgType { Dim, Value };
+    const auto& AddSymbolArgFromDimExprVec =
+        [&](ArgType arg_type, const std::vector<symbol::DimExpr>& expr_vec) {
+          int vec_size = expr_vec.size();
+          for (int idx = 0; idx < vec_size; idx++) {
+            if (expr_vec[idx].isa<std::string>()) {
+              const std::string& symbol_name =
+                  expr_vec[idx].dyn_cast<std::string>();
+              if (symbol_args_set.count(symbol_name) != 0) {
+                continue;
+              }
+              symbol_args_set.insert(symbol_name);
+              const auto& arg = ir::Var(symbol_name, cinn::common::Int(64));
+              new_args_vec.emplace_back(ir::Argument{arg});
+              int arg_idx = new_args_vec.size() - 1;
+              symbolic_shape_var_index->insert({arg_idx, arg});
+              if (arg_type == Dim) {
+                origin_group->mut_symbol_args_map()[arg_idx] =
+                    pir::CINNKernelInfo::ArgDimIdx{input_idx, idx};
+              } else {
+                origin_group->mut_symbol_args_map()[arg_idx] =
+                    pir::CINNKernelInfo::ArgValueIdx{input_idx, idx};
+              }
+            }
+          }
+        };
+    const auto& shape_or_data = origin_group->GetShapeOrDataExprs(input);
+    // Add dim symbol args
+    AddSymbolArgFromDimExprVec(ArgType::Dim, shape_or_data.shape());
+    // Add value symbol args
+    if (shape_or_data.data())
+      AddSymbolArgFromDimExprVec(ArgType::Value, shape_or_data.data().value());
+  };
+
+  const auto& UpdateAllFuncArgs = [&](GroupCompilationContext& context) {
+    std::unordered_map<std::string, cinn::common::Type> old_type_map;
     for (ir::LoweredFunc& func : context.lowered_funcs_) {
+      old_type_map.clear();
+      // record old func arg type.
+      for (auto& old_arg : func->args) {
+        if (old_arg.is_var() && old_arg.var_arg()->is_symbolic_constant) {
+          old_type_map[old_arg.name()] = old_arg.var_arg()->type();
+        }
+      }
+      // update func args.
       func->args = new_args_vec;
+      // reset arg type to old type.
+      for (auto& new_arg : func->args) {
+        if (new_arg.is_var() && new_arg.var_arg()->is_symbolic_constant &&
+            old_type_map.count(new_arg.name())) {
+          new_arg.set_var(ir::ir_utils::IRCopy(new_arg.var_arg()));
+          new_arg.var_arg()->set_type(old_type_map[new_arg.name()]);
+        }
+      }
     }
   };
-  for (size_t i = 0; i < contexts->size(); ++i) {
-    AddTensorArgs((*contexts)[i]);
-    if (i == 0) total_args_num += new_args_vec.size();
-    new_args_vec.clear();
-  }
 
+  AddTensorArgs();
   origin_group->mut_symbol_args_map().clear();
-  const auto& new_symbol_args_vec = [&]() -> std::vector<ir::Argument> {
-    std::vector<ir::Argument> res;
-    for (const auto& [arg, idx_info] : new_args_map) {
-      symbolic_shape_var_index->insert({total_args_num, arg});
-      origin_group->mut_symbol_args_map()[total_args_num++] = idx_info;
-      res.emplace_back(ir::Argument{arg});
-    }
-    return res;
-  }();
-
-  const auto& AddUnifiedSymbolArgs = [&](GroupCompilationContext& context) {
-    for (ir::LoweredFunc& func : context.lowered_funcs_) {
-      func->args.insert(func->args.end(),
-                        new_symbol_args_vec.begin(),
-                        new_symbol_args_vec.end());
-    }
-  };
+  const auto& group_inputs = pir::GetBlockOutsideInput(origin_group->ops());
+  for (size_t input_idx = 0; input_idx < group_inputs.size(); ++input_idx)
+    AddSymbolArgs(group_inputs[input_idx], input_idx);
   for (int i = 0; i < contexts->size(); ++i) {
-    AddUnifiedSymbolArgs((*contexts)[i]);
+    UpdateAllFuncArgs((*contexts)[i]);
   }
 }
 
@@ -203,15 +245,21 @@ void CompilationTask::Lowering() {
 
 std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
   context_->PrepareModuleBuilder();
+
   ir::Module ir_module = context_->module_builder_.Build();
   ir::Module ir_moduleCX86 = context_->CX86_module_builder_.Build();
-  return BuildPirCINNKernelInfo(ir_module, ir_moduleCX86);
+  cinn::common::OpDataTypePromote(&ir_module);
+  cinn::common::OpDataTypePromote(&ir_moduleCX86);
+  return BuildPirCINNKernelInfo(
+      ir_module, ir_moduleCX86, context_->NeedCompileCX86Kernel());
 }
 
 std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
-    const ir::Module& module, const ir::Module& CX86module) {
-  auto compilation_result =
-      std::make_shared<pir::CompilationResult>(context_->target_);
+    const ir::Module& module,
+    const ir::Module& CX86module,
+    bool need_x86_kernel) {
+  auto compilation_result = std::make_shared<pir::CompilationResult>(
+      context_->target_, need_x86_kernel);
   auto backend_resource = std::make_shared<pir::BackendResource>(
       context_->target_,
       context_->group_->FuncName(),
@@ -223,6 +271,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
   backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
   backend_resource->GetBackendCompiler()->EndCompile();
   compilation_result->SetBackendResource(backend_resource);
+
   VLOG(5) << "End to compile module into cuda kernel.";
   return compilation_result;
 }

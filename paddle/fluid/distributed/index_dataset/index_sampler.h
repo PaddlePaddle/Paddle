@@ -134,5 +134,5 @@ class LayerWiseSampler : public IndexSampler {
   std::vector<std::vector<IndexNode>> layer_ids_;
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

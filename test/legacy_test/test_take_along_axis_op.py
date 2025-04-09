@@ -70,6 +70,36 @@ class TestTakeAlongAxisOp(OpTest):
         self.axis_type = "int64"
 
 
+class TestTakeAlongAxisDuplicatedIndices(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.float32
+        self.x_type = "float32"
+        self.x_shape = (5, 6, 7)
+        self.index_type = "int64"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = (
+            np.asarray([-dim_size, -dim_size, dim_size - 1, dim_size - 1, 0])
+            .astype(self.index_type)
+            .reshape([5, 1, 1])
+        )
+        self.axis_type = "int64"
+
+    def test_check_output(self):
+        self.check_output(
+            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Input'],
+            'Result',
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+
 class TestTakeAlongAxisFP16Op(TestTakeAlongAxisOp):
     def init_data(self):
         self.dtype = np.float16

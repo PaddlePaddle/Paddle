@@ -73,7 +73,7 @@ class DownpourPsClientService : public PsService {
         client_id,
         (_client->_client_id),
         common::errors::PreconditionNotMet(
-            "Wrong request client's id. Expect to match self. But recieved "
+            "Wrong request client's id. Expect to match self. But received "
             "request client's id = %lu and self = %lu.",
             client_id,
             (_client->_client_id)));
@@ -273,7 +273,9 @@ class BrpcPsClient : public PSClient {
                                                size_t num,
                                                bool is_training);
 
-  virtual std::future<int32_t> PrintTableStat(uint32_t table_id);
+  virtual std::future<int32_t> PrintTableStat(uint32_t table_id,
+                                              uint16_t pass_id,
+                                              size_t threshold);
 
   virtual std::future<int32_t> Barrier(size_t table_id, uint32_t barrier_type);
 

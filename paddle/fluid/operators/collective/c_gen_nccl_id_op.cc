@@ -23,9 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
@@ -59,29 +57,12 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const phi::Place& dev_place) const override {
-    int rank = Attr<int>("rank");
-    int ring_id = Attr<int>("ring_id");
-
     std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
       return Output("Out");
     };
 
-    std::string endpoint = Attr<std::string>("endpoint");
-
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
-
-    if (!FLAGS_dynamic_static_unified_comm) {
-      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
-      if (rank == 0) {
-        GenNCCLID(&nccl_ids);
-        std::vector<std::string> endpoint_list =
-            Attr<std::vector<std::string>>("other_endpoints");
-        platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
-      } else {
-        platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
-      }
-    }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);
   }
@@ -129,8 +110,7 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

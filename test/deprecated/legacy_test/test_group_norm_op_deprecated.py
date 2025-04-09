@@ -1023,11 +1023,8 @@ class PrimNet(paddle.nn.Layer):
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+    backend = "CINN" if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend, full_graph=True)
 
 
 # The original GroupNorm cannot support NHWC format
@@ -1529,7 +1526,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
             if core._is_fwd_prim_enabled():
                 paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                 fwd_ops_new = [op.type for op in blocks[0].ops]
-                # Ensure that group_norm is splitted into small ops
+                # Ensure that group_norm is split into small ops
                 assert 'group_norm' not in fwd_ops_new
 
             grads = paddle.static.gradients([output], [input_, scale_, bias_])
@@ -1621,7 +1618,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     if core._is_fwd_prim_enabled():
                         paddle.incubate.autograd.primapi.to_prim(mp.blocks)
                         fwd_ops_new = [op.type for op in blocks[0].ops]
-                        # Ensure that group_norm is splitted into small ops
+                        # Ensure that group_norm is split into small ops
                         assert 'group_norm' not in fwd_ops_new
 
                     grads = paddle.static.gradients(

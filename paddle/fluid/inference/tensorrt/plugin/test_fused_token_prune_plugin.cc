@@ -31,7 +31,7 @@ TEST(fused_token_prune_op_plugin, test_plugin) {
   plugin.serialize(buf.data());
 }
 
-TEST(fused_token_prune_op_plugin, test_plugin_creater) {
+TEST(fused_token_prune_op_plugin, test_plugin_creator) {
   FusedTokenPrunePluginDynamicCreator creator;
   creator.getFieldNames();
   creator.createPlugin("test", nullptr);

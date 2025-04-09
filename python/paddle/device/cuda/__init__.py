@@ -48,6 +48,8 @@ __all__ = [
     'get_device_properties',
     'get_device_name',
     'get_device_capability',
+    'reset_max_memory_allocated',
+    'reset_max_memory_reserved',
 ]
 
 
@@ -296,6 +298,66 @@ def max_memory_reserved(device: _CudaPlaceLike | None = None) -> int:
         )
     device_id = extract_cuda_device_id(device, op_name=name)
     return core.device_memory_stat_peak_value("Reserved", device_id)
+
+
+def reset_max_memory_allocated(device: _CudaPlaceLike | None = None) -> None:
+    '''
+    Reset the peak size of GPU memory that is allocated to tensor of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> paddle.device.cuda.reset_max_memory_allocated(paddle.CUDAPlace(0))
+            >>> paddle.device.cuda.reset_max_memory_allocated(0)
+            >>> paddle.device.cuda.reset_max_memory_allocated("gpu:0")
+    '''
+
+    name = "paddle.device.cuda.reset_max_memory_allocated"
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    core.device_memory_stat_reset_peak_value("Allocated", device_id)
+
+
+def reset_max_memory_reserved(device: _CudaPlaceLike | None = None) -> None:
+    '''
+    Reset the peak size of GPU memory that is held by the allocator of the given device.
+
+    Args:
+        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like 'gpu:x'. If device is None, the device is the current device.
+            Default: None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+
+            >>> paddle.device.cuda.reset_max_memory_reserved(paddle.CUDAPlace(0))
+            >>> paddle.device.cuda.reset_max_memory_reserved(0)
+            >>> paddle.device.cuda.reset_max_memory_reserved("gpu:0")
+    '''
+
+    name = "paddle.device.cuda.reset_max_memory_reserved"
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support to call this API."
+        )
+    device_id = extract_cuda_device_id(device, op_name=name)
+    core.device_memory_stat_reset_peak_value("Reserved", device_id)
 
 
 def memory_allocated(device: _CudaPlaceLike | None = None) -> int:

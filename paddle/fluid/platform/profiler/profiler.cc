@@ -37,8 +37,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void SynchronizeDevice() {
 #ifdef PADDLE_WITH_CUDA
@@ -181,5 +180,4 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

@@ -20,6 +20,7 @@ paddle::dialect::PyLayerOp
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -38,6 +39,40 @@ paddle::dialect::PyLayerOp
 
 namespace paddle {
 namespace dialect {
+
+std::unordered_set<pir::Value> GetInternalInputs(pir::Block *block) {
+  std::unordered_set<pir::Value> inner_inputs;
+  for (auto &op : *block) {
+    std::string op_name = op.name();
+    if (op.attributes().count("op_name")) {
+      op_name = op.attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    VLOG(8) << "GetInternalInputs of " << op_name;
+    if (op.num_regions()) {
+      for (size_t i = 0; i < op.num_regions(); ++i) {
+        for (auto &sub_block : op.region(i)) {
+          std::unordered_set<pir::Value> sub_set =
+              GetInternalInputs(&sub_block);
+          inner_inputs.insert(sub_set.begin(), sub_set.end());
+        }
+      }
+    }
+    if (op.isa<pir::TuplePopOp>()) {
+      auto tuple_pop_op = op.dyn_cast<pir::TuplePopOp>();
+      if (tuple_pop_op.has_container()) {
+        inner_inputs.insert(tuple_pop_op.container());
+      }
+    }
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      inner_inputs.insert(op.operand_source(i));
+      VLOG(10) << op_name << "'s inner_input: " << op.operand_source(i).impl();
+    }
+  }
+  return inner_inputs;
+}
 
 const char *PyLayerOp::attributes_name[1] = {
     kBackwardFunctionIdAttrName};  // NOLINT
@@ -84,14 +119,17 @@ void PyLayerOp::Build(pir::Builder &builder,             // NOLINT
 
   auto &op = fwd_block->back();
 
-  std::vector<pir::Attribute> outs_stop_gradient;
+  auto outs_stop_gradient_attr = true;
   for (size_t i = 0; i < op.num_operands(); ++i) {
     argument.AddOutput(op.operand(i).type());
     auto bool_attr = op.operand_source(i).attribute<pir::BoolAttribute>(
         pir::kStopGradientAttrName);
-    outs_stop_gradient.push_back(bool_attr ? bool_attr
-                                           : builder.bool_attr(false));
+    if (!bool_attr || (bool_attr && !bool_attr.data())) {
+      outs_stop_gradient_attr = false;
+    }
   }
+  std::vector<pir::Attribute> outs_stop_gradient(
+      op.num_operands(), builder.bool_attr(outs_stop_gradient_attr));
 
   argument.AddAttribute(
       kBackwardFunctionIdAttrName,
@@ -117,22 +155,22 @@ void PyLayerOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = pd_op.pylayer";
-
-  if (VLOG_IS_ON(1)) {
-    os << " [id:" << op->id() << "]";
-  }
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
 
   printer.PrintOpOperands(*op);
   printer.PrintAttributeMap(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);
-  os << "{";
+  os << " {\n";
+  printer.AddIndentation();
   for (auto &item : forward_block()) {
-    os << "\n  ";
     printer.PrintOperation(item);
+    os << "\n";
   }
-  os << "\n }";
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 void PyLayerOp::VerifySig() {
@@ -191,6 +229,59 @@ void PyLayerOp::UpdateOutput() {
   block->Assign(iter, new_pylayer_op);
   PyLayerOp::operator=(new_pylayer_op);
   VerifyRegion();
+}
+
+PyLayerOp PyLayerOp::UpdateInput() {
+  PADDLE_ENFORCE_NOT_NULL(*this,
+                          common::errors::InvalidArgument(
+                              "The pylayer_op in PyLayerOp used to update "
+                              "output can't be nullptr"));
+  auto program_block = parent();
+  PADDLE_ENFORCE_NOT_NULL(
+      program_block,
+      common::errors::InvalidArgument(
+          "The parent block of pylayer_op which used to update "
+          "output can't be nullptr"));
+
+  pir::Block &block = forward_block();
+  std::vector<pir::Value> input_values = inputs();
+
+  std::unordered_set<pir::Value> inner_inputs;
+  inner_inputs = GetInternalInputs(&block);
+
+  for (size_t arg_id = 0; arg_id < block.args_size();) {
+    if (block.arg(arg_id) && (!inner_inputs.count(block.arg(arg_id)))) {
+      block.EraseArg(arg_id);
+      continue;
+    }
+    ++arg_id;
+  }
+
+  bool need_build_new_pylayer = false;
+  std::vector<pir::Value> new_pylayer_inputs;
+
+  for (auto value : input_values) {
+    if (value && (!inner_inputs.count(value))) {
+      need_build_new_pylayer = true;
+      continue;
+    }
+    new_pylayer_inputs.push_back(value);
+  }
+
+  if (need_build_new_pylayer) {
+    ::pir::IrContext *ctx = ::pir::IrContext::Instance();
+
+    ::pir::Builder builder = ::pir::Builder(ctx, program_block);
+    builder.set_insertion_point(&(**this));
+    auto new_pylayer = builder.Build<PyLayerOp>(new_pylayer_inputs,
+                                                forward_region().TakeBack(),
+                                                backward_function_id());
+    (**this).ReplaceAllUsesWith(new_pylayer.outputs());
+    pir::Block::Iterator iter = **this;
+    iter = program_block->erase(iter);
+    return new_pylayer;
+  }
+  return *this;
 }
 
 }  // namespace dialect

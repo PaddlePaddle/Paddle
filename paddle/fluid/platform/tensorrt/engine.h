@@ -145,7 +145,7 @@ class TensorRTEngine {
     dy::initLibNvInferPlugins(&logger_, "");
     static std::once_flag trt_plugin_registered;
     std::call_once(trt_plugin_registered,
-                   []() { TrtPluginRegistry::Global()->RegistToTrt(); });
+                   []() { TrtPluginRegistry::Global()->RegisterToTrt(); });
   }
 
   // Add an input and set its name, data type and dimension.
@@ -244,6 +244,16 @@ class TensorRTEngine {
   Weight GetTrtWeight(const std::string& name,
                       const phi::DenseTensor& weight_tensor);
 
+  bool SetRefitWeights(
+      const std::map<std::string, std::map<std::string, std::string>>
+          refit_param_names2trt_names,
+      const std::string& param_name,
+      const phi::DenseTensor& new_weight_tensor);
+
+  bool FinalizeRefit();
+
+  void InitRefitter();
+
   float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_[tensor];
   }
@@ -292,7 +302,7 @@ class TensorRTEngine {
     }
   }
 
-  // NOTE: The func bellow was modified to adapt the dynamic shape.
+  // NOTE: The func below was modified to adapt the dynamic shape.
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
   void InitNetwork();
@@ -436,6 +446,8 @@ class TensorRTEngine {
   }
 
   bool use_varseqlen() { return params_.use_varseqlen; }
+
+  const std::string& refit_params_path() { return params_.refit_params_path; }
   bool use_dla() { return params_.use_dla; }
   bool with_interleaved() { return params_.with_interleaved; }
   const std::string& tensorrt_transformer_posid() {
@@ -510,6 +522,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
   std::unordered_map<PredictorID, infer_ptr<nvinfer1::IExecutionContext>>
       infer_context_;
+  infer_ptr<nvinfer1::IRefitter> infer_refitter_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
 

@@ -205,8 +205,8 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         expected_type += (core.eager.Tensor,)
     elif isinstance(input, core.eager.Tensor) and not lazy_init_helper().state:
         raise TypeError(
-            "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
-            f"Because received '{input_name}' in {op_name} is a imperative Variable."
+            "Please use `with base.dygraph.guard()` as context or `paddle.disable_static()` to switch to dygraph mode firstly. "
+            f"Because received '{input_name}' in {op_name} is an Eager Tensor."
         )
     if not isinstance(input, expected_type):
         raise TypeError(
@@ -270,7 +270,7 @@ def check_shape(
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
-class DataToLoDTensorConverter:
+class DataToDenseTensorConverter:
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
@@ -337,7 +337,7 @@ class BatchedTensorProvider:
             if not in_pir_mode():
                 assert var.lod_level == 0, "lod_level must be 0"
             self.converters.append(
-                DataToLoDTensorConverter(
+                DataToDenseTensorConverter(
                     place=self.place,
                     lod_level=0,
                     shape=var.shape,
@@ -509,7 +509,7 @@ class DataFeeder:
             self.feed_lod_level, self.feed_shapes, self.feed_dtypes
         ):
             converter.append(
-                DataToLoDTensorConverter(
+                DataToDenseTensorConverter(
                     place=self.place,
                     lod_level=lod_level,
                     shape=shape,

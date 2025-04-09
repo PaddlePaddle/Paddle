@@ -82,11 +82,11 @@ void LoadCombinePersistables(framework::Executor* executor,
                              const std::string& dirname,
                              const std::string& param_filename,
                              bool model_from_memory = false) {
-  PADDLE_ENFORCE_EQ(
-      param_filename.empty(),
-      false,
-      common::errors::PreconditionNotMet(
-          "param_filename should not be empty when load combine params."));
+  if (param_filename.empty()) {
+    VLOG(4)
+        << "param_filename is empty when load combine params. Return directly.";
+    return;
+  }
   const framework::BlockDesc& global_block = main_program.Block(0);
 
   auto load_program = std::make_unique<framework::ProgramDesc>();

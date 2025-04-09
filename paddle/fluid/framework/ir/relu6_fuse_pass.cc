@@ -19,9 +19,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
   // This pass is now used for xpu, because xpu can fuse conv + bias + relu6
@@ -130,8 +128,6 @@ void Relu6FusePass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(relu6_fuse_pass, paddle::framework::ir::Relu6FusePass);

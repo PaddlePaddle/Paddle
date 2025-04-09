@@ -76,26 +76,9 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
     return true;
   };
 
-  if (IsAllDataValue()) {
-    std::vector<symbol::DimExpr> out_data;
-    for (const auto &value : input_values) {
-      const auto &shape_or_data = infer_context->GetShapeOrDataForValue(value);
-      for (size_t i = 0; i < shape_or_data.data().value().size(); ++i) {
-        out_data.emplace_back(shape_or_data.data().value()[i]);
-      }
-    }
-    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
-    symbol::ShapeOrDataDimExprs shape_data{
-        symbol::TensorShapeOrDataDimExprs(shape, out_data)};
-
-    pir::Value res = op->result(0);
-    infer_context->SetShapeOrDataForValue(res, shape_data);
-    return true;
-  }
-
   int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  const auto &GetOutDimExprs = [&]() -> std::vector<symbol::DimExpr> {
+  const auto &out_shape_dim_expr = [&]() -> std::vector<symbol::DimExpr> {
     std::vector<symbol::DimExpr> out_dims =
         infer_context->GetShapeOrDataForValue(input_values[0]).shape();
 
@@ -115,12 +98,124 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
     }
 
     return out_dims;
-  };
+  }();
+
+  if (IsAllDataValue() && out_shape_dim_expr.size() == 1) {
+    std::vector<symbol::DimExpr> out_data;
+    for (const auto &value : input_values) {
+      const auto &shape_or_data = infer_context->GetShapeOrDataForValue(value);
+      for (size_t i = 0; i < shape_or_data.data().value().size(); ++i) {
+        out_data.emplace_back(shape_or_data.data().value()[i]);
+      }
+    }
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(out_shape_dim_expr, out_data)};
+
+    pir::Value res = op->result(0);
+    infer_context->SetShapeOrDataForValue(res, shape_data);
+    return true;
+  }
 
   symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(GetOutDimExprs())};
+      symbol::TensorShapeOrDataDimExprs(out_shape_dim_expr)};
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
+
+bool SplitOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  PADDLE_ENFORCE_EQ(x_shape_or_data.data().has_value(),
+                    false,
+                    common::errors::InvalidArgument(
+                        "InferSymbolicShape of SplitOp only support input with "
+                        "value now."));
+  const auto &x_dims_sym = x_shape_or_data.shape();
+
+  // axis
+  int64_t axis = static_cast<int64_t>(
+      op->attribute("axis").dyn_cast<pir::Int32Attribute>().data());
+  size_t rank = x_dims_sym.size();
+  axis = axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
+
+  // sections
+  auto sections_array = op->attribute("num_or_sections")
+                            .dyn_cast<pir::ArrayAttribute>()
+                            .AsVector();
+  std::vector<symbol::DimExpr> sections_sym;
+  if (sections_array.size() > 0) {
+    PADDLE_ENFORCE_EQ(
+        sections_array[0].isa<pir::Int32Attribute>(),
+        true,
+        common::errors::PreconditionNotMet(
+            "Element in sections_array MUST be pir::Int64Attribute "));
+
+    for (size_t i = 0; i < sections_array.size(); ++i) {
+      sections_sym.push_back(
+          sections_array[i].dyn_cast<pir::Int32Attribute>().data());
+    }
+  }
+
+  // output
+  const symbol::TensorListShapeOrDataDimExprs &output_shape_data_list = [&] {
+    const auto &GetSum = [&](const auto &dim_exprs, const auto &Filter) {
+      symbol::DimExpr sum{0};
+      for (const auto &dim_expr : dim_exprs) {
+        if (Filter(dim_expr)) {
+          sum = sum + dim_expr;
+        }
+      }
+      return sum;
+    };
+    const auto &All = [&](const auto &dim_exprs, const auto &Cond) {
+      for (const auto &dim_expr : dim_exprs) {
+        if (!Cond(dim_expr)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
+      if (dim_expr.isa<int64_t>()) {
+        return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
+      }
+      return true;
+    };
+    const auto &sum_exclude_minus_one = GetSum(sections_sym, IsNotMinusOne);
+
+    const bool &all_sections_sym_not_minus_one =
+        All(sections_sym, IsNotMinusOne);
+    if (all_sections_sym_not_minus_one) {
+      infer_context->AddEqualCstr(x_dims_sym.at(axis), sum_exclude_minus_one);
+    }
+
+    symbol::TensorListShapeOrDataDimExprs shape_data_list;
+    std::vector<symbol::DimExpr> output_dims_sym = x_dims_sym;
+    if (!all_sections_sym_not_minus_one && sections_sym.size() == 1) {
+      VLOG(3) << "[SplitOp]-1 is the only split section. The output shape is "
+                 "identical to the input shape.";
+      shape_data_list.push_back(
+          symbol::TensorShapeOrDataDimExprs(output_dims_sym));
+      return shape_data_list;
+    }
+    for (uint32_t idx = 0; idx < sections_sym.size(); idx++) {
+      const auto &section_sym = sections_sym.at(idx);
+      output_dims_sym.at(axis) =
+          IsNotMinusOne(section_sym)
+              ? section_sym
+              : x_dims_sym.at(axis) - sum_exclude_minus_one;
+
+      shape_data_list.push_back(
+          symbol::TensorShapeOrDataDimExprs(output_dims_sym));
+    }
+    return shape_data_list;
+  }();
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{output_shape_data_list});
+
   return true;
 }
 
@@ -301,14 +396,10 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
   }();
 
   const std::vector<symbol::DimExpr> &input_sym_shape =
-      input_shape_or_data.data().has_value()
-          ? input_shape_or_data.data().value()
-          : input_shape_or_data.shape();
+      input_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &index_sym_shape =
-      index_shape_or_data.data().has_value()
-          ? index_shape_or_data.data().value()
-          : index_shape_or_data.shape();
+      index_shape_or_data.shape();
 
   int axis = op->attributes().at("axis").dyn_cast<pir::Int32Attribute>().data();
   if (axis < 0) axis += input_sym_shape.size();

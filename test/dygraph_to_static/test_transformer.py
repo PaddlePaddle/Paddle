@@ -132,31 +132,16 @@ def train_dygraph(args, batch_generator):
                 avg_loss.append(float(total_avg_cost))
                 if step_idx == 0:
                     logging.info(
-                        "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                        "normalized loss: %f, ppl: %f"
-                        % (
-                            step_idx,
-                            pass_id,
-                            batch_id,
-                            total_avg_cost,
-                            total_avg_cost - loss_normalizer,
-                            np.exp([min(total_avg_cost, 100)]).item(),
-                        )
+                        f"step_idx: {step_idx}, epoch: {pass_id}, batch: {batch_id}, avg loss: {total_avg_cost:f}, "
+                        f"normalized loss: {total_avg_cost - loss_normalizer:f}, ppl: {np.exp([min(total_avg_cost, 100)]).item():f}"
                     )
                     avg_batch_time = time.time()
                 else:
                     logging.info(
-                        "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                        "normalized loss: %f, ppl: %f, speed: %.2f steps/s"
-                        % (
-                            step_idx,
-                            pass_id,
-                            batch_id,
-                            total_avg_cost,
-                            total_avg_cost - loss_normalizer,
-                            np.exp([min(total_avg_cost, 100)]).item(),
-                            args.print_step / (time.time() - avg_batch_time),
-                        )
+                        f"step_idx: {step_idx}, epoch: {pass_id}, batch: {batch_id}, avg loss: {total_avg_cost:f}, "
+                        f"normalized loss: {total_avg_cost - loss_normalizer:f}, "
+                        f"ppl: {np.exp([min(total_avg_cost, 100)]).item():f}, "
+                        f"speed: {args.print_step / (time.time() - avg_batch_time):.2f} steps/s"
                     )
                     ce_ppl.append(np.exp([min(total_avg_cost, 100)]))
                     avg_batch_time = time.time()
@@ -258,16 +243,14 @@ def predict_dygraph(args, batch_generator):
         if step_idx % args.print_step == 0:
             if step_idx == 0:
                 logging.info(
-                    "Dygraph Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f"
-                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0])
+                    f"Dygraph Predict: step_idx: {step_idx}, 1st seq_id: {seq_ids[0][0][0]}, 1st seq_score: {seq_scores[0][0]:.2f}"
                 )
                 avg_batch_time = time.time()
             else:
                 speed = args.print_step / (time.time() - avg_batch_time)
                 speed_list.append(speed)
                 logging.info(
-                    "Dygraph Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f, speed: %.3f steps/s"
-                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed)
+                    f"Dygraph Predict: step_idx: {step_idx}, 1st seq_id: {seq_ids[0][0][0]}, 1st seq_score: {seq_scores[0][0]:.2f}, speed: {speed:.3f} steps/s"
                 )
                 avg_batch_time = time.time()
 

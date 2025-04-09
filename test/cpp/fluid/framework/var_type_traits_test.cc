@@ -16,11 +16,10 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/core/framework/reader.h"
-#include "paddle/phi/core/operators/reader/lod_tensor_blocking_queue.h"
+#include "paddle/phi/core/operators/reader/dense_tensor_blocking_queue.h"
 #ifdef PADDLE_WITH_CUDA
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -94,7 +93,6 @@ TEST(var_type_traits, check_proto_type_id) {
   ASSERT_TRUE(CheckVarId<phi::DenseTensor>(proto::VarType::DENSE_TENSOR));
   ASSERT_TRUE(CheckVarId<phi::SelectedRows>(proto::VarType::SELECTED_ROWS));
   ASSERT_TRUE(CheckVarId<std::vector<Scope *>>(proto::VarType::STEP_SCOPES));
-  ASSERT_TRUE(CheckVarId<LoDRankTable>(proto::VarType::LOD_RANK_TABLE));
   ASSERT_TRUE(CheckVarId<phi::TensorArray>(proto::VarType::DENSE_TENSOR_ARRAY));
   ASSERT_TRUE(CheckVarId<phi::PlaceList>(proto::VarType::PLACE_LIST));
   ASSERT_TRUE(CheckVarId<ReaderHolder>(proto::VarType::READER));
@@ -104,7 +102,6 @@ TEST(var_type_traits, check_proto_type_id) {
   ASSERT_EQ(proto::VarType_Type_DENSE_TENSOR, proto::VarType::DENSE_TENSOR);
   ASSERT_EQ(proto::VarType_Type_SELECTED_ROWS, proto::VarType::SELECTED_ROWS);
   ASSERT_EQ(proto::VarType_Type_STEP_SCOPES, proto::VarType::STEP_SCOPES);
-  ASSERT_EQ(proto::VarType_Type_LOD_RANK_TABLE, proto::VarType::LOD_RANK_TABLE);
   ASSERT_EQ(proto::VarType_Type_DENSE_TENSOR_ARRAY,
             proto::VarType::DENSE_TENSOR_ARRAY);
   ASSERT_EQ(proto::VarType_Type_PLACE_LIST, proto::VarType::PLACE_LIST);

@@ -29,7 +29,7 @@ T* CreateForSaveCombineOp(int x,
                           std::string var_name,
                           const phi::CPUPlace& place,
                           paddle::framework::Scope* scope,
-                          phi::LoD* expect_lod) {
+                          phi::LegacyLoD* expect_lod) {
   auto var = scope->Var(var_name);
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({x, y});
@@ -56,7 +56,7 @@ phi::DenseTensor* GeneratePlaceholderBeforeLoad(
 template <typename T>
 T* GetValuesAfterLoadCombineOp(phi::DenseTensor* target,
                                const paddle::framework::Scope& scope,
-                               phi::LoD* actual_lod) {
+                               phi::LegacyLoD* actual_lod) {
   T* actual = target->data<T>();
   *actual_lod = target->lod();
   return actual;
@@ -65,8 +65,8 @@ T* GetValuesAfterLoadCombineOp(phi::DenseTensor* target,
 template <typename T, typename U>
 void CheckValues(T* expect,
                  U* actual,
-                 const phi::LoD& expect_lod,
-                 const phi::LoD& actual_lod,
+                 const phi::LegacyLoD& expect_lod,
+                 const phi::LegacyLoD& actual_lod,
                  const int& numel) {
   for (int i = 0; i < numel; ++i) {
     EXPECT_EQ(expect[i], static_cast<T>(actual[i]));
@@ -88,25 +88,25 @@ void SaveLoadCombineOp() {
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
-  phi::LoD expect_lod1;
+  phi::LegacyLoD expect_lod1;
   T* expect1 = CreateForSaveCombineOp<T, U>(
       10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
-  phi::LoD expect_lod2;
+  phi::LegacyLoD expect_lod2;
   T* expect2 = CreateForSaveCombineOp<T, U>(
       10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 2, 3, 20};
   int numel3 = 4000;
-  phi::LoD expect_lod3;
+  phi::LegacyLoD expect_lod3;
   T* expect3 = CreateForSaveCombineOp<T, U>(
       20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
-  phi::LoD expect_lod4;
+  phi::LegacyLoD expect_lod4;
   T* expect4 = CreateForSaveCombineOp<T, U>(
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
@@ -137,7 +137,7 @@ void SaveLoadCombineOp() {
       attrs);
   load_combine_op->Run(scope, place);
 
-  phi::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
+  phi::LegacyLoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   U* actual1 = GetValuesAfterLoadCombineOp<U>(target1, scope, &actual_lod1);
   U* actual2 = GetValuesAfterLoadCombineOp<U>(target2, scope, &actual_lod2);
   U* actual3 = GetValuesAfterLoadCombineOp<U>(target3, scope, &actual_lod3);
@@ -163,25 +163,25 @@ TEST(SaveCombineFP16Op, CPU) {
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
-  phi::LoD expect_lod1;
+  phi::LegacyLoD expect_lod1;
   float* expect1 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
-  phi::LoD expect_lod2;
+  phi::LegacyLoD expect_lod2;
   float* expect2 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 20};
   int numel3 = 4000;
-  phi::LoD expect_lod3;
+  phi::LegacyLoD expect_lod3;
   float* expect3 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
-  phi::LoD expect_lod4;
+  phi::LegacyLoD expect_lod4;
   float* expect4 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
@@ -213,7 +213,7 @@ TEST(SaveCombineFP16Op, CPU) {
       attrs);
   load_combine_op->Run(scope, place);
 
-  phi::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
+  phi::LegacyLoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   phi::dtype::float16* actual1 =
       GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target1, scope, &actual_lod1);
@@ -245,25 +245,25 @@ TEST(LoadCombineFP16Op, CPU) {
 
   std::vector<int> lod1 = {0, 1, 2, 3, 10};
   int numel1 = 100;
-  phi::LoD expect_lod1;
+  phi::LegacyLoD expect_lod1;
   float* expect1 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 10, lod1, "test_var1", place, &scope, &expect_lod1);
 
   std::vector<int> lod2 = {0, 2, 5, 10};
   int numel2 = 200;
-  phi::LoD expect_lod2;
+  phi::LegacyLoD expect_lod2;
   float* expect2 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       10, 20, lod2, "test_var2", place, &scope, &expect_lod2);
 
   std::vector<int> lod3 = {0, 20};
   int numel3 = 4000;
-  phi::LoD expect_lod3;
+  phi::LegacyLoD expect_lod3;
   float* expect3 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 200, lod3, "test_var3", place, &scope, &expect_lod3);
 
   std::vector<int> lod4 = {0, 1, 20};
   int numel4 = 1000;
-  phi::LoD expect_lod4;
+  phi::LegacyLoD expect_lod4;
   float* expect4 = CreateForSaveCombineOp<float, phi::dtype::float16>(
       20, 50, lod4, "test_var4", place, &scope, &expect_lod4);
 
@@ -300,7 +300,7 @@ TEST(LoadCombineFP16Op, CPU) {
   auto* target3 = load_var3->GetMutable<phi::DenseTensor>();
   auto* target4 = load_var4->GetMutable<phi::DenseTensor>();
 
-  phi::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
+  phi::LegacyLoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   phi::dtype::float16* actual1 =
       GetValuesAfterLoadCombineOp<phi::dtype::float16>(
           target1, scope, &actual_lod1);
@@ -332,7 +332,7 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 4000});
-  phi::LoD expect_lod;
+  phi::LegacyLoD expect_lod;
   expect_lod.resize(1);
   expect_lod[0].push_back(0);
   expect_lod[0].push_back(1);

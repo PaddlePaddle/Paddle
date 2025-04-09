@@ -74,13 +74,13 @@ class TestTDMSamplerOp(OpTest):
         self.layer_sample_nums = [1 + i for i in self.neg_samples_num_list]
 
         layer_node_num_list = [len(i) for i in self.tree_layer]
-        tree_layer_offset_lod = [0]
+        tree_layer_offset = [0]
         tree_layer_flat = []
         node_nums = 0
         for layer_idx, layer_node in enumerate(layer_node_num_list):
             tree_layer_flat += self.tree_layer[layer_idx]
             node_nums += layer_node
-            tree_layer_offset_lod.append(node_nums)
+            tree_layer_offset.append(node_nums)
 
         travel_np = np.array(self.tree_travel).astype(self.tree_dtype)
         layer_np = np.array(tree_layer_flat).astype(self.tree_dtype)
@@ -97,7 +97,7 @@ class TestTDMSamplerOp(OpTest):
         self.attrs = {
             'neg_samples_num_list': self.neg_samples_num_list,
             'output_positive': True,
-            'layer_offset_lod': tree_layer_offset_lod,
+            'layer_offset': tree_layer_offset,
             'seed': 0,
             'dtype': type_dict[self.out_dtype],
         }
@@ -254,9 +254,7 @@ class TestCase7(TestTDMSamplerOp):
 class TestTDMSamplerShape(unittest.TestCase):
     def test_shape(self):
         with paddle_static_guard():
-            x = paddle.static.data(
-                name='x', shape=[-1, 1], dtype='int32', lod_level=1
-            )
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int32')
             tdm_tree_travel = create_tdm_travel()
             tdm_tree_layer = create_tdm_layer()
             layer_node_num_list = [len(i) for i in tdm_tree_layer]

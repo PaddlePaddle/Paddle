@@ -55,12 +55,12 @@ TEST(AssignOp, AssignDenseTensorArray) {
   phi::TensorArray input;
   for (int i = 0; i < 5; ++i) {
     phi::DDim in_dims = common::make_ddim({i + 1, i + 2});
-    phi::DenseTensor lod_tensor;
-    float* in_data = lod_tensor.mutable_data<float>(in_dims, cpu_place);
+    phi::DenseTensor dense_tensor;
+    float* in_data = dense_tensor.mutable_data<float>(in_dims, cpu_place);
     for (int j = 0; j < (i + 1) * (i + 2); ++j) {
       in_data[j] = static_cast<float>(j);
     }
-    input.push_back(lod_tensor);
+    input.push_back(dense_tensor);
   }
 
   assign_functor(input);

@@ -76,7 +76,7 @@ def in_sot_simulation_mode() -> bool:
 in_declarative_mode = in_to_static_mode
 
 
-def to_static_unsupport_argument_warning(
+def to_static_unsupported_argument_warning(
     func_name, input_names, inputs, support_values
 ):
     """
@@ -177,7 +177,10 @@ def _convert_into_variable(tensor):
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
             # non-persistable. See case of `dropout_state` in lstm api.
             is_persistable = True
-            if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+            # NOTE(SigureMo): Why do not use `tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX)`?
+            # Because the tensor maybe copied, the name of the tensor will be appended with a new suffix.
+            # Such as `lstm_0.dropout_state__non_persistable_deepcopy_204`
+            if NON_PERSISTABLE_VAR_NAME_SUFFIX in tensor.name:
                 is_persistable = False
 
             new_var = tensor._to_static_var(
@@ -801,7 +804,7 @@ def grad(
         # to calculate grads.
         from paddle.static import gradients
 
-        to_static_unsupport_argument_warning(
+        to_static_unsupported_argument_warning(
             "paddle.grad",
             ["retain_graph", "create_grad", "only_inputs", "allow_unused"],
             [retain_graph, create_graph, only_inputs, allow_unused],

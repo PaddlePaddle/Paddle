@@ -33,7 +33,7 @@ def clip_grad_norm_(
     norm_type: float = 2.0,
     error_if_nonfinite: bool = False,
 ) -> Tensor:
-    r"""Clips gradient norm of the iteratable parameters.
+    r"""Clips gradient norm of the iterable parameters.
 
     Norms are calculated together on all gradients, just as they are
     connected into one vector. The gradient will be modified in place.
@@ -80,7 +80,7 @@ def clip_grad_norm_(
     if norm_type not in support_norm_type:
         raise ValueError(f'norm_type only support {support_norm_type}')
 
-    grads = [p.grad for p in parameters if p.grad is not None]
+    grads = [p.grad_ for p in parameters if p.grad_ is not None]
     max_norm = float(max_norm)
     norm_type = float(norm_type)
     if len(grads) == 0:
@@ -113,6 +113,7 @@ def clip_grad_norm_(
     clip_coef_clamped = clip_coef.clip_(max=1.0)
 
     for _, p in enumerate(parameters):
-        if p.grad is not None:
-            p.grad = paddle.multiply(x=p.grad, y=clip_coef_clamped)
+        if p.grad_ is not None:
+            p.grad_.multiply_(y=clip_coef_clamped)
+
     return total_norm

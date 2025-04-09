@@ -26,7 +26,7 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename DeviceContext, typename T, typename Enabel = void>
+template <typename DeviceContext, typename T, typename Enable = void>
 struct DotGradFunction {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* tensor_x,
@@ -209,7 +209,7 @@ struct DotGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
   }
 };
 
-template <typename DeviceContext, typename T, typename Enabel = void>
+template <typename DeviceContext, typename T, typename Enable = void>
 struct DotDoubleGradFunction {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* tensor_x,
@@ -579,7 +579,7 @@ struct DotDoubleGradFunction<DeviceContext, T, phi::funcs::DisableComplex<T>> {
   }
 };
 
-template <typename DeviceContext, typename T, typename Enabel = void>
+template <typename DeviceContext, typename T, typename Enable = void>
 struct DotTripleGradFunction {
   void operator()(const DeviceContext& ctx,
                   const DenseTensor* in_tensor_x,

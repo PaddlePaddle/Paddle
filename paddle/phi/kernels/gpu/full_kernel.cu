@@ -46,7 +46,7 @@ void FullKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   if (numel > 0) {
-    // in transformer model the numel of outpout will be zero.
+    // in transformer model the numel of output will be zero.
     std::vector<const DenseTensor*> inputs = {};
     std::vector<DenseTensor*> outputs = {out};
     // This function has no input, so the inputs.size() == 0. Use kUnary, but

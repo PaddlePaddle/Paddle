@@ -101,6 +101,11 @@ void CrossKernel(const Context& dev_ctx,
                           input_x_dims));
   }
 
+  if (input_x.numel() == 0 || input_y.numel() == 0) {
+    output->Resize(input_x.dims());
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   std::vector<int> cal_dims;
   std::vector<int> left_strides;
   std::vector<int> full_strides;

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
+    bool data_format = false;
     if (bfloat16_ops_ == "onednn_op.conv2d") {
       op_attrs.emplace("strides", pat.Attr("strides"));
       op_attrs.emplace("paddings", pat.Attr("paddings"));
@@ -60,6 +61,7 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("is_test", pat.Attr("is_test"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      data_format = true;
     } else if (bfloat16_ops_ == "onednn_op.matmul") {
       op_attrs.emplace("transpose_x", pat.Attr("transpose_x"));
       op_attrs.emplace("transpose_y", pat.Attr("transpose_y"));
@@ -75,7 +77,6 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("ceil_mode", pat.Attr("ceil_mode"));
       op_attrs.emplace("exclusive", pat.Attr("exclusive"));
-      op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("pooling_type", pat.Attr("pooling_type"));
       op_attrs.emplace("global_pooling", pat.Attr("global_pooling"));
       op_attrs.emplace("adaptive", pat.Attr("adaptive"));
@@ -83,21 +84,18 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
-
+      data_format = true;
     } else if (bfloat16_ops_ == "onednn_op.prelu") {
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("mode", pat.Attr("mode"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-
+      data_format = true;
     } else if (bfloat16_ops_ == "onednn_op.sum") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
       op_attrs.emplace("keepdim", pat.Attr("keepdim"));
       op_attrs.emplace("dtype", pat.Attr("dtype"));
 
-    } else if (bfloat16_ops_ == "onednn_op.concat") {
-      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-      op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
     } else if (bfloat16_ops_ == "onednn_op.reshape_" ||
                bfloat16_ops_ == "onednn_op.reshape") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
@@ -178,15 +176,16 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
     });
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &quantize_op =
-        res.Op("onednn_op.quantize",
-               {{
-                   {"scale", res.Float32Attr(1.f)},
-                   {"shift", res.Float32Attr(0.0f)},
-                   {"bfloat16", res.BoolAttr(true)},
-                   {"is_negative_input", res.BoolAttr(false)},
-                   {"output_format", res.StrAttr("NCHW")},
-               }});
+    const auto &quantize_op = res.Op(
+        "onednn_op.quantize",
+        {{
+            {"scale", res.Float32Attr(1.f)},
+            {"shift", res.Float32Attr(0.0f)},
+            {"bfloat16", res.BoolAttr(true)},
+            {"is_negative_input", res.BoolAttr(false)},
+            {"output_format",
+             data_format ? pat.Attr("data_format") : res.StrAttr("NCHW")},
+        }});
     quantize_op({&res.Tensor("quantize_" + std::to_string(index_))},
                 {&res.Tensor("quantize_out_" + std::to_string(index_))});
 
@@ -222,11 +221,7 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
-    if (bfloat16_ops_ == "onednn_op.concat") {
-      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-      op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
-
-    } else if (bfloat16_ops_ == "onednn_op.conv2d") {
+    if (bfloat16_ops_ == "onednn_op.conv2d") {
       op_attrs.emplace("strides", pat.Attr("strides"));
       op_attrs.emplace("paddings", pat.Attr("paddings"));
       op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
@@ -251,7 +246,6 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("ceil_mode", pat.Attr("ceil_mode"));
       op_attrs.emplace("exclusive", pat.Attr("exclusive"));
-      op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("pooling_type", pat.Attr("pooling_type"));
       op_attrs.emplace("global_pooling", pat.Attr("global_pooling"));
       op_attrs.emplace("adaptive", pat.Attr("adaptive"));
@@ -271,9 +265,6 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("keepdim", pat.Attr("keepdim"));
       op_attrs.emplace("dtype", pat.Attr("dtype"));
 
-    } else if (bfloat16_ops_ == "onednn_op.concat") {
-      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
-      op_attrs.emplace("use_quantizer", pat.Attr("use_quantizer"));
     } else if (bfloat16_ops_ == "onednn_op.reshape_" ||
                bfloat16_ops_ == "onednn_op.reshape") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
@@ -383,6 +374,7 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
+    bool data_format = false;
     if (bfloat16_ops_ == "onednn_op.gelu") {
       op_attrs.emplace("approximate", pat.Attr("approximate"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
@@ -392,12 +384,13 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("axis", pat.Attr("axis"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
-
+      data_format = true;
     } else if (bfloat16_ops_ == "onednn_op.transpose" ||
                bfloat16_ops_ == "onednn_op.transpose_") {
       op_attrs.emplace("perm", pat.Attr("perm"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      data_format = true;
     } else if (bfloat16_ops_ == "onednn_op.relu" ||
                bfloat16_ops_ == "onednn_op.relu_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
@@ -461,15 +454,16 @@ class CpuBfloat16PatternOne_one : public paddle::drr::DrrPatternBase {
     });
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &quantize_op =
-        res.Op("onednn_op.quantize",
-               {{
-                   {"scale", res.Float32Attr(1.f)},
-                   {"shift", res.Float32Attr(0.0f)},
-                   {"bfloat16", res.BoolAttr(true)},
-                   {"is_negative_input", res.BoolAttr(false)},
-                   {"output_format", res.StrAttr("NCHW")},
-               }});
+    const auto &quantize_op = res.Op(
+        "onednn_op.quantize",
+        {{
+            {"scale", res.Float32Attr(1.f)},
+            {"shift", res.Float32Attr(0.0f)},
+            {"bfloat16", res.BoolAttr(true)},
+            {"is_negative_input", res.BoolAttr(false)},
+            {"output_format",
+             data_format ? pat.Attr("data_format") : res.StrAttr("NCHW")},
+        }});
     quantize_op({&res.Tensor("quantize_0")}, {&res.Tensor("quantize_out_0")});
 
     const auto &res_op = res.Op(bfloat16_ops_, op_attrs);
@@ -812,6 +806,7 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
     std::unordered_map<std::string, paddle::drr::Attribute> op_attrs;
+    bool data_format = false;
     if (bfloat16_ops_ == "onednn_op.fc") {
       op_attrs.emplace("in_num_col_dims", pat.Attr("in_num_col_dims"));
       op_attrs.emplace("activation_type", pat.Attr("activation_type"));
@@ -870,6 +865,7 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("paddings", pat.Attr("paddings"));
       op_attrs.emplace("strides", pat.Attr("strides"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      data_format = true;
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -930,15 +926,16 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &quantize_op =
-        res.Op("onednn_op.quantize",
-               {{
-                   {"scale", res.Float32Attr(1.f)},
-                   {"shift", res.Float32Attr(0.0f)},
-                   {"bfloat16", res.BoolAttr(true)},
-                   {"is_negative_input", res.BoolAttr(false)},
-                   {"output_format", res.StrAttr("NCHW")},
-               }});
+    const auto &quantize_op = res.Op(
+        "onednn_op.quantize",
+        {{
+            {"scale", res.Float32Attr(1.f)},
+            {"shift", res.Float32Attr(0.0f)},
+            {"bfloat16", res.BoolAttr(true)},
+            {"is_negative_input", res.BoolAttr(false)},
+            {"output_format",
+             data_format ? pat.Attr("data_format") : res.StrAttr("NCHW")},
+        }});
     quantize_op({&res.Tensor("quantize_" + std::to_string(index_))},
                 {&res.Tensor("quantize_out_" + std::to_string(index_))});
 
@@ -1858,7 +1855,7 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
                    {"shift", res.Float32Attr(0.0f)},
                    {"bfloat16", res.BoolAttr(true)},
                    {"is_negative_input", res.BoolAttr(false)},
-                   {"output_format", res.StrAttr("NCHW")},
+                   {"output_format", pat.Attr("data_format")},
                }});
     quantize_op({&res.Tensor("quantize_" + std::to_string(index_))},
                 {&res.Tensor("quantize_out_" + std::to_string(index_))});

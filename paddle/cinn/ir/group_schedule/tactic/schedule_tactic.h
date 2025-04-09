@@ -81,9 +81,9 @@ struct IterativeSpaceInfo {
 };
 
 struct ScheduleContext {
-  // TODO(BiynXu): Unify fields with similar meanings
   std::unordered_set<std::string> output_names;
   Target target;
+  // TODO(liangshuhao): this struct is deprecated and will be removed later.
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
   ScheduleConfig config;
@@ -91,7 +91,17 @@ struct ScheduleContext {
 
 class ScheduleTactic {
  public:
-  virtual void Init(ScheduleContext* context) = 0;
+  // Attribute key to record which tile tactic has been applied on a graph.
+  // Exactly one tile tactic is applied on a graph during scheduling.
+  static constexpr char* kTileMethod = "tile_method";
+
+  virtual void Init(ScheduleContext* context) {
+    PADDLE_THROW(::common::errors::Unimplemented(
+        "ScheduleTactic subclass must implement one of the Init method."));
+  }
+  virtual void Init(ScheduleContext* context, ir::IRSchedule* sch) {
+    Init(context);
+  }
 
   virtual void Apply(ir::IRSchedule* sch, const std::string& block_id) = 0;
 

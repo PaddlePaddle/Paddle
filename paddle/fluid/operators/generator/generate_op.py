@@ -309,7 +309,7 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
         if new_op_name != op_name:
             forward_op_item['op_name'] = op_name
 
-        # add complex promote infomation
+        # add complex promote information
         if "complex_promote" in op_args:
             forward_op_item["complex_promote"] = op_args["complex_promote"]
             if has_backward:

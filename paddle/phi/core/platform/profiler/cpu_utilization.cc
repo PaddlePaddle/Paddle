@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/phi/core/platform/profiler/cpu_utilization.h"
 #include <array>
 #include "glog/logging.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 #ifdef _MSC_VER
 static uint64_t FileTimeToUint64(FILETIME time) {
@@ -186,5 +184,4 @@ float CpuUtilization::GetCpuCurProcessUtilization() {
   return cpu_process_utilization;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

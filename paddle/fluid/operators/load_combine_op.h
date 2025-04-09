@@ -114,7 +114,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         auto *tensor = out_vars[i]->GetMutable<phi::DenseTensor>();
 
         // Get data from fin to tensor
-        paddle::framework::DeserializeFromStream(*buffer, tensor, dev_ctx);
+        phi::DeserializeFromStream(*buffer, tensor, dev_ctx);
 
         auto in_dtype = tensor->dtype();
         auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;

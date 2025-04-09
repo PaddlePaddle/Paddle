@@ -92,7 +92,7 @@ def test_func(epoch_id, test_loader, model, cost):
         avg_acc[1].append(acc_top5.numpy())
     model.train()
     print(
-        f"Epoch ID: {epoch_id + 1}, Top1 accurary: {np.array(avg_acc[0]).mean()}, Top5 accurary: {np.array(avg_acc[1]).mean()}"
+        f"Epoch ID: {epoch_id + 1}, Top1 accuracy: {np.array(avg_acc[0]).mean()}, Top5 accuracy: {np.array(avg_acc[1]).mean()}"
     )
 
 

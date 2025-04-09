@@ -215,7 +215,7 @@ def _pickle_loads_mac(path, f):
 
 def _pack_loaded_dict(load_obj):
     if isinstance(load_obj, dict):
-        unpack_info = 'UnpackBigParamInfor@@'
+        unpack_info = 'UnpackBigParamInfor@@'  # typos: disable-line
         if unpack_info in load_obj:
             removes = []
             for key, value in load_obj[unpack_info].items():
@@ -233,7 +233,7 @@ def _pack_loaded_dict(load_obj):
 
 def _unpack_saved_dict(saved_obj, protocol):
     temp_saved_obj = {}
-    unpack_infor = {}
+    unpack_info = {}
     # When pickle protocol=2 or protocol=3 the serialized object cannot be larger than 4G.
     if 1 < protocol < 4:
         if isinstance(saved_obj, dict):
@@ -244,9 +244,9 @@ def _unpack_saved_dict(saved_obj, protocol):
                     )
                     num_element = np.prod(value.shape)
                     if num_element > MAX_NUMBER_OF_ELEMENT:
-                        unpack_infor[key] = {}
-                        unpack_infor[key]["OriginShape"] = value.shape
-                        unpack_infor[key]["slices"] = []
+                        unpack_info[key] = {}
+                        unpack_info[key]["OriginShape"] = value.shape
+                        unpack_info[key]["slices"] = []
                         value = value.flatten()
                         for i in range(
                             int(
@@ -256,20 +256,20 @@ def _unpack_saved_dict(saved_obj, protocol):
                             )
                         ):
                             part_name = key + "@@." + str(i)
-                            unpack_infor[key]["slices"].append(part_name)
+                            unpack_info[key]["slices"].append(part_name)
                             temp_saved_obj[part_name] = value[
                                 i
                                 * MAX_NUMBER_OF_ELEMENT : MAX_NUMBER_OF_ELEMENT
                                 * (i + 1)
                             ]
 
-    if unpack_infor:
-        for key, value in unpack_infor.items():
+    if unpack_info:
+        for key, value in unpack_info.items():
             if key in saved_obj:
                 saved_obj.pop(key)
                 for part in value['slices']:
                     saved_obj[part] = temp_saved_obj[part]
-        saved_obj['UnpackBigParamInfor@@'] = unpack_infor
+        saved_obj['UnpackBigParamInfor@@'] = unpack_info  # typos: disable-line
     return saved_obj
 
 

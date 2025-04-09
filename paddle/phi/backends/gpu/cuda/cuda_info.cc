@@ -22,9 +22,7 @@ static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<phi::gpuDeviceProp> g_device_props;
 
-namespace phi {
-namespace backends {
-namespace gpu {
+namespace phi::backends::gpu {
 
 int DnnVersion() {
   if (!dynload::HasCUDNN()) return -1;
@@ -245,16 +243,36 @@ const gpuDeviceProp &GetDeviceProperties(int id) {
 }
 
 void SetDeviceId(int id) {
-  // TODO(qijun): find a better way to cache the cuda device count
-  PADDLE_ENFORCE_LT(id,
-                    GetGPUDeviceCount(),
-                    common::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id,
-                        GetGPUDeviceCount()));
-  PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
-  VLOG(4) << "SetDeviceId " << id;
+  static thread_local bool first_call = true;
+  if (first_call) {
+    PADDLE_ENFORCE_LT(id,
+                      GetGPUDeviceCount(),
+                      common::errors::InvalidArgument(
+                          "Device id must be less than GPU count, "
+                          "but received id is: %d. GPU count is: %d.",
+                          id,
+                          GetGPUDeviceCount()));
+
+    PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
+    VLOG(4) << "SetDeviceId " << id;
+    first_call = false;
+    return;
+  }
+
+  int prev_id;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&prev_id));
+  if (prev_id != id) {
+    PADDLE_ENFORCE_LT(id,
+                      GetGPUDeviceCount(),
+                      common::errors::InvalidArgument(
+                          "Device id must be less than GPU count, "
+                          "but received id is: %d. GPU count is: %d.",
+                          id,
+                          GetGPUDeviceCount()));
+
+    PADDLE_RETRY_CUDA_SUCCESS(cudaSetDevice(id));
+    VLOG(4) << "SetDeviceId " << id;
+  }
 }
 
 void GpuMemcpyAsync(void *dst,
@@ -341,6 +359,4 @@ bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {
 #endif
 }
 
-}  // namespace gpu
-}  // namespace backends
-}  // namespace phi
+}  // namespace phi::backends::gpu

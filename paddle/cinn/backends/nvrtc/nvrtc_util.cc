@@ -24,6 +24,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/nvrtc/header_generator.h"
 #include "paddle/cinn/common/common.h"
@@ -180,6 +181,25 @@ std::string Compiler::CompileCudaSource(const std::string& code,
                                 header_gen.include_names().data()));
   nvrtcResult compile_res =
       nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
+
+  if (compile_res != NVRTC_SUCCESS) {
+    std::string new_code = code;
+    std::string from = CodeGenCudaDev::GetSourceHeader();
+    size_t pos = new_code.find(from);
+    if (pos != std::string::npos) {
+      new_code.replace(
+          pos, from.length(), CodeGenCudaDev::GetGeneralSourceHeader());
+    }
+
+    NVRTC_CALL(nvrtcCreateProgram(&prog,
+                                  new_code.c_str(),
+                                  nullptr,
+                                  header_gen.size(),
+                                  header_gen.headers().data(),
+                                  header_gen.include_names().data()));
+    compile_res =
+        nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
+  }
 
   {  // get log
     size_t log_size;

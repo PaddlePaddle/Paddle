@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/operators/isfinite_op.h"
-#include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/fluid/platform/densetensor_printer.h"
 #include "paddle/phi/core/platform/cpu_helper.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -31,8 +31,7 @@ limitations under the License. */
 #define _LINUX
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::atomic<int> PSGPUWorker::shape_check_count_(16);
 std::atomic<bool> PSGPUWorker::shape_check_flag_(true);
@@ -580,6 +579,5 @@ void PSGPUWorker::ResetStat() {
 
 void PSGPUWorker::ProduceTasks() { return; }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

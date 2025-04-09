@@ -220,14 +220,14 @@ def get_mask_1d(mat: npt.NDArray[Any], n: int, m: int) -> npt.NDArray[Any]:
     """
     mat_flatten, shape = _reshape_1d(mat, m)
 
-    mask_flattern = np.ones_like(mat_flatten)
+    mask_flatten = np.ones_like(mat_flatten)
     mask = np.ones_like(mat)
     for i in range(mat_flatten.shape[0]):
         sub_mat = mat_flatten[i]
         min_order_indices = np.argsort(np.absolute(sub_mat))
-        mask_flattern[i, min_order_indices[:n].tolist()] = 0
-    mask_flattern = mask_flattern.reshape(shape)
-    mask[:, :] = mask_flattern[:, : mat.shape[1]]
+        mask_flatten[i, min_order_indices[:n].tolist()] = 0
+    mask_flatten = mask_flatten.reshape(shape)
+    mask[:, :] = mask_flatten[:, : mat.shape[1]]
     return mask
 
 
@@ -486,13 +486,13 @@ def get_mask_2d_best(mat: npt.NDArray[Any], n: int, m: int) -> npt.NDArray[Any]:
     patterns = _compute_valid_2d_patterns(n, m)
 
     mat_flatten, shape = _reshape_2d(mat, m)
-    mask_flattern = np.ones_like(mat_flatten).reshape(-1, m, m)
+    mask_flatten = np.ones_like(mat_flatten).reshape(-1, m, m)
     pmax = np.argmax(
         np.matmul(mat_flatten, patterns.reshape(patterns.shape[0], m * m).T),
         axis=1,
     )
 
-    mask_flattern[:] = patterns[pmax[:]]
+    mask_flatten[:] = patterns[pmax[:]]
     mask = np.empty(shape)
 
     curr_idx = 0
@@ -500,7 +500,7 @@ def get_mask_2d_best(mat: npt.NDArray[Any], n: int, m: int) -> npt.NDArray[Any]:
         row_end = row_start + m
         for col_start in range(0, shape[1], m):
             col_end = col_start + m
-            mask[row_start:row_end, col_start:col_end] = mask_flattern[curr_idx]
+            mask[row_start:row_end, col_start:col_end] = mask_flatten[curr_idx]
             curr_idx += 1
     return mask[: mat.shape[0], : mat.shape[1]]
 

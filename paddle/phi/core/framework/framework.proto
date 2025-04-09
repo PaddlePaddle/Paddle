@@ -195,19 +195,19 @@ message VarType {
   }
   optional TensorDesc selected_rows = 2;
 
-  message LoDTensorDesc {
+  message DenseTensorDesc {
     required TensorDesc tensor = 1;
-    optional int32 lod_level = 2 [ default = 0 ];
+    optional int32 legacy_lod_level = 2 [ default = 0 ];
   }
-  optional LoDTensorDesc lod_tensor = 3;
+  optional DenseTensorDesc dense_tensor = 3;
 
-  message LoDTensorArrayDesc {
+  message DenseTensorArrayDesc {
     required TensorDesc tensor = 1;
-    optional int32 lod_level = 2 [ default = 0 ];
+    optional int32 legacy_lod_level = 2 [ default = 0 ];
   }
-  optional LoDTensorArrayDesc tensor_array = 4;
+  optional DenseTensorArrayDesc tensor_array = 4;
 
-  message ReaderDesc { repeated LoDTensorDesc lod_tensor = 1; }
+  message ReaderDesc { repeated DenseTensorDesc dense_tensor = 1; }
   optional ReaderDesc reader = 5;
 
   message Tuple { repeated Type element_type = 1; }

@@ -51,6 +51,5 @@ elif fleet.is_worker():
             program=fleet.main_program, feed=gen_data(), fetch_list=[cost.name]
         )
         print(
-            "worker_index: %d, step%d cost = %f"
-            % (fleet.worker_index(), i, cost_val[0])
+            f"worker_index: {fleet.worker_index()}, step{i} cost = {cost_val[0]:f}"
         )

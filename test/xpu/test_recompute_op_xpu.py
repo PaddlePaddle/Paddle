@@ -72,9 +72,21 @@ class Naive_fc_net(paddle.nn.Layer):
         nums = len(self.total_func)
         for i in range(nums):
             if i in self.recompute_blocks:
-                inputs = recompute(
-                    self.total_func[i], inputs, **{"preserve_rng_state": True}
-                )
+                if getattr(
+                    self.recompute_kwargs, "offload_recompute_inputs", False
+                ):
+                    inputs = recompute(
+                        self.total_func[i],
+                        inputs,
+                        offload_indices=[0],
+                        **{"preserve_rng_state": True},
+                    )
+                else:
+                    inputs = recompute(
+                        self.total_func[i],
+                        inputs,
+                        **{"preserve_rng_state": True},
+                    )
             else:
                 inputs = self.total_func[i](inputs)
         return inputs
@@ -113,4 +125,14 @@ xpu_state = paddle.get_rng_state()
 loss_ref, param_ref, grad_ref = run_model(xpu_state, recompute_block=[])
 loss, param, grad = run_model(xpu_state, recompute_block=[1, 3])
 # The result of the recompute_loss should be the same as the normal_loss.
+np.testing.assert_allclose(loss_ref, loss, rtol=1e-05, atol=1e-05)
+
+# recompute with offload_recompute_inputs
+xpu_state = paddle.get_rng_state()
+loss_ref, param_ref, grad_ref = run_model(xpu_state, recompute_block=[])
+loss, param, grad = run_model(
+    xpu_state,
+    recompute_block=[1, 3],
+    recompute_kwargs={"offload_recompute_inputs": True},
+)
 np.testing.assert_allclose(loss_ref, loss, rtol=1e-05, atol=1e-05)

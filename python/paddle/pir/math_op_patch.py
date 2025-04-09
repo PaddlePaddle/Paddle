@@ -1000,6 +1000,7 @@ def monkey_patch_value():
             ndarray: dtype is same as current Variable
         Examples:
             .. code-block:: python
+
                 >>> import paddle
                 >>> import paddle.base as base
                 >>> from paddle.nn import Linear
@@ -1010,6 +1011,32 @@ def monkey_patch_value():
                 ...     data_tensor = paddle.to_tensor(data)
                 ...     x = linear(data_tensor)
                 ...     print(x.numpy())
+        """
+        pass
+
+    @fake_interface_only
+    def tolist(self):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+        Returns a Python list that contains the elements of current :ref:`api_guide_Variable_en`
+
+        Returns:
+            list: The Python list containing the elements of current Variable.
+
+        Returns type:
+            list: Elements have the same dtype as current Variable
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> import paddle.base as base
+                >>> import numpy as np
+                >>> data = np.random.uniform(-1, 1, [2, 3]).astype('float32')
+                >>> with base.dygraph.guard():
+                ...     x = paddle.to_tensor(data)
+                ...     print(x.tolist())  # Convert tensor to Python list
         """
         pass
 
@@ -1049,6 +1076,7 @@ def monkey_patch_value():
         ('values', values),
         ("_to", _to),
         ("to", to),
+        ("tolist", tolist),
         ("numpy", numpy),
         ("register_hook", register_hook),
         # For basic operators

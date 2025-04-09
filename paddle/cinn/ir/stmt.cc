@@ -23,6 +23,15 @@ namespace stmt {
 
 using cinn::common::make_shared;
 
+const BlockRef _Stmt_::GetParentBlockRef() const { return BlockRef{parent_}; }
+
+void _Stmt_::set_block_fields(const std::vector<BlockRef> &blocks) {
+  blocks_ = blocks;
+  for (auto &block : blocks_) {
+    block->set_parent(this);
+  }
+}
+
 BlockRef _Block_::Make(const std::vector<StmtRef> &stmts) {
   BlockRef ref(new _Block_());
   ref->set_stmts(stmts);
@@ -58,7 +67,6 @@ void _Let_::Verify() const {
                         "A defined symbol is required for the _Let_."));
   // The default value(contained in body) is not required.
   if (body_.defined()) {
-    TryElevateInt32ToInt64({symbol_, body_});
     PADDLE_ENFORCE_EQ(symbol_.type(),
                       body_.type(),
                       ::common::errors::InvalidArgument(
@@ -80,7 +88,7 @@ Store _Store_::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
   ref->set_tensor(tensor);
   ref->set_value(value);
   ref->set_indices(
-      utils::GetCompitableStoreLoadIndices(tensor.as_tensor_ref(), indices));
+      utils::GetCompatibleStoreLoadIndices(tensor.as_tensor_ref(), indices));
 
   if (tensor->type() != Void()) {
     ref->set_type(
@@ -215,8 +223,7 @@ IfThenElse _IfThenElse_::Make(Expr condition,
           "The true_case is not defined. "
           "A valid true_case expression is required for _IfThenElse_."));
   ref->set_condition(condition);
-  ref->set_true_case(true_case);
-  ref->set_false_case(false_case);
+  ref->set_block_fields({true_case, false_case});
   return ref;
 }
 
@@ -251,7 +258,11 @@ For _For_::Make(Var loop_var,
                 BlockRef body,
                 VectorizeInfo vector_info,
                 BindInfo bind_info) {
-  ir::TryElevateInt32ToInt64({loop_var, min, extent});
+  auto promote_args =
+      std::move(ir::TryElevateInt32ToInt64({loop_var, min, extent}));
+  loop_var = promote_args.at(0);
+  min = promote_args.at(1);
+  extent = promote_args.at(2);
   For ref(new _For_());
 
   PADDLE_ENFORCE_EQ(

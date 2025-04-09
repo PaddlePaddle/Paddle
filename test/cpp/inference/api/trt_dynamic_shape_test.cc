@@ -293,9 +293,9 @@ void TestDynamicClone(bool with_dynamic = true,
 
 TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }
 TEST(AnalysisPredictor, trt_memory_serialize) {
-  // serailize
+  // serialize
   TestDynamic(true, true, true);
-  // deserailize
+  // deserialize
   TestDynamic(true, false, true);
 }
 TEST(AnalysisPredictor, trt_dynamic2) { TestDynamic2(); }

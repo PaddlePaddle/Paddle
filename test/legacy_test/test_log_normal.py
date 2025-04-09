@@ -22,7 +22,7 @@ np.random.seed(10)
 paddle.seed(10)
 
 
-def log_noraml_mean(mean, std):
+def log_normal_mean(mean, std):
     return np.exp(mean + np.power(std, 2) / 2.0)
 
 
@@ -152,7 +152,7 @@ class TestLogNormalAPI(unittest.TestCase):
 
             mean = np.mean(ret, axis=0, keepdims=True)
             var = np.var(ret, axis=0, keepdims=True)
-            mean_ref = log_noraml_mean(self.mean, self.std)
+            mean_ref = log_normal_mean(self.mean, self.std)
             var_ref = log_normal_var(self.mean, self.std)
             np.testing.assert_allclose(mean_ref, mean, rtol=0.2, atol=0.2)
             np.testing.assert_allclose(var_ref, var, rtol=0.2, atol=0.2)

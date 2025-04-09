@@ -77,11 +77,11 @@ ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
   for (int i = 0; i < op->num_operands(); ++i) {
     result.inputs.emplace_back(
-        CreateNewNamesWithRank(GetCompitableRank(op->operand_source(i))));
+        CreateNewNamesWithRank(GetCompatibleRank(op->operand_source(i))));
   }
   for (int i = 0; i < op->num_results(); ++i) {
     result.outputs.emplace_back(
-        CreateNewNamesWithRank(GetCompitableRank(op->result(i))));
+        CreateNewNamesWithRank(GetCompatibleRank(op->result(i))));
   }
   return result;
 }
@@ -109,7 +109,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
                     1,
                     ::common::errors::PreconditionNotMet(
                         "Required reduce_op->num_results() shall be equal 1."));
-  const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
+  const size_t input_rank = GetCompatibleRank(reduce_op->operand_source(0));
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
   const std::vector<int64_t> reduce_axis_idx = GetReduceAxisIdx(reduce_op);
@@ -152,23 +152,27 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
 ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
 
-  int64_t rank = GetCompitableRank(op->result(0));
+  int64_t rank = GetCompatibleRank(op->result(0));
   auto same_axes = CreateNewNamesWithRank(rank);
 
   for (int i = 0; i < op->num_operands(); ++i) {
     PADDLE_ENFORCE_EQ(rank,
-                      GetCompitableRank(op->operand_source(i)),
+                      GetCompatibleRank(op->operand_source(i)),
                       ::common::errors::PreconditionNotMet(
                           "Required all inputs rank shall be equal output in "
-                          "elementwise op."));
+                          "elementwise op : %s [id:%d]",
+                          op->name(),
+                          op->id()));
     result.inputs.emplace_back(same_axes);
   }
   for (int i = 0; i < op->num_results(); ++i) {
     PADDLE_ENFORCE_EQ(rank,
-                      GetCompitableRank(op->result(i)),
+                      GetCompatibleRank(op->result(i)),
                       ::common::errors::PreconditionNotMet(
                           "Required all outputs rank shall be equal each other "
-                          "in elementwise op."));
+                          "in elementwise op : %s [id:%d]",
+                          op->name(),
+                          op->id()));
     result.outputs.emplace_back(same_axes);
   }
   result.loop = result.outputs.back();
@@ -188,17 +192,21 @@ ShardableAxesSignature CreateSignatureForTranspose(pir::Operation* op) {
           "Required transpose_op->num_results() shall be equal 1."));
 
   const auto input_axes =
-      CreateNewNamesWithRank(GetCompitableRank(op->operand_source(0)));
+      CreateNewNamesWithRank(GetCompatibleRank(op->operand_source(0)));
 
   std::vector<int32_t> perm =
       GetInt32ArrayAttributeData(op->attributes().at("perm"));
-  PADDLE_ENFORCE_EQ(perm.size(),
+  PADDLE_ENFORCE_LE(perm.size(),
                     input_axes.size(),
                     ::common::errors::PreconditionNotMet(
-                        "The size of perm shoud be equal input rank."));
-  std::vector<std::string> output_axes;
+                        "The size of perm should be equal to or less than the "
+                        "input rank. But "
+                        "received perm size is %d, input rank is %d",
+                        perm.size(),
+                        input_axes.size()));
+  std::vector<std::string> output_axes = input_axes;
   for (size_t i = 0; i < perm.size(); ++i) {
-    output_axes.emplace_back(input_axes[perm[i]]);
+    output_axes[i] = input_axes[perm[i]];
   }
 
   ShardableAxesSignature result = ShardableAxesSignature();
@@ -220,7 +228,7 @@ ShardableAxesSignature CreateSignatureForSlice(
                         "Required slice_op->num_results() shall be equal 1."));
 
   const auto input_axes =
-      CreateNewNamesWithRank(GetCompitableRank(op->operand_source(0)));
+      CreateNewNamesWithRank(GetCompatibleRank(op->operand_source(0)));
 
   const auto [slice_axis, keepdim] = GetSliceAxis(op);
   const auto output_axes = [&]() -> decltype(auto) {
@@ -255,15 +263,15 @@ ShardableAxesSignature CreateSignatureForBroadcast(
     pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
   ShardableAxesSignature result = ShardableAxesSignature();
 
-  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
+  const auto& broad_cast_value = GetBroadcastOpInputOutputValue(op);
   PADDLE_ENFORCE_EQ(broad_cast_value.has_value(),
                     true,
                     ::common::errors::PreconditionNotMet(
                         "Required broad_cast_value is not empty."));
 
   const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetCompitableRank(input_value);
-  const int output_rank = GetCompitableRank(output_value);
+  const int input_rank = GetCompatibleRank(input_value);
+  const int output_rank = GetCompatibleRank(output_value);
   PADDLE_ENFORCE_GE(
       output_rank,
       input_rank,
@@ -274,7 +282,7 @@ ShardableAxesSignature CreateSignatureForBroadcast(
   // output.
   for (int i = 0; i < op->num_operands(); ++i) {
     result.inputs.emplace_back(
-        CreateNewNamesWithRank(GetCompitableRank(op->operand_source(i))));
+        CreateNewNamesWithRank(GetCompatibleRank(op->operand_source(i))));
   }
 
   // Create output axes. Compare axis one by one, from back to front.
@@ -305,10 +313,10 @@ ShardableAxesSignature CreateSignatureForReshape(
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   const auto input_value = op->operand_source(0);
   const auto output_value = op->result(0);
-  const auto input_rank = GetCompitableRank(op->operand_source(0));
-  const auto output_rank = GetCompitableRank(op->result(0));
-  const auto in_shape = GetDimExprsFromValue(input_value);
-  const auto out_shape = GetDimExprsFromValue(output_value);
+  const auto input_rank = GetCompatibleRank(op->operand_source(0));
+  const auto output_rank = GetCompatibleRank(op->result(0));
+  const auto in_shape = GetCompatibleValueAllDims(input_value);
+  const auto out_shape = GetCompatibleValueAllDims(output_value);
 
   ShardableAxesSignature result = ShardableAxesSignature();
   const auto input_axes = CreateNewNamesWithRank(input_rank);
@@ -316,7 +324,7 @@ ShardableAxesSignature CreateSignatureForReshape(
 
   if (op->name() == "pd_op.reshape" && op->num_operands() == 2) {
     result.inputs.emplace_back(
-        CreateNewNamesWithRank(GetCompitableRank(op->operand_source(1))));
+        CreateNewNamesWithRank(GetCompatibleRank(op->operand_source(1))));
   }
 
   if (GetRank(input_value) == 0 || GetRank(output_value) == 0) {
@@ -339,15 +347,15 @@ ShardableAxesSignature CreateSignatureForReshape(
     return result;
   }
 
-  std::vector<std::pair<int, int>> partion_indices =
-      PartionReshapeAxes(in_shape, out_shape);
+  std::vector<std::pair<int, int>> partition_indices =
+      PartitionReshapeAxes(in_shape, out_shape);
 
   std::vector<std::string> output_axes;
-  for (int idx = 1; idx < partion_indices.size(); ++idx) {
-    const auto& in_start = partion_indices[idx - 1].first;
-    const auto& in_end = partion_indices[idx].first;
-    const auto& out_start = partion_indices[idx - 1].second;
-    const auto& out_end = partion_indices[idx].second;
+  for (int idx = 1; idx < partition_indices.size(); ++idx) {
+    const auto& in_start = partition_indices[idx - 1].first;
+    const auto& in_end = partition_indices[idx].first;
+    const auto& out_start = partition_indices[idx - 1].second;
+    const auto& out_end = partition_indices[idx].second;
     if (in_end == in_start + 1 && out_end == out_start + 1) {
       output_axes.emplace_back(input_axes[in_start]);
     } else {
@@ -383,7 +391,7 @@ ShardableAxesSignature CreateSignatureForReshape(
 
 ShardableAxesSignature CreateSignatureForConcat(
     pir::Operation* op, ShardableAxesInfoManager* axes_manager) {
-  size_t rank = GetCompitableRank(op->result(0));
+  size_t rank = GetCompatibleRank(op->result(0));
   const auto same_axes = CreateNewNamesWithRank(rank - 1);
 
   const auto axis_attr =
@@ -402,7 +410,7 @@ ShardableAxesSignature CreateSignatureForConcat(
   ShardableAxesSignature result = ShardableAxesSignature();
   for (int i = 0; i < op->num_operands(); ++i) {
     PADDLE_ENFORCE_EQ(rank,
-                      GetCompitableRank(op->operand_source(i)),
+                      GetCompatibleRank(op->operand_source(i)),
                       ::common::errors::PreconditionNotMet(
                           "Required all inputs rank shall be equal output in "
                           "concat op."));

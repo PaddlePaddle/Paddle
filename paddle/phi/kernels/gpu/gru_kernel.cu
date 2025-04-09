@@ -61,7 +61,7 @@ void GRUKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(batch_reset_hidden_prev);
   dev_ctx.template Alloc<T>(batch_hidden);
 
-  phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
+  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   to_batch(dev_ctx, input, batch_gate, true, is_reverse);
 
   if (bias) {
@@ -113,7 +113,7 @@ void GRUKernel(const Context &dev_ctx,
     gru_value.prev_out_value = gru_value.output_value;
   }
 
-  phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
+  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batch_hidden->set_lod(batch_gate->lod());
   to_seq(dev_ctx, *batch_hidden, hidden);
 }

@@ -246,13 +246,13 @@ def create_test_cudnn_bf16_class(parent):
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             numeric_input_grads = self.get_numeric_grad(place, 'Input')
-            numeric_fliter_grads = self.get_numeric_grad(place, 'Filter')
+            numeric_filter_grads = self.get_numeric_grad(place, 'Filter')
 
             self.check_grad_with_place(
                 place,
                 ['Input', 'Filter'],
                 'Output',
-                user_defined_grads=[numeric_input_grads, numeric_fliter_grads],
+                user_defined_grads=[numeric_input_grads, numeric_filter_grads],
                 check_dygraph=(not self.use_mkldnn),
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -264,14 +264,14 @@ def create_test_cudnn_bf16_class(parent):
 
 
 def create_test_padding_SAME_class(parent):
-    class TestPaddingSMAECase(parent):
+    class TestPaddingSAMECase(parent):
         def init_paddings(self):
             self.pad = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
     cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
-    TestPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestPaddingSMAECase
+    TestPaddingSAMECase.__name__ = cls_name
+    globals()[cls_name] = TestPaddingSAMECase
 
 
 def create_test_padding_VALID_class(parent):
@@ -289,7 +289,7 @@ def create_test_cudnn_padding_SAME_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    class TestCUDNNPaddingSMAECase(parent):
+    class TestCUDNNPaddingSAMECase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
             self.dtype = (
@@ -301,8 +301,8 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.padding_algorithm = "SAME"
 
     cls_name = "{}_{}".format(parent.__name__, "CudnnPaddingSAMEOp")
-    TestCUDNNPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestCUDNNPaddingSMAECase
+    TestCUDNNPaddingSAMECase.__name__ = cls_name
+    globals()[cls_name] = TestCUDNNPaddingSAMECase
 
 
 def create_test_cudnn_padding_VALID_class(parent):

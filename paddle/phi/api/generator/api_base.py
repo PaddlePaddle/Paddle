@@ -25,8 +25,8 @@ ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
 def parse_plain_list(s: str, sep=",") -> list[str]:
     """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
     if sep == ",":
-        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
-        items = re.split(patten, s.strip())
+        pattern = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(pattern, s.strip())
         items = [x.strip() for x in items]
         return items
     else:
@@ -91,7 +91,12 @@ class BaseAPI:
         }
 
     def get_api_name(self, api_item_yaml):
-        return api_item_yaml['op']
+        if 'op' in api_item_yaml:
+            return api_item_yaml['op']
+        elif 'backward_op' in api_item_yaml:
+            return api_item_yaml['backward_op']
+        else:
+            raise ValueError("op or backward_op are not in api_yaml.")
 
     def get_api_func_name(self):
         return self.api
@@ -121,6 +126,73 @@ class BaseAPI:
             else:
                 input_args.append(self.inputs['input_info'][name] + ' ' + name)
         return input_args
+
+    # funcs backward_api.h will use
+    def get_grad_outputs_define(self, inplace_flag=False):
+        define_string = ""
+        for i, out_type in enumerate(self.outputs['types']):
+            out_name = self.outputs['names'][i].split('@')[0]
+            if out_type == "std::vector<Tensor>":
+                if inplace_flag and out_name in self.inplace_map:
+                    out_name = self.inplace_map[out_name]
+                    define_string = " "
+                else:
+                    define_string += "    " + out_type + " " + out_name + ";\n"
+
+                vec_tensor_string = f"""    std::vector<Tensor*> {out_name}_x;
+    for (size_t i = 0; i < {out_name}.size(); i++){{
+        {out_name}_x.push_back(&({out_name}[i]));
+    }}"""
+                define_string += vec_tensor_string
+            else:
+                if inplace_flag and out_name in self.inplace_map:
+                    continue
+                define_string += "    " + out_type + " " + out_name + ";\n"
+        return define_string
+
+    def get_grad_api_call_args(self, inplace_flag):
+        args = []
+        for name in self.inputs['names']:
+            name = name.split('@')[0]
+            args.append(name)
+
+        for name in self.attrs['names']:
+            args.append(name)
+
+        for i, name in enumerate(self.outputs['names']):
+            name = name.split('@')[0]
+            out_type = self.outputs['types'][i]
+            if out_type == "std::vector<Tensor>":
+                if inplace_flag and name in self.inplace_map:
+                    name = self.inplace_map[name]
+
+                out_string = name + "_x"
+            else:
+                if inplace_flag and name in self.inplace_map:
+                    name = self.inplace_map[name]
+                    if name in self.optional_vars:
+                        out_string = name + ".get_ptr()"
+                    else:
+                        out_string = "&" + name
+                else:
+                    out_string = "&" + name
+
+            args.append(out_string)
+        return ", ".join(args)
+
+    def get_grad_output(self, inplace_flag):
+        args = []
+        for i, name in enumerate(self.outputs['names']):
+            name = name.split('@')[0]
+            if inplace_flag and name in self.inplace_map:
+                args.append("std::ref(" + self.inplace_map[name] + ")")
+            else:
+                args.append(name)
+
+        if len(args) == 1:
+            return args[0]
+        else:
+            return f"""std::make_tuple({", ".join(args)})"""
 
     def get_declare_args(self, inplace_flag=False):
         declare_args = self.get_input_tensor_args(inplace_flag)
@@ -172,8 +244,8 @@ class BaseAPI:
             ')'
         ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
         args_str = args_str[1:-1]
-        patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
-        args_list = re.split(patten, args_str.strip())
+        pattern = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+        args_list = re.split(pattern, args_str.strip())
         args_list = [x.strip() for x in args_list]
         input_types_map = {
             'Tensor': 'const Tensor&',
@@ -1180,6 +1252,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             )
         )
 
+        infer_meta_params = (
+            self.infer_meta['param']
+            if self.infer_meta['param'] is not None
+            else self.inputs['names'] + self.attrs['names']
+        )
+
         kernel_args = ["*dev_ctx"]
         for param in kernel_param:
             if param in input_names:
@@ -1188,6 +1266,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 else:
                     if self.inputs['input_info'][param] == "const Tensor&":
                         if self.is_inplace_input(param):
+                            if param not in infer_meta_params:
+                                input_tensor_code += f"""
+{code_indent}  auto {ORIGIN_PREFIX_TENSOR_NAME}{param} = *{PREFIX_TENSOR_NAME}{param};
+"""
                             kernel_args.append(
                                 ORIGIN_PREFIX_TENSOR_NAME + param
                             )

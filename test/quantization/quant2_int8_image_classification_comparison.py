@@ -262,7 +262,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                         },
                         fetch_list=fetch_targets,
                     )
-                    batch_time = (time.time() - start) * 1000  # in miliseconds
+                    batch_time = (time.time() - start) * 1000  # in milliseconds
                     batch_acc1, batch_acc5 = out[1], out[2]
                     outputs.append(batch_acc1)
                 else:
@@ -273,7 +273,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                         feed={feed_target_names[0]: images},
                         fetch_list=fetch_targets,
                     )
-                    batch_time = (time.time() - start) * 1000  # in miliseconds
+                    batch_time = (time.time() - start) * 1000  # in milliseconds
                     outputs.append(out[0])
                     # Calculate accuracy result
                     batch_acc1, batch_acc5 = self._get_batch_accuracy(

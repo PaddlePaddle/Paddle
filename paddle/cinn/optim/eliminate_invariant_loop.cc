@@ -58,26 +58,6 @@ bool HasVarInIndicesOrValue(const ir::Expr& block, const ir::Var& var) {
   return var_use.size() > 0;
 }
 
-// Check whether the block has an inplace update (e.g. a[i] = a[i] + b[i])
-// by comparing between the block's read_buffers and write_buffers.
-bool HasInplaceUpdate(const ir::Expr& block) {
-  auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
-                             ->schedule_block.As<ir::ScheduleBlock>();
-  std::set<std::string> read_buffer_names;
-  for (auto& buffer_range : schedule_block->read_buffers) {
-    read_buffer_names.insert(
-        buffer_range.As<ir::_BufferRange_>()->buffer.as_buffer()->name);
-  }
-  for (auto& buffer_range : schedule_block->write_buffers) {
-    auto& write_buffer_name =
-        buffer_range.As<ir::_BufferRange_>()->buffer.as_buffer()->name;
-    if (read_buffer_names.count(write_buffer_name) > 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 // Check whether the block is writing to a buffer whose scope is smaller than
 // the For node's scope.
 bool HasWriteToSmallerScope(const ir::Expr& block, const ir::For* for_node) {
@@ -112,7 +92,7 @@ struct InvariantLoopEliminator : public ir::IRMutator<> {
     ir::Var loop_var = node->loop_var;
     for (auto& block : child_blocks) {
       if (HasVarInIndicesOrValue(block, loop_var)) return;
-      if (HasInplaceUpdate(block)) return;
+      if (ir::analyzer::IsReductionSBlock(block)) return;
       if (node->is_binded()) {
         if (HasWriteToSmallerScope(block, node)) return;
         if (!ir::analyzer::GetConsumerSBlocks(block, *root_).empty()) return;

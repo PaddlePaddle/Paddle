@@ -87,7 +87,7 @@ class TestLoggingUtils(unittest.TestCase):
             paddle.jit.set_code_level(3.3)
 
     def test_log_api(self):
-        # test api for CI Converage
+        # test api for CI Coverage
         logging_utils.set_verbosity(1, True)
 
         logging_utils.warn("warn")

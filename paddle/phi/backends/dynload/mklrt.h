@@ -47,7 +47,7 @@ extern void* mklrt_dso_handle;
   extern DynLoad__##__name __name
 
 // mkl_dfti.h has a macro that shadows the function with the same name
-// un-defeine this macro so as to export that function
+// un-define this macro so as to export that function
 #undef DftiCreateDescriptor
 
 #define MKLDFTI_ROUTINE_EACH(__macro) \

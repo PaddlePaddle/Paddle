@@ -374,7 +374,7 @@ class DistributedBatchSampler(BatchSampler):
         as seeds of random numbers. By default, users may not set this, all
         replicas (workers) use a different random ordering for each epoch.
         If set same number at each epoch, this sampler will yield the same
-        ordering at all epoches.
+        ordering at all epochs.
 
         Arguments:
             epoch (int): Epoch number.

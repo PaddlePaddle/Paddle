@@ -153,7 +153,7 @@ void RoundKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const int decimals,
                  DenseTensor* out) {
-  float ten_pow_deciamls = std::pow(10, decimals);
+  float ten_pow_decimals = std::pow(10, decimals);
 
   DenseTensor out1;
   DenseTensorMeta meta_out(x.dtype(), x.dims());
@@ -163,13 +163,13 @@ void RoundKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(&out1);
 
   for (int i = 0; i < x.numel(); i++) {
-    out1.data<T>()[i] = x.data<T>()[i] * ten_pow_deciamls;
+    out1.data<T>()[i] = x.data<T>()[i] * ten_pow_decimals;
   }
   RoundOneDNNFunctor<T> functor;
   functor(dev_ctx, out1, 0, 0, out);
 
   for (int i = 0; i < x.numel(); i++) {
-    out->data<T>()[i] = out->data<T>()[i] * (1 / ten_pow_deciamls);
+    out->data<T>()[i] = out->data<T>()[i] * (1 / ten_pow_decimals);
   }
 }
 

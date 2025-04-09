@@ -23,9 +23,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 template <typename InType, typename OutType>
@@ -154,9 +152,7 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
     }
   }
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_remove_amp_strategy_op_pass,
               paddle::framework::ir::TrtRemoveAMPStrategyOpPass);

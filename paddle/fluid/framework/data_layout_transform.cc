@@ -18,8 +18,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
@@ -102,5 +101,4 @@ void TransDataLayout(DataLayout from_layout,
   out->set_layout(to_layout);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

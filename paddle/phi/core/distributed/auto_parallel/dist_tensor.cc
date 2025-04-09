@@ -22,8 +22,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 inline void check_defined(const DistTensor& dist_tensor,
                           std::string method_hint) {
@@ -105,7 +104,7 @@ Placements ToPlacements(const TensorDistAttr& dist_attr) {
 
       if (p->is_shard()) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
-            "ProcessMesh dimension cann't be mapped to two  dimension of the "
+            "ProcessMesh dimension can't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
             i,
             dynamic_cast<Shard&>(*p).get_dim()));
@@ -198,7 +197,7 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
   process_mesh_ = process_mesh;
   placements_ = placements;
   // If the dims.size() == -1, the dims=[0] by default, which is not consistent
-  // and will cause ToTensorDistAttr‘s error.
+  // and will cause ToTensorDistAttr's error.
   if (global_dims_ == DDim()) {
     global_dims_ = phi::make_ddim({});
   }
@@ -332,5 +331,4 @@ void DistTensor::clear() {
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

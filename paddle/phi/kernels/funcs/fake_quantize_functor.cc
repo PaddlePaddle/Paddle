@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename Context, typename T>
 void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
@@ -356,5 +355,4 @@ template class ChannelClipFakeQuantDequantFunctor<CPUContext, float>;
 template class FindRangeAbsMaxFunctor<CPUContext, float>;
 template class ClipAndFakeQuantDequantFunctor<CPUContext, float>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

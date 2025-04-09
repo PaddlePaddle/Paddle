@@ -77,5 +77,31 @@ class TestIsCloseOp(TestOpsBase):
         self.check_eval()
 
 
+class TestTransposeOp(TestOpsBase):
+    def prepare_info(self):
+        self.fn = paddle.transpose
+        self.expected_jit_kernel_number = 1
+        self.expected_jit_kernel_structure = {utils.JIT_KERNEL_NAME: 1}
+
+    def prepare_data(self):
+        self.shape = [16, 3, 10, 32]
+        self.perm = [1, 0, 2]
+        self.x = paddle.randn(self.shape, dtype="float32")
+        self.x.stop_gradient = False
+
+    def test_eval(self):
+        static_fn = utils.apply_to_static(self.fn, use_cinn=True)
+        cinn_out = static_fn(self.x, self.perm)
+        dy_out = self.fn(self.x, self.perm)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+        utils.check_jit_kernel_number(
+            static_fn, self.expected_jit_kernel_number
+        )
+        utils.check_jit_kernel_structure(
+            static_fn, self.expected_jit_kernel_structure
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

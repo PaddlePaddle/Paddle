@@ -150,6 +150,88 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void BaddbmmInferMeta(const MetaTensor& input,
+                      const MetaTensor& x,
+                      const MetaTensor& y,
+                      float beta,
+                      float alpha,
+                      MetaTensor* out) {
+  auto input_dims = input.dims();
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  auto ndim_input = input_dims.size();
+  auto ndim_x = x_dims.size();
+  auto ndim_y = y_dims.size();
+
+  VLOG(3) << "baddbmm operator input.shape=" << input_dims
+          << " x.shape=" << x_dims << " y.shape=" << y_dims << " beta=" << beta
+          << " alpha=" << alpha << " ndim_input=" << ndim_input
+          << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
+
+  PADDLE_ENFORCE_NE(
+      product(input_dims),
+      0,
+      errors::PreconditionNotMet("The Input variable 'input' has not "
+                                 "been initialized. You may need to confirm "
+                                 "if you put exe.run(startup_program) "
+                                 "after optimizer.minimize function."));
+
+  PADDLE_ENFORCE_NE(
+      product(x_dims),
+      0,
+      errors::PreconditionNotMet("The Input variable 'x' has not "
+                                 "been initialized. You may need to confirm "
+                                 "if you put exe.run(startup_program) "
+                                 "after optimizer.minimize function."));
+
+  PADDLE_ENFORCE_NE(
+      product(y_dims),
+      0,
+      errors::PreconditionNotMet("The Input variable 'y' has not "
+                                 "been initialized. You may need to confirm "
+                                 "if you put exe.run(startup_program) "
+                                 "after optimizer.minimize function."));
+  // dim check
+  PADDLE_ENFORCE_EQ(ndim_input == 3 || ndim_input == 2,
+                    true,
+                    errors::InvalidArgument(
+                        "The input tensor input's dimension must be 3 or 2. "
+                        "But received input's dimension = [%d].",
+                        ndim_input));
+  PADDLE_ENFORCE_EQ(
+      ndim_x,
+      3,
+      errors::InvalidArgument("The input tensor x's dimension must be 3. "
+                              "But received x's dimension = [%d].",
+                              ndim_x));
+  PADDLE_ENFORCE_EQ(
+      ndim_y,
+      3,
+      errors::InvalidArgument("The input tensor y's dimension must be 3. "
+                              "But received y's dimension = [%d].",
+                              ndim_y));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims[2],
+      y_dims[1],
+      errors::InvalidArgument("The second dimension of x must be equal to the "
+                              "first dimension of y. "
+                              "But received x's second dimension = [%d], y's "
+                              "first dimension = [%d].",
+                              x_dims[2],
+                              y_dims[1]));
+
+  std::vector<int64_t> output_dims;
+  output_dims.push_back(x_dims[0]);
+  output_dims.push_back(x_dims[1]);
+  output_dims.push_back(y_dims[2]);
+
+  out->set_dims(common::make_ddim(output_dims));
+  out->share_lod(input);
+  out->set_dtype(input.dtype());
+}
+
 void AffineChannelInferMeta(const MetaTensor& x,
                             const MetaTensor& scale,
                             const MetaTensor& bias,
@@ -373,6 +455,67 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void CSoftmaxWithMultiLabelCrossEntropyInferMeta(
+    const MetaTensor& logits,
+    const MetaTensor& label,
+    const MetaTensor& smooth_weight,
+    int64_t ignore_index,
+    bool sum_multi_label_loss,
+    int rank,
+    int nranks,
+    MetaTensor* softmax,
+    MetaTensor* loss,
+    MetaConfig config) {
+  auto logits_dims = logits.dims();
+  auto labels_dims = label.dims();
+  auto smooth_weight_dims = smooth_weight.dims();
+
+  auto logits_rank = logits_dims.size();
+  auto labels_rank = labels_dims.size();
+  auto axis = logits_rank - 1;
+  for (int i = 0; i < logits_rank; i++) {
+    if (i != axis) {
+      if (config.is_runtime || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+        PADDLE_ENFORCE_EQ(logits_dims[i],
+                          labels_dims[i],
+                          common::errors::InvalidArgument(
+                              "Input(Logits) and Input(Label) should in "
+                              "same shape in dimensions except axis."));
+      }
+    }
+  }
+
+  PADDLE_ENFORCE_GE(
+      labels_dims[logits_rank - 1],
+      1UL,
+      common::errors::InvalidArgument(
+          "the last dimension of Input(Label) should be greater than or equal "
+          "to 1."
+          "But received: the last dimension of Input(Label) is [%d],"
+          "the last dimension is [%d]",
+          labels_dims[logits_rank - 1],
+          logits_rank - 1));
+
+  for (int i = 0; i < labels_rank; ++i) {
+    if (config.is_runtime ||
+        (labels_dims[i] > 0 && smooth_weight_dims[i] > 0)) {
+      PADDLE_ENFORCE_EQ(labels_dims[i],
+                        smooth_weight_dims[i],
+                        common::errors::InvalidArgument(
+                            "Input(Label) and Input(SmoothWeight) should in "
+                            "same shape in dimensions"));
+    }
+  }
+
+  softmax->set_dims(logits_dims);
+  if (sum_multi_label_loss) {
+    labels_dims[axis] = 1;
+  }
+  loss->set_dims(labels_dims);
+  softmax->share_lod(logits);
+  loss->share_lod(logits);
+}
+
 void DistributedPushSparseInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& shows,
@@ -485,6 +628,19 @@ void FlashAttnInferMeta(const MetaTensor& q,
       softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
     }
   }
+  if (out_dims.size() == 3) {  // when use flash_attn_unpadded
+    auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
+    int batch_and_seq_size = q.dims()[0];
+    int num_heads = q.dims()[1];
+    int seqlen_q_rounded = round_multiple(batch_and_seq_size);
+    int seqlen_k_rounded = round_multiple(batch_and_seq_size);
+    if (softmax) {
+      softmax->set_dims({num_heads, seqlen_q_rounded, seqlen_k_rounded});
+    }
+    if (softmax_lse) {
+      softmax_lse->set_dims({num_heads, seqlen_q_rounded});
+    }
+  }
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
     seed_offset->set_dims({2});
@@ -568,6 +724,37 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
 
   reduced_scores->set_dtype(phi::DataType::FLOAT32);
   reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
+}
+
+void FlashAttnV3InferMeta(const MetaTensor& q,
+                          const MetaTensor& k,
+                          const MetaTensor& v,
+                          MetaTensor* out,
+                          MetaTensor* softmax_lse) {
+  // TODO(umiswing): support varlen
+  constexpr bool is_varlen_q = false;
+  auto const sizes = q.dims();
+  const int batch_size = sizes[0];
+  const int seqlen_q = sizes[1];
+  int num_heads = q.dims()[q.dims().size() - 2];
+  int const head_size_v = v.dims()[v.dims().size() - 1];
+  auto q_type = q.dtype();
+  auto out_type =
+      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+  if (!is_varlen_q) {
+    out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
+  } else {
+    // TODO(umiswing): support varlen
+  }
+
+  out->set_dtype(out_type);
+
+  if (!is_varlen_q) {
+    softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
+  } else {
+    // TODO(umiswing): support varlen
+  }
+  softmax_lse->set_dtype(phi::DataType::FLOAT32);
 }
 
 void ArangeTensorInferMeta(const MetaTensor& start,
@@ -1798,15 +1985,17 @@ void ScatterInferMeta(const MetaTensor& x,
             "Input(Updates)'s shape is %d.",
             ref_dims.size(),
             updates_dims.size()));
-    PADDLE_ENFORCE_LE(
-        index_dims[0],
-        updates_dims[0],
-        common::errors::InvalidArgument(
-            "The first dimension size of Input(Index) shoud be no greater than "
-            "Input(Updates), but received first dimension size of Input(Index) "
-            "is %d, Input(Updates) is  %d.",
-            index_dims[0],
-            updates_dims[0]));
+    if (index_dims[0] != -1 && updates_dims[0] != -1) {
+      PADDLE_ENFORCE_LE(
+          index_dims[0],
+          updates_dims[0],
+          common::errors::InvalidArgument(
+              "The first dimension size of Input(Index) should be no greater "
+              "than Input(Updates), but received first dimension size of "
+              "Input(Index) is %d, Input(Updates) is  %d.",
+              index_dims[0],
+              updates_dims[0]));
+    }
   } else {
     PADDLE_ENFORCE_EQ(
         (ref_dims.size() - 1 == updates_dims.size()),
@@ -2295,7 +2484,7 @@ void TdmSamplerInferMeta(const MetaTensor& x,
                          const MetaTensor& layer,
                          bool output_positive,
                          const std::vector<int>& neg_samples_num_list,
-                         const std::vector<int>& layer_offset_lod,
+                         const std::vector<int>& layer_offset,
                          int seed,
                          int dtype,
                          MetaTensor* out,

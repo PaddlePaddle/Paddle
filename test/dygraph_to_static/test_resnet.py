@@ -177,7 +177,7 @@ class ResNet(paddle.nn.Layer):
             shortcut = False
             for i in range(depth[block]):
                 bottleneck_block = self.add_sublayer(
-                    'bb_%d_%d' % (block, i),
+                    f'bb_{block}_{i}',
                     BottleneckBlock(
                         num_channels=(
                             num_channels[block]
@@ -333,15 +333,11 @@ class ResNetHelper:
                 end_time = time.time()
                 if batch_id % 2 == 0:
                     print(
-                        "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f"
-                        % (
-                            epoch,
-                            batch_id,
-                            total_loss.numpy() / total_sample,
-                            total_acc1.numpy() / total_sample,
-                            total_acc5.numpy() / total_sample,
-                            end_time - start_time,
-                        )
+                        f"epoch {epoch} | batch step {batch_id}, "
+                        f"loss {total_loss.numpy() / total_sample:0.3f}, "
+                        f"acc1 {total_acc1.numpy() / total_sample:0.3f}, "
+                        f"acc5 {total_acc5.numpy() / total_sample:0.3f}, "
+                        f"time {end_time - start_time:f}"
                     )
                 if batch_id == 10:
                     if to_static:

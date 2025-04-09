@@ -21,8 +21,7 @@
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/event.h"
 
-namespace phi {
-namespace stream {
+namespace phi::stream {
 
 std::list<Stream*> g_streams;
 std::mutex g_streams_mutex;
@@ -119,5 +118,4 @@ void Stream::Synchronize() const { device_->SynchronizeStream(this); }
 
 const Place& Stream::GetPlace() const { return place_; }
 
-}  // namespace stream
-}  // namespace phi
+}  // namespace phi::stream

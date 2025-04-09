@@ -200,5 +200,15 @@ class TestBreakGraphCallGeneratorFunction(TestCaseBase):
         self.assert_results(break_graph_call_generator_function, [x, y])
 
 
+def unary_not_break_graph(x):
+    return not x
+
+
+class TestUnaryNot(TestCaseBase):
+    def test_unary_not_break_graph(self):
+        x = paddle.to_tensor(0)
+        self.assert_results(unary_not_break_graph, x)
+
+
 if __name__ == "__main__":
     unittest.main()

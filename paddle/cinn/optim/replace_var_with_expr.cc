@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -27,21 +26,127 @@
 namespace cinn {
 namespace optim {
 
-struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
+struct ReplaceVarWithExprMutator : public ir::IRMutator<>,
+                                   public ir::stmt::StmtMutator<> {
   ReplaceVarWithExprMutator(const Var& var,
                             const Expr& expr,
                             const std::string& tensor_name)
-      : var_(var), expr_(expr), tensor_name_(tensor_name) {}
-
-  void operator()(Expr* expr) {
+      : var_(var), expr_(expr), tensor_name_(tensor_name) {
     if (tensor_name_.empty()) visit_all_ = true;
-    IRMutator::Visit(expr, expr);
+  }
+
+  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
+
+  void operator()(ir::stmt::StmtRef stmt) {
+    ir::stmt::StmtMutator<>::VisitStmt(stmt);
+  }
+
+  void operator()(ir::stmt::BlockRef block) {
+    ir::stmt::StmtMutator<>::VisitBlock(block);
   }
 
  private:
+  void VisitStmt(ir::stmt::Let stmt) override {
+    Expr symbol = stmt->symbol();
+    ir::IRMutator<>::Visit(&symbol, &symbol);
+    stmt->set_symbol(symbol);
+    if (stmt->body().defined()) {
+      Expr body = stmt->body();
+      ir::IRMutator<>::Visit(&body, &body);
+      stmt->set_body(body);
+    }
+  }
+
+  void VisitStmt(ir::stmt::Store stmt) override {
+    auto* tensor = stmt->tensor().as_tensor();
+    if (tensor && tensor->name == tensor_name_) {
+      do_replace_ = true;
+    } else {
+      do_replace_ = false;
+    }
+
+    std::vector<Expr> new_indices = stmt->indices();
+    for (Expr& index : new_indices) {
+      ir::IRMutator<>::Visit(&index, &index);
+    }
+    stmt->set_indices(new_indices);
+
+    do_replace_ = false;
+
+    Expr tensor_expr = stmt->tensor();
+    ir::IRMutator<>::Visit(&tensor_expr, &tensor_expr);
+    stmt->set_tensor(tensor_expr);
+
+    Expr value = stmt->value();
+    ir::IRMutator<>::Visit(&value, &value);
+    stmt->set_value(value);
+  }
+
+  void VisitStmt(ir::stmt::For stmt) override {
+    Expr min = stmt->min();
+    ir::IRMutator<>::Visit(&min, &min);
+    Expr extent = stmt->extent();
+    ir::IRMutator<>::Visit(&extent, &extent);
+    VisitBlock(stmt->body());
+    if (stmt->loop_var()->name == var_->name && expr_.as_var() && visit_all_) {
+      Expr copied = ir::ir_utils::IRCopy(expr_);
+      stmt->set_loop_var(copied.as_var_ref());
+    }
+  }
+
+  void VisitStmt(ir::stmt::IfThenElse stmt) override {
+    Expr condition = stmt->condition();
+    ir::IRMutator<>::Visit(&condition, &condition);
+    ir::stmt::BlockRef true_case = stmt->true_case();
+    VisitBlock(true_case);
+    stmt->set_true_case(true_case);
+    if (stmt->false_case().defined()) {
+      ir::stmt::BlockRef false_case = stmt->false_case();
+      VisitBlock(false_case);
+      stmt->set_false_case(false_case);
+    }
+  }
+
+  void VisitStmt(ir::stmt::Schedule stmt) override {
+    std::vector<Var> vars = stmt->iter_vars();
+    for (ir::Var& var : vars) {
+      if (var->lower_bound.defined()) {
+        ir::IRMutator<>::Visit(&var->lower_bound, &var->lower_bound);
+      }
+      if (var->upper_bound.defined()) {
+        ir::IRMutator<>::Visit(&var->upper_bound, &var->upper_bound);
+      }
+    }
+
+    std::vector<Expr> iter_values = stmt->iter_values();
+    for (ir::Expr& iter_value : iter_values) {
+      ir::IRMutator<>::Visit(&iter_value, &iter_value);
+    }
+    stmt->set_iter_values(iter_values);
+
+    std::vector<Expr> new_read_buffers = stmt->read_buffers();
+    for (Expr& read_buffer : new_read_buffers) {
+      ir::IRMutator<>::Visit(&read_buffer, &read_buffer);
+    }
+    stmt->set_read_buffers(new_read_buffers);
+
+    std::vector<Expr> new_write_buffers = stmt->write_buffers();
+    for (Expr& write_buffer : new_write_buffers) {
+      ir::IRMutator<>::Visit(&write_buffer, &write_buffer);
+    }
+    stmt->set_write_buffers(new_write_buffers);
+    VisitBlock(stmt->body());
+  }
+
+  void VisitStmt(ir::stmt::Alloc stmt) override { return; }
+
+  void VisitStmt(ir::stmt::Free stmt) override { return; }
+
+  void VisitStmt(ir::stmt::Evaluate) override { return; }
+
   void Visit(const ir::_Var_* expr, Expr* op) override {
     if (expr->name == var_->name && (do_replace_ || visit_all_)) {
-      auto copied = ir::ir_utils::IRCopy(expr_);
+      Expr copied = ir::ir_utils::IRCopy(expr_);
       *op = copied;
     }
   }
@@ -107,13 +212,26 @@ struct ReplaceVarWithExprMutator : public ir::IRMutator<> {
   const std::string& tensor_name_;
 };
 
-void ReplaceVarWithExpr(Expr* source,
+template <typename SourceType>
+void ReplaceVarWithExpr(SourceType source,
                         const Var& var,
                         const Expr& expr,
                         const std::string& tensor_name) {
   ReplaceVarWithExprMutator mutator(var, expr, tensor_name);
   mutator(source);
 }
+template void ReplaceVarWithExpr<Expr*>(Expr*,
+                                        const Var&,
+                                        const Expr&,
+                                        const std::string&);
+template void ReplaceVarWithExpr<ir::stmt::StmtRef>(ir::stmt::StmtRef,
+                                                    const Var&,
+                                                    const Expr&,
+                                                    const std::string&);
+template void ReplaceVarWithExpr<ir::stmt::BlockRef>(ir::stmt::BlockRef,
+                                                     const Var&,
+                                                     const Expr&,
+                                                     const std::string&);
 
 struct CollectTensorIndexMutator : public ir::IRMutator<> {
   explicit CollectTensorIndexMutator(const std::string& tensor_name)

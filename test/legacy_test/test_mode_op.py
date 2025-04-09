@@ -187,7 +187,7 @@ class TestModeBF16OpLastdim(TestModeBF16Op):
 
 class TestModeOpKernels(unittest.TestCase):
     def setUp(self):
-        self.axises = [-1, 1]
+        self.axes = [-1, 1]
         np.random.seed(666)
         self.inputs = np.ceil(np.random.rand(2, 10, 10) * 1000)
 
@@ -195,7 +195,7 @@ class TestModeOpKernels(unittest.TestCase):
         def test_cpu_kernel():
             paddle.set_device('cpu')
             tensor = paddle.to_tensor(self.inputs)
-            for axis in self.axises:
+            for axis in self.axes:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)
                 v, inds = paddle.mode(tensor, axis)
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)
@@ -209,7 +209,7 @@ class TestModeOpKernels(unittest.TestCase):
         def test_gpu_kernel():
             paddle.set_device('gpu')
             tensor = paddle.to_tensor(self.inputs)
-            for axis in self.axises:
+            for axis in self.axes:
                 value_expect, indice_expect = cal_mode(self.inputs, axis)
                 v, inds = paddle.mode(tensor, axis)
                 np.testing.assert_allclose(v.numpy(), value_expect, rtol=1e-05)

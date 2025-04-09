@@ -216,13 +216,37 @@ void RandintInferMeta(
   out->set_dtype(dtype);
 }
 
-void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out) {
+void PRecvInferMeta(const int peer,
+                    DataType dtype,
+                    const std::vector<int>& out_shape,
+                    const bool dynamic_shape,
+                    MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
           "The peer (%d) for p_recv op must be non-negative.", peer));
-  // auto data_type = phi::TransToPhiDataType(dtype);
+
+  if (!dynamic_shape) {
+    PADDLE_ENFORCE_GE(out_shape.size(),
+                      1,
+                      errors::InvalidArgument(
+                          "The size of the output shape must be greater than 0 "
+                          "but the value given is %d.",
+                          out_shape.size()));
+    for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i],
+                        1,
+                        errors::InvalidArgument(
+                            "The shape attribute for p_recv must be set "
+                            "explicitly, but the %dth element is %d which "
+                            "is less than 1. Or dynamic_shape should be "
+                            "set to True for both p_send and p_recv.",
+                            i,
+                            out_shape[i]));
+    }
+    out->set_dims(common::make_ddim(out_shape));
+  }
   out->set_dtype(dtype);
 }
 

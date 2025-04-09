@@ -22,7 +22,6 @@ import unittest
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
-    test_with_faster_guard,
 )
 
 import paddle
@@ -225,7 +224,6 @@ class TestForLoop(TestCaseBase):
     def test_reconstruct_range_iter(self):
         self.assert_results(for_reconstruct_range_iter)
 
-    @test_with_faster_guard
     def test_layer_list(self):
         layers = paddle.nn.LayerList()
         for i in range(5):
@@ -340,6 +338,20 @@ class TestForBreakWithLoadSameConsts(TestCaseBase):
     def test_for_break_with_load_same_consts(self):
         x = paddle.to_tensor(1)
         self.assert_results(for_break_with_load_same_consts, x)
+
+
+def for_break_with_write_pre_defined_name(x: paddle.Tensor):
+    y = None
+    for i in [1, 2, 3]:
+        y = i
+        sot.psdb.breakgraph()
+    return x + 1
+
+
+class TestForBreakWithWritePreDefinedName(TestCaseBase):
+    def test_for_break_with_write_pre_defined_name(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(for_break_with_write_pre_defined_name, x)
 
 
 if __name__ == "__main__":

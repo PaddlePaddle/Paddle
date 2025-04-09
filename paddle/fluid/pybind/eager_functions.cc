@@ -139,6 +139,7 @@ static PyObject* eager_api_scale(PyObject* self,
   paddle::Tensor ret;
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     ret = egr::scale(tensor, scale, bias, bias_after_scale, trace_backward);
   }
   return ToPyObject(ret);
@@ -159,6 +160,7 @@ static PyObject* eager_api_run_backward(PyObject* self,
   }
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     egr::Backward(tensors, grad_tensors, retain_graph);
   }
   RETURN_PY_NONE
@@ -189,6 +191,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   std::vector<paddle::Tensor> result;
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     result = egr::Grad(tensors,
                        inputs,
                        grad_tensors,
@@ -216,6 +219,7 @@ static PyObject* eager_api_tensor_copy(PyObject* self,
 
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     dst = src.copy_to(place, blocking);
     egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
         egr::EagerUtils::autograd_meta(&(src))->StopGradient());
@@ -240,7 +244,7 @@ PyObject* eager_api_get_all_grads(PyObject* self,
       ret.emplace_back(paddle::Tensor());
       continue;
     }
-    if (meta && meta->Grad().initialized()) {
+    if (meta && meta->Grad().has_allocation()) {
       ret.emplace_back(meta->Grad());
     } else {
       ret.emplace_back(paddle::Tensor());
@@ -261,7 +265,7 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
   for (auto& tensor : tensor_list) {
     VLOG(6) << "Get grad for tensor: " << tensor.name();
     auto meta = egr::EagerUtils::nullable_autograd_meta(tensor);
-    if (meta && meta->Grad().initialized()) {
+    if (meta && meta->Grad().has_allocation()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
         case phi::DataType::FLOAT16:
@@ -301,7 +305,7 @@ PyObject* eager_api_get_grads_types(PyObject* self,
     }
 
     auto& grad = meta->Grad();
-    if (meta && grad.initialized()) {
+    if (meta && grad.has_allocation()) {
       if ((grad.is_dense_tensor() || grad.is_dist_tensor()) &&
           (tensor.dtype() == phi::DataType::FLOAT32 ||
            tensor.dtype() == phi::DataType::FLOAT16 ||
@@ -461,6 +465,7 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
   std::vector<paddle::Tensor> outs;
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     outs = (*function)(ins);
   }
   return ToPyObject(outs);
@@ -672,6 +677,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
 
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
     const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
     for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {
@@ -684,7 +690,7 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         const auto& input_tensor = ctx.InputAt(input_range.first);
         // inplace optional [Tensor or vector<Tensor>], un-initialized tensor.
         if (paddle::framework::detail::IsOptionalVar(output) &&
-            !input_tensor.initialized()) {
+            !input_tensor.has_allocation()) {
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add un-initialized tensor "
                      "because the inplace optional input is None";
@@ -721,15 +727,16 @@ PyObject* eager_api_run_custom_op(PyObject* self,
       if (ctx.OutputRangeAt(i).first + 1 == ctx.OutputRangeAt(i).second) {
         paddle::Tensor* out_tensor =
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
-        if (!out_tensor->initialized()) {
+        if (!out_tensor->has_allocation()) {
           PADDLE_ENFORCE(
               paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
                   out_tensor->is_dist_tensor(),
               common::errors::InvalidArgument(
-                  "Custom operator's %d-th output is not initialized. "
+                  "Custom operator[%s]'s %d-th output is not initialized. "
                   "Please check your implementation again. If you are "
                   "using inplace optional output, then you must use "
                   "`paddle::Optional` to decorate this output",
+                  op_type,
                   i));
           // We can also consider using `autograd_meta` to tolerant nullptr.
           out_tensor->set_autograd_meta(std::make_shared<egr::AutogradMeta>());
@@ -872,6 +879,7 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   paddle::Tensor tensor;
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     PADDLE_ENFORCE(
         non_zero_indices.is_dense_tensor(),
         common::errors::Fatal("the non-zero indices must be a DenseTensor."));
@@ -916,6 +924,7 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
   paddle::Tensor tensor;
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     PADDLE_ENFORCE(non_zero_crows.is_dense_tensor(),
                    common::errors::Fatal(
                        "the compressed non-zero rows must be a DenseTensor."));
@@ -996,6 +1005,7 @@ static PyObject* eager_api_async_read(PyObject* self,
 
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     PADDLE_ENFORCE_EQ(
         src.is_gpu_pinned(),
         true,
@@ -1175,6 +1185,7 @@ static PyObject* eager_api_async_write(PyObject* self,
   }
   {
     eager_gil_scoped_release guard;
+    EagerSetDeviceId();
     PADDLE_ENFORCE_EQ(
         src.is_gpu(),
         true,
@@ -1342,7 +1353,7 @@ static PyObject* eager_api_set_master_grads(PyObject* self,
         common::errors::Fatal("Detected nullptr grad"
                               "Please check if you have manually cleared"
                               "the grad inside autograd_meta"));
-    if (((*grad).initialized() || (*grad).is_dist_tensor()) &&
+    if (((*grad).has_allocation() || (*grad).is_dist_tensor()) &&
         ((*grad).dtype() == phi::DataType::FLOAT16 ||
          (*grad).dtype() == phi::DataType::BFLOAT16)) {
       auto master_grad =
@@ -1361,6 +1372,34 @@ PyObject* eager__is_run_in_backward(PyObject* self,
   EAGER_TRY
 
   return ToPyObject(egr::Controller::Instance().GetIsInBackward());
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* eager__for_test_check_cuda_error(PyObject* self,
+                                           PyObject* args,
+                                           PyObject* kwargs) {
+  EAGER_TRY
+#ifdef PADDLE_WITH_CUDA
+  // 1. wait all kernel finish
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+
+  // 2. get error state
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+
+  // 3. check if cuda 700
+  size_t bytes = 256;
+  char* cuda_mem;
+  char* cpu_mem = new char[bytes + 1];
+
+  cudaMalloc(&cuda_mem, bytes + 1);
+  cudaMemset(cuda_mem, 0, bytes + 1);
+  cudaMemcpyAsync(cpu_mem, cuda_mem, bytes, cudaMemcpyDeviceToHost);
+
+  cudaFree(cuda_mem);
+  delete[] cpu_mem;
+#endif
+  RETURN_PY_NONE
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -1440,6 +1479,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
      nullptr},
     {"_is_run_in_backward",
      (PyCFunction)(void (*)())eager__is_run_in_backward,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+    {"_for_test_check_cuda_error",
+     (PyCFunction)(void (*)())eager__for_test_check_cuda_error,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 /**sparse functions**/

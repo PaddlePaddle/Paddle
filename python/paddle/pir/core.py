@@ -217,6 +217,8 @@ def switch_main_program(program, insertion_point=None):
     prev_program = _main_program_
     prev_insertion_point = get_current_insertion_point()
     _main_program_ = program
+    if program == prev_program and insertion_point is None:
+        insertion_point = prev_insertion_point
     if insertion_point is None:
         set_insertion_point_to_block_end(_main_program_.global_block())
     else:
@@ -393,7 +395,7 @@ def create_parameter(
 
 def create_persistable_value(dtype, shape, name=None, **kwargs):
     """
-    Create Value that is persistable in startup program and main program. The Value is initilized in startup program and
+    Create Value that is persistable in startup program and main program. The Value is initialized in startup program and
     used in main program.
 
     Returns:
@@ -494,7 +496,10 @@ def _convert_into_value(tensor):
             paddle.pir.core.default_main_program(), tensor
         )
         NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
-        if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+        # NOTE(SigureMo): Why do not use `tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX)`?
+        # Because the tensor maybe copied, the name of the tensor will be appended with a new suffix.
+        # Such as `lstm_0.dropout_state__non_persistable_deepcopy_204`
+        if NON_PERSISTABLE_VAR_NAME_SUFFIX in tensor.name:
             value.persistable = False
         return value
 

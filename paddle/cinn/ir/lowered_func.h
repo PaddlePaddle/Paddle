@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/stmt.h"
 
 namespace cinn {
 namespace ir {
@@ -159,8 +160,10 @@ struct _LoweredFunc_ : public IrNode {
   //! This number doesn't include temp_spaces.
   int num_output_tensors;
 
+  // TODO(Hongqing-work): remove expr body after update all the backend passes.
   //! Body of this function.
   Expr body;
+  stmt::BlockRef body_block;
 
   DeviceAPI device_api{DeviceAPI::UNK};
 
@@ -170,7 +173,7 @@ struct _LoweredFunc_ : public IrNode {
    * The output buffer will be resized to the size required, we leave all the
    * expression here. The allocation and deallocation expressions will insert
    * into the head and tail of the function's body. It supports lazy
-   * allocation/deallocation if the corresponding intristic methods support.
+   * allocation/deallocation if the corresponding intrinsic methods support.
    *
    * Currently, we assume that all the input and output buffers should locate in
    * heap, no other memory type is allowed.
@@ -190,12 +193,21 @@ struct _LoweredFunc_ : public IrNode {
                           const Expr& body,
                           const std::vector<ir::Buffer>& temp_bufs);
 
+  static LoweredFunc Make(const std::string& name,
+                          const std::vector<Argument>& args,
+                          const stmt::BlockRef& body,
+                          const std::vector<ir::Buffer>& temp_bufs);
+
   // A simple version of the make function method,
   // regardless of the argument buffer information and IO information of
   // Argument, after building the function to optimize the buffer through pass
   static LoweredFunc Make(const std::string& name,
                           const std::vector<Argument>& args,
                           const Expr& body);
+
+  static LoweredFunc Make(const std::string& name,
+                          const std::vector<Argument>& args,
+                          const stmt::BlockRef& body);
 
   bool is_gpu_host() const { return cuda_axis_info.valid(); }
 
@@ -210,13 +222,15 @@ struct _LoweredFunc_ : public IrNode {
 
   //! Prepare the assumptions that a gpu axis should be less than its
   //! corresponding dim size, e.g. threadIdx.x < blockDim.x.
-  std::vector<Expr> PrepareAxisRangeAssumptions() const;
+  std::vector<ir::stmt::StmtRef> PrepareAxisRangeAssumptionStmts() const;
   std::vector<Expr> PrepareCreateTempBufferExprs() const;
   //! Prepare the expressions for `alloc_tmp_buffer_exprs`.
   std::vector<Expr> PrepareAllocTempBufferExprs() const;
+  std::vector<ir::stmt::StmtRef> PrepareAllocTempBufferStmts() const;
   std::vector<Expr> PrepareDeallocTempBufferExprs() const;
+  std::vector<ir::stmt::StmtRef> PrepareDeallocTempBufferStmts() const;
   std::vector<Expr> CudaPrepareAllocTempBufferExprs() const;
-  std::vector<Expr> CudaAliasVarExprs() const;
+  std::vector<ir::stmt::StmtRef> CudaAliasVarStmts() const;
   void PrepareBufferCastExprs(bool with_expr_gen_tensor = true);
   void PrepareCudaAxisInfoFromBody();
 

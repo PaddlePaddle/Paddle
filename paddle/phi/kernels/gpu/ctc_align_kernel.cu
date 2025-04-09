@@ -142,7 +142,7 @@ void CTCAlignOpCUDAKernel(const Context& dev_ctx,
 
     // set output lod
     std::vector<size_t> host_out_lod0(dev_out_lod0.begin(), dev_out_lod0.end());
-    phi::LoD out_lod;
+    phi::LegacyLoD out_lod;
     out_lod.push_back(host_out_lod0);
     output->set_lod(out_lod);
 

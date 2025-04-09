@@ -18,10 +18,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 PDNode *patterns::DenseFC::operator()() {
   auto *fc = pattern->NewNode(fc_repr())->assert_is_op("fc");
@@ -47,7 +44,8 @@ PDNode *patterns::DenseFC::operator()() {
 
   return fc_out;
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 DenseFCToSparsePass::DenseFCToSparsePass() {
   AddOpCompat(OpCompat("fc"))
@@ -140,9 +138,7 @@ void DenseFCToSparsePass::ApplyImpl(Graph *graph) const {
   AddStatis(found_dense_fc_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(dense_fc_to_sparse_pass,
               paddle::framework::ir::DenseFCToSparsePass);

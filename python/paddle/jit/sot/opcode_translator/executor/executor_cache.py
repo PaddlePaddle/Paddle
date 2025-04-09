@@ -24,8 +24,12 @@ from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    ENV_SOT_ENABLE_GUARD_TREE,
+    ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     BreakGraphError,
+    CompileCountInfo,
     FallbackError,
+    InfoCollector,
     InnerError,
     Singleton,
     is_strict_mode,
@@ -33,8 +37,10 @@ from ...utils import (
     log_do,
 )
 from ..custom_code import CustomCode
+from .function_graph import FunctionGraph
 from .guard import Guard
 from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
+from .virtual_frame import VirtualFrame
 
 if TYPE_CHECKING:
     import types
@@ -45,6 +51,8 @@ GuardedFunctions = List[GuardedFunction]
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
 dummy_guard.inlined_expr = "lambda frame: True"
+if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+    dummy_guard.mirror_guard = lambda frame: True
 
 
 class OpcodeExecutorCache(metaclass=Singleton):
@@ -81,6 +89,18 @@ class OpcodeExecutorCache(metaclass=Singleton):
         self.translate_count = 0
         self.code_symbolic_inputs.clear()
 
+    def dump_state(self):
+        return {
+            "cache": self.cache,
+            "translate_count": self.translate_count,
+            "code_symbolic_inputs": self.code_symbolic_inputs,
+        }
+
+    def load_state(self, state):
+        self.cache = state["cache"]
+        self.translate_count = state["translate_count"]
+        self.code_symbolic_inputs = state["code_symbolic_inputs"]
+
     def __call__(self, frame: types.FrameType, **kwargs) -> CustomCode:
         code: types.CodeType = frame.f_code
         if code not in self.cache:
@@ -111,37 +131,65 @@ class OpcodeExecutorCache(metaclass=Singleton):
             log(2, "[Cache]: Exceed max cache size, skip it\n")
             return CustomCode(None, False)
 
+        enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
+
         for custom_code, guard_fn in guarded_fns:
+            if enable_strict_guard:
+                mirror_guard_error = None
+                try:
+                    with EventGuard("try mirror guard"):
+                        mirror_guard_result = guard_fn.mirror_guard(frame)
+                except Exception as e:
+                    log(2, f"[Cache] Mirror guard error: {e}\n")
+                    mirror_guard_error = e
+
             try:
                 with EventGuard("try guard"):
                     guard_result = guard_fn(frame)
+                if enable_strict_guard:
+                    assert mirror_guard_result == guard_result, (
+                        "faster guard result is not equal to guard result, "
+                        f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
+                        f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                    )
                 if guard_result:
                     log(
                         2,
-                        f"[Cache]: Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                        f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     return custom_code
-                else:
+                elif not ENV_SOT_ENABLE_GUARD_TREE.get():
+                    # TODO(zrr1999): remove condition after faster guard tree support error analysis
                     log_do(
                         4,
                         self.analyse_guard_global_object(guard_fn),
                     )
                     log(
                         2,
-                        f"[Cache]: Cache miss, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                        f"[Cache] Cache miss, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     log_do(
                         2,
                         self.analyse_guard_error(guard_fn, frame),
                     )
             except Exception as e:
-                log(2, f"[Cache]: Guard function error: {e}\n")
+                log(2, f"[Cache] Guard function error: {e}\n")
                 log(
                     2,
-                    f"[Cache]: Guard string is: {getattr(guard_fn, 'expr', 'None')}\n",
+                    f"[Cache] Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                 )
-
-                continue
+                log_do(
+                    2,
+                    self.analyse_guard_error(guard_fn, frame),
+                )
+                if enable_strict_guard:
+                    assert type(e) == type(mirror_guard_error) and str(
+                        e
+                    ) == str(mirror_guard_error), (
+                        "mirror guard error is not equal to guard error, "
+                        f"guard_error: {e} \n"
+                        f"mirror_guard_error: {mirror_guard_error},"
+                    )
 
         log(2, "[Cache]: all guards missed\n")
         new_custom_code, guard_fn = self.translate(frame, **kwargs)
@@ -193,8 +241,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     result = guard(frame)
                 except Exception as e:
                     print(
-                        f"[Cache]: skip checking {guard_str}\n         because error occurred {e}"
+                        f"[Cache] Error occurred when checking guard {guard_str}: {e}"
                     )
+                    return
                 if result is False:
                     print(f"[Cache]: missed at {guard_str}")
                     return
@@ -216,11 +265,17 @@ def start_translate(
     Returns:
         tuple[CustomCode, Guard | None]: The translated code object and its guard function, or None if translation fails.
     """
-    simulator = OpcodeExecutor(frame, **kwargs)
+    graph = FunctionGraph(frame.f_code, frame.f_globals, **kwargs)
+    vframe = VirtualFrame.from_real_frame(frame, graph)
+    simulator = OpcodeExecutor(vframe, graph)
     try:
         simulator.check_code_simulatable()
+        InfoCollector().attach(CompileCountInfo, frame.f_code)
         with sot_simulation_mode_guard(True):
-            new_custom_code, guard_fn = simulator.transform()
+            new_custom_code, guard_fn = simulator.transform(frame)
+            if ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get():
+                assert guard_fn(frame)
+                assert guard_fn.mirror_guard(frame)
         if not simulator._graph.need_cache:
             return (
                 CustomCode(None, True),
@@ -233,16 +288,16 @@ def start_translate(
             f"Found BreakGraphError raised, it should not be catch at start_translate!\n{e}"
         )
     except FallbackError as e:
-        if simulator._code in NO_FALLBACK_CODES:
+        if simulator.vframe.code in NO_FALLBACK_CODES:
             raise InnerError(
-                f"{simulator._code.co_name} should not fallback, but got '{e}'"
+                f"{simulator.vframe.code.co_name} should not fallback, but got '{e}'"
             )
         # if disable_eval_frame is True, it means we want fallback to speedup rather than error occurred
         if is_strict_mode() and e.disable_eval_frame is False:
             raise
         log(
             2,
-            f"Unsupport Frame is {frame.f_code}, error message is: \n"
+            f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
         # simulation not complete, not sure whether this code has sir, set disable_eval_frame = False

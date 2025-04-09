@@ -26,10 +26,13 @@ class TestDiagV2Op(OpTest):
     def setUp(self):
         self.op_type = "diag_v2"
         self.python_api = paddle.diag
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.diag
 
         self.init_dtype()
         self.init_attrs()
         self.init_input_output()
+        self.set_input_output()
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -39,47 +42,61 @@ class TestDiagV2Op(OpTest):
         self.padding_value = 0.0
 
     def init_input_output(self):
-        x = np.random.rand(10, 10).astype(self.dtype)
-        out = np.diag(x, self.offset)
+        self.x = np.random.rand(10, 10).astype(self.dtype)
+        self.out = np.diag(self.x, self.offset)
 
+    def set_input_output(self):
         self.attrs = {
             'offset': self.offset,
             'padding_value': self.padding_value,
         }
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
+
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(check_pir=True)
+        else:
+            self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(['X'], 'Out', check_pir=True)
+        else:
+            self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestDiagV2OpCase1(TestDiagV2Op):
-    def init_config(self):
+    def init_attrs(self):
+        super().init_attrs()
         self.offset = 1
-        self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase2(TestDiagV2Op):
-    def init_config(self):
+    def init_attrs(self):
+        super().init_attrs()
         self.offset = -1
-        self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase3(TestDiagV2Op):
-    def init_config(self):
-        self.x = np.random.randint(-10, 10, size=(10, 10)).astype("float64")
+    def init_input_output(self):
+        self.x = np.random.randint(-10, 10, size=(10, 10)).astype(self.dtype)
         self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase4(TestDiagV2Op):
-    def init_config(self):
-        self.x = np.random.rand(100)
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_attrs(self):
+        super().init_attrs()
         self.padding_value = 2
+
+    def init_input_output(self):
+        self.x = np.random.rand(100).astype(self.dtype)
         n = self.x.size
         self.out = (
             self.padding_value * np.ones((n, n))
@@ -323,6 +340,8 @@ class TestDiagV2BF16OP(OpTest):
     def setUp(self):
         self.op_type = "diag_v2"
         self.python_api = paddle.diag
+        self.prim_op_type = "comp"
+        self.public_python_api = paddle.diag
         self.dtype = np.uint16
         x = np.random.rand(10, 10).astype(np.float32)
         offset = 0
@@ -339,29 +358,45 @@ class TestDiagV2BF16OP(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_pir=True, check_prim_pir=True
+        )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "xpu does not support complex64",
+)
 class TestDiagV2Complex64OP(TestDiagV2Op):
-    def init_config(self):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def init_input_output(self):
         self.x = (
             np.random.randint(-10, 10, size=(10, 10))
             + 1j * np.random.randint(-10, 10, size=(10, 10))
-        ).astype("complex64")
+        ).astype(self.dtype)
         self.out = np.diag(self.x, self.offset)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "xpu does not support complex128",
+)
 class TestDiagV2Complex128OP(TestDiagV2Op):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
     def init_config(self):
         self.x = (
             np.random.randint(-10, 10, size=(10, 10))
             + 1j * np.random.randint(-10, 10, size=(10, 10))
-        ).astype("complex128")
+        ).astype(self.dtype)
         self.out = np.diag(self.x, self.offset)
 
 

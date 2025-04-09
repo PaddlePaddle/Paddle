@@ -90,8 +90,7 @@ def train_resnet():
             resnet.clear_gradients()
 
             print(
-                "[Epoch %d, batch %d] loss: %.5f, acc1: %.5f, acc5: %.5f"
-                % (eop, batch_id, avg_loss, acc_top1, acc_top5)
+                f"[Epoch {eop}, batch {batch_id}] loss: {avg_loss:.5f}, acc1: {acc_top1:.5f}, acc5: {acc_top5:.5f}"
             )
 
     print("Distributed training completed")

@@ -17,14 +17,14 @@
 namespace paddle::operators::reader {
 
 PyReader::PyReader(
-    const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+    const std::shared_ptr<DenseTensorBlockingQueue>& queue,
     const std::vector<phi::DDim>& dims,
     const std::vector<framework::proto::VarType::Type>& var_types,
     const std::vector<bool>& need_check_feed)
     : framework::FileReader(dims, var_types, need_check_feed) {
   PADDLE_ENFORCE_NOT_NULL(queue,
                           common::errors::PreconditionNotMet(
-                              "LoDTensorBlockingQueue must not be null."));
+                              "DenseTensorBlockingQueue must not be null."));
   queue_ = queue;
 }
 

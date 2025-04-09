@@ -22,8 +22,7 @@
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class NCCLCommImpl : public NCCLComm {
  public:
@@ -327,7 +326,7 @@ BKCLComm* BKCLCommContext::CreateComm(
 
   BKCLContext_t comm = nullptr;
   phi::backends::xpu::SetXPUDeviceId(dev_id);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_init_rank(&comm, rank, nranks, bkcl_id));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_init_rank(&comm, rank, nranks, bkcl_id));
   auto* comm_wrapper = AssignBKCLComm(comm, nranks, rank, dev_id, ring_id);
   VLOG(1) << "bkcl communicator of rank " << rank << " in ring " << ring_id
           << " has been created on device " << dev_id;
@@ -612,5 +611,4 @@ void XCCLCommContext::ReleaseXCCLComms() {
 }
 
 #endif
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

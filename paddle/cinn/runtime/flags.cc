@@ -76,6 +76,22 @@ PD_DEFINE_bool(cinn_enable_grid_reduce,
                BoolFromEnv("FLAGS_cinn_enable_grid_reduce", true),
                "Whether to enable the grid reduce method.");
 
+PD_DEFINE_bool(cinn_enable_tile_broadcast,
+               BoolFromEnv("FLAGS_cinn_enable_tile_broadcast", true),
+               "Whether to enable the tile broadcast tactic.");
+
+PD_DEFINE_bool(cinn_enable_tile_transpose,
+               BoolFromEnv("FLAGS_cinn_enable_tile_transpose", true),
+               "Whether to enable the tile transpose tactic.");
+
+PD_DEFINE_bool(cinn_enable_rearrange_load,
+               BoolFromEnv("FLAGS_cinn_enable_rearrange_load", true),
+               "Whether to enable rearranging load instructions.");
+
+PD_DEFINE_bool(cinn_enable_vectorize,
+               BoolFromEnv("FLAGS_cinn_enable_vectorize", false),
+               "Whether to enable the grid reduce method.");
+
 PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
                "Whether to use op fusion pass.");
@@ -88,14 +104,6 @@ PD_DEFINE_bool(
     cinn_bc_branch_optimize,
     BoolFromEnv("FLAGS_cinn_bc_branch_optimize", true),
     "Whether to open the broadcast branch optimization in frontend.");
-
-PD_DEFINE_bool(cinn_bucket_compile,
-               BoolFromEnv("FLAGS_cinn_bucket_compile", true),
-               "Whether to enable bucket compile for dynamic shape.");
-
-PD_DEFINE_bool(group_schedule_tiling_first,
-               BoolFromEnv("FLAGS_group_schedule_tiling_first", true),
-               "Whether to enable new group scheduler tiling first strategy.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
@@ -245,21 +253,16 @@ PD_DEFINE_bool(enable_auto_tuner,
                BoolFromEnv("FLAGS_enable_auto_tuner", false),
                "Whether enable auto tuner.");
 
-PD_DEFINE_bool(auto_schedule_use_cost_model,
-               BoolFromEnv("FLAGS_auto_schedule_use_cost_model", true),
-               "Whether to use cost model in auto schedule, this is an "
-               "on-developing flag and it will be removed when "
-               "cost model is stable.");
-
 PD_DEFINE_bool(
     enhance_vertical_fusion_with_recompute,
     BoolFromEnv("FLAGS_enhance_vertical_fusion_with_recompute", true),
     "Whether to enhance check logic on vertical fusion with recompute");
 
-PD_DEFINE_bool(verbose_function_register,
-               BoolFromEnv("FLAGS_verbose_function_register", false),
-               "Whether to verbose function regist log. This will only work if "
-               "CINN build with flag -DWITH_DEBUG=ON.");
+PD_DEFINE_bool(
+    verbose_function_register,
+    BoolFromEnv("FLAGS_verbose_function_register", false),
+    "Whether to verbose function register log. This will only work if "
+    "CINN build with flag -DWITH_DEBUG=ON.");
 
 PD_DEFINE_int32(
     cinn_profiler_state,
@@ -299,6 +302,10 @@ PD_DEFINE_bool(cinn_check_tensor_buffer_map,
 PD_DEFINE_bool(cinn_longlong2int,
                BoolFromEnv("FLAGS_cinn_longlong2int", true),
                "Whether to cast long long to int for integer.");
+
+PD_DEFINE_bool(cinn_check_jit_instruction_shape,
+               BoolFromEnv("FLAGS_cinn_check_jit_instruction_shape", false),
+               "Whether to check shape in jit instruction.");
 
 namespace cinn {
 namespace runtime {
@@ -400,6 +407,16 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 
 void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
+  // Do nothing;
+#else
+  PADDLE_THROW(::common::errors::Fatal(
+      "Current CINN version does not support HygonDCU, please try to "
+      "recompile with -DWITH_ROCM."));
+#endif
+}
+
+void CheckCompileOptionImpl(cinn::common::HygonDCUArchSYCL) {
+#ifdef CINN_WITH_SYCL
   // Do nothing;
 #else
   PADDLE_THROW(::common::errors::Fatal(

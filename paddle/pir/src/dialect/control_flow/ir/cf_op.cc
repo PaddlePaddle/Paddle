@@ -19,7 +19,6 @@
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
-
 namespace pir {
 
 void YieldOp::Build(Builder &builder,
@@ -90,6 +89,27 @@ TuplePopOp TuplePushOp::tuple_pop_op() {
   return container_interface().tuple_pop_op();
 }
 
+void TuplePushOp::CacheGradOpSymbolicShape(
+    pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(this->operand_source(0));
+  std::string tuple_pop_name(TuplePopOp::name());
+  pir::InferSymbolicShapeCacheKey op_shape_info(
+      tuple_pop_name,
+      {x_shape},
+      pir::GetOrderedOriginalAttributes("cf.tuple_pop",
+                                        this->operation()->attributes()));
+
+  std::vector<symbol::ShapeOrDataDimExprs> pop_value_shape_list;
+  for (size_t index = 1; index < num_operands(); ++index) {
+    const auto &pop_value_shape_or_data =
+        infer_context->GetShapeOrDataForValue(this->operand_source(index));
+    pop_value_shape_list.emplace_back(pop_value_shape_or_data);
+  }
+  infer_context->SetOpInferSymbolicShapeCache(op_shape_info,
+                                              pop_value_shape_list);
+}
+
 void TuplePopOp::Build(Builder &builder,             // NOLINT
                        OperationArgument &argument,  // NOLINT
                        Value outlet) {
@@ -149,7 +169,9 @@ void TuplePopOp::VerifyRegion() {
       PADDLE_ENFORCE(
           outlet_element(index).type() == inlet_element(index).type(),
           common::errors::InvalidArgument(
-              "The %d element's push type (%s) isn't equal to pop type (%s)",
+              "tuple_pop[id:%d]: The %d element's push type (%s) isn't equal "
+              "to pop type (%s)",
+              operation()->id(),
               index,
               outlet_element(index).type(),
               inlet_element(index).type()));
@@ -202,11 +224,14 @@ void StackCreateOp::VerifySig() {
 
 bool StackCreateOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
-  const auto &null_shape_or_data =
-      symbol::ShapeOrDataDimExprs(symbol::NullShapeOrDataDimExpr());
-  infer_context->SetShapeOrDataForValue(result(0), null_shape_or_data);
-  infer_context->SetShapeOrDataForValue(result(1), null_shape_or_data);
-  infer_context->SetShapeOrDataForValue(result(2), null_shape_or_data);
+  std::vector<symbol::DimExpr> shape;
+  shape.emplace_back(symbol::DimExpr(infer_context->GetNextSymName()));
+  const symbol::ShapeOrDataDimExprs &mark_shape_or_data =
+      symbol::ShapeOrDataDimExprs(symbol::TensorShapeOrDataDimExprs(shape));
+
+  infer_context->SetShapeOrDataForValue(result(0), mark_shape_or_data);
+  infer_context->SetShapeOrDataForValue(result(1), mark_shape_or_data);
+  infer_context->SetShapeOrDataForValue(result(2), mark_shape_or_data);
   return true;
 }
 
@@ -239,10 +264,9 @@ TuplePopOp StackCreateOp::tuple_pop_op() {
 }
 
 void StackCreateOp::Print(IrPrinter &printer) {  // NOLINT
-  static std::unordered_map<IrPrinter *,
-                            std::unordered_map<Operation *, size_t>>
+  static std::unordered_map<uint64_t, std::unordered_map<Operation *, size_t>>
       kCounters;
-  auto &counter = kCounters[&printer];
+  auto &counter = kCounters[printer.id()];
   auto iter = counter.insert({*this, counter.size()});
   auto index = iter.first->second;
   if (iter.second) {

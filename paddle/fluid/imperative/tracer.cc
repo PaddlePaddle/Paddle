@@ -40,8 +40,7 @@ COMMON_DECLARE_string(tracer_onednn_ops_on);
 COMMON_DECLARE_string(tracer_onednn_ops_off);
 COMMON_DECLARE_bool(use_stride_kernel);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 thread_local std::string Tracer::python_stack_ = "";
 
 thread_local bool Tracer::use_layout_autotune_ = false;
@@ -649,5 +648,4 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
   }
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

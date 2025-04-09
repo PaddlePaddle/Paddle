@@ -456,13 +456,7 @@ class FleetUtil:
 
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
-            content = "%s\t%lu\t%s\t%s\t%d" % (
-                day,
-                xbox_base_key,
-                model_path,
-                pass_id,
-                0,
-            )
+            content = f"{day}\t{xbox_base_key}\t{model_path}\t{pass_id}\t{0}"
             configs = {
                 "fs.default.name": hadoop_fs_name,
                 "hadoop.job.ugi": hadoop_fs_ugi,
@@ -677,10 +671,10 @@ class FleetUtil:
         table_id = kwargs.get("table_id", 0)
 
         if pass_id != "-1":
-            suffix_name = "/%s/delta-%s/%03d_cache" % (day, pass_id, table_id)
+            suffix_name = f"/{day}/delta-{pass_id}/{table_id:03}_cache"
             model_path = output_path.rstrip("/") + suffix_name
         else:
-            suffix_name = "/%s/base/%03d_cache" % (day, table_id)
+            suffix_name = f"/{day}/base/{table_id:03}_cache"
             model_path = output_path.rstrip("/") + suffix_name
 
         if fleet.worker_index() == 0:
@@ -695,10 +689,7 @@ class FleetUtil:
                     f"not write because {donefile_path} already exists"
                 )
             else:
-                meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" % (
-                    file_num,
-                    key_num,
-                )
+                meta_str = f"file_prefix:part\npart_num:{file_num}\nkey_num:{key_num}\n"
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 client.upload(donefile_name, model_path)
@@ -1362,9 +1353,9 @@ class FleetUtil:
                 start += split_interval
                 continue
             if is_data_hourly_placed:
-                split_path.append("%02d" % h)
+                split_path.append(f"{h:02}")
             else:
-                split_path.append("%02d%02d" % (h, m))
+                split_path.append(f"{h:02}{m:02}")
             start += split_interval
 
         start = 0
@@ -1427,7 +1418,7 @@ class FleetUtil:
 
                 >>> # below is part of example model
                 >>> label = paddle.static.data(name="click", shape=[-1, 1],\
-                ...     dtype="int64", lod_level=0)
+                ...     dtype="int64")
                 >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
                 >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(\
                 ...     emb, min=-15.0, max=15.0), name="similarity_norm")\
@@ -1632,7 +1623,7 @@ class FleetUtil:
 
                 >>> # below is part of model
                 >>> label = paddle.static.data(name="click", shape=[-1, 1],\
-                ...     dtype="int64", lod_level=0)
+                ...     dtype="int64")
                 >>> emb = my_slot_net(slots, label) # emb can be fc layer of size 1
                 >>> similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(\
                 ...     emb, min=-15.0, max=15.0), name="similarity_norm")\
@@ -1699,7 +1690,7 @@ class FleetUtil:
         )
         self.rank0_print(
             f"{print_prefix} global AUC={auc:.6f} BUCKET_ERROR={bucket_error:.6f} MAE={mae:.6f} "
-            f"RMSE={rmse:.6f} Actural_CTR={actual_ctr:.6f} Predicted_CTR={predicted_ctr:.6f} "
+            f"RMSE={rmse:.6f} Actual_CTR={actual_ctr:.6f} Predicted_CTR={predicted_ctr:.6f} "
             f"COPC={copc:.6f} MEAN Q_VALUE={mean_predict_qvalue:.6f} Ins number={total_ins_num}"
         )
 
@@ -2023,13 +2014,7 @@ class GPUPSUtil(FleetUtil):
 
         if fleet.worker_index() == 0:
             donefile_path = output_path + "/" + donefile_name
-            content = "%s\t%lu\t%s\t%s\t%d" % (
-                day,
-                xbox_base_key,
-                model_path,
-                pass_id,
-                0,
-            )
+            content = f"{day}\t{xbox_base_key}\t{model_path}\t{pass_id}\t{0}"
             if self._afs.is_file(donefile_path):
                 self._afs.download(donefile_path, donefile_name)
                 pre_content = ""
@@ -2230,10 +2215,10 @@ class GPUPSUtil(FleetUtil):
         table_id = kwargs.get("table_id", 0)
 
         if pass_id != "-1":
-            suffix_name = "/%s/delta-%s/%03d_cache" % (day, pass_id, table_id)
+            suffix_name = f"/{day}/delta-{pass_id}/{table_id:03}_cache"
             model_path = output_path.rstrip("/") + suffix_name
         else:
-            suffix_name = "/%s/base/%03d_cache" % (day, table_id)
+            suffix_name = f"/{day}/base/{table_id:03}_cache"
             model_path = output_path.rstrip("/") + suffix_name
 
         if fleet.worker_index() == 0:
@@ -2244,10 +2229,7 @@ class GPUPSUtil(FleetUtil):
                     f"not write because {donefile_path} already exists"
                 )
             else:
-                meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" % (
-                    file_num,
-                    key_num,
-                )
+                meta_str = f"file_prefix:part\npart_num:{file_num}\nkey_num:{key_num}\n"
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 self._afs.upload(donefile_name, donefile_path)

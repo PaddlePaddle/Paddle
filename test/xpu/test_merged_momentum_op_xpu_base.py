@@ -29,7 +29,7 @@ def run_momentum_op(
     grads,
     velocities,
     master_params,
-    learning_rate,
+    learning_rates,
     place,
     multi_precision,
     mu=0.9,
@@ -39,6 +39,7 @@ def run_momentum_op(
 ):
     assert len(params) == len(grads)
     assert len(params) == len(velocities)
+    assert len(learning_rates) == len(params) or len(learning_rates) == 1
     if multi_precision:
         assert len(params) == len(master_params)
     op_type = 'merged_momentum' if use_merged else 'momentum'
@@ -64,11 +65,12 @@ def run_momentum_op(
                 )
                 for v in velocities
             ]
-            lr_var = helper.create_variable(
-                persistable=True,
-                shape=learning_rate.shape,
-                dtype=learning_rate.dtype,
-            )
+            lr_vars = [
+                helper.create_variable(
+                    persistable=True, shape=lr.shape, dtype=lr.dtype
+                )
+                for lr in learning_rates
+            ]
 
             feed_dict = OrderedDict()
 
@@ -98,8 +100,14 @@ def run_momentum_op(
                     ]
                 )
             )
-            feed_dict.update({lr_var.name: learning_rate})
-
+            feed_dict.update(
+                OrderedDict(
+                    [
+                        (lr_var.name, lr_val)
+                        for lr_var, lr_val in zip(lr_vars, learning_rates)
+                    ]
+                )
+            )
             if multi_precision:
                 master_param_vars = [
                     helper.create_variable(
@@ -129,6 +137,10 @@ def run_momentum_op(
                 for i, (p, g, v) in enumerate(
                     zip(param_vars, grad_vars, velocity_vars)
                 ):
+                    if len(lr_vars) == 1:
+                        lr_var = lr_vars[0]
+                    else:
+                        lr_var = lr_vars[i]
                     inputs = {
                         'Param': p,
                         'Grad': g,
@@ -158,7 +170,7 @@ def run_momentum_op(
                     'Param': param_vars,
                     'Grad': grad_vars,
                     'Velocity': velocity_vars,
-                    'LearningRate': lr_var,
+                    'LearningRate': lr_vars,
                 }
                 outputs = {'ParamOut': param_vars, 'VelocityOut': velocity_vars}
                 if multi_precision:
@@ -190,6 +202,7 @@ class TestMergedMomentumBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
+        self.lr_shapes = [[1]]
         self.seed = 10
         self.place = paddle.base.XPUPlace(0)
         self.__class__.use_xpu = True
@@ -197,17 +210,19 @@ class TestMergedMomentumBase(unittest.TestCase):
     def gen_rand_data(self, shapes, dtype):
         return [np.random.random(s).astype(dtype) for s in shapes]
 
-    def prepare_data(self, shapes, multi_precision, seed, dtype, place):
+    def prepare_data(
+        self, shapes, lr_shapes, multi_precision, seed, dtype, place
+    ):
         np.random.seed(seed)
         params = self.gen_rand_data(shapes, dtype)
         grads = self.gen_rand_data(shapes, dtype)
         velocities = self.gen_rand_data(shapes, dtype)
-        learning_rate = self.gen_rand_data([[1]], np.float32)[0]
+        learning_rates = self.gen_rand_data(lr_shapes, np.float32)
         if multi_precision:
             master_params = [p.astype(dtype) for p in params]
         else:
             master_params = None
-        return params, grads, velocities, master_params, learning_rate
+        return params, grads, velocities, master_params, learning_rates
 
     def check_with_place(self, place, dtype, multi_precision=False):
         (
@@ -215,9 +230,14 @@ class TestMergedMomentumBase(unittest.TestCase):
             grads,
             velocities,
             master_params,
-            learning_rate,
+            learning_rates,
         ) = self.prepare_data(
-            self.shapes, multi_precision, self.seed, dtype, place
+            self.shapes,
+            self.lr_shapes,
+            multi_precision,
+            self.seed,
+            dtype,
+            place,
         )
 
         def run_op(use_nesterov, use_merged):
@@ -227,7 +247,7 @@ class TestMergedMomentumBase(unittest.TestCase):
                 grads,
                 velocities,
                 master_params,
-                learning_rate,
+                learning_rates,
                 place,
                 multi_precision,
                 rescale_grad=rescale_grad,

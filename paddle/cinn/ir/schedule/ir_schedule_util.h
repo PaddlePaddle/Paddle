@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/ir/ir.h"
@@ -30,6 +29,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/cinn/utils/string.h"
@@ -64,6 +64,13 @@ Tensor GetReadTensor(const Expr& block, int index);
  * @return The extent of For node
  */
 int GetLoopExtent(const Expr& loop);
+
+/**
+ * \brief Given a For node, return its extent as int.
+ * @param loop The given For node
+ * @return The extent of For node
+ */
+int GetLoopExtent(const ir::stmt::For loop);
 
 /**
  * \brief Given a vector of Exprs, return whether they contain a var with
@@ -127,7 +134,7 @@ void ReplaceExpr(Expr* source,
  * Validate the factors param of Split. We will check if factors are validate
  * and change -1 to positive integer.
  * @param factors The original factors.
- * @param total_extent The extent of the loop to be splitted.
+ * @param total_extent The extent of the loop to be split.
  * @return return The validated factors.
  */
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
@@ -205,7 +212,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
                     DeviceAPI device_api);
 
 /**
- * Fidn cache tensor block's insertion point in the whole AST(root).
+ * Find cache tensor block's insertion point in the whole AST(root).
  * @param root The whole AST.
  * @param info The information of cache block.
  * @param is_write Are we inserting a write cache tensor or a read cache tensor.
@@ -548,7 +555,7 @@ struct RfMutator : public ir::IRMutator<> {
           true,
           ::common::errors::InvalidArgument(
               "The rfactor loop's minimum value should be zero."));
-      auto extent = cinn::common::AutoSimplify(rf_for->extent);
+      auto extent = optim::ArithSimplify(rf_for->extent);
       auto& shape = tensor->shape;
       auto& domain = tensor->domain;
       PADDLE_ENFORCE_LE(
@@ -666,9 +673,9 @@ struct LoopReconstructor : public ir::IRMutator<> {
         Var var(var_name, Int(32));
         loop_vars.push_back(var);
         loop_extents.push_back(range.extent);
-        iter_values.push_back(cinn::common::AutoSimplify(range.min) + var);
+        iter_values.push_back(optim::ArithSimplify(range.min) + var);
       } else {
-        iter_values.push_back(cinn::common::AutoSimplify(range.min));
+        iter_values.push_back(optim::ArithSimplify(range.min));
       }
     }
     auto schedule_block_node =
@@ -934,47 +941,6 @@ struct ChangeBodyToBlock : public ir::IRMutator<> {
   }
 };
 
-struct CacheReadRewriter : public ir::IRMutator<> {
- public:
-  static Expr Rewrite(const Expr& root, CacheBlockInfo* info) {
-    CacheReadRewriter rewriter(root, info);
-    Expr new_root = ir::ir_utils::IRCopy(root);
-    rewriter(&new_root);
-    return new_root;
-  }
-
-  void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
-
- private:
-  explicit CacheReadRewriter(const Expr& root, CacheBlockInfo* info)
-      : root_(root), info_(info) {}
-
-  void Visit(const ir::Block* expr, Expr* op) override {
-    if (*op == info_->loc_block) {
-      IRMutator::Visit(expr, op);
-      op->As<Block>()->stmts.insert(
-          op->As<Block>()->stmts.begin() + info_->loc_pos, info_->cache_block);
-    } else {
-      IRMutator::Visit(expr, op);
-    }
-  }
-
-  void Visit(const ir::Load* expr, Expr* op) override {
-    if (expr->tensor == Expr(info_->read_tensor)) {
-      IRMutator::Visit(expr, op);
-      op->As<Load>()->tensor = Expr(info_->write_tensor);
-    } else {
-      IRMutator::Visit(expr, op);
-    }
-  }
-
- private:
-  /*! \brief The parent scope of the insertion */
-  const Expr& root_;
-  /*! \brief The info for inserting cache stage */
-  CacheBlockInfo* info_;
-};
-
 struct CacheWriteRewriter : public ir::IRMutator<> {
  public:
   static Expr Rewrite(const Expr& root, CacheBlockInfo* info) {
@@ -1214,6 +1180,48 @@ struct FindBlocksVisitor {
   std::vector<Expr> result{};
 };
 
+struct FindSchedulesVisitor {
+  explicit FindSchedulesVisitor(const std::string& schedule_name = "")
+      : schedule_name_(schedule_name) {}
+
+  std::vector<stmt::StmtRef> operator()(const stmt::BlockRef& block) {
+    VisitBlock(block);
+    return result;
+  }
+
+ private:
+  void VisitStmt(const stmt::StmtRef& stmt) {
+    if (!stmt.defined()) return;
+    if (!schedule_name_.empty() && !result.empty()) return;
+    if (stmt.isa<stmt::For>()) {
+      VisitBlock(stmt.as<stmt::For>()->body());
+    } else if (stmt.isa<stmt::Schedule>()) {
+      if (stmt.as<stmt::Schedule>()->name().substr(0, 4) != "root") {
+        auto schedule_block = stmt.as<stmt::Schedule>();
+        if (schedule_name_.empty() ||
+            schedule_block->name() == schedule_name_) {
+          result.emplace_back(stmt);
+        }
+      } else {
+        VisitBlock(stmt.as<stmt::Schedule>()->body());
+      }
+    } else if (stmt.isa<stmt::IfThenElse>()) {
+      VisitBlock(stmt.as<stmt::IfThenElse>()->true_case());
+      if (stmt.as<stmt::IfThenElse>()->false_case().defined())
+        VisitBlock(stmt.as<stmt::IfThenElse>()->false_case());
+    }
+  }
+
+  void VisitBlock(const stmt::BlockRef& block) {
+    for (const stmt::StmtRef& inner_stmt : block->stmts()) {
+      VisitStmt(inner_stmt);
+    }
+  }
+
+  std::string schedule_name_;
+  std::vector<stmt::StmtRef> result{};
+};
+
 struct FindLoopsVisitor {
   explicit FindLoopsVisitor(const Expr& block) : block_(block) {}
 
@@ -1313,9 +1321,9 @@ struct FindBlockParent : public ir::IRMutator<> {
 };
 
 // The struct used to create all stmts after rfactor transformation.
-struct RfCreater : public ir::IRMutator<> {
+struct RfCreator : public ir::IRMutator<> {
  public:
-  RfCreater(const Expr& root, const Expr& rf_loop, const int& rf_axis)
+  RfCreator(const Expr& root, const Expr& rf_loop, const int& rf_axis)
       : root_(root), rf_loop_(rf_loop), rf_axis_(rf_axis) {}
   void operator()(Expr* expr) { IRMutator::Visit(expr, expr); }
 

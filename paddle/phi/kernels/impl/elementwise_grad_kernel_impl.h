@@ -237,7 +237,7 @@ struct DivDoubleDDOut {
 
 template <typename T>
 struct DivDoubleDDOut_Only_DDY {
-  HOSTDEVICE T operator()(const T& ddx,
+  HOSTDEVICE T operator()(const T& ddx UNUSED,
                           const T& ddy,
                           const T& y,
                           const T& out) const {
@@ -297,6 +297,84 @@ void ComputeDDoutWithBroadcast(const CPUContext& dev_ctx UNUSED,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
+/*
+Since __global__ does not allow std::vector as a type parameter,
+a custom CudaIntArray is used to pass an array containing a small number(<=8) of
+integers, e.g. pass an shape array(rank<=8) to a kernel function.
+*/
+#define MAX_SIZE 8
+#define STR(x) #x
+#define XSTR(x) STR(x)
+
+struct CudaIntArray {
+  int a0, a1, a2, a3, a4, a5, a6, a7;
+
+  CudaIntArray(const int& a0_,
+               const int& a1_,
+               const int& a2_,
+               const int& a3_,
+               const int& a4_,
+               const int& a5_,
+               const int& a6_,
+               const int& a7_)
+      : a0(a0_),
+        a1(a1_),
+        a2(a2_),
+        a3(a3_),
+        a4(a4_),
+        a5(a5_),
+        a6(a6_),
+        a7(a7_) {}
+
+  __device__ __host__ int operator[](const int64_t& idx) const {
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    assert(0 <= idx && idx < MAX_SIZE);
+#endif
+
+    switch (idx) {
+      case 0:
+        return a0;
+      case 1:
+        return a1;
+      case 2:
+        return a2;
+      case 3:
+        return a3;
+      case 4:
+        return a4;
+      case 5:
+        return a5;
+      case 6:
+        return a6;
+      case 7:
+        return a7;
+      default:
+        return 0;
+    }
+  }
+};
+
+CudaIntArray initCudaIntArray(const int* vec, const int& size) {
+  PADDLE_ENFORCE_LE(
+      size,
+      MAX_SIZE,
+      common::errors::OutOfRange(
+          "Given size to init CudaIntArray must be less than" XSTR(MAX_SIZE)));
+  PADDLE_ENFORCE_GT(
+      size,
+      0,
+      common::errors::OutOfRange(
+          "Given size to init CudaIntArray must be greater than 0"));
+  return CudaIntArray(size > 0 ? vec[0] : 0,
+                      size > 1 ? vec[1] : 0,
+                      size > 2 ? vec[2] : 0,
+                      size > 3 ? vec[3] : 0,
+                      size > 4 ? vec[4] : 0,
+                      size > 5 ? vec[5] : 0,
+                      size > 6 ? vec[6] : 0,
+                      size > 7 ? vec[7] : 0);
+}
+
 template <typename T, typename DDout_OP, typename OutType = T>
 __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
                                                       const T* ddy_data,
@@ -310,6 +388,7 @@ __global__ void ComputeDDoutWithoutBroadcastGPUKernel(const T* ddx_data,
   ddout_data[tid] =
       dout_op(ddx_data[tid], ddy_data[tid], y_data[tid], out_data[tid]);
 }
+
 template <typename T, typename DDout_OP, typename OutType = T>
 void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
                                   const phi::DenseTensor& ddx,
@@ -333,17 +412,18 @@ void ComputeDDoutWithoutBroadcast(const GPUContext& dev_ctx UNUSED,
 }
 
 template <typename T, typename DDout_OP, typename OutType = T>
-__global__ void ComputeDDoutWithBroadcastGPUKernel(const T* ddx_data,
-                                                   const T* ddy_data,
-                                                   const T* y_data,
-                                                   const T* out_data,
-                                                   T* ddout_data,
-                                                   int numel,
-                                                   const int* x_dims_array,
-                                                   const int* y_dims_array,
-                                                   const int* out_dims_array,
-                                                   const int max_dim,
-                                                   DDout_OP dout_op) {
+__global__ void ComputeDDoutWithBroadcastGPUKernel(
+    const T* ddx_data,
+    const T* ddy_data,
+    const T* y_data,
+    const T* out_data,
+    T* ddout_data,
+    int numel,
+    const CudaIntArray x_dims_array,
+    const CudaIntArray y_dims_array,
+    const CudaIntArray out_dims_array,
+    const int max_dim,
+    DDout_OP dout_op) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= numel) return;
   int x_index = 0, y_index = 0, x_index_prod = 1, y_index_prod = 1,
@@ -383,49 +463,14 @@ void ComputeDDoutWithBroadcast(const GPUContext& dev_ctx UNUSED,
   auto* y_data = y.data<T>();
   auto* out_data = out.data<T>();
   auto* ddout_data = ddout->data<T>();
-  DenseTensor x_dims_array_gpu;
-  x_dims_array_gpu.Resize({max_dim});
-  int* x_dims_array_gpu_data = dev_ctx.template Alloc<int>(&x_dims_array_gpu);
-#if defined(__NVCC__)
-  cudaMemcpy(x_dims_array_gpu_data,
-             x_dims_array,
-             sizeof(int) * max_dim,
-             cudaMemcpyHostToDevice);
-#else
-  hipMemcpy(x_dims_array_gpu_data,
-            x_dims_array,
-            sizeof(int) * max_dim,
-            hipMemcpyHostToDevice);
-#endif
-  DenseTensor y_dims_array_gpu;
-  y_dims_array_gpu.Resize({max_dim});
-  int* y_dims_array_gpu_data = dev_ctx.template Alloc<int>(&y_dims_array_gpu);
-#if defined(__NVCC__)
-  cudaMemcpy(y_dims_array_gpu_data,
-             y_dims_array,
-             sizeof(int) * max_dim,
-             cudaMemcpyHostToDevice);
-#else
-  hipMemcpy(y_dims_array_gpu_data,
-            y_dims_array,
-            sizeof(int) * max_dim,
-            hipMemcpyHostToDevice);
-#endif
-  DenseTensor out_dims_array_gpu;
-  out_dims_array_gpu.Resize({max_dim});
-  int* out_dims_array_gpu_data =
-      dev_ctx.template Alloc<int>(&out_dims_array_gpu);
-#if defined(__NVCC__)
-  cudaMemcpy(out_dims_array_gpu_data,
-             out_dims_array,
-             sizeof(int) * max_dim,
-             cudaMemcpyHostToDevice);
-#else
-  hipMemcpy(out_dims_array_gpu_data,
-            out_dims_array,
-            sizeof(int) * max_dim,
-            hipMemcpyHostToDevice);
-#endif
+
+  // Use the lightweight `CudaIntArray` structure to avoid unnecessary copy time
+  // caused by `cudaMemcpy` or `cudaMemcpyAsync`.
+  CudaIntArray x_dims_array_gpu_data = initCudaIntArray(x_dims_array, max_dim);
+  CudaIntArray y_dims_array_gpu_data = initCudaIntArray(y_dims_array, max_dim);
+  CudaIntArray out_dims_array_gpu_data =
+      initCudaIntArray(out_dims_array, max_dim);
+
   int block = 512;
   int64_t grid = (out_numel + block - 1) / block;
   auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
@@ -687,6 +732,7 @@ void DivideDoubleGradKernel(const Context& dev_ctx,
     }
   }
 }
+
 template <typename T, typename Context>
 void ElementwiseFMaxGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
@@ -1259,14 +1305,16 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
 template <typename T>
 struct MaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x > y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
 template <typename T>
 struct MaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x <= y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
@@ -1278,14 +1326,16 @@ struct MaxGradDy {
 template <typename T>
 struct MinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x < y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
 template <typename T>
 struct MinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x >= y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 

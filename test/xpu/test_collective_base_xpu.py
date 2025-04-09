@@ -140,12 +140,9 @@ class TestCollectiveRunnerBase:
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["dynamic_static_unified_comm"]:
-            _init_parallel_env("bkcl")
-        else:
-            self.initCommunicator(
-                startup_prog, rank, nranks, True, current_endpoint, endpoints
-            )
+
+        _init_parallel_env("bkcl")
+
         self.rank = rank
         np_dtype = DataTypeCast(args["dtype"])
         result = self.get_model(train_prog, startup_prog, np_dtype)
@@ -174,9 +171,6 @@ def runtime_main(test_class, col_type, sub_type):
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
     args["batch_size"] = os.getenv("BATCH_SIZE")
-    args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "1"))
-    )
     model.run_trainer(args)
 
 
@@ -215,6 +209,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w0_ep,
+            # 'XPUAPI_DEBUG': '0x1',
         }
 
         env1 = {
@@ -223,6 +218,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
+            # 'XPUAPI_DEBUG': '0x1',
         }
         # update environment
         env0.update(envs)
@@ -263,6 +259,8 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+        # sys.stdout.write(f'trainer 0 stdout: {tr0_out}\n')
+        # sys.stdout.write(f'trainer 1 stdout: {tr1_out}\n')
 
         def load_and_remove(path):
             with open(path, 'rb') as f:

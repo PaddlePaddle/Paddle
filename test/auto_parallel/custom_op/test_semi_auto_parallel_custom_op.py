@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import site
 import sys
 import unittest
 
@@ -31,9 +32,8 @@ class TestCustomOp(test_base.CommunicationTestDistBase):
         if os.name == 'nt':
             cmd = f'cd /d {cur_dir} && python custom_relu_setup.py install'
         else:
-            cmd = (
-                f'cd {cur_dir} && {sys.executable} custom_relu_setup.py install'
-            )
+            site_dir = site.getsitepackages()[0]
+            cmd = f'cd {cur_dir} && {sys.executable} custom_relu_setup.py install --install-lib={site_dir}'
         run_cmd(cmd)
 
     # test dynamic auto parallel run

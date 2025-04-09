@@ -37,10 +37,10 @@
           comment : The added input 'Atol' is not dispensable.
     - checkpoint : Delete two float attributes [rtol] and [atol],
         then add 2 string attributes [atol, rtol]. Don't be surprised.
-        This is because float cannot represent hight-precision
+        This is because float cannot represent height-precision
         floating-point values, and our framework doesn't support
         the use of double attributes. As a result, string instead
-        of double is used here to represent high-precision
+        of double is used here to represent height-precision
         floating-point values.
       action :
         - add_attr : rtol
@@ -566,7 +566,7 @@
 
 - op : round
   version :
-    - checkpoint : Add a new attribute [deciamls] to round
+    - checkpoint : Add a new attribute [decimals] to round
       action :
         - add_attr : decimals
           comment : The number of decimal places rounded

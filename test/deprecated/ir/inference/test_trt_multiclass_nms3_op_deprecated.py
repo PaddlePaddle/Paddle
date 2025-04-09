@@ -105,7 +105,7 @@ def multiclass_nms(
         or A 2-D DenseTensor with shape [No, 10] represents the detections.
         Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3,
         x4, y4]. No is the total number of detections.
-        If all images have not detected results, all elements in LoD will be
+        If all images have not detected results, all elements in LegacyLoD will be
         0, and output tensor is empty (None).
         Index: Only return when return_index is True. A 2-D DenseTensor with
         shape [No, 1] represents the selected index which type is Integer.
@@ -118,9 +118,9 @@ def multiclass_nms(
             import paddle
             from ppdet.modeling import ops
             boxes = paddle.static.data(name='bboxes', shape=[81, 4],
-                                      dtype='float32', lod_level=1)
+                                      dtype='float32')
             scores = paddle.static.data(name='scores', shape=[81],
-                                      dtype='float32', lod_level=1)
+                                      dtype='float32')
             out, index = ops.multiclass_nms(bboxes=boxes,
                                             scores=scores,
                                             background_label=0,

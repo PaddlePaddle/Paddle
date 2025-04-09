@@ -14,6 +14,8 @@
 
 include(ExternalProject)
 
+add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
+
 set(GLOG_PREFIX_DIR ${THIRD_PARTY_PATH}/glog)
 set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR

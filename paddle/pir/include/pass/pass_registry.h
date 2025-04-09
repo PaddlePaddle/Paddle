@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/pir/include/pass/pass.h"
 
 namespace pir {

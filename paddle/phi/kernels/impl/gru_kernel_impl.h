@@ -63,7 +63,7 @@ void GRUGradKernel(const Context &dev_ctx,
   auto hidden_dims = hidden.dims();
   int frame_size = hidden_dims[1];
 
-  phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
+  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   phi::DenseTensor batch_hidden_grad, batch_gate_grad,
       batch_reset_hidden_prev_grad;
   batch_hidden_grad.Resize(hidden_dims);
@@ -156,7 +156,7 @@ void GRUGradKernel(const Context &dev_ctx,
   }
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
-    phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
+    phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
     batch_gate_grad.set_lod(batch_gate.lod());
     to_seq(dev_ctx, batch_gate_grad, input_grad);
   }

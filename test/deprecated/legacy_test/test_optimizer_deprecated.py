@@ -37,18 +37,17 @@ class TestOptimizer(unittest.TestCase):
             mul_x = block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
-                lod_level=0,
                 name="mul.x",
                 optimize_attr=optimizer_attr,
             )
             mul_y = block.create_var(
-                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+                dtype="float32", shape=[10, 8], name="mul.y"
             )
             mul_out = block.create_var(
-                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+                dtype="float32", shape=[5, 8], name="mul.out"
             )
             mean_out = block.create_var(
-                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+                dtype="float32", shape=[1], name="mean.out"
             )
             block.append_op(
                 type="mul",
@@ -81,18 +80,17 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
             mul_x = block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
-                lod_level=0,
                 name="mul.x",
                 optimize_attr=optimizer_attr,
             )
             mul_y = block.create_var(
-                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+                dtype="float32", shape=[10, 8], name="mul.y"
             )
             mul_out = block.create_var(
-                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+                dtype="float32", shape=[5, 8], name="mul.out"
             )
             mean_out = block.create_var(
-                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+                dtype="float32", shape=[1], name="mean.out"
             )
             block.append_op(
                 type="mul",
@@ -133,15 +131,12 @@ class TestMomentumOptimizer(unittest.TestCase):
         mul_x = block.create_parameter(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="mul.x",
             optimize_attr={'learning_rate': 1.1},
         )
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
         block.append_op(
             type="mul",
@@ -153,9 +148,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         momentum_optimizer = self.MockMomentum(
             learning_rate=learning_rate, momentum=0.2
         )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
@@ -192,15 +185,12 @@ class TestMomentumOptimizer(unittest.TestCase):
         mul_x = block.create_parameter(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="mul.x",
             optimize_attr={'learning_rate': 1.1},
         )
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
         block.append_op(
             type="mul",
@@ -208,9 +198,7 @@ class TestMomentumOptimizer(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1},
         )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
@@ -263,15 +251,12 @@ class TestAdamOptimizer(unittest.TestCase):
         mul_x = block.create_parameter(
             dtype="float32",
             shape=[5, 10],
-            lod_level=0,
             name="mul.x",
             optimize_attr={'learning_rate': 1.1},
         )
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
         block.append_op(
             type="mul",
@@ -279,9 +264,7 @@ class TestAdamOptimizer(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1},
         )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
@@ -321,45 +304,32 @@ class TestRecomputeOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
+            dtype="float32", shape=[5, 10], name="mul.x"
         )
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
 
         if with_dropout is True:
             mul_out_drop = block.create_var(
                 dtype="float32",
                 shape=[5, 8],
-                lod_level=0,
                 name="mul.out.dropout",
             )
             mul_out_mask = block.create_var(
-                dtype="uint8", shape=[5, 8], lod_level=0, name="mul.out.mask"
+                dtype="uint8", shape=[5, 8], name="mul.out.mask"
             )
             if with_seed is True:
                 seed_out = block.create_var(
                     dtype="int32", shape=[1], name="seed.out"
                 )
 
-        b1 = block.create_parameter(
-            dtype="float32", shape=[5, 8], lod_level=0, name="b1"
-        )
-        b1_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out"
-        )
-        b2 = block.create_parameter(
-            dtype="float32", shape=[5, 8], lod_level=0, name="b2"
-        )
-        b2_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="b2_out"
-        )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        b1 = block.create_parameter(dtype="float32", shape=[5, 8], name="b1")
+        b1_out = block.create_var(dtype="float32", shape=[5, 8], name="b1_out")
+        b2 = block.create_parameter(dtype="float32", shape=[5, 8], name="b2")
+        b2_out = block.create_var(dtype="float32", shape=[5, 8], name="b2_out")
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mul",
             inputs={"X": mul_x, "Y": mul_y},
@@ -927,23 +897,15 @@ class TestGradientMergeOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         mul_x = block.create_parameter(
-            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
+            dtype="float32", shape=[5, 10], name="mul.x"
         )
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
+        mul_y = block.create_var(dtype="float32", shape=[10, 8], name="mul.y")
         mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            dtype="float32", shape=[5, 8], name="mul.out"
         )
-        b1 = block.create_parameter(
-            dtype="float32", shape=[5, 8], lod_level=0, name="b1"
-        )
-        b1_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out"
-        )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
+        b1 = block.create_parameter(dtype="float32", shape=[5, 8], name="b1")
+        b1_out = block.create_var(dtype="float32", shape=[5, 8], name="b1_out")
+        mean_out = block.create_var(dtype="float32", shape=[1], name="mean.out")
         block.append_op(
             type="mul",
             inputs={"X": mul_x, "Y": mul_y},

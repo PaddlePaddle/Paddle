@@ -38,7 +38,7 @@ std::set<std::string> OpsHandledInStaticBuild = {"conditional_block",
                                                  "read",
                                                  "while"};
 
-std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
+std::set<std::string> OpsCanSkippedFakeAllocInStaticBuild = {
     "c_comm_init",
     "comm_init_all",
     "c_comm_init_multitrainer",
@@ -62,9 +62,7 @@ std::set<std::string> StaticBuildBlackList = {
     "sparse_sparse_coo_tensor" /*: to handle sparse output*/,
     "distributed_fused_lamb_init"};
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 using InterpreterCore = framework::InterpreterCore;
 
@@ -78,13 +76,13 @@ static VarMetaInfo GetVarMetaInfo(const Scope& scope, const std::string& name) {
 
   if (var->IsType<phi::DenseTensor>()) {
     const phi::DenseTensor& tensor = var->Get<phi::DenseTensor>();
-    if (!UNLIKELY(!tensor.IsInitialized())) {
+    if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
     }
   } else if (var->IsType<phi::SelectedRows>()) {
     auto tensor = var->Get<phi::SelectedRows>().value();
-    if (!UNLIKELY(!tensor.IsInitialized())) {
+    if (!UNLIKELY(!tensor.has_allocation())) {
       dtype = tensor.dtype();
       place = tensor.place();
     }
@@ -132,7 +130,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type) ||
+    if (OpsCanSkippedFakeAllocInStaticBuild.count(op_type) ||
         OpsHandledInStaticBuild.count(op_type)) {
       continue;
     }
@@ -196,7 +194,7 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
                                    const std::string& parameter_name,
                                    const phi::TensorBase* tensor) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+  if (OpsCanSkippedFakeAllocInStaticBuild.count(op_type)) {
     return false;
   }
 
@@ -305,31 +303,33 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
                           const phi::DataType& dtype,
                           const phi::DataLayout& layout,
                           TensorType* tensor) {
-  PADDLE_ENFORCE_NE(place.GetType(),
-                    phi::AllocationType::UNDEFINED,
-                    common::errors::InvalidArgument(
-                        "The place %s to fake intialize is not valid.", place));
-  PADDLE_ENFORCE_NE(dtype,
-                    phi::DataType::UNDEFINED,
-                    common::errors::InvalidArgument(
-                        "The dtype %s to fake intialize is not valid.", dtype));
+  PADDLE_ENFORCE_NE(
+      place.GetType(),
+      phi::AllocationType::UNDEFINED,
+      common::errors::InvalidArgument(
+          "The place %s to fake initialize is not valid.", place));
+  PADDLE_ENFORCE_NE(
+      dtype,
+      phi::DataType::UNDEFINED,
+      common::errors::InvalidArgument(
+          "The dtype %s to fake initialize is not valid.", dtype));
   PADDLE_ENFORCE_NE(
       layout,
       phi::DataLayout::UNDEFINED,
       common::errors::InvalidArgument(
-          "The layout %s to fake intialize is not valid.", layout));
+          "The layout %s to fake initialize is not valid.", layout));
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
       common::errors::InvalidArgument(
-          "The tensor to fake intialize should not be null."));
+          "The tensor to fake initialize should not be null."));
 
-  if (tensor->initialized() && place == tensor->place() &&
+  if (tensor->has_allocation() && place == tensor->place() &&
       dtype == tensor->dtype() && tensor->layout() == layout) {
     return;
   }
 
   // set place
-  if (tensor->initialized()) {  // avoid overwriting valid data
+  if (tensor->has_allocation()) {  // avoid overwriting valid data
     phi::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
@@ -620,7 +620,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
       if (var->IsType<phi::DenseTensor>()) {
         // Clear all lod information for all lod_tensors.
         auto* t = var->GetMutable<phi::DenseTensor>();
-        phi::LoD empty_lod;
+        phi::LegacyLoD empty_lod;
         t->set_lod(empty_lod);
       } else if (var->IsType<phi::TensorArray>()) {
         // Clear elements of all tensor arrays.
@@ -644,7 +644,7 @@ void FakeInitializeOutputsForOperatorBase(
     Scope* scope,
     std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+  if (OpsCanSkippedFakeAllocInStaticBuild.count(op_type)) {
     return;
   }
 
@@ -766,7 +766,7 @@ phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
                                  const RuntimeContext& runtime_ctx,
                                  const std::string& attr_name) {
   int dtype_attr = op.Attr<int>(attr_name);
-  if (dtype_attr == -1) {  // -1 means the dtype is same as intput
+  if (dtype_attr == -1) {  // -1 means the dtype is same as input
     return GetInputDType(runtime_ctx, "X");
   }
   return phi::TransToPhiDataType(dtype_attr);
@@ -937,7 +937,7 @@ void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,
     ExecutionContext* execution_context) {
   const framework::OperatorBase& op = execution_context->GetOp();
-  if (OpsCanSkipedFakeAllocInStaticBuild.count(op.Type())) {
+  if (OpsCanSkippedFakeAllocInStaticBuild.count(op.Type())) {
     return;
   }
 
@@ -984,6 +984,4 @@ void FakeInitializeOutputsForStructureKernel(
   }
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

@@ -551,7 +551,7 @@ class While:
             >>> loop_len = paddle.full(shape=[1], dtype='int64', fill_value=10)
             >>> one = paddle.full(shape=[1], dtype='float32', fill_value=1)
             >>> data = paddle.static.data(name='data', shape=[1], dtype='float32')
-            >>> sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained >>> ouside of While, which name should be different from the variable inside the While to be obtained
+            >>> sums = paddle.full(shape=[1], dtype='float32', fill_value=0)  # Define the variable to be obtained outside of While, which name should be different from the variable inside the While to be obtained
 
             >>> cond = paddle.less_than(x=i, y=loop_len)
             >>> while_op = paddle.static.nn.control_flow.While(cond=cond)
@@ -743,7 +743,7 @@ class LoopVar:
             return create_loop_var_like(while_op, next_var)
         if is_sequence(next_var):
             return map_structure(
-                lambda var: create_loop_var_like(while_op, var),
+                lambda var: self.infer_type_with_next_var(var, while_op),
                 next_var,
             )
         return LoopVar(self.curr_var, next_var, self.block_arg)
@@ -910,6 +910,23 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             loop_vars = infer_loop_vars_type_with_next_vars(
                 loop_vars, next_vars
             )
+
+            from paddle.jit.dy2static.convert_operators import (
+                to_static_variable,
+            )
+
+            def check_next_var(loop_var):
+                if not loop_var.is_variable_curr_var:
+                    return
+                if not isinstance(
+                    loop_var.next_var, paddle.pir.Value
+                ) and not isinstance(loop_var.next_var, (bool, float, int)):
+                    raise ValueError(
+                        "The loop var in the while op is variable, but the corresponding yielded var is not variable, and it is not a constant of type bool, int, or float."
+                    )
+                loop_var.next_var = to_static_variable(loop_var.next_var)
+
+            paddle.utils.map_structure(check_next_var, loop_vars)
 
             next_cond = cond(
                 *map_structure(lambda var: var.next_var, loop_vars)
@@ -1512,7 +1529,10 @@ class OutputSelector:
                     return out.dtype
             return None
 
-        if all(arg is None for arg in outs):
+        if all(isinstance(out, paddle.pir.Value) for out in outs):
+            return outs
+
+        if all(out is None for out in outs):
             return outs
 
         if all(

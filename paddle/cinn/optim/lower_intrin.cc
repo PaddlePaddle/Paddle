@@ -26,11 +26,11 @@ namespace cinn {
 namespace optim {
 
 template <typename T>
-void LowerIntrinImpl(const T &, const Target &target, ir::Module m) {
+void LowerIntrinImpl(const T &, const Target &target, ir::Expr *expr) {
   // Do nothing.
 }
 
-void LowerIntrinImpl(common::X86Arch, const Target &target, ir::Module module) {
+void LowerIntrinImpl(common::X86Arch, const Target &target, ir::Expr *expr) {
   codegen::RegisterCpuIntrinRule();
 
   struct Mutator : ir::IRMutator<Expr *> {
@@ -38,7 +38,9 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, ir::Module module) {
 
     explicit Mutator(Target target) : target(target) {}
 
-    void operator()(ir::Module m) { IRMutator::Visit(m.As<ir::_Module_>()); }
+    void operator()(ir::Expr *expr) {
+      ir::IRMutator<ir::Expr *>::Visit(expr, expr);
+    }
 
     void Visit(const ir::Add *op, Expr *expr) override {
       auto *node = expr->As<ir::Add>();
@@ -105,17 +107,17 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, ir::Module module) {
   };
 
   Mutator m(target);
-  m(module);
+  m(expr);
 }
 
-void LowerIntrinByArch(ir::Module m, const Target &target) {
+void LowerIntrinByArch(ir::Expr *expr, const Target &target) {
   return std::visit(
-      [&](const auto &impl) { return LowerIntrinImpl(impl, target, m); },
+      [&](const auto &impl) { return LowerIntrinImpl(impl, target, expr); },
       target.arch.variant());
 }
 
-void LowerIntrin(ir::Module m, Target target) {
-  return LowerIntrinByArch(m, target);
+void LowerIntrin(ir::Expr *expr, Target target) {
+  return LowerIntrinByArch(expr, target);
 }
 
 }  // namespace optim

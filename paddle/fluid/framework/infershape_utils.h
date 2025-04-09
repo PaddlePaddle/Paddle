@@ -70,7 +70,7 @@ class CompatMetaTensor : public phi::MetaTensor {
   bool operator!() const override { return !initialized_; }
 
  private:
-  const LoD& GetRuntimeLoD() const {
+  const LegacyLoD& GetRuntimeLoD() const {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
     return var->Get<phi::DenseTensor>().lod();
   }

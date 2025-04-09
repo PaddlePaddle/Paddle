@@ -18,16 +18,16 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/cpython_internals.h"
 #include "paddle/fluid/pybind/sot/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/frame_proxy.h"
 
 #include <Python.h>
-#include <frameobject.h>
 
-#if PY_3_8_PLUS && PY_VERSION_HEX < PY_3_9_0_HEX
+#if PY_3_8_PLUS && !PY_3_9_PLUS
 #define Py_BUILD_CORE  // internal/pycore_pymem.h need this macro
 #include <internal/pycore_pystate.h>
 #undef Py_BUILD_CORE
 #endif
-#if PY_VERSION_HEX < PY_3_11_0_HEX
+#if !PY_3_11_PLUS
 #include <code.h>
 #endif
 
@@ -35,115 +35,8 @@ limitations under the License. */
 #include <pystate.h>
 
 #if PY_3_11_PLUS
-// To avoid the error: undefined symbol: _PyFrame_GetFrameObject, all we need is
-// to redefine this function based source code in python3.11. The advantage is
-// that we don't need any modification in eval_frame functions.
-typedef _PyInterpreterFrame FrameObject;
 #define CALL_STAT_INC(name) ((void)0)
 
-// clang-format off
-// Define a proxy PyObject to access _PyInterpreterFrame's properties.
-// It will be passed as an argument to the eval frame's callback.
-typedef struct PyInterpreterFrameProxy {
-  PyObject_HEAD
-  _PyInterpreterFrame *frame;
-  #if PY_3_13_PLUS
-  PyObject* locals;
-  #endif
-} PyInterpreterFrameProxy;
-// clang-format on
-
-#define DECLARE_PROXY_PROPERTY(name)                        \
-  static PyObject *PyInterpreterFrameProxy_property_##name( \
-      PyInterpreterFrameProxy *self, void *closure) {       \
-    Py_XINCREF(self->frame->name);                          \
-    return (PyObject *)self->frame->name;                   \
-  }
-
-// clang-format off
-#define REGISTER_PROXY_PROPERTY(property_name, func_name) \
-  { #property_name, (getter)PyInterpreterFrameProxy_property_##func_name, NULL, NULL, NULL }
-// clang-format on
-
-#if PY_3_13_PLUS
-DECLARE_PROXY_PROPERTY(f_executable)
-#else
-DECLARE_PROXY_PROPERTY(f_code)
-#endif
-#if PY_3_13_PLUS
-static PyObject *PyInterpreterFrameProxy_property_f_locals(
-    PyInterpreterFrameProxy *self, void *closure) {
-  Py_XINCREF(self->locals);
-  return self->locals;
-}
-#else
-DECLARE_PROXY_PROPERTY(f_locals)
-#endif
-DECLARE_PROXY_PROPERTY(f_globals)
-DECLARE_PROXY_PROPERTY(f_builtins)
-
-// Refer to
-// https://github.com/python/cpython/blob/9414ddf91898892f3f6a672ae946931ee4b3ceb7/Objects/frameobject.c#L953-L961
-static PyObject *PyInterpreterFrameProxy_method_repr(
-    PyInterpreterFrameProxy *self) {
-#if PY_3_13_PLUS
-  int lineno = Internal_PyUnstable_InterpreterFrame_GetLine(self->frame);
-#else
-  int lineno = Internal_PyInterpreterFrame_GetLine(self->frame);
-#endif
-  PyCodeObject *code = PyFrame_GET_CODE(self->frame);
-  return PyUnicode_FromFormat(
-      "<PyInterpreterFrameProxy at %p, file %R, line %d, code %S>",
-      self,
-      code->co_filename,
-      lineno,
-      code->co_name);
-}
-
-static PyGetSetDef PyInterpreterFrameProxy_properties[] = {
-#if PY_3_13_PLUS
-    REGISTER_PROXY_PROPERTY(f_code, f_executable),
-#else
-    REGISTER_PROXY_PROPERTY(f_code, f_code),
-#endif
-    REGISTER_PROXY_PROPERTY(f_locals, f_locals),
-    REGISTER_PROXY_PROPERTY(f_globals, f_globals),
-    REGISTER_PROXY_PROPERTY(f_builtins, f_builtins),
-    {NULL} /* Sentinel */
-};
-
-// clang-format off
-static PyTypeObject PyInterpreterFrameProxyType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "paddle.framework.core.PyInterpreterFrameProxy",
-    .tp_doc = PyDoc_STR("A proxy object for _PyInterpreterFrame, "
-                        "it's only define all properties we need."),
-    .tp_repr = (reprfunc)PyInterpreterFrameProxy_method_repr,
-    .tp_basicsize = sizeof(PyInterpreterFrameProxy),
-    .tp_itemsize = 0,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_getset = PyInterpreterFrameProxy_properties,
-};
-// clang-format on
-
-PyInterpreterFrameProxy *PyInterpreterFrameProxy_New(
-    _PyInterpreterFrame *frame) {
-  PyTypeObject *type = &PyInterpreterFrameProxyType;
-  PyInterpreterFrameProxy *self =
-      (PyInterpreterFrameProxy *)type->tp_alloc(type, 0);
-  if (!self) {
-    // VLOG(7) << "Failed to allocate PyInterpreterFrameProxy";
-    return NULL;
-  }
-  self->frame = frame;
-#if PY_3_13_PLUS
-  self->locals = NULL;
-#endif
-  return self;
-}
-
-#else
-typedef PyFrameObject FrameObject;
 #endif
 
 #ifdef _WIN32
@@ -354,7 +247,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
 #if PY_3_13_PLUS
-  PyObject *f_locals = Internal_PyFrame_GetLocals(frame);
+  PyObject *f_locals = get_framelocals_mapping(frame);
   if (f_locals == NULL) {
 #else
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
@@ -555,13 +448,6 @@ PyMODINIT_FUNC PyInit__eval_frame() {
 
   Py_INCREF(Py_None);
   eval_frame_callback_set(Py_None);
-
-#if PY_3_11_PLUS
-  if (PyType_Ready(&PyInterpreterFrameProxyType) < 0) {
-    // VLOG(7) << "PyInterpreterFrameProxyType has not been ready!";
-  }
-  Py_INCREF(&PyInterpreterFrameProxyType);
-#endif
 
   return NULL;
 }

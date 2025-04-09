@@ -315,7 +315,7 @@ void PD_TensorResetLoD(PD_Tensor* tensor,
     *status = C_SUCCESS;
   }
 
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   auto offset_ptr = static_cast<size_t*>(offset.data);
   auto data_ptr = static_cast<size_t*>(data.data);
 

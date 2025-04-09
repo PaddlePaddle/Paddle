@@ -93,9 +93,9 @@ class PipelineOptimizer(MetaOptimizerBase):
                 continue
 
             block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
+                type='broadcast',
+                inputs={'x': param},
+                outputs={'out': param},
                 attrs={
                     'ring_id': ring_id,
                     'root': 0,
@@ -308,12 +308,12 @@ class PipelineOptimizer(MetaOptimizerBase):
 
                     block._insert_op(
                         first_optimize_op_idx + offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
+                        type='all_reduce',
+                        inputs={'x': grad},
+                        outputs={'out': grad},
                         attrs={
                             'ring_id': ring_id,
-                            'use_calc_stream': True,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )

@@ -30,8 +30,8 @@ std::string Dim::range_repr() const {
 
 Dim::Dim(std::string id, ir::Expr lower_bound, ir::Expr upper_bound)
     : id(std::move(id)), lower_bound(lower_bound), upper_bound(upper_bound) {
-  optim::Simplify(&this->lower_bound);
-  optim::Simplify(&this->upper_bound);
+  this->lower_bound = optim::ArithSimplify(this->lower_bound);
+  this->lower_bound = optim::ArithSimplify(this->upper_bound);
 }
 
 }  // namespace poly

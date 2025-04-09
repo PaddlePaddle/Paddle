@@ -29,8 +29,7 @@ PHI_DEFINE_EXPORTED_bool(
     "Checking whether operator contains unused inputs, "
     "especially for grad operator. It should be in unittest.");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::unordered_set<std::string> *GetThreadLocalUsedVarNameSet() {
   thread_local std::unordered_set<std::string> used_var_name_set;
@@ -86,7 +85,7 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
     return;
   }
   auto *used_set = GetThreadLocalUsedVarNameSet();
-  std::vector<std::string> unsed_input_var_names;
+  std::vector<std::string> unused_input_var_names;
   auto &inferer = op.Info().NoNeedBufferVarsInferer();
   std::unordered_set<std::string> no_need_buffer_ins = {};
   if (inferer) {
@@ -105,16 +104,17 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
         if (in_var != nullptr && in_var->IsInitialized()) {
           auto *tensor = &in_var->Get<phi::DenseTensor>();
           if (tensor != nullptr && tensor->IsInitialized()) {
-            unsed_input_var_names.emplace_back(pair.first);
+            unused_input_var_names.emplace_back(pair.first);
             break;
           }
         }
       }
     }
   }
-  if (!unsed_input_var_names.empty()) {
-    std::string err_msg = "Operator " + op.Type() + " has input(s) not uesed: ";
-    for (auto &in_var_name : unsed_input_var_names) {
+  if (!unused_input_var_names.empty()) {
+    std::string err_msg =
+        "Operator " + op.Type() + " has input(s) not unused: ";
+    for (auto &in_var_name : unused_input_var_names) {
       err_msg += in_var_name;
       err_msg += ", ";
     }
@@ -126,12 +126,11 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
         "allow list in unused_var_check.cc. See more details at "
         "[https://github.com/PaddlePaddle/Paddle/wiki/"
         "OP-Should-Not-Have-Unused-Input]";
-    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(),
+    PADDLE_ENFORCE_EQ(unused_input_var_names.size(),
                       0,
                       common::errors::PermissionDenied(
                           "Unused input variables check failed: %s", err_msg));
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -45,10 +45,13 @@ class TestExecutor(unittest.TestCase):
         )
 
         self.assertEqual((100, 100), res.shape)
-        np.testing.assert_allclose(res, np.dot(a_np, b_np), rtol=1e-05)
-        np.testing.assert_allclose(res_array[0], a_np, rtol=1e-05)
-        np.testing.assert_allclose(res_array[1], b_np, rtol=1e-05)
-        np.testing.assert_allclose(res_array[2], res, rtol=1e-05)
+        rtol = 1e-5
+        if paddle.is_compiled_with_xpu():
+            rtol = 1e-4
+        np.testing.assert_allclose(res, np.dot(a_np, b_np), rtol=rtol)
+        np.testing.assert_allclose(res_array[0], a_np, rtol=rtol)
+        np.testing.assert_allclose(res_array[1], b_np, rtol=rtol)
+        np.testing.assert_allclose(res_array[2], res, rtol=rtol)
 
 
 if __name__ == '__main__':

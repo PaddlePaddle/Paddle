@@ -20,6 +20,7 @@ from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
+    xpu_matmul_quant_type_guard,
 )
 from op_test import OpTest
 
@@ -64,102 +65,103 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             self.has_shortcut = False
 
         def Base(self):
-            conv1_weight = base.ParamAttr(
-                initializer=paddle.nn.initializer.XavierNormal(),
-                learning_rate=0.001,
-            )
-            conv2_weight = base.ParamAttr(
-                initializer=paddle.nn.initializer.XavierNormal(),
-                learning_rate=0.001,
-            )
-            conv3_weight = base.ParamAttr(
-                initializer=paddle.nn.initializer.XavierNormal(),
-                learning_rate=0.001,
-            )
-            bn1_weight = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=1.0)
-            )
-            bn1_bias = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=0.0)
-            )
-            bn2_weight = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=1.0)
-            )
-            bn2_bias = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=0.0)
-            )
-            bn3_weight = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=1.0)
-            )
-            bn3_bias = base.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(value=0.0)
-            )
+            with xpu_matmul_quant_type_guard("float"):
+                conv1_weight = base.ParamAttr(
+                    initializer=paddle.nn.initializer.XavierNormal(),
+                    learning_rate=0.001,
+                )
+                conv2_weight = base.ParamAttr(
+                    initializer=paddle.nn.initializer.XavierNormal(),
+                    learning_rate=0.001,
+                )
+                conv3_weight = base.ParamAttr(
+                    initializer=paddle.nn.initializer.XavierNormal(),
+                    learning_rate=0.001,
+                )
+                bn1_weight = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=1.0)
+                )
+                bn1_bias = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.0)
+                )
+                bn2_weight = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=1.0)
+                )
+                bn2_bias = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.0)
+                )
+                bn3_weight = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=1.0)
+                )
+                bn3_bias = base.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.0)
+                )
 
-            self.conv1 = nn.Conv2D(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
-                kernel_size=3,
-                stride=self.stride,
-                padding=1,
-                weight_attr=conv1_weight,
-                bias_attr=None,
-                data_format='NCHW',
-            )
-            self.bn1 = paddle.nn.BatchNorm(
-                self.out_channels,
-                act='relu',
-                param_attr=bn1_weight,
-                bias_attr=bn1_bias,
-                data_layout='NCHW',
-            )
-            self.conv2 = nn.Conv2D(
-                in_channels=self.out_channels,
-                out_channels=self.out_channels,
-                kernel_size=3,
-                stride=1,
-                padding=1,
-                weight_attr=conv2_weight,
-                bias_attr=None,
-                data_format='NCHW',
-            )
-            self.bn2 = paddle.nn.BatchNorm(
-                self.out_channels,
-                act=None,
-                param_attr=bn2_weight,
-                bias_attr=bn2_bias,
-                data_layout='NCHW',
-            )
-            self.conv3 = nn.Conv2D(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
-                kernel_size=1,
-                stride=self.stride,
-                padding=0,
-                weight_attr=conv3_weight,
-                bias_attr=None,
-                data_format='NCHW',
-            )
-            self.bn3 = paddle.nn.BatchNorm(
-                self.out_channels,
-                act=None,
-                param_attr=bn3_weight,
-                bias_attr=bn3_bias,
-                data_layout='NCHW',
-            )
-            self.relu = nn.ReLU()
+                self.conv1 = nn.Conv2D(
+                    in_channels=self.in_channels,
+                    out_channels=self.out_channels,
+                    kernel_size=3,
+                    stride=self.stride,
+                    padding=1,
+                    weight_attr=conv1_weight,
+                    bias_attr=None,
+                    data_format='NCHW',
+                )
+                self.bn1 = paddle.nn.BatchNorm(
+                    self.out_channels,
+                    act='relu',
+                    param_attr=bn1_weight,
+                    bias_attr=bn1_bias,
+                    data_layout='NCHW',
+                )
+                self.conv2 = nn.Conv2D(
+                    in_channels=self.out_channels,
+                    out_channels=self.out_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    weight_attr=conv2_weight,
+                    bias_attr=None,
+                    data_format='NCHW',
+                )
+                self.bn2 = paddle.nn.BatchNorm(
+                    self.out_channels,
+                    act=None,
+                    param_attr=bn2_weight,
+                    bias_attr=bn2_bias,
+                    data_layout='NCHW',
+                )
+                self.conv3 = nn.Conv2D(
+                    in_channels=self.in_channels,
+                    out_channels=self.out_channels,
+                    kernel_size=1,
+                    stride=self.stride,
+                    padding=0,
+                    weight_attr=conv3_weight,
+                    bias_attr=None,
+                    data_format='NCHW',
+                )
+                self.bn3 = paddle.nn.BatchNorm(
+                    self.out_channels,
+                    act=None,
+                    param_attr=bn3_weight,
+                    bias_attr=bn3_bias,
+                    data_layout='NCHW',
+                )
+                self.relu = nn.ReLU()
 
-            tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
-            if self.has_shortcut:
-                z_out = self.bn3(self.conv3(tensor_src))
-            else:
-                z_out = tensor_src
-            bn1_out = self.bn1(self.conv1(tensor_src))
-            bn2_out = self.bn2(self.conv2(bn1_out))
-            result = self.relu(bn2_out + z_out)
-            paddle.autograd.backward(
-                [result], [paddle.to_tensor(self.dout)], True
-            )
-            return result, tensor_src.grad
+                tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
+                if self.has_shortcut:
+                    z_out = self.bn3(self.conv3(tensor_src))
+                else:
+                    z_out = tensor_src
+                bn1_out = self.bn1(self.conv1(tensor_src))
+                bn2_out = self.bn2(self.conv2(bn1_out))
+                result = self.relu(bn2_out + z_out)
+                paddle.autograd.backward(
+                    [result], [paddle.to_tensor(self.dout)], True
+                )
+                return result, tensor_src.grad
 
         def FusedResNetBasicBlock(self):
             fused_conv1_weight = base.ParamAttr(

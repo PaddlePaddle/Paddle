@@ -280,16 +280,8 @@ class HybridCommunicateGroup:
                 self._set_four_directions_p2p_group()
 
         debug_str = (
-            "HybridParallelInfo: rank_id: %d, mp_degree: %d, "
-            "sharding_degree: %d, pp_degree: %d, dp_degree: %d, sep_degree: %d"
-            % (
-                self.global_rank,
-                self._mp_degree,
-                self._sharding_degree,
-                self._pp_degree,
-                self._dp_degree,
-                self._sep_degree,
-            )
+            f"HybridParallelInfo: rank_id: {self.global_rank}, mp_degree: {self._mp_degree}, "
+            f"sharding_degree: {self._sharding_degree}, pp_degree: {self._pp_degree}, dp_degree: {self._dp_degree}, sep_degree: {self._sep_degree}"
         )
         debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)

@@ -40,8 +40,7 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
     size_t id,
@@ -156,5 +155,4 @@ void OneDNNMixedPhiKernelInstruction::Run() {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -168,7 +168,7 @@ class CublasLtAlgoCache {
                                            cudaDataType_t bias_type,
                                            cudaDataType_t c_type,
                                            cudaStream_t stream) {
-    // If we don't have config file and we donot search, here return nullptr
+    // If we don't have config file and we do not search, here return nullptr
     if (!has_config_file_ && search_times_ <= 0) {
       return nullptr;
     }

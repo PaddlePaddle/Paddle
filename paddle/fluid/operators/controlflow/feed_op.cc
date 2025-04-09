@@ -75,7 +75,7 @@ class FeedOp : public framework::OperatorWithKernel {
       meta.dims = feed_tensor.dims();
       meta.dtype = feed_tensor.dtype();
       meta.layout = feed_tensor.layout();
-      meta.lod = feed_tensor.lod();
+      meta.legacy_lod = feed_tensor.lod();
       meta.strides = feed_tensor.strides();
       if (meta.strides.size() == -1) {
         meta.strides = meta.calc_strides(meta.dims);

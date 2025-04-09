@@ -31,7 +31,7 @@ class FCFusePassTest(PassTest):
     def setUp(self):
         with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
-                name="data", shape=[32, 128], dtype="float32", lod_level=0
+                name="data", shape=[32, 128], dtype="float32"
             )
             tmp_0 = paddle.static.nn.fc(
                 x=data, size=128, num_flatten_dims=1, activation="relu"

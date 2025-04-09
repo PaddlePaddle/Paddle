@@ -77,6 +77,13 @@ class CustomLayer(paddle.nn.Layer):
         return x.numpy()
 
 
+def get_arg_from_kwargs(x, **kwargs):
+    x = x if x is not None else None
+    y = kwargs.get("y", None)
+    paddle.jit.sot.psdb.breakgraph()
+    return x, y
+
+
 class TestMinGraphSize(TestCaseBase):
     @min_graph_size_guard(10)
     def test_cases(self):
@@ -93,9 +100,21 @@ class TestMinGraphSize(TestCaseBase):
         self.assert_results(layer.forward, x)
 
     @min_graph_size_guard(10)
+    def test_layer_multiple_times(self):
+        x = paddle.to_tensor(1)
+        layer = CustomLayer()
+        for _ in range(8):
+            self.assert_results(layer.forward, x)
+
+    @min_graph_size_guard(10)
     def test_call_with_kwargs(self):
         x = paddle.to_tensor(1)
         self.assert_results(call_with_kwargs, x)
+
+    @min_graph_size_guard(10)
+    def test_get_arg_from_kwargs(self):
+        self.assert_results(get_arg_from_kwargs, None)
+        self.assert_results(get_arg_from_kwargs, None, y=1)
 
 
 if __name__ == "__main__":

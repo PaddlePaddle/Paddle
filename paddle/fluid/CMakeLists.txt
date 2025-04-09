@@ -1,3 +1,4 @@
+add_subdirectory(custom_engine)
 add_subdirectory(platform)
 add_subdirectory(distributed)
 add_subdirectory(framework)

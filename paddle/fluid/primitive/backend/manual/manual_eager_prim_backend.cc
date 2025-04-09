@@ -18,9 +18,7 @@
 #include "paddle/fluid/primitive/backend/generated/generated_backend.h"
 #include "paddle/fluid/primitive/backend/manual/manual_prim_backend.h"
 
-namespace paddle {
-namespace primitive {
-namespace backend {
+namespace paddle::primitive::backend {
 
 template <>
 Tensor full<Tensor>(const IntArray& shape,
@@ -36,15 +34,13 @@ Tensor full<Tensor>(const IntArray& shape,
 }
 
 template <>
-Tensor arange_with_tensor<Tensor>(const Tensor& start,
-                                  const Tensor& end,
-                                  const Tensor& step,
-                                  DataType dtype,
-                                  Place place) {
+Tensor arange<Tensor>(const Tensor& start,
+                      const Tensor& end,
+                      const Tensor& step,
+                      DataType dtype,
+                      Place place) {
   VLOG(4) << "Eager Prim API arange_ad_func call";
   return ::arange_ad_func(start, end, step, dtype, place);
 }
 
-}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive::backend

@@ -16,7 +16,8 @@
 #include <gtest/gtest.h>
 #include <sstream>
 
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/merge_block_utils.h"
 
 namespace cinn {
@@ -27,9 +28,9 @@ namespace {
 bool IsBlockForAllEqual(const ForTreeNode& first, const ForTreeNode& second) {
   auto ForVarExtentEqual = [&](const ForTreeNode& first,
                                const ForTreeNode& second) -> bool {
-    const ir::Expr lhs = first.val->extent;
-    const ir::Expr rhs = second.val->extent;
-    if (cinn::common::AutoSimplify(ir::Sub::Make(lhs, rhs)) != ir::Expr(0)) {
+    const ir::Expr lhs = first.val->extent();
+    const ir::Expr rhs = second.val->extent();
+    if (lhs != rhs) {
       return false;
     }
     return true;
@@ -46,27 +47,29 @@ bool IsBlockForAllEqual(const ForTreeNode& first, const ForTreeNode& second) {
   return true;
 }
 
-ir::Expr MakeForLoops(const std::vector<int> extents, int index) {
-  if (index >= extents.size()) {
-    ir::Expr sb = ir::ScheduleBlock::Make(std::vector<Var>(),
-                                          std::vector<Expr>(),
-                                          std::vector<Expr>(),
-                                          "block",
-                                          ir::Expr(0));
-    return sb;
+ir::stmt::For MakeForLoops(const std::vector<int> extents, int index) {
+  ir::stmt::StmtRef body_stmt;
+  if (index == extents.size() - 1) {
+    body_stmt = ir::stmt::Schedule(
+        std::vector<Var>(),
+        std::vector<Expr>(),
+        std::vector<Expr>(),
+        std::vector<Expr>(),
+        "block",
+        ir::stmt::BlockRef(std::vector<ir::stmt::StmtRef>()));
+  } else {
+    body_stmt = MakeForLoops(extents, index + 1);
   }
 
-  ir::Expr extent = ir::Expr(extents.at(index));
-  ir::Expr for_expr = ir::For::Make(ir::Var("i"),
-                                    ir::Expr(0),
-                                    extent,
-                                    ir::ForType::Serial,
-                                    ir::DeviceAPI::CUDA,
-                                    MakeForLoops(extents, index + 1),
-                                    ir::VectorizeInfo(),
-                                    ir::BindInfo());
-
-  return for_expr;
+  std::vector<ir::stmt::StmtRef> body = {body_stmt};
+  return ir::stmt::For(ir::Var("i"),
+                       ir::Expr(0),
+                       ir::Expr(extents[index]),
+                       ir::ForType::Serial,
+                       ir::DeviceAPI::CUDA,
+                       ir::stmt::BlockRef(body),
+                       ir::VectorizeInfo(),
+                       ir::BindInfo());
 }
 
 void TestHelper(const std::vector<int>& extents1,
@@ -74,13 +77,11 @@ void TestHelper(const std::vector<int>& extents1,
                 bool is_same) {
   auto for_loop1 = MakeForLoops(extents1, 0);
   auto for_loop2 = MakeForLoops(extents2, 0);
-  auto f1 = for_loop1.As<ir::For>();
-  auto f2 = for_loop2.As<ir::For>();
 
   if (is_same) {
-    EXPECT_TRUE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
+    EXPECT_TRUE(CanMergeBlocks(for_loop1, for_loop2, IsBlockForAllEqual));
   } else {
-    EXPECT_FALSE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
+    EXPECT_FALSE(CanMergeBlocks(for_loop1, for_loop2, IsBlockForAllEqual));
   }
 }
 
@@ -88,32 +89,30 @@ void TestHelper2(const std::vector<std::vector<int>>& extents1,
                  const std::vector<std::vector<int>>& extents2,
                  bool is_same) {
   auto MakeNestLoops =
-      [&](const std::vector<std::vector<int>>& extents) -> ir::Expr {
-    std::vector<ir::Expr> for_loops;
+      [&](const std::vector<std::vector<int>>& extents) -> ir::stmt::For {
+    std::vector<ir::stmt::StmtRef> for_loops;
     for (size_t i = 0; i < extents.size(); ++i) {
       for_loops.push_back(MakeForLoops(extents[i], 0));
     }
-    ir::Expr block = ir::Block::Make(for_loops);
-    ir::Expr for_expr = ir::For::Make(ir::Var("i"),
-                                      ir::Expr(0),
-                                      ir::Expr(1),
-                                      ir::ForType::Serial,
-                                      ir::DeviceAPI::CUDA,
-                                      block,
-                                      ir::VectorizeInfo(),
-                                      ir::BindInfo());
-    return for_expr;
+    ir::stmt::BlockRef block(for_loops);
+    ir::stmt::For for_stmt = ir::stmt::For(ir::Var("i"),
+                                           ir::Expr(0),
+                                           ir::Expr(1),
+                                           ir::ForType::Serial,
+                                           ir::DeviceAPI::CUDA,
+                                           block,
+                                           ir::VectorizeInfo(),
+                                           ir::BindInfo());
+    return for_stmt;
   };
 
-  auto for_expr1 = MakeNestLoops(extents1);
-  auto for_expr2 = MakeNestLoops(extents2);
-  auto f1 = for_expr1.As<ir::For>();
-  auto f2 = for_expr2.As<ir::For>();
+  auto for_stmt1 = MakeNestLoops(extents1);
+  auto for_stmt2 = MakeNestLoops(extents2);
 
   if (is_same) {
-    EXPECT_TRUE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
+    EXPECT_TRUE(CanMergeBlocks(for_stmt1, for_stmt2, IsBlockForAllEqual));
   } else {
-    EXPECT_FALSE(CanMergeBlocks(f1, f2, IsBlockForAllEqual));
+    EXPECT_FALSE(CanMergeBlocks(for_stmt1, for_stmt2, IsBlockForAllEqual));
   }
 }
 

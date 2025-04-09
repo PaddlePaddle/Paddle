@@ -142,7 +142,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
 
                     np.testing.assert_array_equal(new_t, base_t)
 
-    def test_save_load_lod_tensor(self):
+    def test_save_load_dense_tensor(self):
         paddle.enable_static()
         OUTPUT_NUM = 32
         with new_program_scope():
@@ -165,7 +165,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             exe.run(base.default_startup_program())
 
             dirname = os.path.join(
-                self.temp_dir.name, 'test_save_load_lod_tensor1/tensor_'
+                self.temp_dir.name, 'test_save_load_dense_tensor1/tensor_'
             )
             for var in prog.list_vars():
                 if var.persistable and list(var.shape) == [
@@ -208,7 +208,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             paddle.save(temp_lod, path, use_binary_format=True)
 
         with self.assertRaises(RuntimeError):
-            base.core.save_lod_tensor(
+            base.core.save_dense_tensor(
                 temp_lod,
                 os.path.join(
                     self.temp_dir.name,
@@ -217,7 +217,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             )
 
         with self.assertRaises(RuntimeError):
-            base.core.load_lod_tensor(
+            base.core.load_dense_tensor(
                 temp_lod,
                 os.path.join(
                     self.temp_dir.name,
@@ -235,9 +235,9 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         np.testing.assert_array_equal(np.array(tensor), to_array_mem)
 
         with self.assertRaises(NotImplementedError):
-            paddle.framework.io._save_lod_tensor(tensor, 1)
+            paddle.framework.io._save_dense_tensor(tensor, 1)
         with self.assertRaises(NotImplementedError):
-            paddle.framework.io._load_lod_tensor(1)
+            paddle.framework.io._load_dense_tensor(1)
 
     def test_save_load_selected_rows(self):
         paddle.enable_static()

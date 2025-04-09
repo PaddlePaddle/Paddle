@@ -301,7 +301,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_ops_run_float,
                       TensorRtOpsRunFloat,
                       std::unordered_set<std::string>);
-
+#ifdef PADDLE_WITH_OPENVINO
+  DECL_ARGUMENT_FIELD(use_openvino, UseOpenVINO, bool);
+  DECL_ARGUMENT_FIELD(openvino_inference_precision,
+                      OpenvinoInferencePrecision,
+                      int);
+#endif
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
   DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);

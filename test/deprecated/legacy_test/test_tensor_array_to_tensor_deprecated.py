@@ -42,7 +42,7 @@ class TestDenseTensorArrayConcat(unittest.TestCase):
         )
         input_arr.persistable = True
         input_arr_var = scope.var('tmp_lod_tensor_array')
-        input_tensor_array = input_arr_var.get_lod_tensor_array()
+        input_tensor_array = input_arr_var.get_dense_tensor_array()
         self.assertEqual(0, len(input_tensor_array))
 
         cpu = core.CPUPlace()
@@ -118,7 +118,7 @@ class TestDenseTensorArrayConcat(unittest.TestCase):
 
         # test backward
         grad_tensor = scope.var('tmp_lod_tensor_array@GRAD')
-        grad_tensor_array = grad_tensor.get_lod_tensor_array()
+        grad_tensor_array = grad_tensor.get_dense_tensor_array()
 
         self.assertEqual(10, len(grad_tensor_array))
 

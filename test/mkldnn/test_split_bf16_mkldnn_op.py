@@ -60,7 +60,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
             self.inputs['SectionsTensorList'] = self.sections_tensor_list
 
         self.outputs = {
-            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+            'Out': [(f'out{i}', self.out[i]) for i in range(len(self.out))]
         }
 
     def test_check_output(self):

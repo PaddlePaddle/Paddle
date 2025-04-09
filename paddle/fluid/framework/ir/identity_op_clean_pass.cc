@@ -17,11 +17,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 // pre_op -> useless_op_in -> useless_op -> useless_op_out
 // ->
@@ -151,7 +147,8 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
   cast_op_1->LinksFrom({pre_op_out}).LinksTo({cast_op_1_out});
   cast_op_2->LinksFrom({cast_op_1_out}).LinksTo({cast_op_2_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -279,9 +276,7 @@ void IdentityOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(identity_op_clean_pass,
               paddle::framework::ir::IdentityOpCleanPass);

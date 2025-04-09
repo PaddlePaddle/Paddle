@@ -57,6 +57,15 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
                                         "num_operands of pylayer op."));
     return operand_source(index);
   }
+
+  std::vector<pir::Value> outputs() const {
+    std::vector<pir::Value> output_values;
+    for (size_t index = 0; index < num_results(); ++index) {
+      output_values.push_back(result(index));
+    }
+    return output_values;
+  }
+
   pir::Block &forward_block();
   pir::Region &forward_region() { return (*this)->region(0); }
 
@@ -75,6 +84,7 @@ class PyLayerOp : public pir::Op<PyLayerOp> {
   void VerifyRegion();
 
   void UpdateOutput();
+  PyLayerOp UpdateInput();
 };
 
 }  // namespace dialect

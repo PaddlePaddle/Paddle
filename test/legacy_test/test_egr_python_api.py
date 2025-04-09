@@ -722,7 +722,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         np.testing.assert_array_equal(tensor3.numpy(), arr2)
         self.assertTrue(tensor3._is_shared_buffer_with(tensor))
 
-    def test_0_size_tensor_share_buffert_to(self):
+    def test_0_size_tensor_share_buffer_to(self):
         x = paddle.rand([0, 4])
         y = paddle.rand([0, 4])
         x._share_buffer_to(y)

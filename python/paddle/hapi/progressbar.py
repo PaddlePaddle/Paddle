@@ -129,7 +129,7 @@ class ProgressBar:
                 bar_chars += '.' * (self._width - prog_width)
                 bar_chars += ']'
             else:
-                bar_chars = self.name + ' %3d' % current_num
+                bar_chars = f'{self.name} {current_num:3}'
 
             self._total_width = len(bar_chars)
             sys.stdout.write(bar_chars)
@@ -149,15 +149,13 @@ class ProgressBar:
             if self._num is not None and current_num < self._num:
                 eta = time_per_unit * (self._num - current_num)
                 if eta > 3600:
-                    eta_format = '%d:%02d:%02d' % (
-                        eta // 3600,
-                        (eta % 3600) // 60,
-                        eta % 60,
+                    eta_format = (
+                        f'{eta // 3600}:{(eta % 3600) // 60:02}:{eta % 60:02}'
                     )
                 elif eta > 60:
-                    eta_format = '%d:%02d' % (eta // 60, eta % 60)
+                    eta_format = f'{eta // 60}:{eta % 60:02}'
                 else:
-                    eta_format = '%ds' % eta
+                    eta_format = f'{eta}s'
 
                 info += f' - ETA: {eta_format}'
 
@@ -183,7 +181,7 @@ class ProgressBar:
                     self._num,
                 )
             else:
-                count = self.name + ' %3d' % current_num
+                count = f'{self.name} {current_num:3}'
             info = count + info
 
             for k, val in values:

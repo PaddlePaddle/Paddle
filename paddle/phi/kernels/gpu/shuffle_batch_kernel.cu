@@ -27,8 +27,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+
 #include "paddle/phi/kernels/gpu/shuffle_batch_utils.h"
 #include "paddle/phi/kernels/shuffle_batch_kernel.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/funcs/shuffle_batch.cu.h"
+#endif
 
 namespace phi {
 
@@ -81,11 +85,16 @@ void ShuffleBatchKernel(const Context& dev_ctx,
 #endif
   thrust::random::default_random_engine engine(seed_int);
   thrust::counting_iterator<int64_t> cnt_iter(0);
+#ifdef PADDLE_WITH_CUDA
+  phi::funcs::shuffle_copy_fixed(
+      thrust::detail::derived_cast(thrust::detail::strip_const(exec_policy)),
+#else
   thrust::shuffle_copy(exec_policy,
-                       cnt_iter,
-                       cnt_iter + elem_size,
-                       thrust::device_pointer_cast(shuffleidx_data),
-                       engine);
+#endif
+      cnt_iter,
+      cnt_iter + elem_size,
+      thrust::device_pointer_cast(shuffleidx_data),
+      engine);
   // TODO(zengjinle): for small data, direct cudaMemcpy may be better
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);

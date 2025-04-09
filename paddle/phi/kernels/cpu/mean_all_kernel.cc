@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/mean_all_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -23,6 +24,11 @@ template <typename T, typename Context>
 void MeanAllKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
   dev_ctx.template Alloc<T>(out);
 
   auto X = EigenVector<T>::Flatten(x);

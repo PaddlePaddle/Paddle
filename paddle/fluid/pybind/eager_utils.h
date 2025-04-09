@@ -23,8 +23,8 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/hooks.h"
+#include "paddle/fluid/framework/dense_tensor_array.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -241,6 +241,27 @@ class UnPackHook : public egr::UnPackHookBase {
  private:
   PyObject* hook_;
 };
+
+#pragma GCC visibility push(hidden)
+class NodePostHook : public egr::NodePostHookBase {
+ public:
+  explicit NodePostHook(py::object hook) : hook_(hook) {}
+
+  ~NodePostHook() {}
+
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
+  operator()(
+      const paddle::small_vector<std::vector<paddle::Tensor>,
+                                 egr::kSlotSmallVectorSize>& grad_outputs,
+      const paddle::small_vector<std::vector<paddle::Tensor>,
+                                 egr::kSlotSmallVectorSize>& grad_inputs)
+      override;
+
+ private:
+  py::object hook_;
+};
+#pragma GCC visibility pop
+
 template <typename Tuple, size_t N>
 struct TupleTensorResult {
   static void Run(const Tuple& out, PyObject* result) {
@@ -448,6 +469,8 @@ void BindEagerUtils(PyObject* module);
 std::tuple<std::vector<int64_t>,
            paddle::flat_hash_map<int64_t, phi::ReduceType>>
 CvtPlacements(phi::distributed::Placements placements, int ndim);
+
+void EagerSetDeviceId();
 
 }  // namespace pybind
 }  // namespace paddle

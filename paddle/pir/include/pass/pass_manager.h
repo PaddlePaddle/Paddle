@@ -115,6 +115,10 @@ class IR_API PassManager {
 
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
+  void SetValueReplacedHook(const VALUE_REPLACED_HOOK_FUNC &hook) {
+    value_replaced_hook_ = hook;
+  }
+
  private:
   bool Initialize(IrContext *context);
 
@@ -134,6 +138,8 @@ class IR_API PassManager {
   std::unique_ptr<Pass> pass_adaptor_;
 
   std::unique_ptr<PassInstrumentor> instrumentor_;
+
+  VALUE_REPLACED_HOOK_FUNC value_replaced_hook_ = nullptr;
 
   // For access member of pass_adaptor_.
   friend class detail::PassAdaptor;

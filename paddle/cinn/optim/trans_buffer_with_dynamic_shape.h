@@ -16,15 +16,38 @@
 #include <string>
 
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/pass/pass.h"
 
 namespace cinn {
 namespace optim {
 
+class TransBufferWithDynamicShapePass : public FuncPass {
+ public:
+  TransBufferWithDynamicShapePass()
+      : FuncPass("trans_buffer_with_dynamic_shape") {}
+  LogicalResult Run(ir::LoweredFunc func) override;
+};
+
 /**
- * Given Expr AST, translate dynamic shape in buffers to
- * static shape, the pass is just used on Nvidia GPU temporarily.
+ * Transforms buffers' dynamic shapes to constant shapes and perform shared
+ * memory usage checks.
+ *
+ * This pass is applicable in scenarios where tensor buffers have dynamic
+ * shapes, especially in GPU computations. It's crucial for ensuring correct
+ * memory allocation and preventing buffer overflows in shared memory usage on
+ * GPUs.
+ *
+ * When applied, this pass will analyze tensor buffers and their shapes,
+ * calculating the required memory size. For GPU local memory, it will attempt
+ * to determine upper bounds for dynamic shapes. For GPU shared memory, it will
+ * calculate the total shared memory usage and verify it against hardware
+ * limits.
+ *
+ * Risks and limitations:
+ * - Currently only checks shared memory usage against hardware limits for
+ * NVIDIA GPUs and Hygon DCU.
  */
-void CudaTransBufferWithDynamicShape(ir::Expr* expr);
+std::unique_ptr<FuncPass> CreateTransBufferWithDynamicShapePass();
 
 }  // namespace optim
 }  // namespace cinn

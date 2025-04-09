@@ -29,7 +29,7 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 #ifndef PADDLE_WITH_HIP
 
   // solve the equation: Ax = B,
-  // use cuBlas cublas<S/D>getrfBatched funcion to performs the LU
+  // use cuBlas cublas<S/D>getrfBatched function to performs the LU
   // factorization of each matrix A,
   // and then use cuBlas cublas<S/D>getriBatched function to solve the
   // equation after LU factorization.

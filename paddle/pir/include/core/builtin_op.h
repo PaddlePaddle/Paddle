@@ -257,8 +257,9 @@ class IR_API ConstantTensorOp : public ConstantOp {
   std::string tensor_name();
 };
 
-void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
-void RefreshStopGradientsDefaultly(Operation *Op);
+IR_API void PassStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
+IR_API void TrueStopGradientsDefaultly(OperationArgument &argument);  // NOLINT
+IR_API void RefreshStopGradientsDefaultly(Operation *Op);
 }  // namespace pir
 
 IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::ModuleOp)

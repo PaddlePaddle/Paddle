@@ -21,6 +21,7 @@ from get_test_cover_info import (
     get_xpu_op_support_types,
     type_dict_str_to_numpy,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -116,16 +117,28 @@ class XPUTestScatterOp(XPUOpTestWrapper):
             )
 
             if not hasattr(self, 'init_ref_np'):
-                self.ref_np = np.ones((3, 50)).astype(self.dtype)
+                self.ref_np = np.ones((3, 50)).astype(
+                    self.dtype if self.dtype != np.uint16 else np.float32
+                )
                 self.index_np = np.array([1, 2]).astype(self.index_type)
-                self.updates_np = np.random.random((2, 50)).astype(self.dtype)
+                self.updates_np = np.random.random((2, 50)).astype(
+                    self.dtype if self.dtype != np.uint16 else np.float32
+                )
                 self.output_np = np.copy(self.ref_np)
                 self.output_np[self.index_np] = self.updates_np
             else:
-                self.ref_np = self.init_ref_np.astype(self.dtype)
+                self.ref_np = self.init_ref_np.astype(
+                    self.dtype if self.dtype != np.uint16 else np.float32
+                )
                 self.index_np = self.init_index_np.astype(self.index_type)
-                self.updates_np = self.init_updates_np.astype(self.dtype)
+                self.updates_np = self.init_updates_np.astype(
+                    self.dtype if self.dtype != np.uint16 else np.float32
+                )
                 self.output_np = self.init_output_np.astype(self.dtype)
+
+            if self.dtype == np.uint16:
+                self.ref_np = convert_float_to_uint16(self.ref_np)
+                self.updates_np = convert_float_to_uint16(self.updates_np)
 
             self.inputs = {
                 'X': self.ref_np,

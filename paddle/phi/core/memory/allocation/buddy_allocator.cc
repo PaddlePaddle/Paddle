@@ -27,9 +27,7 @@ COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device/device_wrapper.h"
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 BuddyAllocator::BuddyAllocator(
     std::unique_ptr<SystemAllocator> system_allocator,
@@ -382,6 +380,4 @@ size_t BuddyAllocator::DeviceAllocateSize(
   return allocate_bytes;
 }
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail

@@ -45,16 +45,16 @@ inline static void ValidationCheck(const std::string& equation) {
                     common::errors::InvalidArgument(
                         "Required at least one `->` in equation of EinsumOp."));
   size_t pos;
-  auto trimed_equ = equation;
-  if ((pos = trimed_equ.find("->", 0)) != std::string::npos) {
-    trimed_equ.replace(pos, 2, "");
+  auto trimmed_equ = equation;
+  if ((pos = trimmed_equ.find("->", 0)) != std::string::npos) {
+    trimmed_equ.replace(pos, 2, "");
   }
   auto is_valid_char = [](char c) {
     if (c >= 'a' && c <= 'z') return true;
     if (c == ',') return true;
     return false;
   };
-  for (auto c : trimed_equ) {
+  for (auto c : trimmed_equ) {
     if (!is_valid_char(c))
       PADDLE_THROW(common::errors::InvalidArgument(
           "Found invalid char in equation. Einsum only accept `a`-`z` and `...`"
@@ -519,8 +519,12 @@ DenseTensor PerformContraction(
                                                   label2type);
       trans_t = PerformTranspose<T, Context>(
           dev_ctx, reduct_t, perm, reordered_all_labels, label2type);
-      if (cache[operand_idx] != nullptr)
+      if (cache[operand_idx] != nullptr) {
         cache[operand_idx]->ShareBufferWith(trans_t);
+        cache[operand_idx]->Resize(trans_t.dims());
+        VLOG(5) << "Set dims of cache[" << operand_idx
+                << "]: " << trans_t.dims();
+      }
     }
     auto mul_dims = GetShapeByType<int>(
         all_labels, label2type, perm, label2shape, {LabelType::Batch});
@@ -599,7 +603,7 @@ void EinsumKernelImpl(const Context& dev_ctx,
     VLOG(5) << "      inputs [ " << i << " ].shape=" << i->dims();
   }
   ValidationCheck(equation);
-  // collect the following informations to prepare einsum.
+  // collect the following information to prepare einsum.
   LabelMap labelshape(0);
   LabelMap labeltype(LabelType::Reduction);
   std::vector<LabelMap> label2perms(inputs.size(), LabelMap(-1));
@@ -654,6 +658,17 @@ void EinsumKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   std::vector<DenseTensor*> cache,
                   std::vector<DenseTensor*> xshape UNUSED) {
+  for (const auto& input : inputs) {
+    if (input->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      if (out->numel() > 0) {
+        std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), out);
+      }
+      return;
+    }
+  }
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer

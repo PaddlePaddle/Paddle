@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 
-namespace paddle {
-
-namespace operators {
+namespace paddle::operators {
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -46,8 +44,7 @@ class TensorRTEngineInferVarType : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

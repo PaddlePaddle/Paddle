@@ -59,9 +59,9 @@ struct Teller {
 
 enum class OpConverterType {
   Default = 0,
-  GenericPluginCreater,
-  CustomPluginCreater,
-  CustomGenericPluginCreater
+  GenericPluginCreator,
+  CustomPluginCreater,  // typos: disable-line
+  CustomGenericPluginCreator
 };
 /*
  * class OpTeller helps to tell whether a fluid

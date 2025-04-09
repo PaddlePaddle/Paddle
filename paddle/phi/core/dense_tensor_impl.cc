@@ -227,11 +227,15 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 /*   From phi::DenseTensor    */
 /* ------------------------------ */
 
-DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
+DenseTensor::DenseTensor(const LegacyLoD& legacy_lod) : DenseTensor() {
+  meta_.legacy_lod = legacy_lod;
+}
 
-void DenseTensor::set_lod(const LoD& lod) { meta_.lod = lod; }
+void DenseTensor::set_lod(const LegacyLoD& legacy_lod) {
+  meta_.legacy_lod = legacy_lod;
+}
 
-LoD* DenseTensor::mutable_lod() { return &meta_.lod; }
+LoD* DenseTensor::mutable_lod() { return &meta_.legacy_lod; }
 
 std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
                                                    size_t elem) const {
@@ -254,10 +258,11 @@ std::pair<size_t, size_t> DenseTensor::lod_element(size_t level,
                         elem,
                         NumElements(level)));
 
-  return std::make_pair((meta_.lod)[level][elem], (meta_.lod)[level][elem + 1]);
+  return std::make_pair((meta_.legacy_lod)[level][elem],
+                        (meta_.legacy_lod)[level][elem + 1]);
 }
 
-size_t DenseTensor::NumLevels() const { return meta_.lod.size(); }
+size_t DenseTensor::NumLevels() const { return meta_.legacy_lod.size(); }
 
 size_t DenseTensor::NumElements(size_t level) const {
   PADDLE_ENFORCE_LT(
@@ -270,7 +275,7 @@ size_t DenseTensor::NumElements(size_t level) const {
           NumLevels()));
 
   // the last offset is the end of last element
-  return (meta_.lod)[level].size() - 1;
+  return (meta_.legacy_lod)[level].size() - 1;
 }
 
 DenseTensor& DenseTensor::Resize(const DDim& dims) {

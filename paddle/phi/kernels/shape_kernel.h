@@ -23,4 +23,9 @@ void ShapeKernel(const Context& ctx,
                  const DenseTensor& input,
                  DenseTensor* out);
 
+template <typename T, typename Context>
+void Shape64Kernel(const Context& ctx,
+                   const DenseTensor& input,
+                   DenseTensor* out);
+
 }  // namespace phi

@@ -174,10 +174,13 @@ class AdamFunctor<T, GPUAdam> {
   T* moment1_out_;
   const T* moment2_;
   T* moment2_out_;
+  const T* moment2_max_;
+  T* moment2_max_out_;
   const T* lr_;
   const T* grad_;
   const T* param_;
   T* param_out_;
+  bool amsgrad_;
 
  public:
   AdamFunctor(T beta1,
@@ -189,10 +192,13 @@ class AdamFunctor<T, GPUAdam> {
               T* mom1_out,
               const T* mom2,
               T* mom2_out,
+              const T* mom2_max,
+              T* mom2_max_out,
               const T* lr,
               const T* grad,
               const T* param,
-              T* param_out)
+              T* param_out,
+              bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -202,16 +208,20 @@ class AdamFunctor<T, GPUAdam> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
-        param_out_(param_out) {}
+        param_out_(param_out),
+        amsgrad_(amsgrad) {}
 
   inline HOSTDEVICE void operator()(size_t i) const {
     // Merge all memory access together.
     T g = grad_[i];
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
+
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
@@ -222,7 +232,16 @@ class AdamFunctor<T, GPUAdam> {
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-    p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(1 - beta2_pow)));
+
+    if (amsgrad_) {
+      T mom2_max_ = std::max(mom2, moment2_max_[i]);
+      p -= lr * (mom1 / (sqrt(mom2_max_) + epsilon_ * sqrt(1 - beta2_pow)));
+
+      // Write back to global memory
+      moment2_max_out_[i] = mom2_max_;
+    } else {
+      p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(1 - beta2_pow)));
+    }
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -244,10 +263,13 @@ class AdamFunctor<T, CPUAdam> {
   T* moment1_out_;
   const T* moment2_;
   T* moment2_out_;
+  const T* moment2_max_;
+  T* moment2_max_out_;
   const T* lr_;
   const T* grad_;
   const T* param_;
   T* param_out_;
+  bool amsgrad_;
 
  public:
   AdamFunctor(T beta1,
@@ -259,10 +281,13 @@ class AdamFunctor<T, CPUAdam> {
               T* mom1_out,
               const T* mom2,
               T* mom2_out,
+              const T* mom2_max,
+              T* mom2_max_out,
               const T* lr,
               const T* grad,
               const T* param,
-              T* param_out)
+              T* param_out,
+              bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -272,10 +297,13 @@ class AdamFunctor<T, CPUAdam> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
-        param_out_(param_out) {}
+        param_out_(param_out),
+        amsgrad_(amsgrad) {}
 
   void operator()(size_t numel) const {
     Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{
@@ -303,8 +331,20 @@ class AdamFunctor<T, CPUAdam> {
 
     moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
     moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
-    param_out = param - lr * (moment1_out / (moment2_out.sqrt() +
-                                             epsilon_ * sqrt(1 - beta2_pow)));
+
+    if (amsgrad_) {
+      Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom2_max{
+          moment2_max_, static_cast<Eigen::Index>(numel)};
+      Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_max_out{
+          moment2_max_out_, static_cast<Eigen::Index>(numel)};
+
+      moment2_max_out = moment2_out.cwiseMax(mom2_max);
+      param_out = param - lr * (moment1_out / (moment2_max_out.sqrt() +
+                                               epsilon_ * sqrt(1 - beta2_pow)));
+    } else {
+      param_out = param - lr * (moment1_out / (moment2_out.sqrt() +
+                                               epsilon_ * sqrt(1 - beta2_pow)));
+    }
   }
 };
 
@@ -324,6 +364,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
   MT* moment1_out_;
   const MT* moment2_;
   MT* moment2_out_;
+  const MT* moment2_max_;
+  MT* moment2_max_out_;
   const MT* lr_;
   const T* grad_;
   const T* param_;
@@ -335,6 +377,7 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
   int64_t row_numel_;
   int64_t row_count_;
   bool lazy_mode_;
+  bool amsgrad_;
 
  public:
   SparseAdamFunctor(MT beta1,
@@ -346,6 +389,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
                     MT* mom1_out,
                     const MT* mom2,
                     MT* mom2_out,
+                    const MT* mom2_max,
+                    MT* mom2_max_out,
                     const MT* lr,
                     const T* grad,
                     const T* param,
@@ -355,7 +400,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
                     const int64_t* rows,
                     int64_t row_numel,
                     int64_t row_count,
-                    bool lazy_mode)
+                    bool lazy_mode,
+                    bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -365,6 +411,8 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
@@ -374,12 +422,14 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
         rows_(rows),
         row_numel_(row_numel),
         row_count_(row_count),
-        lazy_mode_(lazy_mode) {}
+        lazy_mode_(lazy_mode),
+        amsgrad_(amsgrad) {}
 
   inline HOSTDEVICE void adam_update(size_t i, MT g) const {
     // The following code is the same as dense
     MT mom1 = moment1_[i];
     MT mom2 = moment2_[i];
+
     MT lr = *lr_;
     MT beta1_pow = *beta1_pow_;
     MT beta2_pow = *beta2_pow_;
@@ -391,8 +441,18 @@ class SparseAdamFunctor<T, GPUAdam, MT> {
 
     mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
     mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
-    p -= lr * (mom1 / (sqrt(mom2) +
-                       epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    if (amsgrad_) {
+      MT mom2_max_ = std::max(mom2, moment2_max_[i]);
+      p -= lr * (mom1 / (sqrt(mom2_max_) +
+                         epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+      // Write back to global memory
+      moment2_max_out_[i] = mom2_max_;
+    } else {
+      p -= lr * (mom1 / (sqrt(mom2) +
+                         epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+    }
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -430,6 +490,8 @@ class SparseAdamFunctor<T, CPUAdam, T> {
   T* moment1_out_;
   const T* moment2_;
   T* moment2_out_;
+  const T* moment2_max_;
+  T* moment2_max_out_;
   const T* lr_;
   const T* grad_;
   const T* param_;
@@ -438,6 +500,7 @@ class SparseAdamFunctor<T, CPUAdam, T> {
   const int64_t* rows_;
   int64_t row_numel_;
   int64_t row_count_;
+  bool amsgrad_;
 
  public:
   SparseAdamFunctor(T beta1,
@@ -449,6 +512,8 @@ class SparseAdamFunctor<T, CPUAdam, T> {
                     T* mom1_out,
                     const T* mom2,
                     T* mom2_out,
+                    const T* mom2_max,
+                    T* mom2_max_out,
                     const T* lr,
                     const T* grad,
                     const T* param,
@@ -456,7 +521,8 @@ class SparseAdamFunctor<T, CPUAdam, T> {
                     const int64_t* rows,
                     int64_t row_numel,
                     int64_t row_count,
-                    bool lazy_mode UNUSED)
+                    bool lazy_mode UNUSED,
+                    bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -466,18 +532,22 @@ class SparseAdamFunctor<T, CPUAdam, T> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
         param_out_(param_out),
         rows_(rows),
         row_numel_(row_numel),
-        row_count_(row_count) {}
+        row_count_(row_count),
+        amsgrad_(amsgrad) {}
 
   inline HOSTDEVICE void adam_update(size_t i, T g) const {
     // The following code is the same as dense
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
+
     T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
@@ -488,7 +558,16 @@ class SparseAdamFunctor<T, CPUAdam, T> {
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-    p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(1 - beta2_pow)));
+
+    if (amsgrad_) {
+      T mom2_max_ = std::max(mom2, moment2_max_[i]);
+      p -= lr * (mom1 / (sqrt(mom2_max_) + epsilon_ * sqrt(1 - beta2_pow)));
+
+      // Write back to global memory
+      moment2_max_out_[i] = mom2_max_;
+    } else {
+      p -= lr * (mom1 / (sqrt(mom2) + epsilon_ * sqrt(1 - beta2_pow)));
+    }
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -520,7 +599,17 @@ class SparseAdamFunctor<T, CPUAdam, T> {
           mom1 = beta1_ * mom1;
           mom2 = beta2_ * mom2;
 
-          p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+          if (amsgrad_) {
+            T mom2_max = moment2_max_[i * row_numel_ + k];
+            T mom2_max_ = std::max(mom2, mom2_max);
+            p -= lr * (mom1 / (sqrt(mom2_max_) + epsilon_));
+
+            // Write back to global memory
+            moment2_max_out_[i * row_numel_ + k] = mom2_max_;
+          } else {
+            p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+          }
+
           // Write back to global memory
           moment1_out_[i * row_numel_ + k] = mom1;
           moment2_out_[i * row_numel_ + k] = mom2;
@@ -578,6 +667,8 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
   MT* moment1_out_;
   const MT* moment2_;
   MT* moment2_out_;
+  const MT* moment2_max_;
+  MT* moment2_max_out_;
   const MT* lr_;
   const T* grad_;
   const T* param_;
@@ -589,6 +680,7 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
   int64_t row_numel_;
   int64_t row_count_;
   bool lazy_mode_;
+  bool amsgrad_;
 
  public:
   SparseAdamWFunctor(MT beta1,
@@ -602,6 +694,8 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
                      MT* mom1_out,
                      const MT* mom2,
                      MT* mom2_out,
+                     const MT* mom2_max,
+                     MT* mom2_max_out,
                      const MT* lr,
                      const T* grad,
                      const T* param,
@@ -611,7 +705,8 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
                      const int64_t* rows,
                      int64_t row_numel,
                      int64_t row_count,
-                     bool lazy_mode)
+                     bool lazy_mode,
+                     bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -623,6 +718,8 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
@@ -632,12 +729,14 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
         rows_(rows),
         row_numel_(row_numel),
         row_count_(row_count),
-        lazy_mode_(lazy_mode) {}
+        lazy_mode_(lazy_mode),
+        amsgrad_(amsgrad) {}
 
   inline HOSTDEVICE void adamw_update(size_t i, MT g) const {
     // The following code is the same as dense
     MT mom1 = moment1_[i];
     MT mom2 = moment2_[i];
+
     MT lr = *lr_ * lr_ratio_;
     MT lr_orig = lr;
     MT beta1_pow = *beta1_pow_;
@@ -650,9 +749,20 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
 
     mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
     mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
+
     p -= lr_orig * coeff_ * p;
-    p -= lr * (mom1 / (sqrt(mom2) +
-                       epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+    if (amsgrad_) {
+      MT mom2_max_ = std::max(mom2, moment2_max_[i]);
+      p -= lr * (mom1 / (sqrt(mom2_max_) +
+                         epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+
+      // Write back to global memory
+      moment2_max_out_[i] = mom2_max_;
+    } else {
+      p -= lr * (mom1 / (sqrt(mom2) +
+                         epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+    }
 
     // Write back to global memory
     moment1_out_[i] = mom1;

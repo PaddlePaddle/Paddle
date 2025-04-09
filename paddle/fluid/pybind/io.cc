@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 template <typename PlaceType>
 void LoadCombine(const std::string &file_path,
                  const std::vector<std::string> &names,
@@ -45,7 +44,7 @@ void Load(const std::string &file_path,
   pir::LoadFunction(file_path, seek, shape, load_as_fp16, out, place);
 }
 void BindIO(pybind11::module *m) {
-  m->def("save_lod_tensor",
+  m->def("save_dense_tensor",
          [](const phi::DenseTensor &tensor, const std::string &str_file_name) {
            std::ofstream fout(str_file_name, std::ios::binary);
            PADDLE_ENFORCE_EQ(
@@ -53,14 +52,14 @@ void BindIO(pybind11::module *m) {
                true,
                common::errors::Unavailable("Cannot open %s to save variables.",
                                            str_file_name));
-           paddle::framework::SerializeToStream(fout, tensor);
+           phi::SerializeToStream(fout, tensor);
 
            int64_t tellp = fout.tellp();
            fout.close();
            return tellp;
          });
 
-  m->def("load_lod_tensor",
+  m->def("load_dense_tensor",
          [](phi::DenseTensor &tensor, const std::string &str_file_name) {
            std::ifstream fin(str_file_name, std::ios::binary);
            PADDLE_ENFORCE_EQ(
@@ -69,7 +68,7 @@ void BindIO(pybind11::module *m) {
                common::errors::Unavailable("Cannot open %s to load variables.",
                                            str_file_name));
 
-           paddle::framework::DeserializeFromStream(fin, &tensor);
+           phi::DeserializeFromStream(fin, &tensor);
            int64_t tellg = fin.tellg();
            fin.close();
            return tellg;
@@ -85,7 +84,7 @@ void BindIO(pybind11::module *m) {
                common::errors::Unavailable(
                    "Cannot open %s to save SelectedRows.", str_file_name));
 
-           paddle::framework::SerializeToStream(fout, selected_rows);
+           phi::SerializeToStream(fout, selected_rows);
            int64_t tellp = fout.tellp();
            fout.close();
            return tellp;
@@ -101,30 +100,30 @@ void BindIO(pybind11::module *m) {
             common::errors::Unavailable("Cannot open %s to load SelectedRows.",
                                         str_file_name));
 
-        paddle::framework::DeserializeFromStream(fin, &selected_rows);
+        phi::DeserializeFromStream(fin, &selected_rows);
         int64_t tellg = fin.tellg();
         fin.close();
         return tellg;
       });
 
-  m->def("save_lod_tensor_to_memory",
+  m->def("save_dense_tensor_to_memory",
          [](const phi::DenseTensor &tensor) -> py::bytes {
            std::ostringstream ss;
-           paddle::framework::SerializeToStream(ss, tensor);
+           phi::SerializeToStream(ss, tensor);
            return ss.str();
          });
 
-  m->def("load_lod_tensor_from_memory",
+  m->def("load_dense_tensor_from_memory",
          [](phi::DenseTensor &tensor, const std::string &tensor_bytes) {
            std::istringstream fin(tensor_bytes,
                                   std::ios::in | std::ios::binary);
-           paddle::framework::DeserializeFromStream(fin, &tensor);
+           phi::DeserializeFromStream(fin, &tensor);
          });
 
   m->def("save_selected_rows_to_memory",
          [](const phi::SelectedRows &selected_rows) -> py::bytes {
            std::ostringstream ss;
-           paddle::framework::SerializeToStream(ss, selected_rows);
+           phi::SerializeToStream(ss, selected_rows);
            return ss.str();
          });
 
@@ -133,7 +132,7 @@ void BindIO(pybind11::module *m) {
             const std::string &selected_rows_bytes) {
            std::istringstream fin(selected_rows_bytes,
                                   std::ios::in | std::ios::binary);
-           paddle::framework::DeserializeFromStream(fin, &selected_rows);
+           phi::DeserializeFromStream(fin, &selected_rows);
          });
 
   m->def("load_dense_tensor", [](const std::string path) {
@@ -148,6 +147,7 @@ void BindIO(pybind11::module *m) {
 
   m->def("load_func", &Load<phi::CPUPlace>);
   m->def("load_func", &Load<phi::CustomPlace>);
+  m->def("load_func", &Load<phi::XPUPinnedPlace>);
   m->def("load_func", &Load<phi::XPUPlace>);
   m->def("load_func", &Load<phi::GPUPinnedPlace>);
   m->def("load_func", &Load<phi::GPUPlace>);
@@ -155,6 +155,7 @@ void BindIO(pybind11::module *m) {
   m->def("load_func", &Load<phi::Place>);
   m->def("load_combine_func", &LoadCombine<phi::CPUPlace>);
   m->def("load_combine_func", &LoadCombine<phi::CustomPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::XPUPinnedPlace>);
   m->def("load_combine_func", &LoadCombine<phi::XPUPlace>);
   m->def("load_combine_func", &LoadCombine<phi::GPUPinnedPlace>);
   m->def("load_combine_func", &LoadCombine<phi::GPUPlace>);
@@ -175,5 +176,4 @@ void BindIO(pybind11::module *m) {
          py::arg("program"),
          py::arg("pir_version") = -1);
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

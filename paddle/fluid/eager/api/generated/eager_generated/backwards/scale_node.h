@@ -18,7 +18,7 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
 /*
-    Each Operation has a specific GradNode inheritted from GradNodeBase
+    Each Operation has a specific GradNode inherited from GradNodeBase
     A specific GradNode defines
     1. Input Tensors
     2. overrides operator() to perform actual backward computations

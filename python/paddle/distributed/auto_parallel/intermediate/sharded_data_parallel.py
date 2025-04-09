@@ -20,7 +20,7 @@ from .parallel_base import ParallelModel, ParallelOptimizer
 
 class ShardedDataParallel(ParallelModel):
     """
-    ShardedDataParallel converts a single card model to a distrubuted data parallel model
+    ShardedDataParallel converts a single card model to a distributed data parallel model
 
     Args:
         model (paddle.nn.Layer): A single card model to be distributed.
@@ -51,31 +51,31 @@ class ShardedDataParallel(ParallelModel):
         return model
 
 
-def sharded_data_parallel(
-    model, optimizer=None, level=None, offload=False, exclude_layer=None
-):
+def sharded_data_parallel(model, optimizer=None, config=None):
     """
     sharded_data_parallel converts model and optimizer to distributed and supports set zero stage1/2/3
 
     Args:
         model (paddle.nn.Layer): A single card model to be distributed
         optimizer (paddle.optimizer.Optimizer): an optimizer to be distributed
-        level (str): Zero stage, can be the following values:
-            0: no sharding (pure dp)
-            1: Zero Stage1
-            2: Zero Stage2
-            3: Zero Stage3
-            Default: None, which means optimizer is replicated among all process.
-        offload (bool): whether enable cpu offload strategy, not implemented currently.
-        exclude_layer (list): Specify which layers do not use the zero stage strategy, not implemented currently.
+        config (dict): {
+            "sharding_level": 0,
+            "offload": False,
+            "exclude_layer": None,
+            "sharding_mesh_dim": "dp",
+        }
 
     Returns:
         ShardedDataParallel: a distributed model
         ParallelOptimizer: a distributed optimizer
     """
-    sdp_model = ShardedDataParallel(model, offload, exclude_layer)
+    sdp_model = ShardedDataParallel(
+        model, bool(config.get('offload')), config.get('exclude_layer')
+    )
     if optimizer is not None:
-        optimizer = ParallelOptimizer(optimizer, level)
+        level = config.get('sharding_level')
+        sharding_mesh_dim = config.get('sharding_mesh_dim', "dp")
+        optimizer = ParallelOptimizer(optimizer, level, sharding_mesh_dim)
 
     # check global_mesh
     mesh = fleet.auto.get_mesh()

@@ -107,5 +107,28 @@ inline std::optional<ir::Expr> TryConstFold<ir::Mod>(ir::Expr a, ir::Expr b) {
   return std::nullopt;
 }
 
+template <>
+inline std::optional<ir::Expr> TryConstFold<ir::Min>(ir::Expr a, ir::Expr b) {
+  const ir::IntImm* pa = a.As<ir::IntImm>();
+  const ir::IntImm* pb = b.As<ir::IntImm>();
+  const auto& rtype = a.type();
+  if (pa && pb) {
+    int64_t res = std::min(pa->value, pb->value);
+    return cinn::common::make_shared<ir::IntImm>(rtype, res);
+  }
+  return std::nullopt;
+}
+
+template <>
+inline std::optional<ir::Expr> TryConstFold<ir::Max>(ir::Expr a, ir::Expr b) {
+  const ir::IntImm* pa = a.As<ir::IntImm>();
+  const ir::IntImm* pb = b.As<ir::IntImm>();
+  const auto& rtype = a.type();
+  if (pa && pb) {
+    int64_t res = std::max(pa->value, pb->value);
+    return cinn::common::make_shared<ir::IntImm>(rtype, res);
+  }
+  return std::nullopt;
+}
 }  // namespace common
 }  // namespace cinn

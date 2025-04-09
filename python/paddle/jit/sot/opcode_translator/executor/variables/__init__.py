@@ -27,10 +27,14 @@ from .basic import (  # noqa: F401
     GlobalVariable,
     ModuleVariable,
     NullVariable,
+    NumpyArrayVariable,
+    NumpyNumberVariable,
     NumpyVariable,
     ObjectVariable,
     ParameterVariable,
+    PlaceVariable,
     SliceVariable,
+    SuperVariable,
     SymbolicVariable,
     TensorVariable,
 )
@@ -44,6 +48,7 @@ from .callable import (  # noqa: F401
     MethodVariable,
     PaddleApiVariable,
     PaddleLayerVariable,
+    UserCodeVariable,
     UserDefinedFunctionVariable,
     UserDefinedGeneratorFunctionVariable,
     UserDefinedLayerVariable,
@@ -57,6 +62,7 @@ from .container import (  # noqa: F401
 )
 from .iter import (  # noqa: F401
     EnumerateVariable,
+    GeneratorVariable,
     IterVariable,
     MapVariable,
     SequenceIterVariable,

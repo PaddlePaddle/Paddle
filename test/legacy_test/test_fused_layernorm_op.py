@@ -448,7 +448,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 beta_static,
                 self.epsilon,
                 begin_norm_axis=1,
-            )
+            )[0]
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
@@ -498,7 +498,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_round_type=self.quant_round_type,
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
-            )
+            )[0]
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
@@ -546,7 +546,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_round_type=self.quant_round_type,
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
-            )
+            )[0]
 
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
@@ -556,7 +556,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                     "bias_static": bias_np.astype(dtype),
                 },
                 fetch_list=[
-                    outs[0]
+                    outs
                 ],  # NOTE: Only fetch `out`, because `residual_out` will not be initialized if both `norm_weight` and `norm_bias` are None.
             )
         return out_s, paddle_naive_residual_out
@@ -597,7 +597,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             beta_static = paddle.static.data(
                 name="beta_static", shape=[self.cols], dtype='float32'
             )
-            outs = paddle.incubate.nn.functional.fused_layer_norm(
+            outs, residual = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
                 gamma_static,
                 beta_static,
@@ -606,7 +606,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 residual_alpha=self.residual_alpha,
                 bias=bias_static,
                 residual=residual_static,
-            )
+            )[:2]
 
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
@@ -617,7 +617,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                     "residual_static": residual_np.astype(dtype),
                     "bias_static": bias_np.astype(dtype),
                 },
-                fetch_list=[outs],
+                fetch_list=[outs, residual],
             )
         return out_s, paddle_naive_layernorm_out, paddle_naive_residual_out
 
@@ -667,7 +667,7 @@ class TestlayernormStaticOp(unittest.TestCase):
             beta_static = paddle.static.data(
                 name="beta_static", shape=[self.cols], dtype='float32'
             )
-            outs = paddle.incubate.nn.functional.fused_layer_norm(
+            outs, residual = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
                 gamma_static,
                 beta_static,
@@ -680,7 +680,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_round_type=self.quant_round_type,
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
-            )
+            )[:2]
 
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
@@ -691,7 +691,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                     "residual_static": residual_np.astype(dtype),
                     "bias_static": bias_np.astype(dtype),
                 },
-                fetch_list=[outs],
+                fetch_list=[outs, residual],
             )
         return out_s, paddle_naive_layernorm_out, paddle_naive_residual_out
 
@@ -847,7 +847,7 @@ class TestlayernormOpCPU(unittest.TestCase):
 
         paddle_layernorm_out = paddle.incubate.nn.functional.fused_layer_norm(
             x, gamma, beta, self.epsilon, begin_norm_axis=1
-        )
+        )[0]
         paddle_naive_layernorm_out = naive_layer_norm(
             x, gamma, beta, self.epsilon
         )
@@ -869,7 +869,7 @@ class TestlayernormOpCPU(unittest.TestCase):
             bias=bias,
             residual=residual,
             residual_alpha=self.residual_alpha,
-        )
+        )[0]
 
         paddle_naive_residual_out = naive_residual_bias_add(
             x, residual, bias, self.residual_alpha
@@ -919,7 +919,7 @@ class TestlayernormOpCPU(unittest.TestCase):
             self.x_np, self.residual_np, self.bias_np, 'float32'
         )
         np.testing.assert_allclose(
-            paddle_residual_bias_out[0].numpy(),
+            paddle_residual_bias_out.numpy(),
             paddle_naive_residual_bias_out.numpy(),
             rtol=1e-3,
             atol=1e-3,
@@ -931,7 +931,7 @@ class TestlayernormOpCPU(unittest.TestCase):
         )
 
         np.testing.assert_allclose(
-            paddle_layernorm[0].numpy(),
+            paddle_layernorm.numpy(),
             paddle_naive_layernorm.numpy(),
             rtol=1e-3,
             atol=1e-3,
@@ -1016,7 +1016,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
                 beta_static,
                 self.epsilon,
                 begin_norm_axis=1,
-            )
+            )[0]
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
                 feed={
@@ -1060,7 +1060,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
                 bias=bias_static,
                 residual=residual_static,
                 residual_alpha=self.residual_alpha,
-            )
+            )[0]
 
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
@@ -1070,7 +1070,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
                     "bias_static": bias_np.astype(dtype),
                 },
                 fetch_list=[
-                    outs[0]
+                    outs
                 ],  # NOTE: Only fetch `out`, because `residual_out` will not be initialized if both `norm_weight` and `norm_bias` are None.
             )
         return out_s, paddle_naive_residual_out
@@ -1111,7 +1111,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
             beta_static = paddle.static.data(
                 name="beta_static", shape=[self.cols], dtype='float32'
             )
-            outs = paddle.incubate.nn.functional.fused_layer_norm(
+            outs, residual = paddle.incubate.nn.functional.fused_layer_norm(
                 x_static,
                 gamma_static,
                 beta_static,
@@ -1120,7 +1120,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
                 residual_alpha=self.residual_alpha,
                 bias=bias_static,
                 residual=residual_static,
-            )
+            )[:2]
 
             exe = paddle.static.Executor(self.place)
             out_s = exe.run(
@@ -1131,7 +1131,7 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
                     "residual_static": residual_np.astype(dtype),
                     "bias_static": bias_np.astype(dtype),
                 },
-                fetch_list=[outs],
+                fetch_list=[outs, residual],
             )
         return out_s, paddle_naive_layernorm_out, paddle_naive_residual_out
 

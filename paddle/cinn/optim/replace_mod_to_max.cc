@@ -16,10 +16,10 @@
 
 #include <unordered_map>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace optim {
@@ -37,7 +37,7 @@ class ReplaceModToMaxMutator : public ir::IRMutator<> {
     ir::Mod* node = expr->As<ir::Mod>();
     Expr base = ir::Sub::Make(node->operand(1), Expr(1));
     Expr min_expr = ir::Min::Make(node->operand(0), base);
-    *expr = cinn::common::AutoSimplify(min_expr);
+    *expr = cinn::optim::ArithSimplify(min_expr);
     ir::IRMutator<>::Visit(expr, expr);
   }
 };

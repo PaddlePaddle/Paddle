@@ -39,13 +39,13 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   ///
   using Dim = pir::DDim;
   using DataLayout = pir::DataLayout;
-  using LoD = std::vector<std::vector<size_t>>;
-  using ParamKey = std::tuple<Type, pir::DDim, DataLayout, LoD, size_t>;
+  using LegacyLoD = std::vector<std::vector<size_t>>;
+  using ParamKey = std::tuple<Type, pir::DDim, DataLayout, LegacyLoD, size_t>;
 
   DenseTensorTypeStorage(Type dtype,
                          const pir::DDim& dims,
                          DataLayout layout,
-                         const LoD& lod,
+                         const LegacyLoD& lod,
                          size_t offset)
       : dtype_(dtype),
         dims_(dims),
@@ -83,8 +83,8 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
             static_cast<std::underlying_type<DataLayout>::type>(
                 std::get<2>(key))));
     // hash lod
-    hash_value =
-        detail::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
+    hash_value = detail::hash_combine(hash_value,
+                                      std::hash<LegacyLoD>()(std::get<3>(key)));
     // hash offset
     hash_value =
         detail::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
@@ -109,7 +109,7 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   pir::Type dtype_;
   pir::DDim dims_;
   DataLayout layout_;
-  LoD lod_;
+  LegacyLoD lod_;
   size_t offset_;
 };
 

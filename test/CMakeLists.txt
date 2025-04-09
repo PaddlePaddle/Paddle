@@ -180,6 +180,12 @@ if(WITH_TESTING)
   add_subdirectory(sequence)
   add_subdirectory(tensorrt)
   # add_subdirectory(white_list)
+  if(WITH_OPENVINO
+     AND NOT WIN32
+     AND NOT WITH_XPU
+     AND NOT WITH_ROCM)
+    add_subdirectory(openvino)
+  endif()
 
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)

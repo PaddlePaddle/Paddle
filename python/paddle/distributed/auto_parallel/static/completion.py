@@ -1224,12 +1224,12 @@ class Completer:
                 end_op_index = i
                 break
 
-        # all ops betweeen start_op_index and end_op_index should not be ignored
+        # all ops between start_op_index and end_op_index should not be ignored
         for i in range(start_op_index, end_op_index + 1):
             struct_name = ops[i].struct_name
             m = regex.search(struct_name)
             if not m:
-                # only assgin op created by reshard is allowed
+                # only assign op created by reshard is allowed
                 if (
                     ops[i].type == "assign"
                     and "reshard_api" in ops[i].output_arg_names[0]

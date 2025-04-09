@@ -132,7 +132,7 @@ struct LayerNormDataReader<T, U, 1> {
 };
 
 template <typename T, typename U, bool IsSameType, int VecSize>
-struct LayerNormDataWritter {
+struct LayerNormDataWriter {
   __device__ inline void operator()(
       T *__restrict__ row_dst,
       const U *__restrict__ buffer,
@@ -215,7 +215,7 @@ struct LayerNormDataWritter {
 };
 
 template <typename T, typename U, bool IsSameType>
-struct LayerNormDataWritter<T, U, IsSameType, 1> {
+struct LayerNormDataWriter<T, U, IsSameType, 1> {
   __device__ __forceinline__ void operator()(
       T *__restrict__ row_dst,
       U *__restrict__ buffer,
@@ -343,17 +343,17 @@ __global__ void LayerNormFwdWithWelford(
       mean[row_offset] = warp_mean;
       var[row_offset] = row_variance;
     }
-    LayerNormDataWritter<T, U, IsSameType, VecSize>()(row_dst,
-                                                      buffer,
-                                                      scale,
-                                                      bias,
-                                                      warp_mean,
-                                                      row_inv_var,
-                                                      read_times,
-                                                      cols_this_thread,
-                                                      last_tid_idx,
-                                                      valid_scale,
-                                                      valid_bias);
+    LayerNormDataWriter<T, U, IsSameType, VecSize>()(row_dst,
+                                                     buffer,
+                                                     scale,
+                                                     bias,
+                                                     warp_mean,
+                                                     row_inv_var,
+                                                     read_times,
+                                                     cols_this_thread,
+                                                     last_tid_idx,
+                                                     valid_scale,
+                                                     valid_bias);
   }
 }
 
@@ -453,16 +453,17 @@ void LaunchLayerNormKernel(const Context &dev_ctx,
 #endif  // PADDLE_WITH_CUDA
 
 template <typename T, typename U>
-void LayerNormDirectCUDAFunctor<T, U>::operator()(gpuStream_t stream,
-                                                  const T *input,
-                                                  std::vector<int> input_shape,
-                                                  const U *bias,
-                                                  const U *scale,
-                                                  T *output,
-                                                  U *mean,
-                                                  U *variance,
-                                                  int begin_norm_axis,
-                                                  float eps) {
+void LayerNormDirectCUDAFunctor<T, U>::operator()(
+    gpuStream_t stream,
+    const T *input,
+    std::vector<int64_t> input_shape,
+    const U *bias,
+    const U *scale,
+    T *output,
+    U *mean,
+    U *variance,
+    int begin_norm_axis,
+    float eps) {
   const auto x_dims = common::make_ddim(input_shape);
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
   int64_t batch_size = static_cast<int64_t>(matrix_dim[0]);

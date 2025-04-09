@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * TemporalShiftOp.
@@ -44,7 +42,7 @@ class TemporalShiftOpConverter : public OpConverter {
     }
 
     if (data_format == "NHWC") {
-      // tanspose input to [N,C,H,W]
+      // transpose input to [N,C,H,W]
       auto transpose_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
       nvinfer1::Permutation perm{0, 3, 1, 2};
       transpose_layer->setFirstTranspose(perm);
@@ -218,8 +216,6 @@ class TemporalShiftOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(temporal_shift, TemporalShiftOpConverter);

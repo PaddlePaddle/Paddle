@@ -117,11 +117,11 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
   int64_t active_threads_num = numel / vec_size;
   if (active_threads_num / (sm_count << 1) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about twice of SM, to acquire better performance.
+    // of active blocks is about twice of SM, to acquire better performance.
     threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 1));
   } else if (active_threads_num / (sm_count << 2) < limit_threads) {
     // Round up threads number into an exponential multiple of 2, while number
-    // of acitve blocks is about 4 times of SM, to acquire better performance.
+    // of active blocks is about 4 times of SM, to acquire better performance.
     threads = RoundToPowerOfTwo(active_threads_num / (sm_count << 2));
   }
   // Number of threads per block shall be larger than 64.

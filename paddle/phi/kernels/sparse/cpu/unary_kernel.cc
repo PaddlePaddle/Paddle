@@ -21,8 +21,7 @@
 #include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
 #include "paddle/phi/kernels/sparse/impl/unary_kernel_impl.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void DivScalarCooKernel(const Context& dev_ctx,
@@ -56,8 +55,7 @@ void DivScalarCsrKernel(const Context& dev_ctx,
       dev, eigen_out, eigen_x, static_cast<T>(scalar));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 #define PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(name, prefix)          \
   PD_REGISTER_KERNEL(name##_coo,                                   \

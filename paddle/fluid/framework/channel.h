@@ -340,7 +340,7 @@ Channel<T> MakeChannel(const Channel<U>& other) {
 // NOTE: ChannelReader is a wrapper for quick read channel with a buffer. It
 // will read a block data from channel, but user can get data one by one. So it
 // is important to notice that user must call operator>> until false, or call
-// get_buffer_remain until false to make sure the buffered data all readed.
+// get_buffer_remain until false to make sure the buffered data all read.
 template <class T>
 class ChannelReader {
  public:

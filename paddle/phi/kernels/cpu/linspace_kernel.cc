@@ -27,18 +27,28 @@ void LinspaceKernel(const Context& ctx,
                     const DenseTensor& number,
                     DataType dtype,
                     DenseTensor* out) {
-  int32_t num = number.data<int32_t>()[0];
+  int64_t num = 0;
+  if (number.dtype() == phi::DataType::INT64) {
+    num = number.data<int64_t>()[0];
+  } else if (number.dtype() == phi::DataType::INT32) {
+    num = number.data<int32_t>()[0];
+  }
+  PADDLE_ENFORCE_GE(num,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The num of linspace op should be larger "
+                        "than or equal to 0, but received num is %d",
+                        num));
+  if (num == 0) {
+    out->Resize(common::make_ddim({0}));
+    ctx.template Alloc<T>(out);
+    return;
+  }
   auto start_t = phi::funcs::TransDataType(ctx, start, dtype);
   auto stop_t = phi::funcs::TransDataType(ctx, stop, dtype);
 
   T start_data = start_t.template data<T>()[0];
   T stop_data = stop_t.template data<T>()[0];
-  PADDLE_ENFORCE_GT(
-      num,
-      0,
-      common::errors::InvalidArgument("The num of linspace op should be larger "
-                                      "than 0, but received num is %d",
-                                      num));
 
   out->Resize(common::make_ddim({num}));
   T* out_data = ctx.template Alloc<T>(out);

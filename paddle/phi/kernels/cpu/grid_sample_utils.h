@@ -105,22 +105,22 @@ void GetGridPointValue(const DenseTensor& input,
 }
 
 template <typename T>
-void AllNeigbors(const CPUContext& ctx,
-                 const DenseTensor& input,
-                 DenseTensor* grid_x,
-                 DenseTensor* grid_y,
-                 DenseTensor* x_w,
-                 DenseTensor* x_e,
-                 DenseTensor* y_n,
-                 DenseTensor* y_s,  // positions
-                 DenseTensor* d_w,
-                 DenseTensor* d_e,
-                 DenseTensor* d_n,
-                 DenseTensor* d_s,  // distance
-                 DenseTensor* v_wn,
-                 DenseTensor* v_en,
-                 DenseTensor* v_ws,
-                 DenseTensor* v_es) {  // values
+void AllNeighbors(const CPUContext& ctx,
+                  const DenseTensor& input,
+                  DenseTensor* grid_x,
+                  DenseTensor* grid_y,
+                  DenseTensor* x_w,
+                  DenseTensor* x_e,
+                  DenseTensor* y_n,
+                  DenseTensor* y_s,  // positions
+                  DenseTensor* d_w,
+                  DenseTensor* d_e,
+                  DenseTensor* d_n,
+                  DenseTensor* d_s,  // distance
+                  DenseTensor* v_wn,
+                  DenseTensor* v_en,
+                  DenseTensor* v_ws,
+                  DenseTensor* v_es) {  // values
   auto& place = *ctx.eigen_device();
 
   const int c = input.dims()[1];
@@ -229,31 +229,31 @@ void Get3DGridPointValue(const DenseTensor& input,
 }
 
 template <typename T>
-void All3DNeigbors(const CPUContext& ctx,
-                   const DenseTensor& input,
-                   DenseTensor* grid_x,
-                   DenseTensor* grid_y,
-                   DenseTensor* grid_z,
-                   DenseTensor* x_w,
-                   DenseTensor* x_e,
-                   DenseTensor* y_n,
-                   DenseTensor* y_s,
-                   DenseTensor* z_t,
-                   DenseTensor* z_b,  // positions
-                   DenseTensor* d_w,
-                   DenseTensor* d_e,
-                   DenseTensor* d_n,
-                   DenseTensor* d_s,
-                   DenseTensor* d_t,
-                   DenseTensor* d_b,  // distance
-                   DenseTensor* v_twn,
-                   DenseTensor* v_ten,
-                   DenseTensor* v_tws,
-                   DenseTensor* v_tes,
-                   DenseTensor* v_bwn,
-                   DenseTensor* v_ben,
-                   DenseTensor* v_bws,
-                   DenseTensor* v_bes) {  // values
+void All3DNeighbors(const CPUContext& ctx,
+                    const DenseTensor& input,
+                    DenseTensor* grid_x,
+                    DenseTensor* grid_y,
+                    DenseTensor* grid_z,
+                    DenseTensor* x_w,
+                    DenseTensor* x_e,
+                    DenseTensor* y_n,
+                    DenseTensor* y_s,
+                    DenseTensor* z_t,
+                    DenseTensor* z_b,  // positions
+                    DenseTensor* d_w,
+                    DenseTensor* d_e,
+                    DenseTensor* d_n,
+                    DenseTensor* d_s,
+                    DenseTensor* d_t,
+                    DenseTensor* d_b,  // distance
+                    DenseTensor* v_twn,
+                    DenseTensor* v_ten,
+                    DenseTensor* v_tws,
+                    DenseTensor* v_tes,
+                    DenseTensor* v_bwn,
+                    DenseTensor* v_ben,
+                    DenseTensor* v_bws,
+                    DenseTensor* v_bes) {  // values
   auto& place = *ctx.eigen_device();
 
   const int c = input.dims()[1];

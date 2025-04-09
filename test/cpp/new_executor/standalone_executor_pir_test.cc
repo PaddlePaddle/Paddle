@@ -154,7 +154,7 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   pir::Type fp32_dtype = pir::Float32Type::get(ctx);
   phi::DDim dims = {1};
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
-  phi::LoD lod = {{0}};
+  phi::LegacyLoD lod = {{0}};
   size_t offset = 0;
   pir::Type dense_tensor_dtype = paddle::dialect::DenseTensorType::get(
       ctx, fp32_dtype, dims, data_layout, lod, offset);

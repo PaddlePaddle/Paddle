@@ -19,8 +19,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T>
 static void fc_relu(const T* x,
@@ -90,8 +89,7 @@ void FusionRepeatedFCReluKernel(const Context& dev_ctx,
           attr);
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fusion_repeated_fc_relu,
                    CPU,

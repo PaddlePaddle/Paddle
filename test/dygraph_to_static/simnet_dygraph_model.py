@@ -345,7 +345,7 @@ class FC(paddle.nn.Layer):
             ]
             self.__w.append(
                 self.add_parameter(
-                    '_w%d' % i,
+                    f'_w{i}',
                     self.create_parameter(
                         attr=param,
                         shape=param_shape,

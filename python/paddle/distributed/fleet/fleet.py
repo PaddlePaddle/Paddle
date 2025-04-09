@@ -239,7 +239,7 @@ class Fleet:
                 is False.
             strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
-            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
+            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how height
                 the logging level is. Default is "INFO".
 
         Returns:
@@ -1418,6 +1418,27 @@ class Fleet:
 
         """
         self._runtime_handle._set_date(table_id, str(day_id))
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def print_table_stat(self, table_id: int, pass_id: int, threshold: float):
+        """
+        Print stat info of table_id for gpups table, format: tableid, feasign size, mf size.
+
+        Args:
+
+            table_id (int): The id of table.
+            pass_id (int): The id of pass.
+            threshold (float): The threshold of print.
+
+        Examples:
+
+            .. code-block:: text
+
+                fleet.print_table_stat(0,6,600000)
+
+        """
+        self._runtime_handle._print_table_stat(table_id, pass_id, threshold)
 
     @is_non_distributed_check
     @inited_runtime_handler

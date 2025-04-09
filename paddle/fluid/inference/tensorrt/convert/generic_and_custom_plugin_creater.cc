@@ -104,7 +104,7 @@ class CustomPluginCreater : public OpConverter {
         plugin_data.data = string_attrs.back().data();
         plugin_data.type = nvinfer1::PluginFieldType::kCHAR;
         plugin_data.length =
-            string_attrs.back().size() + 1;  // string ends with ‘\0’
+            string_attrs.back().size() + 1;  // string ends with '\0'
       } else if (op_desc.GetAttrType(attr_name) ==
                  framework::proto::AttrType::INTS) {
         ints_attrs.push_back(
@@ -160,7 +160,7 @@ class CustomPluginCreater : public OpConverter {
   }
 };
 
-class GenericPluginCreater : public OpConverter {
+class GenericPluginCreator : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
                   const framework::Scope &scope,
@@ -245,7 +245,7 @@ class GenericPluginCreater : public OpConverter {
   }
 };
 
-class CustomGenericPluginCreater : public OpConverter {
+class CustomGenericPluginCreator : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
                   const framework::Scope &scope,
@@ -334,7 +334,8 @@ class CustomGenericPluginCreater : public OpConverter {
 
 }  // namespace paddle::inference::tensorrt
 
-REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
-REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);
-REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creater,
-                          CustomGenericPluginCreater);
+REGISTER_TRT_OP_CONVERTER(custom_plugin_creater,
+                          CustomPluginCreater);  // typos: disable-line
+REGISTER_TRT_OP_CONVERTER(generic_plugin_creator, GenericPluginCreator);
+REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creator,
+                          CustomGenericPluginCreator);

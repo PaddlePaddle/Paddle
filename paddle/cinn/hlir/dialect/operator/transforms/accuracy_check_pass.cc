@@ -183,9 +183,9 @@ class AddAccuracyCheckPattern
   }
 };
 
-class AccuarcyCheckPass : public pir::Pass {
+class AccuracyCheckPass : public pir::Pass {
  public:
-  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/1) {}
+  AccuracyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -218,8 +218,8 @@ class AccuarcyCheckPass : public pir::Pass {
   pir::FrozenRewritePatternSet patterns_;
 };
 
-std::unique_ptr<pir::Pass> CreateAccuarcyCheckPass() {
-  return std::make_unique<AccuarcyCheckPass>();
+std::unique_ptr<pir::Pass> CreateAccuracyCheckPass() {
+  return std::make_unique<AccuracyCheckPass>();
 }
 
 }  // namespace cinn::dialect::ir

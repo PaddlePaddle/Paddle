@@ -58,13 +58,13 @@ function run_tools_test() {
 
 changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | grep 'DEFINE_EXPORTED' | grep -v '@@' | wc -l`
 if [[ $changed_env_var_count -gt 0 ]]; then
-    echo_line="You must have one RD (phlrain or luotao1 or Aurelius84) approval for changing the FLAGS, which manages the environment variables.\n"
-    check_approval 1 phlrain luotao1 Aurelius84
+    echo_line="You must have one RD (phlrain or luotao1) approval for changing the FLAGS, which manages the environment variables.\n"
+    check_approval 1 phlrain luotao1
 fi
 
 changed_deprecated_tests_count=$(expr $(git ls-tree -r --name-only HEAD ${PADDLE_ROOT}/test/deprecated | grep '^test' | wc -l) - $(git ls-tree -r --name-only upstream/$BRANCH ${PADDLE_ROOT}/test/deprecated | grep '^tes' | wc -l))
 if [[ $changed_deprecated_tests_count -gt 0 ]]; then
-    echo_line="You must have one RD (wanghuancoder (Recommend)) approval for add new test in test/deprecated direcotry.\n"
+    echo_line="You must have one RD (wanghuancoder (Recommend)) approval for add new test in test/deprecated directory.\n"
     check_approval 1 wanghuancoder
 fi
 
@@ -96,20 +96,20 @@ done
 DEPS_PHI_IN_IR=`git diff --name-only upstream/$BRANCH | grep -E "paddle/pir/" | grep "CMakeList" |xargs -r git diff -U0 upstream/$BRANCH --| grep "^\+" | grep "phi" || true`
 echo "DEPS_PHI_IN_IR:${DEPS_PHI_IN_IR}"
 if [ "${DEPS_PHI_IN_IR}" ] && [ "${DEPS_PHI_IN_IR}" != "" ]; then
-    echo_line="You must have one RD (Aurelius84, phlrain, zhangbo9674, winter-wang) approval for the CMakeLists.txt with DEPS phi* in paddle/pir directory.\n"
-    check_approval 1 Aurelius84 phlrain zhangbo9674 winter-wang
+    echo_line="You must have one RD (phlrain, zhangbo9674) approval for the CMakeLists.txt with DEPS phi* in paddle/pir directory.\n"
+    check_approval 1 phlrain zhangbo9674
 fi
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
 HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH $FILTER | grep '^\+' | grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01,zhiqiu,Xreki,luotao1,qili93,Aurelius84) approval for the usage of const_cast.\n"
-    check_approval 1 XiaoguangHu01 zhiqiu Xreki luotao1 qili93 Aurelius84
+    echo_line="You must have one RD (XiaoguangHu01, zhiqiu, Xreki, zhangbo9674, zyfncg, phlrain) approval for the usage of const_cast.\n"
+    check_approval 1 XiaoguangHu01 zhiqiu Xreki zhangbo9674 zyfncg phlrain
 fi
 
 HAS_PADDLE_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "paddle::get" || true`
 if [ ${HAS_PADDLE_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="paddle::get is not recommended for direct use, because it may throw an bad_variant_access exception without any stack information, so please use PADDLE_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle paddle::get and request luotao1 or Aurelius84 review and approve.\n"
-    check_approval 1 luotao1 Aurelius84
+    echo_line="paddle::get is not recommended for direct use, because it may throw an bad_variant_access exception without any stack information, so please use PADDLE_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle paddle::get and request luotao1 or zhangbo9674 or phlrain review and approve.\n"
+    check_approval 1 luotao1 zhangbo9674 phlrain
 fi
 
 FILTER=`git diff --name-only upstream/develop | grep -v "tools/"`
@@ -131,41 +131,57 @@ if [[ ${IF_USE_EVAL} ]]; then
     check_approval 1 wanghuancoder SigureMo
 fi
 
+CPP_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/' |grep "^+")
+IF_USE_FESETROUND=`echo $CPP_FILE_ADDED_LINES | grep -B5 --no-group-separator "fesetround" || true`
+if [[ ${IF_USE_FESETROUND} ]]; then
+    echo_line="You must have one RD (zyfncg(Recommend), SigureMo, phlrain) approval for using fesetround, which may affect all floating-point precision calculations in the same process.\n"
+    check_approval 1 zyfncg SigureMo phlrain
+fi
+
+INFERMETA_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/phi/infermeta/' |grep "^+")
+IF_ADD_METACONFIG=`echo $INFERMETA_FILES_ADDED_LINES | grep -B5 --no-group-separator "MetaConfig" || true`
+HAS_MODIFIED_OP_BUILD_GEN_SCRIPT=`git diff --name-only upstream/$BRANCH -- 'paddle/fluid/pir/dialect/op_generator/op_build_gen.py'`
+if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]; then
+    echo_line="If your added infermeta file contains MetaConfig, you must update _INFERMETA_NEED_META_CONFIG in op_build_gen.py synchronously.\n"
+    echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo(Recommend), zyfncg, zhangbo9674) approval for the changes.\n"
+    check_approval 1 SigureMo zyfncg zhangbo9674
+fi
+
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD zyfncg or Aurelius84 approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
-    check_approval 1 zyfncg Aurelius84
+    echo_line="You must have one RD zyfncg or zhangbo9674 or phlrain approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
+    check_approval 1 zyfncg zhangbo9674 phlrain
 fi
 
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
 HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen, qili93 or ZzSean or Aurelius84) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
-    check_approval 1 kolinwei wanghuancoder luotao1 QingshuChen qili93 ZzSean Aurelius84
+    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (kolinwei(Recommend), wanghuancoder, luotao1, QingshuChen) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+    check_approval 1 kolinwei wanghuancoder luotao1 QingshuChen
 fi
 
 HAS_MODIFIED_DEMO_CMAKE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/inference/api/demo_ci/CMakeLists.txt" || true`
 if [ "${HAS_MODIFIED_DEMO_CMAKE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (yuanlehome (Recommend), vivienfanghuagood or Aurelius84) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
-    check_approval 1 yuanlehome vivienfanghuagood Aurelius84
+    echo_line="You must have one RD (yuanlehome (Recommend), vivienfanghuagood) approval for paddle/fluid/inference/api/demo_ci/CMakeLists.txt.\nwhich manages the compilation parameter of inference demo\n"
+    check_approval 1 yuanlehome vivienfanghuagood
 fi
 
 HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or Aurelius84 for paddle/phi/kernels/declarations.h using. Thanks!\n"
-    check_approval 1 zyfncg Aurelius84
+    echo_line="You must be approved by zyfncg or zhangbo9674 or phlrain for paddle/phi/kernels/declarations.h using. Thanks!\n"
+    check_approval 1 zyfncg zhangbo9674 phlrain
 fi
 
 HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH |grep "cc_test_old" || true`
 if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by phlrain or risemeup1 or zhangbo9674 or Galaxy1458 for using cc_test_old. Thanks!\n"
-    check_approval 1 phlrain risemeup1 zhangbo9674 Galaxy1458
+    echo_line="You must be approved by phlrain or risemeup1 or zhangbo9674 for using cc_test_old. Thanks!\n"
+    check_approval 1 phlrain risemeup1 zhangbo9674
 fi
 
-HAS_USED_CCTEST=`git diff -U0 upstream/$BRANCH |grep "cc_test" || true`
+HAS_USED_CCTEST=`git diff -U0 upstream/$BRANCH |grep -w "cc_test" || true`
 if [ "${HAS_USED_CCTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Paddle utest will gradually discard cc_test\n  instead, the paddle_test is recommended,\n if you must use cc_test, you must be approved by risemeup1 or zhangbo9674 or Galaxy1458 for using cc_test. Thanks!\n"
-    check_approval 1 risemeup1 zhangbo9674 Galaxy1458
+    echo_line="Paddle utest will gradually discard cc_test\n  instead, the paddle_test is recommended,\n if you must use cc_test, you must be approved by risemeup1 or zhangbo9674 for using cc_test. Thanks!\n"
+    check_approval 1 risemeup1 zhangbo9674
 fi
 
 HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH |grep "paddle/pir/include/pass/pass.h" || true`
@@ -182,7 +198,7 @@ fi
 
 HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi/ops/yaml/ops.yaml|paddle/phi/ops/yaml/backward.yaml" || true`
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n Recommend you obtain approval from gongshaotian or Hongqing-work, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
+    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the beginning of this two file.\n Recommend you obtain approval from gongshaotian or Hongqing-work, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
     check_approval 1 zyfncg heavyrain-lzy gongshaotian Hongqing-work
 fi
 
@@ -213,8 +229,8 @@ fi
 
 HAS_MODIFIED_PIR_INCLUDE_DIR=`git diff --name-only upstream/$BRANCH | grep "paddle/pir/include" || true`
 if [ "${HAS_MODIFIED_PIR_INCLUDE_DIR}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (yuanlehome, winter-wang, zhangbo9674) approval for file changes in paddle/pir/include.\n"
-    check_approval 1 yuanlehome winter-wang zhangbo9674
+    echo_line="You must have one RD (yuanlehome, zhangbo9674) approval for file changes in paddle/pir/include.\n"
+    check_approval 1 yuanlehome zhangbo9674
 fi
 
 HAS_MODIFIED_API_GENE=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/api/generator" || true`
@@ -253,14 +269,6 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
     check_approval 1 From00 zhiqiu
 fi
 
-
-HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
-if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
-    check_approval 1 risemeup1 winter-wang
-fi
-
-
 HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI=`git diff --name-only upstream/$BRANCH | grep "tools/auto_parallel/target_path_lists.sh" || true`
 if [ "${HAS_MODIFIED_TARGET_FOR_AUTO_PARALLEL_CI}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (zhiqiu approval for file changes in tools/auto_parallel/target_path_lists.sh.\n"
@@ -281,8 +289,8 @@ fi
 
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (luotao1 (Recommend) or Aurelius84) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
-    check_approval 1 luotao1 Aurelius84
+    echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_GPU_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (luotao1 (Recommend) or zhangbo9674 or phlrain) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
+    check_approval 1 luotao1 zhangbo9674 phlrain
 fi
 
 ALL_ADDED_LINES=$(git diff -U0 upstream/$BRANCH |grep "^+" || true)
@@ -290,8 +298,8 @@ ALL_PADDLE_CHECK=$(echo $ALL_ADDED_LINES |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|
 VALID_PADDLE_CHECK=$(echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(([^,;]+,)*[^";]*errors::.[^"]*".[^";]{20,}.[^;]*\);\s' || true)
 INVALID_PADDLE_CHECK=$(echo "$ALL_PADDLE_CHECK" |grep -vxF "$VALID_PADDLE_CHECK" || true)
 if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please request luotao1 or Aurelius84 review and approve.\nThe PADDLE_ENFORCE{_**} or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
-    check_approval 1 luotao1 Aurelius84
+    echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please request zhangbo9674 or phlrain or luotao1 review and approve.\nThe PADDLE_ENFORCE{_**} or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
+    check_approval 1 luotao1 zhangbo9674 phlrain
 fi
 
 EMPTY_GRAD_OP_REGISTERED=`echo $ALL_ADDED_LINES |grep -zoE "REGISTER_OP_WITHOUT_GRADIENT\([^;.]*\)[;\s]" || echo $ALL_ADDED_LINES |grep -zoE "[[:graph:]]*EmptyGradOpMaker<[[:graph:]]*>" || true`
@@ -302,15 +310,15 @@ fi
 
 INVALID_UNITTEST_ASSERT_CHECK=`echo "$ALL_ADDED_LINES" | grep -zoE '\+\s+((assert\s+)|(self\.assert(True|Equal)\())(\s*\+\s*)?(np|numpy)\.(allclose|array_equal)[^+]*' || true`
 if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request SigureMo (Recommend) or luotao1 or Aurelius84 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
-    check_approval 1 SigureMo luotao1 Aurelius84
+    echo_line="It is recommended to use 'np.testing.assert_allclose' and 'np.testing.assert_array_equal' instead of 'self.assertTrue(np.allclose(...))' and 'self.assertTrue(np.array_equal(...))'.\nPlease modify the code below. If anything is unclear, please read the specification [ https://github.com/PaddlePaddle/community/blob/master/rfcs/CodeStyle/20220805_code_style_improvement_for_unittest.md#background ]. If it is a mismatch, please request SigureMo (Recommend) or luotao1 review and approve.\nThe code that do not meet the specification are as follows:\n${INVALID_UNITTEST_ASSERT_CHECK}\n"
+    check_approval 1 SigureMo luotao1
 fi
 
 TEST_FILE_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- test |grep "^+")
 ENABLE_TO_STATIC_CHECK=`echo "$TEST_FILE_ADDED_LINES" | grep "enable_to_static(" || true`
 if [ "${ENABLE_TO_STATIC_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (SigureMo, zrr1999 or gouzil) approval for using 'paddle.jit.enable_to_static', we recommend using 'enable_to_static_guard' in the related test files.\n"
-    check_approval 1 SigureMo zrr1999 gouzil
+    echo_line="You must have one RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for using 'paddle.jit.enable_to_static', we recommend using 'enable_to_static_guard' in the related test files.\n"
+    check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
 fi
 
 HAS_MODIFIED_DY2ST_TEST_FILES=$(git diff --name-only --diff-filter=ACMR upstream/$BRANCH | grep "test/dygraph_to_static/test_" || true)
@@ -322,15 +330,15 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
         echo_line=${echo_line}${error_lines}"\n"
         echo_line=${echo_line}"You can run following command to fix the errors:\n"
         echo_line=${echo_line}"    python test/dygraph_to_static/check_approval.py "$(echo ${HAS_MODIFIED_DY2ST_TEST_FILES} | tr "\n" " ")"\n"
-        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, zrr1999 or gouzil) approval for the changes.\n"
-        check_approval 1 SigureMo zrr1999 gouzil
+        echo_line=${echo_line}"If you believe this is a false positive, please request one of the RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for the changes.\n"
+        check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
     fi
 fi
 
 HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY=$(git diff --name-only upstream/$BRANCH | grep "test/dygraph_to_static/test_tensor_attr_consistency.py" || true)
 if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (SigureMo, zrr1999 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
-    check_approval 1 SigureMo zrr1999 gouzil
+    echo_line="You must have one RD (SigureMo, DrRyanHuang, zrr1999 or gouzil) approval for file changes in test/dygraph_to_static/test_tensor_attr_consistency.py.\n"
+    check_approval 1 SigureMo DrRyanHuang zrr1999 gouzil
 fi
 
 HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "auto_parallel_align_mode" || true`
@@ -400,8 +408,8 @@ for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
     fi
 done
 if [ "${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend), fuyinno4, QingshuChen (Recommend for kunlun) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
-    check_approval 1 phlrain fuyinno4 QingshuChen
+    echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend), QingshuChen (Recommend for kunlun) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
+    check_approval 1 phlrain QingshuChen
 fi
 
 ALL_CHANGE_YAML_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".yaml"`
@@ -422,21 +430,21 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     GET_KERNEL_TYPE_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -czoE "GetExpectedKernelType[(][^(){}]+[)][^{]+[{][^}]+[}]" || true`
     INDICATE_VAR_DTYPE_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -co "IndicateVarDataType" || true`
     if [ ${GET_KERNEL_TYPE_FUNC_CNT} -gt ${INDICATE_VAR_DTYPE_CNT} ]; then
-        echo_line="If you override GetExpectedKernelType method of OperatorWithKernel, please use OperatorWithKernel::IndicateVarDataType() method to get specific input variable's dtype, which checked whether the input variable is initialized (The details in https://github.com/PaddlePaddle/FluidDoc/pull/1527). If you don't use this method to check, you must have one RD (luotao1 or Aurelius84) approval for the usage of other methods.\n"
-        check_approval 1 luotao1 Aurelius84
+        echo_line="If you override GetExpectedKernelType method of OperatorWithKernel, please use OperatorWithKernel::IndicateVarDataType() method to get specific input variable's dtype, which checked whether the input variable is initialized (The details in https://github.com/PaddlePaddle/FluidDoc/pull/1527). If you don't use this method to check, you must have one RD (zhangbo9674 or phlrain or luotao1) approval for the usage of other methods.\n"
+        check_approval 1 luotao1 zhangbo9674 phlrain
     fi
 fi
 
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, XiaoguangHu01, or qili93 or Aurelius84) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
-    check_approval 1 phlrain luotao1 XiaoguangHu01 qili93 Aurelius84
+    echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
+    check_approval 1 phlrain luotao1 XiaoguangHu01
 fi
 
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
 if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, phlrain, luotao1, QingshuChen, Aurelius84) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
-    check_approval 1 XiaoguangHu01 phlrain luotao1 QingshuChen Aurelius84
+    echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, phlrain, luotao1, QingshuChen) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
+    check_approval 1 XiaoguangHu01 phlrain luotao1 QingshuChen
 fi
 
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
@@ -451,8 +459,8 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), zhiqiu or luotao1 or qili93 or Aurelius84) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
-        check_approval 1 zhhsplendid zhiqiu luotao1 qili93 Aurelius84
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), zhiqiu or luotao1) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
+        check_approval 1 zhhsplendid zhiqiu luotao1
     fi
 fi
 
@@ -468,8 +476,8 @@ if [ "${CMAKE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (zhiqiu (Recommend), luotao1 or phlrain or Aurelius84) approval to use these methods. "
-        check_approval 1 zhiqiu luotao1 phlrain Aurelius84
+        echo_line="Change compilation flag of warnings is not recommended. You must have one RD's (zhiqiu (Recommend), luotao1 or phlrain) approval to use these methods. "
+        check_approval 1 zhiqiu luotao1 phlrain
     fi
 fi
 
@@ -482,8 +490,8 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
         CHECK_OP=${CHECK_WHOLE//+/'\n+'}
-        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), fuyinno4, QingshuChen(Recommend for kunlun), zhiqiu or qili93 (Recommend for NPU) , luotao1, phlrain or ZzSean or Aurelius84) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
-        check_approval 1 Xreki fuyinno4 QingshuChen zhiqiu qili93 luotao1 phlrain ZzSean Aurelius84
+        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), QingshuChen(Recommend for kunlun), zhiqiu, luotao1, phlrain or ZzSean) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
+        check_approval 1 Xreki QingshuChen zhiqiu luotao1 phlrain
     fi
 fi
 
@@ -499,8 +507,8 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain, qili93, QingshuChen or Aurelius84) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
-        check_approval 1 zhangting2020 luotao1 phlrain qili93 QingshuChen Aurelius84
+        echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain, QingshuChen) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
+        check_approval 1 zhangting2020 luotao1 phlrain QingshuChen
     fi
 fi
 
@@ -550,12 +558,12 @@ UNITYBUILD_RULE_CHANGED=$(git diff --name-only upstream/$BRANCH |
                           grep "unity_build_rule.cmake" || true)
 if [ -n "${UNITYBUILD_RULE_CHANGED}" -a -n "${GIT_PR_ID}" ]; then
     echo_line="You must have one RD (Avin0323(Recommend) or zhwesky2010 or
-               wanghuancoder or luotao1 or Aurelius84) approval for modifying
+               wanghuancoder or luotao1) approval for modifying
                unity_build_rule.cmake which the rules of Unity Build."
     echo_line=$(echo ${echo_line})
     # Avin0323(23427135) zhwesky2010(52485244)
     # wanghuancoder(26922892) luotao1(6836917)
-    check_approval 1 Avin0323 zhwesky2010 wanghuancoder luotao1 Aurelius84
+    check_approval 1 Avin0323 zhwesky2010 wanghuancoder luotao1
 fi
 
 if [ -n "${echo_list}" ];then

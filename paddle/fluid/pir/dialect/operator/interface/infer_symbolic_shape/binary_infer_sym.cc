@@ -44,8 +44,13 @@ inline void UpdatePaddingAndDilation(
     symbol::DimExprBuilder builder;
     for (size_t i = 0; i < data_dims.size(); ++i) {
       symbol::DimExpr out_size = (data_dims[i] + strides[i] - 1) / strides[i];
-      symbol::DimExpr pad_sum = builder.Max(
-          (out_size - one) * strides[i] + ksize[i] - data_dims[i], zero);
+      symbol::DimExpr pad_sum;
+      if (strides[i] == 2 && ksize[i] == symbol::DimExpr{3}) {
+        pad_sum = (out_size - one) * strides[i] + ksize[i] - data_dims[i];
+      } else {
+        pad_sum = builder.Max(
+            (out_size - one) * strides[i] + ksize[i] - data_dims[i], zero);
+      }
 
       symbol::DimExpr pad_0 = pad_sum / two;
       symbol::DimExpr pad_1 = pad_sum - pad_0;
@@ -312,13 +317,6 @@ bool BmmOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
-
-// bool CholeskySolveOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
 
 bool CtcAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -939,14 +937,10 @@ bool GatherOpInferSymbolicShape(pir::Operation *op,
   }
 
   const std::vector<symbol::DimExpr> &input_sym_shape =
-      input_shape_or_data.data().has_value()
-          ? input_shape_or_data.data().value()
-          : input_shape_or_data.shape();
+      input_shape_or_data.shape();
 
   const std::vector<symbol::DimExpr> &index_sym_shape =
-      index_shape_or_data.data().has_value()
-          ? index_shape_or_data.data().value()
-          : index_shape_or_data.shape();
+      index_shape_or_data.shape();
 
   if (axis < 0) axis += input_sym_shape.size();
 
@@ -1095,8 +1089,8 @@ bool HistogramOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &input_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   int64_t bins = op->attribute<pir::Int64Attribute>("bins").data();
-  int min = op->attribute<pir::Int32Attribute>("min").data();
-  int max = op->attribute<pir::Int32Attribute>("max").data();
+  float min = op->attribute<pir::FloatAttribute>("min").data();
+  float max = op->attribute<pir::FloatAttribute>("max").data();
   PADDLE_ENFORCE_GE(bins,
                     1,
                     common::errors::InvalidArgument(
@@ -1107,7 +1101,7 @@ bool HistogramOpInferSymbolicShape(
       max,
       min,
       common::errors::InvalidArgument("max must be larger or equal to min."
-                                      "But received max is %d, min is %d",
+                                      "But received max is %f, min is %f",
                                       max,
                                       min));
   if (op->operand_source(1)) {
@@ -1254,15 +1248,18 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
       residuals_shape.emplace_back(0);
     }
   }
-  if (paddle::dialect::details::IsFakeValue(op->result(1)) ||
-      residuals_shape.empty()) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-  } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    if (residuals_shape.empty()) {
+      infer_context->SetSymbolForValueByStaticShape(op->result(1));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+    }
   }
+
   symbol::DimExprBuilder builder;
   batch_dims_vec.emplace_back(builder.Min(m, n));
   infer_context->SetShapeOrDataForValue(
@@ -1840,16 +1837,18 @@ bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
           "shape is %d-D.",
           repeats_shape_or_data.shape().size()));
 
-  ExprVec repeat_times_shape =
-      paddle::dialect::details::GetOrCreateExprVecFromData(
-          repeats_shape_or_data, infer_context);
+  ExprVec repeat_times_shape;
+  if (repeats_shape_or_data.data().has_value()) {
+    repeat_times_shape.assign(repeats_shape_or_data.data()->begin(),
+                              repeats_shape_or_data.data()->end());
+  } else {
+    symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+    repeat_times_shape.push_back(out_unknown);
+  }
 
-  const auto &GetSum = [&](const auto &dim_exprs) {
-    symbol::DimExpr sum{0};
-    for (const auto &dim_expr : dim_exprs) {
-      sum = sum + dim_expr;
-    }
-    return sum;
+  const auto &GetSum = [](const auto &dim_exprs) {
+    return std::accumulate(
+        dim_exprs.begin(), dim_exprs.end(), symbol::DimExpr{0}, std::plus<>());
   };
 
   int x_rank = x_shape.size();
@@ -2143,13 +2142,9 @@ bool TakeAlongAxisOpInferSymbolicShape(
   const auto &attributes = op->attributes();
   int axis = attributes.at("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  const std::vector<symbol::DimExpr> &arr_sym_shape =
-      arr_shape_or_data.data().has_value() ? arr_shape_or_data.data().value()
-                                           : arr_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &arr_sym_shape = arr_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &indices_sym_shape =
-      indices_shape_or_data.data().has_value()
-          ? indices_shape_or_data.data().value()
-          : indices_shape_or_data.shape();
+      indices_shape_or_data.shape();
 
   if (axis < 0) axis += arr_sym_shape.size();
 
@@ -2179,11 +2174,7 @@ bool TopPSamplingOpInferSymbolicShape(
   const auto &x_dims = [op, infer_context] {
     const auto &shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    if (shape_or_data.data().has_value()) {
-      return shape_or_data.data().value();
-    } else {
-      return shape_or_data.shape();
-    }
+    return shape_or_data.shape();
   }();
 
   // all the result have the same shape
@@ -2281,6 +2272,38 @@ bool TriangularSolveOpInferSymbolicShape(
   std::vector<symbol::DimExpr> output_shape({expand_batch_portion});
   output_shape.insert(output_shape.end(),
                       {y_shape[y_rank - 2], y_shape[y_rank - 1]});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
+
+bool CholeskySolveOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &b_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &a_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &a_shape = a_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &b_shape = b_shape_or_data.shape();
+  const auto &a_rank = a_shape.size();
+  const auto &b_rank = b_shape.size();
+
+  infer_context->AddEqualCstr(a_shape[a_rank - 2], a_shape[a_rank - 1]);
+
+  std::vector<symbol::DimExpr> a_shape_cut(a_shape.begin(), a_shape.end() - 2);
+  std::vector<symbol::DimExpr> b_shape_cut(b_shape.begin(), b_shape.end() - 2);
+
+  std::vector<symbol::DimExpr> expand_batch_portion =
+      MatrixGetBroadcastBatchPortion(a_shape_cut, b_shape_cut, infer_context);
+
+  std::vector<symbol::DimExpr> output_shape({expand_batch_portion});
+  output_shape.insert(output_shape.end(),
+                      {b_shape[b_rank - 2], b_shape[b_rank - 1]});
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),

@@ -296,7 +296,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 
     trainer_endpoints = []
     for ip in node_ips:
-        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+        trainer_endpoints.append([f"{ip}:{port}" for port in free_ports])
     return get_cluster(
         node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc
     )

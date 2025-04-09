@@ -375,7 +375,7 @@ class TestLayer(LayerTest):
             static_pir_result = _test_static(inp_np_x, inp_np_y)
         np.testing.assert_array_equal(static_pir_result, static_rlt)
 
-    def test_embeding(self):
+    def test_embedding(self):
         inp_word = np.array([[[1]]]).astype('int64')
         dict_size = 20
         with self.static_graph():
@@ -526,9 +526,7 @@ class TestLayer(LayerTest):
 
         def _test_static_specific(input):
             with self.static_graph():
-                X = paddle.static.data(
-                    name='X', shape=shape, dtype='float32', lod_level=1
-                )
+                X = paddle.static.data(name='X', shape=shape, dtype='float32')
                 ret = paddle.static.nn.group_norm(
                     input=X,
                     groups=2,
@@ -551,9 +549,7 @@ class TestLayer(LayerTest):
 
         def _test_static(input):
             with self.static_graph():
-                X = paddle.static.data(
-                    name='X', shape=shape, dtype='float32', lod_level=1
-                )
+                X = paddle.static.data(name='X', shape=shape, dtype='float32')
                 groupNorm = paddle.nn.GroupNorm(
                     num_channels=shape[1],
                     num_groups=2,
@@ -695,7 +691,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             Weight = paddle.static.data(
-                name='Weight', shape=shape, dtype='float32', lod_level=1
+                name='Weight', shape=shape, dtype='float32'
             )
             ret = paddle.static.nn.spectral_norm(
                 weight=Weight, dim=1, power_iters=2
@@ -712,7 +708,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             Weight = paddle.static.data(
-                name='Weight', shape=shape, dtype='float32', lod_level=1
+                name='Weight', shape=shape, dtype='float32'
             )
             spectralNorm = paddle.nn.SpectralNorm(shape, dim=1, power_iters=2)
             ret = spectralNorm(Weight)
@@ -1381,9 +1377,7 @@ class TestBook(LayerTest):
     def test_row_conv(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            x = paddle.static.data(
-                name='x', shape=[-1, 16], dtype='float32', lod_level=1
-            )
+            x = paddle.static.data(name='x', shape=[-1, 16], dtype='float32')
             out = paddle.static.nn.row_conv(input=x, future_context_size=2)
             return out
 
@@ -1400,9 +1394,7 @@ class TestBook(LayerTest):
     def test_shuffle_batch(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
-            x = paddle.static.data(
-                name='X', shape=[-1, 4, 50], dtype='float32', lod_level=0
-            )
+            x = paddle.static.data(name='X', shape=[-1, 4, 50], dtype='float32')
             out1 = shuffle_batch(x)
             paddle.seed(1000)
             out2 = shuffle_batch(x)

@@ -24,9 +24,7 @@
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
     DecoratedAllocationPtr underlying_allocation,
@@ -40,10 +38,10 @@ StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
       owning_stream_(owning_stream),
       allocator_(allocator->shared_from_this()) {}
 
-void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
+bool StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
-    return;
+    return false;
   }
 
   std::call_once(once_flag_,
@@ -53,12 +51,13 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     graph_capturing_stream_set_.insert(stream);
-    return;
+    return true;
   }
 #endif
 
   RecordStreamWithNoGraphCapturing(stream);
   RecordGraphCapturingStreams();
+  return true;
 }
 
 void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
@@ -290,6 +289,4 @@ std::map<phi::Place, std::vector<StreamSafeCUDAAllocator*>>
     StreamSafeCUDAAllocator::allocator_map_;
 SpinLock StreamSafeCUDAAllocator::allocator_map_lock_;
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

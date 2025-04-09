@@ -52,7 +52,6 @@ class TestConstantInitializer(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=init_inst,
                 )
@@ -134,7 +133,6 @@ class TestKaimingInitializer(unittest.TestCase):
                 param = block.create_parameter(
                     dtype="float32",
                     shape=shape_mat,
-                    lod_level=0,
                     name="param",
                     initializer=init_inst,
                 )
@@ -228,7 +226,6 @@ class TestUniform(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Uniform(),
                 )
@@ -257,7 +254,6 @@ class TestUniform(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Uniform(),
                 )
@@ -286,7 +282,6 @@ class TestUniform(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Uniform(min_value, max_value),
                 )
@@ -314,7 +309,6 @@ class TestUniform(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Uniform(min_value, float(i)),
                 )
@@ -377,7 +371,6 @@ class TestNormal(unittest.TestCase):
                 block.create_parameter(
                     dtype="float32",
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Normal(),
                 )
@@ -400,7 +393,6 @@ class TestNormal(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Normal(2.3, 1.9),
                 )
@@ -425,7 +417,6 @@ class TestNormal(unittest.TestCase):
                     block.create_parameter(
                         dtype=dtype,
                         shape=[5, 10],
-                        lod_level=0,
                         name="param",
                         initializer=initializer.Normal(2.3 + 2.3j, 1.9),
                     )
@@ -480,7 +471,6 @@ class TestTruncatedNormal(unittest.TestCase):
                 block.create_parameter(
                     dtype="float32",
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.TruncatedNormal(),
                 )
@@ -505,7 +495,6 @@ class TestTruncatedNormal(unittest.TestCase):
                 block.create_parameter(
                     dtype=dtype,
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.TruncatedNormal(2.3, 1.9),
                 )
@@ -594,7 +583,6 @@ class TestXavierUniform(unittest.TestCase):
                 param = block.create_parameter(
                     dtype="float32",
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.XavierUniform(),
                 )
@@ -620,7 +608,6 @@ class TestXavierUniform(unittest.TestCase):
                 param = block.create_parameter(
                     dtype="float32",
                     shape=[5, 10, 15, 20],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.XavierUniform(),
                 )
@@ -659,7 +646,6 @@ class TestXavierNormal(unittest.TestCase):
                 param = block.create_parameter(
                     dtype="float32",
                     shape=[5, 10],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.XavierNormal(),
                 )
@@ -685,7 +671,6 @@ class TestXavierNormal(unittest.TestCase):
                 param = block.create_parameter(
                     dtype="float32",
                     shape=[5, 10, 15, 20],
-                    lod_level=0,
                     name="param",
                     initializer=initializer.XavierNormal(),
                 )
@@ -728,7 +713,6 @@ class TestAssign(unittest.TestCase):
                 block.create_parameter(
                     dtype=np_array.dtype,
                     shape=np_array.shape,
-                    lod_level=0,
                     name="param",
                     initializer=initializer.Assign(np_array),
                 )

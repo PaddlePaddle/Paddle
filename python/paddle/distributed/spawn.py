@@ -202,11 +202,10 @@ def _get_subprocess_env_list(nprocs, options):
         if args.selected_devices is None:
             if len(env_devices_list) < nprocs:
                 raise RuntimeError(
-                    "the number of visible devices(%d) is less than the number "
-                    "of spawn processes(%d), please ensure that the correct "
+                    f"the number of visible devices({len(env_devices_list)}) is less than the number "
+                    f"of spawn processes({nprocs}), please ensure that the correct "
                     "`nprocs` argument is passed or the environment variable "
                     "`CUDA_VISIBLE_DEVICES` is correctly configured."
-                    % (len(env_devices_list), nprocs)
                 )
             args.selected_devices = ",".join(
                 [str(env_devices_list[x]) for x in range(0, nprocs)]
@@ -215,10 +214,9 @@ def _get_subprocess_env_list(nprocs, options):
             selected_device_list = args.selected_devices.split(',')
             if len(selected_device_list) != nprocs:
                 raise ValueError(
-                    "The number of selected devices(%s) is not equal to "
-                    "the number of spawn processes(%d), please ensure that the "
+                    f"The number of selected devices({len(selected_device_list)}) is not equal to "
+                    f"the number of spawn processes({nprocs}), please ensure that the "
                     "correct `nprocs` and `gpus` arguments are passed."
-                    % (len(selected_device_list), nprocs)
                 )
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
@@ -243,11 +241,10 @@ def _get_subprocess_env_list(nprocs, options):
         if args.selected_devices is None:
             if len(env_devices_list) < nprocs:
                 raise RuntimeError(
-                    "the number of visible devices(%d) is less than the number "
-                    "of spawn processes(%d), please ensure that the correct "
+                    f"the number of visible devices({len(env_devices_list)}) is less than the number "
+                    f"of spawn processes({nprocs}), please ensure that the correct "
                     "`nprocs` argument is passed or the environment variable "
                     "`XPU_VISIBLE_DEVICES` is correctly configured."
-                    % (len(env_devices_list), nprocs)
                 )
             args.selected_devices = ",".join(
                 [str(env_devices_list[x]) for x in range(0, nprocs)]
@@ -256,10 +253,9 @@ def _get_subprocess_env_list(nprocs, options):
             selected_device_list = args.selected_devices.split(',')
             if len(selected_device_list) != nprocs:
                 raise ValueError(
-                    "The number of selected devices(%s) is not equal to "
-                    "the number of spawn processes(%d), please ensure that the "
+                    f"The number of selected devices({len(selected_device_list)}) is not equal to "
+                    f"the number of spawn processes({nprocs}), please ensure that the "
                     "correct `nprocs` and `xpus` arguments are passed."
-                    % (len(selected_device_list), nprocs)
                 )
             for card_id in selected_device_list:
                 if card_id not in env_devices_list:
@@ -301,11 +297,10 @@ def _get_subprocess_env_list(nprocs, options):
 
         if len(env_devices_list) < nprocs:
             raise RuntimeError(
-                "the number of visible devices(%d) is less than the number "
-                "of spawn processes(%d), please ensure that the correct "
+                f"the number of visible devices({len(env_devices_list)}) is less than the number "
+                f"of spawn processes({nprocs}), please ensure that the correct "
                 "`nprocs` argument is passed or the environment variable "
-                "`FLAGS_selected_%ss` is correctly configured."
-                % (len(env_devices_list), nprocs, custom_device_name)
+                f"`FLAGS_selected_{custom_device_name}s` is correctly configured."
             )
         args.selected_devices = ",".join(
             [str(env_devices_list[x]) for x in range(0, nprocs)]
@@ -441,20 +436,18 @@ class MultiprocessContext:
             if exitcode < 0:
                 name = signal.Signals(-exitcode).name
                 raise Exception(
-                    "Process %d terminated with signal %s."
-                    % (error_index, name)
+                    f"Process {error_index} terminated with signal {name}."
                 )
             else:
                 raise Exception(
-                    "Process %d terminated with exit code %d."
-                    % (error_index, exitcode)
+                    f"Process {error_index} terminated with exit code {exitcode}."
                 )
 
         original_trace = self.error_queues[error_index].get()
         msg = (
             "\n\n----------------------------------------------\n"
-            "Process %d terminated with the following error:\n"
-            "----------------------------------------------\n\n" % error_index
+            f"Process {error_index} terminated with the following error:\n"
+            "----------------------------------------------\n\n"
         )
         msg += original_trace
         raise Exception(msg)

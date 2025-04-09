@@ -45,7 +45,7 @@ Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
   // get root ScheduleBlockRealize
   Expr root = GetRootBlock(rf_loop);
   // create all stmts after rfactor transformation
-  RfCreater rf_create(root, rf_loop, rf_axis);
+  RfCreator rf_create(root, rf_loop, rf_axis);
   // return new created rfactor tensor
   return rf_create.CreateRfAllStmts();
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
@@ -121,7 +121,7 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
 
   // Create new blocks and loops.
   Tensor rf_tensor = CreateRFTensor(original_tensor, rf_loop, rf_axis);
-  RFBlockCreater rf_block_creater(original_block,
+  RFBlockCreator rf_block_creator(original_block,
                                   original_loops,
                                   rf_loop,
                                   original_update_stmt,
@@ -129,18 +129,18 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
                                   var2loops,
                                   Expr(false),
                                   rf_axis);
-  rf_block_creater.CreateBlock();
-  RBBlockCreater wb_block_creater(original_block,
+  rf_block_creator.CreateBlock();
+  RBBlockCreator wb_block_creator(original_block,
                                   original_loops,
                                   rf_loop,
                                   original_update_stmt,
                                   rf_tensor,
-                                  rf_block_creater.rf_tensor_access_indices_,
-                                  rf_block_creater.rf_var_);
-  wb_block_creater.CreateBlock();
+                                  rf_block_creator.rf_tensor_access_indices_,
+                                  rf_block_creator.rf_var_);
+  wb_block_creator.CreateBlock();
 
-  Expr rf_body = rf_block_creater.CreateLoops();
-  Expr wb_body = wb_block_creater.CreateLoops(
+  Expr rf_body = rf_block_creator.CreateLoops();
+  Expr wb_body = wb_block_creator.CreateLoops(
       /* with_init = */ with_write_back_block_init);
 
   Expr new_computational_body = Block::Make({rf_body, wb_body});

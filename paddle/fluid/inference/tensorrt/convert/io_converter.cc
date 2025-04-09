@@ -29,7 +29,7 @@ class DefaultIOConverter : public EngineIOConverter {
  public:
   DefaultIOConverter() {}
   // NOTE out is GPU memory.
-  virtual void operator()(const LoDTensor& in,
+  virtual void operator()(const DenseTensor& in,
                           void* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(out,
@@ -66,7 +66,7 @@ class DefaultIOConverter : public EngineIOConverter {
   }
   // NOTE in is GPU memory.
   virtual void operator()(const void* in,
-                          LoDTensor* out,
+                          DenseTensor* out,
                           size_t max_size) override {
     PADDLE_ENFORCE_NOT_NULL(in,
                             common::errors::InvalidArgument(

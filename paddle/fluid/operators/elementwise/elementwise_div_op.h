@@ -52,7 +52,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(

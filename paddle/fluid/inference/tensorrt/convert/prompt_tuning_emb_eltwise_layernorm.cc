@@ -25,7 +25,7 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(4) << "convert fused_prompt_tuning_embedding_eltwise_layernorm op to "
                "tensorrt layer";
-    // get the presistable var's data
+    // get the persistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          phi::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
@@ -91,9 +91,9 @@ class PromptTuningEmbEltwiseLayerNormOpConverter : public OpConverter {
         output_fp16,
         1,
         common::errors::InvalidArgument(
-            "Only Precision::KHalf(fp16) is supported when infering "
+            "Only Precision::KHalf(fp16) is supported when inferring "
             "ernie(bert) model with config.EnableVarseqlen(). "
-            "But Precision::KFloat32 is setted."));
+            "But Precision::KFloat32 is set."));
 
     std::vector<nvinfer1::PluginField> fields;
     std::vector<std::string> temp_fields_keys;

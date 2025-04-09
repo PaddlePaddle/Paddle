@@ -397,7 +397,7 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     if (var == nullptr) return;
     if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
+      phi::DenseTensorUtils::GetMutableMeta(tensor)->legacy_lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
     } else {
       // NOTE(chenweihang): do nothing

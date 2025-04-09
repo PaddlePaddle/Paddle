@@ -18,9 +18,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
-namespace phi {
-namespace distributed {
-namespace auto_parallel {
+namespace phi::distributed::auto_parallel {
 
 std::string DeviceCapability::to_string() const {
   std::string str;
@@ -385,6 +383,4 @@ bool operator==(const DeviceMesh &lhs, const DeviceMesh &rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed::auto_parallel

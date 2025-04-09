@@ -34,8 +34,8 @@ void DivideKernel(const Context& dev_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_div<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 

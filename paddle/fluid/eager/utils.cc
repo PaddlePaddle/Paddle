@@ -292,7 +292,7 @@ std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
         tensor,
         common::errors::Fatal(
             "Tensor is null and cannot be copied. "
-            "We are tring to TrySyncToVars tensor from its "
+            "We are trying to TrySyncToVars tensor from its "
             "shared_ptr, this error may indicate some outputs "
             "are nullptr"));
     res.emplace_back(TrySyncToVar(*tensor));
@@ -354,7 +354,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
 void EagerUtils::HandleViewBetweenInputAndOutput(
     const paddle::Tensor& input_tensor, paddle::Tensor* view_output_tensor) {
   PADDLE_ENFORCE_EQ(
-      input_tensor.initialized(),
+      input_tensor.has_allocation(),
       true,
       common::errors::InvalidArgument("Tensor %s has not been initialized!",
                                       input_tensor.name()));
@@ -420,7 +420,7 @@ std::vector<paddle::Tensor> EagerUtils::GetOutputs(
         out.get(),
         common::errors::Fatal(
             "Eager Tensor %s is null and cannot be copied. "
-            "We are tring to Get Output tensor from its "
+            "We are trying to Get Output tensor from its "
             "shared_ptr, this error may indicate some outputs "
             "are nullptr",
             out->name()));
@@ -435,7 +435,7 @@ paddle::Tensor EagerUtils::GetOutput(
       out.get(),
       common::errors::Fatal(
           "Eager Tensor %s is null and cannot be copied. We "
-          "are tring to Get Output tensor from its shared_ptr, "
+          "are trying to Get Output tensor from its shared_ptr, "
           "this error may indicate output is nullptr",
           out->name()));
   return paddle::Tensor(out->GetTensorBase(), out->name());
@@ -446,7 +446,7 @@ void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
   PADDLE_ENFORCE_NOT_NULL(
       out_var,
       common::errors::Fatal("Tensor is null and cannot be copied. "
-                            "We are tring to OverwriteOutput from its "
+                            "We are trying to OverwriteOutput from its "
                             "shared_ptr, this error may indicate some outputs "
                             "are nullptr"));
   out_var->set_impl(out->GetTensorBase());
@@ -469,7 +469,7 @@ void EagerUtils::GetOutputs(
         out_var[i],
         common::errors::Fatal(
             "Tensor is null and cannot be copied. "
-            "We are tring to OverwriteOutput from its "
+            "We are trying to OverwriteOutput from its "
             "shared_ptr, this error may indicate some outputs "
             "are nullptr"));
     out_var[i]->set_impl(outs[i]->GetTensorBase());
@@ -486,7 +486,7 @@ void EagerUtils::GetOutputs(const std::shared_ptr<EagerVariable>& out,
   PADDLE_ENFORCE_NOT_NULL(
       out_var[0],
       common::errors::Fatal("Tensor is null and cannot be copied. "
-                            "We are tring to OverwriteOutput from its "
+                            "We are trying to OverwriteOutput from its "
                             "shared_ptr, this error may indicate some outputs "
                             "are nullptr"));
   out_var[0]->set_impl(out->GetTensorBase());
@@ -814,7 +814,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                                    dist_t->dist_attr());
       }
     } else {
-      if (t.initialized()) {
+      if (t.has_allocation()) {
         tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
                                                    t.dtype(),
@@ -847,10 +847,10 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                              GradNodeStr(t),
                                              ad_meta->StopGradient());
       auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
-      if (t.initialized() && data_ptr) {
+      if (t.has_allocation() && data_ptr) {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
-                                       t.initialized(),
+                                       t.has_allocation(),
                                        t.impl(),
                                        tensor_info_str,
                                        *data_ptr,
@@ -858,7 +858,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
       } else {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
-                                       t.initialized(),
+                                       t.has_allocation(),
                                        t.impl(),
                                        tensor_info_str,
                                        "None",
@@ -866,10 +866,10 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
       }
     } else {
       auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
-      if (t.initialized() && data_ptr) {
+      if (t.has_allocation() && data_ptr) {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
-                                       t.initialized(),
+                                       t.has_allocation(),
                                        t.impl(),
                                        tensor_info_str,
                                        *data_ptr,
@@ -877,7 +877,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
       } else {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
-                                       t.initialized(),
+                                       t.has_allocation(),
                                        t.impl(),
                                        tensor_info_str,
                                        "None",
@@ -899,14 +899,14 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                              ad_meta->StopGradient());
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,
-                                     t.initialized(),
+                                     t.has_allocation(),
                                      t.impl(),
                                      tensor_info_str,
                                      ad_info_str);
     } else {
       return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                      tensor_name_str,
-                                     t.initialized(),
+                                     t.has_allocation(),
                                      t.impl(),
                                      tensor_info_str,
                                      "None");
@@ -917,14 +917,14 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
         "TensorInfo: [ %s ]}";
     return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                    tensor_name_str,
-                                   t.initialized(),
+                                   t.has_allocation(),
                                    t.impl(),
                                    tensor_info_str);
   } else if (VLOG_IS_ON(4)) {
     const char* TENSOR_PRINT_TEMPLATE =
         "{ Name: %s, Initialized: %d, Ptr: %d }";
     return paddle::string::Sprintf(
-        TENSOR_PRINT_TEMPLATE, tensor_name_str, t.initialized(), t.impl());
+        TENSOR_PRINT_TEMPLATE, tensor_name_str, t.has_allocation(), t.impl());
   } else {
     return "[ Not specified tensor log level ]";
   }
@@ -1056,7 +1056,7 @@ void ConvertToDistTensor(paddle::Tensor* x,
     if (!dist_ptr->skip_check_mesh() && x->dims().size() > 0) {
       // NOTE(pkuzyc): In MoE expert parallelism, the mesh of the
       // inputs and outputs of different experts are different, so
-      // skip checking mesh in the following two casees:
+      // skip checking mesh in the following two cases:
       // 1. The ``skip_check_mesh_`` flag is true. The MoE-related apis
       // sets this flag to indicate that the difference between tensor's
       // mesh is allowed.

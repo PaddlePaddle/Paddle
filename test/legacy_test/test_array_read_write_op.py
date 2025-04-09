@@ -244,7 +244,7 @@ class TestPirArrayOp(unittest.TestCase):
                     feed={'d0': d},
                     fetch_list=[mean.name, d0.grad_name, mem_array.grad_name],
                 )
-                # this ans is wrong array is empty at begining ,so it no grad.
+                # this ans is wrong array is empty at beginning ,so it no grad.
                 np.testing.assert_allclose(res[2], [[0.1] * 10], rtol=1e-05)
 
             mean = 0.6097253

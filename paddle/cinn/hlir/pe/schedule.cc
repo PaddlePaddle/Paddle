@@ -25,7 +25,6 @@
 #include <numeric>
 #include <utility>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/poly/isl_utils.h"
@@ -55,6 +54,10 @@ ParamsT CreateParamsImpl(common::ARMArch) {
 ParamsT CreateParamsImpl(common::NVGPUArch) { return CreateCudaParams(); }
 
 ParamsT CreateParamsImpl(common::HygonDCUArchHIP) { return CreateCudaParams(); }
+
+ParamsT CreateParamsImpl(common::HygonDCUArchSYCL) {
+  return CreateCudaParams();
+}
 
 ParamsT CreateParams(common::Arch arch) {
   return std::visit([](const auto &impl) { return CreateParamsImpl(impl); },
@@ -207,7 +210,7 @@ int GetArrayPackingFactor(int shape,
                           const cinn::common::Target &target) {
   int split_base = GetBasicFactor(type, target);
   int split_factor = 1;
-  // temporily use shape-1 instead of shape for isl wrong for1 elimination
+  // temporarily use shape-1 instead of shape for isl wrong for1 elimination
   int i = split_base * split_base < shape ? split_base * split_base : shape;
   for (; i > 1; i--) {
     if (shape % i == 0) {
@@ -1364,7 +1367,7 @@ void CudaScheduleInjectiveWithVectorize(poly::Stage *stage,
   // the first bind position from tail
   int bind_idx = stage->n_out_dims() - 1;
   // it will add a new dim by split before vectorize, but the new dim will
-  // be eliminated when vectorizing, so the bind_idx does't need to increase
+  // be eliminated when vectorizing, so the bind_idx doesn't need to increase
   if (vector_width > 1) {
     stage->Split(bind_idx, vector_width);
   }

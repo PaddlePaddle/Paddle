@@ -554,7 +554,7 @@ bool LayernormShiftPartitionPluginDynamic::supportsFormatCombination(
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
       common::errors::InvalidArgument("The input of LayernormShiftPartition "
-                                      "plugin shoule not be nullptr."));
+                                      "plugin should not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
@@ -640,7 +640,7 @@ int LayernormShiftPartitionPluginDynamic::enqueue(
       input_resolution_ * input_resolution_,
       input_dims.d[1],
       common::errors::InvalidArgument(
-          "The LayernormShiftPartition‘s input_resolution is wrong (%d)",
+          "The LayernormShiftPartition's input_resolution is wrong (%d)",
           input_dims.d[1]));
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->fp32";

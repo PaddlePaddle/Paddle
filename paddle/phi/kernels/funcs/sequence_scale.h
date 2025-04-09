@@ -47,7 +47,7 @@ namespace funcs {
  */
 
 template <typename DeviceContext, typename T>
-class ScaleLoDTensorFunctor {
+class ScaleDenseTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const T* scales,

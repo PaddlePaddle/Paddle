@@ -143,6 +143,33 @@ phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
 }
 #endif
 
+#ifdef PADDLE_WITH_XPU
+phi::DenseTensor CastDataType(const phi::XPUContext& dev_ctx,
+                              const phi::DenseTensor& tensor,
+                              DataType dtype) {
+  switch (tensor.dtype()) {
+    case DataType::FLOAT32:
+      return phi::Cast<float>(dev_ctx, tensor, dtype);
+    case DataType::FLOAT64:
+      return phi::Cast<double>(dev_ctx, tensor, dtype);
+    case DataType::INT32:
+      return phi::Cast<int32_t>(dev_ctx, tensor, dtype);
+    case DataType::INT64:
+      return phi::Cast<int64_t>(dev_ctx, tensor, dtype);
+    case DataType::FLOAT16:
+      return phi::Cast<phi::dtype::float16>(dev_ctx, tensor, dtype);
+    case DataType::BOOL:
+      return phi::Cast<bool>(dev_ctx, tensor, dtype);
+    case DataType::UINT8:
+      return phi::Cast<uint8_t>(dev_ctx, tensor, dtype);
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Data type (%s) is not supported when casting data type.",
+          tensor.dtype()));
+  }
+}
+#endif
+
 inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
                                       DataType dtype) {
   auto& pool = phi::DeviceContextPool::Instance();
@@ -159,6 +186,11 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
+    return CastDataType(*dev_ctx, tensor, dtype);
+#endif
+#ifdef PADDLE_WITH_XPU
+  } else if (tensor.place().GetType() == phi::AllocationType::XPU) {
+    auto* dev_ctx = static_cast<phi::XPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -203,7 +235,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
 #endif
 
   // FIXME(zcd): TransDataPlace is used to transform data from GPU to CPU and
-  // the enforced checkings have been done in GetDeviceContext, so the
+  // the enforced checks have been done in GetDeviceContext, so the
   // `dev_ctx->Wait()` is necessary. But `dev_ctx->Wait()` will make the program
   // slow, especially when the number of elements is little, for example,
   // the elements of learning rate are one and it's CPU side.
@@ -747,7 +779,7 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-      VLOG(4) << "ReshardIsNeededWithPartial"
+      VLOG(4) << "ReshardIsNeededWithPartial "
               << ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                             dist_attr);
       if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {

@@ -23,7 +23,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.optimizer as opt
 from paddle import base, nn
-from paddle.base import framework
+from paddle.base import core, framework
 from paddle.framework import in_pir_mode
 from paddle.framework.io_utils import get_value, is_pir_fetch_var, set_value
 from paddle.optimizer import Adam
@@ -1174,6 +1174,26 @@ class TestSaveLoadLayer(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             paddle.save(origin_layer, path)
+        temp_dir.cleanup()
+
+
+class TestSaveLoadRngState(unittest.TestCase):
+    def test_save_load_layer(self):
+        paddle.disable_static()
+        paddle.set_device('cpu')
+        paddle.seed(42)
+        temp_dir = tempfile.TemporaryDirectory()
+        rand_a = paddle.rand([2, 2])
+        checkpoint_rng_state = {
+            "cpu": paddle.framework.core.default_cpu_generator().get_state()
+        }
+        rand_b = paddle.rand([2, 2])
+        path = os.path.join(temp_dir.name, "test_save_load_rng_/rng_state.pth")
+        paddle.save(checkpoint_rng_state, path)
+        checkpoint_rng_state = paddle.load(path, return_numpy=True)
+        core.default_cpu_generator().set_state(checkpoint_rng_state["cpu"])
+        rand_c = paddle.rand([2, 2])
+        np.testing.assert_array_equal(rand_b.numpy(), rand_c.numpy())
         temp_dir.cleanup()
 
 

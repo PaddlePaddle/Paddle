@@ -39,7 +39,7 @@ class LRNOneDNNHandler
     // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
     // Where sum of squares is divided by size of normalization window
     // this is not the case for PaddlePaddle LRN.
-    // Hence we need to compensate for this diffrence by
+    // Hence we need to compensate for this difference by
     // multipliing alpha by size of window(n)
     const float alpha = static_cast<float>(alpha_in) * static_cast<float>(n);
     const float beta = static_cast<float>(beta_in);

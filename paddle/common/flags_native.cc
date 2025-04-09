@@ -368,7 +368,7 @@ bool GetValueFromEnv(const std::string& name, std::string* value) {
 /**
  * @brief Set flags from environment variables.
  *
- * It recieves a list of flags name, and will find the corresponding environment
+ * It receives a list of flags name, and will find the corresponding environment
  * variables named "FLAGS_name", if found, it will set the environment variable
  * values to the flags. If error_fatal is true, the program will exit when the
  * environment variable is not set or the flag is not defined, that is the same
@@ -479,7 +479,7 @@ TEST_API void ParseCommandLineFlags(int* pargc, char*** pargv) {
         if (value.back() == '"') {
           value.pop_back();
         } else {
-          std::string error_msg = "unexperted end of flag \"";
+          std::string error_msg = "unexpected end of flag \"";
           error_msg += name;
           error_msg += "\" value while looking for matching `\"'";
           LOG_FLAG_FATAL_ERROR(error_msg);

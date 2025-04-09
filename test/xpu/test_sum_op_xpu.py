@@ -180,7 +180,7 @@ class TestSumOpError(unittest.TestCase):
         self.assertRaises(Exception, test_list_of_none_input)
 
 
-class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
+class TestDenseTensorAndSelectedRowsOp(unittest.TestCase):
     def setUp(self):
         self.height = 10
         self.row_numel = 12

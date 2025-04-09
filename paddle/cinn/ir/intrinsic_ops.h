@@ -26,7 +26,7 @@
 
 //! This file defines some intrinsic IR nodes, this is similar to the MLIR
 //! operations, we try to expose some underlying opaque operations to IR system
-//! to helpe more intuitive codegen.
+//! to help more intuitive codegen.
 
 namespace cinn::ir {
 

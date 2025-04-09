@@ -185,4 +185,26 @@ std::vector<std::vector<paddle::Tensor>> fused_attention_vjp(
   return vjp_res;
 }
 
+std::vector<std::vector<paddle::Tensor>> fused_gemm_epilogue_vjp(
+    const Tensor& x,
+    const Tensor& y,
+    const paddle::optional<Tensor>& reserve_space,
+    const Tensor& out_grad,
+    bool trans_x,
+    bool trans_y,
+    const std::string& activation,
+    const std::vector<std::vector<bool>>& stop_gradients) {
+  std::vector<std::vector<paddle::Tensor>> vjp_res;
+  for (auto arg : stop_gradients) {
+    vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
+  }
+  auto op_res = backend::fused_gemm_epilogue_grad<LazyTensor>(
+      x, y, reserve_space, out_grad, trans_x, trans_y, activation);
+  vjp_res[0][0] = std::get<0>(op_res);
+  vjp_res[1][0] = std::get<1>(op_res);
+  vjp_res[2][0] = std::get<2>(op_res);
+  vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
+  return vjp_res;
+}
+
 }  // namespace paddle::primitive

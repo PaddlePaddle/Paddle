@@ -74,3 +74,4 @@ test/sot @SigureMo @zrr1999 @gouzil
 tools/parallel_UT_rule.py @zhwesky2010 @wanghuancoder
 tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder
 .pre-commit-config.yaml @SigureMo @gouzil
+_typos.toml @SigureMo

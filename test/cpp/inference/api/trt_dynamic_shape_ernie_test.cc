@@ -148,7 +148,7 @@ TEST(AnalysisPredictor, no_fp16) {
 }
 
 TEST(AnalysisPredictor, fp16) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
+#ifdef TRT_PLUGIN_FP16_AVAILABLE
   std::vector<float> result = {0.598, 0.219, 0.182};
   trt_ernie(true, result, 4e-3);
 #endif
@@ -161,7 +161,7 @@ TEST(AnalysisPredictor, no_fp16_bs2) {
 }
 
 TEST(AnalysisPredictor, fp16_bs2) {
-#ifdef TRT_PLUGIN_FP16_AVALIABLE
+#ifdef TRT_PLUGIN_FP16_AVAILABLE
   std::vector<float> result = {0.598, 0.219, 0.182, 0.598, 0.219, 0.182};
   trt_ernie(true, result, 4e-3, 2);
 #endif

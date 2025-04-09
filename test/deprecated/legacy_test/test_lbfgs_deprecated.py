@@ -92,15 +92,15 @@ class TestLbfgs(unittest.TestCase):
             np.testing.assert_allclose(minimum, results[2].numpy(), rtol=1e-05)
 
     def test_inf_minima(self):
-        extream_point = np.array([-1, 2]).astype('float32')
+        extreme_point = np.array([-1, 2]).astype('float32')
 
         def func(x):
             # df = 3(x - 1.01)(x - 0.99)
             # f = x^3 - 3x^2 + 3*1.01*0.99x
             return (
                 x * x * x / 3.0
-                - (extream_point[0] + extream_point[1]) * x * x / 2
-                + extream_point[0] * extream_point[1] * x
+                - (extreme_point[0] + extreme_point[1]) * x * x / 2
+                + extreme_point[0] * extreme_point[1] * x
             )
 
         x0 = np.array([-1.7]).astype('float32')
@@ -131,7 +131,7 @@ class TestLbfgs(unittest.TestCase):
             # minimum = (a, a^2)
             x, y = position[0], position[1]
             c = (a - x) ** 2 + b * (y - x**2) ** 2
-            # the return cant be np array[1], or in jacobin will cause flat error
+            # the return can't be np array[1], or in jacobin will cause flat error
             return c[0]
 
         x0 = np.random.random(size=[2]).astype('float32')

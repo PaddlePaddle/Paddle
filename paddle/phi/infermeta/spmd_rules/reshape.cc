@@ -44,7 +44,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
   }
 
   int64_t product =
-      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
+      std::accumulate(shape.begin(), shape.end(), 1LL, std::multiplies<>());
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
@@ -55,10 +55,14 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     std::vector<int64_t> new_shape(shape);
     product = -product;
     int64_t infer_size = len / product;
-    PADDLE_ENFORCE_EQ(len % infer_size,
-                      0,
-                      common::errors::InvalidArgument(
-                          "The total is not divisible by infer_size."));
+    PADDLE_ENFORCE_EQ(
+        len % infer_size,
+        0,
+        common::errors::InvalidArgument(
+            "The total element number of the src tensor (%lld) is not "
+            "divisible by the inferred size (%lld) of the -1 dimension.",
+            len,
+            infer_size));
     new_shape[infer_idx] = infer_size;
     return new_shape;
   }
@@ -71,7 +75,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& tgt_shape) {
   std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<>());
+      src_shape.begin(), src_shape.end(), 1LL, std::multiplies<>());
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
@@ -81,7 +85,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
   src_len = static_cast<int>(src_shape.size());
   tgt_len = static_cast<int>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
-    std::vector<int64_t> src_dims, tgt_splitted_shape;
+    std::vector<int64_t> src_dims, tgt_split_shape;
     if (src_idx >= src_len) {
       s = 1;
     } else {
@@ -93,7 +97,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       t = 1;
     } else {
       t = static_cast<int>(inferred_tgt_shape[tgt_idx]);
-      tgt_splitted_shape.emplace_back(t);
+      tgt_split_shape.emplace_back(t);
       tgt_idx++;
     }
 
@@ -101,7 +105,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     if (s == 1 && t != 1) {
       // case [1] [a]
       tgt_idx--;
-      tgt_splitted_shape.clear();
+      tgt_split_shape.clear();
     } else if (s != 1 && t == 1) {
       src_idx--;
       src_dims.clear();
@@ -112,14 +116,14 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
           s *= static_cast<int>(src_shape[src_idx]);
           src_idx++;
         } else {
-          tgt_splitted_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
+          tgt_split_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
           t *= static_cast<int>(inferred_tgt_shape[tgt_idx]);
           tgt_idx++;
         }
       }
     }
 
-    if (!tgt_splitted_shape.empty()) {
+    if (!tgt_split_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (auto in_dim : src_dims) {
         if (src_shape[in_dim] > 1) {
@@ -139,10 +143,10 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       }
       std::shared_ptr<DimTrans> flatten = make_flatten(input_dims);
 
-      for (int64_t i = 0, n = static_cast<int64_t>(tgt_splitted_shape.size());
+      for (int64_t i = 0, n = static_cast<int64_t>(tgt_split_shape.size());
            i < n;
            i++) {
-        ret.emplace_back(make_split(flatten, tgt_splitted_shape, i));
+        ret.emplace_back(make_split(flatten, tgt_split_shape, i));
       }
     }
   }
@@ -274,7 +278,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // when inferring the transformation from out_shape to
   // x_shape, so infer the '-1' value before inferring DimTrans
   int64_t nelm =
-      std::accumulate(x_shape.begin(), x_shape.end(), 1, std::multiplies<>());
+      std::accumulate(x_shape.begin(), x_shape.end(), 1LL, std::multiplies<>());
   out_shape = InferTargetShape(out_shape, nelm);
   std::vector<std::shared_ptr<DimTrans>> trans =
       MakeReshapeDimTrans(out_shape, x_shape);
@@ -313,7 +317,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
-// FIXME(dev): XShape will be decprecated in the future, so we
+// FIXME(dev): XShape will be deprecated in the future, so we
 // need unify inferSpmd into ReshapeInferSpmd function.
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape) {

@@ -36,7 +36,7 @@ class VarBlock:
         self.size = size
 
     def __str__(self):
-        return "%s:%d:%d" % (self.varname, self.offset, self.size)
+        return f"{self.varname}:{int(self.offset)}:{int(self.size)}"
 
 
 def create_var_struct(var):

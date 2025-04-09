@@ -29,6 +29,30 @@ struct EigenSign<Eigen::GpuDevice, T> {
   }
 };
 
+template <typename T>
+struct EigenSign<Eigen::GpuDevice, phi::dtype::complex<T>> {
+  using InType = Eigen::TensorMap<Eigen::Tensor<const phi::dtype::complex<T>,
+                                                1,
+                                                Eigen::RowMajor,
+                                                Eigen::DenseIndex>>;
+  using OutType = Eigen::TensorMap<Eigen::Tensor<phi::dtype::complex<T>,
+                                                 1,
+                                                 Eigen::RowMajor,
+                                                 Eigen::DenseIndex>>;
+  static void Eval(const Eigen::GpuDevice& dev, OutType out, const InType& in) {
+    out.device(dev) = in.unaryExpr(
+        [] __host__ __device__(
+            const phi::dtype::complex<T>& z) -> phi::dtype::complex<T> {
+          T abs_val = abs(z);
+          if (abs_val == 0) {
+            return phi::dtype::complex<T>(0, 0);
+          } else {
+            return phi::dtype::complex<T>(z.real / abs_val, z.imag / abs_val);
+          }
+        });
+  }
+};
+
 template struct EigenSign<Eigen::GpuDevice, uint8_t>;
 template struct EigenSign<Eigen::GpuDevice, int8_t>;
 template struct EigenSign<Eigen::GpuDevice, int16_t>;
@@ -38,6 +62,8 @@ template struct EigenSign<Eigen::GpuDevice, float>;
 template struct EigenSign<Eigen::GpuDevice, double>;
 template struct EigenSign<Eigen::GpuDevice, dtype::float16>;
 template struct EigenSign<Eigen::GpuDevice, dtype::bfloat16>;
+template struct EigenSign<Eigen::GpuDevice, dtype::complex<float>>;
+template struct EigenSign<Eigen::GpuDevice, dtype::complex<double>>;
 
 }  // namespace funcs
 }  // namespace phi

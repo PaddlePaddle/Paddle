@@ -78,8 +78,13 @@ class ApiBuilder {
   void SetOpRole(int op_role) { builder_->set_op_role(op_role); }
   int GetOpRole() const { return builder_->op_role(); }
 
-  void SetChunckId(int chunk_id) { builder_->set_chunk_id(chunk_id); }
-  int GetChunckId() const { return builder_->chunk_id(); }
+  void SetChunkId(int chunk_id) { builder_->set_chunk_id(chunk_id); }
+  int GetChunkId() const { return builder_->chunk_id(); }
+
+  void SetCompOpName(std::string op_name) {
+    builder_->set_comp_op_name(op_name);
+  }
+  std::string GetCompOpName() const { return builder_->comp_op_name(); }
 
  private:
   ApiBuilder();

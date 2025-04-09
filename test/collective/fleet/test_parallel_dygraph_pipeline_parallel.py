@@ -23,6 +23,16 @@ import paddle
 
 
 class TestHybridPipeParallel(TestMultipleAccelerators):
+    def test_hybrid_parallel_shared_weight_with_multi_attrs_and_subset(self):
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_shared_weight_with_multi_attrs_and_subset.py'
+        )
+
+    def test_hybrid_parallel_shared_weight_with_multi_attrs(self):
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_shared_weight_with_multi_attrs.py'
+        )
+
     def test_hybrid_parallel_pp_layer(self):
         self.run_mnist_2accelerators(
             os.path.abspath('../../legacy_test/hybrid_parallel_pp_layer.py')

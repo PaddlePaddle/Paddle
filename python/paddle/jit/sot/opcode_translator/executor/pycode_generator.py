@@ -19,7 +19,6 @@
 from __future__ import annotations
 
 import inspect
-import opcode
 import random
 import sys
 import types
@@ -34,7 +33,6 @@ from ...utils import (
     FallbackError,
     InnerError,
     ResumeFnNameFactory,
-    is_clean_code,
     list_contain_by_id,
     list_find_index_by_id,
     no_eval_frame,
@@ -49,6 +47,8 @@ from ..instruction_utils import (
     modify_vars,
 )
 from ..instruction_utils.opcode_info import (
+    ALL_JUMP,
+    RETURN,
     UNCONDITIONAL_JUMP,
     JumpDirection,
     PopJumpCond,
@@ -142,6 +142,7 @@ def gen_new_opcode(
         types.CodeType: The new code object.
     """
     bytecode, linetable = assemble(instrs, code_options["co_firstlineno"])
+
     if sys.version_info >= (3, 10):
         # Python deprecated co_lnotab in 3.10, use co_linetable instead
         # https://peps.python.org/pep-0626/
@@ -359,6 +360,7 @@ def stacksize(instructions: list[Instruction]) -> float:
         int: The maximum stack size.
     """
     max_stack = [float("-inf")] * len(instructions)
+    histories = [[] for _ in range(len(instructions))]
 
     max_stack[0] = 0
 
@@ -377,12 +379,12 @@ def stacksize(instructions: list[Instruction]) -> float:
         Returns:
             None
         """
-        old_max = max_stack[nexti]
-        max_stack[nexti] = max(
-            max_stack[nexti], max_stack[lasti] + stack_effect
-        )
-        if old_max != max_stack[nexti]:
-            if nexti not in queue:  # may be slow, we can use a flag.
+        if (new_stack_size := max_stack[lasti] + stack_effect) > max_stack[
+            nexti
+        ]:
+            histories[nexti] = histories[lasti] + [lasti]
+            max_stack[nexti] = new_stack_size
+            if nexti not in queue and nexti not in histories[nexti]:
                 queue.append(nexti)
 
     while len(queue) > 0:
@@ -392,12 +394,12 @@ def stacksize(instructions: list[Instruction]) -> float:
         opname = instr.opname
         if (
             idx + 1 < len(instructions)
-            and instr.opname not in UNCONDITIONAL_JUMP
+            and opname not in UNCONDITIONAL_JUMP | RETURN
         ):
             stack_effect = calc_stack_effect(instr, jump=False)
             update_stacksize(idx, idx + 1, stack_effect)
 
-        if instr.opcode in opcode.hasjabs or instr.opcode in opcode.hasjrel:
+        if opname in ALL_JUMP:
             stack_effect = calc_stack_effect(instr, jump=True)
             target_idx = instructions.index(instr.jump_to)
             update_stacksize(idx, target_idx, stack_effect)
@@ -410,7 +412,10 @@ class PyCodeGen:
     """Helper to create new code object"""
 
     def __init__(
-        self, frame: types.FrameType, disable_eval_frame: bool = False
+        self,
+        real_code: types.CodeType,
+        real_globals: dict[str, object],
+        disable_eval_frame: bool = False,
     ):
         """
         Initializes a PyCodeGen object.
@@ -419,11 +424,10 @@ class PyCodeGen:
             frame: The frame to be translated.
             disable_eval_frame (bool): Whether to disable the evaluation frame. Defaults to False.
         """
-        self._frame = frame
-        self._origin_code = frame.f_code
+        self._origin_code = real_code
         self._code_options = gen_code_options(self._origin_code)
         self.update_code_name("", is_resumed_fn=False)
-        self._f_globals = frame.f_globals
+        self._real_globals = real_globals
         self._instructions = []
         self.disable_eval_frame = disable_eval_frame
         self.hooks = []
@@ -511,8 +515,6 @@ class PyCodeGen:
         """
         Generates instructions to disable the evaluation frame.
         """
-        if is_clean_code():
-            return
         self.gen_load_object(
             paddle.framework.core.set_eval_frame, "paddle_set_eval_frame_fn"
         )
@@ -524,8 +526,6 @@ class PyCodeGen:
         """
         Generates instructions to enable the evaluation frame.
         """
-        if is_clean_code():
-            return
         self.gen_load_object(
             paddle.framework.core.set_eval_frame, "paddle_set_eval_frame_fn"
         )
@@ -663,8 +663,8 @@ class PyCodeGen:
             obj_name (str): The name of the object.
         """
 
-        if obj_name not in self._f_globals:
-            self._f_globals[obj_name] = obj
+        if obj_name not in self._real_globals:
+            self._real_globals[obj_name] = obj
         return self.gen_load_global(obj_name, push_null=push_null)
 
     def gen_load_null_variable(self):
@@ -899,7 +899,7 @@ class PyCodeGen:
 
     def gen_dup_top(self):
         if sys.version_info >= (3, 11):
-            return self.add_instr("COPY", arg=0)
+            return self.add_instr("COPY", arg=1)
         return self.add_instr("DUP_TOP")
 
     def gen_swap(self, n):
@@ -1004,17 +1004,31 @@ class ResumeFunctionCreator:
     CODE_CACHE = {}
 
     def __init__(
-        self, frame: types.FrameType, disable_eval_frame: bool = False
+        self,
+        code: types.CodeType,
+        globals: dict[str, object],
+        disable_eval_frame: bool = False,
     ):
-        self.codegen = PyCodeGen(frame, disable_eval_frame)
+        self.codegen = PyCodeGen(code, globals, disable_eval_frame)
         self.name = ResumeFnNameFactory().next()
 
-    def set_inputs(self, inputs: list[str], stack_size: int):
+    def set_inputs(
+        self, inputs: list[str], stack_size: int, null_indices: list[int] = []
+    ):
         stack_arg_str = self.name + '_stack_{}'
+        assert all(
+            idx < stack_size for idx in null_indices
+        ), "null index out of range"
 
-        self.codegen._code_options['co_argcount'] = len(inputs) + stack_size
+        self.codegen._code_options['co_argcount'] = (
+            len(inputs) + stack_size - len(null_indices)
+        )
         self.codegen._code_options['co_varnames'] = list(
-            [stack_arg_str.format(i) for i in range(stack_size)]
+            [
+                stack_arg_str.format(i)
+                for i in range(stack_size)
+                if i not in null_indices
+            ]
             + inputs
             + [
                 var_name
@@ -1025,7 +1039,11 @@ class ResumeFunctionCreator:
 
         self.codegen._instructions.extend(
             [
-                gen_instr('LOAD_FAST', argval=stack_arg_str.format(i))
+                (
+                    gen_instr("PUSH_NULL")
+                    if i in null_indices
+                    else gen_instr('LOAD_FAST', argval=stack_arg_str.format(i))
+                )
                 for i in range(stack_size)
             ]
         )
@@ -1046,7 +1064,7 @@ class ResumeFunctionCreator:
             cached_code = self.CODE_CACHE[cache_key]
             ResumeFunctionCreator.validate_code(cached_code)
             return types.FunctionType(
-                cached_code, self.codegen._f_globals, cached_code.co_name
+                cached_code, self.codegen._real_globals, cached_code.co_name
             )
         return None
 
@@ -1055,12 +1073,13 @@ class ResumeFunctionCreator:
         self.codegen._code_options['co_flags'] &= ~(
             inspect.CO_VARARGS | inspect.CO_VARKEYWORDS
         )
+        self.codegen._code_options['co_kwonlyargcount'] = 0
         new_code = self.codegen.gen_pycode()
         # TODO(SigureMo): cache_key should not be None
         if cache_key is not None:
             self.CODE_CACHE[cache_key] = new_code
         ResumeFunctionCreator.validate_code(new_code)
         fn = types.FunctionType(
-            new_code, self.codegen._f_globals, new_code.co_name
+            new_code, self.codegen._real_globals, new_code.co_name
         )
         return fn

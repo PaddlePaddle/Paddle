@@ -64,6 +64,7 @@ function xre_prepare() {
   check_files ${XRE_DIR_NAME}/include/xpu/runtime.h ${XRE_DIR_NAME}/so/libxpurt.so
   if [ "$WITH_XPU_XRE5" -eq 1 ]; then
     check_files ${XRE_DIR_NAME}/so/libcudart.so
+    check_files ${XRE_DIR_NAME}/so/libxpuml.so
   fi
   cp -r ${XRE_DIR_NAME}/include/xpu/* xpu/include/xpu/
   cp -r ${XRE_DIR_NAME}/so/* xpu/lib/
@@ -94,6 +95,8 @@ function xccl_prepare() {
   check_files ${XCCL_DIR_NAME}/include/bkcl.h ${XCCL_DIR_NAME}/so/libbkcl.so
   cp -r ${XCCL_DIR_NAME}/include/* xpu/include/xpu/
   cp -r ${XCCL_DIR_NAME}/so/* xpu/lib/
+  # FIXME(yangjianbang): 待bkcl增加RPATH后, 删除以下代码
+  patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
 }
 
 function local_prepare() {
@@ -139,6 +142,8 @@ function local_assemble() {
 
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/include/* xpu/include/xhpc/xpudnn
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
+      # FIXME(yangjianbang): 待bkcl增加RPATH后, 删除以下代码
+      patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
     fi
 }
 

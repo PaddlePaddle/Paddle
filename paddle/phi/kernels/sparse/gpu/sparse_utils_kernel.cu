@@ -29,9 +29,112 @@ limitations under the License. */
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
+#include "paddle/phi/kernels/sparse/gpu/conv_host_buffer.h"
+
+#define BUILD_CUDA_TENSOR(T, vector, tensor)                                \
+  if (vector.size() <= 4) {                                                 \
+    switch (vector.size()) {                                                \
+      case 1:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(tensor.data<T>(), \
+                                                          vector[0]);       \
+        break;                                                              \
+      case 2:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(                  \
+            tensor.data<T>(), vector[0], vector[1]);                        \
+        break;                                                              \
+      case 3:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(                  \
+            tensor.data<T>(), vector[0], vector[1], vector[2]);             \
+        break;                                                              \
+      case 4:                                                               \
+        build_cuda_tensor<<<1, 32, 0, dev_ctx.stream()>>>(                  \
+            tensor.data<T>(), vector[0], vector[1], vector[2], vector[3]);  \
+        break;                                                              \
+      default:                                                              \
+        break;                                                              \
+    }                                                                       \
+  } else {                                                                  \
+    phi::backends::gpu::GpuMemcpyAsync(tensor.data<T>(),                    \
+                                       vector.data(),                       \
+                                       vector.size() * sizeof(T),           \
+                                       gpuMemcpyHostToDevice,               \
+                                       dev_ctx.stream());                   \
+  }
 
 namespace phi {
 namespace sparse {
+
+template <typename T>
+__global__ void build_cuda_tensor(T* data, const T elem0) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 1) {
+    data[idx] = elem0;
+  }
+}
+
+template <typename T>
+__global__ void build_cuda_tensor(T* data, const T elem0, const T elem1) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 2) {
+    switch (idx) {
+      case 0:
+        data[idx] = elem0;
+        break;
+      case 1:
+        data[idx] = elem1;
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+template <typename T>
+__global__ void build_cuda_tensor(T* data,
+                                  const T elem0,
+                                  const T elem1,
+                                  const T elem2) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 3) {
+    switch (idx) {
+      case 0:
+        data[idx] = elem0;
+        break;
+      case 1:
+        data[idx] = elem1;
+        break;
+      case 2:
+        data[idx] = elem2;
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+template <typename T>
+__global__ void build_cuda_tensor(
+    T* data, const T elem0, const T elem1, const T elem2, const T elem3) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 4) {
+    switch (idx) {
+      case 0:
+        data[idx] = elem0;
+        break;
+      case 1:
+        data[idx] = elem1;
+        break;
+      case 2:
+        data[idx] = elem2;
+        break;
+      case 3:
+        data[idx] = elem3;
+        break;
+      default:
+        break;
+    }
+  }
+}
 
 template <typename T>
 inline __device__ bool DevIsZero(const T* data, const int64_t cols) {
@@ -50,7 +153,7 @@ __global__ void GetNonZeroNums(const T* dense_data,
                                const int rows,
                                const int cols,
                                int* non_zero_num,
-                               int* temp_indexs) {
+                               int* temp_indices) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   __shared__ int counter;
   if (threadIdx.x == 0) counter = 0;
@@ -64,7 +167,7 @@ __global__ void GetNonZeroNums(const T* dense_data,
       atomicAdd(&counter, 1);
       index = i;
     }
-    temp_indexs[i] = index;
+    temp_indices[i] = index;
   }
   __syncthreads();
   if (threadIdx.x == 0) {
@@ -78,12 +181,12 @@ __global__ void GetNonZeroElementsAndIndices(const T* dense_data,
                                              const int64_t cols,
                                              const int64_t* x_dims,
                                              const int non_zero_num,
-                                             const int* indexs,
+                                             const int* sparse_indices,
                                              int64_t* indices,
                                              T* sparse_data) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < non_zero_num; i += gridDim.x * blockDim.x) {
-    int64_t sparse_index = indexs[i];
+    int64_t sparse_index = sparse_indices[i];
     int64_t x_index = sparse_index;
     for (int64_t j = sparse_dim - 1; j >= 0; j--) {
       indices[j * non_zero_num + i] = sparse_index % x_dims[j];
@@ -121,22 +224,22 @@ void DenseToCooKernel(const Context& dev_ctx,
       nums_ptr, 0, sizeof(int), dev_ctx.stream());
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
 
-  DenseTensor temp_indexs = phi::Empty<int32_t>(dev_ctx, {rows});
-  int* temp_indexs_ptr = temp_indexs.data<int>();
+  DenseTensor temp_indices = phi::Empty<int32_t>(dev_ctx, {rows});
+  int* temp_indices_ptr = temp_indices.data<int>();
 
   GetNonZeroNums<<<config.block_per_grid.x,
                    config.thread_per_block.x,
                    0,
                    dev_ctx.stream()>>>(
-      x_data, rows, cols, nums_ptr, temp_indexs_ptr);
+      x_data, rows, cols, nums_ptr, temp_indices_ptr);
 
 #ifdef PADDLE_WITH_HIP
   thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
 #else
   thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
 #endif
-                 temp_indexs_ptr,
-                 temp_indexs_ptr + rows,
+                 temp_indices_ptr,
+                 temp_indices_ptr + rows,
                  -1);
 
   // 2. copy non_zero_num to host, copy x_dims to device
@@ -163,7 +266,7 @@ void DenseToCooKernel(const Context& dev_ctx,
   values.Resize(values_dims);
   T* sparse_data = dev_ctx.template Alloc<T>(&values);
 
-  // 3. calc indices by indexs and get values by indexs
+  // 3. calc indices by indices and get values by indices
   if (non_zero_num > 0) {
     config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
     GetNonZeroElementsAndIndices<<<config.block_per_grid.x,
@@ -174,7 +277,7 @@ void DenseToCooKernel(const Context& dev_ctx,
                                                        cols,
                                                        d_x_dims.data<int64_t>(),
                                                        non_zero_num,
-                                                       temp_indexs_ptr,
+                                                       temp_indices_ptr,
                                                        indices_data,
                                                        sparse_data);
   }
@@ -543,11 +646,7 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
 
   DenseTensor d_sparse_offsets = Empty<int64_t>(dev_ctx, {sparse_dim});
 
-  phi::backends::gpu::GpuMemcpyAsync(d_sparse_offsets.data<int64_t>(),
-                                     sparse_offsets.data(),
-                                     sparse_dim * sizeof(int64_t),
-                                     gpuMemcpyHostToDevice,
-                                     dev_ctx.stream());
+  BUILD_CUDA_TENSOR(int64_t, sparse_offsets, d_sparse_offsets);
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
@@ -563,6 +662,9 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
                              non_zero_num,
                              base_offset,
                              sparse_dim);
+  phi::sparse::ConvHostBuffer& conv_host_buffer =
+      phi::sparse::ConvHostBuffer::getInstance();
+  conv_host_buffer.reset();
 }
 
 template <typename T, typename Context>

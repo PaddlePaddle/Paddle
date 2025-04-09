@@ -23,7 +23,7 @@ namespace distributed {
 // (TODO) Support 2 kind of parallel:
 // 1. sharding on batch axes (any axis that is not to be softmax normalized) of
 // tensor.
-// 2. sharding on normalized axis of tensor. (naive support by now, effecient
+// 2. sharding on normalized axis of tensor. (naive support by now, efficient
 // support need to change the softmax kernel).
 SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis);
 

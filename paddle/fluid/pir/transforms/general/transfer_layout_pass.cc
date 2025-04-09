@@ -44,6 +44,26 @@
 #include "paddle/pir/include/pass/utils.h"
 
 struct Node;
+// Since AutoLayoutPass registers a large number of
+// LayoutTransformationInterface, in order to ensure the correctness of
+// TransferLayoutPass, the original list is fixed。
+// Note: This is a temporary solution, TransferLayoutPass will be retired in the
+// future.
+const std::set<std::string> kOpsOriginTransfer = {"pd_op.add_group_norm_silu",
+                                                  "pd_op.fused_conv2d_add_act",
+                                                  "pd_op.argmax",
+                                                  "pd_op.concat",
+                                                  "pd_op.conv2d",
+                                                  "pd_op.conv2d_transpose",
+                                                  "pd_op.group_norm",
+                                                  "pd_op.pool2d",
+                                                  "pd_op.silu",
+                                                  "pd_op.squeeze",
+                                                  "pd_op.swish",
+                                                  "pd_op.add",
+                                                  "pd_op.assign",
+                                                  "pd_op.multiply",
+                                                  "builtin.combine"};
 
 struct SrcNode {
   bool operator==(const SrcNode& rhs) const { return true; }
@@ -212,17 +232,21 @@ struct FlowGraph {
       Node op_node(&op);
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-      const auto& relevate_inputs =
-          layout_transform_iface ? layout_transform_iface.RelevantInputs(&op)
-                                 : op.operands_source();
-      const auto& relevate_outputs =
-          layout_transform_iface ? layout_transform_iface.RelevantOutputs(&op)
-                                 : op.results();
-      VLOG(10) << "[BuildGraph]" << op_node << " isz:" << relevate_inputs.size()
-               << " osz:" << relevate_outputs.size();
+      const auto& relevant_inputs =
+          layout_transform_iface && (kOpsOriginTransfer.find(op.name()) !=
+                                     kOpsOriginTransfer.end())
+              ? layout_transform_iface.RelevantInputs(&op)
+              : op.operands_source();
+      const auto& relevant_outputs =
+          layout_transform_iface && (kOpsOriginTransfer.find(op.name()) !=
+                                     kOpsOriginTransfer.end())
+              ? layout_transform_iface.RelevantOutputs(&op)
+              : op.results();
+      VLOG(10) << "[BuildGraph]" << op_node << " isz:" << relevant_inputs.size()
+               << " osz:" << relevant_outputs.size();
 
       // add in edge
-      for (auto& operand : relevate_inputs) {
+      for (auto& operand : relevant_inputs) {
         Node operand_node(operand);
         // the capacity should be set as the out_degree of operand node
         float weight = 1.0f;
@@ -235,7 +259,7 @@ struct FlowGraph {
         AddEdge(operand_node, op_node, weight, 0.0f, true);
       }
 
-      for (const auto& op_result : relevate_outputs) {
+      for (const auto& op_result : relevant_outputs) {
         // we have ssa, so the output must not be processed
         Node op_result_node(op_result);
 
@@ -275,19 +299,23 @@ struct FlowGraph {
 
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-      const auto& relevate_inputs =
-          layout_transform_iface ? layout_transform_iface.RelevantInputs(&op)
-                                 : op.operands_source();
-      const auto& relevate_outputs =
-          layout_transform_iface ? layout_transform_iface.RelevantOutputs(&op)
-                                 : op.results();
+      const auto& relevant_inputs =
+          layout_transform_iface && (kOpsOriginTransfer.find(op.name()) !=
+                                     kOpsOriginTransfer.end())
+              ? layout_transform_iface.RelevantInputs(&op)
+              : op.operands_source();
+      const auto& relevant_outputs =
+          layout_transform_iface && (kOpsOriginTransfer.find(op.name()) !=
+                                     kOpsOriginTransfer.end())
+              ? layout_transform_iface.RelevantOutputs(&op)
+              : op.results();
 
-      for (const auto& op_operand : relevate_inputs) {
+      for (const auto& op_operand : relevant_inputs) {
         Node operand_node(op_operand);
         AddEdge(src_node(), operand_node, THRESHOLD);
       }
 
-      for (const auto& op_result : relevate_outputs) {
+      for (const auto& op_result : relevant_outputs) {
         Node op_result_node(op_result);
         AddEdge(src_node(), op_result_node, THRESHOLD);
       }
@@ -297,7 +325,8 @@ struct FlowGraph {
     for (auto& op : *(program.block())) {
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-      if (!layout_transform_iface) {
+      if (!layout_transform_iface ||
+          (kOpsOriginTransfer.find(op.name()) == kOpsOriginTransfer.end())) {
         continue;
       }
 
@@ -328,11 +357,13 @@ struct FlowGraph {
     for (auto& op : *(program.block())) {
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-      const auto& relevate_outputs =
-          layout_transform_iface ? layout_transform_iface.RelevantOutputs(&op)
-                                 : op.results();
+      const auto& relevant_outputs =
+          layout_transform_iface && (kOpsOriginTransfer.find(op.name()) !=
+                                     kOpsOriginTransfer.end())
+              ? layout_transform_iface.RelevantOutputs(&op)
+              : op.results();
 
-      for (const auto& op_result : relevate_outputs) {
+      for (const auto& op_result : relevant_outputs) {
         Node op_result_node(op_result);
         for (auto it = op_result.use_begin(); it != op_result.use_end(); ++it) {
           auto user_op = it->owner();
@@ -390,7 +421,9 @@ struct FlowGraph {
 
                 auto layout_transform_iface = fop->dyn_cast<
                     paddle::dialect::LayoutTransformationInterface>();
-                if (layout_transform_iface) {
+                if (layout_transform_iface &&
+                    (kOpsOriginTransfer.find(op->name()) !=
+                     kOpsOriginTransfer.end())) {
                   return !layout_transform_iface.CanBeModified(fop);
                 }
                 return true;
@@ -727,7 +760,9 @@ class TransferLayoutPass : public pir::Pass {
           VLOG(10) << "[Rewrite][RewriteByLayout] " << node;
           auto layout_transformation_iface =
               op->dyn_cast<paddle::dialect::LayoutTransformationInterface>();
-          if (layout_transformation_iface) {
+          if (layout_transformation_iface &&
+              (kOpsOriginTransfer.find(op->name()) !=
+               kOpsOriginTransfer.end())) {
             layout_transformation_iface.RewriteByLayout(
                 op, common::DataLayout::NHWC);
             num_of_layout_changed_ops++;

@@ -60,7 +60,6 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   int64_t cur_global_rank = GetCurGlobalRank();
   int64_t root_rank = in_process_ids[0];
   auto all_process_ids = GetUnionProcessIds(in_process_ids, out_process_ids);
-  bool dynamic_shape = true;
   auto dtype = in.dtype();
   const auto& out_partial_status = out_dist_attr.partial_status();
   bool cur_rank_in_out_mesh =
@@ -72,13 +71,21 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   if (root_rank == cur_global_rank) {
     for (const auto& out_process_id : out_process_ids) {
       if (out_process_id != root_rank) {
+        // Should acculate the relative rank in communication.
+        auto relative_rank = out_process_id;
+        for (size_t i = 0; i < all_process_ids.size(); ++i) {
+          if (all_process_ids[i] == out_process_id) {
+            relative_rank = i;
+          }
+        }
+
         RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                   PSendKernel,
                                   dtype,
                                   all_process_ids,
                                   in.value(),
-                                  out_process_id,
-                                  dynamic_shape);
+                                  /*peer*/ relative_rank,
+                                  /*dynamic_shape=*/true);
       }
     }
     if (cur_rank_in_out_mesh) {
@@ -90,7 +97,8 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                               dtype,
                               all_process_ids,
                               root_rank,
-                              dynamic_shape,
+                              {} /*out_shape*/,
+                              /*dynamic_shape=*/true,
                               &result_value);
   }
 

@@ -33,7 +33,7 @@ class TestVariable(unittest.TestCase):
 
     def _test_slice(self, place):
         b = default_main_program().current_block()
-        w = b.create_var(dtype="float64", shape=[784, 100, 100], lod_level=0)
+        w = b.create_var(dtype="float64", shape=[784, 100, 100])
 
         for i in range(3):
             nw = w[i]

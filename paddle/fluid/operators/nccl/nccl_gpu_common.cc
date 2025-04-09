@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 namespace {
 // TODO(panyx0718): Where to destroy them.
 std::unique_ptr<std::vector<ncclComm_t>> global_comms;
@@ -60,5 +59,4 @@ const std::vector<ncclComm_t>& Communicator::comms() const {
   return *global_comms;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/prod_kernel.h"
-
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
@@ -36,5 +36,13 @@ void ProdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    prod, CPU, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ProdKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -938,7 +938,7 @@ class PretrainedTokenizer:
             ids, pair_ids
         )
 
-        # Build output dictionnary
+        # Build output dictionary
         encoded_inputs["input_ids"] = sequence
         if return_token_type_ids:
             encoded_inputs["token_type_ids"] = token_type_ids
@@ -1189,7 +1189,7 @@ class PretrainedTokenizer:
                         ids, pair_ids
                     )
 
-                    # Build output dictionnary
+                    # Build output dictionary
                     encoded_inputs["input_ids"] = sequence
                     if return_token_type_ids:
                         encoded_inputs["token_type_ids"] = token_type_ids

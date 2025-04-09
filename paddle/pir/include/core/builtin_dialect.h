@@ -33,7 +33,6 @@ class IR_API BuiltinDialect : public pir::Dialect {
   ///
   static const char* name() { return "builtin"; }
 
-  pir::Type ParseType(pir::IrParser& parser) override;  // NOLINT
   void PrintType(pir::Type type, std::ostream& os) const override;
 
  private:

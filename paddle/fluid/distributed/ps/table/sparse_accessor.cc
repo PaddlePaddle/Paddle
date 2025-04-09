@@ -304,7 +304,7 @@ int SparseAccessor::ParseFromString(const std::string& str, float* value) {
       ret,
       6UL,
       common::errors::InvalidArgument(
-          "Invalid return value. Expect more than 6. But recieved %d.", ret));
+          "Invalid return value. Expect more than 6. But received %d.", ret));
   return ret;
 }
 

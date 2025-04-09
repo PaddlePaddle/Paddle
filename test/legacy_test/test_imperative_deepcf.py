@@ -38,7 +38,7 @@ class DMF(paddle.nn.Layer):
         for i in range(len(self._hid_sizes)):
             self._user_layers.append(
                 self.add_sublayer(
-                    'user_layer_%d' % i,
+                    f'user_layer_{i}',
                     Linear(
                         256 if i == 0 else self._hid_sizes[i - 1],
                         self._hid_sizes[i],
@@ -47,13 +47,13 @@ class DMF(paddle.nn.Layer):
             )
             self._user_layers.append(
                 self.add_sublayer(
-                    'user_layer_act_%d' % i,
+                    f'user_layer_act_{i}',
                     paddle.nn.ReLU(),
                 )
             )
             self._item_layers.append(
                 self.add_sublayer(
-                    'item_layer_%d' % i,
+                    f'item_layer_{i}',
                     Linear(
                         256 if i == 0 else self._hid_sizes[i - 1],
                         self._hid_sizes[i],
@@ -62,7 +62,7 @@ class DMF(paddle.nn.Layer):
             )
             self._item_layers.append(
                 self.add_sublayer(
-                    'item_layer_act_%d' % i,
+                    f'item_layer_act_{i}',
                     paddle.nn.ReLU(),
                 )
             )
@@ -87,7 +87,7 @@ class MLP(paddle.nn.Layer):
         for i in range(len(self._hid_sizes)):
             self._match_layers.append(
                 self.add_sublayer(
-                    'match_layer_%d' % i,
+                    f'match_layer_{i}',
                     Linear(
                         256 * 2 if i == 0 else self._hid_sizes[i - 1],
                         self._hid_sizes[i],
@@ -96,7 +96,7 @@ class MLP(paddle.nn.Layer):
             )
             self._match_layers.append(
                 self.add_sublayer(
-                    'match_layer_act_%d' % i,
+                    f'match_layer_act_{i}',
                     paddle.nn.ReLU(),
                 )
             )
@@ -156,7 +156,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         self.batch_size = int(os.environ.get('BATCH_SIZE', 128))
         self.num_batches = int(os.environ.get('NUM_BATCHES', 5))
-        self.num_epoches = int(os.environ.get('NUM_EPOCHES', 1))
+        self.num_epochs = int(os.environ.get('NUM_EPOCHS', 1))
 
     def get_data(self):
         user_ids = []
@@ -277,8 +277,8 @@ class TestDygraphDeepCF(unittest.TestCase):
                 else base.CUDAPlace(0)
             )
             exe.run(startup)
-            for e in range(self.num_epoches):
-                sys.stderr.write('epoch %d\n' % e)
+            for e in range(self.num_epochs):
+                sys.stderr.write(f'epoch {e}\n')
                 for slice in range(
                     0, self.batch_size * self.num_batches, self.batch_size
                 ):
@@ -307,8 +307,8 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = paddle.optimizer.Adam(0.01, parameters=deepcf.parameters())
-            for e in range(self.num_epoches):
-                sys.stderr.write('epoch %d\n' % e)
+            for e in range(self.num_epochs):
+                sys.stderr.write(f'epoch {e}\n')
                 for slice in range(
                     0, self.batch_size * self.num_batches, self.batch_size
                 ):
@@ -343,8 +343,8 @@ class TestDygraphDeepCF(unittest.TestCase):
             deepcf2 = DeepCF(num_users, num_items, matrix)
             adam2 = paddle.optimizer.Adam(0.01, parameters=deepcf2.parameters())
             base.set_flags({'FLAGS_sort_sum_gradient': True})
-            for e in range(self.num_epoches):
-                sys.stderr.write('epoch %d\n' % e)
+            for e in range(self.num_epochs):
+                sys.stderr.write(f'epoch {e}\n')
                 for slice in range(
                     0, self.batch_size * self.num_batches, self.batch_size
                 ):
@@ -379,8 +379,8 @@ class TestDygraphDeepCF(unittest.TestCase):
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = paddle.optimizer.Adam(0.01, parameters=deepcf.parameters())
 
-            for e in range(self.num_epoches):
-                sys.stderr.write('epoch %d\n' % e)
+            for e in range(self.num_epochs):
+                sys.stderr.write(f'epoch {e}\n')
                 for slice in range(
                     0, self.batch_size * self.num_batches, self.batch_size
                 ):

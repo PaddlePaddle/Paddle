@@ -59,7 +59,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
           common::errors::InvalidArgument(
               "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
               "), Y must be scalar, the size of Y should be 1. "
-              "But reveived the size of Y = %s.",
+              "But received the size of Y = %s.",
               ctx->GetInputDim("Y").size()));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y")[0],
@@ -67,7 +67,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
           common::errors::InvalidArgument(
               "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
               "), Y must be scalar, the first dimension of Y should be 1. "
-              "But reveived the first dimension of Y = %s.",
+              "But received the first dimension of Y = %s.",
               ctx->GetInputDim("Y")[0]));
     } else if (ctx->GetInputsVarType("X").front() !=
                framework::proto::VarType::DENSE_TENSOR) {
@@ -164,7 +164,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
 #ifdef PADDLE_WITH_DNNL
@@ -310,7 +310,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(
@@ -351,7 +351,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(
@@ -399,7 +399,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(
@@ -447,7 +447,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor &tensor,
       const phi::KernelKey &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.dtype())) {
-      // only promote inputs’s types when contains complex input
+      // only promote inputs's types when contains complex input
       return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
       return phi::KernelKey(

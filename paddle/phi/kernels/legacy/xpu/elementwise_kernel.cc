@@ -25,13 +25,18 @@ void MaximumRawKernel(const Context& dev_ctx,
                       const DenseTensor& y,
                       int axis,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_max<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
@@ -44,13 +49,18 @@ void MinimumRawKernel(const Context& dev_ctx,
                       const DenseTensor& y,
                       int axis,
                       DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_min<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
@@ -68,8 +78,8 @@ void RemainderRawKernel(const Context& dev_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_mod<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
@@ -87,8 +97,8 @@ void FloorDivideRawKernel(const Context& dev_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_floordiv<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
@@ -106,8 +116,8 @@ void ElementwisePowRawKernel(const Context& dev_ctx,
               const XPUType* x,
               const XPUType* y,
               XPUType* z,
-              const std::vector<int>& xshape,
-              const std::vector<int>& yshape) {
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
     return xpu::broadcast_pow<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 

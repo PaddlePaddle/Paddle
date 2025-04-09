@@ -395,7 +395,7 @@ def load(program, model_path, executor=None, var_list=None):
         paddle.static.load(program, model_path, executor, var_list)
     except UnicodeDecodeError:
         warnings.warn(
-            "An UnicodeDecodeError is catched, which might be caused by loading "
+            "An UnicodeDecodeError is caught, which might be caused by loading "
             "a python2 saved model. Encoding of pickle.load would be set and "
             "load again automatically."
         )
@@ -419,7 +419,7 @@ def load_dygraph(model_path, keep_name_table=False):
         return para_dict, opti_dict
     except UnicodeDecodeError:
         warnings.warn(
-            "An UnicodeDecodeError is catched, which might be caused by loading "
+            "An UnicodeDecodeError is caught, which might be caused by loading "
             "a python2 saved model. Encoding of pickle.load would be set and "
             "load again automatically."
         )

@@ -104,7 +104,9 @@ void GroupOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
   printer.PrintOpOperands(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);
@@ -188,7 +190,9 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   auto& os = printer.os;
   auto op = operation();
   printer.PrintOpResult(*op);
-  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  os << " = ";
+  printer.PrintOpName(*op);
+  printer.PrintOpId(*op);
   printer.PrintOpOperands(*op);
   os << " -> ";
   printer.PrintOpReturnType(*op);
@@ -326,6 +330,12 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
       "axis", pir::Int32Attribute::get(pir::IrContext::Instance(), axis));
 }
 
+bool SplitOp::InferSymbolicShape(
+    pir::InferSymbolicShapeContext* infer_context) {
+  VLOG(4) << "Infer symbolic shape for cinn_op.split";
+  return SplitOpInferSymbolicShape(this->operation(), infer_context);
+}
+
 const char* GenerateShapeOp::attributes_name[attributes_num] = {
     "output_dim_exprs", "symbol_bindings"};
 
@@ -340,7 +350,7 @@ void GenerateShapeOp::Build(pir::Builder& builder,
     for (const auto& attr : output_dim_exprs) {
       PADDLE_ENFORCE(attr.isa<pir::Int64Attribute>(),
                      ::common::errors::PreconditionNotMet(
-                         "Reqiured attr must be Int64Attribute."));
+                         "Required attr must be Int64Attribute."));
     }
   }
   argument.AddInputs(inputs);

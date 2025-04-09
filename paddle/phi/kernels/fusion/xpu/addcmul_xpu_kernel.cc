@@ -58,4 +58,5 @@ PD_REGISTER_KERNEL(addcmul_xpu,
                    ALL_LAYOUT,
                    phi::fusion::AddCMulXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

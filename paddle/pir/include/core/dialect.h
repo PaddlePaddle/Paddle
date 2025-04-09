@@ -29,7 +29,6 @@ namespace pir {
 
 class Operation;
 class IrPrinter;
-class IrParser;
 class DialectInterface;
 
 using OpPrintFn =
@@ -150,19 +149,7 @@ class IR_API Dialect {
     IR_THROW("dialect has no registered attribute printing hook");
   }
 
-  virtual Type ParseType(IrParser &parser) {  // NOLINT
-    IR_THROW("dialect has no registered type parsing hook");
-  }
-
-  virtual Attribute ParseAttribute(IrParser &parser) {  // NOLINT
-    IR_THROW("dialect has no registered attribute parsing hook");
-  }
-
   virtual OpPrintFn PrintOperation(const Operation &op) const;
-
-  virtual Operation ParseOperation(IrParser &parser) {  // NOLINT
-    IR_THROW("dialect has no registered operation parsing hook");
-  }
 
  private:
   Dialect(const Dialect &) = delete;

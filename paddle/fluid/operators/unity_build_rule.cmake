@@ -136,7 +136,6 @@ register_unity_group(
 register_unity_group(
   cc
   lod_array_length_op.cc
-  lod_rank_table_op.cc
   lod_reset_op.cc
   lod_tensor_to_array_op.cc
   log_softmax_op.cc

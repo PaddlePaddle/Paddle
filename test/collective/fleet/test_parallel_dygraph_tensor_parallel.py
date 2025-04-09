@@ -18,6 +18,8 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
+from paddle.framework import core
+
 
 class TestHybridParallel(TestMultipleAccelerators):
     def test_hybrid_parallel_mp_random(self):
@@ -35,7 +37,9 @@ class TestHybridParallel(TestMultipleAccelerators):
         self.run_mnist_2accelerators('hybrid_parallel_mp_fp16.py')
 
     def test_hybrid_parallel_mp_bf16(self):
-        self.run_mnist_2accelerators('hybrid_parallel_mp_bf16.py')
+        # XPU will use its own fast_paddle lib for bf16 training, therefore skip ordinary ut here.
+        if not core.is_compiled_with_xpu():
+            self.run_mnist_2accelerators('hybrid_parallel_mp_bf16.py')
 
     def test_hybrid_parallel_mp_clip_grad(self):
         self.run_mnist_2accelerators('hybrid_parallel_mp_clip_grad.py')

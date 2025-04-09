@@ -21,6 +21,7 @@ from paddle.distributed.utils.launch_utils import (
     get_cluster_from_args,
     get_gpus,
 )
+from paddle.distributed.utils.process_utils import set_affinity
 
 
 def _parse_args():
@@ -118,6 +119,9 @@ class TestCoverage(unittest.TestCase):
 
     def test_find_free_ports(self):
         find_free_ports(2)
+
+    def test_set_affinity(self):
+        set_affinity()
 
 
 if __name__ == '__main__':

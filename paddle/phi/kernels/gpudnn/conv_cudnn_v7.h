@@ -163,7 +163,7 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
           perf_results, workspace_size_limit, &result);
 #else
       VLOG(3) << "Fallback to non-v7 method to find conv algorithm "
-                 "becasue the workspace size request("
+                 "because the workspace size request("
               << result.workspace_size << ") exceeds the limit("
               << workspace_size_limit << ")";
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -268,9 +268,9 @@ struct SearchAlgorithmBase<ConvKind::kForward> {
 
 // cuDNN convolution backward data-algorithm searcher, consisting of three
 // searching modes, namely: deterministic, heuristic, and exhaustive_search
-// mode. Specially, there are 2 pattens of exhaustive search mode, one for
+// mode. Specially, there are 2 patterns of exhaustive search mode, one for
 // HALF precision only, one for the rest.
-// As well as one workspace size acquirsition function with
+// As well as one workspace size acquisition function with
 // respect to the chosen algorithm.
 template <>
 struct SearchAlgorithmBase<ConvKind::kBackwardData> {
@@ -346,7 +346,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardData> {
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
           perf_results, workspace_size_limit, &result);
 #else
-      VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+      VLOG(1) << "Fallback to non-v7 method to find conv algorithm because "
                  "the workspace size request("
               << result.workspace_size << ") exceeds the limit("
               << workspace_size_limit << ")";
@@ -518,7 +518,7 @@ struct SearchAlgorithmBase<ConvKind::kBackwardFilter> {
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
           perf_results, workspace_size_limit, &result);
 #else
-      VLOG(1) << "Fallback to non-v7 method to find conv algorithm becasue "
+      VLOG(1) << "Fallback to non-v7 method to find conv algorithm because "
                  "the workspace size request("
               << result.workspace_size << ") exceeds the limit("
               << workspace_size_limit << ")";

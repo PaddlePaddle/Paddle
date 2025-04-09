@@ -217,7 +217,7 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
         self.run_test()
 
 
-# special case when sum having olny one input
+# special case when sum having only one input
 class TrtConvertSumTest1(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True

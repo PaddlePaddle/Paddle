@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_defs.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
@@ -31,7 +32,6 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
@@ -47,18 +47,6 @@ using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 using PirHookFunc =
     std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
-
-using SchedulingPriority = int64_t;
-
-constexpr const char* kCoalesceTensor = "coalesce_tensor";
-
-// stream types
-constexpr const char* kCustomStream = "CustomStream";
-constexpr const char* kDefaultStream = "DefaultStream";
-constexpr const char* kD2HStream = "D2HStream";
-constexpr const char* kH2DStream = "H2DStream";
-
-constexpr int kEmptyVarIndex = 0;
 
 struct OpKernelFunc {
   OpKernelComputeFunc compute_func_;
@@ -150,22 +138,6 @@ class VariableScope {
 
   // var_name -> var_type
   std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
-};
-
-struct EventInter {
-  explicit EventInter(size_t instr_id,
-                      std::shared_ptr<platform::DeviceEvent> event,
-                      platform::DeviceType waiter_type)
-      : instr_id_(instr_id), event_(event), waiter_type_(waiter_type) {}
-  size_t instr_id_;
-  std::shared_ptr<platform::DeviceEvent> event_;
-  platform::DeviceType waiter_type_;
-};
-
-enum class OpFuncType {
-  kCpuSync,  // CPU kernel, block host
-  kGpuSync,  // GPU or other device kernel without asynchronous operation
-  kGpuAsync  // GPU or other device kernel with asynchronous operation
 };
 
 struct OpFuncNode {
@@ -350,7 +322,7 @@ static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 static constexpr char kFetchVarName[] = "fetch";
 
-// static_ref_ is the numer of last live ops calculated to statically after
+// static_ref_ is the number of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
 // be decreased by one dynamically after the execution of an op (in last ops
 // list). var_ is the related variable
@@ -381,7 +353,7 @@ class VarRefInfo {
   Variable* var_;
 };
 
-// static_dep_ is the numer of dependencies (ops that must run before it) of
+// static_dep_ is the number of dependencies (ops that must run before it) of
 // each op which is calculated to statically. static_dep_  is the runtime
 // version dep which will be decreased by one dynamically after the execution of
 // one dependency op.

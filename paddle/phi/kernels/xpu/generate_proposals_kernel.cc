@@ -401,7 +401,7 @@ void GenerateProposalsKernel(const Context& dev_ctx,
         place, num_data, cpu_place, &tmp_num[0], sizeof(int) * num);
   }
 
-  phi::LoD lod;
+  phi::LegacyLoD lod;
   lod.emplace_back(offset);
   rpn_rois->set_lod(lod);
   rpn_roi_probs->set_lod(lod);

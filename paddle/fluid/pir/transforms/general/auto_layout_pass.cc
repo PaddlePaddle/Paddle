@@ -15,203 +15,118 @@
 #include "paddle/fluid/pir/transforms/general/auto_layout_pass.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/general/auto_layout_insert_pass.h"
+#include "paddle/fluid/pir/transforms/general/auto_layout_simplify_pass.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
 namespace {
-
 class AutoLayoutPass : public pir::Pass {
  public:
   AutoLayoutPass() : pir::Pass("auto_layout_pass", 2) {}
   void Run(pir::Operation* op) override {
+    auto program = op->GetParentProgram();
+    VLOG(4) << "IR before auto layout pass: \n" << *program;
+    ::pir::IrMapping ir_mapping;
+    auto program_clone = program->Clone(ir_mapping);
+
+    pir::PassManager pm(::pir::IrContext::Instance(), 2);
+
+    pm.AddPass(pir::CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",
+                                                "pd_op.conv2d",
+                                                "pd_op.conv2d_transpose"}));
+    pm.AddPass(pir::CreateAutoLayoutSimplifyPass());
+    pm.Run(program_clone.get());
+
+    VLOG(4) << "IR middle auto layout pass: \n" << *program_clone;
+    if (IsNeedAllTranspose(program_clone->module_op())) {
+      pir::PassManager pm_(::pir::IrContext::Instance(), 2);
+      pm_.AddPass(pir::CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",
+                                                   "pd_op.conv2d",
+                                                   "pd_op.conv2d_transpose"}));
+      pm_.AddPass(pir::CreateAutoLayoutSimplifyPass());
+      pm_.Run(program);
+    } else {
+      // Same as TransferLayoutPass, only transpose fused_conv2d_add_act
+      pir::PassManager pm_(::pir::IrContext::Instance(), 2);
+      pm_.AddPass(
+          pir::CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act"}));
+      pm_.AddPass(pir::CreateAutoLayoutSimplifyPass());
+      pm_.Run(program);
+    }
+    VLOG(4) << "IR after auto layout pass: \n" << *program;
+  }
+
+  // Check whether all conv2d, conv2d_transpose and fused_conv2d_add_act ops
+  // need to be transposed.
+  bool IsNeedAllTranspose(pir::Operation* op) {
+    VLOG(4) << "enter IsNeedAllTranspose";
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
       for (auto& block : region) {
-        pir::Builder builder = pir::Builder(ctx_, &block);
-        VLOG(4) << "Transforming block";
-        TransferLayout(builder, &block);
+        for (auto&& op : block) {
+          if (op.isa<paddle::dialect::TransposeOp>()) {
+            if (!op.HasAttribute("source")) continue;
+            auto source = op.attribute<pir::StrAttribute>("source").AsString();
+            if (source == "auto_layout_pass") {
+              transpose_count_++;
+            } else {
+              // The original transpose should not be counted
+              continue;
+            }
+          } else if (op.isa<paddle::dialect::Conv2dOp>() ||
+                     op.isa<paddle::dialect::Conv2dTransposeOp>() ||
+                     op.isa<paddle::dialect::FusedConv2dAddActOp>()) {
+            auto layout_interface =
+                op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+            if (layout_interface.PreferLayout(&op) != common::DataLayout::NHWC)
+              continue;
+            op.isa<paddle::dialect::FusedConv2dAddActOp>() ? conv_count_ += 3
+                                                           : conv_count_ += 1.5;
+          } else {
+            // Other op
+            continue;
+          }
+        }
       }
     }
-  }
+    VLOG(4) << "end IsNeedAllTranspose"
+            << " conv_count_: " << conv_count_
+            << " transpose_count_: " << transpose_count_
+            << " transpose_scale_ * transpose_count_: "
+            << transpose_scale_ * transpose_count_ << std::endl;
 
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return conv_count_ > transpose_scale_ * transpose_count_;
   }
 
  private:
-  void RewriteLayout(pir::Operation* op,
-                     const std::vector<pir::Value>& input_values) {  // NOLINT
-    auto InferMetaSpecificOp = [&]() {
-      // Op not implement InferMetaInterface interface, so we need to rewrite
-      // manually
-      if (op->isa<pir::CombineOp>()) {
-        auto out = op->dyn_cast<pir::CombineOp>().out();
-        std::vector<pir::Type> new_out_type;
-        for (auto v : op->operands_source()) {
-          new_out_type.push_back(v.type());
-        }
-        auto new_out_type_v =
-            pir::VectorType::get(pir::IrContext::Instance(), new_out_type);
-        out.set_type(new_out_type_v);
-      } else {
-        PADDLE_THROW(common::errors::Unimplemented(
-            "`%s` should implement InferMetaInterface interface or rewrite "
-            "manually, but not found.",
-            op->name()));
-      }
-    };
-
-    if (op->HasAttribute("data_format")) {
-      op->set_attribute("data_format", pir::StrAttribute::get(ctx_, "NHWC"));
-    }
-    auto p_attribute_map = op->attributes();
-
-    if (auto infer_meta_interface =
-            op->dyn_cast<paddle::dialect::InferMetaInterface>()) {
-      auto output_types =
-          infer_meta_interface.InferMeta(input_values, &p_attribute_map);
-      for (size_t i = 0; i < output_types.size(); ++i) {
-        op->result(i).set_type(output_types[i]);
-        pir::SetNewLayoutForValue(op->result(i), common::DataLayout::NHWC);
-      }
-    } else {
-      InferMetaSpecificOp();
-    }
-  }
-
-  bool IsInsertTransposeOpBefore(pir::Operation* op) {
-    bool is_insert_transpose = false;
-
-    auto JudgeOperand = [&](const pir::Value& operand,
-                            std::vector<int32_t> layout) {
-      if (!JudgeValue(operand)) return false;
-      auto transposeInputOp =
-          operand.defining_op<paddle::dialect::TransposeOp>();
-      if (!transposeInputOp) return false;
-      const auto perm_attr =
-          transposeInputOp.attribute<pir::ArrayAttribute>("perm");
-      std::vector<int32_t> perm;
-      for (size_t i = 0; i < perm_attr.size(); ++i) {
-        auto attr = perm_attr.at(i);
-        perm.push_back(attr.dyn_cast<pir::Int32Attribute>().data());
-      }
-      return perm == layout;
-    };
-    for (pir::Value operand : op->operands_source()) {
-      if (operand.type().isa<pir::VectorType>()) {
-        auto defined_op = operand.defining_op();
-        for (auto inner_operand : defined_op->operands_source()) {
-          is_insert_transpose = JudgeOperand(inner_operand, NHWC2NCHW_);
-          if (is_insert_transpose) break;
-        }
-      } else {
-        is_insert_transpose = JudgeOperand(operand, NHWC2NCHW_);
-      }
-      if (is_insert_transpose) break;
-    }
-    return is_insert_transpose;
-  }
-
-  void TransferLayout(pir::Builder builder, pir::Block* block) {
-    for (auto&& op_item : *block) {
-      auto op = &op_item;
-      auto op_name = op->name();
-
-      // Skip special ops.
-      if (op->HasTrait<pir::ImmutableLayoutTrait>()) continue;
-      if (op->operands().size() == 0) continue;
-
-      // NHWC ops branch, Only support conv2d and fused_conv2d_add_act now, it
-      // will add white list later.
-      if (op->isa<paddle::dialect::Conv2dOp>() ||
-          op->isa<paddle::dialect::FusedConv2dAddActOp>()) {
-        if (op->HasAttribute("data_format") &&
-            op->attribute<pir::StrAttribute>("data_format").AsString() ==
-                "NCHW") {
-          VLOG(4) << "enter NHWC op: " << op_name;
-          DoTransposeOpOperand(op, builder);
-          RewriteLayout(op, op->operands_source());
-          DoTransposeOpResult(op, builder);
-        }
-      } else if (IsInsertTransposeOpBefore(op)) {
-        VLOG(4) << "enter NCHW op: " << op_name;
-        DoTransposeOpOperand(op, builder);
-        RewriteLayout(op, op->operands_source());
-        DoTransposeOpResult(op, builder);
-      }
-    }
-  }
-
-  // Skip the operand which is not dense tensor or not 4-D tensor, they don't
-  // need transpose.
-  bool JudgeValue(const pir::Value& value) {
-    if (!value) return false;
-    if (!value.type()) return false;
-    if (auto type = value.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
-      return type.dims().size() == 4;
-    }
-    return false;
-  }
-
-  void DoTransposeOpOperand(pir::Operation* op,
-                            pir::Builder& builder) {  // NOLINT
-    builder.set_insertion_point(op);
-
-    // For conv2d, only transpose the input.
-    if (op->isa<paddle::dialect::Conv2dOp>()) {
-      auto inp = op->operand(0);
-      if (!JudgeValue(inp.source())) return;
-      auto transpose_op =
-          builder.Build<paddle::dialect::TransposeOp>(inp.source(), NCHW2NHWC_);
-      pir::SetNewLayoutForValue(transpose_op->result(0),
-                                common::DataLayout::NHWC);
-      inp.set_source(transpose_op->result(0));
-      return;
-    }
-
-    for (auto& operand : op->operands()) {
-      if (!JudgeValue(operand.source())) continue;
-      // Canbe optimize with cache when not eliminate the transpose op.
-      auto transpose_op = builder.Build<paddle::dialect::TransposeOp>(
-          operand.source(), NCHW2NHWC_);
-      pir::SetNewLayoutForValue(transpose_op->result(0),
-                                common::DataLayout::NHWC);
-      operand.set_source(transpose_op->result(0));
-    }
-  }
-  void DoTransposeOpResult(pir::Operation* op,
-                           pir::Builder& builder) {  // NOLINT
-    builder.SetInsertionPointAfter(op);
-    for (auto& result : op->results()) {
-      if (!JudgeValue(result)) continue;
-      auto transpose_op =
-          builder.Build<paddle::dialect::TransposeOp>(result, NHWC2NCHW_);
-      pir::SetNewLayoutForValue(transpose_op->result(0),
-                                common::DataLayout::NCHW);
-      result.ReplaceAllUsesWith(transpose_op->result(0));
-      transpose_op->operand(0).set_source(result);
-    }
-  }
-  pir::IrContext* ctx_ = pir::IrContext::Instance();
-  const std::vector<int32_t> NCHW2NHWC_ = {0, 2, 3, 1};
-  const std::vector<int32_t> NHWC2NCHW_ = {0, 3, 1, 2};
+  int conv_count_ = 0;
+  int transpose_count_ = 0;
+  // Due to the current transpose performance issues, our single explicit
+  // transpose does not perform better than cudnn, and there are interruptions
+  // in the network due to operators that do not support NHWC. So we set the
+  // scale to 1.3 temporarily.
+  float transpose_scale_ = 1.3;
 };
 }  // namespace
 namespace pir {

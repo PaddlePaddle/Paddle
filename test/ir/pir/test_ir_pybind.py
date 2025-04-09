@@ -54,6 +54,7 @@ class TestPybind(unittest.TestCase):
     def test_block(self):
         pir_program = get_ir_program()
         block = pir_program.global_block()
+        print(block)  # test print block
         ops = block.ops
         self.assertEqual(
             len(ops), 6
@@ -118,8 +119,7 @@ class TestPybind(unittest.TestCase):
         )
         # test opresult print
         self.assertTrue(
-            'dtype=builtin.tensor<4x4xf32>'
-            in add_op.operands_source()[0].__str__()
+            'dtype=tensor<4x4xf32>' in add_op.operands_source()[0].__str__()
         )
         # test opresult == value
         self.assertTrue(
@@ -135,8 +135,7 @@ class TestPybind(unittest.TestCase):
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
         self.assertTrue(
-            'builtin.tensor<4x4xf32>'
-            in tanh_op.operands()[0].source().__str__()
+            'tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
         )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(

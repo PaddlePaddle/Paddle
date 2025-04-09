@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/hlir/pe/broadcast.h"
@@ -31,6 +30,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
@@ -104,7 +104,7 @@ Tensor PRelu(const Tensor &A,
   PADDLE_ENFORCE_EQ(A->shape[axis],
                     slope->shape[0],
                     ::common::errors::InvalidArgument(
-                        "Wrong slope shape: excepted %d but recieved %d.",
+                        "Wrong slope shape: excepted %d but received %d.",
                         A->shape[axis],
                         slope->shape[0]));
   return Compute(
@@ -163,7 +163,7 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
       true,
       ::common::errors::InvalidArgument(
           "Filter's output channel size must be divisible by group, but "
-          "recieved %d as output channel size and %d as group.",
+          "received %d as output channel size and %d as group.",
           weights->shape[0] * weights->shape[1],
           input->shape[1]));
 
@@ -204,12 +204,12 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
   output_shape = {
       input->shape[0],    // B
       weights->shape[0],  // O
-      cinn::common::AutoSimplify(
+      optim::ArithSimplify(
           (input->shape[2] -
            ((weights_dilation->shape[2] - 1) * dilation_h + 1) + 2 * pad_h) /
               stride_h +
           1),  // H
-      cinn::common::AutoSimplify(
+      optim::ArithSimplify(
           (input->shape[3] -
            ((weights_dilation->shape[3] - 1) * dilation_w + 1) + 2 * pad_w) /
               stride_w +
@@ -222,8 +222,8 @@ std::vector<ir::Tensor> Conv2d_winograd_NCHW(const ir::Tensor &input,
   ir::Tensor B = winograd_transform[1];
   ir::Tensor G = winograd_transform[2];
 
-  int nH = (cinn::common::AutoSimplify(output_shape[2]).as_int32() + m - 1) / m;
-  int nW = (cinn::common::AutoSimplify(output_shape[3]).as_int32() + m - 1) / m;
+  int nH = (optim::ArithSimplify(output_shape[2]).as_int32() + m - 1) / m;
+  int nW = (optim::ArithSimplify(output_shape[3]).as_int32() + m - 1) / m;
 
   int P = input->shape[0].as_int32() * nH * nW;
 
@@ -447,7 +447,7 @@ std::vector<ir::Tensor> Conv2d_NCHW(const ir::Tensor &input,
       true,
       ::common::errors::InvalidArgument(
           "Filter's output channel size must be divisible by group, but "
-          "recieved %d as output channel size and %d as group.",
+          "received %d as output channel size and %d as group.",
           weights->shape[0] * weights->shape[1],
           input->shape[1]));
   auto res = Compute(
@@ -489,9 +489,9 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
       shape_weights.size(),
       4U,
       ::common::errors::InvalidArgument("weight's shape size should be 4"));
-  Expr c_in = cinn::common::AutoSimplify(shape_input[1]);
-  Expr c_filter = cinn::common::AutoSimplify(shape_weights[1]);
-  Expr c_out = cinn::common::AutoSimplify(shape_weights[0]);
+  Expr c_in = optim::ArithSimplify(shape_input[1]);
+  Expr c_filter = optim::ArithSimplify(shape_weights[1]);
+  Expr c_out = optim::ArithSimplify(shape_weights[0]);
   absl::flat_hash_map<std::string, int> conv2d_factors;
   int oc = c_out.as_int32();
   int ic = c_in.as_int32();
@@ -559,12 +559,12 @@ std::vector<ir::Tensor> Conv2d_NCHW_5D(const ir::Tensor &input,
   std::vector<Expr> output_shape = {
       batch,  // B
       c_out,  // O
-      cinn::common::AutoSimplify(
-          (h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) / stride_h +
-          1),  // H
-      cinn::common::AutoSimplify(
-          (w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) / stride_w +
-          1)  // W
+      optim::ArithSimplify((h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) /
+                               stride_h +
+                           1),  // H
+      optim::ArithSimplify((w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) /
+                               stride_w +
+                           1)  // W
   };
   auto res = Compute(
       output_shape,
@@ -601,33 +601,33 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
       ::common::errors::InvalidArgument("weight's shape size should be 6"));
 
   Expr batch = shape_input[0];
-  Expr c_in_outer = cinn::common::AutoSimplify(shape_input[1]);
+  Expr c_in_outer = optim::ArithSimplify(shape_input[1]);
   Expr h_in = shape_input[2];
   Expr w_in = shape_input[3];
-  Expr c_in_inner = cinn::common::AutoSimplify(shape_input[4]);
+  Expr c_in_inner = optim::ArithSimplify(shape_input[4]);
 
   Expr c_out_outer = shape_weights[0];
-  Expr c_filter_outer = cinn::common::AutoSimplify(shape_weights[1]);
+  Expr c_filter_outer = optim::ArithSimplify(shape_weights[1]);
   Expr h_f = shape_weights[2];
   Expr w_f = shape_weights[3];
-  Expr c_filter_inner = cinn::common::AutoSimplify(shape_weights[4]);
-  Expr c_out_inner = cinn::common::AutoSimplify(shape_weights[5]);
+  Expr c_filter_inner = optim::ArithSimplify(shape_weights[4]);
+  Expr c_out_inner = optim::ArithSimplify(shape_weights[5]);
 
-  Expr c_filter = cinn::common::AutoSimplify(c_filter_outer * c_filter_inner);
-  Expr c_out = cinn::common::AutoSimplify(c_out_outer * c_out_inner);
-  Expr c_in = cinn::common::AutoSimplify(c_in_outer * c_in_inner);
+  Expr c_filter = optim::ArithSimplify(c_filter_outer * c_filter_inner);
+  Expr c_out = optim::ArithSimplify(c_out_outer * c_out_inner);
+  Expr c_in = optim::ArithSimplify(c_in_outer * c_in_inner);
   Var fc(c_filter, UniqName("fc"));
   Var fy(h_f, UniqName("fy"));
   Var fx(w_f, UniqName("fx"));
   std::vector<Expr> output_shape = {
       batch,        // B
       c_out_outer,  // O
-      cinn::common::AutoSimplify(
-          (h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) / stride_h +
-          1),  // H
-      cinn::common::AutoSimplify(
-          (w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) / stride_w +
-          1),  // W
+      optim::ArithSimplify((h_in - ((h_f - 1) * dilation_h + 1) + 2 * pad_h) /
+                               stride_h +
+                           1),  // H
+      optim::ArithSimplify((w_in - ((w_f - 1) * dilation_w + 1) + 2 * pad_w) /
+                               stride_w +
+                           1),  // W
       c_out_inner};
 
   ir::Tensor input_pad;
@@ -639,18 +639,18 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
         },
         UniqName("input_pad"));
   } else {
-    auto pad_h_bound = cinn::common::AutoSimplify(
-        (output_shape[2] - 1) * stride_h + (h_f - 1) * dilation_h + 1);
-    auto pad_w_bound = cinn::common::AutoSimplify(
-        (output_shape[3] - 1) * stride_w + (w_f - 1) * dilation_w + 1);
+    auto pad_h_bound = optim::ArithSimplify((output_shape[2] - 1) * stride_h +
+                                            (h_f - 1) * dilation_h + 1);
+    auto pad_w_bound = optim::ArithSimplify((output_shape[3] - 1) * stride_w +
+                                            (w_f - 1) * dilation_w + 1);
     auto pad_out_h =
         std::min(pad_h_bound.as_int32(),
-                 cinn::common::AutoSimplify(h_in + 2 * pad_h).as_int32());
+                 optim::ArithSimplify(h_in + 2 * pad_h).as_int32());
     auto pad_out_w =
         std::min(pad_w_bound.as_int32(),
-                 cinn::common::AutoSimplify(w_in + 2 * pad_w).as_int32());
-    auto h_in_pad = cinn::common::AutoSimplify(h_in + pad_h);
-    auto w_in_pad = cinn::common::AutoSimplify(w_in + pad_w);
+                 optim::ArithSimplify(w_in + 2 * pad_w).as_int32());
+    auto h_in_pad = optim::ArithSimplify(h_in + pad_h);
+    auto w_in_pad = optim::ArithSimplify(w_in + pad_w);
     input_pad = Compute(
         {batch, c_in_outer, Expr(pad_out_h), Expr(pad_out_w), c_in_inner},
         [=](Expr n, Expr icc, Expr yy, Expr xx, Expr icb) {
@@ -670,23 +670,20 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
   auto packed_out = Compute(
       output_shape,
       [=](Expr n, Expr oc_chunk, Expr oh, Expr ow, Expr oc_block) {
-        Expr c_out_per_group =
-            cinn::common::AutoSimplify(c_out * c_filter / c_in);
+        Expr c_out_per_group = optim::ArithSimplify(c_out * c_filter / c_in);
         Expr ic_outer, ic_inner;
         if (c_in == c_filter) {
-          ic_outer = cinn::common::AutoSimplify(fc / c_in_inner);
-          ic_inner = cinn::common::AutoSimplify(fc % c_in_inner);
+          ic_outer = optim::ArithSimplify(fc / c_in_inner);
+          ic_inner = optim::ArithSimplify(fc % c_in_inner);
         } else {
-          ic_outer =
-              cinn::common::AutoSimplify(((oc_chunk * c_out_inner + oc_block) /
-                                              c_out_per_group * c_filter +
-                                          fc) /
-                                         c_in_inner);
-          ic_inner =
-              cinn::common::AutoSimplify(((oc_chunk * c_out_inner + oc_block) /
-                                              c_out_per_group * c_filter +
-                                          fc) %
-                                         c_in_inner);
+          ic_outer = optim::ArithSimplify(((oc_chunk * c_out_inner + oc_block) /
+                                               c_out_per_group * c_filter +
+                                           fc) /
+                                          c_in_inner);
+          ic_inner = optim::ArithSimplify(((oc_chunk * c_out_inner + oc_block) /
+                                               c_out_per_group * c_filter +
+                                           fc) %
+                                          c_in_inner);
         }
         return lang::ReduceSum(input_pad(n,
                                          ic_outer,
@@ -841,7 +838,7 @@ std::vector<ir::Tensor> Conv2d_NHWC(const ir::Tensor &input,
       true,
       ::common::errors::InvalidArgument(
           "Filter's output channel size must be divisible by group, but "
-          "recieved %d as output channel size and %d as group.",
+          "received %d as output channel size and %d as group.",
           weights->shape[0] * weights->shape[1],
           input->shape[3]));
   auto res = Compute(
@@ -1264,8 +1261,8 @@ Tensor Pad(const Tensor &tensor,
     if (i >= pad_before.size()) {
       output_shape.push_back(tensor->shape[i]);
     } else {
-      auto shape = cinn::common::AutoSimplify(tensor->shape[i] + pad_before[i] +
-                                              pad_after[i]);
+      auto shape =
+          optim::ArithSimplify(tensor->shape[i] + pad_before[i] + pad_after[i]);
       output_shape.push_back(shape);
     }
   }
@@ -1291,8 +1288,8 @@ Tensor Pad(const Tensor &tensor,
       }
       Expr sel_after;
       if (!MathEqual(pad_after[i], Expr(0))) {
-        sel_after = cinn::common::AutoSimplify(ovars[i] < pad_before[i] +
-                                                              tensor->shape[i]);
+        sel_after =
+            optim::ArithSimplify(ovars[i] < pad_before[i] + tensor->shape[i]);
         sel.push_back(sel_after);
       }
       if (pad_mode == "edge") {
@@ -1407,7 +1404,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     do_pad = (do_pad) ? do_pad : (padding_size[i] || padding_size[i + k_size]);
 
     if (ceil_mode) {
-      pad_tail[i] = cinn::common::AutoSimplify(pad_tail[i] + stride[i] - 1);
+      pad_tail[i] = optim::ArithSimplify(pad_tail[i] + stride[i] - 1);
     }
 
     daxis.emplace_back(Var(kernel[i], UniqName("kernel_idx")));
@@ -1415,7 +1412,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
     pad_before[ii] = pad_head[i];
     pad_after[ii] = pad_tail[i];
 
-    auto out_dim = cinn::common::AutoSimplify(
+    auto out_dim = optim::ArithSimplify(
         (tensor->shape[ii] - kernel[i] + pad_head[i] + pad_tail[i]) /
             stride[i] +
         1);
@@ -1470,13 +1467,13 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
             auto temp_factor = make_const(Int(32), 1);
             for (int i = 0; i < k_size; i++) {
               int ii = axis[i];
-              start[i] = cinn::common::AutoSimplify(output[ii] * stride[i] -
-                                                    pad_head[i]);
+              start[i] =
+                  optim::ArithSimplify(output[ii] * stride[i] - pad_head[i]);
               end[i] = Min::Make(start[i] + kernel[i], tensor->shape[ii]);
               start[i] = Max::Make(start[i], make_const(Int(32), 0));
               temp_factor = temp_factor * (end[i] - start[i]);
             }
-            cinn::common::AutoSimplify(temp_factor);
+            optim::ArithSimplify(temp_factor);
             Expr divide_factor = Max::Make(temp_factor, make_const(Int(32), 1));
             return lang::ReduceSum(
                 ir::Div::Make(temp(indices),
@@ -1487,7 +1484,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
             for (int i = 0; i < k_size; i++) {
               temp_factor = temp_factor * kernel[i];
             }
-            cinn::common::AutoSimplify(temp_factor);
+            optim::ArithSimplify(temp_factor);
             return lang::ReduceSum(
                 ir::Div::Make(temp(indices),
                               ir::Cast::Make(temp->type(), temp_factor)),
@@ -1553,7 +1550,7 @@ std::vector<Tensor> PoolImpl(const Tensor &tensor,
                 Expr(static_cast<int>(tensor->shape[axis[i]].get_constant()) /
                      kernel_size[i]);
           }
-          cinn::common::AutoSimplify(temp_factor);
+          optim::ArithSimplify(temp_factor);
           Expr divide_factor = Max::Make(temp_factor, make_const(Int(32), 1));
           return lang::ReduceSum(
               ir::Div::Make(temp(indices),
@@ -1686,7 +1683,7 @@ std::vector<Tensor> Pool2d(const Tensor &tensor,
       (tensor->shape.size() == 4U || tensor->shape.size() == 5U),
       true,
       ::common::errors::InvalidArgument(
-          "Pool2d requires tensor's shape_size to be 4 or 5, but recieved %d.",
+          "Pool2d requires tensor's shape_size to be 4 or 5, but received %d.",
           tensor->shape.size()));
   std::vector<int> axis = {height_axis, width_axis};
   return PoolImpl(tensor,

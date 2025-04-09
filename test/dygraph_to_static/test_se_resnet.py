@@ -295,7 +295,7 @@ class SeResNeXt(paddle.nn.Layer):
             shortcut = False
             for i in range(depth[block]):
                 bottleneck_block = self.add_sublayer(
-                    'bb_%d_%d' % (block, i),
+                    f'bb_{block}_{i}',
                     BottleneckBlock(
                         num_channels=num_channels,
                         num_filters=num_filters[block],
@@ -424,29 +424,21 @@ class TestSeResnet(Dy2StTestBase):
                     if step_id % PRINT_STEP == 0:
                         if step_id == 0:
                             logging.info(
-                                "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f"
-                                % (
-                                    epoch_id,
-                                    step_id,
-                                    total_loss / total_sample,
-                                    total_acc1 / total_sample,
-                                    total_acc5 / total_sample,
-                                )
+                                f"epoch {epoch_id} | step {step_id}, "
+                                f"loss {total_loss / total_sample:0.3f}, "
+                                f"acc1 {total_acc1 / total_sample:0.3f}, "
+                                f"acc5 {total_acc5 / total_sample:0.3f}"
                             )
                             avg_batch_time = time.time()
                         else:
                             speed = PRINT_STEP / (time.time() - avg_batch_time)
                             speed_list.append(speed)
                             logging.info(
-                                "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, speed %.3f steps/s"
-                                % (
-                                    epoch_id,
-                                    step_id,
-                                    total_loss / total_sample,
-                                    total_acc1 / total_sample,
-                                    total_acc5 / total_sample,
-                                    speed,
-                                )
+                                f"epoch {epoch_id} | step {step_id}, "
+                                f"loss {total_loss / total_sample:0.3f}, "
+                                f"acc1 {total_acc1 / total_sample:0.3f}, "
+                                f"acc5 {total_acc5 / total_sample:0.3f}, "
+                                f"speed {speed:.3f} steps/s"
                             )
                             avg_batch_time = time.time()
 

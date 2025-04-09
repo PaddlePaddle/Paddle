@@ -471,8 +471,7 @@ def _print_operator_stats(op_count_dict: dict[str, str | list[int]]) -> None:
                     f"Input {value} is expected to be a list of str, but received {type(value)}."
                 )
             print(
-                "  %-40s|  %-17s|  %-17s|  %-17s|  %-17s"
-                % (op_type, called[0], called[1], called[2], called[3])
+                f"  {op_type:<40}|  {called[0]:<17}|  {called[1]:<17}|  {called[2]:<17}|  {called[3]:<17}"
             )
             total_ops += 1
     print("<{:-^120}>\n".format(" op count: " + str(total_ops) + " "))

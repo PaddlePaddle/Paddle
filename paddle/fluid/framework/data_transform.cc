@@ -137,14 +137,14 @@ void SetTensorToVariable(const Variable &in_var,
                          const phi::DenseTensor &tensor,
                          Variable *out_var) {
   if (in_var.IsType<phi::DenseTensor>()) {
-    auto &in_lod_tensor = in_var.Get<phi::DenseTensor>();
-    auto *tran_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
-    tran_lod_tensor->set_lod(in_lod_tensor.lod());
-    tran_lod_tensor->set_layout(in_lod_tensor.layout());
+    auto &in_dense_tensor = in_var.Get<phi::DenseTensor>();
+    auto *tran_dense_tensor = out_var->GetMutable<phi::DenseTensor>();
+    tran_dense_tensor->set_lod(in_dense_tensor.lod());
+    tran_dense_tensor->set_layout(in_dense_tensor.layout());
 #ifdef PADDLE_WITH_DNNL
-    tran_lod_tensor->set_mem_desc(in_lod_tensor.mem_desc());
+    tran_dense_tensor->set_mem_desc(in_dense_tensor.mem_desc());
 #endif
-    tran_lod_tensor->ShareDataWith(tensor);
+    tran_dense_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<phi::SelectedRows>()) {
     auto &in_selected_rows = in_var.Get<phi::SelectedRows>();
     auto *trans_selected_rows = out_var->GetMutable<phi::SelectedRows>();
@@ -173,7 +173,7 @@ phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
   if (has_infer_varkernel_fn) {
     for (auto &attr : fluid_attrs) {
       switch (attr.second.index()) {
-        case 3:  // string type in framwork::Attribute
+        case 3:  // string type in framework::Attribute
           (*phi_attrs)[attr.first] = PADDLE_GET_CONST(std::string, attr.second);
           break;
         default:

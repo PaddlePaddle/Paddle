@@ -138,6 +138,56 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 }
 
+void cinn_call_cuda_cooperative_kernel(void *kernel_fn,
+                                       void *v_args,
+                                       int num_args,
+                                       int grid_x,
+                                       int grid_y,
+                                       int grid_z,
+                                       int block_x,
+                                       int block_y,
+                                       int block_z,
+                                       int shared_memory_bytes,
+                                       void *stream) {
+  VLOG(3) << "cinn_call_cuda_cooperative_kernel, grid_dim={" << grid_x << ", "
+          << grid_y << ", " << grid_z << "}, block_dim={" << block_x << ", "
+          << block_y << ", " << block_z << "}, num_args=" << num_args
+          << ", shared_memory_bytes=" << shared_memory_bytes
+          << ", stream=" << stream << ", kernel_fn=" << kernel_fn;
+
+  std::vector<void *> kernel_args;
+  {
+    cinn::utils::RecordEvent record_run("prepare_args",
+                                        cinn::utils::EventType::kInstruction);
+    kernel_args.reserve(num_args);
+    cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+    for (int idx = 0; idx < num_args; ++idx) {
+      if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t *>()) {
+        kernel_args.emplace_back(
+            &((cinn_buffer_t *)(args[idx]))->memory);  // NOLINT
+      } else {
+        kernel_args.emplace_back(args[idx].data_addr());
+      }
+    }
+  }
+
+  {
+    cinn::utils::RecordEvent record_run("cuLaunchCooperativeKernel",
+                                        cinn::utils::EventType::kInstruction);
+    CUDA_DRIVER_CALL(
+        cuLaunchCooperativeKernel(static_cast<CUfunction>(kernel_fn),
+                                  grid_x,
+                                  grid_y,
+                                  grid_z,
+                                  block_x,
+                                  block_y,
+                                  block_z,
+                                  shared_memory_bytes,
+                                  static_cast<CUstream>(stream),
+                                  kernel_args.data()))
+  }
+}
+
 void cinn_call_cublas(void *v_args,
                       int num_args,
                       bool trans_a,
@@ -771,7 +821,7 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
       num_args,
       3,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 3, but recived %d.", num_args));
+          "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -925,7 +975,7 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
       num_args,
       3,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 3, but recived %d.", num_args));
+          "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1082,7 +1132,7 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
       num_args,
       3,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 3, but recived %d.", num_args));
+          "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1236,7 +1286,7 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
       num_args,
       2,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 2, but recived %d.", num_args));
+          "Expected number of argruments is 2, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1334,7 +1384,7 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
       num_args,
       4,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 4, but recived %d.", num_args));
+          "Expected number of argruments is 4, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1448,7 +1498,7 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
       num_args,
       2,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 2, but recived %d.", num_args));
+          "Expected number of argruments is 2, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1522,7 +1572,7 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
       num_args,
       3,
       ::common::errors::InvalidArgument(
-          "Expected number of argruments is 3, but recived %d.", num_args));
+          "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
   CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
@@ -1667,11 +1717,11 @@ void GemmStridedBatched(const cublasHandle_t &cublas,
   PADDLE_ENFORCE_EQ(
       lhs_bs,
       rhs_bs,
-      ::common::errors::InvalidArgument("bs of lhs and rhs dismatch."));
+      ::common::errors::InvalidArgument("bs of lhs and rhs mismatch."));
   PADDLE_ENFORCE_EQ(
       lhs_bs,
       output_bs,
-      ::common::errors::InvalidArgument("bs of lhs and output dismatch."));
+      ::common::errors::InvalidArgument("bs of lhs and output mismatch."));
 
   // copy values of bias_data to the output_data
   if (bias_data != nullptr) {
@@ -1742,7 +1792,7 @@ void cinn_call_cholesky_nvgpu(void *v_args,
   cinn_buffer_t *x = args[0].operator cinn_buffer_t *();
   cinn_buffer_t *out = args[1].operator cinn_buffer_t *();
   // In cuSOLVER, dense matrix stores in COL_MAJOR, thus FILL_MODE needs to be
-  // filpped. See also:
+  // flipped. See also:
   // https://docs.nvidia.com/cuda/cusolver/index.html#matrix-dense-format
   cublasFillMode_t uplo =
       upper ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
@@ -1858,7 +1908,7 @@ void cinn_call_triangular_solve_nvgpu(void *v_args,
   PADDLE_ENFORCE_EQ(input1->type.bits,
                     input2->type.bits,
                     ::common::errors::InvalidArgument(
-                        "input1 and ipnput2's type bits is dismatch."));
+                        "input1 and input2's type bits is mismatch."));
   uint8_t bits = input1->type.bits;
   uint8_t bytes = bits / 8;
   PADDLE_ENFORCE_EQ(
@@ -2035,11 +2085,11 @@ void cinn_gpu_cublas_gemm(const std::vector<int> &attrs,
   PADDLE_ENFORCE_EQ(lhs_dim_size,
                     rhs_dim_size,
                     ::common::errors::InvalidArgument(
-                        "dimension dismatch between lhs and rhs."));
+                        "dimension mismatch between lhs and rhs."));
   PADDLE_ENFORCE_EQ(lhs_dim_size,
                     out_dim_size,
                     ::common::errors::InvalidArgument(
-                        "dimension dismatch between lhs and out."));
+                        "dimension mismatch between lhs and out."));
   PADDLE_ENFORCE_EQ(
       (lhs_dim_size == 2 || lhs_dim_size == 3),
       true,

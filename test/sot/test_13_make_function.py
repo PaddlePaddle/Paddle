@@ -23,16 +23,80 @@ from test_case_base import TestCaseBase
 import paddle
 
 
-def make_fn(x: paddle.Tensor):
-    def fn(a, b=2, c=3, d=4):
+def make_fn_simple(x: paddle.Tensor):
+    def fn(a, b, c, d):
         return a + b + c + d
 
-    return fn(1) + fn(2, c=5) + x
+    return fn(1, 2, 3, 4) + x
+
+
+def make_fn_default(x: paddle.Tensor):
+    def fn(a, b, c=5, d=3):
+        return a + b + c + d
+
+    return fn(1, 2) + fn(1, 2, c=3) + x
+
+
+def make_fn_annotation(x: paddle.Tensor):
+    def fn(a, b: int, c: int, d):
+        return a + b + c + d
+
+    return fn(1, 2, 3, 4) + x
+
+
+def make_fn_kwdefault(x: paddle.Tensor):
+    def fn(a, b, *, c=3, d=4):
+        return a + b + c + d
+
+    return fn(1, 2) + fn(3, 4, c=1, d=2) + x
+
+
+def make_fn_closure(x: paddle.Tensor):
+    def fn(a, b, c, d):
+        y = x
+        return a + b + c + d
+
+    return fn(1, 2, 3, 4) + x
+
+
+def make_fn_mix(x: paddle.Tensor):
+    def fn(a: int = 1, b: float = 2.0, /, *, c: int = 4, d: float = 5):
+        # y = x
+        return a + b + c + d
+
+    return fn(2, 3, c=1, d=2.0) + x
+
+
+def make_fn_tensor_default(x: paddle.Tensor):
+    tensor = paddle.to_tensor(1.0)
+
+    def fn(a, b, c=tensor):
+        return a + b + c
+
+    return fn(1, 2) + x
+
+
+def make_fn_tensor_kwdefault(x: paddle.Tensor):
+    tensor = paddle.to_tensor(1.0)
+
+    def fn(*args, c=tensor):
+        return args[0] + args[1] + c
+
+    return fn(1, 2, c=3) + x
 
 
 class TestMakeFunction(TestCaseBase):
     def test_simple(self):
-        self.assert_results(make_fn, paddle.to_tensor(1))
+        self.assert_results(make_fn_simple, paddle.to_tensor(1))
+        self.assert_results(make_fn_default, paddle.to_tensor(1))
+        self.assert_results(make_fn_annotation, paddle.to_tensor(1))
+        self.assert_results(make_fn_kwdefault, paddle.to_tensor(1))
+        self.assert_results(make_fn_closure, paddle.to_tensor(1))
+        self.assert_results(make_fn_mix, paddle.to_tensor(1))
+
+    def test_tensor_default(self):
+        self.assert_results(make_fn_tensor_default, paddle.to_tensor(1))
+        self.assert_results(make_fn_tensor_kwdefault, paddle.to_tensor(1))
 
 
 if __name__ == "__main__":

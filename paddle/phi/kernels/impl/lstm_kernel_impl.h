@@ -56,7 +56,7 @@ void LSTMKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(hidden);
   dev_ctx.template Alloc<T>(cell);
 
-  phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
+  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
   to_batch(dev_ctx, input, batch_gate_new, true, is_reverse);
 
   auto in_dims = input.dims();
@@ -143,7 +143,7 @@ void LSTMKernel(const Context& dev_ctx,
                   static_cast<T>(1.0));
     } else if (hidden_t0 != nullptr) {
       // If n == 0 and there is no initialized hidden state, that is to say
-      // the H0 is zeros, the calculation W_h * H0 will be skiped.
+      // the H0 is zeros, the calculation W_h * H0 will be skipped.
       // If n == 0 and there is initialized hidden state, calculate W_h * H0.
 
       // Since the batch computing for LSTM reorders the input sequence
@@ -177,7 +177,7 @@ void LSTMKernel(const Context& dev_ctx,
     lstm_value.prev_state_value = lstm_value.state_value;
   }
 
-  phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
+  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   batch_hidden.set_lod(batch_gate_new->lod());
   // restore the output hidden in phi::DenseTensor from the batch hidden
   to_seq(dev_ctx, batch_hidden, hidden);
@@ -292,7 +292,7 @@ void LSTMGradKernel(const Context& dev_ctx,
     lstm_grad.check_og_grad = nullptr;
   }
 
-  phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
+  phi::funcs::DenseTensor2BatchFunctor<Context, T> to_batch;
 
   auto ToBatch = [&batch_gate, &to_batch](const Context& ctx,
                                           const phi::DenseTensor& src,
@@ -418,7 +418,7 @@ void LSTMGradKernel(const Context& dev_ctx,
     }
   }
 
-  phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
+  phi::funcs::Batch2DenseTensorFunctor<Context, T> to_seq;
   if (in_g) {
     /* backward data */
     dev_ctx.template Alloc<T>(in_g);

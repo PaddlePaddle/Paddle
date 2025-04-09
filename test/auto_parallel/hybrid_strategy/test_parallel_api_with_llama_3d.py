@@ -20,7 +20,7 @@ import collective.test_communication_api_base as test_base
 
 class TestDPMPPPAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120, nnode=1)
+        super().setUp(num_of_devices=8, timeout=180, nnode=1)
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",
@@ -39,6 +39,13 @@ class TestDPMPPPAPI(test_base.CommunicationTestDistBase):
             "sequence_parallel": ["true"],
             "prepare_input_output": ["false"],
             "sharding_stage": ["0", "1"],
+            "test_share_embedding": [
+                "0",
+            ],
+            "test_position_embedding": [
+                "1",
+            ],
+            "one_api": ["true", "false"],
         }
 
     def test_simple_net_dp2_mp2_pp2(self):

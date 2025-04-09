@@ -146,7 +146,7 @@ class TestDistShardingTraining(unittest.TestCase):
         # master_weights and accumulators
         state_dict["master_weights"] = {}
         all_param_names = []
-        accumulator_names = ["moment1", "moment2"]
+        accumulator_names = ["moment1", "moment2", "moment2_max"]
         #
         local_params = dist_optimizer._rank2params[
             dist_optimizer._sharding_rank

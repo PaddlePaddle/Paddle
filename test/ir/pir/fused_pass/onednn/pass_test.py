@@ -30,7 +30,7 @@ class PassTest(unittest.TestCase):
         self.pir_program = None
         self.places = []
         self.skip_accuracy_verification = False
-        self.pass_attr_list = []  # pass_name:pass_attr(defalut:None)
+        self.pass_attr_list = []  # pass_name:pass_attr(default:None)
 
     def run_pir_pass(self, program):
         pm = pir.PassManager(opt_level=4)

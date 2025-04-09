@@ -94,7 +94,7 @@ class CoalesceGradTensorPass : public ir::Pass {
 
     auto vars_info = GetVarInfo(result);
     for (auto &param_grad : params_grads) {
-      if (IsLoDTensorType(GetTypeOfVar(vars_info, param_grad.second))) {
+      if (IsDenseTensorType(GetTypeOfVar(vars_info, param_grad.second))) {
         p_g_dense_grad.emplace_back(param_grad);
       } else {
         p_g_sparse_grad.emplace_back(param_grad);
@@ -172,7 +172,7 @@ class CoalesceGradTensorPass : public ir::Pass {
         pinned_var_set->insert(it->Var()->Name());
       }
       PADDLE_ENFORCE_EQ(
-          IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
+          IsDenseTensorType(GetTypeOfVar(vars_info, p_g.second)),
           true,
           common::errors::InvalidArgument(
               "Parameter@Grad %s is not phi::DenseTensor.", p_g.second));
@@ -230,7 +230,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     // params_grads.begin()->second.
     auto fused_grad_var_name = std::string(details::kFusedVarNamePrefix) +
                                "@GRAD@" + params_grads.begin()->second;
-    // what a pity, visual c++ unsupport {.type_ = type}
+    // what a pity, visual c++ unsupported {.type_ = type}
     details::VariableInfo var_info;
     var_info.name_ = fused_grad_var_name;
     var_info.type_ = type;
@@ -464,7 +464,7 @@ class CoalesceGradTensorPass : public ir::Pass {
   }
 
  private:
-  bool IsLoDTensorType(const proto::VarType::Type &type) const {
+  bool IsDenseTensorType(const proto::VarType::Type &type) const {
     // Current only support DENSE_TENSOR.
     return type == proto::VarType::DENSE_TENSOR;
   }

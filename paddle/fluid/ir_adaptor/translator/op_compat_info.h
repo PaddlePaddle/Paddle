@@ -19,6 +19,7 @@
 #include <unordered_set>
 
 #include "glog/logging.h"
+#include "paddle/pir/include/core/dll_decl.h"
 
 #pragma once
 
@@ -30,7 +31,7 @@ using MutableAttributeInfo = std::vector<std::string>;
 static constexpr char kPhiGradSuffix[] = "_grad";
 static constexpr char kFluidVarGradSuffix[] = "@GRAD";
 
-class OpNameNormalizer {
+class IR_API OpNameNormalizer {
  private:
   OpNameNormalizer();  // Disallow instantiation outside of the class.
   std::unordered_map<std::string, std::string> op_name_mappings;

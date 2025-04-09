@@ -31,8 +31,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 std::shared_ptr<FleetWrapper> FleetWrapper::s_instance_ = NULL;
@@ -417,7 +416,7 @@ int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
   VLOG(3) << "calling FleetWrapper::RegisterHeterCallback";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
-  return pslib_ptr_->_worker_ptr->registe_heter_callback(handler);
+  return pslib_ptr_->_worker_ptr->register_heter_callback(handler);
 
 #else
   VLOG(0) << "FleetWrapper::RegisterHeterCallback"
@@ -1851,7 +1850,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
   push_status.wait();
   auto status = push_status.get();
   if (status != 0) {
-    // PADDLE_THORW(common::errors::Fatal(
+    // PADDLE_THROW(common::errors::Fatal(
     //    "push shrink dense param failed, status is [%d].", status));
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
@@ -1880,8 +1879,8 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
   VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;
   VLOG(3) << "_worker_ptr=" << pslib_ptr_->_worker_ptr;
-  return pslib_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
-                                                                    handler);
+  return pslib_ptr_->_worker_ptr->register_client2client_msg_handler(msg_type,
+                                                                     handler);
 #else
   VLOG(0) << "FleetWrapper::RegisterClientToClientMsgHandler"
           << " does nothing when no pslib";
@@ -1983,7 +1982,7 @@ int32_t FleetWrapper::CopyTableByFeasign(
 size_t FleetWrapper::GetAbsoluteSum(size_t start,
                                     size_t end,
                                     size_t level,
-                                    const phi::LoD& lod) {
+                                    const phi::LegacyLoD& lod) {
   if (level >= lod.size() - 1) {
     return end - start;
   }
@@ -1996,5 +1995,4 @@ size_t FleetWrapper::GetAbsoluteSum(size_t start,
   return ret;
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

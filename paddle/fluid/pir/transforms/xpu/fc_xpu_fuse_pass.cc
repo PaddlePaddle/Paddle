@@ -50,6 +50,8 @@ int ConvertActivationType(const std::string &act_type) {
     return static_cast<int>(xpu::Activation_t::SWISH);
   } else if (act_type == "relu6") {
     return static_cast<int>(xpu::Activation_t::RELU6);
+  } else if (act_type == "swish_glu") {
+    return static_cast<int>(xpu::Activation_t::SWISH_GLU);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Not support convert activation_type(%s).", act_type));
@@ -57,127 +59,366 @@ int ConvertActivationType(const std::string &act_type) {
   return -1;
 }
 
-class FCXpuFusePattern : public paddle::drr::DrrPatternBase {
+/*
+fuse malmul + add + act to fc_xpu
+For example:
+graph:
+
+                  x       w
+                    \   /
+                      |
+                     mul
+                      |
+                      |
+           bias ---  add
+                      |
+                      |
+                     act
+                      |
+                      |
+                    output
+------------------------------------------------------
+After the pass is applied:
+                   x      w
+                     \  /
+                      |
+            bias--- fc_xpu
+                      |
+                      |
+                    Output
+*/
+class FcXpuFuseAddActPattern : public paddle::drr::DrrPatternBase {
  private:
-  bool w_transpose_;
-  bool with_bias_;
+  bool transpose_w_;
 
  public:
-  FCXpuFusePattern(bool w_transpose, bool with_bias)
-      : w_transpose_(w_transpose), with_bias_(with_bias) {}
-  std::string name() const override { return "FCXpuFusePattern"; }
+  explicit FcXpuFuseAddActPattern(bool transpose_w)
+      : transpose_w_(transpose_w) {}
+  std::string name() const override { return "FcXpuFuseAddActPattern"; }
+  uint32_t benefit() const override { return 4; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &mul = pat.Op(paddle::dialect::MatmulOp::name(),
                              {{"transpose_x", pat.Attr("transpose_x")},
                               {"transpose_y", pat.Attr("transpose_y")}});
-
     mul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("mul_out")});
-    if (with_bias_) {
-      const auto &add = pat.Op(paddle::dialect::AddOp::name());
-      add({&pat.Tensor("mul_out"), &pat.Tensor("bias")},
-          {&pat.Tensor("add_out")});
-    }
+
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    add({&pat.Tensor("mul_out"), &pat.Tensor("bias")},
+        {&pat.Tensor("add_out")});
+    const auto &swiglu = pat.Op(paddle::dialect::SwigluOp::name());
+    swiglu({&pat.Tensor("add_out"), &pat.InputNoneTensor()},
+           {&pat.Tensor("act_out")});
+
+    // Constraints
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-      if (w_shape.size() != 2) {
+      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (transpose_w_ != match_ctx.Attr<bool>("transpose_y")) {
         return false;
       }
-      if (with_bias_) {
-        auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-        auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-        if (w_shape.back() != bias_shape.back()) {
-          return false;
-        }
-      }
-      if (w_transpose_ != match_ctx.Attr<bool>("transpose_y")) {
-        return false;
-      }
-      return true;
+      return (w_shape.size() == 2 && x_shape.size() >= 2 &&
+              bias_shape.size() == 1);
     });
+
+    // Result pattern
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    // x shape
+
     const auto &in_num_col_dims_attr =
-        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> int {
+        res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx) -> int {
           auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
           return x_shape.size() - 1;
         });
-    // reshape scale shape
-    const auto &expand_1_shape =
-        res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx)
-                            -> std::vector<int64_t> {
-          return {static_cast<int64_t>(
-              phi::backends::xpu::get_xpu_max_ptr_size(-1))};
-        });
 
-    const auto &out_dtype_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
-          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
-          if (x_dtype.isa<pir::Float32Type>()) {
-            return phi::DataType::FLOAT32;
-          } else {
-            return phi::DataType::UNDEFINED;
-          }
-        });
-
-    // find fp32 w_max
-    const auto &max_op1 =
-        res.Op(paddle::dialect::MaxOp::name(),
-               {{"axis", res.VectorInt64Attr(std::vector<int64_t>{})},
-                {"keepdim", res.BoolAttr(false)}});
-    const auto &abs_op = res.Op(paddle::dialect::AbsOp::name());
-    res.Tensor("w_abs") = abs_op(res.Tensor("w"));
-    res.Tensor("filter_fp_max") = max_op1(res.Tensor("w_abs"));
-    // set w_max shape
-    const auto &w_max_shape_attr = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int64_t> {
-          return {1};
-        });
-    // full 32767 or 127
-    const auto &full1 = res.Op(paddle::dialect::FullOp::name(),
-                               {{"shape", w_max_shape_attr},
-                                {"value", res.Int32Attr(32767)},
-                                {"dtype", res.DataTypeAttr("float32")},
-                                {"place", res.PlaceAttr("cpu")}});
-    const auto &div = res.Op(paddle::dialect::DivideOp::name());
-    // scale1 = fp32_w_max/32767
-    res.Tensor("scale_fp32_max") = div(res.Tensor("filter_fp_max"), full1());
-    // int16_weight = w / scale1
-    res.Tensor("w_quant_tmp") =
-        div(res.Tensor("w"), res.Tensor("scale_fp32_max"));
-    // cast fp32->int16
-    const auto &cast_op = res.Op(paddle::dialect::CastOp::name(),
-                                 {{"dtype", res.DataTypeAttr("int16")}});
-    res.Tensor("w_quant") = cast_op(res.Tensor("w_quant_tmp"));
-    // expand to 4 or 6 pointer size
-    const auto &expand =
-        res.Op(paddle::dialect::ExpandOp::name(), {{"shape", expand_1_shape}});
-    res.Tensor("res_w_max") = expand(res.Tensor("filter_fp_max"));
-    const auto &transpose_y_attr =
-        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Attr<bool>("transpose_y");
-        });
-    if (!w_transpose_) {
-      // perm
+    if (!transpose_w_) {
+      // prepare weight, transpose it if necessary
       const auto &perm_attr = res.ComputeAttr(
           [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
             auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
             if (w_shape.size() == 2) {
               return {1, 0};
-            } else if (w_shape.size() == 3) {
-              return {0, 2, 1};
-            } else if (w_shape.size() == 4) {
-              return {0, 1, 3, 2};
             } else {
               PADDLE_THROW(common::errors::Unimplemented(
                   "Not support convert w_shape.size()(%d).", w_shape.size()));
             }
           });
-      const auto &transpose_y =
+      const auto &transpose_op =
           res.Op(paddle::dialect::TransposeOp::name(), {{"perm", perm_attr}});
-      res.Tensor("w_quant_trans") = transpose_y(res.Tensor("w_quant"));
+      res.Tensor("w_trans") = transpose_op(res.Tensor("w"));
+      VLOG(3) << "transpose weight for fc_xpu op";
     }
+
+    const auto &out_dtype_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+          // 目前仅支持以下几种非量化的情况
+          if (x_dtype.isa<pir::Float32Type>()) {
+            return phi::DataType::FLOAT32;
+          } else if (x_dtype.isa<pir::Float16Type>()) {
+            return phi::DataType::FLOAT16;
+          } else if (x_dtype.isa<pir::BFloat16Type>()) {
+            return phi::DataType::BFLOAT16;
+          } else {
+            return phi::DataType::UNDEFINED;
+          }
+        });
+    // only support float32 bias now
+    const auto &cast_op = res.Op(paddle::dialect::CastOp::name(),
+                                 {{"dtype", res.DataTypeAttr("float32")}});
+    res.Tensor("bias_fp32") = cast_op(res.Tensor("bias"));
+
+    const auto &fc_xpu = res.Op(
+        paddle::dialect::FcXpuOp::name(),
+        {{
+            {"in_num_col_dims", in_num_col_dims_attr},
+            {"transpose_x", pat.Attr("transpose_x")},
+            {"alpha", res.Float32Attr(1.0f)},
+            {"beta", res.Float32Attr(0.f)},
+            {"act_type", res.Int32Attr(ConvertActivationType("swish_glu"))},
+            {"act_alpha", res.Float32Attr(0.0f)},
+            {"out_dtype", out_dtype_attr},
+        }});
+    fc_xpu(
+        {
+            &res.Tensor("x"),
+            &res.InputNoneTensor(),
+            transpose_w_ ? &res.Tensor("w") : &res.Tensor("w_trans"),
+            &res.InputNoneTensor(),
+            &res.Tensor("bias_fp32"),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+        },
+        {&res.Tensor("act_out"), &res.Tensor("out_max")});
+  }
+};
+
+/*
+fuse malmul + act to fc_xpu
+For example:
+graph:
+
+                  x       w
+                    \   /
+                      |
+                     mul
+                      |
+                      |
+                     act
+                      |
+                      |
+                    output
+------------------------------------------------------
+After the pass is applied:
+                   x      w
+                     \  /
+                      |
+            bias--- fc_xpu
+                      |
+                      |
+                    Output
+*/
+
+class FcXpuFuseActPattern : public paddle::drr::DrrPatternBase {
+ private:
+  bool transpose_w_;
+
+ public:
+  explicit FcXpuFuseActPattern(bool transpose_w) : transpose_w_(transpose_w) {}
+  std::string name() const override { return "FcXpuFuseActPattern"; }
+  uint32_t benefit() const override { return 3; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &mul = pat.Op(paddle::dialect::MatmulOp::name(),
+                             {{"transpose_x", pat.Attr("transpose_x")},
+                              {"transpose_y", pat.Attr("transpose_y")}});
+    mul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("mul_out")});
+
+    const auto &swiglu = pat.Op(paddle::dialect::SwigluOp::name());
+    swiglu({&pat.Tensor("mul_out"), &pat.InputNoneTensor()},
+           {&pat.Tensor("act_out")});
+
+    // Constraints
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      if (transpose_w_ != match_ctx.Attr<bool>("transpose_y")) {
+        return false;
+      }
+      return (w_shape.size() == 2 && x_shape.size() >= 2);
+    });
+
+    // Result pattern
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &in_num_col_dims_attr =
+        res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx) -> int {
+          auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          return x_shape.size() - 1;
+        });
+
+    if (!transpose_w_) {
+      // prepare weight, transpose it if necessary
+      const auto &perm_attr = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
+            auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+            if (w_shape.size() == 2) {
+              return {1, 0};
+            } else {
+              PADDLE_THROW(common::errors::Unimplemented(
+                  "Not support convert w_shape.size()(%d).", w_shape.size()));
+            }
+          });
+      const auto &transpose_op =
+          res.Op(paddle::dialect::TransposeOp::name(), {{"perm", perm_attr}});
+      res.Tensor("w_trans") = transpose_op(res.Tensor("w"));
+      VLOG(3) << "transpose weight for fc_xpu op";
+    }
+
+    const auto &out_dtype_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+          // 目前仅支持以下几种非量化的情况
+          if (x_dtype.isa<pir::Float32Type>()) {
+            return phi::DataType::FLOAT32;
+          } else if (x_dtype.isa<pir::Float16Type>()) {
+            return phi::DataType::FLOAT16;
+          } else if (x_dtype.isa<pir::BFloat16Type>()) {
+            return phi::DataType::BFLOAT16;
+          } else {
+            return phi::DataType::UNDEFINED;
+          }
+        });
+
+    const auto &fc_xpu = res.Op(
+        paddle::dialect::FcXpuOp::name(),
+        {{
+            {"in_num_col_dims", in_num_col_dims_attr},
+            {"transpose_x", pat.Attr("transpose_x")},
+            {"alpha", res.Float32Attr(1.0f)},
+            {"beta", res.Float32Attr(0.f)},
+            {"act_type", res.Int32Attr(ConvertActivationType("swish_glu"))},
+            {"act_alpha", res.Float32Attr(0.0f)},
+            {"out_dtype", out_dtype_attr},
+        }});
+    fc_xpu(
+        {
+            &res.Tensor("x"),
+            &res.InputNoneTensor(),
+            transpose_w_ ? &res.Tensor("w") : &res.Tensor("w_trans"),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+        },
+        {&res.Tensor("act_out"), &res.Tensor("out_max")});
+  }
+};
+
+/*
+fuse malmul + add to fc_xpu
+For example:
+graph:
+
+                  x       w
+                    \   /
+                      |
+                     mul
+                      |
+                      |
+           bias ---  add
+                      |
+                      |
+                    output
+------------------------------------------------------
+After the pass is applied:
+                   x      w
+                     \  /
+                      |
+            bias--- fc_xpu
+                      |
+                      |
+                    Output
+*/
+class FcXpuFuseAddPattern : public paddle::drr::DrrPatternBase {
+ private:
+  bool transpose_w_;
+
+ public:
+  explicit FcXpuFuseAddPattern(bool transpose_w) : transpose_w_(transpose_w) {}
+  std::string name() const override { return "FcXpuFuseAddPattern"; }
+  uint32_t benefit() const override { return 2; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &mul = pat.Op(paddle::dialect::MatmulOp::name(),
+                             {{"transpose_x", pat.Attr("transpose_x")},
+                              {"transpose_y", pat.Attr("transpose_y")}});
+    mul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("mul_out")});
+
+    const auto &add = pat.Op(paddle::dialect::AddOp::name());
+    add({&pat.Tensor("mul_out"), &pat.Tensor("bias")},
+        {&pat.Tensor("add_out")});
+
+    // Constraints
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (transpose_w_ != match_ctx.Attr<bool>("transpose_y")) {
+        return false;
+      }
+      return (w_shape.size() == 2 && x_shape.size() >= 2 &&
+              bias_shape.size() == 1);
+    });
+
+    // Result pattern
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &in_num_col_dims_attr =
+        res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx) -> int {
+          auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          return x_shape.size() - 1;
+        });
+
+    if (!transpose_w_) {
+      // prepare weight, transpose it if necessary
+      const auto &perm_attr = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
+            auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+            if (w_shape.size() == 2) {
+              return {1, 0};
+            } else {
+              PADDLE_THROW(common::errors::Unimplemented(
+                  "Not support convert w_shape.size()(%d).", w_shape.size()));
+            }
+          });
+      const auto &transpose_op =
+          res.Op(paddle::dialect::TransposeOp::name(), {{"perm", perm_attr}});
+      res.Tensor("w_trans") = transpose_op(res.Tensor("w"));
+      VLOG(3) << "transpose weight for fc_xpu op";
+    }
+
+    const auto &out_dtype_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+          // 目前仅支持以下几种非量化的情况
+          if (x_dtype.isa<pir::Float32Type>()) {
+            return phi::DataType::FLOAT32;
+          } else if (x_dtype.isa<pir::Float16Type>()) {
+            return phi::DataType::FLOAT16;
+          } else if (x_dtype.isa<pir::BFloat16Type>()) {
+            return phi::DataType::BFLOAT16;
+          } else {
+            return phi::DataType::UNDEFINED;
+          }
+        });
+    // only support float32 bias now
+    const auto &cast_op = res.Op(paddle::dialect::CastOp::name(),
+                                 {{"dtype", res.DataTypeAttr("float32")}});
+    res.Tensor("bias_fp32") = cast_op(res.Tensor("bias"));
 
     const auto &fc_xpu =
         res.Op(paddle::dialect::FcXpuOp::name(),
@@ -194,15 +435,128 @@ class FCXpuFusePattern : public paddle::drr::DrrPatternBase {
         {
             &res.Tensor("x"),
             &res.InputNoneTensor(),
-            w_transpose_ ? &res.Tensor("w_quant")
-                         : &res.Tensor("w_quant_trans"),
-            &res.Tensor("res_w_max"),
-            with_bias_ ? &res.Tensor("bias") : &res.InputNoneTensor(),
+            transpose_w_ ? &res.Tensor("w") : &res.Tensor("w_trans"),
+            &res.InputNoneTensor(),
+            &res.Tensor("bias_fp32"),
             &res.InputNoneTensor(),
             &res.InputNoneTensor(),
         },
-        {with_bias_ ? &res.Tensor("add_out") : &res.Tensor("mul_out"),
-         &res.Tensor("out_max")});
+        {&res.Tensor("add_out"), &res.Tensor("out_max")});
+  }
+};
+
+/*
+fuse malmul + add to fc_xpu
+For example:
+graph:
+
+                  x       w
+                    \   /
+                      |
+                     mul
+                      |
+                      |
+                    output
+------------------------------------------------------
+After the pass is applied:
+                   x      w
+                     \  /
+                      |
+                    fc_xpu
+                      |
+                      |
+                    Output
+*/
+class FcXpuOnlyMapPattern : public paddle::drr::DrrPatternBase {
+ private:
+  bool transpose_w_;
+
+ public:
+  explicit FcXpuOnlyMapPattern(bool transpose_w) : transpose_w_(transpose_w) {}
+  std::string name() const override { return "FcXpuOnlyMapPattern"; }
+  uint32_t benefit() const override { return 1; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &mul = pat.Op(paddle::dialect::MatmulOp::name(),
+                             {{"transpose_x", pat.Attr("transpose_x")},
+                              {"transpose_y", pat.Attr("transpose_y")}});
+    mul({&pat.Tensor("x"), &pat.Tensor("w")}, {&pat.Tensor("mul_out")});
+
+    // Constraints
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      if (transpose_w_ != match_ctx.Attr<bool>("transpose_y")) {
+        return false;
+      }
+      return (w_shape.size() == 2 && x_shape.size() >= 2);
+    });
+
+    // Result pattern
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+
+    const auto &in_num_col_dims_attr =
+        res.ComputeAttr([&](const paddle::drr::MatchContext &match_ctx) -> int {
+          auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+          return x_shape.size() - 1;
+        });
+
+    if (!transpose_w_) {
+      // prepare weight, transpose it if necessary
+      const auto &perm_attr = res.ComputeAttr(
+          [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
+            auto w_shape = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+            if (w_shape.size() == 2) {
+              return {1, 0};
+            } else {
+              PADDLE_THROW(common::errors::Unimplemented(
+                  "Not support convert w_shape.size()(%d).", w_shape.size()));
+            }
+          });
+      const auto &transpose_op =
+          res.Op(paddle::dialect::TransposeOp::name(), {{"perm", perm_attr}});
+      res.Tensor("w_trans") = transpose_op(res.Tensor("w"));
+      VLOG(3) << "transpose weight for fc_xpu op";
+    }
+
+    const auto &out_dtype_attr = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
+          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
+          // 目前仅支持以下几种非量化的情况
+          if (x_dtype.isa<pir::Float32Type>()) {
+            return phi::DataType::FLOAT32;
+          } else if (x_dtype.isa<pir::Float16Type>()) {
+            return phi::DataType::FLOAT16;
+          } else if (x_dtype.isa<pir::BFloat16Type>()) {
+            return phi::DataType::BFLOAT16;
+          } else {
+            return phi::DataType::UNDEFINED;
+          }
+        });
+
+    const auto &fc_xpu =
+        res.Op(paddle::dialect::FcXpuOp::name(),
+               {{
+                   {"in_num_col_dims", in_num_col_dims_attr},
+                   {"transpose_x", pat.Attr("transpose_x")},
+                   {"alpha", res.Float32Attr(1.0f)},
+                   {"beta", res.Float32Attr(0.f)},
+                   {"act_type", res.Int32Attr(ConvertActivationType(""))},
+                   {"act_alpha", res.Float32Attr(0.0f)},
+                   {"out_dtype", out_dtype_attr},
+               }});
+    fc_xpu(
+        {
+            &res.Tensor("x"),
+            &res.InputNoneTensor(),
+            transpose_w_ ? &res.Tensor("w") : &res.Tensor("w_trans"),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+            &res.InputNoneTensor(),
+        },
+        {&res.Tensor("mul_out"), &res.Tensor("out_max")});
   }
 };
 
@@ -212,13 +566,50 @@ class FCXpuFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    for (auto w_transpose : {true, false}) {
-      for (auto with_bias : {true, false}) {
-        ps.Add(paddle::drr::Create<FCXpuFusePattern>(
-            context, w_transpose, with_bias));
+    int enable_fc_xpu_pattern = 0xff;
+    const char *value = std::getenv("XPU_PADDLE_FC_PATTERN");
+    if (value != nullptr) {
+      char *endptr;
+      auto val = std::strtol(value, &endptr, 16);
+      if (*endptr != '\0') {
+        LOG(WARNING) << "Invalid XPU_PADDLE_FC_PATTERN: " << value;
+        enable_fc_xpu_pattern = 0xff;
+      } else {
+        enable_fc_xpu_pattern = static_cast<int>(val);
       }
+      std::cout << "XPU_PADDLE_FC_PATTERN: " << enable_fc_xpu_pattern
+                << std::endl;
+    }
+    if (enable_fc_xpu_pattern & 0x08) {
+      ps.Add(paddle::drr::Create<FcXpuFuseAddActPattern>(context,
+                                                         false));  // benefit 4
+      ps.Add(paddle::drr::Create<FcXpuFuseAddActPattern>(context, true));
+    }
+    if (enable_fc_xpu_pattern & 0x04) {
+      ps.Add(paddle::drr::Create<FcXpuFuseActPattern>(context,
+                                                      false));  // benefit 3
+      ps.Add(paddle::drr::Create<FcXpuFuseActPattern>(context, true));
+    }
+    if (enable_fc_xpu_pattern & 0x02) {
+      ps.Add(paddle::drr::Create<FcXpuFuseAddPattern>(context,
+                                                      false));  // benefit 2
+      ps.Add(paddle::drr::Create<FcXpuFuseAddPattern>(context, true));
+    }
+    if (enable_fc_xpu_pattern & 0x01) {
+      ps.Add(paddle::drr::Create<FcXpuOnlyMapPattern>(context,
+                                                      false));  // benefit 1
+      ps.Add(paddle::drr::Create<FcXpuOnlyMapPattern>(context, true));
     }
     return ps;
+  }
+
+  pir::GreedyRewriteConfig InitializeConfig() override {
+    pir::GreedyRewriteConfig config;
+
+    config.use_top_down_traversal = false;
+
+    config.max_iterations = 10;
+    return config;
   }
 };
 
