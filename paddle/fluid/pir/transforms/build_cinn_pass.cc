@@ -60,7 +60,7 @@ class BuildCinnPass : public pir::Pass {
         continue;
       }
       VLOG(4) << "current group_ops.size(): " << group_ops.size();
-      ::pir::ReplaceWithGroupOp(block, group_ops);
+      ::pir::ReplaceWithGroupOp(block, group_ops, false);
     }
     auto end_t = std::chrono::high_resolution_clock::now();
     auto duration =

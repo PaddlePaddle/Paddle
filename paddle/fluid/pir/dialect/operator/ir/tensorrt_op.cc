@@ -24,19 +24,24 @@
 namespace paddle {
 namespace dialect {
 
-const char *TensorRTEngineOp::attributes_name[13] = {"engine_serialized_data",
-                                                     "workspace_size",
-                                                     "allow_build_at_runtime",
-                                                     "input_names",
-                                                     "output_names",
-                                                     "outputs_rank",
-                                                     "outputs_dtype",
-                                                     "dynamic_shape_names",
-                                                     "dynamic_shape_lens",
-                                                     "min_input_shape_vector",
-                                                     "max_input_shape_vector",
-                                                     "opt_input_shape_vector",
-                                                     "converter_debug_info"};
+const char *TensorRTEngineOp::attributes_name[16] = {
+    "engine_serialized_data",
+    "workspace_size",
+    "allow_build_at_runtime",
+    "input_names",
+    "output_names",
+    "outputs_rank",
+    "outputs_dtype",
+    "dynamic_shape_names",
+    "dynamic_shape_lens",
+    "min_input_shape_vector",
+    "max_input_shape_vector",
+    "opt_input_shape_vector",
+    "converter_debug_info",
+    "refit_params_path",
+    "refit_param_names",
+    "refit_param_names2trt_names",
+};
 
 OpInfoTuple TensorRTEngineOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -73,7 +78,14 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
       paddle::dialect::OpAttributeInfo(
           "opt_input_shape_vector", "pir::ArrayAttribute", ""),
       paddle::dialect::OpAttributeInfo(
-          "converter_debug_info", "pir::StrAttribute", "")};
+          "converter_debug_info", "pir::StrAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "refit_params_path", "pir::StrAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "refit_param_names", "pir::ArrayAttribute", ""),
+      paddle::dialect::OpAttributeInfo(
+          "refit_param_names2trt_names", "pir::ArrayAttribute", ""),
+  };
 
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out",
@@ -127,12 +139,41 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   pir::Attribute attr_engine_serialized_data = pir::StrAttribute::get(
       pir::IrContext::Instance(), trt_params.engine_serialized_data);
   argument.AddAttribute("engine_serialized_data", attr_engine_serialized_data);
+
+  pir::Attribute attr_refit_params_path = pir::StrAttribute::get(
+      pir::IrContext::Instance(), trt_params.refit_params_path);
+  argument.AddAttribute("refit_params_path", attr_refit_params_path);
   pir::Attribute attr_workspace_size = pir::Int64Attribute::get(
       pir::IrContext::Instance(), trt_params.max_workspace_size);
   argument.AddAttribute("workspace_size", attr_workspace_size);
   pir::Attribute attr_allow_build_at_runtime = pir::BoolAttribute::get(
       pir::IrContext::Instance(), trt_params.allow_build_at_runtime);
   argument.AddAttribute("allow_build_at_runtime", attr_allow_build_at_runtime);
+
+  std::vector<pir::Attribute> refit_param_names_attrs;
+  for (const auto &name : trt_params.refit_param_names) {
+    refit_param_names_attrs.push_back(
+        pir::StrAttribute::get(pir::IrContext::Instance(), name));
+  }
+  argument.AddAttribute("refit_param_names",
+                        pir::ArrayAttribute::get(pir::IrContext::Instance(),
+                                                 refit_param_names_attrs));
+
+  std::vector<pir::Attribute> refit_param_names2trt_names_attrs;
+  for (const auto &param_item : trt_params.refit_param_names2trt_names) {
+    const std::string param_name = param_item.first;
+    for (const auto &role_item : param_item.second) {
+      const std::string &role = role_item.first;
+      const std::string &layer_name = role_item.second;
+      std::string mapping_str = param_name + ":" + role + ":" + layer_name;
+      refit_param_names2trt_names_attrs.push_back(
+          pir::StrAttribute::get(pir::IrContext::Instance(), mapping_str));
+    }
+  }
+  pir::Attribute attr_refit_param_names2trt_names = pir::ArrayAttribute::get(
+      pir::IrContext::Instance(), refit_param_names2trt_names_attrs);
+  argument.AddAttribute("refit_param_names2trt_names",
+                        attr_refit_param_names2trt_names);
 
   std::vector<pir::Attribute> outputs_rank_tmp;
   outputs_rank_tmp.reserve(outputs_shape.size());
@@ -248,6 +289,9 @@ void TensorRTEngineOp::VerifySig() {
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, max_input_shape_vector);
     VERIFY_ATTRIBUTE(pir::ArrayAttribute, opt_input_shape_vector);
     VERIFY_ATTRIBUTE(pir::StrAttribute, converter_debug_info);
+    VERIFY_ATTRIBUTE(pir::StrAttribute, refit_params_path);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, refit_param_names);
+    VERIFY_ATTRIBUTE(pir::ArrayAttribute, refit_param_names2trt_names);
   }
 
   VLOG(4) << "Verifying outputs:";

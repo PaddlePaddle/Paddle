@@ -530,7 +530,7 @@ class FusedLinearPromotionPass(PassBase):
                 global_block._remove_var(origin_matmul_output_name)
 
             # 4. deal comm op
-            # The input of c_allreduce_sum only be used once, so we don't need add it in the rename_vars_map
+            # The input of all_reduce_sum only be used once, so we don't need add it in the rename_vars_map
             if is_first_rank:
                 origin_comm_op._rename_input(
                     origin_comm_op.input_arg_names[0],
