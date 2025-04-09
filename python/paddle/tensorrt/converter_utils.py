@@ -669,31 +669,37 @@ def convert_conv2d(network, paddle_op, inputs):
     if paddle_op.name() == "pd_op.fused_conv2d_add_act":
         constant_manager = TensorRTConstantManager()
         bias_source_op = paddle_op.operands()[2].source().get_defining_op()
-        if bias_source_op.name() == "builtin.parameter":
-            bias_name = bias_source_op.attrs()['parameter_name']
+
+        def get_bias_weights(current_op):
+            if current_op.name() == "builtin.parameter":
+                bias_name = current_op.attrs()["parameter_name"]
+            elif current_op.name() == "builtin.constant":
+                bias_name = current_op.attrs()["value"]
+            else:
+                raise ValueError(
+                    f"Unsupported bias source operation: {current_op.name()}"
+                )
+
             bias_np = constant_manager.get_constant_value(bias_name)
-            bias_weights = trt.Weights(bias_np)
-        elif bias_source_op.name() == "builtin.constant":
-            bias_name = bias_source_op.attrs()['value']
-            bias_np = constant_manager.get_constant_value(bias_name)
-            bias_weights = trt.Weights(bias_np)
-        if bias_source_op.name() == "pd_op.reshape":
+            return trt.Weights(bias_np)
+
+        if bias_source_op.name() in ["builtin.parameter", "builtin.constant"]:
+            bias_weights = get_bias_weights(bias_source_op)
+        else:
             while bias_source_op.name() == "pd_op.reshape":
                 bias_source_op = (
                     bias_source_op.operands()[0].source().get_defining_op()
                 )
-                if bias_source_op.name() == "builtin.parameter":
-                    bias_name = bias_source_op.attrs()['parameter_name']
-                    bias_np = constant_manager.get_constant_value(bias_name)
-                    bias_weights = trt.Weights(bias_np)
-                elif bias_source_op.name() == "builtin.constant":
-                    bias_name = bias_source_op.attrs()['value']
-                    bias_np = constant_manager.get_constant_value(bias_name)
-                    bias_weights = trt.Weights(bias_np)
-                else:
-                    raise ValueError(
-                        f"Unsupported bias source operation: {bias_source_op.name()}"
-                    )
+                if bias_source_op.name() in [
+                    "builtin.parameter",
+                    "builtin.constant",
+                ]:
+                    bias_weights = get_bias_weights(bias_source_op)
+                    break
+            else:
+                raise ValueError(
+                    f"Unsupported bias source operation: {bias_source_op.name()}"
+                )
 
         layer = network.add_convolution_nd(
             input=input_tensor,
