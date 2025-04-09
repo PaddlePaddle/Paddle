@@ -441,12 +441,12 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         )
         group = new_process_group(group_ranks)
         c_allreduce_sum_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': kwargs['X@GRAD']},
-            outputs={'Out': kwargs['X@GRAD']},
+            type='all_reduce',
+            inputs={'x': kwargs['X@GRAD']},
+            outputs={'out': kwargs['X@GRAD']},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 'use_model_parallel': True,
                 OP_ROLE_KEY: OpRole.Backward,
             },
