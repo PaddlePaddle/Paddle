@@ -34,7 +34,10 @@ SpmdInfo TakeAlongAxisInferSpmd(const DistMetaTensor& x,
   // Deduced spmd rule:
   // x: cannot be sharded on `axis` dim;
   // index: the `axis` dim could be either sharded or not, other dimension
-  // should be the same as x out: same as index
+  //        should be the same as x;
+  // out: same as index;
+  // For non-`axis` dim, if the sizes of this dim in x and index are not
+  // the same, this dim should not be sharded.
 
   EXTRACT_SHAPE_AND_DIST_ATTR(x);
   EXTRACT_SHAPE_AND_DIST_ATTR(index);
@@ -61,8 +64,15 @@ SpmdInfo TakeAlongAxisInferSpmd(const DistMetaTensor& x,
 
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
   for (int i = 0; i < index_ndim; ++i) {
-    if (i != axis && index_dims_mapping[i] != x_dims_mapping[i])
-      index_dims_mapping[i] = x_dims_mapping[i];
+    if (i != axis) {
+      if (index_dims_mapping[i] != x_dims_mapping[i])
+        index_dims_mapping[i] = x_dims_mapping[i];
+      if (x_shape[i] != index_shape[i] &&
+          (x_dims_mapping[i] != -1 || index_dims_mapping[i] != -1)) {
+        x_dims_mapping[i] = -1;
+        index_dims_mapping[i] = -1;
+      }
+    }
   }
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
@@ -117,13 +127,23 @@ SpmdInfo TakeAlongAxisGradInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> index_dims_mapping =
       GetDimsMappingForAxes(index_axes, axis_to_dim_map);
   auto index_dist_attr_dst = CopyTensorDistAttrForOutput(index_dist_attr_src);
-  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
   auto out_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(out_grad_dist_attr_src);
-  out_grad_dist_attr_dst.set_dims_mapping(index_dims_mapping);
 
   std::vector<int64_t> x_dims_mapping(index_dims_mapping);
   if (x_dims_mapping[axis] != -1) x_dims_mapping[axis] = -1;
+  for (int i = 0; i < index_ndim; ++i) {
+    if (i != axis) {
+      if (x_shape[i] != index_shape[i] &&
+          (x_dims_mapping[i] != -1 || index_dims_mapping[i] != -1)) {
+        x_dims_mapping[i] = -1;
+        index_dims_mapping[i] = -1;
+      }
+    }
+  }
+  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+  out_grad_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
   auto x_grad_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
