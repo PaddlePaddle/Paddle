@@ -420,14 +420,17 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
 
         # If we print a dist_tensor with bf16 dtype and Partial placement, it is essential to ensure that the AllReduce communication
         # is performed in bf16. After completing the communication, convert it to fp32, and then convert it into a numpy array.
-        from paddle.distributed import Replicate, reshard
+        from paddle.distributed import Replicate, Shard, reshard
 
         placements = [Replicate() for _ in range(tensor.process_mesh.ndim)]
         if os.environ.get("FLAGS_disable_dp_batch_spmd") == "1":
-            global_tensor = tensor._local_value()
-            logging.warning(
-                "FLAGS_disable_dp_batch_spmd is set to 1. Tensor may be unbalanced — only the local tensor will be returned."
-            )
+            if any(isinstance(x, Shard) for x in tensor.placements):
+                global_tensor = tensor._local_value()
+                logging.warning(
+                    "FLAGS_disable_dp_batch_spmd is set to 1. Tensor may be unbalanced — only the local tensor will be returned."
+                )
+            else:
+                global_tensor = reshard(tensor, tensor.process_mesh, placements)
         else:
             global_tensor = reshard(tensor, tensor.process_mesh, placements)
 

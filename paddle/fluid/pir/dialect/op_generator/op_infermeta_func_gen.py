@@ -867,28 +867,32 @@ def GenDistBranch(args, op_info):
         spmd_rule_func = "VariadicReplicatedInferSpmdDynamic"
     TEMPLATE = """
     auto spmd_info = phi::distributed::{spmd_func}({args});
-    DebugInfoForInferSpmd("{op_name}", spmd_info);
-    PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
-        "Size of spmd_info.first for op[{op_name}]is unexpected."));
 
     if (FLAGS_disable_dp_batch_spmd) {{
-        std::vector<int64_t> input_batch_dim;
-        for (size_t i = 0;i < spmd_info.first.size(); i++) {{
-            auto input_value = input_values[i];
-            if (input_value.type().isa<paddle::dialect::DenseTensorType>()) {{
-                auto op = input_value.defining_op();
-                if (op->name() == "builtin.parameter" &&
-                    op->HasAttribute(kAttrIsPersistable)) {{
-                    input_batch_dim.push_back(-1);
+        std::vector<std::string> skip_ops = {{"Adamw_Op", "Adam_Op"}};
+        if (std::find(skip_ops.begin(), skip_ops.end(), "{op_name}") == skip_ops.end()) {{
+            std::vector<int64_t> input_batch_dim;
+            for (size_t i = 0;i < spmd_info.first.size(); i++) {{
+                auto input_value = input_values[i];
+                if (input_value.type().isa<paddle::dialect::DenseTensorType>()) {{
+                    auto op = input_value.defining_op();
+                    if (op->name() == "builtin.parameter" &&
+                        op->HasAttribute(kAttrIsPersistable)) {{
+                        input_batch_dim.push_back(-1);
+                    }} else {{
+                        input_batch_dim.push_back(0);
+                    }}
                 }} else {{
                     input_batch_dim.push_back(0);
                 }}
-            }} else {{
-                input_batch_dim.push_back(0);
             }}
+            phi::distributed::DisableDpSpmd(&spmd_info, input_batch_dim);
         }}
-        phi::distributed::DisableDpSpmd(&spmd_info, input_batch_dim);
     }}
+
+    DebugInfoForInferSpmd("{op_name}", spmd_info);
+    PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
+        "Size of spmd_info.first for op[{op_name}]is unexpected."));
 """
     dist_branch_str += TEMPLATE.format(
         spmd_func=spmd_rule_func,

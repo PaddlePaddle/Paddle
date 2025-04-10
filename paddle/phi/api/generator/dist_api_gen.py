@@ -164,9 +164,12 @@ OPTIONAL_VECTOR_DIST_META_IN_TEMPLATE = """
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
     if (FLAGS_disable_dp_batch_spmd) {{
-        {}
-        std::vector<int64_t> input_batch_dim = {{ {} }};
-        phi::distributed::DisableDpSpmd(&spmd_info, input_batch_dim);
+        std::vector<std::string> skip_ops = {{"adamw_", "adam_"}};
+        if (std::find(skip_ops.begin(), skip_ops.end(), "{}") == skip_ops.end()) {{
+            {}
+            std::vector<int64_t> input_batch_dim = {{ {} }};
+            phi::distributed::DisableDpSpmd(&spmd_info, input_batch_dim);
+        }}
     }}
     DebugInfoForInferSpmd("{}", spmd_info);
 """
@@ -1043,6 +1046,7 @@ class DistForwardAPI(ForwardAPI):
         infer_spmd_code = INFER_SPMD_TEMPLATE.format(
             infer_spmd_func_code,
             input_args_code[:-2],
+            self.api,
             input_dims_code,
             input_dims_args_code[:-2],
             self.api,
