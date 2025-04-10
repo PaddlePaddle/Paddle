@@ -33,8 +33,7 @@ static void GesvdjBatchedSvdvals(const phi::GPUContext& dev_ctx,
                                  T* A,
                                  T* S,
                                  int* info,
-                                 int thin_UV = 0  // only compute UV
-);
+                                 int thin_UV = 1);
 
 template <>
 void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
@@ -226,7 +225,7 @@ void SvdvalsKernel(const Context& dev_ctx,
                           dev_ctx.template Alloc<T>(&x_tmp),
                           S_out,
                           info_ptr,
-                          0);
+                          1);
 }
 
 }  // namespace phi
