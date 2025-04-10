@@ -1626,9 +1626,9 @@ struct ConstraintApplier {
   adt::Result<bool> Match(const DrrCtx& drr_ctx,
                           const GraphMatchCtx& graph_match_ctx) {
     if (NeedCheckExtraUse(drr_ctx)) {
-      ADT_LET_CONST_REF(no_extra_use_for_tmps,
+      ADT_LET_CONST_REF(found_extra_use_for_tmps,
                         FindExtraUseForTmpValues(drr_ctx, graph_match_ctx));
-      if (!no_extra_use_for_tmps) {
+      if (found_extra_use_for_tmps) {
         return false;
       }
     }
