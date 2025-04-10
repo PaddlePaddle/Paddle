@@ -49,6 +49,7 @@ if [ "$4" == "xpu" ]; then
     # if [ "$WITH_CINN" == "ON" ];then
     #     export PADDLE_CUDA_INSTALL_REQUIREMENTS=${PADDLE_CUDA_INSTALL_REQUIREMENTS:-ON}
     # fi
+fi
 
 if [ "$4" == "coverage" ]; then
     ln -sf $(which python3.9) /usr/local/bin/python
