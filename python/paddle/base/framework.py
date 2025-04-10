@@ -1746,6 +1746,7 @@ class Variable(metaclass=VariableMetaClass):
         name=None,
         shape=None,
         dtype=None,
+        lod_level=None,
         legacy_lod_level=None,
         capacity=None,
         persistable=None,
@@ -1756,6 +1757,8 @@ class Variable(metaclass=VariableMetaClass):
         belong_to_optimizer=False,
         **kwargs,
     ):
+        if lod_level is not None:
+            legacy_lod_level = lod_level
         self.block = block
         if name is None:
             name = self.block.program._name_generator("_generated_var")
@@ -1768,10 +1771,10 @@ class Variable(metaclass=VariableMetaClass):
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
-            lod_level = None
+            legacy_lod_level = None
 
         if type == core.VarDesc.VarType.SPARSE_COO:
-            lod_level = None
+            legacy_lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
 
@@ -1825,8 +1828,8 @@ class Variable(metaclass=VariableMetaClass):
                 if legacy_lod_level != self.legacy_lod_level:
                     raise ValueError(
                         f"Variable '{self.name}' has been created before. "
-                        f"The previous lod_level is {self.legacy_lod_level}, the new "
-                        f"lod_level is {legacy_lod_level}. They are not "
+                        f"The previous legacy_lod_level is {self.legacy_lod_level}, the new "
+                        f"legacy_lod_level is {legacy_lod_level}. They are not "
                         "matched"
                     )
         if persistable is not None:
