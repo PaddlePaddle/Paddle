@@ -10,6 +10,7 @@ env:
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-sot
   ci_scripts: ${{ github.workspace }}/ci
+  CI_name: sot
 
 defaults:
   run:
@@ -65,6 +66,7 @@ jobs:
           -v "/home/data/cfs/.ccache:/root/.ccache" \
           -v "/dev/shm:/dev/shm" \
           -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+          -e $CI_name
           -e BRANCH \
           -e PR_ID \
           -e COMMIT_ID \
@@ -129,8 +131,9 @@ jobs:
       if: ${{ env.determine_excode == 0 }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        export PY_VERSION=3.8
         . ../../../proxy
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.8
+        bash ${ci_scripts}/run_setup.sh bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '
@@ -157,8 +160,9 @@ jobs:
       if: ${{ env.determine_excode == 0 }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        export PY_VERSION=3.9
         . ../../../proxy
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.9
+        bash ${ci_scripts}/run_setup.sh bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '
@@ -185,8 +189,9 @@ jobs:
       if: ${{ env.determine_excode == 0 }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        export PY_VERSION=3.10
         . ../../../proxy
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.10
+        bash ${ci_scripts}/run_setup.sh bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '
@@ -212,8 +217,9 @@ jobs:
       if: ${{ env.determine_excode == 0 }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        export PY_VERSION=3.11
         . ../../../proxy
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.11
+        bash ${ci_scripts}/run_setup.sh bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '
@@ -240,8 +246,9 @@ jobs:
       if: ${{ env.determine_excode == 0 }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        export PY_VERSION=3.12
         . ../../../proxy
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.12
+        bash ${ci_scripts}/run_setup.sh bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '
@@ -268,8 +275,9 @@ jobs:
       if: ${{ env.determine_excode == 0 }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        export PY_VERSION=3.13
         . ../../../proxy
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.13
+        bash ${ci_scripts}/run_setup.sh bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '

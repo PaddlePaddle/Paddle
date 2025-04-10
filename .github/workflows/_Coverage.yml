@@ -9,11 +9,12 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
-  ci_scripts: ${{ github.workspace }}/ci
+  ci_scripts: /paddle/ci
   BRANCH: ${{ github.base_ref }}
-  work_dir: ${{ github.workspace }}
-  PADDLE_ROOT: ${{ github.workspace }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
   GIT_PR_ID: ${{ github.event.pull_request.number }}
+  CI_name: coverage
 
 defaults:
   run:
@@ -23,7 +24,7 @@ jobs:
   build:
     name: Coverage build
     runs-on:
-      group: GZ_BD-CPU
+      group: CPU-test
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can_skip }}
 
@@ -41,7 +42,7 @@ jobs:
         git config pull.rebase false
         git checkout test
         echo "Pull upstream develop"
-        . ../../../proxy
+        source ../../../proxy
         git pull upstream develop --no-edit
 
     - name: Check bypass
@@ -88,7 +89,8 @@ jobs:
           -v "/home/data/cfs/.cache:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
           -v "/dev/shm:/dev/shm" \
-          -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+          -v "${{ github.workspace }}/../../..:/action-runner" \
+          -e CI_name \
           -e BRANCH \
           -e PR_ID \
           -e COMMIT_ID \
@@ -121,32 +123,35 @@ jobs:
           -e GITHUB_TOKEN \
           -e GITHUB_API_TOKEN \
           -e UT_RUN_TYPE_SETTING \
-          -w ${{ github.workspace }} --network host ${docker_image}
+          -w /paddle --network host ${docker_image}
 
     - name: Build
       if: steps.check-bypass.outputs.can_skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }}  /bin/bash -c '
+        mv action-runner/Paddle/Paddle/* .
         mkdir -p /home/data/cfs/.cache/coverage
         mkdir -p /home/data/cfs/.ccache/coverage
-        . ../../../proxy
-        bash $ci_scripts/coverage_build.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} coverage "" ${{ github.env }}
+        source action-runner/proxy
+        bash $ci_scripts/coverage_build.sh bdist_wheel
         '
 
     - name: Check added unittests
       if: steps.check-bypass.outputs.can_skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        . ../../../proxy
-        bash -x $ci_scripts/check_added_ut.sh
+        source ~/.bashrc
+        source action-runner/proxy
+        bash $ci_scripts/check_added_ut.sh
         '
 
     - name: Check coverage build size requires approval
       if: steps.check-bypass.outputs.can_skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        . ../../../proxy
-        bash $ci_scripts/coverage_build_size_approval.sh ${{ env.buildSize }}
+        source ~/.bashrc
+        source action-runner/proxy
+        bash $ci_scripts/coverage_build_size_approval.sh
         '
 
     - name: Clean up env
@@ -154,9 +159,10 @@ jobs:
       working-directory: build
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
+        source ~/.bashrc
         source ${ci_scripts}/utils.sh; clean_build_files
         Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
-        echo "Build_Size=${Build_Size}" > ${{ github.workspace }}/dist/coverage_build_size
+        echo "Build_Size=${Build_Size}" > ${work_dir}/dist/coverage_build_size
         find ./ -type f -size +200M | xargs du -lh
         rm -rf $(find . -name "*.a")
         rm -rf $(find . -name "*.o")
@@ -166,22 +172,21 @@ jobs:
         find ./ -name "eager_generator" -or -name  "kernel_signature_generator" -or -name "eager_legacy_op_function_generator" | xargs rm -rf
         rm -rf ./python/build/lib.linux-x86_64-3.9/
         cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
-        cd ${{ github.workspace }}/..
-        tar --use-compress-program="pzstd -1" -cpf Paddle.tar.gz Paddle
+        cd /
+        tar --use-compress-program="pzstd -1" -cpf Paddle.tar.gz paddle
         '
 
     - name: Upload coverage product
       if: steps.check-bypass.outputs.can_skip != 'true'
       env:
-        home_path: ${{ github.workspace }}/..
-        bos_file: ${{ github.workspace }}/../bos/BosClient.py
+        home_path: /action-runner
+        bos_file: /action-runner/bos/BosClient.py
         paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
       working-directory: dist
       run: |
-        pwd
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         echo "::group::Install bce-python-sdk"
-        . ../../../proxy
+        source action-runner/proxy
         python -m pip install bce-python-sdk==0.8.74
         echo "::endgroup::"
         export AK=paddle
@@ -191,8 +196,8 @@ jobs:
           mkdir ${{ env.home_path }}/bos
           tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
         fi
-        . ../../../unproxy
-        cd ${{ github.workspace }}/dist
+        source action-runner/unproxy
+        cd /paddle/dist
         python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage_build_size/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         cd ${{ github.workspace }}/..
@@ -204,7 +209,7 @@ jobs:
       if: ${{ steps.check-bypass.outputs.can_skip != 'true' && always() }}
       run: |
         set +e
-        docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        # docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
         docker stop ${{ env.container_name }}
         docker rm ${{ env.container_name }}
 
@@ -214,7 +219,7 @@ jobs:
     needs: build
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ-V100
+      group: v100-test
     steps:
     - name: Download paddle.tar.gz and update test branch
       run: |
@@ -227,7 +232,7 @@ jobs:
         echo "Extracting Paddle.tar.gz"
         tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz --strip-components=1
         rm Paddle.tar.gz
-        . ../../../proxy
+        source ../../../proxy
         git checkout test
         echo "Pull upstream develop"
         git pull upstream develop --no-edit
@@ -266,7 +271,8 @@ jobs:
           -v "/home/data/cfs/.cache:/root/.cache" \
           -v "/home/data/cfs/.ccache:/root/.ccache" \
           -v "/dev/shm:/dev/shm" \
-          -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+          -v "${{ github.workspace }}/../../..:/action-runner" \
+          -e CI_name \
           -e BRANCH \
           -e PR_ID \
           -e COMMIT_ID \
@@ -298,14 +304,14 @@ jobs:
           -e COVERAGE_FILE \
           -e GITHUB_TOKEN \
           -e GITHUB_API_TOKEN  \
-          -w ${{ github.workspace }} --network host ${docker_image}
+          -w /paddle --network host ${docker_image}
 
     - name: Test
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        nvidia-smi
-        . ../../../proxy
-        bash $ci_scripts/coverage_test.sh ${{ github.env }}
+        mv action-runner/Paddle/Paddle/* .
+        source action-runner/proxy
+        bash $ci_scripts/coverage_test.sh
         TEST_EXIT_CODE=$?
         echo "TEST_EXIT_CODE=${TEST_EXIT_CODE}" >> ${{ github.env }}
         if [[ "$TEST_EXIT_CODE" -ne 0 && "$TEST_EXIT_CODE" -ne 9 ]]; then
@@ -316,7 +322,9 @@ jobs:
     - name: Check coverage data
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        . ../../../proxy
+        source ~/.bashrc
+        unset GREP_OPTIONS
+        source action-runner/proxy
         source ${ci_scripts}/utils.sh; check_coverage
         COVERAGE_EXIT_CODE=$?
         echo "COVERAGE_EXIT_CODE=${COVERAGE_EXIT_CODE}" >> ${{ github.env }}
@@ -338,6 +346,6 @@ jobs:
       if: always()
       run: |
         set +e
-        docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        # docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
         docker stop ${{ env.container_name }}
         docker rm ${{ env.container_name }}
