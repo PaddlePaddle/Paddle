@@ -53,6 +53,11 @@ namespace phi::distributed {
 
 int CommContextManager::device_id = -1;
 
+CommContextManager& CommContextManager::GetInstance() {
+  static CommContextManager instance;
+  return instance;
+}
+
 void CommContextManager::SetDeviceId(int dev_id) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   phi::backends::gpu::SetDeviceId(dev_id);

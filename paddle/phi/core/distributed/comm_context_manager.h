@@ -49,10 +49,7 @@ class CommContextManager {
   CommContextManager() = default;
   ~CommContextManager() = default;
 
-  static CommContextManager& GetInstance() {
-    static CommContextManager instance;
-    return instance;
-  }
+  static CommContextManager& GetInstance();
 
   void SetStore(const std::shared_ptr<Store>& store) { store_ = store; }
 

@@ -181,7 +181,15 @@ if(NOT WIN32)
         -Wno-error=bitwise-instead-of-logical # Warning in "unsupported/Eigen/CXX11/Tensor"
         -Wno-error=overloaded-virtual # For some inconsistent virtual function signature, clang
         -Wno-error=defaulted-function-deleted # header file from GLOO, clang
-    )
+        -Wno-error=unused-but-set-variable
+        -Wno-error=braced-scalar-init
+        -Wno-error=instantiation-after-specialization
+        -Wno-error=deprecated-builtins
+        -Wno-error=unused-variable
+        -Wno-error=mismatched-tags
+        -Wno-error=dynamic-class-memaccess
+        -Wno-error=pessimizing-move
+        -Wno-error=self-assign)
   endif()
 
   if(WITH_IPU)

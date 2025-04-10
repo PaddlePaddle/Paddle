@@ -25,15 +25,14 @@ TEST(XPUOverloadAllocTest, EnvTest) {
   setenv("XPUAPI_DEFAULT_SIZE", "4096", 1);
   // use alloc overload
   unsetenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD");
-  phi::XPUContext dev_ctx_overload(
-      phi::XPUPlace(phi::backends::xpu::GetXPUCurrentDeviceId()));
+  int dev_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+  phi::XPUContext dev_ctx_overload(phi::XPUPlace{dev_id});
   EXPECT_STREQ(dev_ctx_overload.x_context()->get_option("XPUAPI_DEFAULT_SIZE"),
                "1");
   EXPECT_NE(dev_ctx_overload.x_context()->overload_alloc_gm, nullptr);
   // do not use alloc overload
   setenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD", "1", 1);
-  phi::XPUContext dev_ctx_origin(
-      phi::XPUPlace(phi::backends::xpu::GetXPUCurrentDeviceId()));
+  phi::XPUContext dev_ctx_origin(phi::XPUPlace{dev_id});
   EXPECT_STREQ(dev_ctx_origin.x_context()->get_option("XPUAPI_DEFAULT_SIZE"),
                "4096");
   EXPECT_EQ(dev_ctx_origin.x_context()->overload_alloc_gm, nullptr);
@@ -42,8 +41,8 @@ TEST(XPUOverloadAllocTest, EnvTest) {
 }
 
 TEST(XPUOverloadAllocTest, BasicTest) {
-  phi::XPUContext dev_ctx(
-      phi::XPUPlace(phi::backends::xpu::GetXPUCurrentDeviceId()));
+  int dev_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+  phi::XPUContext dev_ctx(phi::XPUPlace{dev_id});
   int numel = 64;
   int alignment = phi::backends::xpu::XPUMinChunkSize();
   int expected_alloc_size =
@@ -59,8 +58,8 @@ TEST(XPUOverloadAllocTest, BasicTest) {
 }
 
 TEST(XPUOverloadAllocTest, NestedScopeTest) {
-  phi::XPUContext dev_ctx(
-      phi::XPUPlace(phi::backends::xpu::GetXPUCurrentDeviceId()));
+  int dev_id = phi::backends::xpu::GetXPUCurrentDeviceId();
+  phi::XPUContext dev_ctx(phi::XPUPlace{dev_id});
   xpu::ctx_guard RAII_GUARD1(dev_ctx.x_context());
   int pre_alloc_value = DEVICE_MEMORY_STAT_CURRENT_VALUE(
       Allocated, dev_ctx.GetPlace().GetDeviceId());
@@ -80,10 +79,10 @@ TEST(XPUOverloadAllocTest, NestedScopeTest) {
 
 TEST(XPUOverloadAllocTest, MultiStreamTest) {
   // Test whether stream 1 use the memory poll of stream 0.
+  int dev_id = phi::backends::xpu::GetXPUCurrentDeviceId();
   int size = 64;
   setenv("XPU_CDNN_CLUSTER_PARALLEL", "1", 1);
-  phi::XPUContext dev_ctx(
-      phi::XPUPlace(phi::backends::xpu::GetXPUCurrentDeviceId()));
+  phi::XPUContext dev_ctx(phi::XPUPlace{dev_id});
   xpu::ctx_guard RAII_GUARD0(dev_ctx.x_context(0));
   xpu::ctx_guard RAII_GUARD1(dev_ctx.x_context(1));
   int pre_alloc_value = DEVICE_MEMORY_STAT_CURRENT_VALUE(

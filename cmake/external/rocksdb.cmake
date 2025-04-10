@@ -31,6 +31,11 @@ set(ROCKSDB_LIBRARIES
     "${ROCKSDB_INSTALL_DIR}/lib/librocksdb.a"
     CACHE FILEPATH "rocksdb library." FORCE)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -Wno-error=unused-but-set-variable -Wno-error=deprecated-copy -Wno-error=deprecated-builtins"
+  )
+endif()
 set(ROCKSDB_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -DROCKSDB_LIBAIO_PRESENT -I${JEMALLOC_INCLUDE_DIR}")
 set(ROCKSDB_SHARED_LINKER_FLAGS "-Wl,--no-as-needed -ldl")
