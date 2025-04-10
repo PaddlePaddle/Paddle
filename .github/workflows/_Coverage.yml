@@ -129,10 +129,10 @@ jobs:
       if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }}  /bin/bash -c '
-        mv action-runner/_work/Paddle/Paddle/* .
+        mv /action-runner/_work/Paddle/Paddle/* .
         mkdir -p /home/data/cfs/.cache/coverage
         mkdir -p /home/data/cfs/.ccache/coverage
-        source action-runner/proxy
+        source /action-runner/proxy
         bash $ci_scripts/coverage_build.sh bdist_wheel
         '
 
@@ -141,7 +141,7 @@ jobs:
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ~/.bashrc
-        source action-runner/proxy
+        source /action-runner/proxy
         bash $ci_scripts/check_added_ut.sh
         '
 
@@ -150,7 +150,7 @@ jobs:
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ~/.bashrc
-        source action-runner/proxy
+        source /action-runner/proxy
         bash $ci_scripts/coverage_build_size_approval.sh
         '
 
@@ -186,7 +186,7 @@ jobs:
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         echo "::group::Install bce-python-sdk"
-        source action-runner/proxy
+        source /action-runner/proxy
         python -m pip install bce-python-sdk==0.8.74
         echo "::endgroup::"
         export AK=paddle
@@ -196,7 +196,7 @@ jobs:
           mkdir ${{ env.home_path }}/bos
           tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
         fi
-        source action-runner/unproxy
+        source /action-runner/unproxy
         cd /paddle/dist
         python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage_build_size/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
@@ -309,8 +309,8 @@ jobs:
     - name: Test
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        mv action-runner/_work/Paddle/Paddle/* .
-        source action-runner/proxy
+        mv /action-runner/_work/Paddle/Paddle/* .
+        source /action-runner/proxy
         bash $ci_scripts/coverage_test.sh
         TEST_EXIT_CODE=$?
         echo "TEST_EXIT_CODE=${TEST_EXIT_CODE}" >> ${{ github.env }}
@@ -324,7 +324,7 @@ jobs:
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ~/.bashrc
         unset GREP_OPTIONS
-        source action-runner/proxy
+        source /action-runner/proxy
         source ${ci_scripts}/utils.sh; check_coverage
         COVERAGE_EXIT_CODE=$?
         echo "COVERAGE_EXIT_CODE=${COVERAGE_EXIT_CODE}" >> ${{ github.env }}
