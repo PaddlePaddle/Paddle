@@ -61,6 +61,7 @@ def data(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
     lod_level: int = 0,
+    legacy_lod_level: int = 0,
 ) -> paddle.Tensor:
     """
 
@@ -167,13 +168,15 @@ def data(
         set_insertion_point(prev_insertion_point)
         return out
 
+    if lod_level != 0:
+        legacy_lod_level = lod_level
     out = helper.create_global_variable(
         name=name,
         shape=shape,
         dtype=dtype,
         type=core.VarDesc.VarType.DENSE_TENSOR,
         stop_gradient=True,
-        lod_level=lod_level,
+        legacy_lod_level=legacy_lod_level,
         is_data=True,
         need_check_feed=True,
     )

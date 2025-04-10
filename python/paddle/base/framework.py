@@ -1746,7 +1746,7 @@ class Variable(metaclass=VariableMetaClass):
         name=None,
         shape=None,
         dtype=None,
-        lod_level=None,
+        legacy_lod_level=None,
         capacity=None,
         persistable=None,
         error_clip=None,
@@ -1818,15 +1818,15 @@ class Variable(metaclass=VariableMetaClass):
                         "matched."
                     )
 
-        if lod_level is not None:
+        if legacy_lod_level is not None:
             if is_new_var:
-                self.desc.set_lod_level(lod_level)
+                self.desc.set_lod_level(legacy_lod_level)
             else:
-                if lod_level != self.lod_level:
+                if legacy_lod_level != self.legacy_lod_level:
                     raise ValueError(
                         f"Variable '{self.name}' has been created before. "
-                        f"The previous lod_level is {self.lod_level}, the new "
-                        f"lod_level is {lod_level}. They are not "
+                        f"The previous lod_level is {self.legacy_lod_level}, the new "
+                        f"lod_level is {legacy_lod_level}. They are not "
                         "matched"
                     )
         if persistable is not None:
