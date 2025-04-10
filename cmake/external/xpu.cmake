@@ -61,7 +61,7 @@ set(XPU_XCCL_BASE_URL
 
 if(NOT XPU_XFT_BASE_URL)
   set(XPU_XFT_BASE_URL
-  "https://klx-sdk-release-public.su.bcebos.com/xft_internal/dev/${XPU_XFT_BASE_VERSION}"
+      "https://klx-sdk-release-public.su.bcebos.com/xft_internal/dev/${XPU_XFT_BASE_VERSION}"
   )
 endif()
 
