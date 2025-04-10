@@ -215,8 +215,8 @@ jobs:
           -v $home_dir/.cache:/root/.cache \
           -v $home_dir/.ccache:/root/.ccache \
           -v $home_dir:$home_dir \
-          --device ${XPU_CODE_1} \
-          --device ${XPU_CODE_2} \
+          # --device ${XPU_CODE_1} \
+          # --device ${XPU_CODE_2} \
           --shm-size=32g \
           -e BRANCH \
           -e PR_ID \
