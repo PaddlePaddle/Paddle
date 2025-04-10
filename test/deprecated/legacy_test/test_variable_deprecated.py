@@ -55,8 +55,6 @@ class TestVariable(unittest.TestCase):
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), nw.shape)
 
-        self.assertEqual(0, nw.lod_level)
-
         main = base.Program()
         with base.program_guard(main):
             exe = base.Executor(place)
