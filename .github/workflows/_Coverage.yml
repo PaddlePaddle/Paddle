@@ -26,7 +26,7 @@ jobs:
     runs-on:
       group: CPU-test
     outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can_skip }}
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
     steps:
     - name: Download paddle.tar.gz and update test branch
@@ -53,7 +53,7 @@ jobs:
         workflow-name: coverage
 
     - name: Check docker image and run container
-      if: steps.check-bypass.outputs.can_skip != 'true'
+      if: steps.check-bypass.outputs.can-skip != 'true'
       env:
         CCACHE_DIR: "/root/.ccache/coverage"
         FLAGS_fraction_of_gpu_memory_to_use: 0.15
@@ -126,7 +126,7 @@ jobs:
           -w /paddle --network host ${docker_image}
 
     - name: Build
-      if: steps.check-bypass.outputs.can_skip != 'true'
+      if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }}  /bin/bash -c '
         mv action-runner/_work/Paddle/Paddle/* .
@@ -137,7 +137,7 @@ jobs:
         '
 
     - name: Check added unittests
-      if: steps.check-bypass.outputs.can_skip != 'true'
+      if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ~/.bashrc
@@ -146,7 +146,7 @@ jobs:
         '
 
     - name: Check coverage build size requires approval
-      if: steps.check-bypass.outputs.can_skip != 'true'
+      if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         source ~/.bashrc
@@ -155,7 +155,7 @@ jobs:
         '
 
     - name: Clean up env
-      if: steps.check-bypass.outputs.can_skip != 'true'
+      if: steps.check-bypass.outputs.can-skip != 'true'
       working-directory: build
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -177,7 +177,7 @@ jobs:
         '
 
     - name: Upload coverage product
-      if: steps.check-bypass.outputs.can_skip != 'true'
+      if: steps.check-bypass.outputs.can-skip != 'true'
       env:
         home_path: /action-runner
         bos_file: /action-runner/bos/BosClient.py
@@ -205,13 +205,13 @@ jobs:
         rm Paddle.tar.gz
         '
 
-    - name: Terminate and delete the container
-      if: ${{ steps.check-bypass.outputs.can_skip != 'true' && always() }}
-      run: |
-        set +e
-        # docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-        docker stop ${{ env.container_name }}
-        docker rm ${{ env.container_name }}
+    # - name: Terminate and delete the container
+    #   if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
+    #   run: |
+    #     set +e
+    #     # docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+    #     docker stop ${{ env.container_name }}
+    #     docker rm ${{ env.container_name }}
 
 
   test:
