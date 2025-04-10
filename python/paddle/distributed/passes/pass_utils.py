@@ -273,9 +273,44 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
             num_micro_batches, job_types, sub_programs, jobs
         )
     else:
-        raise NotImplementedError(
-            "The function set_skip_gc_vars is not supported in the old IR."
+        return _set_skip_gc_vars_in_old_ir(
+            num_micro_batches, job_types, sub_programs, jobs
         )
+
+
+def _set_skip_gc_vars_in_old_ir(
+    num_micro_batches, job_types, sub_programs, jobs
+):
+    assert num_micro_batches >= 1, "num_micro_batches needs to be >= 1"
+    type_to_program = dict(zip(job_types, sub_programs))
+
+    # step1: Get all vars of every sub_program that are non-persistable and not in op's no_need_buffer.
+    type_to_required_vars = {}
+    for type, program in type_to_program.items():
+        type_to_required_vars[type] = _get_required_vars_of_program(program)
+
+    # step2: Set `skip_gc_vars` for each job
+    suffixed_required_vars = [set() for i in range(num_micro_batches)]
+    num_jobs = len(jobs)
+    for job_id in reversed(range(num_jobs)):
+        job = jobs[job_id]
+        job_type = job.type()
+        required_vars = type_to_required_vars[job_type]
+        micro_batch_id = job.micro_batch_id()
+        skip_gc_vars = required_vars & suffixed_required_vars[micro_batch_id]
+        logger.debug(
+            f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
+        )
+
+        if job_type in ["backward", "backward_w"]:
+            assert (
+                len(skip_gc_vars) == 0
+            ), f"When enabling pipeline parallelism strategy, the skip_gc_vars for {job_type} subprogram must be empty, but it is {skip_gc_vars}."
+
+        job.set_skip_gc_vars(skip_gc_vars)
+        suffixed_required_vars[micro_batch_id] |= required_vars
+
+    return type_to_program
 
 
 def _set_skip_gc_vars_in_pir(num_micro_batches, job_types, sub_programs, jobs):
