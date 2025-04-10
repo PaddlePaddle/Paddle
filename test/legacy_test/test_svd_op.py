@@ -87,6 +87,10 @@ class TestSvdOp(OpTest):
         self.check_V_grad()
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSvdOpComplexCase1(TestSvdOp):
     def generate_input(self):
         """return a input_data and input_shape"""
@@ -99,12 +103,42 @@ class TestSvdOpComplexCase1(TestSvdOp):
         pass
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSvdOpComplexCase2(TestSvdOpComplexCase1):
     def generate_input(self):
         """return a input_data and input_shape"""
-        self._input_shape = (3, 5)
+        self._input_shape = (3, 30)
         real_part = np.random.rand(*self._input_shape).astype("float32")
         imag_part = np.random.rand(*self._input_shape).astype("float32")
+        self._input_data = real_part + 1j * imag_part
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSvdOpComplexCase3(TestSvdOpComplexCase1):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (100, 40)
+        real_part = np.random.rand(*self._input_shape).astype("float64")
+        imag_part = np.random.rand(*self._input_shape).astype("float64")
+        self._input_data = real_part + 1j * imag_part
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestSvdOpComplexCase4(TestSvdOpComplexCase1):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (100, 200)
+        real_part = np.random.rand(*self._input_shape).astype("float64")
+        imag_part = np.random.rand(*self._input_shape).astype("float64")
         self._input_data = real_part + 1j * imag_part
 
 
