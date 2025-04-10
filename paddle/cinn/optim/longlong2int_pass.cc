@@ -139,7 +139,10 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
   void Visit(const ir::Min* op, Expr* expr) override {
     auto node = expr->As<ir::Min>();
     if (node->a().is_index() && node->b().is_index()) {
-      ir::ElevateInt64ToInt32_((*expr)->operands);
+      if ((node->a().is_var() && node->a().as_var()->is_symbolic_constant) ||
+          (node->b().is_var() && node->b().as_var()->is_symbolic_constant)) {
+        ir::ElevateInt64ToInt32_((*expr)->operands);
+      }
     }
     ir::IRMutator<>::Visit(&node->a(), &node->a());
     ir::IRMutator<>::Visit(&node->b(), &node->b());
@@ -147,7 +150,10 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
   void Visit(const ir::Max* op, Expr* expr) override {
     auto node = expr->As<ir::Max>();
     if (node->a().is_index() && node->b().is_index()) {
-      ir::ElevateInt64ToInt32_((*expr)->operands);
+      if ((node->a().is_var() && node->a().as_var()->is_symbolic_constant) ||
+          (node->b().is_var() && node->b().as_var()->is_symbolic_constant)) {
+        ir::ElevateInt64ToInt32_((*expr)->operands);
+      }
     }
     ir::IRMutator<>::Visit(&node->a(), &node->a());
     ir::IRMutator<>::Visit(&node->b(), &node->b());
