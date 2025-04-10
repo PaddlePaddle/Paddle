@@ -1825,10 +1825,10 @@ class Variable(metaclass=VariableMetaClass):
             if is_new_var:
                 self.desc.set_legacy_lod_level(legacy_lod_level)
             else:
-                if legacy_lod_level != self.legacy_lod_level:
+                if legacy_lod_level != self.lod_level:
                     raise ValueError(
                         f"Variable '{self.name}' has been created before. "
-                        f"The previous legacy_lod_level is {self.legacy_lod_level}, the new "
+                        f"The previous legacy_lod_level is {self.lod_level}, the new "
                         f"legacy_lod_level is {legacy_lod_level}. They are not "
                         "matched"
                     )
