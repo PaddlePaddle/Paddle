@@ -16,6 +16,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 
@@ -46,6 +47,15 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                      }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
+  //   if( out_grad.numel() == 0)
+  //   {
+  //     // set zero to input_grad
+  //     phi::FullKernel<T>(
+  //         dev_ctx, common::vectorize(input.dims()), 0.0, input.dtype(),
+  //         input_grad);
+
+  //     return;
+  //   }
   SliceStridedKernel<Context>(dev_ctx,
                               *input_grad,
                               axes,
