@@ -211,7 +211,7 @@ jobs:
         container_name=${TASK}-$(date +%s)
         echo "container_name=${container_name}" >> ${{ github.env }}
         # docker run --cap-add=SYS_PTRACE --privileged --ulimit nofile=102400 -d -t --name ${container_name} \
-        docker run --privileged --ulimit nofile=102400 -d -t --name ${container_name} \
+        docker run -d -t --name ${container_name} \
           -v $home_dir/.cache:/root/.cache \
           -v $home_dir/.ccache:/root/.ccache \
           -v $home_dir:$home_dir \
