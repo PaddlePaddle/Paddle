@@ -44,6 +44,7 @@ from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
     magic_method_builtin_dispatch,
+    non_inplace_op_to_inplace_op,
 )
 from .dispatch_functions import (
     create_raise_break_graph_handler,
@@ -1150,22 +1151,32 @@ for unary_fn in SYMBOLIC_UNARY_OPS:
         ),
     )
 for binary_fn in SYMBOLIC_BINARY_OPS:
-    Dispatcher.register(
-        binary_fn,
-        ("SymbolicVariable", "SymbolicVariable | ConstantVariable"),
-        partial(
-            lambda fn, var, other: var.graph.call_symbolic_api(fn, var, other),
-            binary_fn,
-        ),
-    )
-    Dispatcher.register(
-        binary_fn,
-        ("ConstantVariable", "SymbolicVariable"),
-        partial(
-            lambda fn, var, other: var.graph.call_symbolic_api(fn, var, other),
-            binary_fn,
-        ),
-    )
+    register_fns = [binary_fn]
+    if (
+        inplace_binary_fn := non_inplace_op_to_inplace_op(binary_fn)
+    ) is not None:
+        register_fns.append(inplace_binary_fn)
+    for register_fn in register_fns:
+        Dispatcher.register(
+            register_fn,
+            ("SymbolicVariable", "SymbolicVariable | ConstantVariable"),
+            partial(
+                lambda fn, var, other: var.graph.call_symbolic_api(
+                    fn, var, other
+                ),
+                binary_fn,
+            ),
+        )
+        Dispatcher.register(
+            register_fn,
+            ("ConstantVariable", "SymbolicVariable"),
+            partial(
+                lambda fn, var, other: var.graph.call_symbolic_api(
+                    fn, var, other
+                ),
+                binary_fn,
+            ),
+        )
 
 
 @Dispatcher.register_decorator(bool)
