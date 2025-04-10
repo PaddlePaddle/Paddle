@@ -354,13 +354,16 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
     history_cfgs.extend(pruned_cfgs)
 
     cfgs = same_cfgs_beside(
-        ["micro_batch_size", "acc_steps"], cur_cfg, history_cfgs
+        ["micro_batch_size", "acc_steps", "global_batch_size"],
+        cur_cfg,
+        history_cfgs,
     )
 
     if cfgs:
         for cfg in cfgs:
             if (
                 cfg["micro_batch_size"] > micro_batch_size
+                and cfg["acc_steps"] > cur_cfg["acc_steps"]
                 and cfg.get("time", -1) > 0
             ):
                 pruned_reason = f"micro_batch_size {micro_batch_size} may be slower because {cfg['micro_batch_size']} has been already runnable."
@@ -368,14 +371,27 @@ def prune_by_mbs_history(tuner_cfg, cur_cfg, history_cfgs=[], pruned_cfgs=[]):
                 cur_cfg["time"] = cfg["time"]
                 return True
             # memory prune
-            if (
-                cfg["micro_batch_size"] < micro_batch_size
-                and cfg.get("max_mem_usage") == "OOM"
-            ):
-                pruned_reason = f"micro_batch_size {micro_batch_size} may cause oom because {cfg['micro_batch_size']} already oom."
-                log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
-                cur_cfg["max_mem_usage"] = "OOM"
-                return True
+            if cur_cfg["vpp_degree"] == 1:
+                if (
+                    cfg["micro_batch_size"] < micro_batch_size
+                    and cfg.get("max_mem_usage") == "OOM"
+                ):
+                    pruned_reason = f"micro_batch_size {micro_batch_size} may cause oom because {cfg['micro_batch_size']} already oom."
+                    log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
+                    cur_cfg["max_mem_usage"] = "OOM"
+                    return True
+            else:
+                if (
+                    cfg["micro_batch_size"] < micro_batch_size
+                    and cfg.get("max_mem_usage") == "OOM"
+                    and cfg["acc_steps"] % cfg["pp_degree"]
+                    <= cur_cfg["acc_steps"] % cfg["pp_degree"]
+                ):
+                    pruned_reason = f"micro_batch_size {micro_batch_size} and acc_steps {cur_cfg['acc_steps']} may cause oom because {cfg['micro_batch_size']} and {cfg['acc_steps']} already oom."
+                    log_pruned_info(cur_cfg, pruned_reason, tuner_cfg)
+                    cur_cfg["max_mem_usage"] = "OOM"
+                    return True
+
     return False
 
 
