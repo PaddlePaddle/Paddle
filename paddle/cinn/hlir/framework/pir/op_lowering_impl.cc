@@ -95,8 +95,6 @@ OpLowererImpl::OpLowererImpl(const Target& target) : target_(target) {
 BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     const OpLoweringGroupPtr& group) {
   VLOG(4) << "BucketLower Group : \n" << *group;
-  std::cout << "cinn constraint manager: "
-            << cinn::common::ShapeConstraintManager::Instance() << std::endl;
   // 1.Do compute, lower and schedule for each op.
   const auto& ops = group->ops();
   auto X86Expr = LowerX86(group, ops, false);
