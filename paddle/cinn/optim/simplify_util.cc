@@ -713,7 +713,7 @@ ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
 
   // The first modulus is broadcastable.
   auto &constraint = cinn::common::ShapeConstraintManager::Instance();
-  return constraint.IsBroadCastable(lr_elems) ? ll % r : expr;
+  return constraint.IsBroadcastable(lr_elems) ? ll % r : expr;
 }
 }  // namespace optim
 }  // namespace cinn

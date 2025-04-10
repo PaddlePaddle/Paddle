@@ -71,13 +71,13 @@ class ShapeConstraintManager {
   //    {S0: {S1, S2},
   //     S1: {S0, S2},
   //     S2: {S0, S1}}
-  void InitBroadCastableExprs(
+  void InitBroadcastableExprs(
       const std::unordered_set<symbol::Broadcastable<symbol::DimExpr>>&
           broadcastable_dim_exprs);
   // Returns whether lhs and rhs are equal in the DimExpr UnionFindSet.
   bool IsEqual(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs);
-  bool IsBroadCastable(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs);
-  bool IsBroadCastable(const std::vector<ir::IndexExpr>& vec);
+  bool IsBroadcastable(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs);
+  bool IsBroadcastable(const std::vector<ir::IndexExpr>& vec);
 
   friend std::ostream& operator<<(
       std::ostream& os, const ShapeConstraintManager& constraints_manager);
@@ -91,11 +91,11 @@ class ShapeConstraintManager {
   // indicates that the two nodes are broadcastable.
   class BroadcastMap {
    public:
-    void AddEdge(ir::IndexExpr lhs, ir::IndexExpr rhs) {
+    void AddEdge(const ir::IndexExpr& lhs, const ir::IndexExpr& rhs) {
       broadcastable_exprs_[lhs].insert(rhs);
       broadcastable_exprs_[rhs].insert(lhs);
     }
-    void AddEdge(symbol::DimExpr lhs, symbol::DimExpr rhs) {
+    void AddEdge(const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
       DimExprConverter cvt;
       auto lhs_ = cvt.ConvertToIrExpr(lhs);
       auto rhs_ = cvt.ConvertToIrExpr(rhs);
@@ -106,7 +106,7 @@ class ShapeConstraintManager {
       return broadcastable_exprs_.count(lhs) &&
              broadcastable_exprs_.at(lhs).count(rhs);
     }
-    std::unordered_map<ir::IndexExpr, std::unordered_set<ir::IndexExpr>>
+    const std::unordered_map<ir::IndexExpr, std::unordered_set<ir::IndexExpr>>&
     GetBroadcastableExprs() const {
       return broadcastable_exprs_;
     }

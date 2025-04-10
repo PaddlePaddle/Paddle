@@ -24,7 +24,7 @@ ShapeConstraintManager& ShapeConstraintManager::Instance() {
 void ShapeConstraintManager::Init(
     const symbol::ConstraintsManager& constraint) {
   InitEqualExprs(constraint.equals());
-  InitBroadCastableExprs(constraint.broadcastables());
+  InitBroadcastableExprs(constraint.broadcastables());
 }
 
 void ShapeConstraintManager::InitEqualExprs(
@@ -58,22 +58,22 @@ bool ShapeConstraintManager::IsEqual(const ir::IndexExpr& lhs,
   return equal_exprs_.HasSameRoot(lhs, rhs);
 }
 
-bool ShapeConstraintManager::IsBroadCastable(const ir::IndexExpr& lhs,
+bool ShapeConstraintManager::IsBroadcastable(const ir::IndexExpr& lhs,
                                              const ir::IndexExpr& rhs) {
   return broadcastable_exprs_.HasEdge(lhs, rhs);
 }
 
-bool ShapeConstraintManager::IsBroadCastable(
+bool ShapeConstraintManager::IsBroadcastable(
     const std::vector<ir::IndexExpr>& vec) {
   for (size_t i = 0; i < vec.size(); ++i) {
     for (size_t j = i + 1; j < vec.size(); ++j) {
-      if (!IsBroadCastable(vec[i], vec[j])) return false;
+      if (!IsBroadcastable(vec[i], vec[j])) return false;
     }
   }
   return true;
 }
 
-void ShapeConstraintManager::InitBroadCastableExprs(
+void ShapeConstraintManager::InitBroadcastableExprs(
     const std::unordered_set<symbol::Broadcastable<symbol::DimExpr>>&
         broadcastable_dim_exprs) {
   auto AddEdgesForOperands =
