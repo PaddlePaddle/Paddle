@@ -28,6 +28,7 @@ from paddle.base.wrapped_decorator import (
     wrap_decorator,
 )
 from paddle.framework import core
+from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from ..process_mesh import ProcessMesh, merge_process_meshes
@@ -873,7 +874,25 @@ def get_dist_attr(program, dist_context=None):
                     "dim_names": process_mesh.dim_names,
                 }
     else:
-        raise NotImplementedError("get_dist_attr() not support old IR")
+        from .dist_context import get_default_distributed_context
+
+        assert isinstance(program, paddle.static.Program)
+        if dist_context is None:
+            dist_context = get_default_distributed_context()
+        for var in program.list_vars():
+            if is_parameter(var) or is_belong_to_optimizer(var):
+                tensor_dist_attr = (
+                    dist_context.get_tensor_dist_attr_for_program(var)
+                )
+                process_mesh = tensor_dist_attr.process_mesh
+                dims_mapping = tensor_dist_attr.dims_mapping
+                dim_names = tensor_dist_attr.process_mesh.dim_names
+                dist_attr[var.name] = {
+                    "process_shape": process_mesh.shape,
+                    "process_group": process_mesh.process_ids,
+                    "dims_mapping": dims_mapping,
+                    "dim_names": dim_names,
+                }
     return dist_attr
 
 
