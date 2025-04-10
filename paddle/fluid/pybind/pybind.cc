@@ -2940,6 +2940,10 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_XPU
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
   m.def("xpu_empty_cache", platform::EmptyCache);
+  m.def("get_xpu_device_utilization_rate",
+        platform::GetXPUDeviceUtilizationRate);
+  m.def("get_xpu_device_total_memory", platform::GetXPUDeviceTotalMemory);
+  m.def("get_xpu_device_used_memory", platform::GetXPUDeviceUsedMemory);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -3479,6 +3483,8 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::EngineParams::optim_shape_tensor)
       .def_readwrite("engine_serialized_data",
                      &paddle::platform::EngineParams::engine_serialized_data)
+      .def_readwrite("use_cuda_graph",
+                     &paddle::platform::EngineParams::use_cuda_graph)
       .def_readwrite("refit_params_path",
                      &paddle::platform::EngineParams::refit_params_path)
       .def_readwrite("refit_param_name",
