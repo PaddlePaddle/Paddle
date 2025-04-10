@@ -185,6 +185,24 @@ inline Expr Variance(Expr e,
   return ir::Reduce::Make(ir::Reduce::kVariance, initial, e, reduce_axis);
 }
 
+inline Expr Argmax(Expr e,
+                   const std::vector<Var>& reduce_axis,
+                   Expr initial = Expr()) {
+  if (!initial.defined()) {
+    initial = min_value(e.type());
+  }
+  return ir::Reduce::Make(ir::Reduce::kArgmax, initial, e, reduce_axis);
+}
+
+inline Expr Argmin(Expr e,
+                   const std::vector<Var>& reduce_axis,
+                   Expr initial = Expr()) {
+  if (!initial.defined()) {
+    initial = max_value(e.type());
+  }
+  return ir::Reduce::Make(ir::Reduce::kArgmin, initial, e, reduce_axis);
+}
+
 Expr IsNan(Expr e);
 
 Expr Infinity(const Type& type);

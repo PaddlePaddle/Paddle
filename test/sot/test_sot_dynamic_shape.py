@@ -271,5 +271,126 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 self.assertEqual(ctx.translate_count, 2)
 
 
+@check_no_breakgraph
+def dynamic_shape_non_break_non_inplace_ops(x):
+    s0 = x.shape[0]
+    s1 = s0 + 1
+    s2 = 1 + s0
+    s3 = s1 + s2
+    s4 = s1 * s2
+    s5 = s1 - s2
+    s6 = s1 / s2
+    s7 = s1 // s2
+    s8 = s1 % s2
+    s9 = s1**s2
+    s10 = s1 & s2
+    s11 = s1 | s2
+    s12 = s1 ^ s2
+    s13 = s1 << s2
+    s14 = s1 >> s2
+    s15 = s1 == s2
+    s16 = s1 != s2
+    s17 = s1 < s2
+    s18 = s1 <= s2
+    s19 = s1 > s2
+    s20 = s1 >= s2
+    s21 = bool(s1)
+    s22 = not s2
+    return (
+        s0,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        s7,
+        s8,
+        s9,
+        s10,
+        s11,
+        s12,
+        s13,
+        s14,
+        s15,
+        s16,
+        s17,
+        s18,
+        s19,
+        s20,
+        s21,
+        s22,
+    )
+
+
+@check_no_breakgraph
+def dynamic_shape_non_break_inplace_ops(x):
+    s0 = x.shape[0]
+    s1 = s0 + 1
+    s2 = s3 = s4 = s5 = s6 = s7 = s8 = s9 = s10 = s11 = s12 = s13 = s0
+    s2 += s1
+    s3 *= s1
+    s4 -= s1
+    # TODO(SigureMo): Open this case, currently the compute result between Python and C++ (Paddle Kernel)
+    # has a small difference (0.8333333134651184 and 0.8333333333333334)
+    # s5 /= s1
+    s6 //= s1
+    s7 %= s1
+    s8 **= s1
+    s9 &= s1
+    s10 |= s1
+    s11 ^= s1
+    s12 <<= s1
+    s13 >>= s1
+    return (
+        s0,
+        s1,
+        s2,
+        s3,
+        s4,
+        # s5,
+        s6,
+        s7,
+        s8,
+        s9,
+        s10,
+        s11,
+        s12,
+        s13,
+    )
+
+
+class TestDynamicShapeNonBreakOps(TestCaseBase):
+    def test_dynamic_shape_non_break_non_inplace_ops(self):
+        with allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            self.assert_results(
+                dynamic_shape_non_break_non_inplace_ops, paddle.randn([4, 5, 6])
+            )
+            self.assertEqual(ctx.translate_count, 1)
+            for i in range(5, 9):
+                self.assert_results(
+                    dynamic_shape_non_break_non_inplace_ops,
+                    paddle.randn([i, 5, 6]),
+                )
+                self.assertEqual(ctx.translate_count, 2)
+
+    def test_dynamic_shape_non_break_inplace_ops(self):
+        with allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            self.assert_results(
+                dynamic_shape_non_break_inplace_ops, paddle.randn([4, 5, 6])
+            )
+            self.assertEqual(ctx.translate_count, 1)
+            for i in range(5, 9):
+                self.assert_results(
+                    dynamic_shape_non_break_inplace_ops,
+                    paddle.randn([i, 5, 6]),
+                )
+                self.assertEqual(ctx.translate_count, 2)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -503,6 +503,8 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
   if ((src_place.GetType() == phi::AllocationType::CPU) &&
       phi::is_accelerat_allocation_type(dst_place.GetType())) {
     copy_kernel_key.set_backend(place2backend(dst_place.GetType()));
+
+    VLOG(4) << "memcpy_h2d kernel_key: " << copy_kernel_key;
     op_attribute = {
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.memcpy_h2d")},
         {"kernel_name", pir::StrAttribute::get(ctx, "memcpy_h2d")},
@@ -510,7 +512,20 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
         {"dst_place_type", pir::Int32Attribute::get(ctx, 1)}};
   } else if (phi::is_accelerat_allocation_type(src_place.GetType()) &&
              (dst_place.GetType() == phi::AllocationType::CPU)) {
-    copy_kernel_key.set_backend(place2backend(src_place.GetType()));
+    if (src_place.GetType() == phi::AllocationType::CUSTOM) {
+      paddle::experimental::detail::KernelKeyParser kernel_key_parser;
+
+      auto fake_tensors = PrepareFakeTensors(in);
+      for (auto& fake_tensor : fake_tensors) {
+        kernel_key_parser.AssignKernelKeySet(*fake_tensor);
+      }
+      auto kernel_key = kernel_key_parser.key_set.GetHighestPriorityKernelKey();
+      copy_kernel_key.set_backend(kernel_key.backend());
+
+    } else {
+      copy_kernel_key.set_backend(place2backend(src_place.GetType()));
+    }
+    VLOG(4) << "memcpy_d2h kernel_key: " << copy_kernel_key;
 
     std::string copy_kernel_name = "memcpy_d2h";
     if (in.type().isa<AllocatedDenseTensorArrayType>()) {

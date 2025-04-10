@@ -290,4 +290,19 @@ TEST(Simplify, Case2) {
   ASSERT_TRUE((SimplifyDimExpr(dim_expr)) == expected);
 }
 
+TEST(Simplify, Case3) {
+  DimExpr S3{"S3"};
+  DimExpr S4{"S4"};
+  DimExpr S5{"S5"};
+  DimExpr S7{"S7"};
+  DimExpr S8{"S8"};
+  DimExpr dim_expr = Mul<DimExpr>{List<DimExpr>{
+      Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                   Mul<DimExpr>{List<DimExpr>{S7, S8}}},
+      Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                   Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                                Mul<DimExpr>{List<DimExpr>{S7, S8}}}}}};
+  ASSERT_TRUE((SimplifyDimExpr(dim_expr) == dim_expr));  // Need to simplify
+}
+
 }  // namespace symbol::test

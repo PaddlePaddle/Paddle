@@ -1388,6 +1388,130 @@ class _ShardOptimizer(Optimizer):
             param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
 
+    def _fused_comm_before_apply_optimize(self, flags, params_grads):
+        '''
+        In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
+        Below are 2 methods to modify grad partial state by fusing comms before optimize:
+            1) fuse allreduce: Change all partial state in placements to replicate via `allreduce` comms,
+                e.g.
+                    a) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, shard(0), partial] -> [replicate, shard(0), replicate].
+
+            2) fuse reduce_scatter: Keep shard states in placements unchanged, transform others to `shard(dim)`
+               states via `reduce_scatter` comms if possible, or replicate states otherwise. In particular,
+               the `placement[sharding_axis]` should be `shard(0)` if possible.
+                e.g.
+                    a) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
+                    b) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, shard(0), partial ] -> [shard(1), shard(0), replicate]
+        '''
+        new_params_grads = []
+
+        if flags["fuse_allreduce"]:
+            for param, grad in params_grads:
+                new_grad = grad
+                new_placements = copy.deepcopy(grad.placements)
+                for mesh_axis, placement in enumerate(grad.placements):
+                    # 1. Convert all partial states to allreduce states.
+                    if placement.is_partial():
+                        new_placements[mesh_axis] = dist.Replicate()
+
+                if grad.placements != new_placements:
+                    # 2. Add allreduce comms via reshard API.
+                    new_grad = dist.reshard(
+                        grad, grad.process_mesh, new_placements
+                    )
+                new_params_grads.append((param, new_grad))
+
+        elif flags["fuse_reducescatter"]:
+            # Get the first non-shard dim of tensor shape in ascending order.
+            # `shard_dims_set` records if dim is marked as shard in placement.
+            def get_first_can_shard_dim(tensor_shape, shard_dims_set):
+                for dim in range(len(tensor_shape)):
+                    if dim not in shard_dims_set:
+                        return dim
+                return -1
+
+            for param, grad in params_grads:
+                new_placements = copy.deepcopy(grad.placements)
+                new_grad = grad
+                tensor_shape = grad._local_shape
+                shard_dims_set = set()
+
+                # 1. `shard_dims_set` records dims marked as shard in placement.
+                for placement in grad.placements:
+                    if placement.is_shard():
+                        dim = placement.get_dim()
+                        shard_dims_set.add(dim)
+
+                # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
+                dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                if dim != -1:
+                    shard_dims_set.add(dim)
+                    new_placements[self._sharding_axis] = dist.Shard(dim)
+                else:
+                    new_placements[self._sharding_axis] = dist.Replicate()
+
+                for mesh_axis, placement in enumerate(grad.placements):
+                    if mesh_axis == self._sharding_axis:
+                        continue
+                    # 3. Keep shard states in placements unchanged.
+                    if placement.is_shard():
+                        continue
+                    dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                    if dim != -1:
+                        # 4. Turn other placements into shard state if possible.
+                        shard_dims_set.add(dim)
+                        new_placements[mesh_axis] = dist.Shard(dim)
+                    else:
+                        # 5. When all tensor dims are in shard state, set remaining placements to replicate.
+                        new_placements[mesh_axis] = dist.Replicate()
+
+                if grad.placements != new_placements:
+                    # 6. Add reduce_scatter comms via reshard API.
+                    new_grad = dist.reshard(
+                        grad, grad.process_mesh, new_placements
+                    )
+
+                new_params_grads.append((param, new_grad))
+        else:
+            new_params_grads = params_grads
+        return new_params_grads
+
+    def _apply_optimize(
+        self, loss, startup_program, params_grads, param_group_idx=0
+    ):
+        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
+        if paddle.in_dynamic_mode():
+            # Get fuse optimization flag.
+            def get_env(flag_name):
+                if os.getenv(flag_name) in ['True', 'true', '1']:
+                    return True
+                return False
+
+            # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+            # it's controlled by a flag switch and will be removed later.
+            fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+            fuse_reducescatter_in_opt = get_env(
+                "FLAGS_fuse_reducescatter_in_opt"
+            )
+            assert not (
+                fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+            ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+            if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                flags = {}
+                flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                params_grads = self._fused_comm_before_apply_optimize(
+                    flags, params_grads
+                )
+
+        return super()._apply_optimize(
+            loss, startup_program, params_grads, param_group_idx
+        )
+
     def __getattr__(self, item):
         if "_inner_opt" in self.__dict__:
             if item == "_inner_opt":
