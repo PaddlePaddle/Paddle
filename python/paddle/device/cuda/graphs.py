@@ -132,7 +132,7 @@ def copy_var_desc(dst, src):
     """
     dst.set_shape(src.shape)
     dst.set_dtype(src.dtype)
-    dst.set_lod_level(src.lod_level)
+    dst.set_legacy_lod_level(src.legacy_lod_level)
     dst.set_type(src.type)
     dst.set_persistable(src.persistable)
     dst.set_is_parameter(src.is_parameter)

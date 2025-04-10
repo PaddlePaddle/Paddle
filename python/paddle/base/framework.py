@@ -1820,7 +1820,7 @@ class Variable(metaclass=VariableMetaClass):
 
         if legacy_lod_level is not None:
             if is_new_var:
-                self.desc.set_lod_level(legacy_lod_level)
+                self.desc.set_legacy_lod_level(legacy_lod_level)
             else:
                 if legacy_lod_level != self.legacy_lod_level:
                     raise ValueError(
