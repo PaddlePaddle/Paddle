@@ -118,12 +118,12 @@ jobs:
         work_dir: ${{ github.workspace }}
         PADDLE_ROOT: ${{ github.workspace }}
       run: |
-        docker exec -t ${{ env.container_name }} /bin/bash -c -x '
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
         . ../../../proxy
         ulimit -n 102400
         git config --global --add safe.directory ${{ github.workspace }}
         git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} xpu
+        bash -x ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} xpu
         EXCODE=$?
         exit $EXCODE
         '
