@@ -79,10 +79,6 @@ class TestCaseSetMode(Dy2StTestBase):
     def test_set_all(self): ...
 
 
-# class TestCaseBasic(Dy2StTestBase):
-#     def test(self): ...
-
-
 class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
     def test_check_test_case_basic(self):
         test_case = TestCaseBasic()

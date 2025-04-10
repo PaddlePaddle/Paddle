@@ -130,6 +130,7 @@ ALLOW_LIST: dict[type[Diagnostic], list[str]] = {
         "test_tensor_attr_consistency.py",
         "test_partial_program_hook.py",
         "test_jit_backend.py",
+        "test_dygraph_to_static_utils.py",
     ],
 }
 

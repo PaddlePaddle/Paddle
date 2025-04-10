@@ -31,7 +31,10 @@ from typing_extensions import TypeAlias
 import paddle
 from paddle import get_flags, set_flags, static
 from paddle.jit.api import sot_mode_guard
-from paddle.jit.dy2static.utils import ENV_ENABLE_CINN_IN_DY2ST
+from paddle.jit.dy2static.utils import (
+    ENV_ENABLE_CINN_IN_DY2ST,
+    cinn_is_available,
+)
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
@@ -119,10 +122,13 @@ VALID_MODES = [
     (ToStaticMode.AST, IrMode.PT, BackendMode.PHI),
     (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
     (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
-    # For default mode, we test SOT+CINN
-    (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
     (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI),
 ]
+if cinn_is_available():
+    VALID_MODES.append(
+        (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
+    )  # For default mode, we test SOT+CINN
+
 
 DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.AST: [],
@@ -221,7 +227,7 @@ def to_legacy_ir_test(fn):
             ):
                 try:
                     set_flags({pt_in_dy2st_flag: False})
-                    fn(*args, **kwargs)
+                    return fn(*args, **kwargs)
                 finally:
                     set_flags({pt_in_dy2st_flag: original_flag_value})
 
@@ -244,7 +250,7 @@ def to_pt_test(fn):
                     ):
                         try:
                             set_flags({pt_in_dy2st_flag: True})
-                            fn(*args, **kwargs)
+                            return fn(*args, **kwargs)
                         finally:
                             set_flags({pt_in_dy2st_flag: original_flag_value})
 
@@ -256,7 +262,7 @@ def to_pir_test(fn):
     def pir_impl(*args, **kwargs):
         logger.info("[PIR] running pir")
         with pir_dygraph_guard():
-            fn(*args, **kwargs)
+            return fn(*args, **kwargs)
 
     return pir_impl
 
@@ -509,11 +515,21 @@ def test_legacy_and_pt_and_pir(fn):
     return fn
 
 
+def test_phi_only(fn):
+    fn = set_backend_mode(BackendMode.PHI)(fn)
+    return fn
+
+
+def test_cinn_only(fn):
+    fn = set_backend_mode(BackendMode.CINN)(fn)
+    return fn
+
+
 # Some decorators for save CI time
 def test_default_mode_only(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
-    fn = set_ir_mode(IrMode.PT)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
     fn = set_backend_mode(BackendMode.PHI)(fn)
     return fn
 
