@@ -142,7 +142,7 @@ jobs:
   #         tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
   #       fi
   #       cd ${{ github.workspace }}/..
-  #       tar --use-compress-program="pigz" -cpPf build.tar.gz Paddle
+  #       tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
   #       # source /home/opt/deck/1.0/etc/bashrc
   #       python3 ${bos_file} build.tar.gz paddle-github-action/PR/kunlun-bxcheck/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
   #       cd ${{ github.workspace }}/dist
@@ -172,7 +172,7 @@ jobs:
     #     tar --use-compress-program="pigz" --strip-components=1 -xpf build.tar.gz
     #     rm build.tar.gz
 
-    - name:  Determine the runner
+    - name: Determine the runner
       run: |
         cd ..
         tar --use-compress-program="pigz" --strip-components=1 -xpf build.tar.gz
