@@ -652,6 +652,9 @@ class PaddleToTensorRTConverter:
                         tensor_data, dtype=out_dtype
                     ).tolist()
 
+                    if isinstance(constant_array, (int, float)):
+                        constant_array = [constant_array]
+
                     # convert builtin.constant to pd_op.full_int_array/full and then delete it
                     with paddle.pir.core.program_guard(self.program):
                         paddle.base.libpaddle.pir.reset_insertion_point_to_start()
