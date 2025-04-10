@@ -168,6 +168,22 @@ adt::Result<std::optional<DrrNativeIrOp>> GetApDrrNativeIrOpAnchor(
   return native_ir_op;
 }
 
+adt::Result<std::vector<DrrIrValue>> GetResPtnInputs(const DrrCtx& drr_ctx) {
+  std::vector<DrrIrValue> ret;
+  ADT_LET_CONST_REF(res_ptn_ctx, drr_ctx->GetResultPatternCtx());
+  const auto& nodes = res_ptn_ctx->node_arena->nodes();
+  for (const auto& drr_node : nodes) {
+    ADT_LET_CONST_REF(upstreams, drr_node.node().UpstreamNodes());
+    if (upstreams.size() == 0) {
+      const auto& opt_drr_ir_value = DrrIrValue::OptCastFrom(drr_node);
+      if (opt_drr_ir_value.has_value()) {
+        ret.push_back(opt_drr_ir_value.value());
+      }
+    }
+  }
+  return ret;
+}
+
 adt::Result<std::vector<DrrIrValue>> GetResPtnOutputs(const DrrCtx& drr_ctx) {
   std::vector<DrrIrValue> ret;
   ADT_LET_CONST_REF(res_ptn_ctx, drr_ctx->GetResultPatternCtx());
@@ -1609,6 +1625,198 @@ struct ApRewriter {
 struct ConstraintApplier {
   adt::Result<bool> Match(const DrrCtx& drr_ctx,
                           const GraphMatchCtx& graph_match_ctx) {
+    if (NeedCheckExtraUse(drr_ctx)) {
+      ADT_LET_CONST_REF(no_extra_use_for_tmps,
+                        FindExtraUseForTmpValues(drr_ctx, graph_match_ctx));
+      if (!no_extra_use_for_tmps) {
+        return false;
+      }
+    }
+    ADT_LET_CONST_REF(constraint_ok, CheckConstraint(drr_ctx, graph_match_ctx));
+    if (!constraint_ok) {
+      return false;
+    }
+    return true;
+  }
+
+  bool NeedCheckExtraUse(const DrrCtx& drr_ctx) {
+    if (!drr_ctx->drr_pass_type.has_value()) {
+      return false;
+    }
+    return drr_ctx->drr_pass_type.value().Match(
+        [&](const ap::drr::AbstractDrrPassType&) -> bool { return true; },
+        [&](const ap::drr::AccessTopoDrrPassType&) -> bool { return false; },
+        [&](const ap::drr::ReifiedDrrPassType&) -> bool { return true; });
+  }
+
+  adt::Result<bool> FindExtraUseForTmpValues(
+      const DrrCtx& drr_ctx, const GraphMatchCtx& graph_match_ctx) {
+    bool any_tmp_value_has_extra_use = false;
+    auto FindExtraUseForTmpValue =
+        [&](const DrrIrValue& ir_value) -> adt::Result<adt::LoopCtrl> {
+      ADT_LET_CONST_REF(has_extra_use,
+                        HasExtraUse(drr_ctx, graph_match_ctx, ir_value));
+      if (has_extra_use) {
+        any_tmp_value_has_extra_use = true;
+        return adt::Break{};
+      } else {
+        return adt::Continue{};
+      }
+    };
+    ADT_RETURN_IF_ERR(VisitEachSrcPtnTmpValue(
+        drr_ctx, graph_match_ctx, FindExtraUseForTmpValue));
+    return any_tmp_value_has_extra_use;
+  }
+
+  adt::Result<bool> HasExtraUse(const DrrCtx& drr_ctx,
+                                const GraphMatchCtx& graph_match_ctx,
+                                const DrrIrValue& ir_value) {
+    bool has_extra_use = false;
+    auto FindExtraUse =
+        [&](const PirNode& downstream) -> adt::Result<adt::LoopCtrl> {
+      ADT_LET_CONST_REF(matched, IsPirNodeMatched(graph_match_ctx, downstream));
+      if (matched) {
+        return adt::Continue{};
+      } else {
+        has_extra_use = true;
+        return adt::Break{};
+      }
+    };
+    ADT_RETURN_IF_ERR(
+        VisitDownstreamPirNode(graph_match_ctx, ir_value, FindExtraUse));
+    return has_extra_use;
+  }
+
+  adt::Result<bool> IsPirNodeMatched(const GraphMatchCtx& graph_match_ctx,
+                                     const PirNode& downstream) {
+    return graph_match_ctx->GetOptMatchedSmallGraphNode(downstream).has_value();
+  }
+
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitDownstreamPirNode(
+      const GraphMatchCtx& graph_match_ctx,
+      const DrrIrValue& ir_value,
+      const YieldT& Yield) {
+    ADT_CHECK(ir_value.template Has<DrrNativeIrValue>());
+    ADT_LET_CONST_REF(pir_node,
+                      graph_match_ctx->GetSoleBigGraphNode(ir_value.node()));
+    DefaultGraph<PirNode> pir_graph{};
+    auto DoEachPirNode = [&](const PirNode& pir_node) -> adt::Result<adt::Ok> {
+      ADT_RETURN_IF_ERR(Yield(pir_node));
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(pir_graph.VisitDownstreamNodes(pir_node, DoEachPirNode));
+    return adt::Ok{};
+  }
+
+  template <typename YieldT>
+  adt::Result<adt::Ok> VisitEachSrcPtnTmpValue(
+      const DrrCtx& drr_ctx,
+      const GraphMatchCtx& graph_match_ctx,
+      const YieldT& Yield) {
+    std::unordered_set<DrrIrValue> inputs;
+    std::unordered_set<DrrIrValue> outputs;
+    std::unordered_set<DrrIrValue> ir_values_reachable_to_outputs;
+    ADT_RETURN_IF_ERR(GetSrcPtnIrValues(
+        drr_ctx, &inputs, &outputs, &ir_values_reachable_to_outputs));
+    for (const auto& input : inputs) {
+      ADT_CHECK(ir_values_reachable_to_outputs.count(input) == 0)
+          << adt::errors::ValueError{
+                 "There are result pattern inputs not reachable to result "
+                 "pattern outputs"};
+    }
+    for (const auto& ir_value : ir_values_reachable_to_outputs) {
+      if (inputs.count(ir_value)) {
+        continue;
+      }
+      if (outputs.count(ir_value)) {
+        continue;
+      }
+      ADT_LET_CONST_REF(loop_ctrl, Yield(ir_value));
+      if (loop_ctrl.template Has<adt::Break>()) {
+        break;
+      } else {
+        ADT_CHECK(loop_ctrl.template Has<adt::Continue>());
+      }
+    }
+    return adt::Ok{};
+  }
+
+  adt::Result<adt::Ok> GetSrcPtnIrValues(
+      const DrrCtx& drr_ctx,
+      std::unordered_set<DrrIrValue>* inputs,
+      std::unordered_set<DrrIrValue>* outputs,
+      std::unordered_set<DrrIrValue>* ir_values_reachable_to_outputs) {
+    ADT_LET_CONST_REF(res_ptn_inputs, GetResPtnInputs(drr_ctx));
+    ADT_LET_CONST_REF(res_ptn_outputs, GetResPtnOutputs(drr_ctx));
+    ap::drr::ResultPatternHelper helper{drr_ctx};
+    for (const auto& res_ptn_input : res_ptn_inputs) {
+      const auto& src_ptn_node =
+          helper.SrcPtnIrValue4ResPtnIrValue(res_ptn_input);
+      if (src_ptn_node.has_value()) {
+        inputs->insert(src_ptn_node.value());
+      }
+    }
+    for (const auto& res_ptn_output : res_ptn_outputs) {
+      const auto& src_ptn_node =
+          helper.SrcPtnIrValue4ResPtnIrValue(res_ptn_output);
+      if (src_ptn_node.has_value()) {
+        outputs->insert(src_ptn_node.value());
+      }
+    }
+    using YieldT = typename ap::adt::TopoWalker<DrrGraphNode>::NodeHandlerType;
+    using Ok = adt::Result<adt::Ok>;
+    ap::drr::DefaultDrrGraphDescriptor drr_graph{};
+    auto ForEachNext = [&](const DrrGraphNode& node,
+                           const YieldT& Yield) -> Ok {
+      ADT_LET_CONST_REF(drr_node, node.Get());
+      const auto& drr_value = DrrIrValue::OptCastFrom(drr_node);
+      if (drr_value.has_value()) {
+        if (outputs->count(drr_value.value())) {
+          // `drr_value` is sink of the subgraph.
+          return adt::Ok{};
+        } else {
+          return drr_graph.VisitDownstreamNodes(node, Yield);
+        }
+      } else {
+        return drr_graph.VisitDownstreamNodes(node, Yield);
+      }
+    };
+    auto ForEachPrev = [&](const DrrGraphNode& node,
+                           const YieldT& Yield) -> Ok {
+      ADT_LET_CONST_REF(drr_node, node.Get());
+      const auto& drr_value = DrrIrValue::OptCastFrom(drr_node);
+      if (drr_value.has_value()) {
+        if (inputs->count(drr_value.value())) {
+          // `drr_value` is sink of the subgraph.
+          return adt::Ok{};
+        } else {
+          return drr_graph.VisitUpstreamNodes(node, Yield);
+        }
+      } else {
+        return drr_graph.VisitUpstreamNodes(node, Yield);
+      }
+    };
+    // Reversely walk subgraph
+    ap::adt::TopoWalker<DrrGraphNode> reverse_graph(ForEachNext, ForEachPrev);
+    std::list<DrrGraphNode> starts{};
+    for (const auto& start : *outputs) {
+      starts.emplace_back(start.node());
+    }
+    auto DoEachNode = [&](const DrrGraphNode& drr_graph_node) -> Ok {
+      ADT_LET_CONST_REF(drr_node, drr_graph_node.Get());
+      const auto& drr_ir_value = DrrIrValue::OptCastFrom(drr_node);
+      if (drr_ir_value.has_value()) {
+        ir_values_reachable_to_outputs->insert(drr_ir_value.value());
+      }
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(reverse_graph(starts.begin(), starts.end(), DoEachNode));
+    return adt::Ok{};
+  }
+
+  adt::Result<bool> CheckConstraint(const DrrCtx& drr_ctx,
+                                    const GraphMatchCtx& graph_match_ctx) {
     if (!drr_ctx->constraint_func.has_value()) {
       return true;
     }

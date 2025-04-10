@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include "paddle/ap/include/adt/adt.h"
 #include "paddle/ap/include/drr/native_ir_value.h"
 #include "paddle/ap/include/drr/node.h"
@@ -53,3 +54,16 @@ struct IrValue : public IrValueImpl {
 };
 
 }  // namespace ap::drr
+
+namespace std {
+
+template <>
+struct hash<ap::drr::IrValue> {
+  std::size_t operator()(const ap::drr::IrValue& ir_value) const {
+    return ir_value.Match([&](const auto& impl) -> std::size_t {
+      return reinterpret_cast<std::size_t>(impl.__adt_rc_shared_ptr_raw_ptr());
+    });
+  }
+};
+
+}  // namespace std
