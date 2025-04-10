@@ -1934,8 +1934,8 @@ void HandleForSpecialOp(
           if (parent_op->name() == "pd_op.while" && i >= 1) {
             // make sure while's first iter place same as next iter place
             auto first_value = (*map_value_pair)[parent_op->operand_source(i)];
-            if arsePhiPlace (first_value.type().GetType() !=
-                             phi::AllocationType::UNDEFINED) {
+            if (ParsePhiPlace(first_value.type()).GetType() !=
+                phi::AllocationType::UNDEFINED) {
               arg_place = ParsePhiPlace(first_value.type());
             }
           }
