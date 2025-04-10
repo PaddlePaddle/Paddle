@@ -1090,6 +1090,17 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "File path of predefined input dynamic dimension specification.");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_debug
+ * Since Version: 3.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_cinn_debug=true would enable debug log for CINN.
+ */
+PHI_DEFINE_EXPORTED_bool(cinn_debug,
+                         false,
+                         "Whether to enable debug log for CINN.");
+
 #endif
 
 /*
