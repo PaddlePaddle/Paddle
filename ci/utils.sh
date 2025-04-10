@@ -251,7 +251,8 @@ function determine_kunlun_runner() {
         exit 1
     fi
     cd $GITHUB_WORKSPACE
-    rm -rf * .[^.]* .??*
+    # rm -rf * .[^.]* .??*
+}
 
 function cmake_base() {
     # Build script will not fail if *.deb does not exist

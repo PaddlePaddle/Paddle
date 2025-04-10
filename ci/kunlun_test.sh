@@ -178,8 +178,8 @@ cd ${PADDLE_ROOT}/build
 
 echo "::group::Install python requirements dependencies..."
 pip3.10 install --upgrade pip
-pip3.10 install -r "/paddle/python/requirements.txt"
-pip3.10 install -r "/paddle/python/unittest_py/requirements.txt"
+pip3.10 install -r "${PADDLE_ROOT}/python/requirements.txt"
+pip3.10 install -r "${PADDLE_ROOT}/python/unittest_py/requirements.txt"
 pip3.10 install PyGithub
 
 pip install hypothesis

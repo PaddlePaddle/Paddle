@@ -26,8 +26,8 @@ jobs:
 
   kunlun:
     name: PR-CI-Kunlun
-    uses: ./.github/workflows/_Kunlun-bxcheck.yml
-    # needs: clone
+    uses: ./.github/workflows/_XPU-kunlun.yml
+    needs: clone
 
   coverage:
     name: PR-CI-Coverage
