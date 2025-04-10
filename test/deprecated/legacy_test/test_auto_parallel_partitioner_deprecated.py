@@ -452,7 +452,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
         ]
@@ -545,7 +545,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
         ]
@@ -844,7 +844,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
         ]
         self.assertTrue(dist_ops == ref_ops)
@@ -951,7 +951,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
         ]
         self.assertTrue(dist_ops == ref_ops)
@@ -1320,7 +1320,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'transpose2',
             'reshape2',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
             'elementwise_add',
@@ -1329,7 +1329,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             'elementwise_add',
             'gelu',
             'matmul_v2',
-            'c_allreduce_sum',
+            'all_reduce',
             'elementwise_add',
             'dropout',
             'elementwise_add',
