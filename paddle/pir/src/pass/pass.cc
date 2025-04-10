@@ -288,6 +288,12 @@ void PassInstrumentor::RunAfterAnalysis(const std::string& name,
   }
 }
 
+void DeadCode() {
+  for (size_t i = 0; i < 10; ++i) {
+    VLOG(4) << "Dead code";
+  }
+}
+
 void PassInstrumentor::AddInstrumentation(
     std::unique_ptr<PassInstrumentation> pi) {
   impl_->instrumentations.emplace_back(std::move(pi));

@@ -1824,3 +1824,16 @@ def json_to_pdmodel(net, input_spec, load_path, save_path):
     net.set_state_dict(name_state_dict)
     with paddle.pir_utils.OldIrGuard():
         paddle.jit.save(net, save_path, input_spec)
+
+
+def dead_code():
+    """
+    This function is used to mark the code that is not covered by the test cases.
+    """
+    a = 1
+    b = 2
+    c = 3
+    d = 4
+    e = 5
+    f = 6
+    return a + b + c + d + e + f
