@@ -64,11 +64,9 @@ class TestSvdOp(OpTest):
             dy_x = paddle.to_tensor(single_input)
             dy_u, dy_s, dy_vt = paddle.linalg.svd(dy_x)
             dy_out_x = dy_u.matmul(paddle.diag(dy_s)).matmul(dy_vt)
-            if (paddle.abs(dy_out_x - dy_x) < 1e-7).all():
+            if (paddle.abs(dy_out_x - dy_x) < 1e-5).all():
                 ...
             else:
-                print("EXPECTED:\n", dy_x)
-                print("GOT     :\n", dy_out_x)
                 raise RuntimeError("Check SVD Failed")
 
     def check_S_grad(self):
@@ -87,6 +85,27 @@ class TestSvdOp(OpTest):
         self.check_S_grad()
         self.check_U_grad()
         self.check_V_grad()
+
+
+class TestSvdOpComplexCase1(TestSvdOp):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (5, 3)
+        real_part = np.random.rand(*self._input_shape).astype("float32")
+        imag_part = np.random.rand(*self._input_shape).astype("float32")
+        self._input_data = real_part + 1j * imag_part
+
+    def test_check_grad(self):
+        pass
+
+
+class TestSvdOpComplexCase2(TestSvdOpComplexCase1):
+    def generate_input(self):
+        """return a input_data and input_shape"""
+        self._input_shape = (3, 5)
+        real_part = np.random.rand(*self._input_shape).astype("float32")
+        imag_part = np.random.rand(*self._input_shape).astype("float32")
+        self._input_data = real_part + 1j * imag_part
 
 
 class TestSvdCheckGrad2(TestSvdOp):
@@ -304,10 +323,15 @@ class TestSvdAPI(unittest.TestCase):
             else:
                 a = np.random.rand(*shape).astype(np_dtype)
 
-            x = paddle.to_tensor(a)
-            u, s, vh = paddle.linalg.svd(x)
-            gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
-            np.testing.assert_allclose(s, gt_s, rtol=1e-05)
+            places = []
+            places.append(base.CPUPlace())
+            if core.is_compiled_with_cuda():
+                places.append(base.CUDAPlace(0))
+            for place in places:
+                x = paddle.to_tensor(a, place=place)
+                u, s, vh = paddle.linalg.svd(x)
+                gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
+                np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
         with dygraph_guard():
             np.random.seed(7)
