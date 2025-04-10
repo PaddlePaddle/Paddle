@@ -149,9 +149,6 @@ def filter_all_collective_op_indices(block):
     # NOTE: should add more collective ops
     all_collective_ops = {
         "c_allreduce_sum",
-        "c_allreduce_prod",
-        "c_allreduce_min",
-        "c_allgather",
         "c_broadcast",
         "broadcast",
         "all_gather",

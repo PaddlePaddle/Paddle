@@ -3025,53 +3025,6 @@
   outputs :
     out : Out
 
-- op : pull_box_sparse
-  inputs :
-    { w : W, ids: Ids}
-  outputs :
-    out : Out
-  attrs :
-    sparse : is_sparse
-  extra :
-    attrs : [bool is_sparse = false, bool is_distributed = false, int size = 1]
-
-- op : pull_gpups_sparse
-  backward : push_gpups_sparse
-  inputs :
-    {w : W, ids : Ids}
-  outputs :
-    out : Out
-
-- op : pull_sparse_v2
-  inputs :
-    { ids : Ids, w : W}
-  outputs :
-    out : Out
-  extra :
-    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
-
-- op : push_box_sparse
-  inputs :
-    ids: Ids
-  outputs :
-    out : Out
-  attrs :
-    sparse : is_sparse
-
-- op : push_dense
-  inputs :
-    ids : Ids
-  attrs :
-    {table_id : TableId, scale_data_norm : ScaleDataNorm, input_names: InputNames}
-
-- op : push_sparse_v2
-  inputs :
-    { x : Ids, W : w}
-  outputs :
-    out : Out
-  extra :
-    attrs : [int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_labe_lname = "", int padding_id = 0, bool scales_parse_grad = true, 'str[] input_names = {}', bool is_distributed = true]
-
 - op : put_along_axis
   backward : put_along_axis_grad
   inputs :
