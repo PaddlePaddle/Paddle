@@ -33,7 +33,7 @@ if [ "$4" == "py3" ]; then
     echo "::endgroup::"
 fi
 
-if [ "$4" == "kunlun" ]; then
+if [ "$4" == "xpu" ]; then
     echo "::group::Installing ninja-build"
     apt install ninja-build -y
     echo "::endgroup::"
@@ -346,7 +346,7 @@ EOF
 run_setup "$@"
 
 if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
-echo "=====================build summary======================"
-cat ${PADDLE_ROOT}/build/build_summary.txt
-echo "========================================================"
+    echo "=====================build summary======================"
+    cat ${PADDLE_ROOT}/build/build_summary.txt
+    echo "========================================================"
 fi

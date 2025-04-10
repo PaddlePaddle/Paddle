@@ -123,7 +123,7 @@ jobs:
         ulimit -n 102400
         git config --global --add safe.directory ${{ github.workspace }}
         git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} kunlun
+        bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} xpu
         EXCODE=$?
         exit $EXCODE
         '
