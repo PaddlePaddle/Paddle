@@ -28,9 +28,9 @@ void SerializeToStream(std::ostream &os,
   }
   {
     // the 2st field, LoD information
-    // uint64_t lod_level
-    // uint64_t lod_level_1 size in byte.
-    // int*     lod_level_1 data
+    // uint64_t legacy_lod_level
+    // uint64_t legacy_lod_level_1 size in byte.
+    // int*     legacy_lod_level_1 data
     // ...
     auto lod = tensor.lod();
     uint64_t size = lod.size();
@@ -81,11 +81,12 @@ void DeserializeFromStream(std::istream &is,
             version));
   }
   {
-    // the 2st field, LoD information
-    uint64_t lod_level = 0;
-    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    // the 2st field, LegacyLoD information
+    uint64_t legacy_lod_level = 0;
+    is.read(reinterpret_cast<char *>(&legacy_lod_level),
+            sizeof(legacy_lod_level));
     auto &lod = *tensor->mutable_lod();
-    lod.resize(lod_level);
+    lod.resize(legacy_lod_level);
   }
   // the 3st filed, Tensor
   TensorFromStream(
@@ -109,12 +110,13 @@ void DeserializeFromStream(std::istream &is,
             version));
   }
   {
-    // the 2st field, LoD information
-    uint64_t lod_level = 0;
-    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    // the 2st field, LegacyLoD information
+    uint64_t legacy_lod_level = 0;
+    is.read(reinterpret_cast<char *>(&legacy_lod_level),
+            sizeof(legacy_lod_level));
     auto &lod = *tensor->mutable_lod();
-    lod.resize(lod_level);
-    for (uint64_t i = 0; i < lod_level; ++i) {
+    lod.resize(legacy_lod_level);
+    for (uint64_t i = 0; i < legacy_lod_level; ++i) {
       uint64_t size = 0;
       is.read(reinterpret_cast<char *>(&size), sizeof(size));
       std::vector<size_t> tmp(size / sizeof(size_t));
