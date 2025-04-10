@@ -321,7 +321,7 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
         return var_dict
 
 
-def _run_dygraph(instance, input, program_holder):
+def _run_dygraph(instance, input, program_holder, method_name):
     # 1. prepare inputs, outputs, attrs
     input_tensors = []
     input_tensor_names = []
@@ -348,35 +348,37 @@ def _run_dygraph(instance, input, program_holder):
         input_tensor_names.append(tensor.name)
         input_tensors.append(tensor)
 
-    persistable_tensors = []
-    origin_persistable_var_name = [
-        program_holder._suffix_varname_dict[var_name]
-        for var_name in program_holder.persistable_names
-    ]
-    for var_name in origin_persistable_var_name:
-        dy_var_name = instance._persistable_var_name_dict[var_name]
-        if dy_var_name in instance._parameters:
-            persistable_tensors.append(instance._parameters[dy_var_name])
-        elif dy_var_name in instance._buffers:
-            persistable_tensors.append(instance._buffers[dy_var_name])
-        else:
-            raise ValueError(
-                f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
-            )
+    if instance._get_partial_program_layer(method_name) is None:
+        persistable_tensors = []
+        origin_persistable_var_name = [
+            program_holder._suffix_varname_dict[var_name]
+            for var_name in program_holder.persistable_names
+        ]
+        for var_name in origin_persistable_var_name:
+            dy_var_name = instance._persistable_var_name_dict[var_name]
+            if dy_var_name in instance._parameters:
+                persistable_tensors.append(instance._parameters[dy_var_name])
+            elif dy_var_name in instance._buffers:
+                persistable_tensors.append(instance._buffers[dy_var_name])
+            else:
+                raise ValueError(
+                    f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
+                )
 
-    from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
+        from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
 
-    inputs = program_holder.input_vars
-    outputs = program_holder.output_vars
-    parameters = (persistable_tensors, program_holder.persistable_vars)
+        inputs = program_holder.input_vars
+        outputs = program_holder.output_vars
+        parameters = (persistable_tensors, program_holder.persistable_vars)
 
-    layer = PartialProgramLayer(
-        program_holder.infer_program,
-        inputs,
-        outputs,
-        parameters,
-    )
-    instance.layer = layer
+        layer = PartialProgramLayer(
+            program_holder.infer_program,
+            inputs,
+            outputs,
+            parameters,
+        )
+        instance._set_partial_program_layer(method_name, layer)
+    layer = instance._get_partial_program_layer(method_name)
     if instance._is_test:
         layer.training = False
     else:
@@ -387,7 +389,7 @@ def _run_dygraph(instance, input, program_holder):
         else:
             layer.training = True
 
-    return instance.layer(input_tensors)
+    return layer(input_tensors)
 
 
 def _run_static_graph(inputs, program_holder, src_program):
@@ -589,6 +591,7 @@ class PirTranslatedLayer(layers.Layer):
 
         self._is_test = True
         self._input_args_names = None
+        self._partial_program_layers = {}
 
     @staticmethod
     @framework.dygraph_only
@@ -640,7 +643,7 @@ class PirTranslatedLayer(layers.Layer):
             # When using jit.save, it runs in static graph mode.
             # Run in dynamic graph mode when the model is inferring.
             if in_dynamic_mode():
-                return _run_dygraph(self, input, program_holder)
+                return _run_dygraph(self, input, program_holder, method_name)
             else:
                 return _run_static_graph(
                     input, program_holder, program_holder.infer_program
@@ -792,3 +795,9 @@ class PirTranslatedLayer(layers.Layer):
             output_spec.append(spec)
 
         return output_spec
+
+    def _get_partial_program_layer(self, method_name):
+        return self._partial_program_layers.get(method_name, None)
+
+    def _set_partial_program_layer(self, method_name, layer):
+        self._partial_program_layers[method_name] = layer

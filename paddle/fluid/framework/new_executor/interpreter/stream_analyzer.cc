@@ -202,8 +202,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (phi::is_gpu_place(place_) || phi::is_custom_place(place_) ||
-      phi::is_xpu_place(place_)) {
+  if (phi::is_gpu_place(place_) || phi::is_custom_place(place_)) {
     VLOG(6) << "Parse DeviceContext for " << op_type
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {

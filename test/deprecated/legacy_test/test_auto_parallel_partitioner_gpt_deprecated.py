@@ -962,7 +962,14 @@ class TestGPTPartitioner(unittest.TestCase):
                 op.desc.output_arg_names()[0].split("@")[0]
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
-                    op.type == "c_allreduce_sum"
+                    (
+                        op.type == "c_allreduce_sum"
+                        or (
+                            op.type == "all_reduce"
+                            and op.attr('reduce_type')
+                            == paddle.distributed.ReduceOp.SUM
+                        )
+                    )
                     and op.attr('op_role') == 1
                     and op.desc.attr("ring_id") == mp_ring_id
                 )
@@ -973,7 +980,14 @@ class TestGPTPartitioner(unittest.TestCase):
                 op.desc.output_arg_names()[0].split("@")[0]
                 for op in auto_parallel_main_prog.global_block().ops
                 if (
-                    op.type == "c_allreduce_sum"
+                    (
+                        op.type == "c_allreduce_sum"
+                        or (
+                            op.type == "all_reduce"
+                            and op.attr('reduce_type')
+                            == paddle.distributed.ReduceOp.SUM
+                        )
+                    )
                     and op.desc.attr("ring_id") == dp_ring_id
                 )
             ]

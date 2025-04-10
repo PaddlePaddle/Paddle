@@ -150,9 +150,7 @@ class DualPipeVParallel(PipelineParallel):
         inputs = self._get_forward_inputs(micro_datasets, phase, acc_id)
 
         if self.overlapped_forward_backward:
-            schedule_chunk = self._layers.forward(
-                inputs, chunk_id=phase, overlap_schedule_mode=True
-            )
+            schedule_chunk = self._layers.get_schedule_chunk(chunk_id=phase)
             outputs = schedule_chunk.forward(inputs)
         else:
             schedule_chunk = None
@@ -178,12 +176,13 @@ class DualPipeVParallel(PipelineParallel):
     def _store_backward_tensors(self, phase, acc_id, input_grads=None):
         if input_grads is None:
             inputs = self.input_tensors[phase][acc_id]
-            self.input_tensors[phase][acc_id] = None
             input_grads = [
                 t.grad
                 for t in inputs
                 if (t is not None and not t.stop_gradient)
             ]
+        self.input_tensors[phase][acc_id] = None
+
         if isinstance(input_grads, paddle.Tensor):
             input_grads = (input_grads,)
         if self.is_pipeline_last_stage() and phase == 1:
@@ -223,6 +222,8 @@ class DualPipeVParallel(PipelineParallel):
                     input_grads = loss_fn_node.backward(scaler=self.scaler)
                     backward_chunk = self.schedule_chunks[phase][acc_id]
                     input_grads = backward_chunk.backward(input_grads)
+                    self.loss_fn_chunks[acc_id] = None
+                    self.schedule_chunks[phase][acc_id] = None
                 else:
                     if self.scaler:
                         paddle.autograd.backward(self.scaler.scale(loss))
@@ -233,6 +234,7 @@ class DualPipeVParallel(PipelineParallel):
                 if self.overlapped_forward_backward:
                     backward_chunk = self.schedule_chunks[phase][acc_id]
                     input_grads = backward_chunk.backward(output_grads)
+                    self.schedule_chunks[phase][acc_id] = None
                 else:
                     if len(outputs) > 0:
                         outputs = [t for t in outputs if not t.stop_gradient]
@@ -296,9 +298,7 @@ class DualPipeVParallel(PipelineParallel):
             )
 
         # forward & backward
-        forward_chunk = self._layers.forward(
-            None, chunk_id=forward_phase, overlap_schedule_mode=True
-        )
+        forward_chunk = self._layers.get_schedule_chunk(chunk_id=forward_phase)
         backward_chunk = self.schedule_chunks[backward_phase][backward_acc_id]
         forward_outputs, forward_loss, backward_input_grads = (
             self._layers.overlapped_forward_backward(
@@ -311,6 +311,7 @@ class DualPipeVParallel(PipelineParallel):
                 self.scaler,
             )
         )
+        self.schedule_chunks[backward_phase][backward_acc_id] = None
 
         # post-forward
         self._store_forward_tensors(

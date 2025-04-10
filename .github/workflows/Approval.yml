@@ -19,7 +19,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 10
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 200
+
+      - name: Update paddle
+        run: |
+          git switch -c test
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git fetch upstream $BRANCH
+          git checkout $BRANCH
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git merge test
 
       - name: Check bypass
         id: check-bypass
@@ -31,7 +42,4 @@ jobs:
       - name: Display Required Approvers
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
-          git switch -c test
-          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          git fetch upstream $BRANCH
-          bash ci/check_approval.sh
+          bash -x ci/check_approval.sh
