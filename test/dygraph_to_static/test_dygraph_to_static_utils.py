@@ -62,6 +62,11 @@ class TestCaseDisableTestCase(Dy2StTestBase):
     @disable_test_case((ToStaticMode.AST, IrMode.PIR, BackendMode.PHI))
     def test_disable_multiple(self): ...
 
+    @disable_test_case(
+        (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN | BackendMode.PHI)
+    )
+    def test_disable_multiple_with_or(self): ...
+
 
 class TestCaseSetMode(Dy2StTestBase):
     @set_to_static_mode(ToStaticMode.SOT)
@@ -106,6 +111,19 @@ class TestCheckTestCases(unittest.TestCase, CheckTestCaseExistsMixin):
                 (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
                 (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
                 (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
+            ]:
+                self.check_test_case_not_exists(
+                    test_case, case_name, mode_tuple
+                )
+            else:
+                self.check_test_case_exists(test_case, case_name, mode_tuple)
+
+        case_name = "test_disable_multiple_with_or"
+        self.assert_not_hasattr(test_case, case_name)
+        for mode_tuple in VALID_MODES:
+            if mode_tuple in [
+                (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
+                (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
             ]:
                 self.check_test_case_not_exists(
                     test_case, case_name, mode_tuple
