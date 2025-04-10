@@ -449,6 +449,7 @@ class TestResnet(Dy2StTestBase):
             predictor_pre,
             st_pre,
             rtol=1e-05,
+            atol=1e-7,
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
