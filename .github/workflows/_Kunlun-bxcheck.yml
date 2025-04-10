@@ -174,6 +174,8 @@ jobs:
 
     - name:  Determine the runner
       run: |
+        cd ..
+        tar --use-compress-program="pigz" --strip-components=1 -xpf build.tar.gz
         runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
         echo $runner_name
         source ${ci_scripts}/utils.sh
