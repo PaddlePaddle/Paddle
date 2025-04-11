@@ -45,7 +45,9 @@ hidden_size = 16
 class SimpleNet(Layer):
     def __init__(self):
         super().__init__()
-        self.linear = nn.Linear(vocab_size, hidden_size)
+        self.linear_local = nn.Linear(vocab_size, vocab_size)
+        self.linear_local_0 = nn.Linear(vocab_size, vocab_size)
+        self.linear_shared = nn.Linear(vocab_size, hidden_size)
 
         self.softmax_weight = self.create_parameter(
             shape=[hidden_size, vocab_size]
@@ -55,13 +57,16 @@ class SimpleNet(Layer):
         )
 
     def forward(self, x1, x2, y1):
-        x_linear = self.linear(x1)
-        fc = paddle.matmul(x_linear, self.softmax_weight)
+        x_linear_local = self.linear_local(x1)
+        x_linear_local_0 = self.linear_local_0(x_linear_local)
+        x_linear_shared = self.linear_shared(x_linear_local_0)
+        fc = paddle.matmul(x_linear_shared, self.softmax_weight)
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, vocab_size])
 
         projection = (
-            paddle.matmul(projection, self.linear.weight) + self.linear.bias
+            paddle.matmul(projection, self.linear_shared.weight)
+            + self.linear_shared.bias
         )
 
         loss = paddle.nn.functional.softmax_with_cross_entropy(
@@ -82,6 +87,17 @@ class SharedLinear(Layer):
     @property
     def linear_bias(self):
         return self.linear.bias
+
+    def forward(self, args):
+        x1, x2 = args
+        x_linear = self.linear(x1)
+        return x_linear, x2
+
+
+class LocalLinear(Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(vocab_size, vocab_size)
 
     def forward(self, args):
         x1, x2 = args
@@ -130,6 +146,8 @@ class LossNet(Layer):
 class SimpleNetPipe(PipelineLayer):
     def __init__(self, **kwargs):
         self.descs = []
+        self.descs.append(LayerDesc(LocalLinear))
+        self.descs.append(LayerDesc(LocalLinear))
         self.descs.append(
             SharedLayerDesc(
                 'linear',
@@ -141,25 +159,40 @@ class SimpleNetPipe(PipelineLayer):
 
         self.descs.append(LayerDesc(BiasNet))
 
-        def _logits_helper(linear, output):
-            return (
-                paddle.matmul(output[0], linear.linear_weight)
-                + linear.linear_bias
-            )
+        def _logits_helper_0(linear, output):
+            return paddle.matmul(output[0], linear.linear_weight)
+
+        def _logits_helper_1(linear, output):
+            return output + linear.linear_bias
 
         self.descs.append(
             SharedLayerDesc(
                 'linear',
                 SharedLinear,
-                forward_func=_logits_helper,
-                shared_weight_attr=['linear_weight', 'linear_bias'],
+                forward_func=_logits_helper_0,
+                shared_weight_attr=['linear_weight'],
+            )
+        )
+        self.descs.append(
+            SharedLayerDesc(
+                'linear',
+                SharedLinear,
+                forward_func=_logits_helper_1,
+                shared_weight_attr=['linear_bias'],
             )
         )
 
-        super().__init__(layers=self.descs, loss_fn=LossNet(), **kwargs)
+        super().__init__(
+            layers=self.descs,
+            seg_method="layer:LocalLinear",
+            loss_fn=LossNet(),
+            **kwargs,
+        )
+
+        assert len(self.shared_comm.keys()) == 0
 
 
-class TestSharedWeightWithMultiAttrs(unittest.TestCase):
+class TestSharedWeightWithMultiAttrsAndSubsetAllOnOneStage(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -217,11 +250,13 @@ class TestSharedWeightWithMultiAttrs(unittest.TestCase):
         if pp_id == 0:
             model_b_params[0].set_value(parameters[2])
             model_b_params[1].set_value(parameters[3])
-            model_b_params[2].set_value(parameters[0])
         else:
-            model_b_params[0].set_value(parameters[2])
-            model_b_params[1].set_value(parameters[3])
-            model_b_params[2].set_value(parameters[1])
+            model_b_params[0].set_value(parameters[6])
+            model_b_params[1].set_value(parameters[7])
+            model_b_params[2].set_value(parameters[4])
+            model_b_params[3].set_value(parameters[5])
+            model_b_params[4].set_value(parameters[0])
+            model_b_params[5].set_value(parameters[1])
 
         for step in range(5):
             x1_data = np.random.randn(batch_size, vocab_size)
