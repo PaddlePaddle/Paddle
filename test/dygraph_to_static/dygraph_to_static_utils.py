@@ -24,10 +24,17 @@ from contextlib import contextmanager
 from enum import Flag, auto
 from functools import wraps
 from pathlib import Path
+from typing import Tuple
+
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import get_flags, set_flags, static
 from paddle.jit.api import sot_mode_guard
+from paddle.jit.dy2static.utils import (
+    ENV_ENABLE_CINN_IN_DY2ST,
+    cinn_is_available,
+)
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
@@ -44,6 +51,7 @@ class MyTest(Dy2StTestBase):
         ToStaticMode.AST | ToStaticMode.SOT
     )
     @set_ir_mode(IrMode.LEGACY_IR | IrMode.PT | IrMode.PIR)
+    @set_backend_mode(BackendMode.PHI | BackendMode.CINN)
     def test_case1(self):
         raise ValueError("MyTest 1")
 
@@ -56,14 +64,21 @@ class MyTest2(MyTest):
         raise ValueError("MyTest2 1")
 """
 
-logger = logging.getLogger("Dygraph to static utils")
-logger.setLevel(logging.WARNING)
-
 ENV_ENABLE_PIR_WITH_PT_IN_DY2ST = BooleanEnvironmentVariable(
     "FLAGS_enable_pir_with_pt_in_dy2st", True
 )
 ENV_EXE_SEQUENTIAL_RUN = BooleanEnvironmentVariable(
     "FLAGS_new_executor_sequential_run", False
+)
+ENV_ENABLE_DY2ST_UT_DEBUG_MODE = BooleanEnvironmentVariable(
+    "ENABLE_DY2ST_UT_DEBUG_MODE", False
+)
+
+logger = logging.getLogger("Dygraph to static utils")
+logger.setLevel(
+    logging.WARNING
+    if not ENV_ENABLE_DY2ST_UT_DEBUG_MODE.get()
+    else logging.DEBUG
 )
 
 
@@ -88,10 +103,32 @@ class IrMode(Flag):
         return self.name.lower()
 
 
+class BackendMode(Flag):
+    PHI = auto()
+    CINN = auto()
+
+    def lower_case_name(self):
+        return self.name.lower()
+
+
+ModeTuple: TypeAlias = Tuple[ToStaticMode, IrMode, BackendMode]
 DEFAULT_TO_STATIC_MODE = (
     ToStaticMode.AST | ToStaticMode.SOT | ToStaticMode.SOT_MGS10
 )
 DEFAULT_IR_MODE = IrMode.PT | IrMode.PIR
+DEFAULT_BACKEND_MODE = BackendMode.PHI | BackendMode.CINN
+VALID_MODES = [
+    # For `.pd_model` export, we still need test AST+PT
+    (ToStaticMode.AST, IrMode.PT, BackendMode.PHI),
+    (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
+    (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
+    (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI),
+]
+if cinn_is_available():
+    VALID_MODES.append(
+        (ToStaticMode.SOT, IrMode.PIR, BackendMode.CINN),
+    )  # For default mode, we test SOT+CINN
+
 
 DISABLED_TO_STATIC_TEST_FILES = {
     ToStaticMode.AST: [],
@@ -105,6 +142,10 @@ DISABLED_IR_TEST_FILES = {
         "test_tensor_hook",
     ],
     IrMode.PIR: [],
+}
+DISABLED_BACKEND_TEST_FILES = {
+    BackendMode.PHI: [],
+    BackendMode.CINN: [],
 }
 
 
@@ -132,12 +173,12 @@ def to_ast_test(fn):
     """
 
     @wraps(fn)
-    def impl(*args, **kwargs):
+    def ast_impl(*args, **kwargs):
         logger.info("[AST] running AST")
         with sot_mode_guard(False):
             fn(*args, **kwargs)
 
-    return impl
+    return ast_impl
 
 
 def to_sot_test(fn):
@@ -146,7 +187,7 @@ def to_sot_test(fn):
     """
 
     @wraps(fn)
-    def impl(*args, **kwargs):
+    def sot_impl(*args, **kwargs):
         logger.info("[SOT] running SOT (MIN_GRAPH_SIZE=0)")
 
         OpcodeExecutorCache().clear()
@@ -154,7 +195,7 @@ def to_sot_test(fn):
             with min_graph_size_guard(0):
                 fn(*args, **kwargs)
 
-    return impl
+    return sot_impl
 
 
 def to_sot_mgs10_test(fn):
@@ -163,7 +204,7 @@ def to_sot_mgs10_test(fn):
     """
 
     @wraps(fn)
-    def impl(*args, **kwargs):
+    def sot_mgs10_impl(*args, **kwargs):
         logger.info("[SOT_MGS10] running SOT (MIN_GRAPH_SIZE=10)")
 
         OpcodeExecutorCache().clear()
@@ -171,12 +212,12 @@ def to_sot_mgs10_test(fn):
             with min_graph_size_guard(10):
                 fn(*args, **kwargs)
 
-    return impl
+    return sot_mgs10_impl
 
 
 def to_legacy_ir_test(fn):
     @wraps(fn)
-    def impl(*args, **kwargs):
+    def legacy_ir_impl(*args, **kwargs):
         logger.info("[LEGACY_IR] running legacy ir")
         with legacy_ir_dygraph_guard():
             pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
@@ -186,17 +227,16 @@ def to_legacy_ir_test(fn):
             ):
                 try:
                     set_flags({pt_in_dy2st_flag: False})
-                    ir_outs = fn(*args, **kwargs)
+                    return fn(*args, **kwargs)
                 finally:
                     set_flags({pt_in_dy2st_flag: original_flag_value})
-                return ir_outs
 
-    return impl
+    return legacy_ir_impl
 
 
 def to_pt_test(fn):
     @wraps(fn)
-    def impl(*args, **kwargs):
+    def pt_impl(*args, **kwargs):
         logger.info("[PT] running PT")
         with legacy_ir_dygraph_guard():
             pt_in_dy2st_flag = ENV_ENABLE_PIR_WITH_PT_IN_DY2ST.name
@@ -210,23 +250,41 @@ def to_pt_test(fn):
                     ):
                         try:
                             set_flags({pt_in_dy2st_flag: True})
-                            ir_outs = fn(*args, **kwargs)
+                            return fn(*args, **kwargs)
                         finally:
                             set_flags({pt_in_dy2st_flag: original_flag_value})
-        return ir_outs
 
-    return impl
+    return pt_impl
 
 
 def to_pir_test(fn):
     @wraps(fn)
-    def impl(*args, **kwargs):
+    def pir_impl(*args, **kwargs):
         logger.info("[PIR] running pir")
         with pir_dygraph_guard():
-            ir_outs = fn(*args, **kwargs)
-        return ir_outs
+            return fn(*args, **kwargs)
 
-    return impl
+    return pir_impl
+
+
+def to_phi_test(fn):
+    @wraps(fn)
+    def phi_impl(*args, **kwargs):
+        logger.info("[PHI] running phi")
+        with EnvironmentVariableGuard(ENV_ENABLE_CINN_IN_DY2ST, False):
+            fn(*args, **kwargs)
+
+    return phi_impl
+
+
+def to_cinn_test(fn):
+    @wraps(fn)
+    def cinn_impl(*args, **kwargs):
+        logger.info("[CINN] running cinn")
+        with EnvironmentVariableGuard(ENV_ENABLE_CINN_IN_DY2ST, True):
+            fn(*args, **kwargs)
+
+    return cinn_impl
 
 
 # Metaclass and BaseClass
@@ -241,6 +299,11 @@ class Dy2StTestMeta(type):
         IrMode.LEGACY_IR: to_legacy_ir_test,
         IrMode.PT: to_pt_test,
         IrMode.PIR: to_pir_test,
+    }
+
+    BACKEND_HANDLER_MAP = {
+        BackendMode.PHI: to_phi_test,
+        BackendMode.CINN: to_cinn_test,
     }
 
     def __new__(cls, name, bases, attrs):
@@ -264,64 +327,102 @@ class Dy2StTestMeta(type):
         )
         for fn_name, fn in original_test_cases.items():
             logger.info(f"Generating {fn_name}")
+            fn_disabled_test_cases = getattr(fn, "disabled_test_cases", [])
+            logger.info(f"fn_disabled_test_cases: {fn_disabled_test_cases}")
             # Disable inherited test cases
             for base in bases:
                 for attr in dir(base):
                     if attr.startswith(f"{fn_name}__"):
                         new_attrs[attr] = None
-            fn_to_static_modes = getattr(
-                fn, "to_static_mode", DEFAULT_TO_STATIC_MODE
-            )
-            fn_ir_modes = getattr(fn, "ir_mode", DEFAULT_IR_MODE)
-            fn_disabled_test_cases = getattr(fn, "disabled_test_cases", [])
-            logger.info(f"fn_to_static_modes: {fn_to_static_modes}")
-            logger.info(f"fn_ir_modes: {fn_ir_modes}")
-            logger.info(f"fn_disabled_test_cases: {fn_disabled_test_cases}")
             # Get all valid test cases with to_static_mode and ir_mode
-            to_static_with_ir_modes = [
-                (to_static_mode, ir_mode)
-                for to_static_mode in ToStaticMode
-                for ir_mode in IrMode
-                if to_static_mode & fn_to_static_modes and ir_mode & fn_ir_modes
-            ]
-            # Filter out disabled test cases by decorator
-            to_static_with_ir_modes = list(
+            mode_tuples = Dy2StTestMeta.get_all_test_mode_tuples(fn)
+
+            # Filter out invalid test cases
+            mode_tuples = list(
                 filter(
-                    lambda flags: (flags not in fn_disabled_test_cases),
-                    to_static_with_ir_modes,
-                )
-            )
-            # Filter out disabled test cases by file
-            to_static_with_ir_modes = list(
-                filter(
-                    lambda flags: (
-                        filename not in DISABLED_TO_STATIC_TEST_FILES[flags[0]]
-                        and filename not in DISABLED_IR_TEST_FILES[flags[1]]
-                    ),
-                    to_static_with_ir_modes,
+                    # Filter out disabled test cases by decorator
+                    lambda mode_tuple: not Dy2StTestMeta.is_disabled_by_attr(
+                        fn_disabled_test_cases,
+                        mode_tuple,
+                    )
+                    # Filter out disabled test cases by file
+                    and not Dy2StTestMeta.is_disabled_by_file(
+                        filename,
+                        mode_tuple,
+                    )
+                    # Skip invalid test cases
+                    and mode_tuple in VALID_MODES,
+                    mode_tuples,
                 )
             )
             # Generate all test cases
-            for to_static_mode, ir_mode in to_static_with_ir_modes:
-                if (
-                    to_static_mode == ToStaticMode.SOT_MGS10
-                    and ir_mode != IrMode.PIR
-                ):
-                    # SOT_MGS10 only test with PIR
-                    continue
-                new_attrs[
-                    Dy2StTestMeta.test_case_name(
-                        fn_name, to_static_mode, ir_mode
-                    )
-                ] = Dy2StTestMeta.convert_test_case(fn, to_static_mode, ir_mode)
+            for mode_tuple in mode_tuples:
+                new_attrs[Dy2StTestMeta.test_case_name(fn_name, mode_tuple)] = (
+                    Dy2StTestMeta.convert_test_case(fn, mode_tuple)
+                )
         return type.__new__(cls, name, bases, new_attrs)
 
     @staticmethod
-    def test_case_name(original_name: str, to_static_mode, ir_mode):
-        return f"{original_name}__{to_static_mode.lower_case_name()}_{ir_mode.lower_case_name()}"
+    def get_all_test_mode_tuples(fn):
+        fn_to_static_modes = getattr(
+            fn, "to_static_mode", DEFAULT_TO_STATIC_MODE
+        )
+        fn_ir_modes = getattr(fn, "ir_mode", DEFAULT_IR_MODE)
+        fn_backend_modes = getattr(fn, "backend_mode", DEFAULT_BACKEND_MODE)
+        logger.info(f"fn_to_static_modes: {fn_to_static_modes}")
+        logger.info(f"fn_ir_modes: {fn_ir_modes}")
+        logger.info(f"fn_backend_modes: {fn_backend_modes}")
+        return [
+            (to_static_mode, ir_mode, backend_mode)
+            for to_static_mode in ToStaticMode
+            for ir_mode in IrMode
+            for backend_mode in BackendMode
+            if to_static_mode & fn_to_static_modes
+            and ir_mode & fn_ir_modes
+            and backend_mode & fn_backend_modes
+        ]
 
     @staticmethod
-    def convert_test_case(fn, to_static_mode, ir_mode):
+    def is_disabled_by_attr(
+        fn_disabled_test_cases: list[ModeTuple], mode_tuple: ModeTuple
+    ):
+        to_static_mode, ir_mode, backend_mode = mode_tuple
+        for (
+            disabled_to_static_mode,
+            disabled_ir_mode,
+            disabled_backend_mode,
+        ) in fn_disabled_test_cases:
+            if (
+                to_static_mode & disabled_to_static_mode
+                and ir_mode & disabled_ir_mode
+                and backend_mode & disabled_backend_mode
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def is_disabled_by_file(
+        filename: str,
+        mode_tuple: ModeTuple,
+    ):
+        to_static_mode, ir_mode, backend_mode = mode_tuple
+        if (
+            filename in DISABLED_TO_STATIC_TEST_FILES[to_static_mode]
+            or filename in DISABLED_IR_TEST_FILES[ir_mode]
+            or filename in DISABLED_BACKEND_TEST_FILES[backend_mode]
+        ):
+            return True
+        return False
+
+    @staticmethod
+    def test_case_name(original_name: str, mode_tuple: ModeTuple):
+        to_static_mode, ir_mode, backend_mode = mode_tuple
+        return f"{original_name}__{to_static_mode.lower_case_name()}_{ir_mode.lower_case_name()}_{backend_mode.lower_case_name()}"
+
+    @staticmethod
+    def convert_test_case(fn, mode_tuple: ModeTuple):
+        to_static_mode, ir_mode, backend_mode = mode_tuple
+        fn = Dy2StTestMeta.BACKEND_HANDLER_MAP[backend_mode](fn)
         fn = Dy2StTestMeta.IR_HANDLER_MAP[ir_mode](fn)
         fn = Dy2StTestMeta.TO_STATIC_HANDLER_MAP[to_static_mode](fn)
         return fn
@@ -349,7 +450,15 @@ def set_ir_mode(mode: IrMode):
     return decorator
 
 
-def disable_test_case(flags: tuple[ToStaticMode, IrMode]):
+def set_backend_mode(mode: BackendMode):
+    def decorator(fn):
+        fn.backend_mode = mode
+        return fn
+
+    return decorator
+
+
+def disable_test_case(flags: tuple[ToStaticMode, IrMode, BackendMode]):
     def decorator(fn):
         disabled_test_cases = getattr(fn, "disabled_test_cases", [])
         disabled_test_cases.append(flags)
@@ -406,18 +515,22 @@ def test_legacy_and_pt_and_pir(fn):
     return fn
 
 
+def test_phi_only(fn):
+    fn = set_backend_mode(BackendMode.PHI)(fn)
+    return fn
+
+
+def test_cinn_only(fn):
+    fn = set_backend_mode(BackendMode.CINN)(fn)
+    return fn
+
+
 # Some decorators for save CI time
 def test_default_mode_only(fn):
     # Some unittests has high time complexity, we only test them with default mode
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
-    fn = set_ir_mode(IrMode.PT)(fn)
-    return fn
-
-
-def test_default_and_pir(fn):
-    # Some unittests has high time complexity, we only test them with default mode
-    fn = set_to_static_mode(ToStaticMode.SOT)(fn)
-    fn = set_ir_mode(IrMode.PT | IrMode.PIR)(fn)
+    fn = set_ir_mode(IrMode.PIR)(fn)
+    fn = set_backend_mode(BackendMode.PHI)(fn)
     return fn
 
 
