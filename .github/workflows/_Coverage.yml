@@ -123,13 +123,13 @@ jobs:
           -e GITHUB_TOKEN \
           -e GITHUB_API_TOKEN \
           -e UT_RUN_TYPE_SETTING \
-          -w /paddle --network host ${docker_image}
+          -w /action_runner --network host ${docker_image}
 
     - name: Build
       if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }}  /bin/bash -c '
-        mv /action-runner/_work/Paddle/Paddle .
+        mv /action-runner/_work/Paddle/Paddle/Paddle .
         mkdir -p /home/data/cfs/.cache/coverage
         mkdir -p /home/data/cfs/.ccache/coverage
         source /action-runner/proxy
