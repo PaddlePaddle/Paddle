@@ -24,6 +24,12 @@ import numpy as np
 
 import paddle
 
+from ...symbolic_shape import (
+    SYMBOLIC_BINARY_OPS,
+    SYMBOLIC_UNARY_OPS,
+    symbolic_not,
+    symbolic_to_bool,
+)
 from ...utils import (
     BreakGraphError,
     BuiltinFunctionBreak,
@@ -38,8 +44,8 @@ from ...utils.magic_methods import (
     BINARY_OPS,
     UNARY_OPS,
     magic_method_builtin_dispatch,
+    non_inplace_op_to_inplace_op,
 )
-from ...utils.paddle_api_config import get_tensor_methods
 from .dispatch_functions import (
     create_raise_break_graph_handler,
     generator_send,
@@ -47,6 +53,8 @@ from .dispatch_functions import (
     operator_is_none,
     operator_is_not_none,
     operator_not_in,
+    place_get_device_id,
+    place_get_device_type,
     tensor_dim,
 )
 from .dispatcher import Dispatcher, optional
@@ -65,6 +73,7 @@ from .variables import (
     NumpyVariable,
     RangeVariable,
     SliceVariable,
+    SuperVariable,
     SymbolicVariable,
     TupleVariable,
     VariableBase,
@@ -236,6 +245,19 @@ Dispatcher.register(
 )
 
 
+# super
+Dispatcher.register(
+    super,
+    ("ClassVariable", "VariableBase"),
+    lambda cls, obj: SuperVariable(
+        cls=cls,
+        obj=obj,
+        graph=Dispatcher.graph,
+        tracker=DummyTracker([cls, obj]),
+    ),
+)
+
+
 @Dispatcher.register_decorator(dict)
 def dispatch_dict_kwargs(**kwargs: VariableBase):
     res_dict = {}
@@ -288,14 +310,6 @@ Dispatcher.register(
     dict.keys,
     ("DictVariable",),
     lambda var: var.keys(),
-)
-
-Dispatcher.register(
-    operator.not_,
-    ("VariableBase",),
-    lambda x: ConstantVariable(
-        not x.get_py_value(allow_tensor=False), x.graph, DummyTracker([x])
-    ),
 )
 
 Dispatcher.register(
@@ -1031,7 +1045,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
             ),
         )
-# Tensor and Symbolic
+# Tensor
 fallback_tensor_unary_method = {
     int,
     bool,
@@ -1066,16 +1080,6 @@ for unary_fn in UNARY_OPS:
             ("TensorVariable",),
             partial(
                 lambda magic_name, var: var.graph.call_tensor_method(
-                    magic_name, var
-                ),
-                magic_method.name,
-            ),
-        )
-        Dispatcher.register(
-            unary_fn,
-            ("SymbolicVariable",),
-            partial(
-                lambda magic_name, var: var.graph.call_symbolic_method(
                     magic_name, var
                 ),
                 magic_method.name,
@@ -1136,40 +1140,53 @@ for binary_fn in BINARY_OPS:
                     ),
                 )
 
-for binary_fn in BINARY_OPS:
-    for magic_method in magic_method_builtin_dispatch(binary_fn):
-        if magic_method.name not in get_tensor_methods():
-            continue
-        # skip all inplace magic method name, we will dispatch it to non-inplace
-        # magic methods
-        if magic_method.is_inplace:
-            continue
+# Symbolic
+for unary_fn in SYMBOLIC_UNARY_OPS:
+    Dispatcher.register(
+        unary_fn,
+        ("SymbolicVariable",),
+        partial(
+            lambda fn, var: var.graph.call_symbolic_api(fn, var),
+            unary_fn,
+        ),
+    )
+for binary_fn in SYMBOLIC_BINARY_OPS:
+    register_fns = [binary_fn]
+    if (
+        inplace_binary_fn := non_inplace_op_to_inplace_op(binary_fn)
+    ) is not None:
+        register_fns.append(inplace_binary_fn)
+    for register_fn in register_fns:
+        Dispatcher.register(
+            register_fn,
+            ("SymbolicVariable", "SymbolicVariable | ConstantVariable"),
+            partial(
+                lambda fn, var, other: var.graph.call_symbolic_api(
+                    fn, var, other
+                ),
+                binary_fn,
+            ),
+        )
+        Dispatcher.register(
+            register_fn,
+            ("ConstantVariable", "SymbolicVariable"),
+            partial(
+                lambda fn, var, other: var.graph.call_symbolic_api(
+                    fn, var, other
+                ),
+                binary_fn,
+            ),
+        )
 
-        if not magic_method.is_reverse:
-            Dispatcher.register(
-                binary_fn,
-                (
-                    "SymbolicVariable",
-                    "ConstantVariable | SymbolicVariable",
-                ),
-                partial(
-                    lambda magic_name, var, other: var.graph.call_symbolic_method(
-                        magic_name, var, other
-                    ),
-                    magic_method.name,
-                ),
-            )
-        else:
-            Dispatcher.register(
-                binary_fn,
-                ("ConstantVariable", "SymbolicVariable"),
-                partial(
-                    lambda reverse_magic_name, var, other: var.graph.call_symbolic_method(
-                        reverse_magic_name, other, var
-                    ),
-                    magic_method.name,
-                ),
-            )
+
+@Dispatcher.register_decorator(bool)
+def dispatch_symbolic_bool(var: SymbolicVariable):
+    return BuiltinVariable(symbolic_to_bool, var.graph, DanglingTracker())(var)
+
+
+@Dispatcher.register_decorator(operator.not_)
+def dispatch_symbolic_not(var: SymbolicVariable):
+    return BuiltinVariable(symbolic_not, var.graph, DanglingTracker())(var)
 
 
 # Register dispatch for DataVariable: directly call and return a wrapped variable.
@@ -1461,7 +1478,7 @@ for unary_fn in UNARY_OPS:
 
         @Dispatcher.register_decorator(unary_fn)
         def numpy_unary_dispatcher(var: NumpyArrayVariable):
-            raise FallbackError('Numpy operator need fallback to dygraph')
+            raise FallbackError("Numpy operator need fallback to dygraph")
 
 
 Dispatcher.register(
@@ -1476,7 +1493,7 @@ for binary_fn in BINARY_OPS:
 
         @Dispatcher.register_decorator(binary_fn)
         def numpy_binary_dispatcher(var: NumpyVariable, other: NumpyVariable):
-            raise FallbackError('Numpy operator need fallback to dygraph')
+            raise FallbackError("Numpy operator need fallback to dygraph")
 
 
 Dispatcher.register(
@@ -1572,3 +1589,25 @@ for ufunc in binary_ufuncs:
             ufunc,
         ),
     )
+
+# place
+Dispatcher.register(
+    place_get_device_id,
+    ("PlaceVariable",),
+    lambda var: var.get_device_id(),
+)
+Dispatcher.register(
+    place_get_device_type,
+    ("PlaceVariable",),
+    lambda var: var.get_device_type(),
+)
+
+# not for all variable
+# TODO(SigureMo): Optimize this dispatch
+Dispatcher.register(
+    operator.not_,
+    ("VariableBase",),
+    lambda x: ConstantVariable(
+        not x.get_py_value(allow_tensor=False), x.graph, DummyTracker([x])
+    ),
+)

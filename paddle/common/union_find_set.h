@@ -71,6 +71,10 @@ class UnionFindSet {
   }
 
   bool HasSameRoot(const T& p, const T& q) const {
+    // add shortcut for empty map.
+    if (parent_.empty()) {
+      return compare_(p, q);
+    }
     return compare_(Find(p), Find(q));
   }
 

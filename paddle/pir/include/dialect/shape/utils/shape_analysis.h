@@ -253,6 +253,9 @@ class IR_API ShapeConstraintIRAnalysis final
   void SetInputDynamicDimSpec(
       const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec);
 
+  void AppendInputDynamicDimSpec(
+      const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec);
+
  private:
   InferSymbolicShapeContext* MutInferSymbolicShapeContext() {
     return &context_;

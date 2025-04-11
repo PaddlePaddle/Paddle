@@ -15,13 +15,14 @@
 import os
 import sys
 
+import paddle
+
 sys.path.append("../../legacy_test")
 
 import numpy as np
 from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, runtime_main
 
-import paddle
 from paddle import base, nn
 from paddle.distributed import fleet
 
@@ -83,7 +84,11 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
             gm_block = paddle.static.default_main_program().block(1)
             start_allreduce_idx = None
             for i, op in enumerate(gm_block.ops):
-                if op.type == "c_allreduce_sum":
+                if op.type == "c_allreduce_sum" or (
+                    op.type == "all_reduce"
+                    and op.attr('reduce_type')
+                    == paddle.distributed.ReduceOp.SUM
+                ):
                     start_allreduce_idx = i
                     break
             # the magic number 1 below means skip the c_sync_calc_stream op

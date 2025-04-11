@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/const_fold.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -661,6 +662,58 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
   }
 
   return std::nullopt;
+}
+
+ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
+  // return expr if expr is not a division or modulo
+  if (expr.node_type() != ir::IrNodeTy::Div &&
+      expr.node_type() != ir::IrNodeTy::Mod)
+    return expr;
+
+  common::cas_intervals_t var_intervals =
+      common::CollectVarIntervalsOfExprs({expr});
+  common::SymbolicExprAnalyzer ana(var_intervals);
+  // Because the SymbolicExprAnalyzer bound result is [lower, upper), `ProveLE`
+  // is used here instead of `ProveLT`.
+  auto canBeSimplified =
+      ana.ProveLE(ana.UpperBound(expr.operand(0)), expr.operand(1));
+
+  if (canBeSimplified.value_or(false)) {
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::IndexExpr(0);
+    } else if (expr.node_type() == ir::IrNodeTy::Mod) {
+      return expr.operand(0);
+    }
+  }
+  return expr;
+}
+
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
+  // Two consecutive modular operations.
+  auto opt_map =
+      MatchPattern(expr,
+                   "f % a % b",
+                   [](const std::unordered_map<std::string, ir::IndexExpr> &m) {
+                     return m.at("a").node_type() == ir::IrNodeTy::Max;
+                   });
+  if (!opt_map) return expr;
+
+  auto &map = opt_map.value();
+  auto ll = map.at("f");
+  auto lr = map.at("a");
+  auto r = map.at("b");
+  auto lr_elems = GetFlattenExprs<ir::Max>(lr);
+  auto r_elems = GetFlattenExprs<ir::Max>(r);
+
+  // The second modulus is a subset of the first modulus.
+  for (auto &&r_elem : r_elems) {
+    if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
+      return expr;
+  }
+
+  // The first modulus is broadcastable.
+  auto &constraint = cinn::common::ShapeConstraintManager::Instance();
+  return constraint.IsBroadcastable(lr_elems) ? ll % r : expr;
 }
 }  // namespace optim
 }  // namespace cinn
