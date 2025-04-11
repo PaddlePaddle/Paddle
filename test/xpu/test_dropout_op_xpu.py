@@ -19,7 +19,7 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import _legacy_C_ops, base
+from paddle import _C_ops, base
 from paddle.base import Program, program_guard
 
 paddle.enable_static()
@@ -209,8 +209,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     else:
                         input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = _legacy_C_ops.dropout(
-                        input, 'dropout_prob', prob
+                    out, mask = _C_ops.dropout(
+                        input, None, prob, False, "downscale_in_infer", 0, False
                     )
                     nonzero = paddle.count_nonzero(out)
                     np.testing.assert_allclose(
@@ -238,12 +238,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     else:
                         input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = _legacy_C_ops.dropout(
-                        input,
-                        'dropout_prob',
-                        prob,
-                        "dropout_implementation",
-                        "upscale_in_train",
+                    out, mask = _C_ops.dropout(
+                        input, None, prob, False, "upscale_in_train", 0, False
                     )
                     nonzero = paddle.count_nonzero(out)
                     np.testing.assert_allclose(
@@ -265,12 +261,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     else:
                         input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = _legacy_C_ops.dropout(
-                        input,
-                        'dropout_prob',
-                        prob,
-                        "dropout_implementation",
-                        "upscale_in_train",
+                    out, mask = _C_ops.dropout(
+                        input, None, prob, False, "upscale_in_train", 0, False
                     )
                     nonzero = paddle.count_nonzero(out)
                     np.testing.assert_allclose(
