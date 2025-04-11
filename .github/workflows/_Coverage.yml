@@ -9,10 +9,10 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
-  ci_scripts: /paddle/Paddle/ci
+  ci_scripts: /paddle/ci
   BRANCH: ${{ github.base_ref }}
-  work_dir: /paddle/Paddle
-  PADDLE_ROOT: /paddle/Paddle
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
   GIT_PR_ID: ${{ github.event.pull_request.number }}
   CI_name: coverage
 
@@ -36,7 +36,7 @@ jobs:
         echo "Downloading Paddle.tar.gz"
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         echo "Extracting Paddle.tar.gz"
-        tar xf Paddle.tar.gz --strip-components=1
+        tar xf Paddle.tar.gz
         rm Paddle.tar.gz
         git remote add upstream https://github.com/PaddlePaddle/Paddle.git
         git config pull.rebase false
@@ -123,13 +123,14 @@ jobs:
           -e GITHUB_TOKEN \
           -e GITHUB_API_TOKEN \
           -e UT_RUN_TYPE_SETTING \
-          -w /action_runner --network host ${docker_image}
+          -w /paddle --network host ${docker_image}
 
     - name: Build
       if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }}  /bin/bash -c '
-        mv /action-runner/_work/Paddle/Paddle/Paddle .
+        rm -rf /paddle
+        mv /action-runner/_work/Paddle/Paddle/Paddle /paddle && cd /paddle
         mkdir -p /home/data/cfs/.cache/coverage
         mkdir -p /home/data/cfs/.ccache/coverage
         source /action-runner/proxy
@@ -200,7 +201,7 @@ jobs:
         cd /paddle/dist
         python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage_build_size/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-        cd ${{ github.workspace }}/..
+        cd /
         python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage_paddle/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         rm Paddle.tar.gz
         '
@@ -230,7 +231,7 @@ jobs:
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/71611/52756a5f582d9ee58822dd76788beaf13024f6a0/Paddle.tar.gz --no-check-certificate
         echo "Extracting Paddle.tar.gz"
-        tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz --strip-components=1
+        tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz
         rm Paddle.tar.gz
         source ../../../proxy
         git checkout test
@@ -309,7 +310,8 @@ jobs:
     - name: Test
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        mv /action-runner/_work/Paddle/Paddle .
+        rm -rf /paddle
+        mv /action-runner/_work/Paddle/Paddle/Paddle /paddle
         source /action-runner/proxy
         bash $ci_scripts/coverage_test.sh
         TEST_EXIT_CODE=$?
