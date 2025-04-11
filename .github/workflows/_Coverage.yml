@@ -43,7 +43,7 @@ jobs:
         git config pull.rebase false
         git checkout test
         echo "Pull upstream develop"
-        source /action-runner/proxy
+        source ${{ github.workspace }}/../../../proxy
         git pull upstream develop --no-edit
 
     - name: Check bypass
@@ -235,7 +235,7 @@ jobs:
         tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz
         rm Paddle.tar.gz
         cd Paddle
-        source /action-runner/proxy
+        source ${{ github.workspace }}/../../../proxy
         git checkout test
         echo "Pull upstream develop"
         git pull upstream develop --no-edit
