@@ -301,9 +301,9 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
     (*group_func_args).emplace_back(arg_tensor->buffer, io_type);
     // collect element size for longlong2int pass.
     if (FLAGS_cinn_longlong2int) {
-      inputs_element_size.push_back(common::FoldExpr(
+      inputs_element_size.push_back(cinn::optim::ArithSimplify(common::FoldExpr(
           [](const Expr& a, const Expr& b) { return ir::Mul::Make(a, b); },
-          arg_tensor->shape));
+          arg_tensor->shape)));
     }
     arg_name_set.insert(arg_tensor->buffer->name);
   }
