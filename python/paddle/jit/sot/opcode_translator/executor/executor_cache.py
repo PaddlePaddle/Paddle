@@ -292,21 +292,16 @@ def start_translate(
             raise InnerError(
                 f"{simulator.vframe.code.co_name} should not fallback, but got '{e}'"
             )
-        # if disable_eval_frame is True, it means we want fallback to speedup rather than error occurred
-        if is_strict_mode() and e.disable_eval_frame is False:
+        if is_strict_mode():
             raise
         log(
             2,
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-        # simulation not complete, not sure whether this code has sir, set disable_eval_frame = False
-        guard_fn = (
-            dummy_guard if e.disable_eval_frame is False else simulator.guard_fn
-        )
         return (
             CustomCode(None, e.disable_eval_frame),
-            guard_fn,
+            dummy_guard,
         )
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
