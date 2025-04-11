@@ -1632,11 +1632,7 @@ struct ConstraintApplier {
         return false;
       }
     }
-    ADT_LET_CONST_REF(constraint_ok, CheckConstraint(drr_ctx, graph_match_ctx));
-    if (!constraint_ok) {
-      return false;
-    }
-    return true;
+    return CheckConstraint(drr_ctx, graph_match_ctx);
   }
 
   bool NeedCheckExtraUse(const DrrCtx& drr_ctx) {
@@ -1720,7 +1716,7 @@ struct ConstraintApplier {
     ADT_RETURN_IF_ERR(GetSrcPtnIrValues(
         drr_ctx, &inputs, &outputs, &ir_values_reachable_to_outputs));
     for (const auto& input : inputs) {
-      ADT_CHECK(ir_values_reachable_to_outputs.count(input) == 0)
+      ADT_CHECK(ir_values_reachable_to_outputs.count(input) > 0)
           << adt::errors::ValueError{
                  "There are result pattern inputs not reachable to result "
                  "pattern outputs"};
