@@ -118,7 +118,8 @@ DEFAULT_TO_STATIC_MODE = (
 DEFAULT_IR_MODE = IrMode.PT | IrMode.PIR
 DEFAULT_BACKEND_MODE = BackendMode.PHI | BackendMode.CINN
 VALID_MODES = [
-    # For `.pd_model` export, we still need test AST+PT
+    # For `.pd_model` export, we still need test AST+PT / AST+LEGACY_IR
+    (ToStaticMode.AST, IrMode.LEGACY_IR, BackendMode.PHI),
     (ToStaticMode.AST, IrMode.PT, BackendMode.PHI),
     (ToStaticMode.AST, IrMode.PIR, BackendMode.PHI),
     (ToStaticMode.SOT, IrMode.PIR, BackendMode.PHI),
