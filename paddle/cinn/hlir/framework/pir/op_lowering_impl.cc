@@ -20,6 +20,7 @@
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
@@ -38,6 +39,7 @@
 #include "paddle/cinn/operator_fusion/fusion_interface.h"
 #include "paddle/cinn/optim/check_tensor_buffer_map.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/pass/pass_manager.h"
@@ -122,6 +124,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                                 func_bodies,
                                 group->fusion_tracker_ptr,
                                 group->substitute_dimexpr_map());
+
+  std::for_each(func_bodies.begin(), func_bodies.end(), [](auto& expr) {
+    optim::SimplifyNoPureMath(&expr, ir::IndexExpr::OptLevel::kLevel4);
+  });
 
   std::unordered_set<std::string> fusion_group_args;
   for (auto value : group->GetInputOpValues()) {
