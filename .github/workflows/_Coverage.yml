@@ -11,8 +11,8 @@ env:
   TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.base_ref }}
-  work_dir: /paddle
-  PADDLE_ROOT: /paddle
+  work_dir: /paddle/Paddle
+  PADDLE_ROOT: /paddle/Paddle
   GIT_PR_ID: ${{ github.event.pull_request.number }}
   CI_name: coverage
 
@@ -129,7 +129,7 @@ jobs:
       if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
         docker exec -t ${{ env.container_name }}  /bin/bash -c '
-        mv /action-runner/_work/Paddle/Paddle/* .
+        mv /action-runner/_work/Paddle/Paddle .
         mkdir -p /home/data/cfs/.cache/coverage
         mkdir -p /home/data/cfs/.ccache/coverage
         source /action-runner/proxy
@@ -309,7 +309,7 @@ jobs:
     - name: Test
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        mv /action-runner/_work/Paddle/Paddle/* .
+        mv /action-runner/_work/Paddle/Paddle .
         source /action-runner/proxy
         bash $ci_scripts/coverage_test.sh
         TEST_EXIT_CODE=$?
