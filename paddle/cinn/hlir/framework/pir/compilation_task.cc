@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
-
+#include <chrono>
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/common/target.h"
@@ -190,8 +190,20 @@ void UnifyBroadcastGroupFuncArgs(
 }
 
 std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
+  auto start = std::chrono::high_resolution_clock::now();
   Lowering();
-  return CodegenAndJit();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  LOG(INFO) << "Time of lowering: ***** [ " << duration.count()
+            << " ] ***** microseconds.";
+  start = std::chrono::high_resolution_clock::now();
+  auto result = CodegenAndJit();
+  end = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  LOG(INFO) << "Time of codegenandjit: ***** [ " << duration.count()
+            << " ] ***** microseconds.";
+  return result;
+  // return CodegenAndJit();
 }
 
 void CompilationTask::Lowering() {

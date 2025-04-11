@@ -118,7 +118,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   }
 
   // =========== OpFusion ============
-
+  auto start = std::chrono::high_resolution_clock::now();
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
   func_bodies = OperationFusion(ops,
                                 func_bodies,
@@ -133,7 +133,6 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   for (auto value : group->GetInputOpValues()) {
     fusion_group_args.insert(ValueName(value));
   }
-
   for (auto value : group->GetGroupOutputValues()) {
     fusion_group_args.insert(ValueName(value));
   }
@@ -155,9 +154,13 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     optim::CheckTensorBufferMap(func_bodies, "BucketLower OpFusion");
     VLOG(3) << "OpFusion tensor-buffer map check succeed";
   }
-
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  LOG(INFO) << "Time of OpFusion: ***** [ " << duration.count()
+            << " ] ***** microseconds.";
   // =========== CodeGen And Optimizer ================
-
+  start = std::chrono::high_resolution_clock::now();
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(
@@ -205,6 +208,11 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     }
     VLOG(3) << "Schedule tensor-buffer map check succeed";
   }
+  end = std::chrono::high_resolution_clock::now();
+  duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  LOG(INFO) << "Time of group schedule: ***** [ " << duration.count()
+            << " ] ***** microseconds.";
 
   // 3.Do post-processing,
   // including preparing function args and temporary variables,

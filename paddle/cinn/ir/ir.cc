@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/ir.h"
-
+#include <chrono>
 #include <map>
 #include <optional>
 #include <regex>
@@ -723,8 +723,9 @@ Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
       utils::GetCompatibleStoreLoadIndices(tensor.as_tensor_ref(), indices);
 
   if (tensor->type() != Void()) {
-    node->set_type(
-        tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
+    // node->set_type(
+    //     tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
+    node->set_type(tensor->type());
   }
   return Expr(node);
 }

@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
-
+#include <chrono>
 #include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/framework/pir/broadcast_with_cf.h"
@@ -107,7 +107,6 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
     GroupCompilationContext* ctx) {
   std::shared_ptr<pir::CompilationResult> compile_result;
   CompilationTask task(ctx);
-
   const auto& optional_broadcast_optimize_groups =
       pir::GetBroadcastGroupListForOptimize(ctx->GetGroup());
 
@@ -146,8 +145,13 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
     compile_result = task();
   }
 
+  auto start = std::chrono::high_resolution_clock::now();
   // Triggering llvm compilation in thread
   compile_result->GetKernelInfo();
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  LOG(INFO) << "Time of llvm compile: ***** [ " << duration.count()
+            << " ] ***** microseconds.";
   return compile_result;
 }
 
