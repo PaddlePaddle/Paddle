@@ -62,7 +62,7 @@ def run_adam_op(
 
     if not use_merged:
         for i in range(len(param_vars)):
-            _, _, _, _, _, _, _ = _C_ops.adam(
+            _, _, _, _, _, _, _ = _C_ops.adam_(
                 param_vars[i],
                 grad_vars[i],
                 lr_vars[i],
