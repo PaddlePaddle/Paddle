@@ -4056,6 +4056,7 @@ def gather(
             x,
             'x',
             [
+                'bool',
                 'float16',
                 'float32',
                 'float64',
