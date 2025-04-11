@@ -38,6 +38,7 @@ jobs:
         echo "Extracting Paddle.tar.gz"
         tar xf Paddle.tar.gz
         rm Paddle.tar.gz
+        cd Paddle
         git remote add upstream https://github.com/PaddlePaddle/Paddle.git
         git config pull.rebase false
         git checkout test
@@ -233,6 +234,7 @@ jobs:
         echo "Extracting Paddle.tar.gz"
         tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz
         rm Paddle.tar.gz
+        cd Paddle
         source ../../../proxy
         git checkout test
         echo "Pull upstream develop"
