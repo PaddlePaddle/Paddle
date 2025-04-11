@@ -23,7 +23,6 @@ from dygraph_to_static_utils import (
     disable_test_case,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pir,
     test_phi_only,
     test_pir_only,
 )
@@ -553,7 +552,7 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_pir_only
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
