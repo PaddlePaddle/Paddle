@@ -244,6 +244,15 @@ void CodeGenGpuDev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
     if (!has_symbol_in_thread_num) {
       str_ += "__launch_bounds__(";
       str_ += std::to_string(thread_num);
+      // Explicitly set min_blocks_per_sm for grid reduce to prevent launch
+      // failure.
+      if (!op->temp_spaces.empty()) {
+        int min_blocks_per_sm = 1024 / thread_num;
+        if (min_blocks_per_sm > 1) {
+          str_ += ", ";
+          str_ += std::to_string(min_blocks_per_sm);
+        }
+      }
       str_ += ") ";
     }
   }
