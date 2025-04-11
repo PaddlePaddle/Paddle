@@ -232,6 +232,24 @@ def _inference_optimize(program, prune_read_op=True):
                 pass
 
 
+def _prune_unused_params(program, outputs):
+    """
+    Prune the parameters not used anywhere in the program.
+    """
+    remove_op = []
+    block = program.global_block()
+    for op in block.ops:
+        if (
+            op.name() == "builtin.parameter"
+            and op.result(0).use_empty()
+            and not any(out.is_same(op.result(0)) for out in outputs)
+        ):
+            remove_op.append(op)
+
+    for op in remove_op:
+        block.remove_op(op)
+
+
 def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     """
 
@@ -313,6 +331,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     # if feed var is not connect with target_vars, it will be delete.
     if not skip_prune_program:
         pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
+        _prune_unused_params(copy_program, clone_fetch_vars)
     _inference_optimize(copy_program, prune_read_op=True)
 
     fetch_vars_tuple = []
@@ -417,7 +436,8 @@ def save_vars_pir(
             save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
-
+            print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
+            print("pir.vars.size: ", len(save_var_list))
             core.save_combine_func(
                 save_var_list,
                 save_var_names,
