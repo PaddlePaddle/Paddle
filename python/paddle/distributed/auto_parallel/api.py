@@ -20,6 +20,7 @@ import warnings
 from collections import OrderedDict
 from types import MethodType
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from .moe_utils import _dtensor_from_local
 
 import numpy as np
 
@@ -1220,23 +1221,31 @@ class _ShardOptimizer(Optimizer):
             if not isinstance(param, pir.Value):
                 new_placement = param.placements
                 new_placement[self._sharding_axis] = dist.Replicate()
-                if self.enable_tensor_fusion:
-                    param.placements = new_placement
-                else:
-                    out_param = dist.reshard(
-                        param, param.process_mesh, new_placement
-                    )
-                    param.get_tensor()._share_data_with(out_param.get_tensor())
-                    # param.get_tensor()._share_data_with_nodata(out_param.get_tensor())
+                out_param = dist.reshard(
+                    param, param.process_mesh, new_placement
+                )
+                param.get_tensor()._share_data_with(out_param.get_tensor())
 
     def _create_accumulators(self, block, parameters):
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
         # NOTE(zhiqiu): we need to create and shard accumulators for parameters one by one,
         # to avoid OOM caused by replcated accumulators.
-        for p in parameters:
-            self._inner_opt._create_accumulators(block, [p])
-            self._shard_accumulator(p)
+        if self.enable_tensor_fusion:
+            comm_group = paddle.distributed.collective._get_default_group()
+            for i in range(len(self._sharding_param_grad_view)):
+                shard_size = self.param_storage[i]._numel() // comm_group.nranks
+                begin = shard_size * max(comm_group.rank, 0)
+                end = begin + shard_size
+                new_param = self.param_storage[i]._slice(begin,end)
+                new_param.name = "param"+str(i)
+                self._inner_opt._create_accumulators(block, [new_param])
+                self._shard_accumulator(new_param)
+        else:
+            for p in parameters:
+                self._inner_opt._create_accumulators(block, [p])
+                self._shard_accumulator(p)
+
 
     def _sharding_sync_parameters(self, parameters_and_grads):
         comm_group = paddle.distributed.collective._get_default_group()
@@ -1253,13 +1262,14 @@ class _ShardOptimizer(Optimizer):
         self._inner_opt._finish_update(block, parameters_and_grads)
         if self.enable_tensor_fusion:
             self._sharding_sync_parameters(parameters_and_grads)
-        if isinstance(parameters_and_grads, list):
-            for p, _ in parameters_and_grads:
-                self._reset_placements(p)
         else:
-            # reset the parameter and grad to right placements
-            for p, _ in parameters_and_grads['params']:
-                self._reset_placements(p)
+            if isinstance(parameters_and_grads, list):
+                for p, _ in parameters_and_grads:
+                    self._reset_placements(p)
+            else:
+                # reset the parameter and grad to right placements
+                for p, _ in parameters_and_grads['params']:
+                    self._reset_placements(p)
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
@@ -1348,72 +1358,38 @@ class _ShardOptimizer(Optimizer):
 
         return self._inner_opt.state_dict()
 
-    def _append_optimize_op(self, block, param_and_grad):
-        if (
-            in_auto_parallel_align_mode()  # In align mode, we use enable_delay_scale_loss by default
-            and param_and_grad[1].is_dist()
-        ):
-            placements = param_and_grad[1].placements
-            meshs = param_and_grad[1].process_mesh
-            grad = param_and_grad[1]
-            grad_mesh = grad.process_mesh
+    def _append_optimize_op(self, block,params_and_grads):
+        if self.enable_tensor_fusion:
+            comm_group = paddle.distributed.collective._get_default_group()
+            for i in range(len(self._sharding_param_grad_view)):
+                shard_size = self.param_storage[i]._numel() // comm_group.nranks
+                begin = shard_size * max(comm_group.rank, 0)
+                end = begin + shard_size
+                new_param = self.param_storage[i]._slice(begin,end)
+                new_grad = self.grad_storage[i]._slice(begin,end)
+                new_param.name = "param"+str(i)
+                new_param_and_grad = (new_param,new_grad)
+                self._inner_opt._append_optimize_op(block, new_param_and_grad)
+            for i in range(len(self.grad_storage)):
+                self.grad_storage[i] = None
+            self.grad_storage = []
 
-            def get_mesh(pp_idx=0):
-                """
-                获得pp_idx的mesh
-                """
-                mesh = fleet.auto.get_mesh()
-                if "pp" in mesh.dim_names:
-                    mesh = mesh.get_mesh_with_dim("pp", pp_idx)
-                return mesh
+        else:
+            for param_and_grad in params_and_grads:
+                self._inner_opt._append_optimize_op(block, param_and_grad)
 
-            ipp = 0
-            global_mesh = fleet.auto.get_mesh()
-            if "pp" in global_mesh.dim_names:
-                pp_degree = global_mesh.get_dim_size("pp")
-                for i in range(pp_degree):
-                    if meshs.process_ids == get_mesh(i).process_ids:
-                        ipp = i
-                        break
-
-            change_mesh = False
-            if any(
-                isinstance(placement, dist.Partial) for placement in placements
-            ) and (
-                (meshs.process_ids == get_mesh(ipp).process_ids)
-                and (meshs.dim_names != get_mesh(ipp).dim_names)
-            ):
-                change_mesh = True
-
-            if change_mesh:
-                grad = dist.auto_parallel.moe_utils._dist_reshape(
-                    grad,
-                    grad.shape,
-                    get_mesh(ipp),
-                    [
-                        dist.Partial(dist.ReduceType.kRedSum),
-                        dist.Partial(dist.ReduceType.kRedSum),
-                    ],
-                )
-                placements = grad.placements
-
-            for i in range(len(placements) - 1, -1, -1):
-                if isinstance(placements[i], dist.Partial):
-                    placements[i] = dist.Replicate()
-                    grad = dist.reshard(grad, grad.process_mesh, placements)
-            if self.gradient_accumulation_steps > 1 and in_dygraph_mode():
-                grad /= self.gradient_accumulation_steps
-
-            if change_mesh:
-                grad = dist.auto_parallel.moe_utils._dist_reshape(
-                    grad, grad.shape, grad_mesh, [dist.Replicate()]
-                )
-            param_and_grad = (param_and_grad[0], grad)
-        return self._inner_opt._append_optimize_op(block, param_and_grad)
 
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
+    
+        # if len(self.param_storage) > 0:
+        #     self.param_storage[0][131072000] = 2
+        #     print("param_storage[0]",self.param_storage[0]._slice(131072000,147849216))
+        #     print(self.param_storage[0]._slice(131072000,147849216)._md5sum())
+        # print("parameters:",params_grads[1][0])
+        # print("parameters1:",params_grads[1][0]._md5sum())
+
         if self.enable_tensor_fusion:
             if self.do_tensor_fusion:
                 print("lzx debug do tensor_fusion once")
@@ -1431,11 +1407,10 @@ class _ShardOptimizer(Optimizer):
                 for group_idx, indices in enumerate(group_indices):
                     for idx in indices:
                         var_groups.setdefault(group_idx, []).append(
-                            parameters[idx]
+                            params_grads[idx]
                         )
                 comm_group = paddle.distributed.collective._get_default_group()
-
-                for group_idx, param in var_groups.items():
+                for group_idx, param_and_grad in var_groups.items():
                     (
                         _sharding_param_grad_view,
                         buffer_size,
@@ -1443,17 +1418,51 @@ class _ShardOptimizer(Optimizer):
                         grad_storage,
                         param_buffer_ipc_meta,
                     ) = fleet.utils.tensor_fusion_helper.build_reduce_scatter_buffer(
-                        param,
+                        param_and_grad,
                         comm_group.nranks,
                         comm_group.rank,
+                        use_main_grad = True,
+                        release_grad = True,
                     )
                     self._sharding_param_grad_view.append(
                         _sharding_param_grad_view
                     )
                     self.param_storage.append(param_storage)
-                    self.grad_storage.append(grad_storage)
+   
+                for p, _ in params_grads:
+                    for i in range(len(self._sharding_param_grad_view)):
+                        if p.name in self._sharding_param_grad_view[i]:
+                            view = self._sharding_param_grad_view[i][p.name]
+                            tmp_param = view._slice_param_from_buffer()
+                            tmp_param.get_tensor()._set_dims(view._param.shape)
+                            tmp_param = _dtensor_from_local(tmp_param,p.process_mesh, p.placements)
+                            p.get_tensor()._share_data_with(tmp_param.get_tensor())
+                            # paddle._C_ops.share_var([p, tmp_param])
+       
+        def get_shard_dim(len, shard_dims):
+            for idx in range(len):
+                if idx not in shard_dims:
+                    return idx
+            return -1
 
         if self.enable_tensor_fusion:
+            grad_dtype = params_grads[0][1].dtype
+            for i in range(len(self._sharding_param_grad_view)):
+                grad_buffer = paddle.zeros(shape=[self.param_storage[i]._numel()], dtype=grad_dtype)
+                self.grad_storage.append(grad_buffer)
+
+            for p, g in params_grads:
+                for i in range(len(self._sharding_param_grad_view)):
+                    if p.name in self._sharding_param_grad_view[i]:
+                        view = self._sharding_param_grad_view[i][p.name]
+                        paddle.assign(
+                            g._local_value(),
+                            self.grad_storage[i]._slice(
+                                view._index, view._index + g._local_value()._numel()
+                            ),
+                        )
+
+
             comm_group = paddle.distributed.collective._get_default_group()
             for i in range(len(self._sharding_param_grad_view)):
                 shard_size = self.grad_storage[i]._numel() // comm_group.nranks
@@ -1466,13 +1475,9 @@ class _ShardOptimizer(Optimizer):
                     op=paddle.distributed.ReduceOp.SUM,
                     group=comm_group,
                     sync_op=False,
-                )
+                ).wait()
+         
 
-        def get_shard_dim(len, shard_dims):
-            for idx in range(len):
-                if idx not in shard_dims:
-                    return idx
-            return -1
 
         def shard_grad(p_and_g):
             new_p_and_g = []
@@ -1507,14 +1512,14 @@ class _ShardOptimizer(Optimizer):
                 new_p_and_g.append((p, new_g))
 
             return new_p_and_g
-
-        if in_dynamic_mode():
-            with paddle.static.program_guard(
-                paddle.static.default_main_program(),
-                paddle.static.default_startup_program(),
-            ):
-                params_grads = shard_grad(params_grads)
-
+        if not self.enable_tensor_fusion:
+            if in_dynamic_mode():
+                with paddle.static.program_guard(
+                    paddle.static.default_main_program(),
+                    paddle.static.default_startup_program(),
+                ):
+                    params_grads = shard_grad(params_grads)
+            
         return super()._apply_optimize(
             loss, startup_program, params_grads, param_group_idx=0
         )
