@@ -70,5 +70,59 @@ class TestImperativeContainerParameterList(unittest.TestCase):
         self.parameter_list(True)
 
 
+class TestParameterListAssignment(unittest.TestCase):
+    def test_assign_Tensor(self):
+        param_list = paddle.nn.ParameterList(
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+            ]
+        )
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        new_param1 = paddle.randn([2, 2])
+        param_list[0] = new_param1
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+
+        new_param2 = paddle.randn([2, 2])
+        param_list[1] = new_param2
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        np.testing.assert_allclose(new_param1.numpy(), param_list[0].numpy())
+        np.testing.assert_allclose(new_param2.numpy(), param_list[1].numpy())
+
+    def test_assign_Parameter(self):
+        param_list = paddle.nn.ParameterList(
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+            ]
+        )
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        new_param1 = paddle.create_parameter([2, 2], dtype='float32')
+        param_list[0] = new_param1
+        assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
+
+        new_param2 = paddle.create_parameter([2, 2], dtype='float32')
+        param_list[1] = new_param2
+        assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
+
+        np.testing.assert_allclose(new_param1.numpy(), param_list[0].numpy())
+        np.testing.assert_allclose(new_param2.numpy(), param_list[1].numpy())
+
+    def test_assign_wrong_type(self):
+        param_list = paddle.nn.ParameterList(
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+            ]
+        )
+        with self.assertRaises(TypeError):
+            param_list[0] = 1
+
+
 if __name__ == '__main__':
     unittest.main()
