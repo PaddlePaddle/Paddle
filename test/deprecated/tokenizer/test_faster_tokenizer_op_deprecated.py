@@ -23,7 +23,7 @@ sys.path.append("../../tokenizer")
 from bert_tokenizer import BertTokenizer
 
 import paddle
-from paddle import _legacy_C_ops, nn
+from paddle import _C_ops, nn
 from paddle.base.framework import core
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
@@ -82,18 +82,14 @@ class FasterTokenizer(nn.Layer):
         pad_to_max_seq_len=False,
     ):
         if in_dynamic_mode():
-            input_ids, seg_ids = _legacy_C_ops.faster_tokenizer(
+            input_ids, seg_ids = _C_ops.faster_tokenizer(
                 self.vocab,
                 text,
                 text_pair,
-                "do_lower_case",
                 do_lower_case,
-                "max_seq_len",
-                max_seq_len,
-                "pad_to_max_seq_len",
-                pad_to_max_seq_len,
-                "is_split_into_words",
                 is_split_into_words,
+                max_seq_len,
+                pad_to_max_seq_len,
             )
             return input_ids, seg_ids
 
