@@ -81,11 +81,11 @@ class TestParameterListAssignment(unittest.TestCase):
         assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
         assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
 
-        new_param1 = paddle.randn([2, 2])
+        new_param1 = paddle.randn([2, 3])
         param_list[0] = new_param1
         assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
 
-        new_param2 = paddle.randn([2, 2])
+        new_param2 = paddle.randn([2, 4])
         param_list[1] = new_param2
         assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
 
@@ -95,18 +95,18 @@ class TestParameterListAssignment(unittest.TestCase):
     def test_assign_Parameter(self):
         param_list = paddle.nn.ParameterList(
             [
-                paddle.create_parameter(shape=[2, 2], dtype='float32'),
-                paddle.create_parameter(shape=[2, 2], dtype='float32'),
+                paddle.create_parameter(shape=[2, 3], dtype='float32'),
+                paddle.create_parameter(shape=[2, 4], dtype='float32'),
             ]
         )
         assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
         assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
 
-        new_param1 = paddle.create_parameter([2, 2], dtype='float32')
+        new_param1 = paddle.create_parameter([2, 5], dtype='float32')
         param_list[0] = new_param1
         assert isinstance(param_list[0], paddle.base.framework.EagerParamBase)
 
-        new_param2 = paddle.create_parameter([2, 2], dtype='float32')
+        new_param2 = paddle.create_parameter([2, 6], dtype='float64')
         param_list[1] = new_param2
         assert isinstance(param_list[1], paddle.base.framework.EagerParamBase)
 
