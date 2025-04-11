@@ -33,7 +33,7 @@ if [ "$4" == "py3" ]; then
     echo "::endgroup::"
 fi
 
-if [ "$4" == "xpu" ]; then
+if [ $CI_name == "xpu" ]; then
     echo "::group::Installing ninja-build"
     apt install ninja-build -y
     echo "::endgroup::"
