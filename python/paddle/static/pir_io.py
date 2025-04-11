@@ -172,15 +172,11 @@ def pir_prune_with_input(program, feed_vars, target_vars):
 
     total_ops = program.global_block().ops
     intersection_op_flags = [True] * len(total_ops)
-    skip_prune_ops = ["builtin.parameter"]
 
     # from output to input
     target_vars_ = ValueSet(target_vars)
     for i, op in reversed(list(enumerate(total_ops))):
-        if (
-            some_in_set(get_real_op_outputs(op), target_vars_)
-            or op.name() in skip_prune_ops
-        ):
+        if some_in_set(get_real_op_outputs(op), target_vars_):
             for operand in get_real_op_inputs(op):
                 target_vars_.add(operand)
         else:
@@ -230,24 +226,6 @@ def _inference_optimize(program, prune_read_op=True):
             if op.name() == "pd_op.batch_norm":
                 # Remove the output ReserveSpace of batch_norm if exists.
                 pass
-
-
-def _prune_unused_params(program, outputs):
-    """
-    Prune the parameters not used anywhere in the program.
-    """
-    remove_op = []
-    block = program.global_block()
-    for op in block.ops:
-        if (
-            op.name() == "builtin.parameter"
-            and op.result(0).use_empty()
-            and not any(out.is_same(op.result(0)) for out in outputs)
-        ):
-            remove_op.append(op)
-
-    for op in remove_op:
-        block.remove_op(op)
 
 
 def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
@@ -331,7 +309,6 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     # if feed var is not connect with target_vars, it will be delete.
     if not skip_prune_program:
         pir_prune_with_input(copy_program, clone_feed_vars, clone_fetch_vars)
-        _prune_unused_params(copy_program, clone_fetch_vars)
     _inference_optimize(copy_program, prune_read_op=True)
 
     fetch_vars_tuple = []
