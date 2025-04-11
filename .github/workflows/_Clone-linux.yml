@@ -41,8 +41,8 @@ jobs:
         set -e
         git gc
         git switch -c test
-        git config --global user.name "PaddleCI"
-        git config --global user.email "paddle_ci@example.com"
+        git config user.name "PaddleCI"
+        git config user.email "paddle_ci@example.com"
         git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
         git merge --no-ff pr
         git branch -d pr

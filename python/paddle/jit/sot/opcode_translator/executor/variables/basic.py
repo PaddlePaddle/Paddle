@@ -120,8 +120,6 @@ DTYPE_ABBRS = {
     core.DataType.BOOL: "bool",
 }
 
-STATIC_DIM_FREQ_THRESHOLD = 5
-
 
 def method_to_reverse_method(method_name: str) -> str | None:
     if not method_name.startswith("__") or not method_name.endswith("__"):
@@ -1056,8 +1054,6 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
-            if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
-                return False
             if len(symbolic_input.keys()) > 1:
                 return True
             return False

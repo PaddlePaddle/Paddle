@@ -20,6 +20,7 @@ import subprocess
 import time
 
 import paddle
+from paddle.base import core
 
 
 class Info:
@@ -150,40 +151,23 @@ def query_npu_smi(query=None, index=None, dtype=None):
 
 
 def query_xpu_smi(query=None, index=None, dtype=None):
-    if not has_xpu_smi():
-        return []
-
-    cmd = ["xpu-smi"]
-
+    ret = []
     if not isinstance(dtype, list) or len(dtype) != len(query):
         dtype = [str] * len(query)
 
-    output = subprocess.check_output(cmd, timeout=3)
-    lines = output.decode("utf-8").split(os.linesep)
-    ret = []
-    i = 0
-
-    for line in lines:
-        if not line:
-            continue
-        result = re.split(r',|/|\s+|\|', line)
-        length = len(result)
-        if length not in [23] or "XPU" in result:
-            continue
-        result = [item for item in result if item]
-        info = Info()
-        utilization_xpu = float(re.findall(r'\d+\.\d+|\d+', result[9])[0])
-        mem_total = float(re.findall(r'\d+\.\d+|\d+', result[8])[0])
-        mem_used = float(re.findall(r'\d+\.\d+|\d+', result[7])[0])
+    for dev_id in range(core.get_xpu_device_count()):
+        utilization_xpu = core.get_xpu_device_utilization_rate(dev_id)
+        mem_total = core.get_xpu_device_total_memory(dev_id)
+        mem_used = core.get_xpu_device_used_memory(dev_id)
         result = [
-            i,
+            dev_id,
             utilization_xpu,
             mem_total,
             mem_used,
             (mem_total - mem_used),
             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         ]
-        i += 1
+        info = Info()
         for k, v, d in zip(query, result, dtype):
             setattr(info, k.replace(".", "_"), d(v))
         ret.append(info)

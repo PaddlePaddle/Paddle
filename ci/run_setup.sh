@@ -33,6 +33,18 @@ if [ "$4" == "py3" ]; then
     echo "::endgroup::"
 fi
 
+if [ "$4" == "coverage" ]; then
+    ln -sf $(which python3.9) /usr/local/bin/python
+    ln -sf $(which pip3.9) /usr/local/bin/pip
+    apt install zstd -y
+    pip config set global.cache-dir "/root/.cache/pip"
+    pip install --upgrade pip
+    echo "::group::Install python dependencies"
+    pip install -r "${work_dir}/python/requirements.txt"
+    pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    echo "::endgroup::"
+fi
+
 function run_setup(){
     startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
@@ -306,7 +318,7 @@ EOF
         exit 7;
     fi
 
-    build_size
+    build_size "" $6
 
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
@@ -315,3 +327,9 @@ EOF
 }
 
 run_setup "$@"
+
+if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
+echo "=====================build summary======================"
+cat ${PADDLE_ROOT}/build/build_summary.txt
+echo "========================================================"
+fi
