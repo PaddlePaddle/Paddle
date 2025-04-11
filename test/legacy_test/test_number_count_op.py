@@ -31,7 +31,7 @@ def count(x, upper_num):
 
 
 def number_count_wrapper(numbers, upper_num):
-    return paddle._legacy_C_ops.number_count(numbers, 'upper_range', upper_num)
+    return paddle._C_ops.number_count(numbers, upper_num)
 
 
 @unittest.skipIf(
