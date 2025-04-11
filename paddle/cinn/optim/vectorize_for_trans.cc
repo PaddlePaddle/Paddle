@@ -73,22 +73,6 @@ Expr CalculateTensorOffsetWithIndexes(Expr *tensor,
   return offset;
 }
 
-Expr UpdateOffsetOnlyContainsVectorizeAxis(Expr offset, Var vectorize_axis) {
-  PADDLE_ENFORCE_NOT_NULL(
-      &offset,
-      ::common::errors::InvalidArgument(
-          "Expected offset expr ptr, but received nullptr."));
-  auto var_symbols = CollectExprSymbols(&offset);
-  auto update_offset = ir::ir_utils::IRCopy(offset);
-  for (const auto &[key, value] : var_symbols) {
-    if (key == vectorize_axis->name) continue;
-    cinn::ir::ir_utils::IrReplaceVarBroadcast(
-        &update_offset, Expr(value), Expr(int32_t(0)));
-  }
-  update_offset = cinn::optim::ArithSimplify(update_offset);
-  return update_offset;
-}
-
 bool IsSelectOpWithSpecialOffset(Expr offset) {
   PADDLE_ENFORCE_NOT_NULL(
       &offset,
@@ -108,73 +92,21 @@ bool IsSelectOpWithSpecialOffset(Expr offset) {
   return false;
 }
 
-Expr CalculateOffsetWithVectorizeAxis(Expr offset,
-                                      Expr origin_offset,
-                                      Var var_iter,
-                                      const int value) {
-  PADDLE_ENFORCE_NOT_NULL(
-      &offset,
-      ::common::errors::InvalidArgument(
-          "Expected offset expr ptr, but received nullptr."));
-  PADDLE_ENFORCE_NOT_NULL(
-      &origin_offset,
-      ::common::errors::InvalidArgument(
-          "Expected offset expr ptr, but received nullptr."));
-  Expr next = cinn::ir::ir_utils::IRCopy(offset);
-  cinn::ir::ir_utils::IrReplaceVarBroadcast(
-      &next, Expr(var_iter), Expr(int32_t(value)));
-  next = optim::ArithSimplify(next);
-  auto compare = ir::Sub::Make(next, origin_offset);
-  compare = optim::ArithSimplify(compare);
-  return compare;
-}
-
-Expr GetOriginOffsetWithVectorizeAxis(Expr offset, Var var_iter) {
-  PADDLE_ENFORCE_NOT_NULL(
-      &offset,
-      ::common::errors::InvalidArgument(
-          "Expected offset expr ptr, but received nullptr."));
-  Expr origin_offset = cinn::ir::ir_utils::IRCopy(offset);
-  cinn::ir::ir_utils::IrReplaceVarBroadcast(
-      &origin_offset, Expr(var_iter), Expr(int32_t(0)));
-  origin_offset = optim::ArithSimplify(origin_offset);
-  return origin_offset;
-}
-
-bool CheckTensorAddrLegalCastToVectorize(const std::vector<ir::Expr> &indices,
-                                         const std::vector<ir::Expr> &shapes,
-                                         const int vectorize_factor) {
+bool CheckTensorAddrLegalCastToVectorize(
+    const std::vector<bool> &broadcast_info,
+    const std::vector<int> &loop_sizes,
+    const int vectorize_factor) {
   auto flattened_value = 1;
-  for (int i = 0; i < indices.size(); ++i) {
-    auto const_val = shapes[i].As<ir::IntImm>();
-    PADDLE_ENFORCE_NOT_NULL(const_val,
-                            ::common::errors::InvalidArgument(
-                                "vectorize tiling only support static shape"));
-    ir::Expr index = indices[i];
-    index = optim::ArithSimplify(index);
-    if (index.is_constant() && index.get_constant() == 0) {
+  for (int i = 0; i < broadcast_info.size(); i++) {
+    if (broadcast_info[i]) {
       // If the index is zero (indicating broadcast behavior), reset
       // flattened_value to 1.
       flattened_value = 1;
     } else {
-      flattened_value *= const_val->value;
+      flattened_value *= loop_sizes[i];
     }
   }
   return flattened_value % vectorize_factor == 0;
-}
-
-bool CheckTensorOffsetZero(const Expr &offset, const Var &iter_var) {
-  Expr only_vectorize_axis_offset =
-      UpdateOffsetOnlyContainsVectorizeAxis(offset, iter_var);
-  Expr origin_offset =
-      GetOriginOffsetWithVectorizeAxis(only_vectorize_axis_offset, iter_var);
-  Expr compare = CalculateOffsetWithVectorizeAxis(
-      only_vectorize_axis_offset, origin_offset, iter_var, 1);
-  auto const_val = compare.As<ir::IntImm>();
-  if (!const_val || const_val->value != 0) {
-    return false;
-  }
-  return true;
 }
 
 class ForOpWithMultiScheduleBlockSupportVectorize
@@ -258,6 +190,62 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
   }
 
  private:
+  void Visit(const ir::_BufferRange_ *expr, Expr *op) override {
+    auto *node = op->As<ir::_BufferRange_>();
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Node is null. Ensure that the node is "
+                                "properly initialized and not null."));
+    auto *buffer = node->buffer.As<ir::_Buffer_>();
+    PADDLE_ENFORCE_NOT_NULL(
+        buffer,
+        ::common::errors::InvalidArgument("The buffer is not valid. "
+                                          "Please ensure that `node->buffer` "
+                                          "is properly assigned to a buffer."));
+
+    std::vector<bool> broadcast_axis_info(iterator_var_index_.size(), true);
+    for (auto &var : node->ranges) {
+      broadcast_axis_info[iterator_var_index_[var->name]] = false;
+    }
+    buffer_broadcast_axis_info_.insert({buffer->name, broadcast_axis_info});
+  }
+
+  void Visit(const ir::ScheduleBlock *expr, Expr *op) override {
+    auto *node = op->As<ir::ScheduleBlock>();
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Node is null. Ensure that the node is "
+                                "properly initialized and not null."));
+    int iter_var_index = 0;
+    for (auto &var : node->iter_vars) {
+      auto lower_val = var->lower_bound.As<ir::IntImm>();
+      PADDLE_ENFORCE_NOT_NULL(
+          lower_val,
+          ::common::errors::InvalidArgument(
+              "vectorize tiling only support static shape"));
+      if (lower_val->value != 0) {
+        PADDLE_THROW(::common::errors::InvalidArgument("lower_val must be 0"));
+      }
+
+      auto upper_val = var->upper_bound.As<ir::IntImm>();
+      PADDLE_ENFORCE_NOT_NULL(
+          upper_val,
+          ::common::errors::InvalidArgument(
+              "vectorize tiling only support static shape"));
+      loop_ranges_.emplace_back(upper_val->value);
+      iterator_var_index_[var->name] = iter_var_index++;
+    }
+
+    for (auto &buffer_region : node->read_buffers) {
+      IRMutator::Visit(&buffer_region, &buffer_region);
+    }
+    for (auto &buffer_region : node->write_buffers) {
+      IRMutator::Visit(&buffer_region, &buffer_region);
+    }
+
+    IRMutator::Visit(&(node->body), &(node->body));
+  }
+
   void Visit(const ir::Store *expr, Expr *op) override {
     auto *node = op->As<ir::Store>();
     PADDLE_ENFORCE_NOT_NULL(node,
@@ -278,6 +266,7 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
 
     bool tensor_can_vectorize = TensorCanVectorize(node, node->indices);
     if (node->is_addr_tensor() && tensor_can_vectorize) {
+      VLOG(5) << "vectorize tensor name: " << tensor->name;
       vectorize_tensors_.insert(tensor->name);
       return;
     }
@@ -427,12 +416,10 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
 
     // situation 3. Do not handle the scenario where there is a % b in the
     // computation of the index, but b % factor != 0.
-    if (!CheckTensorAddrLegalCastToVectorize(indices, tensor->shape, factor_)) {
-      return false;
-    }
-
-    // situation 4. Do not handle the offset 0.
-    if (CheckTensorOffsetZero(offset, iter_var_)) {
+    auto *buffer = tensor->buffer.As<ir::_Buffer_>();
+    auto broadcast_info = buffer_broadcast_axis_info_[buffer->name];
+    if (!CheckTensorAddrLegalCastToVectorize(
+            broadcast_info, loop_ranges_, factor_)) {
       return false;
     }
 
@@ -442,8 +429,12 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
   Var iter_var_;
   const int factor_;
   bool schedule_block_can_vectorize_ = true;
+  std::vector<int> loop_ranges_;
   std::unordered_set<std::string> scalar_tensor_without_vectorize_axis_;
   std::unordered_set<std::string> vectorize_tensors_;
+  std::unordered_map<std::string, int> iterator_var_index_;
+  std::unordered_map<std::string, std::vector<bool>>
+      buffer_broadcast_axis_info_;
 };
 
 class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
