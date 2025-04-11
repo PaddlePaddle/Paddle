@@ -285,11 +285,6 @@ inline T AmpAutoCast(const std::string& input_name,
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
-  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-       op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
-      input_name != "x") {
-    return input;
-  }
 
   if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
@@ -307,6 +302,17 @@ inline T AmpAutoCast(const std::string& input_name,
           input_name == "ln2_scale" || input_name == "ln2_bias") {
         return input;
       }
+    }
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
+    }
+  } else if (dst_dtype == phi::DataType::BFLOAT16) {
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
     }
   }
   if (NeedCast(input, dst_dtype)) {

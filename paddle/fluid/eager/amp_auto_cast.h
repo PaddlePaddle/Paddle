@@ -69,11 +69,6 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
           << " input(" << input_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
 
-  if ((op_name == "batch_norm" || op_name == "layer_norm" ||
-       op_name == "sync_batch_norm") &&
-      input_name != "X") {
-    return input;
-  }
   if (op_name == "fused_softmax_mask" && input_name == "Mask" &&
       input.dtype() == phi::DataType::FLOAT32) {
     return input;
@@ -88,6 +83,17 @@ inline paddle::Tensor AmpAutoCast(const std::string& input_name,
           input_name == "Ln1Scale" || input_name == "Ln1Bias") {
         return input;
       }
+    }
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
+    }
+  } else if (dst_dtype == phi::DataType::BFLOAT16) {
+    if ((op_name == "batch_norm" || op_name == "layer_norm" ||
+         op_name == "sync_batch_norm" || op_name == "weight_only_linear") &&
+        input_name != "x") {
+      return input;
     }
   }
 
