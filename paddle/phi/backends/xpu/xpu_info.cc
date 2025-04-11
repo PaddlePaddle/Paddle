@@ -50,6 +50,8 @@ class XPUContext;
 namespace backends {
 namespace xpu {
 
+static std::once_flag xpuml_init_flag;
+
 /**************************** Version Management **************************/
 
 //! Get the version of XPU Driver
@@ -220,6 +222,50 @@ void MemcpySyncD2D(void* dst,
 }
 
 /**************************** Others **************************/
+
+int GetXPUDeviceUtilizationRate(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+  xpumlDevice_t dev_handle;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  xpumlUtilization_t dev_util;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetUtilizationRates(dev_handle, &dev_util));
+  return dev_util.xpu;
+}
+
+int GetXPUDeviceTotalMemory(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+
+  xpumlDevice_t dev_handle;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  xpumlMemory_t dev_mem_info;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
+  return dev_mem_info.totalGlobalMemory / 1024 / 1024;  // MB
+}
+
+int GetXPUDeviceUsedMemory(int dev_id) {
+  std::call_once(xpuml_init_flag, xpumlInit);
+  if (dev_id == -1) {
+    dev_id = GetXPUCurrentDeviceId();
+  }
+
+  xpumlDevice_t dev_handle;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetHandleByIndex(dev_id, &dev_handle));
+  xpumlMemory_t dev_mem_info;
+  PADDLE_ENFORCE_XPUML_SUCCESS(
+      xpumlDeviceGetMemoryInfo(dev_handle, &dev_mem_info));
+  return dev_mem_info.usedGlobalMemory / 1024 / 1024;  // MB
+}
 
 XPUVersion get_xpu_version(int dev_id) {
   if (dev_id == -1) {

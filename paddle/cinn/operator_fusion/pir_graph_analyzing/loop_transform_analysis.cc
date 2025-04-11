@@ -74,8 +74,9 @@ bool HasSharedInput(const LoopAxisMapping& lhs, const LoopAxisMapping& rhs) {
 
 std::optional<AxisTransformRoute> GetHorizontalLoopTransform(
     const LoopAxisMapping& source, const LoopAxisMapping& target) {
-  AxisTransformRoute result;
-  if (!HasSharedInput(source, target)) {
+  // 1. Try to find a route that only appends or deletes axes with size 1
+  const auto padding_result = [&]() -> std::optional<AxisTransformRoute> {
+    AxisTransformRoute result;
     std::vector<int64_t> source_one_dims;
     std::vector<int64_t> target_one_dims;
     for (int i = 0, j = 0; i < source.loop.size() || j < target.loop.size();) {
@@ -108,7 +109,11 @@ std::optional<AxisTransformRoute> GetHorizontalLoopTransform(
       result.push_back(IdentityTransform::InstancePtr());
     }
     return result;
-  }
+  }();
+  if (padding_result.has_value()) return padding_result;
+  // 2. Try to inference a route via shared input value
+  if (!HasSharedInput(source, target)) return std::nullopt;
+  AxisTransformRoute result;
   for (size_t i = 0; i < source.input_values.size(); ++i) {
     auto indices = FindPosInVector(target.input_values, source.input_values[i]);
     for (auto idx : indices) {
@@ -737,11 +742,6 @@ std::optional<AxisTransformRoute> GetValidAdjacentLoopTransform(
   return result;
 }
 
-bool HasSharedInputValues(const LoopAxisMapping& lhs,
-                          const LoopAxisMapping& rhs) {
-  return AnyFirstInSecond(lhs.input_values, rhs.input_values);
-}
-
 std::optional<AxisTransformRoute> GetValidHorizontalLoopTransform(
     const LoopAxisMapping& source, const LoopAxisMapping& target) {
   VLOG(4) << "Try to get valid horizontal loop transform route.";
@@ -752,7 +752,7 @@ std::optional<AxisTransformRoute> GetValidHorizontalLoopTransform(
                       target.loop.size() - target.reduce_axis_num,
                       target.loop.size());
   if (source.reduce_axis_num == 0 && target.reduce_axis_num > 0 &&
-      !HasSharedInputValues(source, target)) {
+      !HasSharedInput(source, target)) {
     // Disable horizontal fusion between trivial and reduce without
     // shared inputs when reduce axis num is large.
     if (reduce_dims_product.isa<std::int64_t>() &&
