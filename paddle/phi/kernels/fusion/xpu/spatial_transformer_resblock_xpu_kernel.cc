@@ -62,7 +62,7 @@ void SpatialTransformerResblockXPUKernel(
     bool include_silu,
     DenseTensor* out,
     DenseTensor* out_max) {
-#if defined(PADDLE_WITH_XPU_XFT) && !defined(PADDLE_ON_INFERENCE)
+#if defined(PADDLE_WITH_XPU_XFT) && !defined(PADDLE_WITH_XPU_XRE5)
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto* in1 = reinterpret_cast<const XPUType*>(x.data<T>());
