@@ -42,6 +42,8 @@ import glob
 import math
 import os
 import re
+import warnings
+from collections import OrderedDict
 from functools import partial
 
 import paddle
@@ -471,7 +473,6 @@ class PipelineLayer(nn.Layer):
         self._layers_desc = list(self.layers)
         self._num_layers = len(self._layers_desc)
         self.shared_layers = paddle.nn.LayerDict()
-        self.shared_weight_attrs = {}
         self.local_shared_layers = paddle.nn.LayerDict()
         self.local_shared_weight_attrs = {}
 
@@ -536,79 +537,129 @@ class PipelineLayer(nn.Layer):
             return
 
         # The first loop gets the pivot stage and all different shared_weight_attrs for one layer name.
-        # Maps one layer name to all shared attrs patterns.
-        layer_name_to_attrs = {}
-        # Maps one layer name to the first stage idx AKA pivot.
+        # Maps stage idx to all shared attrs of each different layer names on that stage.
+        stage_idx_to_layer_name_to_attrs = {}
+        # Maps one layer name to all stage idx that contain that layer.
+        # Have to use OrderedDict here to keep the insertion order otherwise hang might be encountered.
+        layer_name_to_stage_idx = OrderedDict()
+        # Maps one layer name to the first stage idx (AKA the pivot) and the pivot attrs.
         layer_name_to_pivot_stage_idx = {}
+        layer_name_to_pivot_attrs = {}
         for idx, layer in enumerate(self._layers_desc):
             # Get different shared attrs patterns for each layer name.
             if isinstance(layer, SharedLayerDesc):
-                attrs = layer_name_to_attrs.get(layer.layer_name, [])
-                if len(attrs) != 0:
+                current_layer_idx_to_stage_idx = self.get_stage_from_index(idx)
+                all_stage_idx_contains_layer = layer_name_to_stage_idx.get(
+                    layer.layer_name, []
+                )
+                all_stage_idx_contains_layer.extend(
+                    [current_layer_idx_to_stage_idx]
+                )
+                # Have to keep the order here otherwise hang might be encountered.
+                layer_name_to_stage_idx[layer.layer_name] = sorted(
+                    set(all_stage_idx_contains_layer)
+                )
+                if layer.layer_name in layer_name_to_pivot_stage_idx:
                     # We assume the first layer among all shared layers with the same layer name is the pivot,
                     # which means the first layer shares the weight to others. All other shared layers should
                     # share a subset of pivot layer's share attrs.
-                    # In the future, if any shared layer can be the pivot,
-                    # should update all logic related with the pivot.
-                    pivot = attrs[0]
+                    pivot = layer_name_to_pivot_attrs[layer.layer_name]
                     assert all(
                         attr in pivot for attr in layer.shared_weight_attr
+                    ), (
+                        f"Current shared attrs ({layer.shared_weight_attr}) is not included by the shared attrs "
+                        f"({pivot}) of the first shared layer."
                     )
                 else:
-                    # Record the pivot stage idx.
+                    # Record the pivot stage idx and the pivot attrs.
                     layer_name_to_pivot_stage_idx[layer.layer_name] = (
-                        self.get_stage_from_index(idx)
+                        current_layer_idx_to_stage_idx
                     )
-                if layer.shared_weight_attr not in attrs:
-                    # Only record different shared attrs pattern, all the same shared attrs patterns will use
-                    # exactly one comm group.
-                    attrs.append(layer.shared_weight_attr)
-                    layer_name_to_attrs[layer.layer_name] = attrs
+                    layer_name_to_pivot_attrs[layer.layer_name] = (
+                        layer.shared_weight_attr
+                    )
+                # Record the attrs for a specific layer on a specific stage.
+                layer_name_to_attrs_on_stage_idx = (
+                    stage_idx_to_layer_name_to_attrs.get(
+                        current_layer_idx_to_stage_idx, {}
+                    )
+                )
+                attrs_for_layer_name_on_stage_idx = (
+                    layer_name_to_attrs_on_stage_idx.get(layer.layer_name, [])
+                )
+                attrs_for_layer_name_on_stage_idx.extend(
+                    layer.shared_weight_attr
+                )
+                # Remove redundant attrs, each shared attr will share mem on the same stage idx.
+                # Have to keep the order here otherwise hang might be encountered.
+                layer_name_to_attrs_on_stage_idx[layer.layer_name] = sorted(
+                    set(attrs_for_layer_name_on_stage_idx)
+                )
+                stage_idx_to_layer_name_to_attrs[
+                    current_layer_idx_to_stage_idx
+                ] = layer_name_to_attrs_on_stage_idx
 
         # The second loop generates comm keys and assigns stages and attrs to the comm key.
-        # Record all unique comm keys, the comm key is generated from the layer name and the shared attrs pattern.
+        # Record all unique comm keys, the comm key is generated from the layer name and the stage idx.
         # Each comm key represents a comm group.
         comm_keys = []
         # Maps comm key to layer name.
         comm_key_to_layer_name = {}
-        # Maps comm key to all stage idx using the comm key.
+        # Maps comm key to two stage idx using the comm key.
         comm_key_to_stage_idx = {}
         # Maps comm key to all shared attrs that will be communicated by the comm group indicated by the comm key.
         comm_key_to_shared_attrs = {}
-        for layer_name in layer_name_to_attrs.keys():
-            attrs = layer_name_to_attrs[layer_name]
-            # For each different shared attrs pattern, generate unique comm key and get corresponding pp stages.
-            for attr in attrs:
-                comm_key = f'LAYER_NAME:{layer_name},SHARED_ATTRS:{attr}'
+        for layer_name in layer_name_to_stage_idx.keys():
+            all_stage_idx_contains_layer = layer_name_to_stage_idx[layer_name]
+            # For all stages contain a same layer name,
+            # generate a comm group between each stage and the pivot explicitly.
+            for stage_idx in all_stage_idx_contains_layer:
+                comm_key = f'LAYER_NAME:{layer_name},STAGE_IDX:{stage_idx}'
                 for idx, layer in enumerate(self._layers_desc):
+                    current_layer_idx_to_stage_idx = self.get_stage_from_index(
+                        idx
+                    )
                     if not isinstance(layer, SharedLayerDesc):
                         continue
-                    if idx == layer_name_to_pivot_stage_idx[layer_name]:
+                    if (
+                        current_layer_idx_to_stage_idx
+                        == layer_name_to_pivot_stage_idx[layer_name]
+                    ):
                         # Skip the pivot, the pivot stage will be added automatically when creating a new comm group.
                         continue
                     if (
                         layer.layer_name == layer_name
-                        and layer.shared_weight_attr == attr
+                        and current_layer_idx_to_stage_idx == stage_idx
                     ):
                         # Add comm key to comm_keys and add current stage idx to comm group.
                         if comm_key not in comm_keys:
                             comm_keys.append(comm_key)
                             comm_key_to_layer_name[comm_key] = layer_name
-                        # By default, insert the pivot stage id to the list.
-                        stage_idx = comm_key_to_stage_idx.get(
-                            comm_key,
-                            [layer_name_to_pivot_stage_idx[layer_name]],
-                        )
-                        stage_idx.append(self.get_stage_from_index(idx))
-                        comm_key_to_stage_idx[comm_key] = stage_idx
-                        comm_key_to_shared_attrs[comm_key] = attr
+                            # The comm will only happen between pivot and current stage.
+                            comm_key_to_stage_idx[comm_key] = [
+                                layer_name_to_pivot_stage_idx[layer_name],
+                                current_layer_idx_to_stage_idx,
+                            ]
+                            comm_key_to_shared_attrs[comm_key] = (
+                                stage_idx_to_layer_name_to_attrs[stage_idx][
+                                    layer.layer_name
+                                ]
+                            )
+
+        if len(comm_keys) == 0:
+            warnings.warn(
+                "No shared comm will be constructed, "
+                "this may happen when all shared attrs are on a same stage."
+            )
 
         # The third loop generates comm group for each comm key.
         for comm_key in comm_keys:
             shared_stages = comm_key_to_stage_idx[comm_key]
             layer_name = comm_key_to_layer_name[comm_key]
+            shared_attrs = comm_key_to_shared_attrs[comm_key]
             logger.info(
-                f'Constructing shared comm for {comm_key} among pp stages {shared_stages}.'
+                f'Constructing shared comm for {comm_key} among pp stages {shared_stages}, '
+                f'this shared comm will communicate attrs: {shared_attrs}.'
             )
             self._dp_degree = self._topo.get_dim('data')
             self._mp_degree = self._topo.get_dim('model')
@@ -638,9 +689,7 @@ class PipelineLayer(nn.Layer):
                             shared_comm[comm_key] = {
                                 'ranks': shared_ranks,
                                 'group': group,
-                                'weight_attr': comm_key_to_shared_attrs[
-                                    comm_key
-                                ],
+                                'weight_attr': shared_attrs,
                                 'layer': self.shared_layers[layer_name],
                             }
         return shared_comm
@@ -900,9 +949,6 @@ class PipelineLayer(nn.Layer):
                 flush_into_run_function()
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
-                    self.shared_weight_attrs[layer.layer_name] = (
-                        layer.shared_weight_attr
-                    )
                     for param in self.shared_layers[
                         layer.layer_name
                     ].parameters():
