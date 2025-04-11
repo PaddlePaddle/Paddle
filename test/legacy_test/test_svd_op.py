@@ -40,6 +40,13 @@ class TestSvdOp(OpTest):
                 "VH": self._output_data[2],
             }
 
+    def _get_places(self):
+        places = []
+        places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
     def generate_input(self):
         """return a input_data and input_shape"""
         self._input_shape = (100, 1)
