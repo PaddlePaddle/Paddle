@@ -191,14 +191,6 @@ std::vector<IterRange> CalculateTensorRegions(
 Expr GetNthAccessExpr(const Expr& block, int index, bool is_write);
 
 /**
- * Make a tensor's cache tensor.
- * @param tensor The original tensor.
- * @param memory_type The memory type of the cache tensor.
- * @return return The tensor's cache tensor.
- */
-Tensor MakeCacheTensor(const Tensor& tensor, const std::string& memory_type);
-
-/**
  * Make a the cache tensor's block.
  * @param buffer_region The accessed region of cache tensor.
  * @param info The information of cache block.

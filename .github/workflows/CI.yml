@@ -24,6 +24,11 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: clone
 
+  coverage:
+    name: PR-CI-Coverage
+    uses: ./.github/workflows/_Coverage.yml
+    needs: clone
+
   # Py3:
   #   uses: ./.github/workflows/_Py3.yml
   #   needs: Clone

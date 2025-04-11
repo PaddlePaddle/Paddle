@@ -1,0 +1,343 @@
+name: PR-CI-Coverage
+
+on:
+  workflow_call:
+
+env:
+  Dockerfile: Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage
+  docker_image: 5a60bb165c34
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-coverage
+  ci_scripts: ${{ github.workspace }}/ci
+  BRANCH: ${{ github.base_ref }}
+  work_dir: ${{ github.workspace }}
+  PADDLE_ROOT: ${{ github.workspace }}
+  GIT_PR_ID: ${{ github.event.pull_request.number }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Coverage build
+    runs-on:
+      group: GZ_BD-CPU
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can_skip }}
+
+    steps:
+    - name: Download paddle.tar.gz and update test branch
+      run: |
+        rm -rf  * .[^.]*
+        set -e
+        echo "Downloading Paddle.tar.gz"
+        wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+        echo "Extracting Paddle.tar.gz"
+        tar xf Paddle.tar.gz --strip-components=1
+        rm Paddle.tar.gz
+        git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+        git config pull.rebase false
+        git checkout test
+        echo "Pull upstream develop"
+        . ../../../proxy
+        git pull upstream develop --no-edit
+
+    - name: Check bypass
+      id: check-bypass
+      uses: ./.github/actions/check-bypass
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        workflow-name: coverage
+
+    - name: Check docker image and run container
+      if: steps.check-bypass.outputs.can_skip != 'true'
+      env:
+        CCACHE_DIR: "/root/.ccache/coverage"
+        FLAGS_fraction_of_gpu_memory_to_use: 0.15
+        CTEST_PARALLEL_LEVEL: 2
+        WITH_GPU: "ON"
+        CUDA_ARCH_NAME: Volta
+        WITH_AVX: "ON"
+        WITH_COVERAGE: "ON"
+        COVERALLS_UPLOAD: "ON"
+        PADDLE_VERSION: 0.0.0
+        CUDA_VISIBLE_DEVICES: 0,1
+        WITH_DISTRIBUTE: "ON"
+        PRECISION_TEST: "ON"
+        LITE_GIT_TAG: develop
+        WITH_UNITY_BUILD: "ON"
+        PY_VERSION: 3.9
+        WITH_SHARED_PHI: "ON"
+        WITH_CINN: "ON"
+        INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
+        CCACHE_MAXSIZE: 200G
+        CCACHE_LIMIT_MULTIPLE: 0.8
+        ON_INFER: "ON"
+        PADDLE_CUDA_INSTALL_REQUIREMENTS: "ON"
+        FLAGS_enable_unused_var_check: 1
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        UT_RUN_TYPE_SETTING: WITHOUT_HYBRID
+      run: |
+        container_name=${TASK}-build-$(date +%s)
+        echo "container_name=${container_name}" >> ${{ github.env }}
+        docker run -d -t --name ${container_name} \
+          -v "/home/data/cfs:/home/data/cfs" \
+          -v "/home/data/cfs/.cache:/root/.cache" \
+          -v "/home/data/cfs/.ccache:/root/.ccache" \
+          -v "/dev/shm:/dev/shm" \
+          -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+          -e BRANCH \
+          -e PR_ID \
+          -e COMMIT_ID \
+          -e work_dir \
+          -e PADDLE_ROOT \
+          -e GIT_PR_ID \
+          -e CCACHE_DIR \
+          -e ci_scripts \
+          -e FLAGS_fraction_of_gpu_memory_to_use \
+          -e CTEST_PARALLEL_LEVEL \
+          -e WITH_GPU \
+          -e CUDA_ARCH_NAME \
+          -e WITH_AVX \
+          -e WITH_COVERAGE \
+          -e COVERALLS_UPLOAD \
+          -e PADDLE_VERSION \
+          -e WITH_DISTRIBUTE \
+          -e PRECISION_TEST \
+          -e LITE_GIT_TAG \
+          -e WITH_UNITY_BUILD \
+          -e PY_VERSION \
+          -e WITH_SHARED_PHI \
+          -e WITH_CINN \
+          -e INFERENCE_DEMO_INSTALL_DIR \
+          -e CCACHE_MAXSIZE \
+          -e CCACHE_LIMIT_MULTIPLE \
+          -e ON_INFER \
+          -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
+          -e FLAGS_enable_unused_var_check \
+          -e GITHUB_TOKEN \
+          -e GITHUB_API_TOKEN \
+          -e UT_RUN_TYPE_SETTING \
+          -w ${{ github.workspace }} --network host ${docker_image}
+
+    - name: Build
+      if: steps.check-bypass.outputs.can_skip != 'true'
+      run: |
+        docker exec -t ${{ env.container_name }}  /bin/bash -c '
+        mkdir -p /home/data/cfs/.cache/coverage
+        mkdir -p /home/data/cfs/.ccache/coverage
+        . ../../../proxy
+        bash $ci_scripts/coverage_build.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} coverage "" ${{ github.env }}
+        '
+
+    - name: Check added unittests
+      if: steps.check-bypass.outputs.can_skip != 'true'
+      run: |
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        . ../../../proxy
+        bash -x $ci_scripts/check_added_ut.sh
+        '
+
+    - name: Check coverage build size requires approval
+      if: steps.check-bypass.outputs.can_skip != 'true'
+      run: |
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        . ../../../proxy
+        bash $ci_scripts/coverage_build_size_approval.sh ${{ env.buildSize }}
+        '
+
+    - name: Clean up env
+      if: steps.check-bypass.outputs.can_skip != 'true'
+      working-directory: build
+      run: |
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        source ${ci_scripts}/utils.sh; clean_build_files
+        Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
+        echo "Build_Size=${Build_Size}" > ${{ github.workspace }}/dist/coverage_build_size
+        find ./ -type f -size +200M | xargs du -lh
+        rm -rf $(find . -name "*.a")
+        rm -rf $(find . -name "*.o")
+        rm -rf paddle_inference_install_dir
+        rm -rf paddle_inference_c_install_dir
+        rm -rf lib.linux-x86_64-3.9
+        find ./ -name "eager_generator" -or -name  "kernel_signature_generator" -or -name "eager_legacy_op_function_generator" | xargs rm -rf
+        rm -rf ./python/build/lib.linux-x86_64-3.9/
+        cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
+        cd ${{ github.workspace }}/..
+        tar --use-compress-program="pzstd -1" -cpf Paddle.tar.gz Paddle
+        '
+
+    - name: Upload coverage product
+      if: steps.check-bypass.outputs.can_skip != 'true'
+      env:
+        home_path: ${{ github.workspace }}/..
+        bos_file: ${{ github.workspace }}/../bos/BosClient.py
+        paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
+      working-directory: dist
+      run: |
+        pwd
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        echo "::group::Install bce-python-sdk"
+        . ../../../proxy
+        python -m pip install bce-python-sdk==0.8.74
+        echo "::endgroup::"
+        export AK=paddle
+        export SK=paddle
+        if [ ! -f "${{ env.bos_file }}" ]; then
+          wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+          mkdir ${{ env.home_path }}/bos
+          tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+        fi
+        . ../../../unproxy
+        cd ${{ github.workspace }}/dist
+        python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage_build_size/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+        python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+        cd ${{ github.workspace }}/..
+        python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/coverage_paddle/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+        rm Paddle.tar.gz
+        '
+
+    - name: Terminate and delete the container
+      if: ${{ steps.check-bypass.outputs.can_skip != 'true' && always() }}
+      run: |
+        set +e
+        docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        docker stop ${{ env.container_name }}
+        docker rm ${{ env.container_name }}
+
+
+  test:
+    name: Coverage test
+    needs: build
+    if: needs.build.outputs.can-skip != 'true'
+    runs-on:
+      group: BD_BJ-V100
+    steps:
+    - name: Download paddle.tar.gz and update test branch
+      run: |
+        set +e
+        rm -rf * .[^.]*
+        set -e
+        echo "Downloading Paddle.tar.gz"
+        wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+        # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/71611/52756a5f582d9ee58822dd76788beaf13024f6a0/Paddle.tar.gz --no-check-certificate
+        echo "Extracting Paddle.tar.gz"
+        tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz --strip-components=1
+        rm Paddle.tar.gz
+        . ../../../proxy
+        git checkout test
+        echo "Pull upstream develop"
+        git pull upstream develop --no-edit
+
+    - name: Check docker image and run container
+      env:
+        CACHE_DIR: "/root/.cache/coverage"
+        CCACHE_DIR: "/root/.ccache/coverage"
+        FLAGS_fraction_of_gpu_memory_to_use: 0.15
+        CTEST_PARALLEL_LEVEL: 2
+        WITH_GPU: "ON"
+        CUDA_ARCH_NAME: Volta
+        WITH_AVX: "ON"
+        WITH_COVERAGE: "ON"
+        COVERALLS_UPLOAD: "ON"
+        PADDLE_VERSION: 0.0.0
+        WITH_DISTRIBUTE: "ON"
+        PRECISION_TEST: "ON"
+        WITH_UNITY_BUILD: "ON"
+        PY_VERSION: 3.9
+        WITH_SHARED_PHI: "ON"
+        WITH_CINN: "ON"
+        INFERENCE_DEMO_INSTALL_DIR: /root/.cache/coverage
+        CCACHE_MAXSIZE: 200G
+        CCACHE_LIMIT_MULTIPLE: 0.8
+        FLAGS_PIR_OPTEST: "TRUE"
+        ON_INFER: "ON"
+        COVERAGE_FILE: ${{ github.workspace }}/build/python-coverage.data
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        container_name=${TASK}-test-$(date +%s)
+        echo "container_name=${container_name}" >> ${{ github.env }}
+        docker run -d -t --gpus all --name ${container_name} \
+          -v "/home/data/cfs:/home/data/cfs" \
+          -v "/home/data/cfs/.cache:/root/.cache" \
+          -v "/home/data/cfs/.ccache:/root/.ccache" \
+          -v "/dev/shm:/dev/shm" \
+          -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+          -e BRANCH \
+          -e PR_ID \
+          -e COMMIT_ID \
+          -e work_dir \
+          -e PADDLE_ROOT \
+          -e GIT_PR_ID \
+          -e CACHE_DIR \
+          -e CCACHE_DIR \
+          -e ci_scripts \
+          -e FLAGS_fraction_of_gpu_memory_to_use \
+          -e CTEST_PARALLEL_LEVEL \
+          -e WITH_GPU \
+          -e CUDA_ARCH_NAME \
+          -e WITH_AVX \
+          -e WITH_COVERAGE \
+          -e COVERALLS_UPLOAD \
+          -e PADDLE_VERSION \
+          -e WITH_DISTRIBUTE \
+          -e PRECISION_TEST \
+          -e WITH_UNITY_BUILD \
+          -e PY_VERSION \
+          -e WITH_SHARED_PHI \
+          -e WITH_CINN \
+          -e INFERENCE_DEMO_INSTALL_DIR \
+          -e CCACHE_MAXSIZE \
+          -e CCACHE_LIMIT_MULTIPLE \
+          -e FLAGS_PIR_OPTEST \
+          -e ON_INFER \
+          -e COVERAGE_FILE \
+          -e GITHUB_TOKEN \
+          -e GITHUB_API_TOKEN  \
+          -w ${{ github.workspace }} --network host ${docker_image}
+
+    - name: Test
+      run: |
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        nvidia-smi
+        . ../../../proxy
+        bash $ci_scripts/coverage_test.sh ${{ github.env }}
+        TEST_EXIT_CODE=$?
+        echo "TEST_EXIT_CODE=${TEST_EXIT_CODE}" >> ${{ github.env }}
+        if [[ "$TEST_EXIT_CODE" -ne 0 && "$TEST_EXIT_CODE" -ne 9 ]]; then
+            exit $TEST_EXIT_CODE
+        fi
+        '
+
+    - name: Check coverage data
+      run: |
+        docker exec -t ${{ env.container_name }} /bin/bash -c '
+        . ../../../proxy
+        source ${ci_scripts}/utils.sh; check_coverage
+        COVERAGE_EXIT_CODE=$?
+        echo "COVERAGE_EXIT_CODE=${COVERAGE_EXIT_CODE}" >> ${{ github.env }}
+        '
+
+    - name: Upload coverage report
+      uses: codecov/codecov-action@v4
+      with:
+        directory: build/coverage_files
+
+    - name: Judge coverage passed or not
+      run: |
+        if [ "${{ env.COVERAGE_EXIT_CODE }}" -ne 0 ]; then
+          echo "Coverage failed"
+          exit ${{ env.COVERAGE_EXIT_CODE }}
+        fi
+
+    - name: Terminate and delete the container
+      if: always()
+      run: |
+        set +e
+        docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        docker stop ${{ env.container_name }}
+        docker rm ${{ env.container_name }}
