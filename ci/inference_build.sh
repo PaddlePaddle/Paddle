@@ -80,4 +80,4 @@ EOF
     build_size "paddle_inference_c"
 }
 
-gen_fluid_lib_by_setup ${parallel_number:-""}
+gen_fluid_lib_by_setup ${parallel_number_env:-""}
