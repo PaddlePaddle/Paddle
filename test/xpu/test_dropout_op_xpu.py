@@ -201,6 +201,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                 return mask.astype(self.in_type)
 
         def test_backward_downscale_in_infer(self):
+            paddle.disable_static()
             for place in self.places:
                 with base.dygraph.guard(place):
                     prob = 0.1
@@ -212,6 +213,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     ret = _C_ops.dropout(
                         input, None, prob, False, "downscale_in_infer", 0, False
                     )
+                    assert not isinstance(ret, paddle.Tensor), ret
                     if isinstance(ret, paddle.Tensor):
                         out = ret
                         mask = None
