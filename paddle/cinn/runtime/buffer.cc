@@ -32,7 +32,6 @@ void Shape::Resize(int ndim) {
   ndims_ = ndim;
   if (data_) delete data_;
   data_ = new value_type[ndim];
-  LOG(INFO) << "1111";
 }
 
 Shape::value_type &Shape::operator[](int i) {
