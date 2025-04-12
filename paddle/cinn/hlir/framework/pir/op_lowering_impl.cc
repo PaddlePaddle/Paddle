@@ -157,8 +157,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  LOG(INFO) << "Time of OpFusion: ***** [ " << duration.count()
-            << " ] ***** microseconds.";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "Time of OpFusion: ***** [ " << duration.count()
+              << " ] ***** microseconds.";
+  }
 
   // =========== CodeGen And Optimizer ================
   start = std::chrono::high_resolution_clock::now();
@@ -211,8 +213,10 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   }
   end = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  LOG(INFO) << "Time of group schedule: ***** [ " << duration.count()
-            << " ] ***** microseconds.";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "Time of group schedule: ***** [ " << duration.count()
+              << " ] ***** microseconds.";
+  }
 
   // 3.Do post-processing,
   // including preparing function args and temporary variables,

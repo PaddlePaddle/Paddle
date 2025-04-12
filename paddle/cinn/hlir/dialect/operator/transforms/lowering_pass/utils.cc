@@ -50,8 +50,10 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
       auto end = std::chrono::high_resolution_clock::now();
       auto duration =
           std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-      LOG(INFO) << "Time of lowering and compiling group: ***** [ "
-                << duration.count() << " ] ***** microseconds.";
+      if (FLAGS_cinn_debug) {
+        LOG(INFO) << "Time of lowering and compiling group: ***** [ "
+                  << duration.count() << " ] ***** microseconds.";
+      }
       return res;
       // return pir_compiler.Build({group})[0];
     };

@@ -151,8 +151,10 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  LOG(INFO) << "Time of llvm compile: ***** [ " << duration.count()
-            << " ] ***** microseconds.";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "Time of llvm compile: ***** [ " << duration.count()
+              << " ] ***** microseconds.";
+  }
   return compile_result;
 }
 

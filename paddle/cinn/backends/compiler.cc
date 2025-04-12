@@ -264,8 +264,10 @@ void Compiler::EndCompile() {
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  LOG(INFO) << "Time of nvrtc compile: ***** [ " << duration.count()
-            << " ] ***** microseconds.";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "Time of nvrtc compile: ***** [ " << duration.count()
+              << " ] ***** microseconds.";
+  }
   engine_->AddSelfModule();
 }
 
@@ -459,8 +461,10 @@ void Compiler::CompileCudaModule(const Module& module,
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  LOG(INFO) << "Time of SplitDeviceAndHostModule: ***** [ " << duration.count()
-            << " ] ***** microseconds.";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "Time of SplitDeviceAndHostModule: ***** [ "
+              << duration.count() << " ] ***** microseconds.";
+  }
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
   VLOG(3) << "[CUDA] host module:\n" << host_module;
@@ -478,8 +482,10 @@ void Compiler::CompileCudaModule(const Module& module,
     end = std::chrono::high_resolution_clock::now();
     duration =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    LOG(INFO) << "Time of backend compiler compile device module: ***** [ "
-              << duration.count() << " ] ***** microseconds.";
+    if (FLAGS_cinn_debug) {
+      LOG(INFO) << "Time of backend compiler compile device module: ***** [ "
+                << duration.count() << " ] ***** microseconds.";
+    }
   } else {
     source_code = code;
   }
