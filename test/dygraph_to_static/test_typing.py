@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils import Dy2StTestBase, test_pir_only
 
 import paddle
 
@@ -94,7 +94,7 @@ class TestTyping(Dy2StTestBase):
         out, _ = self.net(self.x)
         return out
 
-    @test_legacy_and_pir
+    @test_pir_only
     def test_type(self):
         self.net = self.build_net()
         out = self.run_dy()
