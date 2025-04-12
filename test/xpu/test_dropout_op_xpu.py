@@ -211,7 +211,7 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                         input = paddle.uniform([100, 40], dtype=self.in_type)
                     input.stop_gradient = False
                     ret = _legacy_C_ops.dropout(input, 'dropout_prob', prob)
-                    assert not isinstance(ret, paddle.Tensor), ret
+                    assert isinstance(ret, str), ret
                     if isinstance(ret, paddle.Tensor):
                         out = ret
                         mask = None
