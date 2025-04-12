@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 
 
 class TestQuantizeLinerAPI(unittest.TestCase):
@@ -30,10 +30,10 @@ class TestQuantizeLinerAPI(unittest.TestCase):
         paddle.disable_static()
 
     def run_case(self, function_name, xshape, axis, bit_length, qmin, qmax):
-        func = getattr(_legacy_C_ops, function_name, None)
+        func = getattr(_C_ops, function_name, None)
         if func is None:
             raise ValueError(
-                f"No function named '{function_name}' found in _legacy_C_ops."
+                f"No function named '{function_name}' found in _C_ops."
             )
 
         x_np = np.random.uniform(-0.1, 0.1, xshape).astype("float32")
@@ -81,31 +81,41 @@ class TestQuantizeLinerAPI(unittest.TestCase):
             )
 
         paddle.set_device("xpu")
-        y_xpu = func(
+        ret = func(
             x_paddle,
             scale_paddle,
             zero_paddle,
-            "quant_axis",
+            None,
+            None,
             axis,
-            "bit_length",
             bit_length,
-            "qmin",
             qmin,
-            "qmax",
+            qmax,
+        )
+        assert len(ret) == 4, "The return value of quantize_linear " + str(
+            len(ret)
+        )
+        y_xpu, _, _, _ = func(
+            x_paddle,
+            scale_paddle,
+            zero_paddle,
+            None,
+            None,
+            axis,
+            bit_length,
+            qmin,
             qmax,
         )
         paddle.set_device("cpu")
-        y_cpu = func(
+        y_cpu, _, _, _ = func(
             x_paddle_cpu,
             scale_paddle_cpu,
             zero_paddle_cpu,
-            "quant_axis",
+            None,
+            None,
             axis,
-            "bit_length",
             bit_length,
-            "qmin",
             qmin,
-            "qmax",
             qmax,
         )
         np.testing.assert_allclose(y_xpu.numpy(), y_cpu.numpy(), atol=0, rtol=0)
