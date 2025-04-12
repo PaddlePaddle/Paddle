@@ -1,161 +1,172 @@
 # Exclude all third-party libraries and auto-generated files globally
 exclude: |
-    (?x)^(
-        patches/.+|
-        paddle/fluid/framework/fleet/heter_ps/cudf/.+|
-        paddle/fluid/distributed/ps/thirdparty/round_robin.h|
-        python/paddle/utils/gast/.+|
-        third_party/.+
-    )$
+  (?x)^(
+    patches/.+|
+    paddle/fluid/framework/fleet/heter_ps/cudf/.+|
+    paddle/fluid/distributed/ps/thirdparty/round_robin.h|
+    python/paddle/utils/gast/.+|
+    third_party/.+
+  )$
 repos:
-# Common hooks
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  # Common hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
-    -   id: check-added-large-files
-    -   id: check-merge-conflict
-    -   id: check-symlinks
-    -   id: detect-private-key
-    -   id: end-of-file-fixer
-    -   id: sort-simple-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: sort-simple-yaml
         files: (ops|backward|op_[a-z_]+)\.yaml$
-    -   id: trailing-whitespace
--   repo: https://github.com/Lucas-C/pre-commit-hooks.git
+      - id: trailing-whitespace
+  - repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.5.1
     hooks:
-    -   id: remove-crlf
-    -   id: remove-tabs
+      - id: remove-crlf
+      - id: remove-tabs
         name: Tabs remover (C++)
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
         args: [--whitespaces-count, '2']
-    -   id: remove-tabs
+      - id: remove-tabs
         name: Tabs remover (Python)
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
         args: [--whitespaces-count, '4']
         # Exclude some unit test files that require tabs.
         exclude: |
-            (?x)^(
-                test/dygraph_to_static/test_error.py
-            )$
--   repo: local
+          (?x)^(
+              test/dygraph_to_static/test_error.py
+          )$
+  - repo: local
     hooks:
-    -   id: copyright_checker
+      - id: copyright_checker
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.py
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
-            (?x)^(
-                paddle/utils/.*|
-                paddle/cinn/utils/registry.h
-            )$
--   repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
+          (?x)^(
+            paddle/utils/.*|
+            paddle/cinn/utils/registry.h
+          )$
+  - repo: https://github.com/PFCCLab/typos-pre-commit-mirror.git
     rev: v1.30.2
     hooks:
-    -   id: typos
+      - id: typos
         args: [--force-exclude]
-# For Python files
--   repo: https://github.com/psf/black-pre-commit-mirror
+  # For Python files
+  - repo: https://github.com/psf/black-pre-commit-mirror
     rev: 24.8.0
     hooks:
-    -   id: black
--   repo: https://github.com/astral-sh/ruff-pre-commit
+      - id: black
+  - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.0
     hooks:
-    -   id: ruff
+      - id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
-# For C++ files
--   repo: local
+  # For C++ files
+  - repo: local
     hooks:
-    -   id: clang-format
+      - id: clang-format
         name: clang-format
         description: Format files with ClangFormat.
         entry: bash ./tools/codestyle/clang_format.sh -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
--   repo: local
+  - repo: local
     hooks:
-    -   id: cpplint-cpp-source
+      - id: cpplint-cpp-source
         name: cpplint
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.sh
         language: system
         files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
-            - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
-            - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
-            - --quiet
+          - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+          - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
+          - --quiet
         # Exclude third-party libraries
-        exclude:  |
-            (?x)^(
-                paddle/utils/flat_hash_map\.h
-            )$
--   repo: local
+        exclude: |
+          (?x)^(
+            paddle/utils/flat_hash_map\.h
+          )$
+  - repo: local
     hooks:
-    -   id: clang-tidy
+      - id: clang-tidy
         name: clang-tidy
         description: Parallel clang-tidy runner.
         entry: python ./tools/codestyle/clang-tidy.py
         language: system
         files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
         args:
-            - -p=build/
-            - -extra-arg=-Wno-unknown-warning-option
-            - -extra-arg=-Wno-pessimizing-move
-            - -extra-arg=-Wno-braced-scalar-init
-            - -extra-arg=-Wno-dangling-gsl
-            - -extra-arg=-Wno-deprecated-copy
-            - -extra-arg=-Wno-final-dtor-non-final-class
-            - -extra-arg=-Wno-implicit-int-float-conversion
-            - -extra-arg=-Wno-inconsistent-missing-override
-            - -extra-arg=-Wno-infinite-recursion
-            - -extra-arg=-Wno-mismatched-tags
-            - -extra-arg=-Wno-self-assign
-            - -extra-arg=-Wno-sign-compare
-            - -extra-arg=-Wno-sometimes-uninitialized
-            - -extra-arg=-Wno-tautological-overlap-compare
-            - -extra-arg=-Wno-unused-const-variable
-            - -extra-arg=-Wno-unused-lambda-capture
-            - -extra-arg=-Wno-unused-private-field
-            - -extra-arg=-Wno-unused-value
-            - -extra-arg=-Wno-unused-variable
-            - -extra-arg=-Wno-overloaded-virtual
-            - -extra-arg=-Wno-defaulted-function-deleted
-            - -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor
-            - -extra-arg=-Wno-return-type-c-linkage
-# For CMake files
--   repo: local
+          - -p=build/
+          - -extra-arg=-Wno-unknown-warning-option
+          - -extra-arg=-Wno-pessimizing-move
+          - -extra-arg=-Wno-braced-scalar-init
+          - -extra-arg=-Wno-dangling-gsl
+          - -extra-arg=-Wno-deprecated-copy
+          - -extra-arg=-Wno-final-dtor-non-final-class
+          - -extra-arg=-Wno-implicit-int-float-conversion
+          - -extra-arg=-Wno-inconsistent-missing-override
+          - -extra-arg=-Wno-infinite-recursion
+          - -extra-arg=-Wno-mismatched-tags
+          - -extra-arg=-Wno-self-assign
+          - -extra-arg=-Wno-sign-compare
+          - -extra-arg=-Wno-sometimes-uninitialized
+          - -extra-arg=-Wno-tautological-overlap-compare
+          - -extra-arg=-Wno-unused-const-variable
+          - -extra-arg=-Wno-unused-lambda-capture
+          - -extra-arg=-Wno-unused-private-field
+          - -extra-arg=-Wno-unused-value
+          - -extra-arg=-Wno-unused-variable
+          - -extra-arg=-Wno-overloaded-virtual
+          - -extra-arg=-Wno-defaulted-function-deleted
+          - -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor
+          - -extra-arg=-Wno-return-type-c-linkage
+  # For CMake files
+  - repo: local
     hooks:
-    -   id: auto-generate-cmakelists
+      - id: auto-generate-cmakelists
         name: auto-generate-cmakelists
         entry: bash ./tools/gen_ut_cmakelists.hook
         language: system
         files: testslist.csv$
--   repo: https://github.com/cheshirekow/cmake-format-precommit
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
-    -   id: cmake-format
+      - id: cmake-format
         # exclude paddle/fluid/operators/CMakeLists.txt, see the comment
         # https://github.com/PaddlePaddle/Paddle/pull/43057#pullrequestreview-993471860
         exclude: |
-            (?x)^(
-                paddle/fluid/operators/CMakeLists.txt
-            )$
--   repo: https://github.com/PFCCLab/cmake-lint-paddle
+          (?x)^(
+            paddle/fluid/operators/CMakeLists.txt
+          )$
+  - repo: https://github.com/PFCCLab/cmake-lint-paddle
     rev: v1.5.1
     hooks:
-    -   id: cmakelint
+      - id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
         # Exclude some files has false positive warnings
         # Need to fix them in the future
         exclude: |
-            (?x)^(
-                cmake/external/onnxruntime.cmake
-            )$
-# Others
--   repo: local
+          (?x)^(
+            cmake/external/onnxruntime.cmake
+          )$
+  # For YAML files
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.16.0
     hooks:
-    -   id: sort-txt-file
+      - id: yamlfmt
+        files: |
+          (?x)^(
+            \.github/.+\.(yaml|yml)|
+            \.pre-commit-config\.yaml|
+            \.yamlfmt
+          )
+  # Others
+  - repo: local
+    hooks:
+      - id: sort-txt-file
         name: sort-txt-file
         description: Sorts each line string in a text file
         entry: python ./tools/codestyle/sort_txt_file.py
