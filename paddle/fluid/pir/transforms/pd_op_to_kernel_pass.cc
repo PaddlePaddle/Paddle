@@ -3050,7 +3050,7 @@ std::vector<pir::Value> BuildInputs(
         }
       }
     }
-    
+
     vec_inputs.push_back(new_in);
   }
   return vec_inputs;
