@@ -1748,7 +1748,7 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     return x.layout();
   }();
 
-  out->set_layout(x.layout());
+  out->set_layout(layout);
   out->share_lod(x);
 }
 
