@@ -159,6 +159,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   LOG(INFO) << "Time of OpFusion: ***** [ " << duration.count()
             << " ] ***** microseconds.";
+
   // =========== CodeGen And Optimizer ================
   start = std::chrono::high_resolution_clock::now();
   // 2.Do group schedule.
@@ -209,8 +210,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     VLOG(3) << "Schedule tensor-buffer map check succeed";
   }
   end = std::chrono::high_resolution_clock::now();
-  duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   LOG(INFO) << "Time of group schedule: ***** [ " << duration.count()
             << " ] ***** microseconds.";
 
