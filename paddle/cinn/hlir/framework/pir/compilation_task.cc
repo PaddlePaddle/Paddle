@@ -193,7 +193,8 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
   auto start = std::chrono::high_resolution_clock::now();
   Lowering();
   auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   LOG(INFO) << "Time of lowering: ***** [ " << duration.count()
             << " ] ***** microseconds.";
   start = std::chrono::high_resolution_clock::now();

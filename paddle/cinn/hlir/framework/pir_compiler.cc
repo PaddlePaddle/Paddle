@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include <chrono>
 #include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/framework/pir/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
@@ -149,7 +149,8 @@ std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
   // Triggering llvm compilation in thread
   compile_result->GetKernelInfo();
   auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   LOG(INFO) << "Time of llvm compile: ***** [ " << duration.count()
             << " ] ***** microseconds.";
   return compile_result;

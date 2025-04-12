@@ -457,7 +457,8 @@ void Compiler::CompileCudaModule(const Module& module,
   auto _host_module_device_module_ =
       SplitDeviceAndHostModule(module);  // NOLINT
   auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   LOG(INFO) << "Time of SplitDeviceAndHostModule: ***** [ " << duration.count()
             << " ] ***** microseconds.";
   auto& host_module = std::get<0>(_host_module_device_module_);
@@ -475,7 +476,8 @@ void Compiler::CompileCudaModule(const Module& module,
     start = std::chrono::high_resolution_clock::now();
     source_code = codegen.Compile(device_module);
     end = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    duration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     LOG(INFO) << "Time of backend compiler compile device module: ***** [ "
               << duration.count() << " ] ***** microseconds.";
   } else {
