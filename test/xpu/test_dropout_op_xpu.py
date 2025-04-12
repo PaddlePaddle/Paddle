@@ -212,9 +212,9 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     ret = _C_ops.dropout(
                         input, None, prob, False, "downscale_in_infer", 0, False
                     )
-                    assert len(ret) == 2, ret
-                    if len(ret) < 2:
-                        out = ret[0]
+                    if isinstance(ret, paddle.Tensor):
+                        out = ret
+                        mask = None
                     else:
                         out, mask = ret
                     nonzero = paddle.count_nonzero(out)
@@ -223,16 +223,17 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     )
                     out.backward()
 
-                    if self.in_type == np.uint16:
-                        np.testing.assert_allclose(
-                            input.gradient(),
-                            self.cal_grad_downscale_in_infer(mask.numpy()),
-                        )
-                    else:
-                        np.testing.assert_allclose(
-                            input.gradient(),
-                            self.cal_grad_downscale_in_infer(mask.numpy()),
-                        )
+                    if mask is not None:
+                        if self.in_type == np.uint16:
+                            np.testing.assert_allclose(
+                                input.gradient(),
+                                self.cal_grad_downscale_in_infer(mask.numpy()),
+                            )
+                        else:
+                            np.testing.assert_allclose(
+                                input.gradient(),
+                                self.cal_grad_downscale_in_infer(mask.numpy()),
+                            )
 
         def _test_backward_upscale_train(self):
             for place in self.places:
