@@ -30,6 +30,7 @@
 - enable_check_model_nan_inf
 - exponential_
 - eye
+- faster_tokenizer
 # FIXME(dev): Remove flatten after deprecate flatten_contiguous_range in old IR system.
 # flatten is alias name of flatten_contiguous_range.
 - flatten

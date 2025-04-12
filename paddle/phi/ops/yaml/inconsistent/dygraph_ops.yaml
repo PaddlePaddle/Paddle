@@ -394,14 +394,3 @@
   kernel :
     func : view_shape
   backward : view_shape_grad
-
-- op: faster_tokenizer
-  args: (Tensor vocab, Tensor text, Tensor text_pair, bool do_lower_case = false,
-    bool is_split_into_words = false, int max_seq_len = 0, bool pad_to_max_seq_len
-    = false)
-  output: Tensor (input_ids), Tensor (segment_ids)
-  infer_meta:
-    func: FasterTokenizerInferMeta
-  kernel:
-    func: faster_tokenizer
-  optional: text_pair
