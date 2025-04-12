@@ -94,7 +94,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
 
                 ops_config = [
                     {
-                        "op_type": "reshape",
+                        "op_type": "reshape2",
                         "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
@@ -251,7 +251,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape",
+                        "op_type": "reshape2",
                         "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
@@ -357,7 +357,7 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
                         },
                     },
                     {
-                        "op_type": "reshape",
+                        "op_type": "reshape2",
                         "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
@@ -455,7 +455,7 @@ class TrtConvertReshapeZeroDimsTest(TrtLayerAutoScanTest):
 
                 ops_config = [
                     {
-                        "op_type": "reshape",
+                        "op_type": "reshape2",
                         "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["reshape_out"]},
                         "op_attrs": dics[0],
