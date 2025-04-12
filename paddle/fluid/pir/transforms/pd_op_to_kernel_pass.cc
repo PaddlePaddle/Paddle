@@ -1593,7 +1593,8 @@ void HandleForWhileOp(
                &body_block,
                ctx,
                map_op_pair,
-               map_value_pair);
+               map_value_pair,
+               true);
 
   (*map_op_pair)[op_item] = new_while_op;
 
@@ -3049,7 +3050,7 @@ std::vector<pir::Value> BuildInputs(
         }
       }
     }
-
+    
     vec_inputs.push_back(new_in);
   }
   return vec_inputs;
@@ -3459,7 +3460,7 @@ void ProcessBlock(
 
   for (auto iter = block->begin(); iter != block->end(); ++iter) {
     pir::Operation* op_item = &(*iter);
-    VLOG(6) << "op name " << op_item->name();
+    VLOG(6) << "op name " << op_item->name() << ", op id " << op_item->id();
     if ((op_item->isa<FeedOp>()) &&
         inputs_by_data_op.count(op_item->attributes()
                                     .at("name")
