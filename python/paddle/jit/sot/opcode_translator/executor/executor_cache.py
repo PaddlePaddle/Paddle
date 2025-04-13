@@ -18,6 +18,7 @@ import gc
 import traceback
 from typing import TYPE_CHECKING, List, Tuple
 
+import paddle
 from paddle.base.dygraph.base import sot_simulation_mode_guard
 
 from ...profiler import EventGuard, event_register
@@ -47,6 +48,8 @@ if TYPE_CHECKING:
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]
+GuardChain = List[paddle.framework.core.GuardNode]
+GuardChainList = List[GuardChain]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
@@ -66,7 +69,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
     """
 
     MAX_CACHE_SIZE = 20
-    cache: dict[types.CodeType, GuardedFunctions]
+    cache: dict[
+        types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
+    ]
     translate_count: int
     code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
 
@@ -105,16 +110,25 @@ class OpcodeExecutorCache(metaclass=Singleton):
         code: types.CodeType = frame.f_code
         if code not in self.cache:
             log(2, f"[Cache]: Firstly call {code}\n")
-            new_custom_code, guard_fn = self.translate(frame, **kwargs)
+            new_custom_code, guard_fn, guard_chain = self.translate(
+                frame, **kwargs
+            )
             assert guard_fn is not None
-            self.cache[code] = [(new_custom_code, guard_fn)]
+            assert guard_chain is not None
+            self.cache[code] = [
+                (new_custom_code, guard_fn)
+            ], paddle.framework.core.GuardTree([guard_chain])
             return new_custom_code
-        guarded_fns = self.cache[code]
-        return self.lookup(frame, guarded_fns, **kwargs)
+        guarded_fns, guard_tree = self.cache[code]
+        return self.lookup(frame, guarded_fns, guard_tree, **kwargs)
 
     @event_register("lookup")
     def lookup(
-        self, frame: types.FrameType, guarded_fns: GuardedFunctions, **kwargs
+        self,
+        frame: types.FrameType,
+        guarded_fns: GuardedFunctions,
+        guard_tree: paddle.framework.core.GuardTree,
+        **kwargs,
     ) -> CustomCode:
         """
         Looks up the cache for a matching code object and returns a custom code object if a matching guard function is found, otherwise None.
@@ -132,8 +146,17 @@ class OpcodeExecutorCache(metaclass=Singleton):
             return CustomCode(None, False)
 
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
+        enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
 
-        for custom_code, guard_fn in guarded_fns:
+        cache_index = None
+        if enable_strict_guard or enable_guard_tree:
+            cache_index = guard_tree.lookup(frame)
+
+        if not enable_strict_guard and cache_index is not None:
+            # TODO(zrr1999): add a mapping between custom_code and cache_index
+            return guarded_fns[cache_index][0]
+
+        for index, (custom_code, guard_fn) in enumerate(guarded_fns):
             if enable_strict_guard:
                 mirror_guard_error = None
                 try:
@@ -157,9 +180,12 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         2,
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
+                    # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
+                    # assert (
+                    #     cache_index is None or index == cache_index
+                    # ), f"cache_index({cache_index}) is not equal to index({index})"
                     return custom_code
-                elif not ENV_SOT_ENABLE_GUARD_TREE.get():
-                    # TODO(zrr1999): remove condition after faster guard tree support error analysis
+                else:
                     log_do(
                         4,
                         self.analyse_guard_global_object(guard_fn),
@@ -192,9 +218,11 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     )
 
         log(2, "[Cache]: all guards missed\n")
-        new_custom_code, guard_fn = self.translate(frame, **kwargs)
+        new_custom_code, guard_fn, guard_chain = self.translate(frame, **kwargs)
         if guard_fn is not None:
+            assert guard_chain is not None
             guarded_fns.append((new_custom_code, guard_fn))
+            guard_tree.add_guard_chain(guard_chain)
         return new_custom_code
 
     def before_translate_hook(self, frame: types.FrameType):
@@ -203,7 +231,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     def translate(
         self, frame: types.FrameType, **kwargs
-    ) -> tuple[CustomCode, Guard | None]:
+    ) -> tuple[CustomCode, Guard | None, GuardChain | None]:
         """
         Translates the given frame's code object and returns the cache getter function and a guarded function for the translated code object.
 
@@ -215,8 +243,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
         """
         self.before_translate_hook(frame)
         self.translate_count += 1
-        custom_new_code, guard_fn = start_translate(frame, **kwargs)
-        return custom_new_code, guard_fn
+        custom_new_code, guard_fn, guard_chain = start_translate(
+            frame, **kwargs
+        )
+        return custom_new_code, guard_fn, guard_chain
 
     def analyse_guard_global_object(self, guard_fn):
         def inner():
@@ -255,15 +285,15 @@ class OpcodeExecutorCache(metaclass=Singleton):
 def start_translate(
     frame: types.FrameType,
     **kwargs,
-) -> tuple[CustomCode, Guard | None]:
+) -> tuple[CustomCode, Guard | None, GuardChain | None]:
     """
-    Starts the translation process for the given frame and returns the translated code object and its guard function, or None if translation fails.
+    Starts the translation process for the given frame and returns the translated code object, its guard function and its guard tree node, or None if translation fails.
 
     Args:
         frame: The frame to be translated.
 
     Returns:
-        tuple[CustomCode, Guard | None]: The translated code object and its guard function, or None if translation fails.
+        tuple[CustomCode, Guard | None, GuardChain | None]: The translated code object, its guard function and its guard tree node, or None if translation fails.
     """
     graph = FunctionGraph(frame.f_code, frame.f_globals, **kwargs)
     vframe = VirtualFrame.from_real_frame(frame, graph)
@@ -280,8 +310,10 @@ def start_translate(
             return (
                 CustomCode(None, True),
                 None,
+                None,
             )
-        return new_custom_code, guard_fn
+        guard_chain = simulator.guard_chain
+        return new_custom_code, guard_fn, guard_chain
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
         raise RuntimeError(
@@ -299,9 +331,18 @@ def start_translate(
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
+
+        dummy_guard_chain = [
+            # TODO(zrr1999): GuardNode should support zero-expr constructor
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.DummyGuard(),
+                [paddle.framework.core.ConstantExprNode(True)],
+            )
+        ]
         return (
             CustomCode(None, e.disable_eval_frame),
             dummy_guard,
+            dummy_guard_chain,
         )
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e

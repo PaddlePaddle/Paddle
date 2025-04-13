@@ -43,6 +43,7 @@ from ...symbolic_shape import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_GUARD_TREE,
+    ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -60,7 +61,7 @@ from ...utils.exceptions import (
     SotExtraInfo,
 )
 from ..instruction_utils import get_instructions
-from .guard import Guard, StringifiedExpression, make_faster_guard, make_guard
+from .guard import Guard, StringifiedExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
 from .pycode_generator import PyCodeGen
 from .side_effects import (
@@ -316,17 +317,30 @@ class FunctionGraph:
         )
 
     @property
-    @event_register("guard_fn")
-    def guard_fn(self) -> Guard:
-        if ENV_SOT_ENABLE_GUARD_TREE.get():
-            guard_nodes: list[paddle.framework.core.GuardNode] = []
-            with EventGuard("guard_fn: find vars and make faster guard"):
+    @event_register("guard_chain")
+    def guard_chain(self) -> list[paddle.framework.core.GuardNode]:
+        enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
+        enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
+
+        if not enable_strict_guard and not enable_guard_tree:
+            return []
+        guard_chain: list[paddle.framework.core.GuardNode] = []
+
+        with EventGuard("guard_fn: find vars and make faster guard"):
+            try:
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)
                 ):
-                    guard_nodes.extend(variable.make_faster_guard())
-            return make_faster_guard(guard_nodes)
+                    guard_chain.extend(variable.make_faster_guard())
+            except NotImplementedError as e:
+                log(2, f"[Guard] make faster guard nodes error: {e}\n")
+                # TODO(zrr1999): empty list means that some tracker.make_faster_guard is not implemented.
+                return []
+        return guard_chain
 
+    @property
+    @event_register("guard_fn")
+    def guard_fn(self) -> Guard:
         with switch_symbol_registry():
             guards: list[StringifiedExpression] = []
             with EventGuard("guard_fn: find vars and make stringified guard"):
