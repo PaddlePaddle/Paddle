@@ -211,19 +211,40 @@ bool CanBeModifiedImpl<ReshapeOp>(pir::Operation* op) {
   auto concrete_op = op->dyn_cast<ReshapeOp>();
   auto shape = concrete_op.shape();
   auto x = concrete_op.x();
-  if (!x || !(x.defining_op()->isa<pir::ParameterOp>())) return false;
-  if (!shape || !(shape.defining_op()->isa<FullIntArrayOp>())) return false;
-
-  auto full_int_op = shape.defining_op()->dyn_cast<FullIntArrayOp>();
-  auto value_attr =
-      full_int_op.attribute("value").dyn_cast<pir::ArrayAttribute>();
-
-  std::vector<int32_t> value_int32;
+  if (!x || !shape || !(shape.defining_op()->isa<FullIntArrayOp>()))
+    return false;
+  auto value_attr = shape.defining_op()
+                        ->dyn_cast<FullIntArrayOp>()
+                        .attribute("value")
+                        .dyn_cast<pir::ArrayAttribute>();
+  std::vector<int64_t> value_int64;
   for (size_t i = 0; i < value_attr.size(); ++i) {
     auto attr = value_attr.at(i);
-    value_int32.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
+    value_int64.push_back(attr.dyn_cast<pir::Int64Attribute>().data());
   }
-  return value_int32 == std::vector<int32_t>{1, -1, 1, 1};
+  // reshape(builtin.parameter, [1, x, 1, 1]) can change layout.
+  bool IsParameterReshape = [&]() {
+    if (!(x.defining_op()->isa<pir::ParameterOp>())) return false;
+    if (value_attr.size() != 4) return false;
+    auto CheckShape = [&](std::vector<int64_t> value_int32) {
+      if (value_int32.at(0) != 1) return false;
+      if (value_int32.at(2) != 1) return false;
+      if (value_int32.at(3) != 1) return false;
+      return true;
+    };
+    return CheckShape(value_int64);
+  }();
+  // reshape(v, v.shape) can change layout.
+  bool IsUselessReshape = [&]() {
+    auto type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    if (!type || type.dims().size() != 4) return false;
+    auto x_shape = type.dims();
+    for (size_t i = 0; i < x_shape.size(); ++i) {
+      if (x_shape.at(i) != value_int64.at(i)) return false;
+    }
+    return true;
+  }();
+  return IsParameterReshape || IsUselessReshape;
 }
 
 template <>
