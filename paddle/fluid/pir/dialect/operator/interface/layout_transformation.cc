@@ -239,7 +239,7 @@ bool CanBeModifiedImpl<ReshapeOp>(pir::Operation* op) {
     auto type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
     if (!type || type.dims().size() != 4) return false;
     auto x_shape = type.dims();
-    for (size_t i = 0; i < x_shape.size(); ++i) {
+    for (int i = 0; i < x_shape.size(); ++i) {
       if (x_shape.at(i) != value_int64.at(i)) return false;
     }
     return true;
