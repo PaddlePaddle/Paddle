@@ -118,14 +118,45 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
   void Visit(const ir::Select* op, Expr* expr) override {
     auto node = expr->As<ir::Select>();
     auto cond = node->condition;
-    if (cond.is_index()) {
+    // select(bool(v[]), T, F)
+    if (auto cond_cast_bool = cond.As<ir::Cast>()) {
+      if (cond_cast_bool->type().is_bool()) {
+        cond = cond_cast_bool->v();
+      }
+    }
+
+    if (cond.is_index()) {  // select(v[], T, F)
       ir::ElevateInt64ToInt32_(node->condition);
     } else if (cond.is_cmp() && cond->operand(0).is_index() &&
-               cond->operand(1).is_index()) {
+               cond->operand(1).is_index()) {  // select(i < S0, T, F)
       ir::ElevateInt64ToInt32_(node->condition->operands);
+    } else {  // select(v[] or v1[], T, F)
+      ir::IRMutator<>::Visit(&node->condition, &node->condition);
     }
     ir::IRMutator<>::Visit(&node->true_value, &node->true_value);
     ir::IRMutator<>::Visit(&node->false_value, &node->false_value);
+  }
+  void Visit(const ir::Min* op, Expr* expr) override {
+    auto node = expr->As<ir::Min>();
+    if (node->a().is_index() && node->b().is_index()) {
+      if ((node->a().is_var() && node->a().as_var()->is_symbolic_constant) ||
+          (node->b().is_var() && node->b().as_var()->is_symbolic_constant)) {
+        ir::ElevateInt64ToInt32_((*expr)->operands);
+      }
+    }
+    ir::IRMutator<>::Visit(&node->a(), &node->a());
+    ir::IRMutator<>::Visit(&node->b(), &node->b());
+  }
+  void Visit(const ir::Max* op, Expr* expr) override {
+    auto node = expr->As<ir::Max>();
+    if (node->a().is_index() && node->b().is_index()) {
+      if ((node->a().is_var() && node->a().as_var()->is_symbolic_constant) ||
+          (node->b().is_var() && node->b().as_var()->is_symbolic_constant)) {
+        ir::ElevateInt64ToInt32_((*expr)->operands);
+      }
+    }
+    ir::IRMutator<>::Visit(&node->a(), &node->a());
+    ir::IRMutator<>::Visit(&node->b(), &node->b());
   }
 };
 
@@ -152,11 +183,21 @@ LogicalResult LongLong2IntStmtPass::Run(ir::stmt::StmtRef stmt) {
   auto CastIfThenElse = [&](StmtRef stmt) {
     IfThenElse if_stmt = stmt.as<IfThenElse>();
     Expr cond = if_stmt->condition();
-    if (cond.is_index()) {
+    // if(bool(v[]))
+    if (auto cond_cast_bool = cond.As<ir::Cast>()) {
+      if (cond_cast_bool->type().is_bool()) {
+        cond = cond_cast_bool->v();
+      }
+    }
+
+    if (cond.is_index()) {  // if(v[])
       if_stmt->set_condition(std::move(ir::ElevateInt64ToInt32(cond)));
     } else if (cond.is_cmp() && cond->operand(0).is_index() &&
-               cond->operand(1).is_index()) {
+               cond->operand(1).is_index()) {  // if(i < S0)
       ir::ElevateInt64ToInt32_(if_stmt->condition()->operands);
+    } else {  // if(v[] or v1[])
+      CastLonglong2IntMutator mutator;
+      mutator(&cond);
     }
   };
 

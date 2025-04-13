@@ -29,9 +29,7 @@ namespace optim {
  *    of cross-block reduction.
  * 2. Replaces the cross-block reduction with an external call to the
  *    `grid_reduce` template function.
- * 3. Adds a condition check `is_last_block_done` to the grid reduce and all
- *    subsequent schedule blocks.
- * 4. Pushes global buffers (`rf` and `semaphore`) to the function's argument
+ * 3. Pushes global buffers (`rf`) to the function's argument
  *    list.
  *
  * Example:
@@ -45,13 +43,11 @@ namespace optim {
  *
  * After pass:
  *
- * function reduce_sum (..., var_1, var_1_rf, semaphore)
+ * function reduce_sum (..., var_1, var_1_rf)
  * {
  *   thread_bind[blockIdx.x] for (i, 0, 16):
  *     thread_bind[blockIdx.y] for (j, 0, 8): // reduce axis
- *       is_last_block_done = update_semaphore(semaphore)
- *       if (is_last_block_done):
- *         var_1[i] = grid_reduce_sum(var_1_rf)
+ *       var_1[i] = grid_reduce_sum(var_1_rf)
  * }
  */
 void ReplaceCrossBlockReduction(ir::LoweredFunc fn);

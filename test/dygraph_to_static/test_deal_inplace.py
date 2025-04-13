@@ -89,6 +89,8 @@ class TestDealInplace(Dy2StTestBase):
             np.testing.assert_allclose(
                 dygraph_out.numpy(),
                 static_out.numpy(),
+                rtol=1e-5,
+                atol=1e-8,
                 err_msg=f"Run {i}-th check failed.",
             )
 

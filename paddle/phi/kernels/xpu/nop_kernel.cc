@@ -1,4 +1,4 @@
-// Copyright (c) 2022 CINN Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include <string>
-#include <vector>
+#include "paddle/phi/kernels/nop_kernel.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/cinn/ir/ir.h"
-
-namespace cinn {
-namespace hlir {
-namespace op {
-std::vector<ir::Tensor> Argmin(const ir::Tensor& in_tensor,
-                               const cinn::common::Target& target,
-                               const int& axis,
-                               const bool& keep_dims = false,
-                               const std::string& name = "T_Argmin_out");
-}  // namespace op
-}  // namespace hlir
-}  // namespace cinn
+PD_REGISTER_KERNEL(nop,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::NopKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

@@ -10,6 +10,7 @@ inputs:
 outputs:
   can-skip:
     description: "Whether the workflow can be skipped."
+    value: ${{ steps.check-bypass.outputs.can-skip }}
 
 runs:
   using: "composite"

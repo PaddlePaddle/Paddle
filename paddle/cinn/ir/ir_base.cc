@@ -509,7 +509,11 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
     }
     case ir::IrNodeTy::Load: {
       auto load = expr.As<ir::Load>();
-      return Load::Make(load->tensor, load->indices).set_index(true);
+      auto indices = std::vector<Expr>(load->indices.size());
+      for (size_t i = 0; i < load->indices.size(); ++i) {
+        indices.at(i) = Simplify(load->indices.at(i), level);
+      }
+      return Load::Make(load->tensor, indices).set_index(true);
     }
     case ir::IrNodeTy::Cast: {
       auto v = Simplify(expr.operand(0), level);
@@ -526,9 +530,19 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
       auto rhs = Simplify(expr.operand(1), level);
       auto res =
           optim::ConstructIndexExprByNodeType(expr.node_type(), lhs, rhs);
-      if (level == IndexExpr::OptLevel::Level2 &&
-          expr.node_type() == ir::IrNodeTy::Add)
+      if (level >= IndexExpr::OptLevel::kLevel2 &&
+          expr.node_type() == ir::IrNodeTy::Add) {
         res = common::MergeMulMod(res);
+      }
+      if (level == IndexExpr::OptLevel::kLevel3 &&
+          (expr.node_type() == ir::IrNodeTy::Div ||
+           expr.node_type() == ir::IrNodeTy::Mod)) {
+        res = optim::BoundSimplify(res);
+      }
+      if (level == IndexExpr::OptLevel::kLevel4 ||
+          expr.node_type() == ir::IrNodeTy::Mod) {
+        res = optim::BroadcastSimplify(res);
+      }
       return res;
     }
     default:

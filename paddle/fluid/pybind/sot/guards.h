@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/sot/macros.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/pybind.h"
+#include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
 namespace py = pybind11;
@@ -205,14 +206,43 @@ class InstanceCheckGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class NumpyDtypeMatchGuard : public GuardBase {
+class NumPyDtypeMatchGuard : public GuardBase {
  public:
-  explicit NumpyDtypeMatchGuard(const py::object& dtype)
+  explicit NumPyDtypeMatchGuard(const py::object& dtype)
       : expected_(dtype.ptr()) {
     Py_INCREF(expected_);
   }
 
-  ~NumpyDtypeMatchGuard() override { Py_DECREF(expected_); }
+  ~NumPyDtypeMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class NumPyArrayValueMatchGuard : public GuardBase {
+ public:
+  explicit NumPyArrayValueMatchGuard(const py::object& array)
+      : expected_(array.ptr()) {
+    Py_INCREF(expected_);
+  }
+
+  ~NumPyArrayValueMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class WeakRefMatchGuard : public GuardBase {
+ public:
+  explicit WeakRefMatchGuard(const py::object& obj) {
+    expected_ = PyWeakref_NewRef(obj.ptr(), nullptr);
+  }
+
+  ~WeakRefMatchGuard() override { PyObject_ClearWeakRefs(expected_); }
 
   bool check(PyObject* value) override;
 
@@ -328,4 +358,5 @@ class GuardTree {
 };
 
 std::string guard_tree_to_str(const GuardTree& guard_tree);
+
 #endif

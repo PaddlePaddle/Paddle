@@ -18,7 +18,6 @@ import yaml
 from api_base import PREFIX_TENSOR_NAME, BaseAPI
 
 backward_api_black_list = [
-    "pull_sparse_v2_grad",  # tensor = push_sparse_v2() is not implemented in api_custom_impl.cc
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
 ]
 

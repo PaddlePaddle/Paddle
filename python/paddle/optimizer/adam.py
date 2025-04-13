@@ -266,7 +266,7 @@ class Adam(Optimizer):
             self._beta1_pow_acc_dict = self._create_multi_tensor_dict()
             self._beta2_pow_acc_dict = self._create_multi_tensor_dict()
             self._master_weight_dict = self._create_multi_tensor_dict()
-            self._master_weight_dict['FP32_LODTensor'] = None
+            self._master_weight_dict['FP32_DenseTensor'] = None
 
         # whether to use AMSGrad
         self._amsgrad = amsgrad
@@ -574,51 +574,51 @@ class Adam(Optimizer):
             )
 
             if param.dtype == paddle.float32:
-                self._param_dict['FP32_LODTensor'][param_group_idx].append(
+                self._param_dict['FP32_DenseTensor'][param_group_idx].append(
                     param
                 )
-                self._moment1_dict['FP32_LODTensor'][param_group_idx].append(
+                self._moment1_dict['FP32_DenseTensor'][param_group_idx].append(
                     moment1
                 )
-                self._moment2_dict['FP32_LODTensor'][param_group_idx].append(
+                self._moment2_dict['FP32_DenseTensor'][param_group_idx].append(
                     moment2
                 )
                 if self._amsgrad:
-                    self._moment2_max_dict['FP32_LODTensor'][
+                    self._moment2_max_dict['FP32_DenseTensor'][
                         param_group_idx
                     ].append(moment2_max)
-                self._beta1_pow_acc_dict['FP32_LODTensor'][
+                self._beta1_pow_acc_dict['FP32_DenseTensor'][
                     param_group_idx
                 ].append(beta1_pow_acc)
-                self._beta2_pow_acc_dict['FP32_LODTensor'][
+                self._beta2_pow_acc_dict['FP32_DenseTensor'][
                     param_group_idx
                 ].append(beta2_pow_acc)
             elif self._is_dtype_fp16_or_bf16(param.dtype):
-                self._param_dict['FP16_LODTensor'][param_group_idx].append(
+                self._param_dict['FP16_DenseTensor'][param_group_idx].append(
                     param
                 )
-                self._moment1_dict['FP16_LODTensor'][param_group_idx].append(
+                self._moment1_dict['FP16_DenseTensor'][param_group_idx].append(
                     moment1
                 )
-                self._moment2_dict['FP16_LODTensor'][param_group_idx].append(
+                self._moment2_dict['FP16_DenseTensor'][param_group_idx].append(
                     moment2
                 )
                 if self._amsgrad:
-                    self._moment2_max_dict['FP16_LODTensor'][
+                    self._moment2_max_dict['FP16_DenseTensor'][
                         param_group_idx
                     ].append(moment2_max)
-                self._beta1_pow_acc_dict['FP16_LODTensor'][
+                self._beta1_pow_acc_dict['FP16_DenseTensor'][
                     param_group_idx
                 ].append(beta1_pow_acc)
-                self._beta2_pow_acc_dict['FP16_LODTensor'][
+                self._beta2_pow_acc_dict['FP16_DenseTensor'][
                     param_group_idx
                 ].append(beta2_pow_acc)
                 if self._multi_precision:
-                    self._master_weight_dict['FP16_LODTensor'][
+                    self._master_weight_dict['FP16_DenseTensor'][
                         param_group_idx
                     ].append(self._master_weights[param.name])
                 else:
-                    self._master_weight_dict['FP16_LODTensor'] = None
+                    self._master_weight_dict['FP16_DenseTensor'] = None
             else:
                 raise ValueError(
                     "Now multi_tensor_momentum only support fp32, fp16 or bf16 parameters and grad is DENSE_TENSOR."
@@ -635,8 +635,8 @@ class Adam(Optimizer):
         """
         assert isinstance(target_block, (framework.Block, pir.Block))
 
-        grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
-        lr_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
+        grad_dict = {'FP32_DenseTensor': [], 'FP16_DenseTensor': []}
+        lr_dict = {'FP32_DenseTensor': [], 'FP16_DenseTensor': []}
 
         if isinstance(parameters_and_grads, list):
             if framework.in_dygraph_mode():
@@ -644,20 +644,20 @@ class Adam(Optimizer):
                 grads_types = core.eager.get_grads_types(params)
                 for index, tp in enumerate(grads_types):
                     if tp == core.DataType.FLOAT32:
-                        grad_dict['FP32_LODTensor'].append(
+                        grad_dict['FP32_DenseTensor'].append(
                             parameters_and_grads[index][1]
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
-                        lr_dict['FP32_LODTensor'].append(lr)
+                        lr_dict['FP32_DenseTensor'].append(lr)
                     elif (
                         tp == core.DataType.FLOAT16
                         or tp == core.DataType.BFLOAT16
                     ):
-                        grad_dict['FP16_LODTensor'].append(
+                        grad_dict['FP16_DenseTensor'].append(
                             parameters_and_grads[index][1]
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
-                        lr_dict['FP16_LODTensor'].append(lr)
+                        lr_dict['FP16_DenseTensor'].append(lr)
             elif in_pir_mode():
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -667,20 +667,20 @@ class Adam(Optimizer):
                             param_and_grad[0].dtype == DataType.FLOAT32
                             and param_and_grad[1].is_dense_tensor_type()
                         ):
-                            grad_dict['FP32_LODTensor'].append(
+                            grad_dict['FP32_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP32_LODTensor'].append(lr)
+                            lr_dict['FP32_DenseTensor'].append(lr)
                         elif (
                             self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                             and param_and_grad[1].is_dense_tensor_type()
                         ):
-                            grad_dict['FP16_LODTensor'].append(
+                            grad_dict['FP16_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP16_LODTensor'].append(lr)
+                            lr_dict['FP16_DenseTensor'].append(lr)
             else:
                 for param_and_grad in parameters_and_grads:
                     if param_and_grad[1] is None:
@@ -691,21 +691,21 @@ class Adam(Optimizer):
                             and param_and_grad[1].type
                             == core.VarDesc.VarType.DENSE_TENSOR
                         ):
-                            grad_dict['FP32_LODTensor'].append(
+                            grad_dict['FP32_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP32_LODTensor'].append(lr)
+                            lr_dict['FP32_DenseTensor'].append(lr)
                         elif (
                             self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                             and param_and_grad[1].type
                             == core.VarDesc.VarType.DENSE_TENSOR
                         ):
-                            grad_dict['FP16_LODTensor'].append(
+                            grad_dict['FP16_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP16_LODTensor'].append(lr)
+                            lr_dict['FP16_DenseTensor'].append(lr)
         else:
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
@@ -726,46 +726,48 @@ class Adam(Optimizer):
                             param_and_grad[0].dtype == DataType.FLOAT32
                             and param_and_grad[1].is_dense_tensor_type()
                         ):
-                            grad_dict['FP32_LODTensor'].append(
+                            grad_dict['FP32_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP32_LODTensor'].append(lr)
+                            lr_dict['FP32_DenseTensor'].append(lr)
                         elif (
                             self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                             and param_and_grad[1].is_dense_tensor_type()
                         ):
-                            grad_dict['FP16_LODTensor'].append(
+                            grad_dict['FP16_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP16_LODTensor'].append(lr)
+                            lr_dict['FP16_DenseTensor'].append(lr)
                     else:
                         if (
                             param_and_grad[0].dtype == paddle.float32
                             and param_and_grad[1].type
                             == core.VarDesc.VarType.DENSE_TENSOR
                         ):
-                            grad_dict['FP32_LODTensor'].append(
+                            grad_dict['FP32_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP32_LODTensor'].append(lr)
+                            lr_dict['FP32_DenseTensor'].append(lr)
                         elif (
                             self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                             and param_and_grad[1].type
                             == core.VarDesc.VarType.DENSE_TENSOR
                         ):
-                            grad_dict['FP16_LODTensor'].append(
+                            grad_dict['FP16_DenseTensor'].append(
                                 param_and_grad[1]
                             )
                             lr = self._create_param_lr(param_and_grad)
-                            lr_dict['FP16_LODTensor'].append(lr)
+                            lr_dict['FP16_DenseTensor'].append(lr)
 
-        multi_tensor_list = ['FP32_LODTensor', 'FP16_LODTensor']
+        multi_tensor_list = ['FP32_DenseTensor', 'FP16_DenseTensor']
         for key in multi_tensor_list:
             if len(self._param_dict[key][param_group_idx]) > 0:
-                find_master = self._multi_precision and key == 'FP16_LODTensor'
+                find_master = (
+                    self._multi_precision and key == 'FP16_DenseTensor'
+                )
 
                 _beta1 = (
                     self._beta1

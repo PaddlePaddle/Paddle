@@ -110,7 +110,7 @@ class AutoLayoutPass : public pir::Pass {
         }
       }
     }
-    VLOG(4) << "end IsNeedAllTranspose"
+    VLOG(0) << "end IsNeedAllTranspose"
             << " conv_count_: " << conv_count_
             << " transpose_count_: " << transpose_count_
             << " transpose_scale_ * transpose_count_: "
