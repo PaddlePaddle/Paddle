@@ -150,7 +150,14 @@ void BindGuardTree(pybind11::module *m) {
           [](GuardTree &self, py::object frame) {
             return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
-          py::arg("frame"));
+          py::arg("frame"))
+      .def(
+          "add_guard_chain",
+          [](GuardTree &self,
+             const std::vector<std::shared_ptr<GuardNode>> &guard_chain) {
+            self.add_guard_chain(guard_chain);
+          },
+          py::arg("guard_chain"));
 
   py::class_<GuardNode, std::shared_ptr<GuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")

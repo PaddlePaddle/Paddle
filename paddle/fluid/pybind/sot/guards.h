@@ -362,18 +362,21 @@ class GuardTree {
   GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNode>>>&
                 guard_nodes_list) {
     for (size_t index = 0; index < guard_nodes_list.size(); ++index) {
-      const auto& guard_nodes = guard_nodes_list[index];
-      if (guard_nodes.empty()) {
-        // TODO(zrr1999): empty guard nodes means that some
-        // tracker.make_faster_guard is not implemented.
-        continue;
-      }
-      for (size_t i = 1; i < guard_nodes.size(); ++i) {
-        guard_nodes[i - 1]->next_guard_nodes.push_back(guard_nodes[i]);
-      }
-      guard_nodes.back()->return_cache_index = index;
-      guard_nodes_.push_back(guard_nodes.front());
+      add_guard_chain(guard_nodes_list[index]);
     }
+  }
+  void add_guard_chain(
+      const std::vector<std::shared_ptr<GuardNode>>& guard_chain) {
+    if (guard_chain.empty()) {
+      // TODO(zrr1999): empty guard nodes means that some
+      // tracker.make_faster_guard is not implemented.
+      return;
+    }
+    for (size_t i = 1; i < guard_chain.size(); ++i) {
+      guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);
+    }
+    guard_chain.back()->return_cache_index = guard_nodes_.size();
+    guard_nodes_.push_back(guard_chain.front());
   }
 
   std::optional<int> lookup(FrameProxy* frame);
