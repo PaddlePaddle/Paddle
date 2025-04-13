@@ -144,81 +144,80 @@ class OpcodeExecutorCache(metaclass=Singleton):
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
 
-        if not enable_strict_guard and enable_guard_tree:
+        cache_index = None
+        if enable_strict_guard or enable_guard_tree:
             guard_tree = paddle.framework.core.GuardTree(guard_nodes_list)
             cache_index = guard_tree.lookup(frame)
-            if cache_index is not None:
-                # TODO(zrr1999): add a mapping between custom_code and cache_index
-                return guarded_fns[cache_index][0]
 
-        else:
+        if not enable_strict_guard and cache_index is not None:
+            # TODO(zrr1999): add a mapping between custom_code and cache_index
+            return guarded_fns[cache_index][0]
+
+        for index, (custom_code, guard_fn) in enumerate(guarded_fns):
             if enable_strict_guard:
-                guard_tree = paddle.framework.core.GuardTree(guard_nodes_list)
-                cache_index = guard_tree.lookup(frame)
-
-            for index, (custom_code, guard_fn) in enumerate(guarded_fns):
-                if enable_strict_guard:
-                    mirror_guard_error = None
-                    try:
-                        with EventGuard("try mirror guard"):
-                            mirror_guard_result = guard_fn.mirror_guard(frame)
-                    except Exception as e:
-                        log(2, f"[Cache] Mirror guard error: {e}\n")
-                        mirror_guard_error = e
-
+                mirror_guard_error = None
                 try:
-                    with EventGuard("try guard"):
-                        guard_result = guard_fn(frame)
-                    if enable_strict_guard:
-                        assert mirror_guard_result == guard_result, (
-                            "faster guard result is not equal to guard result, "
-                            f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
-                            f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
-                        )
-                    if guard_result:
-                        log(
-                            2,
-                            f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
-                        )
-                        # TODO(zrr1999): add check
-                        # assert (
-                        #     cache_index is None or index == cache_index
-                        # ), f"cache_index({cache_index}) is not equal to index({index})"
-                        return custom_code
-                    else:
-                        log_do(
-                            4,
-                            self.analyse_guard_global_object(guard_fn),
-                        )
-                        log(
-                            2,
-                            f"[Cache] Cache miss, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
-                        )
-                        log_do(
-                            2,
-                            self.analyse_guard_error(guard_fn, frame),
-                        )
+                    with EventGuard("try mirror guard"):
+                        mirror_guard_result = guard_fn.mirror_guard(frame)
                 except Exception as e:
-                    log(2, f"[Cache] Guard function error: {e}\n")
+                    log(2, f"[Cache] Mirror guard error: {e}\n")
+                    mirror_guard_error = e
+
+            try:
+                with EventGuard("try guard"):
+                    guard_result = guard_fn(frame)
+                if enable_strict_guard:
+                    assert mirror_guard_result == guard_result, (
+                        "faster guard result is not equal to guard result, "
+                        f"guard_expr: {getattr(guard_fn, 'expr', 'None')} \n"
+                        f"faster_guard_expr: {getattr(guard_fn.mirror_guard, 'expr', 'None')},"
+                    )
+                if guard_result:
                     log(
                         2,
-                        f"[Cache] Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                        f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                    )
+                    # TODO(zrr1999): add check
+                    # assert (
+                    #     cache_index is None or index == cache_index
+                    # ), f"cache_index({cache_index}) is not equal to index({index})"
+                    return custom_code
+                else:
+                    log_do(
+                        4,
+                        self.analyse_guard_global_object(guard_fn),
+                    )
+                    log(
+                        2,
+                        f"[Cache] Cache miss, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     log_do(
                         2,
                         self.analyse_guard_error(guard_fn, frame),
                     )
-                    if enable_strict_guard:
-                        assert type(e) == type(mirror_guard_error) and str(
-                            e
-                        ) == str(mirror_guard_error), (
-                            "mirror guard error is not equal to guard error, "
-                            f"guard_error: {e} \n"
-                            f"mirror_guard_error: {mirror_guard_error},"
-                        )
+            except Exception as e:
+                log(2, f"[Cache] Guard function error: {e}\n")
+                log(
+                    2,
+                    f"[Cache] Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
+                )
+                log_do(
+                    2,
+                    self.analyse_guard_error(guard_fn, frame),
+                )
+                if enable_strict_guard:
+                    assert type(e) == type(mirror_guard_error) and str(
+                        e
+                    ) == str(mirror_guard_error), (
+                        "mirror guard error is not equal to guard error, "
+                        f"guard_error: {e} \n"
+                        f"mirror_guard_error: {mirror_guard_error},"
+                    )
 
-            # TODO(zrr1999): cache_index should be None when enable_strict_guard.
-            # assert cache_index is None, "guard tree cache_index is not None"
+        # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
+        assert (
+            cache_index == index or cache_index is None
+        ), f"cache_index({cache_index}) should be equal to index({index}) when enable_strict_guard"
 
         log(2, "[Cache]: all guards missed\n")
         new_custom_code, guard_fn, guard_nodes = self.translate(frame, **kwargs)

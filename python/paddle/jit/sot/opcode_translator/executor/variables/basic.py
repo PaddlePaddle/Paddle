@@ -495,7 +495,7 @@ class TensorVariable(VariableBase):
                     )
                 ],
             ),
-            # TODO(zrr1999): add dist_info check
+            # TODO(zrr1999): use TensorMetaMatchGuard to support dist_info check
         ]
 
     @check_guard
