@@ -532,8 +532,8 @@ void BertTokenizer::BatchEncode(
 
 template <typename T, typename Context>
 void FasterTokenizerKernel(const Context& dev_ctx,
-                           const phi::ExtendedTensor& vocab_in,
-                           const phi::ExtendedTensor& text_in,
+                           const phi::Vocab& vocab_in,
+                           const phi::Strings& text_in,
                            const paddle::optional<phi::Strings>& text_pair_in,
                            bool do_lower_case,
                            bool is_split_into_words,
