@@ -141,7 +141,7 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
-COMMON_DECLARE_bool(enable_auto_layout_pass);
+COMMON_DECLARE_bool(enable_auto_layout_pass_in_inference);
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -944,7 +944,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 
         if (config_.enable_gpu_mixed_) {
           AddAutoMixedPrecisionPass(fused_op_pm);
-          if (FLAGS_enable_auto_layout_pass) {
+          if (FLAGS_enable_auto_layout_pass_in_inference) {
             AddAutoLayoutPasses(fused_op_pm);
           } else {
             fused_op_pm.AddPass(
@@ -1104,7 +1104,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       AddAutoMixedPrecisionPass(basic_pass_pm);
     }
   }
-  if (FLAGS_enable_auto_layout_pass) {
+  if (FLAGS_enable_auto_layout_pass_in_inference) {
     AddAutoLayoutPasses(basic_pass_pm);
   } else {
     auto transfer_layout_pass = ::pir::CreateTransferLayoutPass();
