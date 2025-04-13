@@ -231,6 +231,7 @@ class ProcessGroup:
                 alltoall_tmp = paddle.empty(
                     shape=[self.nranks, self.nranks], dtype="int32"
                 )
+                assert self.nranks == 1, "nranks: " + str(self.nranks)
                 paddle._C_ops.all_to_all(alltoall_tmp, ring_id)
                 paddle.device.cuda.synchronize()
 
