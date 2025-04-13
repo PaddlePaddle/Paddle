@@ -456,9 +456,7 @@ class ProgramHelper:
             barrier_tensor = paddle.full([1], 1, dtype="int32")
             # barrier is not available in xpu for now
             if not paddle.framework.core.is_compiled_with_xpu():
-                paddle._legacy_C_ops.barrier(
-                    barrier_tensor, barrier_tensor, 'ring_id', 0
-                )
+                paddle._C_ops.barrier(barrier_tensor, 0)
             paddle.enable_static()
 
     def init(self, main_program, place, dist_context):
@@ -600,9 +598,7 @@ class ProgramHelper:
             barrier_tensor = paddle.full([1], 1, dtype="int32")
             # barrier is not available in xpu for now
             if not paddle.framework.core.is_compiled_with_xpu():
-                paddle._legacy_C_ops.barrier(
-                    barrier_tensor, barrier_tensor, 'ring_id', 0
-                )
+                paddle._C_ops.barrier(barrier_tensor, 0)
             paddle.enable_static()
 
     def cache_whole_graph_dist_attr(self, all_params):
