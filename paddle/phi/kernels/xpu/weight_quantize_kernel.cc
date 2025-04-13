@@ -11,7 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#if defined(PADDLE_WITH_XPU_XFT)
 #include <xft/xdnn_plugin.h>
+#endif
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -29,6 +31,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           const int32_t group_size,
                           DenseTensor* out,
                           DenseTensor* scale) {
+#if defined(PADDLE_WITH_XPU_XFT)
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto xpu_ctx = static_cast<const phi::XPUContext*>(&dev_ctx);
   int k = x.dims()[0];
@@ -54,6 +57,11 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     PADDLE_THROW(common::errors::Unimplemented(
         "Weight quantize only supports weight_only_int8 on XPU now."));
   }
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "weight_quantize is not supported since it's not "
+      "compiled with XPU_XFT"));
+#endif
 }
 }  // namespace phi
 
