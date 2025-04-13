@@ -1527,7 +1527,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : dropout
-  args : (Tensor x, Tensor seed_tensor, Scalar p = 0.5f, bool is_test = False, str mode = "downgrade_in_infer", int seed = 0, bool fix_seed = False)
+  args : (Tensor x, Tensor seed_tensor, Scalar p = 0.5f, bool is_test = false, str mode = "downgrade_in_infer", int seed = 0, bool fix_seed = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : DropoutInferMeta
