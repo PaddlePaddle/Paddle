@@ -68,7 +68,7 @@ class ReduceOp:
     AVG: ClassVar[Literal[4]] = 4
 
 
-def _get_reduce_op(reduce_op, func_name=""):
+def _get_reduce_op(reduce_op):
     if framework.in_dynamic_mode():
         if reduce_op == ReduceOp.SUM:
             return framework.core.ReduceOp.SUM
@@ -81,7 +81,7 @@ def _get_reduce_op(reduce_op, func_name=""):
         elif reduce_op == ReduceOp.AVG:
             return framework.core.ReduceOp.AVG
 
-    raise ValueError(f"Unknown reduce_op type for {func_name}.")
+    raise ValueError(f"Unknown reduce_op type for {reduce_op}.")
 
 
 def _to_inplace_op(op_name):
