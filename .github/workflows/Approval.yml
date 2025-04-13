@@ -42,4 +42,4 @@ jobs:
       - name: Display Required Approvers
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
-          bash -x ci/check_approval.sh
+          bash ci/check_approval.sh

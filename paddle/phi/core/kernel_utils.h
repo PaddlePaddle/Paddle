@@ -347,6 +347,8 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_OPTIONAL_INPUT(phi::Strings);
   PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(phi::FeedList);
 
+  PD_SPECIALIZE_KernelCallHelper_FOR_INPUT(phi::Vocab);
+
   /* Attribute Helpers */
 
   PD_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
