@@ -130,6 +130,7 @@ jobs:
   #       if: steps.check-bypass.outputs.can-skip != 'true'
   #       run: |
   #         docker exec -t ${{ env.container_name }}  /bin/bash -c '
+  #         cd /
   #         rm -rf /paddle
   #         mv /action-runner/_work/Paddle/Paddle/Paddle /paddle && cd /paddle
   #         mkdir -p /home/data/cfs/.cache/coverage
@@ -310,6 +311,8 @@ jobs:
       - name: Test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
+          cd /
           rm -rf /paddle
           mv /action-runner/_work/Paddle/Paddle/paddle /paddle
           source /action-runner/proxy
@@ -324,6 +327,7 @@ jobs:
       - name: Check coverage data
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           source ~/.bashrc
           unset GREP_OPTIONS
           source /action-runner/proxy
