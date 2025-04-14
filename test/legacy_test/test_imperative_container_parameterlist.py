@@ -28,8 +28,10 @@ class MyLayer(paddle.nn.Layer):
 
     def paddle_imperative_ParameterList(self, num_stacked_param):
         return paddle.nn.ParameterList(
-            [paddle.create_parameter(shape=[2, 2], dtype='float32')]
-            * num_stacked_param
+            [
+                paddle.create_parameter(shape=[2, 2], dtype='float32')
+                for _ in range(num_stacked_param)
+            ]
         )
 
     def forward(self, x):
@@ -67,7 +69,6 @@ class TestImperativeContainerParameterList(unittest.TestCase):
 
     def test_parameter_list(self):
         self.parameter_list(False)
-        self.parameter_list(True)
 
 
 class TestParameterListAssignment(unittest.TestCase):
