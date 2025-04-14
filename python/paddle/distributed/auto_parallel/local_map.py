@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Any
 
 import paddle
 import paddle.distributed as dist
@@ -25,10 +25,10 @@ if TYPE_CHECKING:
 
 
 def local_map(
-    func: Callable,
+    func: Callable[..., Any],
     out_placements: list[list[dist.Placement]],
-    in_placements: list[list[dist.Placement]] | None,
-    process_mesh: ProcessMesh | None,
+    in_placements: list[list[dist.Placement]] | None = None,
+    process_mesh: ProcessMesh | None = None,
     reshard_inputs: bool = False,
 ):
     """
@@ -48,11 +48,12 @@ def local_map(
             When there are no dist_tensor inputs, process_mesh must be specified to use
             non-None placements.
 
-        in_placements (Optional[list[list[dist.Placement]]]):
+        in_placements (Optional[list[list[dist.Placement]]], optional):
             The required placements for each input tensor. If specified, must be a list
             where each element is a list of Placement objects defining the distribution
             strategy for that input tensor. The length of the outer list must match the
             number of input tensors.
+            Default: None
 
         process_mesh (ProcessMesh, optional):
             The process mesh that all dist_tensors are placed on. If not specified,
@@ -63,80 +64,69 @@ def local_map(
             Default: None
 
         reshard_inputs (bool, optional):
-            the bool value indicating whether to reshard the input :dist_tensor` s when
+            the bool value indicating whether to reshard the input :dist_tensors when
             their placements are different from the required input placements. If this
             value is ``False`` and some :dist_tensor input has a different placement,
             an exception will be raised. Default: False.
 
     Returns:
-        A ``Callable`` that applies ``func`` to each local shard of the input dist_tensors
-        and returns dist_tensors constructed from the return values of ``func``.
-
-    Raises:
-        AssertionError: If the number of output placements does not match the number
-            of function outputs.
-
-        AssertionError: If a non-tensor output has a non-None placement specified.
-
-        AssertionError: If process_mesh is None and there are no dist_tensor inputs
-            but out_placements contains non-None values.
-
-        ValueError: If the input dist_tensor placements don't match the required
-            in_placements.
+        Callable: A function that applies func to local shards of input dist_tensors and returns dist_tensors or original values.
 
     Example:
-        >>> from __future__ import annotations
-        >>> import paddle
-        >>> import paddle.distributed as dist
-        >>> from paddle import Tensor
-        >>> from paddle.distributed import ProcessMesh
-        >>>
-        >>> def custom_function(x):
-        >>>     mask = paddle.zeros_like(x)
-        >>>     if dist.get_rank() == 0:
-        >>>         mask[1:3] = 1
-        >>>     else:
-        >>>         mask[4:7] = 1
-        >>>     x = x * mask
-        >>>     mask_sum = paddle.sum(x)
-        >>>     mask_sum = mask_sum / mask.sum()
-        >>>     return mask_sum
-        >>>
-        >>> # Initialize distributed environment
-        >>> dist.init_parallel_env()
-        >>> mesh = ProcessMesh([0, 1], dim_names=["x"])
-        >>>
-        >>> # Create input data
-        >>> local_input = paddle.arange(0, 10, dtype="float32")
-        >>> local_input = local_input + dist.get_rank()
-        >>>
-        >>> # Convert to distributed tensor
-        >>> input_dist = dist.auto_parallel.api.dtensor_from_local(
-        >>>     local_input, mesh, [dist.Shard(0)]
-        >>> )
-        >>>
-        >>> # Wrap function with local_map
-        >>> wrapped_func = dist.local_map(
-        >>>     custom_function,
-        >>>     out_placements=[dist.Partial(dist.ReduceType.kRedSum)],
-        >>>     in_placements=(dist.Shard(0),),
-        >>>     process_mesh=mesh
-        >>> )
-        >>>
-        >>> # Apply function to distributed tensor
-        >>> output_dist = wrapped_func(input_dist)
-        >>>
-        >>> # Collect and print results
-        >>> local_value = output_dist._local_value()
-        >>> gathered_values: list[Tensor] = []
-        >>> dist.all_gather(gathered_values, local_value)
-        >>>
-        >>> print(f"[Rank 0] local_value={gathered_values[0].item()}")
-        [Rank 0] local_value=1.5
-        >>> print(f"[Rank 1] local_value={gathered_values[1].item()}")
-        [Rank 1] local_value=6.0
-        >>> print(f"global_value (distributed)={output_dist.item()}")
-        global_value (distributed)=7.5
+        .. code-block:: python
+
+            >>> from __future__ import annotations
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> from paddle import Tensor
+            >>> from paddle.distributed import ProcessMesh
+
+            >>> def custom_function(x):
+            ...     mask = paddle.zeros_like(x)
+            ...     if dist.get_rank() == 0:
+            ...         mask[1:3] = 1
+            ...     else:
+            ...         mask[4:7] = 1
+            ...     x = x * mask
+            ...     mask_sum = paddle.sum(x)
+            ...     mask_sum = mask_sum / mask.sum()
+            ...     return mask_sum
+
+            >>> # Initialize distributed environment
+            >>> dist.init_parallel_env()
+            >>> mesh = ProcessMesh([0, 1], dim_names=["x"])
+
+            >>> # Create input data
+            >>> local_input = paddle.arange(0, 10, dtype="float32")
+            >>> local_input = local_input + dist.get_rank()
+
+            >>> # Convert to distributed tensor
+            >>> input_dist = dist.auto_parallel.api.dtensor_from_local(
+            ...     local_input, mesh, [dist.Shard(0)]
+            ... )
+
+            >>> # Wrap function with local_map
+            >>> wrapped_func = dist.local_map(
+            ...     custom_function,
+            ...     out_placements=[[dist.Partial(dist.ReduceType.kRedSum)]],
+            ...     in_placements=[[dist.Shard(0)]],
+            ...     process_mesh=mesh
+            ... )
+
+            >>> # Apply function to distributed tensor
+            >>> output_dist = wrapped_func(input_dist)
+
+            >>> # Collect and print results
+            >>> local_value = output_dist._local_value()
+            >>> gathered_values: list[Tensor] = []
+            >>> dist.all_gather(gathered_values, local_value)
+
+            >>> print(f"[Rank 0] local_value={gathered_values[0].item()}")
+            [Rank 0] local_value=1.5
+            >>> print(f"[Rank 1] local_value={gathered_values[1].item()}")
+            [Rank 1] local_value=6.0
+            >>> print(f"global_value (distributed)={output_dist.item()}")
+            global_value (distributed)=7.5
     """
 
     def wrapped(process_mesh: ProcessMesh | None, *args, **kwargs):
