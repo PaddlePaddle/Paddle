@@ -19,3 +19,15 @@
 #   bash ci_dockerfile.sh
 #   docker build -t ${docker-image} -f ${dockerfile} .
 # fi
+
+echo Dockerfile: ${docker-image-file}
+bash tools/dockerfile/ci_dockerfile.sh
+docker-md5=`md5sum ${docker-image-file}`
+docker-name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker-md5}
+
+set +e
+  docker pull ${docker-name}
+if [ $? -eq 0 ];then
+  echo use docker
+fi
+set -e
