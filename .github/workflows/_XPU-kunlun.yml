@@ -77,6 +77,7 @@ jobs:
         CCACHE_LIMIT_MULTIPLE: 0.8
         no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
         GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        home_dir: ${{ github.workspace }}/../../../..
       run: |
         container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
         echo "container_name=${container_name}" >> ${{ github.env }}
@@ -151,12 +152,12 @@ jobs:
         cd ${work_dir}/dist
         python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
 
-    - name: Terminate and delete the container
-      if: always()
-      run: |
-        docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-        docker stop ${container_name}
-        docker rm ${container_name}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+    #     docker stop ${container_name}
+    #     docker rm ${container_name}
 
   test:
     name: Test
@@ -206,6 +207,7 @@ jobs:
         CCACHE_LIMIT_MULTIPLE: 0.8
         no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
         GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        home_dir: ${{ github.workspace }}/../../../..
       run: |
         container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
         echo "container_name=${container_name}" >> ${{ github.env }}
