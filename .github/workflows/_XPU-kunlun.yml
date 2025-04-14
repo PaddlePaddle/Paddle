@@ -44,9 +44,8 @@ jobs:
         echo "Downloading Paddle.tar.gz"
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         echo "Extracting Paddle.tar.gz"
-        tar xf Paddle.tar.gz
+        tar xf Paddle.tar.gz  --strip-components=1
         rm Paddle.tar.gz
-        cd Paddle
         git config --global user.name "PaddleCI"
         git config --global user.email "paddle_ci@example.com"
         git remote add upstream https://github.com/PaddlePaddle/Paddle.git
@@ -84,7 +83,8 @@ jobs:
         docker run --privileged --ulimit nofile=102400:102400 -d -t --name ${container_name} \
           -v $home_dir/.cache:/root/.cache \
           -v $home_dir/.ccache:/root/.ccache \
-          -v ${{ github.workspace }}/../../..:/action-runner \
+          -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+          -v ${{ github.workspace }}:/paddle \
           -e BRANCH \
           -e PR_ID \
           -e COMMIT_ID \
@@ -120,9 +120,7 @@ jobs:
         PADDLE_ROOT: ${{ github.workspace }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        cd / && rm -rf /paddle
-        mv /action-runner/_work/Paddle/Paddle/Paddle /paddle && cd /paddle
-        source /action-runner/proxy
+        source ${{ github.workspace }}/../../../proxy
         ulimit -n 102400
         git config --global --add safe.directory ${work_dir}
         git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
@@ -135,8 +133,8 @@ jobs:
       env:
         AK: paddle
         SK: paddle
-        home_path: /action-runner
-        bos_file: /action-runner/bos/BosClient.py
+        home_path: ${{ github.workspace }}/..
+        bos_file: ${{ github.workspace }}/../bos/BosClient.py
         paddle_whl: paddlepaddle_xpu-0.0.0-cp310-cp310-linux_x86_64.whl
       run: |
         if [ ! -f "${{ env.bos_file }}" ]; then
@@ -145,7 +143,7 @@ jobs:
           tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
         fi
         cd /
-        tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
+        tar --use-compress-program="pigz" -cpf build.tar.gz paddle
         # source /home/opt/deck/1.0/etc/bashrc
         python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
         cd ${work_dir}/dist
@@ -154,7 +152,7 @@ jobs:
     - name: Terminate and delete the container
       if: always()
       run: |
-        # docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+        docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
         docker stop ${container_name}
         docker rm ${container_name}
 
@@ -173,7 +171,7 @@ jobs:
         sudo rm -rf  * .[^.]*
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
         # wget -q --no-proxy https://xly-devops.bj.bcebos.com/PR/xpu/72068/87508f657757b8e3334f9ac995241a7b392e7aca/build.tar.gz --no-check-certificate
-        tar --use-compress-program="pigz" -xpf build.tar.gz
+        tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
         rm build.tar.gz
 
     - name:  Determine the runner
@@ -213,7 +211,8 @@ jobs:
         docker run --cap-add=SYS_PTRACE --privileged --ulimit nofile=102400 --ulimit core=-1 -d -t --name ${container_name} \
           -v $home_dir/.cache:/root/.cache \
           -v $home_dir/.ccache:/root/.ccache \
-          -v ${{ github.workspace }}/../../..:/action-runner \
+          -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+          -v ${{ github.workspace }}:/paddle \
           --device ${XPU_CODE_1} \
           --device ${XPU_CODE_2} \
           --shm-size=32g \
@@ -250,8 +249,6 @@ jobs:
     - name: Run test
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c -x  '
-        cd / && rm -rf /paddle
-        mv /action-runner/_work/Paddle/Paddle/Paddle /paddle && cd /paddle
         bash ${ci_scripts}/kunlun_test.sh
         '
 
