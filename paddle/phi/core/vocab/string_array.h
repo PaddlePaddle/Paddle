@@ -63,7 +63,7 @@ class Vocab : public phi::ExtendedTensor,
 
   size_t size() const { return data_.size(); }
 
-  DataLayout layout() { return DataLayout::kAnyLayout; }
+  DataLayout layout() const { return DataLayout::kAnyLayout; }
 
   void clear() { data_.clear(); }
 
