@@ -120,7 +120,7 @@ jobs:
         PADDLE_ROOT: ${{ github.workspace }}
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
-        rm -rf /paddle
+        cd / && rm -rf /paddle
         mv /action-runner/_work/Paddle/Paddle/Paddle /paddle && cd /paddle
         source /action-runner/proxy
         ulimit -n 102400
@@ -250,7 +250,7 @@ jobs:
     - name: Run test
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c -x  '
-        rm -rf /paddle
+        cd / && rm -rf /paddle
         mv /action-runner/_work/Paddle/Paddle/Paddle /paddle && cd /paddle
         bash ${ci_scripts}/kunlun_test.sh
         '
