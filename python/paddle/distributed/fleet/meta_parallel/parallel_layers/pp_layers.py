@@ -980,9 +980,9 @@ class PipelineLayer(nn.Layer):
                 if layer.layer_name not in self.local_shared_layers:
                     layer_impl = layer.build_layer()
                     self.local_shared_layers[layer.layer_name] = layer_impl
-                    self.local_shared_weight_attrs[layer.layer_name] = (
-                        layer.shared_weight_attr
-                    )
+                    self.local_shared_weight_attrs[
+                        layer.layer_name
+                    ] = layer.shared_weight_attr
                 else:
                     ref_layer_impl = self.local_shared_layers[layer.layer_name]
                     weight_attrs = self.local_shared_weight_attrs[

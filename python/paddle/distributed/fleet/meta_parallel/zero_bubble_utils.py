@@ -27,7 +27,6 @@ from paddle.autograd import PyLayer
 
 
 class WeightGradStore:
-
     enabled = False
     cache = []
     funcs_queue = queue.Queue()

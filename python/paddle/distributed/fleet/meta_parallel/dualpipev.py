@@ -304,16 +304,18 @@ class DualPipeVParallel(PipelineParallel):
             None, chunk_id=forward_phase, overlap_schedule_mode=True
         )
         backward_chunk = self.schedule_chunks[backward_phase][backward_acc_id]
-        forward_outputs, forward_loss, backward_input_grads = (
-            self._layers.overlapped_forward_backward(
-                forward_chunk,
-                forward_inputs,
-                forward_loss_fn_node,
-                backward_chunk,
-                backward_loss_fn_node,
-                backward_grads,
-                self.scaler,
-            )
+        (
+            forward_outputs,
+            forward_loss,
+            backward_input_grads,
+        ) = self._layers.overlapped_forward_backward(
+            forward_chunk,
+            forward_inputs,
+            forward_loss_fn_node,
+            backward_chunk,
+            backward_loss_fn_node,
+            backward_grads,
+            self.scaler,
         )
         self.schedule_chunks[backward_phase][backward_acc_id] = None
 
