@@ -347,11 +347,11 @@ class VariableBase:
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        expr = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ValueMatchGuard(self.get_py_value()),
-                frame_value_tracer,
+                [expr],
             )
         ]
 

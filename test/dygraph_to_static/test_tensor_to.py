@@ -15,6 +15,7 @@
 import unittest
 
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
     IrMode,
     ToStaticMode,
@@ -175,7 +176,9 @@ class TensorToTest(Dy2StTestBase):
 
     # TODO(gouzil): Fix MIN_GRAPH_SIZE=10 case
     @test_pir_only
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_tensor_to_blocking(self):
         tensor_x = paddle.to_tensor([1, 2, 3])
         tensor_x = paddle.jit.to_static(to_device_dtype_blocking)(
@@ -196,7 +199,9 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(tensor2.dtype, paddle.float16)
 
     @test_pir_only
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_tensor_to_other(self):
         tensor1 = paddle.to_tensor([1, 2, 3], dtype="int8", place="cpu")
         tensor2 = paddle.to_tensor([1, 2, 3])
@@ -207,7 +212,9 @@ class TensorToTest(Dy2StTestBase):
         self.assertEqual(str(tensor2.place), get_place())
 
     @test_pir_only
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, IrMode.PIR, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_kwargs(self):
         tensor_x = paddle.to_tensor([1, 2, 3])
         tensor_x = paddle.jit.to_static(to_kwargs_device_dtype_blocking)(

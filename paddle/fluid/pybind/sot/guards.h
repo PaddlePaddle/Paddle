@@ -250,6 +250,11 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class DummyGuard : public GuardBase {
+ public:
+  bool check(PyObject* value) override { return true; }
+};
+
 class GuardTreeNode {};
 
 class AttributeExprNode;
@@ -271,6 +276,21 @@ class ConstantExprNode : public ExprNode {
 
  private:
   PyObject* value_ptr_;
+};
+class ExternVarExprNode : public ExprNode {
+ public:
+  explicit ExternVarExprNode(const std::string& var_name,
+                             const py::object& value_obj)
+      : value_ptr_(value_obj.ptr()), var_name_(var_name) {
+    Py_INCREF(value_ptr_);
+  }
+
+  ~ExternVarExprNode() { Py_DECREF(value_ptr_); }
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  PyObject* value_ptr_;
+  std::string var_name_;
 };
 
 class LocalVarExprNode : public ExprNode {
@@ -321,16 +341,16 @@ class ItemExprNode : public ExprNode {
 class GuardNode : public GuardTreeNode {
  public:
   std::shared_ptr<GuardBase> guard;
-  std::shared_ptr<ExprNode> expr;
+  std::vector<std::shared_ptr<ExprNode>> exprs;
   std::vector<std::shared_ptr<GuardNode>> next_guard_nodes;
   // return_cache_index is used to record the index of the guard list
   std::optional<int> return_cache_index;
   GuardNode(std::shared_ptr<GuardBase> guard,
-            std::shared_ptr<ExprNode> expr,
+            std::vector<std::shared_ptr<ExprNode>> exprs,
             std::vector<std::shared_ptr<GuardNode>> next_guard_nodes,
             std::optional<int> return_cache_index)
       : guard(guard),
-        expr(expr),
+        exprs(exprs),
         next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
 
@@ -342,13 +362,21 @@ class GuardTree {
   GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNode>>>&
                 guard_nodes_list) {
     for (size_t index = 0; index < guard_nodes_list.size(); ++index) {
-      const auto& guard_nodes = guard_nodes_list[index];
-      for (size_t i = 1; i < guard_nodes.size(); ++i) {
-        guard_nodes[i - 1]->next_guard_nodes.push_back(guard_nodes[i]);
-      }
-      guard_nodes.back()->return_cache_index = index;
-      guard_nodes_.push_back(guard_nodes.front());
+      add_guard_chain(guard_nodes_list[index]);
     }
+  }
+  void add_guard_chain(
+      const std::vector<std::shared_ptr<GuardNode>>& guard_chain) {
+    if (guard_chain.empty()) {
+      // TODO(zrr1999): empty guard nodes means that some
+      // tracker.make_faster_guard is not implemented.
+      return;
+    }
+    for (size_t i = 1; i < guard_chain.size(); ++i) {
+      guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);
+    }
+    guard_chain.back()->return_cache_index = guard_nodes_.size();
+    guard_nodes_.push_back(guard_chain.front());
   }
 
   std::optional<int> lookup(FrameProxy* frame);

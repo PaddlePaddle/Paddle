@@ -21,7 +21,6 @@ const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
       {"assign_value", 0},
       {"fake_channel_wise_dequantize_max_abs", 2},
       {"yolo_box", 1},
-      {"data_norm", 1},
       {"cumsum", 1},
       {"fake_channel_wise_quantize_abs_max", 1},
       {"greater_equal", 1},

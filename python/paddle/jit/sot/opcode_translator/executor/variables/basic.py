@@ -300,6 +300,10 @@ class TensorDtypeVariable(DataVariable):
     def __init__(self, value, graph, tracker):
         super().__init__(value, graph, tracker)
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, GetAttrTracker) and isinstance(
@@ -475,21 +479,23 @@ class TensorVariable(VariableBase):
             # Check shape
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ShapeMatchGuard(meta.shape),
-                expr_node,
+                [expr_node],
             ),
             # Check dtype
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DtypeMatchGuard(meta.dtype),
-                expr_node,
+                [expr_node],
             ),
             # Check stop_gradient
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ValueMatchGuard(meta.stop_gradient),
-                paddle.framework.core.AttributeExprNode(
-                    expr_node, "stop_gradient"
-                ),
+                [
+                    paddle.framework.core.AttributeExprNode(
+                        expr_node, "stop_gradient"
+                    )
+                ],
             ),
-            # TODO(zrr1999): add dist_info check
+            # TODO(zrr1999): use TensorMetaMatchGuard to support dist_info check
         ]
 
     @check_guard
@@ -1007,6 +1013,15 @@ class SymbolicVariable(VariableBase):
         codegen.gen_load_method("item")
         codegen.gen_call_method(0)  # TODO
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        if self.need_guard_value:
+            return super().make_faster_guard()
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
@@ -1150,6 +1165,12 @@ class ObjectVariable(VariableBase):
 
     make_stringified_guard = object_equal_stringified_guard
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     def __init__(self, obj, graph, tracker):
         super().__init__(graph, tracker)
         self.value = obj
@@ -1276,6 +1297,12 @@ class SliceVariable(VariableBase):
             self.getattr("step").get_py_value(),
         )
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
@@ -1360,6 +1387,12 @@ class ModuleVariable(VariableBase):
     # Happened in a inline import statement.
     make_stringified_guard = object_equal_stringified_guard
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
 
 class DygraphTracerVariable(VariableBase):
     # TODO(SigureMo): Remove this trick after we add CompareTracker
@@ -1369,6 +1402,12 @@ class DygraphTracerVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         return self.value
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1421,6 +1460,12 @@ class NumpyVariable(VariableBase):
     def format_number(number: np.number):
         return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
 
@@ -1447,6 +1492,12 @@ class NumpyNumberVariable(NumpyVariable):
         return BuiltinVariable(
             np.number.item, self.graph, GetAttrTracker(self, name)
         ).bind(self, name)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1487,6 +1538,12 @@ class NumpyBoolVariable(NumpyNumberVariable):
 
 
 class NumpyArrayVariable(NumpyVariable):
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
