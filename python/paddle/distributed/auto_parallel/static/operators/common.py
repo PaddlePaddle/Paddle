@@ -511,7 +511,7 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
     dist_op_context = dist_ctx.dist_op_context
     main_block = dist_op_context.work_block
 
-    allreduce_type = "c_allreduce_sum"
+    reduce_type = dist.ReduceOp.SUM
     need_scale = dist_ctx.gradient_scale
 
     for group in groups:
@@ -521,12 +521,12 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
             added_ops = []
             grad_var = main_block.var(var_name)
             allreduce_op = main_block.append_op(
-                type=allreduce_type,
-                inputs={'X': [grad_var]},
-                outputs={'Out': [grad_var]},
+                type='all_reduce',
+                inputs={'x': [grad_var]},
+                outputs={'out': [grad_var]},
                 attrs={
                     'ring_id': group.id,
-                    'use_calc_stream': True,
+                    'reduce_type': reduce_type,
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )

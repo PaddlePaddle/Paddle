@@ -625,15 +625,6 @@ Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
   }
 }
 
-Tensor MakeCacheTensor(const Tensor& tensor, const std::string& memory_type) {
-  auto cache_tensor = lang::Compute(
-      tensor->shape,
-      [=](const std::vector<Expr>& dims) { return tensor(dims); },
-      tensor->name + "_" + memory_type + "_temp_buffer");
-  cache_tensor->WithBuffer(memory_type);
-  return cache_tensor;
-}
-
 Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
                     CacheBlockInfo* info,
                     const std::string& memory_type,
