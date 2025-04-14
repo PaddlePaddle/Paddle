@@ -158,7 +158,6 @@ jobs:
 
     - name: Clean up env
       # if: steps.check-bypass.outputs.can-skip != 'true'
-      working-directory: build
       run: |
         docker exec -t 4f77a548ae86 /bin/bash -c -x'
         source ~/.bashrc
@@ -184,7 +183,6 @@ jobs:
         home_path: /action-runner
         bos_file: /action-runner/bos/BosClient.py
         paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
-      working-directory: dist
       run: |
         docker exec -t 4f77a548ae86 /bin/bash -c '
         echo "::group::Install bce-python-sdk"
