@@ -4,8 +4,6 @@ on:
   workflow_call:
 
 env:
-  dockerfile: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-  docker_image: 077ca344c322
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-sot
@@ -33,7 +31,12 @@ jobs:
 
     steps:
     # sudo usermod -aG docker $USER
-    - name: Check docker image and run container
+    - name: check docker images
+      env:
+        docker-image-file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
+      run: bash ${{ github.workspace }}/ci/check_docker_image.sh Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
+
+    - name: run container
       env:
         BRANCH: develop
         work_dir: ${{ github.workspace }}
@@ -56,7 +59,6 @@ jobs:
         WITH_AVX: "OFF"
         CCACHE_DIR: "/root/.ccache/sot"
       run: |
-        # bash ${{ github.workspace }}/paddle/scripts/paddle_build/check_docker_image.sh
         container_name=${TASK}-$(date +%s)
         echo "container_name=${container_name}" >> ${{ github.env }}
         docker run -d -t --name ${container_name} \
