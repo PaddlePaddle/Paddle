@@ -236,7 +236,6 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                             f"Symbolic variable {symbolic_vars} is not backed."
                         )
                     )
-                # breakpoint()
                 is_jump = res.get_example_value()
                 if not is_jump:
                     constraint_node = LogicalNotConstraintNode(constraint_node)
