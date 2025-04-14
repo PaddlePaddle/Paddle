@@ -69,6 +69,22 @@ class TestWhereFP16OP(TestWhereOp):
         self.cond = np.ones((60, 2)).astype('bool')
 
 
+class TestWhereOpComplex64(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex64
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+class TestWhereOpComplex128(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex128
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
