@@ -30,8 +30,9 @@ jobs:
     #uses: ./.github/workflows/_docker.yml
     with:
       docker-image-file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-    run:
-      bash ci/check_docker_image.sh
+    steps:
+      run:
+        bash ci/check_docker_image.sh
 
 
   build-and-test:
