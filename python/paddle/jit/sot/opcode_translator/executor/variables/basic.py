@@ -1061,8 +1061,6 @@ class SymbolicVariable(VariableBase):
     def create_constraint_tree(
         self,
     ) -> tuple[ConstraintNode, dict[str, SymbolicVariable]]:
-        # if self.value.is_backed():
-        #     return ConstantConstraintNode(self.value.get_example_value()), {}
         tracker = self.tracker
         if not isinstance(tracker, SymbolicOperationTracker):
             return SymbolicConstraintNode(self.var_name), {self.var_name: self}
