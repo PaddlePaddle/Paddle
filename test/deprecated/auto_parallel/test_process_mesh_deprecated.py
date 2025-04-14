@@ -77,6 +77,7 @@ class TestProcessMesh(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         dist.init_parallel_env()
+
     def test_construction(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
         process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
