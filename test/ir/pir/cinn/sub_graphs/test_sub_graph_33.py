@@ -54,17 +54,12 @@ class LayerCase(paddle.nn.Layer):
             use_cudnn=True,
         )
         var_3 = var_2.reshape((10, 16, 49, 14, 14))
-        var_3 = var_3 * 2
-        var_4 = var_3.reshape((10, 16, 49, 14, 14))
-        var_4 = var_4 + 1
-        var_5 = var_4.reshape((10, 16, 49, 14, 14))
-        var_5 = var_5 - 3
-        var_6 = var_5.reshape((10, 16, 49, 14, 14))
-        var_6 = var_6 / 2
-        var_7 = var_6.reshape((10, 16, 49, 14, 14))
-        var_7 = var_4 * var_0
+        var_4 = var_3.unsqueeze(2)
+        var_5 = paddle.nn.functional.common.unfold(var_1, 7, 1, 3, 1)
+        var_6 = var_5.reshape((10, 16, 16, 49, 14, 14))
+        var_7 = var_4 * var_6
         var_8 = var_7.sum(axis=3)
-        var_9 = var_8.reshape((10, -1, 14, 14))
+        var_9 = var_8.reshape((10, 256, 14, 14))
         return var_9
 
 
