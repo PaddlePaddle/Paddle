@@ -1608,7 +1608,8 @@ void HandleForWhileOp(
                &body_block,
                ctx,
                map_op_pair,
-               map_value_pair);
+               map_value_pair,
+               true);
 
   (*map_op_pair)[op_item] = new_while_op;
 
@@ -1918,6 +1919,7 @@ void HandleForSpecialOp(
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
+
         if (!cur_in) {
           vec_inputs.emplace_back();
           continue;
@@ -1925,22 +1927,37 @@ void HandleForSpecialOp(
         auto new_in = GetNewInput(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
 
-        if (for_if_block && (!new_in.type().isa<pir::VectorType>()) &&
-            (ParsePhiPlace(new_in.type()).GetType() !=
-             phi::AllocationType::UNDEFINED) &&
-            (ParsePhiPlace(new_in.type()) != place)) {
-          phi::KernelKey kernel_key(TransToPhiBackend(place),
-                                    phi::DataLayout::ALL_LAYOUT,
-                                    ParsePhiDType(new_in.type()));
-          new_in = AddPlaceTransferOp(
-              new_in,
-              ConvertOpTypeToKernelType(ctx, cur_in.type(), place),
-              ParsePhiPlace(new_in.type()),
-              place,
-              kernel_key,
-              block);
-        }
+        if (for_if_block) {
+          auto parent_op = op_item->GetParentOp();
 
+          auto arg_place = place;
+          if (parent_op->name() == "pd_op.while" && i >= 1) {
+            // make sure while's first iter place same as next iter place
+            auto first_value = (*map_value_pair)[parent_op->operand_source(i)];
+            if (ParsePhiPlace(first_value.type()).GetType() !=
+                phi::AllocationType::UNDEFINED) {
+              arg_place = ParsePhiPlace(first_value.type());
+            }
+          }
+
+          if ((!new_in.type().isa<pir::VectorType>()) &&
+              (ParsePhiPlace(new_in.type()).GetType() !=
+               phi::AllocationType::UNDEFINED) &&
+              (ParsePhiPlace(new_in.type()) != arg_place)) {
+            phi::KernelKey kernel_key(TransToPhiBackend(place),
+                                      phi::DataLayout::ALL_LAYOUT,
+                                      ParsePhiDType(new_in.type()));
+
+            new_in = AddPlaceTransferOp(
+                new_in,
+                ConvertOpTypeToKernelType(ctx, cur_in.type(), arg_place),
+                ParsePhiPlace(new_in.type()),
+                arg_place,
+                kernel_key,
+                block);
+          }
+        }
+        // (*map_value_pair)[cur_in] = new_in;
         vec_inputs.push_back(new_in);
       }
     }
