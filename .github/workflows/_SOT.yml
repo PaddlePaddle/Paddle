@@ -71,7 +71,6 @@ jobs:
           WITH_AVX: "OFF"
           CCACHE_DIR: "/root/.ccache/sot"
         run: |
-          # bash ${{ github.workspace }}/paddle/scripts/paddle_build/check_docker_image.sh
           container_name=${TASK}-$(date +%s)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run -d -t --name ${container_name} \

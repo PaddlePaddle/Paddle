@@ -18,16 +18,16 @@ echo Dockerfile: ${docker_image_file}
 cd tools/dockerfile
 bash ci_dockerfile.sh
 docker_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
-docker_name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
-echo $docker_name
+docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
+echo $docker_image
 cd ../../
 
 set +e
-  docker pull ${docker_name}
+  docker pull ${docker_image}
 if [ $? -eq 0 ];then
   echo use docker cache
 else
-  docker build -t $docker_name -f tools/dockerfile/${docker_image_file} .
+  docker build -t $docker_image -f tools/dockerfile/${docker_image_file} .
   echo end docker build
 fi
 set -e
