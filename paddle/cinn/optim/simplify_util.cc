@@ -729,7 +729,7 @@ ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
     UnpackReduction<ir::Mul>(lr, [&](ir::IndexExpr val) { lr_elems[val]++; });
     bool can_simplify = false;
     for (const auto &[r_first, r_second] : r_elems) {
-      for (const auto &[lr_first, lr_second] : lr_elems) {
+      for (auto &[lr_first, lr_second] : lr_elems) {
         // Check equal relationship between the two operands.
         if (lr_first == r_first && lr_second >= r_second) {
           lr_second -= r_second;
