@@ -8,7 +8,7 @@ env:
   docker_image: aa13dc110ab3
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
-  ci_scripts: paddle/ci
+  ci_scripts: /paddle/ci
   ci_scripts_runner: ${{ github.workspace }}/ci
   work_dir: /paddle
   PADDLE_ROOT: /paddle
@@ -126,7 +126,7 @@ jobs:
         ulimit -n 102400
         git config --global --add safe.directory ${work_dir}
         git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-        bash -x ${ci_scripts}/run_setup.sh bdist_wheel
+        bash -x ${ci_scripts}/run_setup.sh "" bdist_wheel
         EXCODE=$?
         exit $EXCODE
         '
