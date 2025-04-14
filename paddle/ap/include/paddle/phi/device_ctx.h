@@ -33,7 +33,7 @@ class DeviceCtx : public kernel_dispatch::DeviceCtxImpl {
     if (!stream_.has_value()) {
       stream_ = reinterpret_cast<void*>(phi_device_ctx_->stream());
     }
-    void* stream_ptr = std::any_cast<void*>(stream_);
+    void* stream_ptr = std::any_cast<void*>(&stream_);
     return axpr::PointerValue{stream_ptr};
   }
 };
