@@ -193,7 +193,7 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
   gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
   VLOG(1) << "thread id is " << std::this_thread::get_id() << ", stream id is "
           << reinterpret_cast<void *>(gpu_resource->GetStream())
-          << ", allotor ptr is "
+          << ", allocator ptr is "
           << reinterpret_cast<void *>(
                  memory::allocation::AllocatorFacade::Instance()
                      .GetAllocator(place_, gpu_resource->GetStream())
@@ -1343,7 +1343,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
           std::min(num_threads, filter_param_names.size() / chunk_size);
       size_t remain_size = filter_param_names.size() % num_threads;
       VLOG(4) << "Start Load with multi-thread: " << num_threads
-              << " chund size: " << chunk_size;
+              << " chunk size: " << chunk_size;
 
       std::vector<std::future<std::vector<phi::DenseTensor *>>> futures;
 
