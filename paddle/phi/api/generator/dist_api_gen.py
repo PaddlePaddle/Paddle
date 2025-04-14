@@ -121,9 +121,13 @@ SET_NCCL_COMMCONTEXT = """
         }}
         Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
         auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
-        if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext() || !dev_context->GetCommContext())
+        if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
         {{
             dev_context->SetCommContext(comm_context);
+        }} else {{
+            if (!dev_context->GetCommContext()) {{
+                dev_context->SetCommContext(comm_context->GetDevContext()->GetCommContext());
+            }}
         }}
     #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
         auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
