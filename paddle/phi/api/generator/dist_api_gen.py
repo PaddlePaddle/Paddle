@@ -125,6 +125,7 @@ SET_NCCL_COMMCONTEXT = """
         {{
             dev_context->SetCommContext(comm_context);
         }} else {{
+            // when dev_context != comm_context->GetDevContext()
             if (!dev_context->GetCommContext()) {{
                 dev_context->SetCommContext(comm_context->GetDevContext()->GetCommContext());
             }}
