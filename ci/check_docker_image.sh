@@ -14,7 +14,8 @@
 
 
 echo Dockerfile: ${docker-image-file}
-bash tools/dockerfile/ci_dockerfile.sh
+cd tools/dockerfile
+bash ci_dockerfile.sh
 docker-md5=`md5sum ${docker-image-file}`
 docker-name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker-md5}
 
