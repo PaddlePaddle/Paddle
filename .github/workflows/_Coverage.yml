@@ -21,14 +21,14 @@ defaults:
     shell: bash
 
 jobs:
-  build:
-    name: Coverage build
-    runs-on:
-      group: 2-2
-    # outputs:
-    #   can-skip: ${{ steps.check-bypass.outputs.can-skip }}
+  # build:
+  #   name: Coverage build
+  #   runs-on:
+  #     group: 2-2
+  #   outputs:
+  #     can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
-    steps:
+  #   steps:
     # - name: Download paddle.tar.gz and update test branch
     #   run: |
     #     rm -rf  * .[^.]*
