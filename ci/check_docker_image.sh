@@ -17,6 +17,7 @@ set -xe
 echo Dockerfile: ${docker_image_file}
 cd tools/dockerfile
 bash ci_dockerfile.sh
+cd ../../
 docker_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
 docker_name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
 echo $docker_name
