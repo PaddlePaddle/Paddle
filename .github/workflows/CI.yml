@@ -25,7 +25,7 @@ jobs:
     needs: clone
 
   kunlun:
-    name: PR-CI-Kunlun
+    name: Linux-XPU
     uses: ./.github/workflows/_XPU-kunlun.yml
     needs: clone
 
