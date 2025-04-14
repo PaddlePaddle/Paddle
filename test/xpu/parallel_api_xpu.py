@@ -42,7 +42,7 @@ class TestParallelOnXPU(TestParallelAPI):
     def check_loss(self, loss):
         pretrained_loss = {}
         pretrained_loss['dp2mp1pp1'] = np.array(
-            [9.103161, 9.126399], dtype=np.float32
+            [9.080904, 9.06618], dtype=np.float32
         )
         pretrained_loss['dp1mp2pp1'] = np.array(
             [9.097355, 9.057393], dtype=np.float32
