@@ -22,6 +22,7 @@ import numpy as np
 from decorator_helper import prog_scope
 from op import Operator
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.inference as paddle_infer
@@ -397,6 +398,40 @@ class TestSumBF16Op(OpTest):
             check_prim_pir=True,
             check_pir=True,
         )
+
+
+class TestSumOpDtypeAsPaddleDtype(unittest.TestCase):
+    def setUp(self):
+        self.shape = [2, 3, 4]
+        self.axis = 0
+        self.input_dtype = 'float32'
+        self.test_dtypes = [
+            paddle.int32,
+            paddle.int64,
+            paddle.float64,
+            paddle.bool,
+        ]
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x_paddle = paddle.ones(shape=self.shape, dtype=self.input_dtype)
+            for dtype_input in self.test_dtypes:
+                paddle_result = paddle.sum(
+                    x_paddle, axis=self.axis, dtype=dtype_input
+                )
+                self.assertEqual(paddle_result.dtype, dtype_input)
+
+    def test_static(self):
+        with static_guard():
+            for dtype_input in self.test_dtypes:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name='x', shape=self.shape, dtype=self.input_dtype
+                    )
+                    result = paddle.sum(x, axis=self.axis, dtype=dtype_input)
+                    self.assertEqual(result.dtype, dtype_input)
 
 
 class API_Test_Add_n(unittest.TestCase):
