@@ -44,7 +44,7 @@ def _reduce_scatter_tensor_in_dygraph(
     use_calc_stream,
     caller="reduce_scatter",
 ):
-    op_type = _get_reduce_op(op, caller)
+    op_type = _get_reduce_op(op)
 
     if use_calc_stream:
         return group.process_group.reduce_scatter_tensor_on_calc_stream(
