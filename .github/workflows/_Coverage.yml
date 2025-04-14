@@ -221,22 +221,22 @@ jobs:
     runs-on:
       group: v100-test
     steps:
-      - name: Download paddle.tar.gz and update test branch
-        run: |
-          set +e
-          rm -rf * .[^.]*
-          set -e
-          echo "Downloading Paddle.tar.gz"
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/72182/af33506fb4fc2ff546be6d50e5c65c343ab1c8e5/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz
-          rm Paddle.tar.gz
-          cd paddle
-          source ${{ github.workspace }}/../../../proxy
-          git checkout test
-          echo "Pull upstream develop"
-          git pull upstream develop --no-edit
+      # - name: Download paddle.tar.gz and update test branch
+      #   run: |
+      #     set +e
+      #     rm -rf * .[^.]*
+      #     set -e
+      #     echo "Downloading Paddle.tar.gz"
+      #     # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+      #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage_paddle/72182/af33506fb4fc2ff546be6d50e5c65c343ab1c8e5/Paddle.tar.gz --no-check-certificate
+      #     echo "Extracting Paddle.tar.gz"
+      #     tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz
+      #     rm Paddle.tar.gz
+      #     cd paddle
+      #     source ${{ github.workspace }}/../../../proxy
+      #     git checkout test
+      #     echo "Pull upstream develop"
+      #     git pull upstream develop --no-edit
 
       - name: Check docker image and run container
         env:
