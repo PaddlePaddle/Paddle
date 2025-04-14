@@ -473,12 +473,21 @@ struct MaximumFunctor {
     if constexpr ((std::is_floating_point_v<T>)&&(
                       !(std::is_same_v<T, int32_t> ||
                         std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
       if (std::isnan(a)) {
         return a;
       }
       if (std::isnan(b)) {
         return b;
       }
+#endif
     }
     return a > b ? a : b;
   }
@@ -525,12 +534,21 @@ struct MinimumFunctor {
     if constexpr (std::is_floating_point_v<T> &&
                   (!(std::is_same_v<T, int32_t> ||
                      std::is_same_v<T, int64_t>))) {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+      if (::isnan(a)) {
+        return a;
+      }
+      if (::isnan(b)) {
+        return b;
+      }
+#else
       if (std::isnan(a)) {
         return a;
       }
       if (std::isnan(b)) {
         return b;
       }
+#endif
     }
     return a < b ? a : b;
   }

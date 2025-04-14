@@ -33,6 +33,7 @@ class ApiMaximumTest(unittest.TestCase):
         self.input_a = np.array([0, np.nan, np.nan]).astype('int64')
         self.input_b = np.array([2, np.inf, -np.inf]).astype('int64')
         self.input_c = np.array([4, 1, 3]).astype('int64')
+
         self.input_nan_a = np.array([0, np.nan, np.nan]).astype('float32')
         self.input_nan_b = np.array([0, 1, 2]).astype('float32')
 
@@ -40,7 +41,15 @@ class ApiMaximumTest(unittest.TestCase):
         self.np_expected2 = np.maximum(self.input_x, self.input_z)
         self.np_expected3 = np.maximum(self.input_a, self.input_c)
         self.np_expected4 = np.maximum(self.input_b, self.input_c)
-        self.np_expected_nan = np.maximum(self.input_nan_a, self.input_nan_b)
+        self.np_expected_nan_aa = np.maximum(
+            self.input_nan_a, self.input_nan_a
+        )  # maximum(Nan, Nan)
+        self.np_expected_nan_ab = np.maximum(
+            self.input_nan_a, self.input_nan_b
+        )  # maximum(Nan, Num)
+        self.np_expected_nan_ba = np.maximum(
+            self.input_nan_b, self.input_nan_a
+        )  # maximum(Num, Nan)
 
     def test_static_api(self):
         paddle.enable_static()
@@ -95,6 +104,22 @@ class ApiMaximumTest(unittest.TestCase):
                 fetch_list=[result_max],
             )
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_a = paddle.static.data("a", shape=[3], dtype="float32")
+            data_b = paddle.static.data("b", shape=[3], dtype="float32")
+            result_max = paddle.maximum(data_a, data_b)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"a": self.input_nan_a, "b": self.input_nan_a},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(
+            res, self.np_expected_nan_aa, rtol=1e-05, equal_nan=True
+        )
+
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -107,7 +132,22 @@ class ApiMaximumTest(unittest.TestCase):
                 fetch_list=[result_max],
             )
         np.testing.assert_allclose(
-            res, self.np_expected_nan, rtol=1e-05, equal_nan=True
+            res, self.np_expected_nan_ab, rtol=1e-05, equal_nan=True
+        )
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_a = paddle.static.data("a", shape=[3], dtype="float32")
+            data_b = paddle.static.data("b", shape=[3], dtype="float32")
+            result_max = paddle.maximum(data_a, data_b)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"a": self.input_nan_b, "b": self.input_nan_a},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(
+            res, self.np_expected_nan_ba, rtol=1e-05, equal_nan=True
         )
 
     def test_dynamic_api(self):
@@ -119,6 +159,9 @@ class ApiMaximumTest(unittest.TestCase):
         a = paddle.to_tensor(self.input_a)
         b = paddle.to_tensor(self.input_b)
         c = paddle.to_tensor(self.input_c)
+
+        nan_a = paddle.to_tensor(self.input_nan_a)
+        nan_b = paddle.to_tensor(self.input_nan_b)
 
         res = paddle.maximum(x, y)
         res = res.numpy()
@@ -136,6 +179,24 @@ class ApiMaximumTest(unittest.TestCase):
         res = paddle.maximum(b, c)
         res = res.numpy()
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+
+        res = paddle.maximum(nan_a, nan_a)
+        res = res.numpy()
+        np.testing.assert_allclose(
+            res, self.np_expected_nan_aa, rtol=1e-05, equal_nan=True
+        )
+
+        res = paddle.maximum(nan_a, nan_b)
+        res = res.numpy()
+        np.testing.assert_allclose(
+            res, self.np_expected_nan_ab, rtol=1e-05, equal_nan=True
+        )
+
+        res = paddle.maximum(nan_b, nan_a)
+        res = res.numpy()
+        np.testing.assert_allclose(
+            res, self.np_expected_nan_ba, rtol=1e-05, equal_nan=True
+        )
 
     @unittest.skipIf(
         core.is_compiled_with_xpu(),
