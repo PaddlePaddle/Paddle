@@ -159,7 +159,7 @@ jobs:
     - name: Clean up env
       # if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
-        docker exec -t 4f77a548ae86 /bin/bash -c -x'
+        docker exec -t 4f77a548ae86 /bin/bash -c'
         source ~/.bashrc
         source ${ci_scripts}/utils.sh; clean_build_files
         Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
