@@ -47,7 +47,7 @@ jobs:
 
       - name: Check bypass
         id: check-bypass
-        uses: ./Paddle/.github/actions/check-bypass
+        uses: ./.github/actions/check-bypass
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: coverage
