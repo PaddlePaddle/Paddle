@@ -16,3 +16,7 @@ env:
   CI_name: npu
 
 jobs:
+  test:
+    name: Test
+    runs-on:
+      group: CPU-test
