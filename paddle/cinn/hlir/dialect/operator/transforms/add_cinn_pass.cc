@@ -136,6 +136,9 @@ void ApplyPdToCinnPass(
   }
   pass_manager->AddPass(cinn::dialect::ir::CreateRemoveAssignOutPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateFoldFullOpPass());
+
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveRedundantFullIntArrayPass());
+  
   pass_manager->AddPass(cinn::dialect::ir::CreateConv2dTransposeFilterPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertFA2QKVMHAPass());
@@ -240,13 +243,7 @@ void ApplyCinnLowerPass(
     pass_manager->AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
   }
   pass_manager->AddPass(
-      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-
-  LOG(INFO) << "before RemoveRedundantFullIntArrayPass";
-  pass_manager->AddPass(
-      cinn::dialect::ir::CreateRemoveRedundantFullIntArrayPass());
-  LOG(INFO) << "after RemoveRedundantFullIntArrayPass";  
-
+      cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass()); 
   pass_manager->Run(program);
 }
 

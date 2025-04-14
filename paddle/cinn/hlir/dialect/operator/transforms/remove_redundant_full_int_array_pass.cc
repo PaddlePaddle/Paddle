@@ -30,7 +30,6 @@ class RemoveRedundantFullIntArrayPattern
 
   bool MatchAndRewrite(paddle::dialect::FullIntArrayOp op,
                        pir::PatternRewriter& rewriter) const override {
-
     auto block = op->GetParent();
     if (!block) return false;
     pir::AttributeMap attrs = op->attributes();
@@ -39,10 +38,8 @@ class RemoveRedundantFullIntArrayPattern
     auto place = attrs.at("place");
 
     for (auto other_op = block->begin(); other_op != block->end(); ++other_op) {
-
       if (!other_op->isa<paddle::dialect::FullIntArrayOp>() ) continue;   
       if (op.operation() == &(*other_op)) break;
-
       pir::AttributeMap other_attrs = other_op->attributes();
       if (dtype != other_attrs.at("dtype") || place != other_attrs.at("place")) continue;
       auto other_value = other_attrs.at("value");
