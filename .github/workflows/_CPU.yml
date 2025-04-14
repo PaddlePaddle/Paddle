@@ -8,9 +8,12 @@ env:
   docker_image: 077ca344c322
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-cpu
   ci_scripts: ${{ github.workspace }}/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: cpu
 
 defaults:
   run:
@@ -24,8 +27,6 @@ jobs:
     steps:
       - name: Check docker image  and run container
         env:
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
           WITH_SHARED_PHI: "ON"
           WITH_MKL: "OFF"
           WITH_TESTING: "ON"
@@ -49,7 +50,7 @@ jobs:
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
-            -v "/home/data/cfs/.cache:/root/.cache" \
+            -v "/home/data/cfs/.cache/python35-cpu:/root/.cache" \
             -v "/home/data/cfs/.ccache:/root/.ccache" \
             -v "/dev/shm:/dev/shm"  \
             -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
@@ -87,7 +88,6 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
-          rm -rf /root/.cache && ln -s /home/data/cfs/.cache/python35-cpu /root/.cache
           set -e
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate

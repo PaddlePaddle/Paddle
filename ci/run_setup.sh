@@ -21,7 +21,7 @@ if [ "$4" == "sot" ]; then
     ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 fi
 
-if [ "$4" == "py3" ]; then
+if [ "$CI_name" == "cpu" ]; then
     PATH=/usr/local/bin:${PATH}
     ln -sf $(which python3.9) /usr/local/bin/python
     ln -sf $(which pip3.9) /usr/local/bin/pip
