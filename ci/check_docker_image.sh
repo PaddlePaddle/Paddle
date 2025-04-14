@@ -13,14 +13,14 @@
 # limitations under the License.
 
 
-echo Dockerfile: ${docker-image-file}
+echo Dockerfile: ${docker_image_file}
 cd tools/dockerfile
 bash ci_dockerfile.sh
-docker-md5=`md5sum ${docker-image-file}`
-docker-name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker-md5}
+docker_md5=`md5sum ${docker_image_file}`
+docker_name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
 
 set +e
-  docker pull ${docker-name}
+  docker pull ${docker_name}
 if [ $? -eq 0 ];then
   echo use docker
 fi
