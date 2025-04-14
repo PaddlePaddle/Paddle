@@ -24,6 +24,11 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: clone
 
+  inference:
+    name: PR-CI-Inference
+    uses: ./.github/workflows/_Inference.yml
+    needs: clone
+
   coverage:
     name: PR-CI-Coverage
     uses: ./.github/workflows/_Coverage.yml
