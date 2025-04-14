@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/const_fold.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/simplify_special_pattern.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -685,6 +686,34 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
     }
   }
   return expr;
+}
+
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
+  // Two consecutive modular operations.
+  auto opt_map =
+      MatchPattern(expr,
+                   "f % a % b",
+                   [](const std::unordered_map<std::string, ir::IndexExpr> &m) {
+                     return m.at("a").node_type() == ir::IrNodeTy::Max;
+                   });
+  if (!opt_map) return expr;
+
+  auto &map = opt_map.value();
+  auto ll = map.at("f");
+  auto lr = map.at("a");
+  auto r = map.at("b");
+  auto lr_elems = GetFlattenExprs<ir::Max>(lr);
+  auto r_elems = GetFlattenExprs<ir::Max>(r);
+
+  // The second modulus is a subset of the first modulus.
+  for (auto &&r_elem : r_elems) {
+    if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
+      return expr;
+  }
+
+  // The first modulus is broadcastable.
+  auto &constraint = cinn::common::ShapeConstraintManager::Instance();
+  return constraint.IsBroadcastable(lr_elems) ? ll % r : expr;
 }
 }  // namespace optim
 }  // namespace cinn

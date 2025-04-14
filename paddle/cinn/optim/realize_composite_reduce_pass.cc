@@ -97,10 +97,9 @@ void SetInitValue(Store store_stmt,
                                          ir::CallType::Intrinsic));
   } else if (comp_type.type == ReduceType::kArgmax ||
              comp_type.type == ReduceType::kArgmin) {
-    ir::Expr index_init = ir::Expr(INT_MAX);
+    ir::Expr index_init = ir::Expr(0);
     index_init->set_type(common::Int(32));
     if (comp_type.at(1).is_int(64)) {
-      index_init = ir::Expr(INT64_MAX);
       index_init->set_type(common::Int(64));
     }
     store_stmt->set_value(ir::Call::Make(new_type,

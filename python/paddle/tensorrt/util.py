@@ -68,6 +68,24 @@ def support_constant_folding_pass(program):
     return True
 
 
+def all_ops_into_trt(program):
+    for op in program.global_block().ops:
+        if (
+            op.name() == "pd_op.fetch"
+            or op.name() == "pd_op.data"
+            or op.name() == "pd_op.tensorrt_engine"
+            or op.name() == "cinn_op.group"
+            or op.name().split('.')[0] == "builtin"
+        ):
+            continue
+        if op.has_attr("__l_trt__") is False:
+            return False
+        if op.attrs()["__l_trt__"] is False:
+            return False
+    _logger.info("All ops convert to trt.")
+    return True
+
+
 def run_pir_pass(program, disable_passes=[], scope=None, precision_mode=None):
     def _add_pass_(pm, passes, disable_passes):
         for pass_item in passes:

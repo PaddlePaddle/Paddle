@@ -125,6 +125,9 @@ void BindGuard(pybind11::module *m) {
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));
+  py::class_<DummyGuard, GuardBase, std::shared_ptr<DummyGuard>>(
+      *m, "DummyGuard", R"DOC(DummyGuard Class.)DOC")
+      .def(py::init<>());
 
   m->def(
       "merge_guard",
@@ -147,16 +150,23 @@ void BindGuardTree(pybind11::module *m) {
           [](GuardTree &self, py::object frame) {
             return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
-          py::arg("frame"));
+          py::arg("frame"))
+      .def(
+          "add_guard_chain",
+          [](GuardTree &self,
+             const std::vector<std::shared_ptr<GuardNode>> &guard_chain) {
+            self.add_guard_chain(guard_chain);
+          },
+          py::arg("guard_chain"));
 
   py::class_<GuardNode, std::shared_ptr<GuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
       .def(py::init<const std::shared_ptr<GuardBase> &,
-                    const std::shared_ptr<ExprNode> &,
+                    const std::vector<std::shared_ptr<ExprNode>> &,
                     const std::vector<std::shared_ptr<GuardNode>> &,
                     const std::optional<int> &>(),
            py::arg("guard"),
-           py::arg("expr"),
+           py::arg("exprs"),
            py::arg("next_guard_nodes") = py::list(),
            py::arg("return_cache_index") = py::none())
       .def_property(
@@ -182,6 +192,12 @@ void BindGuardTree(pybind11::module *m) {
   py::class_<ConstantExprNode, ExprNode, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("value_ptr"));
+
+  py::class_<ExternVarExprNode, ExprNode, std::shared_ptr<ExternVarExprNode>>(
+      *m, "ExternVarExprNode", R"DOC(ExternVarExprNode Class.)DOC")
+      .def(py::init<const std::string &, const py::object &>(),
+           py::arg("var_name"),
+           py::arg("value_ptr"));
 
   py::class_<LocalVarExprNode, ExprNode, std::shared_ptr<LocalVarExprNode>>(
       *m, "LocalVarExprNode", R"DOC(LocalVarExprNode Class.)DOC")
