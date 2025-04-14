@@ -24,6 +24,10 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: clone
 
-  # Py3:
-  #   uses: ./.github/workflows/_Py3.yml
-  #   needs: Clone
+  cpu:
+    uses: ./.github/workflows/_CPU.yml
+    needs: clone
+
+  npu:
+    uses: ./.github/workflows/_NPU.yml
+    needs: cpu

@@ -1,0 +1,18 @@
+name: PR-CI-NPU-910B-Paddle
+
+on:
+  workflow_call:
+
+env:
+  dockerfile: dockerfile
+  docker_image: 885123926a90
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  ci_scripts: /paddle/ci
+  ci_scripts_runner: ${{ github.workspace }}/ci
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: npu
+
+jobs:
