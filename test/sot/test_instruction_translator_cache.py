@@ -25,6 +25,7 @@ from test_case_base import (
     test_instruction_translator_cache_context,
 )
 
+import paddle
 from paddle.jit.sot.opcode_translator.custom_code import CustomCode
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
@@ -88,6 +89,7 @@ class GuardCode:
     def __init__(self, recompile):
         self.func = lambda frame: recompile
         self.mirror_guard = self.func
+        self.expr = f"lambda frame: {recompile}"
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)
@@ -95,12 +97,39 @@ class GuardCode:
 
 def mock_start_translate(frame: FrameType, **kwargs):
     translate_map = {
-        FRAME_1: (CustomCode(FRAME_2.f_code, False), GuardCode(True)),
+        FRAME_1: (
+            CustomCode(FRAME_2.f_code, False),
+            GuardCode(True),
+            # TODO(zrr1999): GuardNode should support zero-expr constructor
+            [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(True)],
+                )
+            ],
+        ),
         FRAME_3: (
             CustomCode(FRAME_4.f_code, False),
             GuardCode(False),
+            # TODO(zrr1999): GuardNode should support zero-expr constructor
+            [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(False)],
+                )
+            ],
         ),  # Always re-compile
-        FRAME_5: (CustomCode(None, False), lambda frame: True),
+        FRAME_5: (
+            CustomCode(None, False),
+            lambda frame: True,
+            # TODO(zrr1999): GuardNode should support zero-expr constructor
+            [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(True)],
+                )
+            ],
+        ),
     }
     return translate_map[frame]
 

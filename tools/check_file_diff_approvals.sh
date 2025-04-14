@@ -147,6 +147,13 @@ if [ -n "${IF_ADD_METACONFIG}" ] && [ -z "${HAS_MODIFIED_OP_BUILD_GEN_SCRIPT}" ]
     check_approval 1 SigureMo zyfncg zhangbo9674
 fi
 
+CINN_FILES_ADDED_LINES=$(git diff -U0 upstream/$BRANCH -- 'paddle/cinn/' |grep "^+")
+IF_ADD_LOG_INFO=`echo $CINN_FILES_ADDED_LINES | grep -B5 --no-group-separator "LOG(INFO)" || true`
+if [[ ${IF_ADD_LOG_INFO} ]]; then
+    echo_line="You must have one RD (SigureMo(Recommend), zyfncg) approval for using LOG(INFO), which may make user confused. Recommend to move it under if (FLAGS_cinn_debug)\n"
+    check_approval 1 SigureMo zyfncg
+fi
+
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`
 if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD zyfncg or zhangbo9674 or phlrain approval for the usage (either add or delete) of DEFINE_int32/DEFINE_bool/DEFINE_string flag.\n"
