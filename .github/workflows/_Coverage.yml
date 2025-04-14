@@ -159,7 +159,8 @@ jobs:
     - name: Clean up env
       # if: steps.check-bypass.outputs.can-skip != 'true'
       run: |
-        docker exec -t 4f77a548ae86 /bin/bash -c'
+        docker exec -t paddle-CI-72182-coverage-build-1744368185 /bin/bash -c '
+        set -x
         source ~/.bashrc
         source ${ci_scripts}/utils.sh; clean_build_files
         Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
@@ -184,7 +185,8 @@ jobs:
         bos_file: /action-runner/bos/BosClient.py
         paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
       run: |
-        docker exec -t 4f77a548ae86 /bin/bash -c '
+        docker exec -t paddle-CI-72182-coverage-build-1744368185 /bin/bash -c '
+        set -x
         echo "::group::Install bce-python-sdk"
         source /action-runner/proxy
         python -m pip install bce-python-sdk==0.8.74
