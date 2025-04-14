@@ -450,6 +450,14 @@ def in_cinn_mode() -> bool:
     return paddle.get_flags(CINN_FLAG_NAME)[CINN_FLAG_NAME]
 
 
+def in_cinn_debug_mode() -> bool:
+    CINN_DEBUG_FLAG_NAME = "FLAGS_cinn_debug"
+    # NOTE: This flag only available when compiled with CINN
+    if not is_compiled_with_cinn():
+        return False
+    return paddle.get_flags(CINN_DEBUG_FLAG_NAME)[CINN_DEBUG_FLAG_NAME]
+
+
 global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = "ipu_index"

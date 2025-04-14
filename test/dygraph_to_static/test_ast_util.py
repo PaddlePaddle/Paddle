@@ -21,7 +21,7 @@ from dygraph_to_static_utils import (
     Dy2StTestBase,
     static_guard,
     test_ast_only,
-    test_legacy_and_pir,
+    test_pir_only,
 )
 from ifelse_simple_func import (
     dyfunc_with_if_else,
@@ -49,7 +49,7 @@ class TestAST2Func(Dy2StTestBase):
         return transformed_func
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_pir_only
     def test_ast2func(self):
         def func(x, y):
             return x + y
@@ -58,7 +58,7 @@ class TestAST2Func(Dy2StTestBase):
         self.assertEqual(func(x, y), self._ast2func(func)(x, y))
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_pir_only
     def test_ast2func_dygraph(self):
         funcs = [dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else]
         x_data = np.random.random([10, 16]).astype('float32')
@@ -69,7 +69,7 @@ class TestAST2Func(Dy2StTestBase):
             self.assertTrue((true_ret == test_ret).all())
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_pir_only
     def test_ast2func_static(self):
         def func(x):
             y = F.relu(x)
@@ -88,7 +88,7 @@ class TestAST2Func(Dy2StTestBase):
                 self.assertTrue((ret[0] == ret[1]).all())
 
     @test_ast_only
-    @test_legacy_and_pir
+    @test_pir_only
     def test_ast2func_error(self):
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))
