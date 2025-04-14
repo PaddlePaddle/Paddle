@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class ConstraintNode:
-    def __init__(self, inputs):
+    def __init__(self, inputs: list[ConstraintNode]):
         self.inputs = inputs
 
     def create_guard_expr(
@@ -38,7 +38,7 @@ class LeafConstraintNode(ConstraintNode):
 
 
 class UnaryConstraintNode(ConstraintNode):
-    def __init__(self, input):
+    def __init__(self, input: ConstraintNode):
         super().__init__([input])
         self.input = input
 
@@ -120,9 +120,6 @@ class SymbolicConstraintNode(LeafConstraintNode):
 
 
 class NegativeConstraintNode(UnaryConstraintNode):
-    def __init__(self, input):
-        super().__init__(input)
-
     def create_guard_expr(
         self, extern_vars: dict[str, StringifiedExpression]
     ) -> StringifiedExpression:
@@ -140,9 +137,6 @@ class NegativeConstraintNode(UnaryConstraintNode):
 
 
 class BitwiseNotConstraintNode(UnaryConstraintNode):
-    def __init__(self, input):
-        super().__init__(input)
-
     def create_guard_expr(
         self, extern_vars: dict[str, StringifiedExpression]
     ) -> StringifiedExpression:
@@ -162,92 +156,52 @@ class BitwiseNotConstraintNode(UnaryConstraintNode):
 class AddConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "+"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class SubConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "-"
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
 
 
 class MulConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "*"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class TrueDivConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "/"
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
 
 
 class FloorDivConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "//"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class ModConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "%"
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
 
 
 class PowConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "**"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class BitwiseLShiftConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "<<"
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
 
 
 class BitwiseRShiftConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = ">>"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class BitwiseAndConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "&"
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
 
 
 class BitwiseOrConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "|"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class BitwiseXorConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "^"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-
 
 class LogicalToBoolConstraintNode(UnaryConstraintNode):
-    def __init__(self, input):
-        super().__init__(input)
-        self.input = input
-
     def create_guard_expr(
         self, extern_vars: dict[str, StringifiedExpression]
     ) -> StringifiedExpression:
@@ -265,10 +219,6 @@ class LogicalToBoolConstraintNode(UnaryConstraintNode):
 
 
 class LogicalNotConstraintNode(UnaryConstraintNode):
-    def __init__(self, input):
-        super().__init__(input)
-        self.input = input
-
     def create_guard_expr(
         self, extern_vars: dict[str, StringifiedExpression]
     ) -> StringifiedExpression:
@@ -288,52 +238,22 @@ class LogicalNotConstraintNode(UnaryConstraintNode):
 class EqualConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "=="
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-        self.lhs = lhs
-        self.rhs = rhs
-
 
 class NotEqualConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "!="
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-        self.lhs = lhs
-        self.rhs = rhs
 
 
 class LessThanConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "<"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-        self.lhs = lhs
-        self.rhs = rhs
-
 
 class LessEqualConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = "<="
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-        self.lhs = lhs
-        self.rhs = rhs
 
 
 class GreaterThanConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = ">"
 
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-        self.lhs = lhs
-        self.rhs = rhs
-
 
 class GreaterEqualConstraintNode(BinaryConstraintNode):
     READABLE_SYMBOL = ">="
-
-    def __init__(self, lhs, rhs):
-        super().__init__(lhs, rhs)
-        self.lhs = lhs
-        self.rhs = rhs
