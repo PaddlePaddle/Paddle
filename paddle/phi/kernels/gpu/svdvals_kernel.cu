@@ -16,40 +16,47 @@
 // HIP not support cusolver
 
 #include "paddle/phi/kernels/svdvals_kernel.h"
+#include <vector>
+#include "glog/logging.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
 
 template <class T>
-static void GesvdjBatchedSvdvals(const phi::GPUContext& dev_ctx,
-                                 int batchSize,
-                                 int m,
-                                 int n,
-                                 int k,
-                                 T* A,
-                                 T* S,
-                                 int* info,
-                                 int thin_UV = 1);
+static void GesvdjBatched(const phi::GPUContext& dev_ctx,
+                          int batchSize,
+                          int m,
+                          int n,
+                          int k,
+                          T* A,
+                          T* U,
+                          T* V,
+                          T* S,
+                          int* info,
+                          int thin_UV = 1);
 
 template <>
-void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
-                                 int batchSize,
-                                 int m,
-                                 int n,
-                                 int k,
-                                 float* A,
-                                 float* S,
-                                 int* info,
-                                 int thin_UV) {
-  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
+void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
+                          int batchSize,
+                          int m,
+                          int n,
+                          int k,
+                          float* A,
+                          float* U,
+                          float* V,
+                          float* S,
+                          int* info,
+                          int thin_UV) {
+  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
   int lda = m;
   int ldu = m;
-  int ldv = n;
+  int ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -63,10 +70,10 @@ void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
                                                  A,
                                                  lda,
                                                  S,
-                                                 nullptr,
+                                                 U,
                                                  ldu,
-                                                 nullptr,
-                                                 ldv,
+                                                 V,
+                                                 ldt,
                                                  &lwork,
                                                  gesvdj_params));
   auto workspace = phi::memory_utils::Alloc(
@@ -75,6 +82,8 @@ void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
   int stride_A = lda * n;
+  int stride_U = ldu * (thin_UV ? k : m);
+  int stride_V = ldt * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnSgesvdj(handle,
                                                                jobz,
@@ -84,10 +93,10 @@ void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
                                                                A + stride_A * i,
                                                                lda,
                                                                S + k * i,
-                                                               nullptr,
+                                                               U + stride_U * i,
                                                                ldu,
-                                                               nullptr,
-                                                               ldv,
+                                                               V + stride_V * i,
+                                                               ldt,
                                                                workspace_ptr,
                                                                lwork,
                                                                info,
@@ -111,20 +120,22 @@ void GesvdjBatchedSvdvals<float>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatchedSvdvals<double>(const phi::GPUContext& dev_ctx,
-                                  int batchSize,
-                                  int m,
-                                  int n,
-                                  int k,
-                                  double* A,
-                                  double* S,
-                                  int* info,
-                                  int thin_UV) {
-  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
+void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
+                           int batchSize,
+                           int m,
+                           int n,
+                           int k,
+                           double* A,
+                           double* U,
+                           double* V,
+                           double* S,
+                           int* info,
+                           int thin_UV) {
+  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
   int lda = m;
   int ldu = m;
-  int ldv = n;
+  int ldt = n;
   int lwork = 0;
   auto handle = dev_ctx.cusolver_dn_handle();
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -138,10 +149,10 @@ void GesvdjBatchedSvdvals<double>(const phi::GPUContext& dev_ctx,
                                                  A,
                                                  lda,
                                                  S,
-                                                 nullptr,
+                                                 U,
                                                  ldu,
-                                                 nullptr,
-                                                 ldv,
+                                                 V,
+                                                 ldt,
                                                  &lwork,
                                                  gesvdj_params));
   auto workspace = phi::memory_utils::Alloc(
@@ -150,6 +161,8 @@ void GesvdjBatchedSvdvals<double>(const phi::GPUContext& dev_ctx,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
   int stride_A = lda * n;
+  int stride_U = ldu * (thin_UV ? k : m);
+  int stride_V = ldt * (thin_UV ? k : n);
   for (int i = 0; i < batchSize; ++i) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cusolverDnDgesvdj(handle,
                                                                jobz,
@@ -159,10 +172,10 @@ void GesvdjBatchedSvdvals<double>(const phi::GPUContext& dev_ctx,
                                                                A + stride_A * i,
                                                                lda,
                                                                S + k * i,
-                                                               nullptr,
+                                                               U + stride_U * i,
                                                                ldu,
-                                                               nullptr,
-                                                               ldv,
+                                                               V + stride_V * i,
+                                                               ldt,
                                                                workspace_ptr,
                                                                lwork,
                                                                info,
@@ -209,6 +222,13 @@ void SvdvalsKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument("Batch size must be greater than 0."));
 
+  std::vector<int64_t> u_size = {rows, rows};
+  std::vector<int64_t> v_size = {cols, cols};
+  auto U = Empty<T, Context>(dev_ctx, u_size);
+  auto VH = Empty<T, Context>(dev_ctx, v_size);
+
+  auto* u_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&U);
+  auto* vh_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(&VH);
   auto* S_out = dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
 
   auto info = Empty<int, Context>(dev_ctx, {batches});
@@ -217,15 +237,17 @@ void SvdvalsKernel(const Context& dev_ctx,
   DenseTensor x_tmp;
   Copy(dev_ctx, X, dev_ctx.GetPlace(), false, &x_tmp);
 
-  GesvdjBatchedSvdvals<T>(dev_ctx,
-                          batches,
-                          rows,
-                          cols,
-                          k,
-                          dev_ctx.template Alloc<T>(&x_tmp),
-                          S_out,
-                          info_ptr,
-                          1);
+  GesvdjBatched<T>(dev_ctx,
+                   batches,
+                   cols,
+                   rows,
+                   k,
+                   dev_ctx.template Alloc<T>(&x_tmp),
+                   vh_data,
+                   u_data,
+                   S_out,
+                   info_ptr,
+                   0);
 }
 
 }  // namespace phi
