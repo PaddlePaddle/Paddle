@@ -49,6 +49,7 @@ PD_DECLARE_string(cinn_dump_group_source_code);
 PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
 PD_DECLARE_string(cinn_debug_custom_code_path);
+COMMON_DECLARE_bool(cinn_debug);
 
 namespace {
 

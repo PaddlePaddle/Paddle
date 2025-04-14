@@ -24,6 +24,9 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/common/enforce.h"
+
+COMMON_DECLARE_bool(cinn_debug);
+
 namespace cinn {
 namespace hlir {
 namespace framework {

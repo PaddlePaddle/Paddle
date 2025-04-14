@@ -27,6 +27,7 @@
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
+COMMON_DECLARE_bool(cinn_debug);
 
 namespace cinn::hlir::framework {
 class CompilationContextMapper {

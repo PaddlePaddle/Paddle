@@ -52,6 +52,7 @@
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_check_tensor_buffer_map);
 PD_DECLARE_bool(cinn_longlong2int);
+COMMON_DECLARE_bool(cinn_debug);
 const int default_priority = 100;
 
 namespace cinn {

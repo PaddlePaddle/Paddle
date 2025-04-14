@@ -28,6 +28,7 @@
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(enable_cinn_compile_cache);
+COMMON_DECLARE_bool(cinn_debug);
 
 namespace cinn::dialect::ir::details {
 
