@@ -63,6 +63,8 @@ class Vocab : public phi::ExtendedTensor,
 
   size_t size() const { return data_.size(); }
 
+  DataLayout layout() { return DataLayout::kAnyLayout; }
+
   void clear() { data_.clear(); }
 
   void emplace(const std::wstring& key, std::int32_t value) {

@@ -56,6 +56,8 @@ class PhiVector : public phi::ExtendedTensor,
 
   size_t size() const { return data_.size(); }
 
+  DataLayout layout() { return DataLayout::kAnyLayout; }
+
   bool empty() const { return data_.empty(); }
 
   const T& back() const { return data_.back(); }
