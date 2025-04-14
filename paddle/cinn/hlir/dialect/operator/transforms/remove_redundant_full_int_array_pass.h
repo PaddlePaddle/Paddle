@@ -1,4 +1,4 @@
-// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,24 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
-#include <functional>
-#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
-namespace pir {
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-class PassManager;
-class Program;
 
-}  // namespace pir
+std::unique_ptr<pir::Pass> CreateRemoveRedundantFullIntArrayPass();
 
-namespace cinn::dialect::ir {
-
-void ApplyCinnPass(
-    ::pir::Program* program,
-    const std::function<std::shared_ptr<pir::PassManager>()>& CreatePassManager,
-    bool is_train_mode = true);
-
-}  // namespace cinn::dialect::ir
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
