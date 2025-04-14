@@ -3009,6 +3009,10 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
+    if (std::is_integral<T>::value) {
+      out.device(d) = x;
+      return;
+    }
     if (decimals == 0) {
       out.device(d) = (x.isnan() || x.isinf()).select(x, x.round());
     } else if (decimals > 0) {
@@ -5381,6 +5385,9 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
 
+    if (std::is_integral<T>::value) {
+      return static_cast<T>(x);
+    }
     if (isnan(x) || isinf(x)) return arg_x;
     if (decimals == 0) {
       return static_cast<T>(round(x));
