@@ -31,7 +31,6 @@ jobs:
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
-          rm -rf  * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
@@ -337,10 +336,10 @@ jobs:
             exit ${{ env.COVERAGE_EXIT_CODE }}
           fi
 
-      # - name: Terminate and delete the container
-      #   if: always()
-      #   run: |
-      #     set +e
-      #     # docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-      #     docker stop ${{ env.container_name }}
-      #     docker rm ${{ env.container_name }}
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}
