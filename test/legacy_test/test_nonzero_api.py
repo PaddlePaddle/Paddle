@@ -181,5 +181,37 @@ class TestNonzeroBF16(OpTest):
         return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
 
 
+class TestZeroOp(OpTest):
+    def setUp(self):
+        '''Test where_index op with random value'''
+        np.random.seed(2023)
+        self.op_type = "where_index"
+        self.python_api = call_nonzero
+        self.init_shape()
+        self.init_dtype()
+
+        self.inputs = self.create_inputs()
+        self.outputs = self.return_outputs()
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
+    def init_shape(self):
+        self.shape = [0, 10]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def create_inputs(self):
+        return {
+            'Condition': np.random.randint(5, size=self.shape).astype(
+                self.dtype
+            )
+        }
+
+    def return_outputs(self):
+        return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
+
+
 if __name__ == "__main__":
     unittest.main()
