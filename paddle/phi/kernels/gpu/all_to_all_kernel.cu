@@ -59,6 +59,15 @@ void AllToAllKernel(const Context& dev_ctx,
           x_dims[0],
           nranks));
 
+  PADDLE_ENFORCE_NE(
+      x_dims[0] % nranks,
+      0,
+      errors::InvalidArgument(
+          "2 The first dimension size (%d) of the input tensor must be "
+          "divisible by the number of ranks (%d).",
+          x_dims[0],
+          nranks));
+
   comm_ctx->GroupStart();
 
   const auto* send_buf = x.data<T>();
