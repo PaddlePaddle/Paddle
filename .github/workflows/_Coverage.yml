@@ -232,7 +232,7 @@ jobs:
         echo "Extracting Paddle.tar.gz"
         tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz
         rm Paddle.tar.gz
-        cd Paddle
+        cd paddle
         source ${{ github.workspace }}/../../../proxy
         git checkout test
         echo "Pull upstream develop"
@@ -311,7 +311,7 @@ jobs:
       run: |
         docker exec -t ${{ env.container_name }} /bin/bash -c '
         rm -rf /paddle
-        mv /action-runner/_work/Paddle/Paddle/Paddle /paddle
+        mv /action-runner/_work/Paddle/Paddle/paddle /paddle
         source /action-runner/proxy
         bash $ci_scripts/coverage_test.sh
         TEST_EXIT_CODE=$?
