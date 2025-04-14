@@ -141,6 +141,8 @@ jobs:
           wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
           mkdir ${{ env.home_path }}/bos
           tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+          export AK=paddle
+          export SK=paddle
         fi
         cd ..
         tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
