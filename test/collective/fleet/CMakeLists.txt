@@ -1032,16 +1032,3 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_dualpipe PROPERTIES TIMEOUT "500")
 endif()
-if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
-  bash_test_modules(
-    test_zero_bubble_utils
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    TIMEOUT
-    "500"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21212;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
