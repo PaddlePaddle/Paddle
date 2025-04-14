@@ -190,7 +190,8 @@ if(NOT WIN32)
         -Wno-error=dynamic-class-memaccess
         -Wno-error=pessimizing-move
         -Wno-error=self-assign
-        -Wno-error=delete-non-abstract-non-virtual-dtor)
+        -Wno-error=delete-non-abstract-non-virtual-dtor
+        -Wno-error=delete-abstract-non-virtual-dtor)
   endif()
 
   if(WITH_IPU)
