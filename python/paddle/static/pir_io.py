@@ -413,8 +413,6 @@ def save_vars_pir(
             save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
-            print("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&")
-            print("pir.vars.size: ", len(save_var_list))
             core.save_combine_func(
                 save_var_list,
                 save_var_names,
