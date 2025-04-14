@@ -144,7 +144,7 @@ void BindGuardTree(pybind11::module *m) {
       *m, "GuardTree", R"DOC(GuardTree Class.)DOC")
       .def(py::init<
                const std::vector<std::vector<std::shared_ptr<GuardNode>>> &>(),
-           py::arg("guard_nodes_list"))
+           py::arg("guard_chain_list"))
       .def(
           "lookup",
           [](GuardTree &self, py::object frame) {

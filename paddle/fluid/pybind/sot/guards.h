@@ -389,9 +389,9 @@ class GuardNode : public GuardTreeNode {
 class GuardTree {
  public:
   GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNode>>>&
-                guard_nodes_list) {
-    for (size_t index = 0; index < guard_nodes_list.size(); ++index) {
-      add_guard_chain(guard_nodes_list[index]);
+                guard_chain_list) {
+    for (size_t index = 0; index < guard_chain_list.size(); ++index) {
+      add_guard_chain(guard_chain_list[index]);
     }
   }
   void add_guard_chain(
