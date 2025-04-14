@@ -18,10 +18,14 @@ cd tools/dockerfile
 bash ci_dockerfile.sh
 docker_md5=`md5sum ${docker_image_file}`
 docker_name=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
+echo $docker_name
 
 set +e
   docker pull ${docker_name}
 if [ $? -eq 0 ];then
-  echo use docker
+  echo use docker cache
+else
+  docker build -t $docker_name -f tools/dockerfile/${docker_image_file} .
+  echo end docker build
 fi
 set -e
