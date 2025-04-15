@@ -47,15 +47,19 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                      }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
-  //   if( out_grad.numel() == 0)
-  //   {
-  //     // set zero to input_grad
-  //     phi::FullKernel<T>(
-  //         dev_ctx, common::vectorize(input.dims()), 0.0, input.dtype(),
-  //         input_grad);
+  if (out_grad.numel() == 0) {
+    // set zero to input_grad
+    PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
+                         phi::FullKernel<data_t>(
+                             dev_ctx,
+                             common::vectorize(input.dims()),
+                             0.0,
+                             input.dtype(),
+                             input_grad);
+                       }));
 
-  //     return;
-  //   }
+    return;
+  }
   SliceStridedKernel<Context>(dev_ctx,
                               *input_grad,
                               axes,
