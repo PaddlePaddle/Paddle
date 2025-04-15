@@ -213,8 +213,8 @@ jobs:
         echo "container_name=${container_name}" >> ${{ github.env }}
         sudo mkdir -p /run/user/0
         docker run --cap-add=SYS_PTRACE --privileged --ulimit nofile=102400 --ulimit core=-1 -d -t --name ${container_name} \
-          -v $home_dir/.cache:/root/.cache \
-          -v $home_dir/.ccache:/root/.ccache \
+          -v /ssd1/cibuild/.cache:/root/.cache \
+          -v /ssd1/cibuild/.ccache:/root/.ccache \
           -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
           -v ${{ github.workspace }}:/paddle \
           --device ${XPU_CODE_1} \
