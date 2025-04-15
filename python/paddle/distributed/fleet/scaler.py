@@ -17,7 +17,7 @@ from types import MethodType
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.distributed import fleet
 from paddle.framework import core
 
@@ -106,31 +106,31 @@ def distributed_scaler(scaler):
         temp_found_inf_fp32 = paddle.to_tensor(np.array([0]).astype(np.bool_))
         self._found_inf = self._temp_found_inf_value_false
         if len(param_grads_fp16):
-            _legacy_C_ops.check_finite_and_unscale(
-                param_grads_fp16,
-                self._scale,
-                param_grads_fp16,
-                temp_found_inf_fp16,
+            param_grads_fp16, temp_found_inf_fp16 = (
+                _C_ops.check_finite_and_unscale_(
+                    param_grads_fp16,
+                    self._scale,
+                )
             )
             self._found_inf = _C_ops.bitwise_or(
                 self._found_inf, temp_found_inf_fp16
             )
         if len(param_grads_bf16):
-            _legacy_C_ops.check_finite_and_unscale(
-                param_grads_bf16,
-                self._scale,
-                param_grads_bf16,
-                temp_found_inf_bf16,
+            param_grads_bf16, temp_found_inf_bf16 = (
+                _C_ops.check_finite_and_unscale_(
+                    param_grads_bf16,
+                    self._scale,
+                )
             )
             self._found_inf = _C_ops.bitwise_or(
                 self._found_inf, temp_found_inf_bf16
             )
         if len(param_grads_fp32):
-            _legacy_C_ops.check_finite_and_unscale(
-                param_grads_fp32,
-                self._scale,
-                param_grads_fp32,
-                temp_found_inf_fp32,
+            param_grads_fp32, temp_found_inf_fp32 = (
+                _C_ops.check_finite_and_unscale_(
+                    param_grads_fp32,
+                    self._scale,
+                )
             )
             self._found_inf = _C_ops.bitwise_or(
                 self._found_inf, temp_found_inf_fp32
