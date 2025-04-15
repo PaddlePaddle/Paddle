@@ -66,7 +66,7 @@ std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
          << 0 << ", " 
          << 0 << ", " 
          << 0 << "]";
-  return {0, 0, 0};;
+  return {0, 0, 0};
 }
 
 Eigen::GpuDevice* DeviceInterface::InitEigenDevice(size_t dev_id) {
