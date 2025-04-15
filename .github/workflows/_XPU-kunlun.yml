@@ -171,7 +171,7 @@ jobs:
 
     - name: Download build.tar.gz
       run: |
-        sudo rm -rf  * .[^.]*
+        sudo rm -rf * .[^.]*
         # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/72068/2153b9ccceb38a200b8cc371ecf24bf28f040460/build.tar.gz --no-check-certificate
         tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
