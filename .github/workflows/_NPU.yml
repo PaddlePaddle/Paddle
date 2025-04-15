@@ -23,30 +23,30 @@ jobs:
       group: NPU
 
     steps:
-      - name: Download paddle.tar.gz and update test branch
-        run: |
-          rm -rf  * .[^.]*
-          set -e
-          echo "Downloading Paddle.tar.gz"
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/72249/f53ad88ebe58369720ff3727bd6382ccc6cb2535/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz
-          rm Paddle.tar.gz
-          cd Paddle
-          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          git config pull.rebase false
-          git checkout test
-          echo "Pull upstream develop"
-          source ${{ github.workspace }}/../../../proxy
-          git pull upstream develop --no-edit
+      # - name: Download paddle.tar.gz and update test branch
+      #   run: |
+      #     rm -rf  * .[^.]*
+      #     set -e
+      #     echo "Downloading Paddle.tar.gz"
+      #     # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+      #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/72249/f53ad88ebe58369720ff3727bd6382ccc6cb2535/Paddle.tar.gz --no-check-certificate
+      #     echo "Extracting Paddle.tar.gz"
+      #     tar xf Paddle.tar.gz
+      #     rm Paddle.tar.gz
+      #     cd Paddle
+      #     git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+      #     git config pull.rebase false
+      #     git checkout test
+      #     echo "Pull upstream develop"
+      #     source ${{ github.workspace }}/../../../proxy
+      #     git pull upstream develop --no-edit
 
       - name:  Determine the runner
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
           source ${{ github.workspace }}/Paddle/ci/utils.sh
-          determine_npu_runner ${runner_name}
+          determine_xpu_runner ${runner_name}
           echo ${ASCEND_RT_VISIBLE_DEVICES}
           echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
 
