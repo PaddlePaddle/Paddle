@@ -31,40 +31,42 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
   std::vector<T> work(1);
   int info = 0;
   // Get the best lwork
-  phi::funcs::lapackSvd<T>(jobz,
-                           rows,
-                           cols,
-                           a,
-                           lda,
-                           S,
-                           nullptr,  // U is not needed
-                           1,        // dummy dimension for U
-                           nullptr,  // VH is not needed
-                           1,        // dummy dimension for VH
-                           work.data(),
-                           lwork,
-                           nullptr,  // iwork is not needed
-                           &info);
+  phi::funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
+                                                rows,
+                                                cols,
+                                                a,
+                                                lda,
+                                                S,
+                                                nullptr,  // U is not needed
+                                                1,  // dummy dimension for U
+                                                nullptr,  // VH is not needed
+                                                1,  // dummy dimension for VH
+                                                work.data(),
+                                                lwork,
+                                                nullptr,  // rwork is not needed
+                                                nullptr,  // iwork is not needed
+                                                &info);
   if (info != 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Error during LAPACK lwork query. Invalid matrix or arguments."));
   }
   lwork = static_cast<int>(work[0]);
   work.resize(lwork);
-  phi::funcs::lapackSvd<T>(jobz,
-                           rows,
-                           cols,
-                           a,
-                           lda,
-                           S,
-                           nullptr,  // U is not needed
-                           1,        // dummy dimension for U
-                           nullptr,  // VH is not needed
-                           1,        // dummy dimension for VH
-                           work.data(),
-                           lwork,
-                           nullptr,  // iwork is not needed
-                           &info);
+  phi::funcs::lapackSvd<T, phi::dtype::Real<T>>(jobz,
+                                                rows,
+                                                cols,
+                                                a,
+                                                lda,
+                                                S,
+                                                nullptr,  // U is not needed
+                                                1,  // dummy dimension for U
+                                                nullptr,  // VH is not needed
+                                                1,  // dummy dimension for VH
+                                                work.data(),
+                                                lwork,
+                                                nullptr,  // rwork is not needed
+                                                nullptr,  // iwork is not needed
+                                                &info);
   if (info < 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "This %s-th argument has an illegal value.", info));

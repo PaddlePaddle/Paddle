@@ -17,6 +17,7 @@
 
 #include "paddle/phi/kernels/matrix_rank_kernel.h"
 
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/matrix_rank_tol_kernel.h"
@@ -32,9 +33,11 @@ void MatrixRankKernel(const Context& dev_ctx,
                       DenseTensor* out) {
   DenseTensor atol_tensor;
   if (use_default_tol) {
-    atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(0));
+    atol_tensor = phi::Full<phi::dtype::Real<T>, Context>(
+        dev_ctx, {1}, static_cast<phi::dtype::Real<T>>(0));
   } else {
-    atol_tensor = phi::Full<T, Context>(dev_ctx, {1}, static_cast<T>(tol));
+    atol_tensor = phi::Full<phi::dtype::Real<T>, Context>(
+        dev_ctx, {1}, static_cast<phi::dtype::Real<T>>(tol));
   }
   MatrixRankTolKernel<T, Context>(
       dev_ctx, x, atol_tensor, use_default_tol, hermitian, out);
@@ -47,6 +50,8 @@ PD_REGISTER_KERNEL(matrix_rank,  // cuda_only
                    ALL_LAYOUT,
                    phi::MatrixRankKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 #endif  // not PADDLE_WITH_HIP

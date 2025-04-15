@@ -46,6 +46,12 @@ class TestMatrixRankOP(OpTest):
         self.attrs["use_default_tol"] = self.use_default_tol
         self.outputs = {'Out': self.out}
 
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
     def test_check_output(self):
         self.check_output(check_pir=True)
 
@@ -134,6 +140,116 @@ class TestMatrixRankOP7(TestMatrixRankOP):
     def init_data(self):
         self.x = np.eye(200, dtype=np.float64)
         self.tol_tensor = np.random.random([200, 200]).astype(self.x.dtype)
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = True
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.eye(3, dtype=np.float32)
+        x_imag = np.eye(3, dtype=np.float32)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = None
+        self.tol = 0.1
+        self.use_default_tol = False
+        self.hermitian = True
+        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
+
+
+class TestMatrixRankComplexOP1(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.eye(3, k=1, dtype=np.float64)
+        x_imag = np.eye(3, k=1, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = None
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP2(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        x_imag = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = np.random.random([3, 4]).astype(x_real.dtype)
+        self.tol = None
+        self.use_default_tol = False
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP3(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.eye(200, dtype=np.float64)
+        x_imag = np.eye(200, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = None
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = True
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP4(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.random.rand(1, 10).astype(np.float32)
+        x_imag = np.random.rand(1, 10).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = None
+        self.tol = None
+        self.use_default_tol = True
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP5(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.random.rand(5, 1).astype(np.float64)
+        x_imag = np.random.rand(5, 1).astype(np.float64)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = np.random.random([1, 4]).astype(x_real.dtype)
+        self.tol = None
+        self.use_default_tol = False
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP6(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        x_imag = np.random.rand(3, 4, 5, 6).astype(np.float32)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = None
+        self.tol = None
+        self.use_default_tol = False
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
+
+
+class TestMatrixRankComplexOP7(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.eye(200, dtype=np.float64)
+        x_imag = np.eye(200, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = np.random.random([200, 200]).astype(x_real.dtype)
         self.tol = None
         self.use_default_tol = True
         self.hermitian = True
