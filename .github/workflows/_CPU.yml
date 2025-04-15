@@ -22,7 +22,7 @@ defaults:
 jobs:
   build-and-test:
     runs-on:
-      group: CPU-test
+      group: GZ_BD-CPU
 
     steps:
       - name: Check docker image  and run container
