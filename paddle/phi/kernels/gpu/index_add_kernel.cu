@@ -23,7 +23,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 
-// COMMON_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -86,11 +86,11 @@ void IndexAddKernel(const Context& ctx,
   // todo(@limin29): inplace do not need copy.
   phi::Copy(ctx, x, ctx.GetPlace(), false, output);
 
-  // if (FLAGS_cudnn_deterministic) {
-  //   VLOG(2) << "Run grad kernel of index_add with single thread.";
-  //   block_dim = 1;
-  //   grid_dim.x = 1;
-  // }
+  if (FLAGS_cudnn_deterministic) {
+    VLOG(2) << "Run grad kernel of index_add with single thread.";
+    block_dim = 1;
+    grid_dim.x = 1;
+  }
   auto index_dim_size = input_dim[dim];
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
