@@ -92,31 +92,22 @@ def local_map(
             ...     mask_sum = mask_sum / mask.sum()
             ...     return mask_sum
 
-            >>> # Initialize distributed environment
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
             >>> dist.init_parallel_env()
             >>> mesh = ProcessMesh([0, 1], dim_names=["x"])
-
-            >>> # Create input data
             >>> local_input = paddle.arange(0, 10, dtype="float32")
             >>> local_input = local_input + dist.get_rank()
-
-            >>> # Convert to distributed tensor
             >>> input_dist = dist.auto_parallel.api.dtensor_from_local(
             ...     local_input, mesh, [dist.Shard(0)]
             ... )
-
-            >>> # Wrap function with local_map
             >>> wrapped_func = dist.local_map(
             ...     custom_function,
             ...     out_placements=[[dist.Partial(dist.ReduceType.kRedSum)]],
             ...     in_placements=[[dist.Shard(0)]],
             ...     process_mesh=mesh
             ... )
-
-            >>> # Apply function to distributed tensor
             >>> output_dist = wrapped_func(input_dist)
 
-            >>> # Collect and print results
             >>> local_value = output_dist._local_value()
             >>> gathered_values: list[Tensor] = []
             >>> dist.all_gather(gathered_values, local_value)
@@ -127,6 +118,10 @@ def local_map(
             [Rank 1] local_value=6.0
             >>> print(f"global_value (distributed)={output_dist.item()}")
             global_value (distributed)=7.5
+
+            >>> # This case needs to be executed in a multi-card environment
+            >>> # export CUDA_VISIBLE_DEVICES=0,1
+            >>> # python -m paddle.distributed.launch {test_case}.py
     """
 
     def wrapped(process_mesh: ProcessMesh | None, *args, **kwargs):
