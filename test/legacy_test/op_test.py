@@ -83,6 +83,20 @@ def paddle_static_guard():
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
+    检查输出张量的数据类型是否符合预期。
+
+    Args:
+        api_fn (callable): paddle API函数。
+        in_specs (list[tuple]): 用于构造api_fn输入张量的形状和数据类型信息的列表，例如[(shape, dtype), (shape, dtype)]。
+        expect_dtypes (list[str]): 输出张量的预期数据类型。
+        target_index (int): 指示从in_specs中选择哪一个输入来推断输出的数据类型。
+        config (dict): paddle API函数的其他参数。
+
+    Example:
+        check_out_dtype(base.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
+
+    """
+    """
     Determines whether dtype of output tensor is as expected.
 
     Args:
