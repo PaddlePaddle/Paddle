@@ -213,7 +213,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : all_to_all
-  args : (Tensor x, int ring_id = 0, int rank = 0, int ranks = 1)
+  args : (Tensor x, int ring_id = 0, int rank = 0, int nranks = 1)
   output : Tensor(out)
   infer_meta :
     func : AllToAllInferMeta
