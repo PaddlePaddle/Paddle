@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/infermeta/spmd_rules/argmax.h"
 #include "paddle/phi/infermeta/spmd_rules/argmin.h"
 #include "glog/logging.h"
+#include "paddle/phi/infermeta/spmd_rules/argmax.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
@@ -26,16 +26,16 @@ namespace phi::distributed {
 SpmdInfo ArgMinInferSpmdBase(const DistMetaTensor& x,
                              int axis,
                              bool keepdims,
-                             bool flatten){
-    return ArgMaxInferSpmdBase(x, axis, keepdims, flatten);
+                             bool flatten) {
+  return ArgMaxInferSpmdBase(x, axis, keepdims, flatten);
 }
 
 SpmdInfo ArgMinInferSpmdReverseBase(const DistMetaTensor& x,
                                     const DistMetaTensor& out,
                                     int axis,
                                     bool keepdims,
-                                    bool flatten){
-    return ArgMaxInferSpmdReverseBase(x, out, axis, keepdims, flatten);
+                                    bool flatten) {
+  return ArgMaxInferSpmdReverseBase(x, out, axis, keepdims, flatten);
 }
 SpmdInfo ArgMinInferSpmdDynamic(const DistMetaTensor& x,
                                 const Scalar& axis,
@@ -45,4 +45,4 @@ SpmdInfo ArgMinInferSpmdDynamic(const DistMetaTensor& x,
   return ArgMaxInferSpmdBase(x, axis.to<int32_t>(), keepdims, flatten);
 }
 
-}// namespace phi::distributed
+}  // namespace phi::distributed
