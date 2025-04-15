@@ -23,6 +23,8 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
+#include <filesystem>
+
 COMMON_DECLARE_string(engine_serialized_path);
 
 namespace paddle {
