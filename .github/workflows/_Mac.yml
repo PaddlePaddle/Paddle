@@ -47,9 +47,10 @@ jobs:
     steps:
     - name: Check environment
       run: |
+        set -x
         cd ${work_dir}
-        [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
-        [ -d "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
+        [ -d "${work_dir}/Paddle" ] && sudo rm -rf ${work_dir}/Paddle
+        [ -d "${work_dir}/Paddle.tar.gz" ] && sudo rm -rf ${work_dir}/Paddle.tar.gz
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         tar xf Paddle.tar.gz && cd Paddle
 
@@ -66,6 +67,7 @@ jobs:
 
     - name: Build with mac python3.9
       run: |
+        set -x
         cd ${work_dir}/Paddle
         bash ${work_dir}/Paddle/ci/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
         EXCODE=$?
