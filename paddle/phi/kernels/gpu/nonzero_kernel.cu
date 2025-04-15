@@ -66,7 +66,7 @@ void NonZeroKernel(const Context &dev_ctx,
                    const DenseTensor &condition,
                    DenseTensor *out) {
   if (condition.numel() == 0) {
-    out->Resize(condition.dims());
+    out->Resize(common::make_ddim({0, condition.dims().size()}));
     dev_ctx.template Alloc<T>(out);
     return;
   }
