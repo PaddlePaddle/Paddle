@@ -74,9 +74,7 @@ class MLPLayer(nn.Layer):
 
 
 class TestProcessMesh(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        dist.init_parallel_env()
+        
 
     def test_construction(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
@@ -285,6 +283,7 @@ class TestProcessMesh(unittest.TestCase):
             self.assertIsNone(mesh_small.get_submesh_with_dim("x"))
 
     def test_get_group(self):
+        dist.init_parallel_env()
         # Test case 1: Single dimension mesh without specifying dim_name
         mesh_1d = dist.ProcessMesh([0, 1], dim_names=["x"])
         group_1d = mesh_1d.get_group()
