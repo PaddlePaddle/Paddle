@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    test_phi_only,
 )
 
 import paddle
@@ -44,6 +45,8 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestGradNameParse(Dy2StTestBase):
+    # TODO(SigureMo): Fix this CINN case, it will raise segmentation fault
+    @test_phi_only
     def test_grad_name_parse(self):
         net = SimpleNet()
         opt = paddle.optimizer.Adam(

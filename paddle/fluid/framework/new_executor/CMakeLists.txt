@@ -26,6 +26,7 @@ endif()
 
 set(standalone_executor_deps
     pir
+    pir_save_load
     program_translator
     op_dialect_vjp
     global_utils

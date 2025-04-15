@@ -27,6 +27,7 @@ from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
 )
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
@@ -125,6 +126,12 @@ class ContainerVariable(VariableBase):
                 for item in guard_variables
                 if item.tracker.need_guard()
             ],
+        )
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
         )
 
 
@@ -723,6 +730,19 @@ class RangeVariable(ContainerVariable):
             range_variable.__init__(start, stop, step, graph, tracker)
             return range_variable
         return None
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(range),
+                [frame_value_tracer],
+            ),
+            *self.start.make_faster_guard(),
+            *self.stop.make_faster_guard(),
+            *self.step.make_faster_guard(),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:

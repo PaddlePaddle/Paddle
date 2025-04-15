@@ -38,29 +38,38 @@ bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
 inline ir::Expr PackArgIdxStructExpr(ir::Tensor tensor,
                                      ir::Expr value,
                                      const std::vector<ir::Var>& reduce_axes) {
-  auto reduce_axis = (Expr)reduce_axes[0];
-  for (size_t i = 1; i < reduce_axes.size(); ++i) {
-    PADDLE_ENFORCE_EQ(reduce_axes[i]->lower_bound.as_int32(),
-                      0,
-                      ::common::errors::PreconditionNotMet(
-                          "Reduce axis should start from 0."));
-    reduce_axis = ir::Mul::Make(reduce_axis, reduce_axes[i]->upper_bound);
-    reduce_axis = ir::Add::Make(reduce_axis, (Expr)reduce_axes[i]);
+  ir::Expr index_value;
+  if (reduce_axes.empty()) {
+    // default initialization, for reduce init
+    index_value = ir::Expr(0);
+    index_value->set_type(common::Int(32));
+    if (tensor->type().is_int(64)) {
+      index_value->set_type(common::Int(64));
+    }
+  } else {
+    index_value = (Expr)reduce_axes[0];
+    for (size_t i = 1; i < reduce_axes.size(); ++i) {
+      PADDLE_ENFORCE_EQ(reduce_axes[i]->lower_bound.as_int32(),
+                        0,
+                        ::common::errors::PreconditionNotMet(
+                            "Reduce axis should start from 0."));
+      index_value = ir::Mul::Make(index_value, reduce_axes[i]->upper_bound);
+      index_value = ir::Add::Make(index_value, (Expr)reduce_axes[i]);
+    }
   }
 
   return ir::Call::Make(tensor->type(),
                         "argidx" +
                             hlir::pe::Type2StrForArgReduce(value.type()) +
                             hlir::pe::Type2StrForArgReduce(tensor->type()),
-                        {value, reduce_axis},
+                        {value, index_value},
                         {},
-                        ir::CallType::Intrinsic);
+                        ir::CallType::Extern);
 }
 
 Expr ReplaceArgReduceInitialValue(ir::Expr body,
                                   ir::Tensor tensor,
-                                  Expr init_val,
-                                  const std::vector<ir::Var>& reduce_axes) {
+                                  Expr init_val) {
   ir::Reduce* reduce_node = body.As<ir::Reduce>();
   if (!reduce_node) {
     // TODO(heqianyue): actually, this is weird, why would this happen anyway?
@@ -69,6 +78,7 @@ Expr ReplaceArgReduceInitialValue(ir::Expr body,
 
   if (reduce_node->reduce_type == ir::Reduce::kArgmax ||
       reduce_node->reduce_type == ir::Reduce::kArgmin) {
+    std::vector<ir::Var> reduce_axes;
     return PackArgIdxStructExpr(tensor, init_val, reduce_axes);
   }
   return init_val;  // fall through
@@ -170,8 +180,8 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
 
     // replace initial value for argmax/argmin
     // TODO(heqianyue): Welford variance can also replace initial value in here
-    init_value = ReplaceArgReduceInitialValue(
-        tensor->body(), tensor, init_value, reduce_axis);
+    init_value =
+        ReplaceArgReduceInitialValue(tensor->body(), tensor, init_value);
     StmtRef init_body = Store(init_tensor, init_value, axis_exprs);
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;

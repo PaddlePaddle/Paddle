@@ -148,11 +148,6 @@ class SymbolicOperationTracker(Tracker):
         return f"SymbolicOperationTracker(num_inputs={len(self.inputs)})"
 
     def is_traceable(self):
-        # TODO(zrr1999): to implement gen_instructions and trace_value_from_frame
-        return False
-
-    def need_guard(self) -> bool:
-        # TODO(zrr1999): to implement gen_instructions and trace_value_from_frame
         return False
 
 

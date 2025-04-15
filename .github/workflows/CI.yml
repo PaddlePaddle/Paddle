@@ -27,6 +27,15 @@ jobs:
   mac:
     name: PR-CI-Mac
     uses: ./.github/workflows/_Mac.yml
+
+  inference:
+    name: PR-CI-Inference
+    uses: ./.github/workflows/_Inference.yml
+    needs: clone
+
+  coverage:
+    name: PR-CI-Coverage
+    uses: ./.github/workflows/_Coverage.yml
     needs: clone
 
   # Py3:

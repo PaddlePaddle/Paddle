@@ -49,7 +49,7 @@ class c_identity_eager(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        op_type = _get_reduce_op(ReduceOp.SUM)
         ctx.group.process_group.all_reduce_on_calc_stream(dy, op_type)
         return dy
 
@@ -238,7 +238,7 @@ class mp_allreduce_eager(PyLayer):
         ctx.skip_c_identity_dynamic = skip_c_identity_dynamic
 
         if use_calc_stream:
-            op_type = _get_reduce_op(op, "_mp_allreduce")
+            op_type = _get_reduce_op(op)
             group.process_group.all_reduce_on_calc_stream(tensor, op_type)
             return tensor
         else:
