@@ -20,6 +20,7 @@
 #include <unordered_map>
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
@@ -40,13 +41,22 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
+COMMON_DECLARE_bool(cinn_debug);
+
 namespace {
+void PrintProgram(const pir::Program& prog, const std::string& stage) {
+  if (FLAGS_cinn_debug && VLOG_IS_ON(1)) {
+    std::cout << "===================== [AutoLayoutPass] " << stage
+              << " =====================\n"
+              << prog << std::endl;
+  }
+}
 class AutoLayoutPass : public pir::Pass {
  public:
   AutoLayoutPass() : pir::Pass("auto_layout_pass", 2) {}
   void Run(pir::Operation* op) override {
     auto program = op->GetParentProgram();
-    VLOG(4) << "IR before auto layout pass: \n" << *program;
+    PrintProgram(*program, "Before pass");
     ::pir::IrMapping ir_mapping;
     auto program_clone = program->Clone(ir_mapping);
 
@@ -58,7 +68,7 @@ class AutoLayoutPass : public pir::Pass {
     pm.AddPass(pir::CreateAutoLayoutSimplifyPass());
     pm.Run(program_clone.get());
 
-    VLOG(4) << "IR middle auto layout pass: \n" << *program_clone;
+    PrintProgram(*program, "Middle");
     if (IsNeedAllTranspose(program_clone->module_op())) {
       pir::PassManager pm_(::pir::IrContext::Instance(), 2);
       pm_.AddPass(pir::CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",
@@ -74,7 +84,7 @@ class AutoLayoutPass : public pir::Pass {
       pm_.AddPass(pir::CreateAutoLayoutSimplifyPass());
       pm_.Run(program);
     }
-    VLOG(4) << "IR after auto layout pass: \n" << *program;
+    PrintProgram(*program, "After pass");
   }
 
   // Check whether all conv2d, conv2d_transpose and fused_conv2d_add_act ops
@@ -110,11 +120,13 @@ class AutoLayoutPass : public pir::Pass {
         }
       }
     }
-    VLOG(0) << "end IsNeedAllTranspose"
-            << " conv_count_: " << conv_count_
-            << " transpose_count_: " << transpose_count_
-            << " transpose_scale_ * transpose_count_: "
-            << transpose_scale_ * transpose_count_ << std::endl;
+    if (FLAGS_cinn_debug) {
+      LOG(INFO) << "end IsNeedAllTranspose"
+                << " conv_count_: " << conv_count_
+                << " transpose_count_: " << transpose_count_
+                << " transpose_scale_ * transpose_count_: "
+                << transpose_scale_ * transpose_count_ << std::endl;
+    }
 
     return conv_count_ > transpose_scale_ * transpose_count_;
   }
