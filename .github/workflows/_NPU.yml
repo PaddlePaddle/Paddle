@@ -155,8 +155,10 @@ jobs:
           source /usr/local/Ascend/ascend-toolkit/set_env.sh
           pip install -U numpy==1.26.4
           git config --global --add safe.directory ${work_dir}
+          git config --global --add safe.directory ${work_dir}/Paddle
           cd Paddle
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path" && cd ..
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
+          cd ..
           bash backends/npu/tools/pr_ci_npu.sh;EXCODE=$?
           '
 
