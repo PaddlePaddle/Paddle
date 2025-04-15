@@ -27,6 +27,7 @@ from .base_cost import (  # noqa: F401
 )
 from .comm_op_cost import (  # noqa: F401
     AllgatherOpCost,
+    AllReduceOpCost,
     AllreduceSumOpCost,
     BroadcastOpCost,
     IdentityOpCost,

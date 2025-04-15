@@ -279,6 +279,7 @@ AxisTransformRoute SimplifyContinuousReshape(const AxisTransformRoute& route) {
   if (!continuous_reshape.empty()) {
     result = ConcatVector(result, simplify_reshape(continuous_reshape));
   }
+  if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
   return result;
 }
 
@@ -315,6 +316,7 @@ AxisTransformRoute SimplifyTransformRoute(
     }
   }
   result = ConcatVector(result, SimplifySimpleTransform(part, inshape).first);
+  if (result.empty()) result.push_back(IdentityTransform::InstancePtr());
   return result;
 }
 

@@ -631,57 +631,6 @@
   traits : pir::SideEffectTrait
   backward: print_grad
 
-- op : pull_box_sparse
-  args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
-  output : Tensor[](out){ids.size()}
-  infer_meta :
-    func : PullBoxSparseInferMeta
-  kernel :
-    func : pull_box_sparse
-    data_type : ids
-
-- op : pull_gpups_sparse
-  args : (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false)
-  output : Tensor[](out){ids.size()}
-  infer_meta :
-    func : PullGpupsSparseInferMeta
-  kernel :
-    func : pull_gpups_sparse
-    data_type : PullGpupsSparseKernelKey
-  optional : w
-  backward: push_gpups_sparse
-
-- op : pull_sparse_v2
-  args : (Tensor[] ids, Tensor[] w, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
-  output : Tensor[](out){w.size()}
-  infer_meta :
-    func : PullSparseV2InferMeta
-  kernel :
-    func : pull_sparse_v2
-    data_type : DataType::FLOAT32
-  backward : pull_sparse_v2_grad
-
-- op : push_dense
-  args : (Tensor[] ids, int table_id = -1, float scale_data_norm = -1.0f, str[] input_names = {})
-  output :
-  infer_meta :
-    func : PushDenseInferMeta
-    param : [ids, table_id, scale_data_norm, input_names]
-  kernel :
-    func : push_dense
-    data_type : DataType::FLOAT32
-
-- op : push_sparse_v2
-  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad_in, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
-  output : Tensor[](out_grad_out){out_grad_in.size()}
-  infer_meta :
-    func : UnchangedMultiInferMeta
-    param : [out_grad_in]
-  kernel :
-    func : push_sparse_v2
-    data_type : out_grad_in
-  inplace: (out_grad_in -> out_grad_out)
-
 # Note: dequantize_linear and quantize_linear are supported using one op maker in fluid, the out_scale can't be used in dequantize_linear
 # so ,the out_scale is optional. Currently, we can't modify the op definition of dequantize_linear/quantize_linear and it can cause incompatibility problem
 # We need modify dequantize_linear/quantize_linear yaml and make it more reasonable when we abandon Fluid op.

@@ -189,6 +189,9 @@ if(WITH_PYTHON)
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
   endif()
+  if(WITH_FLAGCX)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_flagcx)
+  endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
   endif()
@@ -734,5 +737,24 @@ if(WITH_PYTHON)
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+
+  function(install_py_pybind11_stubgen)
+    # check install
+    execute_process(
+      COMMAND
+        ${PYTHON_EXECUTABLE} "-c"
+        "import re, pybind11_stubgen; print(re.compile('/__init__.py.*').sub('',pybind11_stubgen.__file__))"
+      RESULT_VARIABLE _pybind11_stubgen_status
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(_pybind11_stubgen_status EQUAL 0)
+      return()
+    endif()
+
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
+                            pybind11-stubgen)
+  endfunction()
+
+  install_py_pybind11_stubgen()
 
 endif()

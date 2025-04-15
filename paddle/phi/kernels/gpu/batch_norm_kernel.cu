@@ -644,6 +644,8 @@ void BatchNormKernel(const Context &ctx,
     mode_ = miopenBNSpatial;
   }
 #elif CUDNN_VERSION_MIN(7, 0, 1)
+  // CUDNN_BATCHNORM_SPATIAL_PERSISTENT will cause precisio issue in NCHW
+  // format.
   if (FLAGS_cudnn_batchnorm_spatial_persistent) {
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
   } else if (H == 1 && W == 1) {

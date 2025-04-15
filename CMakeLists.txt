@@ -313,6 +313,7 @@ option(
   OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
+option(WITH_FLAGCX "Compile PaddlePaddle with FLAGCX support" OFF)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
@@ -536,6 +537,10 @@ else()
         "If the environment is multi-card, the WITH_RCCL option needs to be turned on, otherwise only a single card can be used."
     )
   endif()
+endif()
+
+if(WITH_FLAGCX)
+  add_definitions("-DPADDLE_WITH_FLAGCX")
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

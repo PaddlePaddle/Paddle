@@ -371,3 +371,79 @@ def full_with_tensor_converter(network, paddle_op, inputs):
     set_layer_name(fill_layer, paddle_op)
     output_tensor = fill_layer.get_output(0)
     return output_tensor
+
+
+@converter_registry.register("pd_op.meshgrid", trt_version="8.x")
+def meshgrid_converter(network, paddle_op, vec_inputs):
+    inputs = vec_inputs[0]
+    n = len(inputs)
+    outputs = []
+
+    # get all input dims (all input is 1-dim)
+    input_dims = [network.add_shape(inp).get_output(0) for inp in inputs]
+
+    for k in range(n):
+        # --------------------------------
+        # step1:reshape k input as [1,..,Dk,..,1]
+        # --------------------------------
+        x = inputs[k]
+        reshape_dims = []  # init dims as 1
+        for i in range(n):
+            one = add_1D_constant_layer(
+                network,
+                1,
+                dtype=np.int32,
+                is_scalar=False,
+                name=[paddle_op.name(), f'one_{k}'],
+            )
+            reshape_dims.append(one)
+        # replace k-th input dim as Dk
+        reshape_dims[k] = input_dims[k]
+
+        dim_concat = network.add_concatenation(reshape_dims)
+        set_layer_name(dim_concat, paddle_op)
+        x_reshaped = network.add_shuffle(x)
+        x_reshaped.set_input(1, dim_concat.get_output(0))
+
+        # --------------------------------
+        # step2: create tensor([D1, D2, ..., 1, ..., Dn]) that filled with 1
+        # --------------------------------
+        ones_shape = []
+        for i in range(n):
+            ones_shape.append(input_dims[i])
+        ones_shape[k] = add_1D_constant_layer(
+            network,
+            1,
+            dtype=np.int32,
+            is_scalar=False,
+            name=[paddle_op.name(), f'ones_shape_{k}'],
+        )
+        dim_concat = network.add_concatenation(ones_shape)
+        set_layer_name(dim_concat, paddle_op)
+
+        # Fill constant 1
+        fill_layer = network.add_fill(shape=(), op=trt.FillOperation.LINSPACE)
+        fill_layer.set_input(0, dim_concat.get_output(0))
+        value_input = add_1D_constant_layer(
+            network,
+            1,
+            dtype=np.float32,
+            is_scalar=True,
+            name=[paddle_op.name(), 'one_for_fill'],
+        )
+        fill_layer.set_input(1, value_input)
+        beta_vec = [0] * n
+        fill_layer.set_input(
+            2, add_1D_constant_layer(network, beta_vec, np.float32)
+        )
+
+        # --------------------------------
+        # step3: element wise multiplication
+        # --------------------------------
+        grid = network.add_elementwise(
+            x_reshaped.get_output(0),
+            fill_layer.get_output(0),
+            trt.ElementWiseOperation.PROD,
+        ).get_output(0)
+        outputs.append(grid)
+    return outputs

@@ -105,4 +105,5 @@ from .utils import (  # noqa: F401
     no_eval_frame,
     printable,
     switch_symbol_registry,
+    update_list_inplace,
 )

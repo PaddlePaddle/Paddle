@@ -14,10 +14,14 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+#include <memory>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/pybind/sot/eval_frame_tools.h"
+#include "paddle/fluid/pybind/sot/frame_proxy.h"
 #include "paddle/fluid/pybind/sot/macros.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/pybind.h"
+#include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
 namespace py = pybind11;
@@ -201,5 +205,186 @@ class InstanceCheckGuard : public GuardBase {
  private:
   PyObject* expected_;
 };
+
+class NumPyDtypeMatchGuard : public GuardBase {
+ public:
+  explicit NumPyDtypeMatchGuard(const py::object& dtype)
+      : expected_(dtype.ptr()) {
+    Py_INCREF(expected_);
+  }
+
+  ~NumPyDtypeMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class NumPyArrayValueMatchGuard : public GuardBase {
+ public:
+  explicit NumPyArrayValueMatchGuard(const py::object& array)
+      : expected_(array.ptr()) {
+    Py_INCREF(expected_);
+  }
+
+  ~NumPyArrayValueMatchGuard() override { Py_DECREF(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class WeakRefMatchGuard : public GuardBase {
+ public:
+  explicit WeakRefMatchGuard(const py::object& obj) {
+    expected_ = PyWeakref_NewRef(obj.ptr(), nullptr);
+  }
+
+  ~WeakRefMatchGuard() override { PyObject_ClearWeakRefs(expected_); }
+
+  bool check(PyObject* value) override;
+
+ private:
+  PyObject* expected_;
+};
+
+class DummyGuard : public GuardBase {
+ public:
+  bool check(PyObject* value) override { return true; }
+};
+
+class GuardTreeNode {};
+
+class AttributeExprNode;
+class ItemExprNode;
+class ExprNode : public GuardTreeNode,
+                 public std::enable_shared_from_this<ExprNode> {
+ public:
+  virtual PyObject* eval(FrameProxy* frame) = 0;
+};
+class ConstantExprNode : public ExprNode {
+ public:
+  explicit ConstantExprNode(PyObject* value_ptr) : value_ptr_(value_ptr) {}
+  explicit ConstantExprNode(const py::object& value_obj)
+      : value_ptr_(value_obj.ptr()) {
+    Py_INCREF(value_ptr_);
+  }
+  ~ConstantExprNode() { Py_DECREF(value_ptr_); }
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  PyObject* value_ptr_;
+};
+class ExternVarExprNode : public ExprNode {
+ public:
+  explicit ExternVarExprNode(const std::string& var_name,
+                             const py::object& value_obj)
+      : value_ptr_(value_obj.ptr()), var_name_(var_name) {
+    Py_INCREF(value_ptr_);
+  }
+
+  ~ExternVarExprNode() { Py_DECREF(value_ptr_); }
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  PyObject* value_ptr_;
+  std::string var_name_;
+};
+
+class LocalVarExprNode : public ExprNode {
+ public:
+  explicit LocalVarExprNode(const std::string& var_name)
+      : var_name_(var_name) {}
+
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  std::string var_name_;
+};
+class GlobalVarExprNode : public ExprNode {
+ public:
+  explicit GlobalVarExprNode(const std::string& var_name)
+      : var_name_(var_name) {}
+
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  std::string var_name_;
+};
+class AttributeExprNode : public ExprNode {
+ public:
+  explicit AttributeExprNode(std::shared_ptr<ExprNode> var_expr,
+                             const std::string& attr_name)
+      : var_expr_(var_expr), attr_name_(attr_name) {}
+
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  std::shared_ptr<ExprNode> var_expr_;
+  std::string attr_name_;
+};
+class ItemExprNode : public ExprNode {
+ public:
+  explicit ItemExprNode(std::shared_ptr<ExprNode> var_expr,
+                        std::shared_ptr<ExprNode> key_expr)
+      : var_expr_(var_expr), key_expr_(key_expr) {}
+
+  PyObject* eval(FrameProxy* frame);
+
+ private:
+  std::shared_ptr<ExprNode> var_expr_;
+  std::shared_ptr<ExprNode> key_expr_;
+};
+
+class GuardNode : public GuardTreeNode {
+ public:
+  std::shared_ptr<GuardBase> guard;
+  std::vector<std::shared_ptr<ExprNode>> exprs;
+  std::vector<std::shared_ptr<GuardNode>> next_guard_nodes;
+  // return_cache_index is used to record the index of the guard list
+  std::optional<int> return_cache_index;
+  GuardNode(std::shared_ptr<GuardBase> guard,
+            std::vector<std::shared_ptr<ExprNode>> exprs,
+            std::vector<std::shared_ptr<GuardNode>> next_guard_nodes,
+            std::optional<int> return_cache_index)
+      : guard(guard),
+        exprs(exprs),
+        next_guard_nodes(next_guard_nodes),
+        return_cache_index(return_cache_index) {}
+
+  std::optional<int> lookup(FrameProxy* frame);
+};
+
+class GuardTree {
+ public:
+  GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNode>>>&
+                guard_nodes_list) {
+    for (size_t index = 0; index < guard_nodes_list.size(); ++index) {
+      add_guard_chain(guard_nodes_list[index]);
+    }
+  }
+  void add_guard_chain(
+      const std::vector<std::shared_ptr<GuardNode>>& guard_chain) {
+    if (guard_chain.empty()) {
+      // TODO(zrr1999): empty guard nodes means that some
+      // tracker.make_faster_guard is not implemented.
+      return;
+    }
+    for (size_t i = 1; i < guard_chain.size(); ++i) {
+      guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);
+    }
+    guard_chain.back()->return_cache_index = guard_nodes_.size();
+    guard_nodes_.push_back(guard_chain.front());
+  }
+
+  std::optional<int> lookup(FrameProxy* frame);
+
+ private:
+  std::vector<std::shared_ptr<GuardNode>> guard_nodes_;
+};
+
+std::string guard_tree_to_str(const GuardTree& guard_tree);
 
 #endif

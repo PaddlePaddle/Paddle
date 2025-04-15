@@ -183,7 +183,14 @@ std::string Compiler::CompileCudaSource(const std::string& code,
       nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
 
   if (compile_res != NVRTC_SUCCESS) {
-    std::string new_code = CodeGenCudaDev::GetGeneralSourceHeader() + code;
+    std::string new_code = code;
+    std::string from = CodeGenCudaDev::GetSourceHeader();
+    size_t pos = new_code.find(from);
+    if (pos != std::string::npos) {
+      new_code.replace(
+          pos, from.length(), CodeGenCudaDev::GetGeneralSourceHeader());
+    }
+
     NVRTC_CALL(nvrtcCreateProgram(&prog,
                                   new_code.c_str(),
                                   nullptr,
@@ -193,6 +200,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     compile_res =
         nvrtcCompileProgram(prog, param_cstrings.size(), param_cstrings.data());
   }
+
   {  // get log
     size_t log_size;
     NVRTC_CALL(nvrtcGetProgramLogSize(prog, &log_size));

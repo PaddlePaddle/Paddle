@@ -490,12 +490,6 @@ CINN_BUILD_STEP_KIND(Bind)
     .Attrs({"thread_axis"})
     .SetApplyFn(APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::Bind)));
 
-CINN_BUILD_STEP_KIND(Rfactor)
-    .Inputs({"rf_loop"})
-    .Attrs({"rf_axis"})
-    .SetApplyFn(
-        APPLY_FUNC_UNIFORM(FREE_FUNCTION_CONVERTER(&IRSchedule::Rfactor)));
-
 CINN_BUILD_STEP_KIND(FactorizeReduction)
     .Inputs({"rf_loop"})
     .Attrs({"rf_axis"})

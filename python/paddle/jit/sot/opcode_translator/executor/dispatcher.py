@@ -105,7 +105,6 @@ class Parameter:
         return convert_annotation_to_type(self.annotation)
 
     def match_arg(self, arg: Any) -> bool:
-        # TODO: support VAR_KEYWORD
         if self.kind == inspect.Parameter.VAR_POSITIONAL:
             is_tuple = isinstance(arg, tuple)
             return is_tuple and all(isinstance(a, self.type) for a in arg)

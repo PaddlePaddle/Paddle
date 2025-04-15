@@ -357,11 +357,12 @@ class GradAllReduce(Collective):
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
                         offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
+                        type='all_reduce',
+                        inputs={'x': grad},
+                        outputs={'out': grad},
                         attrs={
                             'ring_id': ring_id,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             self.op_role_key: OpRole.Backward,
                         },
                     )
@@ -454,11 +455,12 @@ class LocalSGD(Collective):
                 ring_id = (ring_id + 1) % self.nrings
                 block._insert_op(
                     idx + 3,
-                    type='c_allreduce_sum',
-                    inputs={'X': [param]},
-                    outputs={'Out': [param]},
+                    type='all_reduce',
+                    inputs={'x': [param]},
+                    outputs={'out': [param]},
                     attrs={
                         'ring_id': ring_id,
+                        'reduce_type': paddle.distributed.ReduceOp.SUM,
                         self.op_role_key: OpRole.Optimize,
                     },
                 )
@@ -701,10 +703,14 @@ class SingleProcessMultiThread(GradAllReduce):
             ring_id = (ring_id + 1) % self.nrings
             block._insert_op(
                 global_offset,
-                type='c_allreduce_sum',
-                inputs={'X': fused_output},
-                outputs={'Out': fused_output},
-                attrs={'ring_id': ring_id, self.op_role_key: OpRole.Backward},
+                type='all_reduce',
+                inputs={'x': fused_output},
+                outputs={'out': fused_output},
+                attrs={
+                    'ring_id': ring_id,
+                    self.op_role_key: OpRole.Backward,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
+                },
             )
             global_offset += 1
 
@@ -1019,12 +1025,12 @@ class MultiThread(GradAllReduce):
                 for fused_var in fused_vars:
                     block._insert_op(
                         idx,
-                        type='c_allreduce_sum',
-                        inputs={'X': fused_var},
-                        outputs={'Out': fused_var},
+                        type='all_reduce',
+                        inputs={'x': fused_var},
+                        outputs={'out': fused_var},
                         attrs={
                             'ring_id': ring_id,
-                            'use_calc_stream': False,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             self.op_role_key: OpRole.Backward,
                         },
                     )

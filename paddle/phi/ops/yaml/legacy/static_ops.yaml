@@ -61,7 +61,6 @@
   optional : x
   inplace : (x -> out)
   backward : assign_grad
-  interfaces: paddle::dialect::LayoutTransformationInterface
 
 - op : assign_value
   args : (int[] shape, DataType dtype, Scalar[] values = {})

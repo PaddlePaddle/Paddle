@@ -526,7 +526,7 @@ class Layer:
         Returns:
             None
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import paddle
@@ -582,7 +582,7 @@ class Layer:
         Returns:
             Layer, self
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import paddle
@@ -636,7 +636,7 @@ class Layer:
         Returns:
             str, full name of this layer.
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import paddle
@@ -2225,8 +2225,6 @@ class Layer:
 
         matched_param_state = []
         for key, param in self._state_dict_impl(use_hook=False).items():
-            if isinstance(param, paddle.Tensor) and not param._is_initialized():
-                continue
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)

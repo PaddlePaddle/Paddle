@@ -1278,7 +1278,7 @@ def complete_chunk_id(dist_program, startup_program, pipeline_strategy):
                 new_results=[new_dst_dist_attr],
                 new_process_mesh=new_process_mesh,
             )
-        elif reshard_func_name == "GlobaleToSubMeshFunction":
+        elif reshard_func_name == "GlobalToSubMeshFunction":
             result_var = op.result(0)
             new_process_mesh = result_var.dist_attr().process_mesh
             new_dst_dist_attr = copy_dist_attr_with_new_member(

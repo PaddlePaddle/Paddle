@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
+    test_phi_only,
 )
 
 import paddle
@@ -263,6 +264,16 @@ class TestCase15(TestSetItemBase):
         W = paddle.full([1], 6, dtype='int32')
         y = func(x, H, W)
         return (y,)
+
+    # NOTE(SigureMo): Please remove this function after the CINN case fixed
+    @test_phi_only
+    def test_case(self):
+        func = self.init_func()
+        dy_res = self.run_dygraph(func)
+        st_res = self.run_to_static(func)
+
+        for dy_out, st_out in zip(dy_res, st_res):
+            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
 
 
 if __name__ == '__main__':

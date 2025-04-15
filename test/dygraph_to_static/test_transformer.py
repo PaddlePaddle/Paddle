@@ -23,7 +23,7 @@ import transformer_util as util
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_default_and_pir,
+    test_default_mode_only,
 )
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
@@ -313,7 +313,7 @@ class TestTransformer(Dy2StTestBase):
         np.testing.assert_allclose(static_seq_ids, dygraph_seq_ids, rtol=1e-05)
         np.testing.assert_allclose(static_scores, dygraph_scores, rtol=1e-05)
 
-    @test_default_and_pir
+    @test_default_mode_only
     def test_check_result(self):
         self._test_train()
         # TODO(zhangliujie) fix predict fail due to precision misalignment

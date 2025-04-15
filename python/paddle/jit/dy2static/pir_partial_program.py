@@ -38,6 +38,7 @@ from .utils import (
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
+    train_guards,
 )
 
 if TYPE_CHECKING:
@@ -664,17 +665,27 @@ class PartialProgramLayer:
         inputs(list[Variable]): The input list of the decorated function by `@to_static`.
         outputs(list[Variable]): The output list of the decorated function by `@to_static`.
         parameters(list[Tensor]|None): All trainable parameters included in the program. Default None.
+        constraints(list[tuple[str, int|None, int|None]]): A list to specify the constraints of the program. Default None.
 
     Returns:
         Layer: A Layer object that run all ops internally in static graph mode.
     """
 
     def __init__(
-        self, main_program, inputs, outputs, parameters=None, **kwargs
+        self,
+        main_program,
+        inputs,
+        outputs,
+        parameters=None,
+        *,
+        constraints=None,
+        **kwargs,
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs)
+        # Avoid mutable default argument pitfall (new list per instance)
+        self._constraints = constraints if constraints is not None else []
         self._params, self._param_values = (
             parameters if parameters is not None else ([], [])
         )
@@ -720,20 +731,23 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
-        _C_ops.run_program(
-            inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
-                    )
+
+        with train_guards(self._backend):
+            _C_ops.run_program(
+                inputs,
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
+                self._create_scope_vec(
+                    cache_key=(
+                        hash_with_seed(
+                            self.program_id,
+                            self._calc_input_places_hash(inputs),
+                        )
+                    ),
+                    use_scope_cache=True,
                 ),
-                use_scope_cache=True,
-            ),
-            *attrs,
-        )
+                *attrs,
+            )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -744,20 +758,23 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
-        _C_ops.run_program(
-            inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
-                    )
+
+        with train_guards(self._backend):
+            _C_ops.run_program(
+                inputs,
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
+                self._create_scope_vec(
+                    cache_key=(
+                        hash_with_seed(
+                            self.program_id,
+                            self._calc_input_places_hash(inputs),
+                        )
+                    ),
+                    use_scope_cache=True,
                 ),
-                use_scope_cache=True,
-            ),
-            *attrs,
-        )
+                *attrs,
+            )
         return self._outputs.quick_restore(out_vars)
 
     @cached_property
@@ -807,10 +824,13 @@ class PartialProgramLayer:
                     enable_cse=cse_is_enabled(),
                     enable_delete_assert_op=self._backend.is_cinn(),
                 )
-
                 # if-else pass
                 if self._backend.is_cinn():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -820,7 +840,7 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(infer_program.program)
@@ -835,7 +855,7 @@ class PartialProgramLayer:
             train_program.apply_dist_pass_for_origin_program()
 
             # Author(liujinnan): auto_layout_pass should be applied to the original_program, before append backward. So we put it here.
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
@@ -904,11 +924,16 @@ class PartialProgramLayer:
                     enable_delete_assert_op=self._backend.is_cinn(),
                 )
                 if self._backend.is_cinn():
+                    paddle.base.libpaddle.pir.bind_symbolic_constraints(
+                        forward_program, self._constraints
+                    )
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+
                     init_backward_program_shape_analysis(
                         forward_program, backward_program
                     )
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
                         forward_program
@@ -1290,5 +1315,6 @@ def partial_program_from(
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
+        constraints=concrete_program.constraints,
         **concrete_program.kwargs,
     )

@@ -121,7 +121,7 @@ LogicalResult IfFoldPass::Run(StmtRef stmt) {
   VLOG(6) << "-------------cond_vec end----------------";
 
   // Normalize expr to simplify the expr after Mul and Sum.
-  expr = expr.Normalize(ir::IndexExpr::OptLevel::Level2);
+  expr = expr.Normalize(ir::IndexExpr::OptLevel::kLevel2);
 
   if (expr != ir::IndexExpr(0) && expr.length() < min_len &&
       inner_op.defined()) {
