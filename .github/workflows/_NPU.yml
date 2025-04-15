@@ -50,11 +50,11 @@ jobs:
           echo ${ASCEND_RT_VISIBLE_DEVICES}
           echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
 
-      - name: Clone PaddleCustomDevice repository
-        run: |
-          git clone --depth=1000 -b ${BRANCH} https://github.com/PaddlePaddle/PaddleCustomDevice.git
-          cd PaddleCustomDevice
-          cp -r ../Paddle .
+      # - name: Clone PaddleCustomDevice repository
+      #   run: |
+      #     git clone --depth=1000 -b ${BRANCH} https://github.com/PaddlePaddle/PaddleCustomDevice.git
+      #     cd PaddleCustomDevice
+      #     cp -r ../Paddle .
 
       - name: Check docker image  and run container
         env:

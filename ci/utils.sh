@@ -235,13 +235,14 @@ function determine_xpu_runner() {
     elif [[ $runner_name == "paddle-2" ]]; then
         echo "ASCEND_RT_VISIBLE_DEVICES=4,5,6,7" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-3" ]]; then
-        echo "CUDA_VISIBLE_DEVICES=8,9,10,11" >> $GITHUB_ENV
+        echo "ASCEND_RT_VISIBLE_DEVICES=8,9,10,11" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-4" ]]; then
         echo "ASCEND_RT_VISIBLE_DEVICES=12,13,14,15" >> $GITHUB_ENV
     else
         echo "Unknown runner name: $runner_name"
         exit 1
     fi
+    echo ${ASCEND_RT_VISIBLE_DEVICES}
 }
 
 function cmake_base() {
