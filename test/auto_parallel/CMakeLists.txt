@@ -160,6 +160,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
+  py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_strategy MODULES test_strategy)
   py_test_modules(test_cluster_partition MODULES test_cluster_partition)
   py_test_modules(test_convert_to_process_meshes MODULES
