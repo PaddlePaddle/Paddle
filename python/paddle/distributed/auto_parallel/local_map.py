@@ -30,7 +30,7 @@ def local_map(
     in_placements: list[list[dist.Placement]] | None = None,
     process_mesh: ProcessMesh | None = None,
     reshard_inputs: bool = False,
-):
+) -> Callable[..., Any]:
     """
     The `local_map` API allows users to pass dist_tensors to a function that is written
     to be applied on ``paddle.Tensor`` s. It works by extracting the local components
