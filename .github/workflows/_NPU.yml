@@ -121,6 +121,7 @@ jobs:
       - name: Install Paddle-CPU
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           source ~/.bashrc
           wget -q https://sys-p0.bj.bcebos.com/libstdc%2B%2B6_13.1.0-8ubuntu1_20.04.2_amd64.deb
           dpkg -i *deb
@@ -130,16 +131,17 @@ jobs:
           ln -sf $(which pip3.9) /usr/local/bin/pip
           ln -sf $(which python3.9) /usr/bin/python
           ln -sf $(which pip3.9) /usr/bin/pip
-          '
-
-      - name: Test
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install Paddle"
           pip install paddlepaddle-*.whl && rm -rf paddlepaddle-*.whl
           python -c "import paddle; print(paddle.__version__)"
           python -c "import paddle; print(paddle.version.commit)"
           echo "::endgroup::"
+          '
+
+      - name: Test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           echo "::group::Install dependencies"
           python -m pip install PyGithub
           python -m pip install wheel
