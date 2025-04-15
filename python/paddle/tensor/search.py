@@ -555,8 +555,6 @@ def nonzero(x: Tensor, as_tuple=False):
     if not as_tuple:
         return outs
     else:
-        if 0 in x.shape:
-            return outs
         rank = x.ndim
         list_out = [outs[:, i] for i in range(rank)]
         return tuple(list_out)
