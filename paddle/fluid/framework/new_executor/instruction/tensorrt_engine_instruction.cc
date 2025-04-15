@@ -23,6 +23,8 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
+COMMON_DECLARE_string(engine_serialized_path);
+
 namespace paddle {
 namespace framework {
 
@@ -202,7 +204,19 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
              "===============";
   trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
       params, paddle::platform::NaiveLogger::Global());
-  auto engine_data = ReadBinaryFileToString(engine_serialized_path);
+  std::string engine_data;
+  try {
+    engine_data = ReadBinaryFileToString(engine_serialized_path);
+  } catch (const std::exception& e) {
+    try {
+      std::filesystem::path path(engine_serialized_path);
+      std::string filename = (path.parent_path().filename() / path.filename()).string();
+      std::string file_root = FLAGS_engine_serialized_path;
+      engine_data = ReadBinaryFileToString(file_root + '/' + filename);
+    } catch (const std::exception& e2) {
+      throw std::runtime_error("Failed to read engine file: " + std::string(e2.what()));
+    }
+  }
   trt_engine_->Deserialize(engine_data);
 
   size_t len = refit_param_names_.size();
