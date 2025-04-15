@@ -27,6 +27,7 @@ jobs:
   mac:
     name: PR-CI-Mac
     uses: ./.github/workflows/_Mac.yml
+    needs: clone
 
   inference:
     name: PR-CI-Inference
