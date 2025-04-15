@@ -19,10 +19,10 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 from ..base.data_feeder import check_variable_and_dtype
-from ..base.framework import _create_tensor, in_pir_mode
+from ..base.framework import in_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..framework import in_dynamic_mode
 
@@ -849,19 +849,7 @@ def accuracy(
     """
     if label.dtype == paddle.int32:
         label = paddle.cast(label, paddle.int64)
-    if in_dynamic_mode():
-        if correct is None:
-            correct = _create_tensor(dtype="int32")
-        if total is None:
-            total = _create_tensor(dtype="int32")
-
-        topk_out, topk_indices = paddle.topk(input, k=k)
-        _acc, _, _ = _legacy_C_ops.accuracy(
-            topk_out, topk_indices, label, correct, total
-        )
-
-        return _acc
-    elif in_pir_mode():
+    if in_dynamic_mode() or in_pir_mode():
         topk_out, topk_indices = paddle.topk(input, k=k)
         _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label)
         return _acc

@@ -14,14 +14,12 @@
 """
 All layers just related to metric.
 """
-import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import (
     Variable,
-    _create_tensor,
     in_dygraph_mode,
     in_pir_mode,
 )
@@ -79,21 +77,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             [array(0.33333334, dtype=float32)]
 
     """
-    if in_dygraph_mode():
-        if correct is None:
-            correct = _create_tensor(dtype="int32")
-        if total is None:
-            total = _create_tensor(dtype="int32")
-
-        _k = np.array(k).item(0) if isinstance(k, Variable) else k
-        topk_out, topk_indices = _legacy_C_ops.top_k_v2(
-            input, 'k', _k, 'sorted', False
-        )
-        _acc, _, _ = _legacy_C_ops.accuracy(
-            topk_out, topk_indices, label, correct, total
-        )
-        return _acc
-    elif in_pir_mode():
+    if in_dygraph_mode() or in_pir_mode():
         topk_out, topk_indices = paddle.topk(input, k=k, sorted=False)
         _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label)
         return _acc
