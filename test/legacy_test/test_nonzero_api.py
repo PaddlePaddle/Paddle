@@ -138,7 +138,7 @@ class TestNonzeroComplex64Op(TestNonzeroOp):
         self.shape = [1, 2, 3]
 
     def init_dtype(self):
-        self.dtype = np.complex164
+        self.dtype = np.complex64
 
 
 class TestNonzeroComplex128Op(TestNonzeroOp):
