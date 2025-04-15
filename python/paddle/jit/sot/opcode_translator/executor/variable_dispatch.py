@@ -24,7 +24,7 @@ import numpy as np
 
 import paddle
 
-from ...symbolic_shape import (
+from ...symbolic_shape.operators import (
     SYMBOLIC_BINARY_OPS,
     SYMBOLIC_UNARY_OPS,
     symbolic_not,
