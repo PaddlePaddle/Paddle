@@ -28,6 +28,7 @@ if [ $? -eq 0 ];then
   echo use docker cache
 else
   docker build -t $docker_image -f tools/dockerfile/${docker_image_file} .
+  docker push $docker_image
   echo end docker build
 fi
 set -e
