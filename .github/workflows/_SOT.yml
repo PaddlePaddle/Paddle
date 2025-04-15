@@ -34,11 +34,12 @@ jobs:
         env:
           docker_image_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
         run: |
+          set -x
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           bash ${{ github.workspace }}/ci/check_docker_image.sh
-          echo $docker_image
+          echo "docker_image=$docker_image" >> ${{ github.env }}
           cd ${{ github.workspace }}
           rm -rf ./*
 
@@ -74,6 +75,7 @@ jobs:
           WITH_AVX: "OFF"
           CCACHE_DIR: "/root/.ccache/sot"
         run: |
+          set -x
           container_name=${TASK}-$(date +%s)
           echo $docker_image
           echo "container_name=${container_name}" >> ${{ github.env }}
