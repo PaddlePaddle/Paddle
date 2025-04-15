@@ -80,6 +80,7 @@ jobs:
           FLAGS_allocator_strategy: naive_best_fit
           FLAGS_npu_storage_format: 0
         run: |
+          echo ${ASCEND_RT_VISIBLE_DEVICES}
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
           docker run --privileged --pids-limit 409600 --shm-size=128G -d -t \
