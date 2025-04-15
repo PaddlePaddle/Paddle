@@ -50,7 +50,7 @@ class LambdaGuard : public GuardBase {
 
   ~LambdaGuard() { Py_DECREF(guard_check_fn_); }
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   PyObject* guard_check_fn_;
@@ -68,7 +68,7 @@ class GuardGroup : public GuardBase {
       }
     }
   }
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   std::vector<std::shared_ptr<GuardBase>> guards_;
@@ -82,7 +82,7 @@ class TypeMatchGuard : public GuardBase {
   explicit TypeMatchGuard(const py::type& py_type)
       : expected_(reinterpret_cast<PyTypeObject*>(py_type.ptr())) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   PyTypeObject* expected_;
@@ -95,7 +95,7 @@ class IdMatchGuard : public GuardBase {
   explicit IdMatchGuard(const py::object& py_obj)
       : expected_(reinterpret_cast<PyObject*>(py_obj.ptr())) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   PyObject* expected_;
@@ -114,7 +114,7 @@ class ValueMatchGuard : public GuardBase {
 
   ~ValueMatchGuard() { Py_DECREF(expected_value_); }
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   PyObject* expected_value_;
@@ -125,7 +125,7 @@ class LengthMatchGuard : public GuardBase {
  public:
   explicit LengthMatchGuard(const Py_ssize_t& length) : expected_(length) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   Py_ssize_t expected_;
@@ -139,7 +139,7 @@ class DtypeMatchGuard : public GuardBase {
   explicit DtypeMatchGuard(const phi::DataType& dtype_ptr)
       : expected_(phi::TransToProtoVarType(dtype_ptr)) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   int expected_;
@@ -159,7 +159,7 @@ class ShapeMatchGuard : public GuardBase {
     }
   }
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   std::vector<std::optional<int64_t>> expected_;
@@ -171,7 +171,7 @@ class AttributeMatchGuard : public GuardBase {
       : attr_ptr_(PyObject_GetAttrString(obj.ptr(), attr_name.c_str())),
         attr_name_(attr_name) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   PyObject* attr_ptr_;
@@ -184,7 +184,7 @@ class LayerMatchGuard : public GuardBase {
       : layer_ptr_(layer_obj.ptr()),
         training_(layer_obj.attr("training").cast<bool>()) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
 
  private:
   PyObject* layer_ptr_;
@@ -263,6 +263,7 @@ class ExprNode : public GuardTreeNode,
                  public std::enable_shared_from_this<ExprNode> {
  public:
   virtual PyObject* eval(FrameProxy* frame) = 0;
+  virtual std::string stringify() = 0;
 };
 class ConstantExprNode : public ExprNode {
  public:
@@ -272,7 +273,7 @@ class ConstantExprNode : public ExprNode {
     Py_INCREF(value_ptr_);
   }
   ~ConstantExprNode() { Py_DECREF(value_ptr_); }
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
 
  private:
   PyObject* value_ptr_;
@@ -286,7 +287,7 @@ class ExternVarExprNode : public ExprNode {
   }
 
   ~ExternVarExprNode() { Py_DECREF(value_ptr_); }
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
 
  private:
   PyObject* value_ptr_;
@@ -298,7 +299,7 @@ class LocalVarExprNode : public ExprNode {
   explicit LocalVarExprNode(const std::string& var_name)
       : var_name_(var_name) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
 
  private:
   std::string var_name_;
@@ -308,7 +309,7 @@ class GlobalVarExprNode : public ExprNode {
   explicit GlobalVarExprNode(const std::string& var_name)
       : var_name_(var_name) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
 
  private:
   std::string var_name_;
@@ -319,7 +320,7 @@ class AttributeExprNode : public ExprNode {
                              const std::string& attr_name)
       : var_expr_(var_expr), attr_name_(attr_name) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
 
  private:
   std::shared_ptr<ExprNode> var_expr_;
@@ -331,7 +332,7 @@ class ItemExprNode : public ExprNode {
                         std::shared_ptr<ExprNode> key_expr)
       : var_expr_(var_expr), key_expr_(key_expr) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
 
  private:
   std::shared_ptr<ExprNode> var_expr_;
