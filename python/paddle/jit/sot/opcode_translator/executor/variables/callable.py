@@ -536,9 +536,13 @@ class LayerVariable(CallableVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        expr_node = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.LayerMatchGuard(self.get_py_value()),
+                [expr_node],
+            )
+        ]
 
 
 class ContainerLayerVariable(LayerVariable):
@@ -664,9 +668,13 @@ class PaddleLayerVariable(LayerVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        if isinstance(self.tracker, CreateLayerTracker):
+            return reduce(
+                operator.add,
+                [var.make_faster_guard() for var in self.tracker.inputs],
+            )
+        else:
+            return super().make_faster_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
