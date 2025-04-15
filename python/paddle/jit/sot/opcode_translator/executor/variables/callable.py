@@ -68,6 +68,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    object_equal_faster_guard,
     object_equal_stringified_guard,
     union_free_vars,
 )
@@ -177,12 +178,7 @@ class FunctionVariable(CallableVariable):
         )
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
 
 class UserDefinedFunctionVariable(FunctionVariable):
@@ -350,12 +346,7 @@ class PaddleApiVariable(FunctionVariable):
         }
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
 
 class TensorFunctionVariable(FunctionVariable):
@@ -992,12 +983,7 @@ class ClassVariable(CallableVariable):
         return new_object_variable
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

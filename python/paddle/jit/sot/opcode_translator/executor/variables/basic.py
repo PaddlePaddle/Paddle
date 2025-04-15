@@ -98,6 +98,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    object_equal_faster_guard,
     object_equal_stringified_guard,
     stringify_pyobject,
     union_free_vars,
@@ -1353,12 +1354,7 @@ class ObjectVariable(VariableBase):
     """
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
     def __init__(self, obj, graph, tracker):
         super().__init__(graph, tracker)
@@ -1575,12 +1571,7 @@ class ModuleVariable(VariableBase):
 
     # Happened in a inline import statement.
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
 
 class DygraphTracerVariable(VariableBase):
