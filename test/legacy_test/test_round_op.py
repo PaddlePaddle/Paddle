@@ -43,6 +43,12 @@ class TestRound(TestActivation):
         self.attrs = {'decimals': self.decimals}
         self.convert_input_output()
 
+    def _get_places(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
     def init_shape(self):
         self.shape = [10, 12]
 

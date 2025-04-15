@@ -3009,10 +3009,9 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    if (std::is_integral<T>::value) {
-      out.device(d) = x;
-      return;
-    }
+#if defined(_WIN32) && (std::is_integral <T>::value)
+    out.device(d) = x;
+#else
     if (decimals == 0) {
       out.device(d) = (x.isnan() || x.isinf()).select(x, x.round());
     } else if (decimals > 0) {
@@ -3026,6 +3025,7 @@ struct RoundFunctor : public BaseActivationFunctor<T> {
           (x.isnan() || x.isinf())
               .select(x, (x / ten_pow_decimals).round() * ten_pow_decimals);
     }
+#endif
   }
 };
 
