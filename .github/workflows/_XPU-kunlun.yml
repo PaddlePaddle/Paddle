@@ -142,22 +142,21 @@ jobs:
           wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
           mkdir ${{ env.home_path }}/bos
           tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
-          export AK=paddle
-          export SK=paddle
         fi
         cd ..
         tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
         # source /home/opt/deck/1.0/etc/bashrc
         python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-        cd ${work_dir}/dist
+        rm build.tar.gz
+        cd ${{ github.workspace }}/dist
         python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
 
-    # - name: Terminate and delete the container
-    #   if: always()
-    #   run: |
-    #     docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-    #     docker stop ${container_name}
-    #     docker rm ${container_name}
+    - name: Terminate and delete the container
+      if: always()
+      run: |
+        docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+        docker stop ${container_name}
+        docker rm ${container_name}
 
   test:
     name: Test
