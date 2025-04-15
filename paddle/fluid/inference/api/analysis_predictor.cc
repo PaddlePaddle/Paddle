@@ -2382,7 +2382,8 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         std::string model_path = config.prog_file();
         if (!model_path.empty()) {
-          std::string model_dir = std::filesystem::path(model_path).parent_path().string();
+          std::string model_dir =
+              std::filesystem::path(model_path).parent_path().string();
           SetGflag("engine_serialized_path", model_dir.c_str());
         } else if (!config.model_dir().empty()) {
           std::string model_dir = config.model_dir();
