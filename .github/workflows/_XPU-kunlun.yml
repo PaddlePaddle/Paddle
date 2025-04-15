@@ -138,6 +138,7 @@ jobs:
         bos_file: ${{ github.workspace }}/../bos/BosClient.py
         paddle_whl: paddlepaddle_xpu-0.0.0-cp310-cp310-linux_x86_64.whl
       run: |
+        set -x
         if [ ! -f "${{ env.bos_file }}" ]; then
           wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
           mkdir ${{ env.home_path }}/bos
@@ -150,13 +151,14 @@ jobs:
         rm build.tar.gz
         cd ${{ github.workspace }}/dist
         python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+        exit 0
 
-    - name: Terminate and delete the container
-      if: always()
-      run: |
-        docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-        docker stop ${container_name}
-        docker rm ${container_name}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+    #     docker stop ${container_name}
+    #     docker rm ${container_name}
 
   test:
     name: Test
