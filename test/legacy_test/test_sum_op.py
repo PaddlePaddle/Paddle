@@ -561,8 +561,7 @@ class TestSumOpDtype(unittest.TestCase):
                     name='x', shape=self.shape, dtype=self.input_dtype
                 )
                 result = paddle.sum(x, axis=self.axis, dtype=self.output_dtype)
-
-        self.assertEqual(result[0].dtype, self.paddle_output_dtype)
+                self.assertEqual(result[0].dtype, self.paddle_output_dtype)
 
 
 class TestSumOpError(unittest.TestCase):
