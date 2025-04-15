@@ -69,6 +69,18 @@ def dynamic_shape_int_mul_float(x):
     return z
 
 
+def dynamic_shape_constraint(x):
+    s0, s1, *_ = x.shape
+    if s0 < 5:
+        return s0 + x
+    elif s0 < s1:
+        return s0 + x + 1
+    elif 2 * (s0 + s1 - 2) <= 30:
+        return s0 + x + 2
+    else:
+        return s0 + x + 3
+
+
 class CustomConv(paddle.nn.Conv2D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -124,11 +136,19 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         with allow_dynamic_shape_guard(
             True
         ), test_instruction_translator_cache_context() as ctx:
+            translate_count_map = {
+                0: 1,
+                1: 2,  # 0, 1 is specialize to static dim
+                2: 3,  # 2 is first recorded dynamic dim, but it still a static dim
+                3: 4,  # 3 is dynamic dim
+                4: 5,  # 4 is dynamic dim, but it not hit cache
+                5: 5,  # 5 hit cache, no recompile
+            }
             for i in range(0, 6):
                 self.assert_results(
                     dynamic_int_input_func3, paddle.randn([4, 5, 6]), i
                 )
-                self.assertEqual(ctx.translate_count, i + 1)
+                self.assertEqual(ctx.translate_count, translate_count_map[i])
 
     def test_dynamic_shape_input_cache_hit_case1(self):
         with allow_dynamic_shape_guard(
@@ -223,6 +243,87 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
         ), test_instruction_translator_cache_context() as ctx:
             for i in range(1, 6):
                 self.assert_results(dynamic_shape_int_mul_float, i)
+
+    def test_dynamic_shape_constraint(self):
+        with allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            const_dim = 6
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([0, 1, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 1)
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([2, 2, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 2)
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([3, 3, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 3)  # add constraint s0 < 5
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([4, 4, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 3)  # hit constraint s0 < 5
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([5, 6, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 4)  # add constraint s0 < s1
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([6, 7, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 4)  # hit constraint s0 < s1
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([7, 8, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 4)  # hit constraint s0 < s1
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([8, 7, const_dim])
+            )
+            self.assertEqual(
+                ctx.translate_count, 5  # add constraint 2 * (s0 + s1 - 2) <= 30
+            )
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([9, 8, const_dim])
+            )
+            self.assertEqual(
+                ctx.translate_count, 5  # hit constraint 2 * (s0 + s1 - 2) <= 30
+            )
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([10, 9, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 6)  # add constraint else
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([11, 10, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 6)  # hit constraint else
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([4, 3, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 6)  # hit constraint s0 < 5
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([5, 8, const_dim])
+            )
+            self.assertEqual(ctx.translate_count, 6)  # hit constraint s0 < s1
+
+            self.assert_results(
+                dynamic_shape_constraint, paddle.randn([8, 8, const_dim])
+            )
+            self.assertEqual(
+                ctx.translate_count, 6  # hit 2 * (s0 + s1 - 2) <= 30
+            )
 
     def test_mixed_dynamic_and_static(self):
         with allow_dynamic_shape_guard(

@@ -275,7 +275,7 @@ class VariableFactory:
         return var
 
 
-def infer_debug_name_from_tracker(tracker: Tracker) -> str:
+def infer_debug_name_from_tracker(tracker: Tracker) -> str | None:
     res = None
     if isinstance(tracker, (LocalTracker, GlobalTracker, BuiltinTracker)):
         res = f"{tracker.name}"
