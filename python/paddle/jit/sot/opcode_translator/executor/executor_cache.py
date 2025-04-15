@@ -153,9 +153,20 @@ class OpcodeExecutorCache(metaclass=Singleton):
             log(4, f"[Cache] Guard tree is `{guard_tree.stringify()}`")
             cache_index = guard_tree.lookup(frame)
 
-        if not enable_strict_guard and cache_index is not None:
-            # TODO(zrr1999): add a mapping between custom_code and cache_index
-            return guarded_fns[cache_index][0]
+        if not enable_strict_guard:
+            if cache_index is not None:
+                # TODO(zrr1999): add a mapping between custom_code and cache_index
+                return guarded_fns[cache_index][0]
+            else:
+                log(2, "[Cache]: all guards missed (guard tree mode)\n")
+                new_custom_code, guard_fn, guard_chain = self.translate(
+                    frame, **kwargs
+                )
+                if guard_fn is not None:
+                    assert guard_chain is not None
+                    guarded_fns.append((new_custom_code, guard_fn))
+                    guard_tree.add_guard_chain(guard_chain)
+                return new_custom_code
 
         for index, (custom_code, guard_fn) in enumerate(guarded_fns):
             if enable_strict_guard:
