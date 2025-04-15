@@ -71,7 +71,7 @@ elif [ "$1" == "gcc121" ]; then
   cd .. && mkdir temp_gcc121 && cd temp_gcc121 && \
   ../gcc-12.1.0/configure --prefix=/usr/local/gcc-12.1 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
   make -j8 && make install
-  cd .. && rm -rf temp_gcc122 gcc-12.1.0 gcc-12.1.0.tar.gz
+  cd .. && rm -rf temp_gcc121 gcc-12.1.0 gcc-12.1.0.tar.gz
   cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
   ln -s /usr/local/gcc-12.1/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-12.1/lib64/libstdc++.so.6.0.30 ${lib_path}
