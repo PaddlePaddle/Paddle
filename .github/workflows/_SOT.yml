@@ -28,6 +28,8 @@ jobs:
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Docker-build
+    outputs:
+      docker_output: ${{ steps.step1.outputs.docker_image }}
 
     steps:
       - name: docker build
@@ -39,7 +41,8 @@ jobs:
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           source ${{ github.workspace }}/ci/check_docker_image.sh
-          echo "docker_image=$docker_image" >> ${{ github.env }}
+          echo "Docker image name" > docker_image.txt
+          echo "::set-output name=docker_image::$(cat docker_image.txt)"
           cd ${{ github.workspace }}
           rm -rf ./*
 
@@ -77,8 +80,7 @@ jobs:
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
-          echo $docker_image
-          echo "container_name=${container_name}" >> ${{ github.env }}
+          echo "${{ needs.check-docker-images.outputs.docker_output }}"
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
