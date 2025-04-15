@@ -612,9 +612,22 @@ class ContainerLayerVariable(LayerVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        if isinstance(self.value, PD_SEQ_CONTAINERS):
+            expr_node = self.tracker.guard_tree_expr_node()
+            len_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.LengthMatchGuard(len(self.value)),
+                [expr_node],
+            )
+
+            guards: list[paddle.framework.core.GuardNode] = [len_guard]
+            for idx, layer in enumerate(self.value):
+                layer_variable = VariableFactory.from_value(
+                    layer, self.graph, GetItemTracker(self, idx)
+                )
+                guards.extend(layer_variable.make_faster_guard())
+            return guards
+        else:
+            return super().make_faster_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:

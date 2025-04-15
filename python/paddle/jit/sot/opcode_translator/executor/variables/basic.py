@@ -1585,9 +1585,7 @@ class DygraphTracerVariable(VariableBase):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        return []
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1675,9 +1673,21 @@ class NumpyNumberVariable(NumpyVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        expr_node = self.tracker.guard_tree_expr_node()
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                self.get_py_value().dtype
+            ),
+            [expr_node],
         )
+
+        return [
+            dtype_guard,
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                [expr_node],
+            ),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1720,9 +1730,21 @@ class NumpyBoolVariable(NumpyNumberVariable):
 class NumpyArrayVariable(NumpyVariable):
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        expr_node = self.tracker.guard_tree_expr_node()
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                self.get_py_value().dtype
+            ),
+            [expr_node],
         )
+        value_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyArrayValueMatchGuard(
+                self.get_py_value()
+            ),
+            [expr_node],
+        )
+
+        return [dtype_guard, value_guard]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
