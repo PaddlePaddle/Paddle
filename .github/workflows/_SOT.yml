@@ -39,7 +39,7 @@ jobs:
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           source ${{ github.workspace }}/ci/check_docker_image.sh
-          echo "docker_image=$docker_image" >> ${{ github.env }
+          echo "docker_image=$docker_image" >> ${{ github.env }}
           cd ${{ github.workspace }}
           rm -rf ./*
 
