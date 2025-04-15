@@ -669,38 +669,16 @@ def convert_conv2d(network, paddle_op, inputs):
     if paddle_op.name() == "pd_op.fused_conv2d_add_act":
         constant_manager = TensorRTConstantManager()
         bias_source_op = paddle_op.operands()[2].source().get_defining_op()
-
-        def get_bias_weights(current_op):
-            if current_op.name() == "builtin.parameter":
-                bias_name = current_op.attrs()["parameter_name"]
-            elif current_op.name() == "builtin.constant":
-                bias_name = current_op.attrs()["value"]
-            else:
-                raise ValueError(
-                    f"Unsupported bias source operation: {current_op.name()}"
-                )
-
-            bias_np = constant_manager.get_constant_value(bias_name)
-            return trt.Weights(bias_np)
-
-        if bias_source_op.name() in ["builtin.parameter", "builtin.constant"]:
-            bias_weights = get_bias_weights(bias_source_op)
+        if bias_source_op.name() == "builtin.parameter":
+            bias_name = bias_source_op.attrs()['parameter_name']
+        elif bias_source_op.name() == "builtin.constant":
+            bias_np = bias_source_op.attrs()['value']
         else:
-            while bias_source_op.name() == "pd_op.reshape":
-                bias_source_op = (
-                    bias_source_op.operands()[0].source().get_defining_op()
-                )
-                if bias_source_op.name() in [
-                    "builtin.parameter",
-                    "builtin.constant",
-                ]:
-                    bias_weights = get_bias_weights(bias_source_op)
-                    break
-            else:
-                raise ValueError(
-                    f"Unsupported bias source operation: {bias_source_op.name()}"
-                )
-
+            raise ValueError(
+                f"Unsupported bias source op: {bias_source_op.name()}"
+            )
+        bias_np = constant_manager.get_constant_value(bias_name)
+        bias_weights = trt.Weights(bias_np)
         layer = network.add_convolution_nd(
             input=input_tensor,
             num_output_maps=n_output,
@@ -897,27 +875,32 @@ def add_cast_reduce_layer(network, paddle_op, inputs, op_type):
 
     axis = paddle_op.attrs().get("axis")
     input_shape = paddle_op.operands()[0].source().shape
-    keepdim = paddle_op.attrs()["keepdim"]
-    if network.has_implicit_batch_dimension:
-        assert (
-            axis != 0
-        ), "can't reduce on axis == 0 when network has implicit batch dimension"
-    output_shape = []
+    input_dims = len(input_shape)
+    keepdim = paddle_op.attrs().get("keepdim")
+
     if len(axis) == 0:
-        axis = list(range(len(input_shape)))
-    for i in range(len(axis)):
-        if axis[i] < 0:
-            axis[i] = len(input_shape) + axis[i]
-    layer = network.add_reduce(
+        axes = 0
+        for i in range(input_dims):
+            axes |= 1 << i
+    else:
+        for i in range(len(axis)):
+            if axis[i] < 0:
+                axis[i] += input_dims
+
+        axes = get_axes_for_reduce_op(axis)
+
+    reduce_layer = network.add_reduce(
         cast_layer.get_output(0),
         op_type,
-        axes=get_axes_for_reduce_op(axis),
+        axes=axes,
         keep_dims=keepdim,
     )
-    set_layer_name(layer, paddle_op)
-    layer.set_output_type(0, trt.bool)
-    layer.get_output(0).dtype = cast_layer.get_output(0).dtype
-    return layer.get_output(0)
+    set_layer_name(reduce_layer, paddle_op)
+    bool_layer = network.add_identity(reduce_layer.get_output(0))
+    set_layer_name(bool_layer, paddle_op)
+    bool_layer.set_output_type(0, trt.bool)
+    bool_layer.get_output(0).dtype = trt.bool
+    return bool_layer.get_output(0)
 
 
 def fix_negative_indices(network, input_shape, indices, name=None):
