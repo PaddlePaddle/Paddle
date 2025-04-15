@@ -29,10 +29,11 @@ jobs:
     runs-on:
       group: Docker-build
     outputs:
-      docker_output: ${{ steps.step1.outputs.docker_image }}
+      docker_image: ${{ steps.docker-build.outputs.docker_image }}
 
     steps:
       - name: docker build
+        id: docker-build
         env:
           docker_image_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
         run: |
