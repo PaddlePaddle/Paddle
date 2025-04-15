@@ -133,6 +133,22 @@ class TestNonzeroOp(OpTest):
         return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
 
 
+def TestNonzeroComplex128Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [1, 2, 3]
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+def TestNonzeroComplex64Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [1, 2, 3]
+
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestNonzeroFP32Op(TestNonzeroOp):
     def init_shape(self):
         self.shape = [2, 10, 2]
