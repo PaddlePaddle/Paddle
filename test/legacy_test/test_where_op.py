@@ -69,6 +69,10 @@ class TestWhereFP16OP(TestWhereOp):
         self.cond = np.ones((60, 2)).astype('bool')
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
 class TestWhereOpComplex64(TestWhereOp):
     def init_config(self):
         self.dtype = np.complex64
@@ -77,6 +81,10 @@ class TestWhereOpComplex64(TestWhereOp):
         self.cond = np.ones((60, 2)).astype('bool')
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
 class TestWhereOpComplex128(TestWhereOp):
     def init_config(self):
         self.dtype = np.complex128
