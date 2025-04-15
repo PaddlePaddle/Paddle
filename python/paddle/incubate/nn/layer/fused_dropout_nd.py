@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
-from paddle.framework import in_dynamic_mode
 
 
 class FusedDropout(paddle.nn.Layer):
@@ -105,36 +103,14 @@ class FusedDropout(paddle.nn.Layer):
         if self.p == 0:
             return input
 
-        if self.axis is not None and in_dynamic_mode():
-            seed = None
-            if paddle.static.default_main_program().random_seed != 0:
-                seed = paddle.static.default_main_program().random_seed
-
-            out, mask = _legacy_C_ops.dropout_nd(
-                input,
-                'dropout_prob',
-                self.p,
-                'is_test',
-                not self.training,
-                'fix_seed',
-                seed is not None,
-                'seed',
-                seed if seed is not None else 0,
-                'dropout_implementation',
-                self.mode,
-                'axis',
-                self.axis,
-            )
-        else:
-            out = paddle.nn.functional.dropout(
-                input,
-                p=self.p,
-                axis=self.axis,
-                training=self.training,
-                mode=self.mode,
-                name=self.name,
-            )
-        return out
+        return paddle.nn.functional.dropout(
+            input,
+            p=self.p,
+            axis=self.axis,
+            training=self.training,
+            mode=self.mode,
+            name=self.name,
+        )
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
