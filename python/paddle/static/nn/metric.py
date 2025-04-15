@@ -86,9 +86,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             total = _create_tensor(dtype="int32")
 
         _k = np.array(k).item(0) if isinstance(k, Variable) else k
-        topk_out, topk_indices = _legacy_C_ops.top_k_v2(
-            input, 'k', _k, 'sorted', False
-        )
+        topk_out, topk_indices = _C_ops.topk(input, _k, -1, True, False)
         _acc, _, _ = _legacy_C_ops.accuracy(
             topk_out, topk_indices, label, correct, total
         )
