@@ -703,11 +703,12 @@ PD_REGISTER_SPMD_RULE(cumsum,
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmd),
                       PD_INFER_SPMD(phi::distributed::CumSumInferSpmdReverse));
 
-// argmax
+// argmin
 PD_REGISTER_SPMD_RULE(
     argmin,
     PD_INFER_SPMD(phi::distributed::ArgMinInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::ArgMinInferSpmdReverseBase));
+// argmax
 PD_REGISTER_SPMD_RULE(
     argmax,
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
