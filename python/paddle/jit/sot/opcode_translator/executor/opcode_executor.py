@@ -31,10 +31,12 @@ from paddle.jit.utils import OrderedSet
 
 from ...profiler import EventGuard
 from ...psdb import NO_BREAKGRAPH_CODES
+from ...symbolic_shape.constraints import LogicalNotConstraintNode
 from ...utils import (
     ENV_MIN_GRAPH_SIZE,
     ENV_SOT_FORCE_FALLBACK_SIR_IDS,
     BreakGraphError,
+    DataDependencyDynamicShapeBreak,
     FallbackError,
     InnerError,
     SotUndefinedVar,
@@ -224,12 +226,23 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                 )(res)
 
             assert isinstance(res, (ConstantVariable, SymbolicVariable))
-            # NOTE(SigureMo): force to constant to trigger fallback to static dim
-            # to align with old behavior. In next PR we will support guard value
-            # with constraint.
             if isinstance(res, SymbolicVariable):
-                res = res.to_constant()
-            is_jump = res.get_py_value()
+                constraint_node, symbolic_vars = res.create_constraint_tree()
+                if not all(
+                    var.value.is_backed() for var in symbolic_vars.values()
+                ):
+                    raise BreakGraphError(
+                        DataDependencyDynamicShapeBreak(
+                            f"Symbolic variable {symbolic_vars} is not backed."
+                        )
+                    )
+                is_jump = res.get_example_value()
+                if not is_jump:
+                    constraint_node = LogicalNotConstraintNode(constraint_node)
+                for var in symbolic_vars.values():
+                    var.add_constraint((constraint_node, symbolic_vars))
+            else:
+                is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
                 assert instr.jump_to is not None

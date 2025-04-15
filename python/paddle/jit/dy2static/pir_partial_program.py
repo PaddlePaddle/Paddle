@@ -38,6 +38,7 @@ from .utils import (
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
+    train_guards,
 )
 
 if TYPE_CHECKING:
@@ -730,20 +731,23 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
-        _C_ops.run_program(
-            inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
-                    )
+
+        with train_guards(self._backend):
+            _C_ops.run_program(
+                inputs,
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
+                self._create_scope_vec(
+                    cache_key=(
+                        hash_with_seed(
+                            self.program_id,
+                            self._calc_input_places_hash(inputs),
+                        )
+                    ),
+                    use_scope_cache=True,
                 ),
-                use_scope_cache=True,
-            ),
-            *attrs,
-        )
+                *attrs,
+            )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -754,20 +758,23 @@ class PartialProgramLayer:
         out_vars = self._prepare_outputs()
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
-        _C_ops.run_program(
-            inputs,
-            self._valid_vars(self._params),
-            self._valid_vars(out_vars),
-            self._create_scope_vec(
-                cache_key=(
-                    hash_with_seed(
-                        self.program_id, self._calc_input_places_hash(inputs)
-                    )
+
+        with train_guards(self._backend):
+            _C_ops.run_program(
+                inputs,
+                self._valid_vars(self._params),
+                self._valid_vars(out_vars),
+                self._create_scope_vec(
+                    cache_key=(
+                        hash_with_seed(
+                            self.program_id,
+                            self._calc_input_places_hash(inputs),
+                        )
+                    ),
+                    use_scope_cache=True,
                 ),
-                use_scope_cache=True,
-            ),
-            *attrs,
-        )
+                *attrs,
+            )
         return self._outputs.quick_restore(out_vars)
 
     @cached_property
@@ -833,7 +840,7 @@ class PartialProgramLayer:
 
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runnable_program.clone()
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(infer_program.program)
@@ -848,7 +855,7 @@ class PartialProgramLayer:
             train_program.apply_dist_pass_for_origin_program()
 
             # Author(liujinnan): auto_layout_pass should be applied to the original_program, before append backward. So we put it here.
-            if auto_layout_is_enabled():
+            if auto_layout_is_enabled() and self._backend.is_cinn():
                 pm = paddle.pir.PassManager(2)
                 pm.add_pass("auto_layout_pass", {})
                 pm.run(train_program.program)
