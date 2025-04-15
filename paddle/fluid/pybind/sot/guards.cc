@@ -197,7 +197,7 @@ PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
 std::string ConstantExprNode::stringify() { return py::str(value_ptr_); }
 
 PyObject* ExternVarExprNode::eval(FrameProxy* frame) { return value_ptr_; }
-std::string ExternVarExprNode::stringify() { return py::str(value_ptr_); }
+std::string ExternVarExprNode::stringify() { return var_name_; }
 
 PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_13_PLUS
