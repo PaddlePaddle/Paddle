@@ -74,7 +74,6 @@ class MLPLayer(nn.Layer):
 
 
 class TestProcessMesh(unittest.TestCase):
-        
 
     def test_construction(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
