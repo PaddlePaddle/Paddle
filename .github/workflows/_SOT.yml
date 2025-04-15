@@ -41,8 +41,7 @@ jobs:
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           source ${{ github.workspace }}/ci/check_docker_image.sh
-          echo "Docker image name" > docker_image.txt
-          echo "::set-output name=docker_image::$(cat docker_image.txt)"
+          echo "docker_image=$docker_image" >> "$GITHUB_OUTPUT"
           cd ${{ github.workspace }}
           rm -rf ./*
 
@@ -80,7 +79,8 @@ jobs:
         run: |
           set -x
           container_name=${TASK}-$(date +%s)
-          echo "${{ needs.check-docker-images.outputs.docker_output }}"
+          echo "${{ steps.check-docker-images.outputs.docker_image }}"
+          docker_image=${{ steps.check-docker-images.outputs.docker_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
