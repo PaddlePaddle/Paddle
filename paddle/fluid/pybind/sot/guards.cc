@@ -29,6 +29,10 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 }
 #endif
 
+#if !PY_3_10_PLUS
+#define Py_IsNone(x) ((x) == Py_None)
+#endif
+
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
     return true;
@@ -136,7 +140,7 @@ bool InstanceCheckGuard::check(PyObject* value) {
   return PyObject_IsInstance(value, expected_);
 }
 
-bool NumpyDtypeMatchGuard::check(PyObject* value) {
+bool NumPyDtypeMatchGuard::check(PyObject* value) {
   if (value == nullptr) {
     return false;
   }
@@ -164,7 +168,34 @@ bool NumPyArrayValueMatchGuard::check(PyObject* value) {
       .cast<bool>();
 }
 
+bool WeakRefMatchGuard::check(PyObject* value) {
+  if (value == nullptr || expected_ == nullptr || Py_IsNone(expected_)) {
+    return false;
+  }
+
+#if PY_3_13_PLUS
+  PyObject* ref = NULL;
+  int get_ref_result = PyWeakref_GetRef(expected_, &ref);
+  if (get_ref_result == -1) {
+    // error
+    PyErr_Print();
+    return false;
+  }
+  if (get_ref_result == 0) {
+    // is dead
+    return false;
+  }
+  bool res = PyObject_Equal(value, ref);
+  Py_DECREF(ref);
+  return res;
+#else
+  return PyObject_Equal(value, PyWeakref_GetObject(expected_));
+#endif
+}
+
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
+
+PyObject* ExternVarExprNode::eval(FrameProxy* frame) { return value_ptr_; }
 
 PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_13_PLUS
@@ -193,6 +224,8 @@ PyObject* ItemExprNode::eval(FrameProxy* frame) {
 }
 
 std::optional<int> GuardNode::lookup(FrameProxy* frame) {
+  // TODO(zrr1999): support multiple exprs
+  auto expr = exprs.back();
   auto value = expr->eval(frame);
   if (guard->check(value)) {
     if (return_cache_index.has_value()) {

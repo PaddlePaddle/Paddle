@@ -637,7 +637,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
         Returns:
             Function or Method
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
@@ -682,7 +682,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
         """
         Customized behavior for copy.deepcopy, return a new StaticFunction instance.
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import copy

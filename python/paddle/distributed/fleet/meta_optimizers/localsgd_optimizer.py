@@ -156,11 +156,12 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                     )
                     ring_id = (ring_id + 1) % self.nrings
                     sub_block.append_op(
-                        type='c_allreduce_sum',
-                        inputs={'X': [param]},
-                        outputs={'Out': [param]},
+                        type='all_reduce',
+                        inputs={'x': [param]},
+                        outputs={'out': [param]},
                         attrs={
                             'ring_id': ring_id,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
@@ -278,13 +279,13 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
 
     def _generate_avg_loss(self, program_block, loss, avg_loss):
         program_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [loss]},
-            outputs={'Out': [avg_loss]},
+            type='all_reduce',
+            inputs={'x': [loss]},
+            outputs={'out': [avg_loss]},
             attrs={
                 'ring_id': 0,
                 OP_ROLE_KEY: OpRole.Optimize,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
             },
         )
         program_block.append_op(
@@ -407,11 +408,12 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                     )
                     ring_id = (ring_id + 1) % self.nrings
                     sub_block.append_op(
-                        type='c_allreduce_sum',
-                        inputs={'X': [param]},
-                        outputs={'Out': [param]},
+                        type='all_reduce',
+                        inputs={'x': [param]},
+                        outputs={'out': [param]},
                         attrs={
                             'ring_id': ring_id,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )

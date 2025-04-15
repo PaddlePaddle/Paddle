@@ -14,6 +14,8 @@
 
 import logging
 
+import paddle
+
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter(
     fmt='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
@@ -145,12 +147,12 @@ def insert_sync_op(
         )
         block._insert_op_without_sync(
             idx,
-            type='c_allreduce_sum',
-            inputs={'X': varname},
-            outputs={'Out': varname},
+            type='all_reduce',
+            inputs={'x': varname},
+            outputs={'out': varname},
             attrs={
                 'ring_id': sync_ring_id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )

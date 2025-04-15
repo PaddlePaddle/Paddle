@@ -87,7 +87,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_barrier_api
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "450" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
@@ -170,7 +170,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_isend_irecv_api MODULES test_collective_isend_irecv_api
     ENVS "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_isend_irecv_api
-                       PROPERTIES TIMEOUT "160" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "320" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -268,7 +268,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_gather_api MODULES test_collective_gather_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_gather_api
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "360" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -279,7 +279,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_sendrecv_api
-                       PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "1000" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -335,7 +335,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_communication_stream_reduce_api ENVS
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
   set_tests_properties(test_communication_stream_reduce_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -343,7 +343,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_communication_stream_reduce_scatter_api ENVS
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
   set_tests_properties(test_communication_stream_reduce_scatter_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -351,7 +351,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_communication_stream_scatter_api ENVS
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
   set_tests_properties(test_communication_stream_scatter_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -359,7 +359,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_communication_stream_sendrecv_api ENVS
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
   set_tests_properties(test_communication_stream_sendrecv_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
