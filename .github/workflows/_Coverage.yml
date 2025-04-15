@@ -215,7 +215,7 @@ jobs:
     needs: build
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ-v100
+      group: BD_BJ_v100
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
