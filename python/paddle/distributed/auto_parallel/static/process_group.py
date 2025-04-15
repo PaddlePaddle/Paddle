@@ -232,7 +232,7 @@ class ProcessGroup:
                     shape=[self.nranks, self.nranks], dtype="int32"
                 )
                 paddle._C_ops.all_to_all(
-                    alltoall_tmp, ring_id, global_rank, self.nranks
+                    alltoall_tmp, ring_id, int(global_rank), self.nranks
                 )
                 paddle.device.cuda.synchronize()
 
