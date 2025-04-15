@@ -263,6 +263,7 @@ class ExprNode : public GuardTreeNode,
                  public std::enable_shared_from_this<ExprNode> {
  public:
   virtual PyObject* eval(FrameProxy* frame) = 0;
+  virtual ~ExprNode() = default;
 };
 class ConstantExprNode : public ExprNode {
  public:
