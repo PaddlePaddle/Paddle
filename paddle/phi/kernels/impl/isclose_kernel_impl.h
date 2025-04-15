@@ -249,7 +249,7 @@ void IscloseKernel(const Context& dev_ctx,
                    const Scalar& atol,
                    bool equal_nan,
                    DenseTensor* out) {
-    if (out && out->numel() == 0) {
+  if (out && out->numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
     return;
   }
