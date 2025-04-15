@@ -124,7 +124,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
 
             yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.iou_aware:
             channel = 3 * (self.class_num + 6)
             self.dynamic_shape.min_input_shape = {

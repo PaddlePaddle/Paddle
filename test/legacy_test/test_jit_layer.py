@@ -16,6 +16,7 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 
@@ -24,37 +25,42 @@ from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
 
-sys.path.append("../dygraph_to_static")
+sys.path.append(
+    str(Path(__file__).resolve().parent.parent / "dygraph_to_static")
+)
 from dygraph_to_static_utils import enable_to_static_guard
 
 paddle.seed(1)
 
 
-class Net(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = paddle.nn.Linear(4, 4)
-        self.fc2 = paddle.nn.Linear(4, 4)
-        self._bias = 0.4
+def create_net():
+    class Net(paddle.nn.Layer):
+        def __init__(self):
+            super().__init__()
+            self.fc1 = paddle.nn.Linear(4, 4)
+            self.fc2 = paddle.nn.Linear(4, 4)
+            self._bias = 0.4
 
-    @paddle.jit.to_static(
-        input_spec=[InputSpec([None, 4], dtype='float32')], full_graph=True
-    )
-    def forward(self, x):
-        out = self.fc1(x)
-        out = self.fc2(out)
-        out = paddle.nn.functional.relu(out)
-        out = paddle.mean(out)
-        return out
+        @paddle.jit.to_static(
+            input_spec=[InputSpec([None, 4], dtype='float32')], full_graph=True
+        )
+        def forward(self, x):
+            out = self.fc1(x)
+            out = self.fc2(out)
+            out = paddle.nn.functional.relu(out)
+            out = paddle.mean(out)
+            return out
 
-    @paddle.jit.to_static(
-        input_spec=[InputSpec([None, 4], dtype='float32')], full_graph=True
-    )
-    def infer(self, input):
-        out = self.fc2(input)
-        out = out + self._bias
-        out = paddle.mean(out)
-        return out
+        @paddle.jit.to_static(
+            input_spec=[InputSpec([None, 4], dtype='float32')], full_graph=True
+        )
+        def infer(self, input):
+            out = self.fc2(input)
+            out = out + self._bias
+            out = paddle.mean(out)
+            return out
+
+    return Net()
 
 
 class TestMultiLoad(unittest.TestCase):
@@ -65,30 +71,27 @@ class TestMultiLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_multi_load(self):
-        with paddle.pir_utils.OldIrGuard():
-            paddle.disable_static()
-            x = paddle.full([2, 4], 2)
-            model = Net()
-            with enable_to_static_guard(False):
-                forward_out1 = model.forward(x)
-                infer_out1 = model.infer(x)
-            model_path = os.path.join(self.temp_dir.name, 'multi_program')
-            paddle.jit.save(model, model_path, combine_params=True)
-            place = paddle.CPUPlace()
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-            jit_layer = Layer()
-            jit_layer.load(model_path, place)
-            forward_out2 = jit_layer.forward(x)
-            infer_out2 = jit_layer.infer(x)
-            np.testing.assert_allclose(
-                forward_out1, forward_out2[0], rtol=1e-05
-            )
-            np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
+        paddle.disable_static()
+        x = paddle.full([2, 4], 2)
+        model = create_net()
+        with enable_to_static_guard(False):
+            forward_out1 = model.forward(x)
+            infer_out1 = model.infer(x)
+        model_path = os.path.join(self.temp_dir.name, 'multi_program')
+        paddle.jit.save(model, model_path, combine_params=True)
+        place = paddle.CPUPlace()
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        jit_layer = Layer()
+        jit_layer.load(model_path, place)
+        forward_out2 = jit_layer.forward(x)
+        infer_out2 = jit_layer.infer(x)
+        np.testing.assert_allclose(forward_out1, forward_out2[0], rtol=1e-05)
+        np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
     def test_multi_jit_load(self):
         x = paddle.full([2, 4], 2)
-        model = Net()
+        model = create_net()
         with enable_to_static_guard(False):
             forward_out1 = model.forward(x)
             infer_out1 = model.infer(x)
@@ -102,18 +105,21 @@ class TestMultiLoad(unittest.TestCase):
         np.testing.assert_allclose(infer_out1, infer_out2, rtol=1e-05)
 
 
-class SaveLinear(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.linear = paddle.nn.Linear(80, 80)
+def create_save_linear():
+    class SaveLinear(paddle.nn.Layer):
+        def __init__(self):
+            super().__init__()
+            self.linear = paddle.nn.Linear(80, 80)
 
-    @paddle.jit.to_static(
-        input_spec=[InputSpec(shape=[None, 80], dtype='float32')],
-        full_graph=True,
-    )
-    def forward(self, x):
-        out = self.linear(x)
-        return out
+        @paddle.jit.to_static(
+            input_spec=[InputSpec(shape=[None, 80], dtype='float32')],
+            full_graph=True,
+        )
+        def forward(self, x):
+            out = self.linear(x)
+            return out
+
+    return SaveLinear()
 
 
 class TestMKLOutput(unittest.TestCase):
@@ -124,24 +130,22 @@ class TestMKLOutput(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_mkl_output(self):
-        with paddle.pir_utils.OldIrGuard():
-            paddle.disable_static()
-            with _dygraph_place_guard(place=paddle.CPUPlace()):
-                net = SaveLinear()
-                model_path = os.path.join(self.temp_dir.name, 'save_linear')
-                paddle.jit.save(net, model_path, combine_params=True)
+        paddle.disable_static()
+        with _dygraph_place_guard(place=paddle.CPUPlace()):
+            net = create_save_linear()
+            model_path = os.path.join(self.temp_dir.name, 'save_linear')
+            paddle.jit.save(net, model_path, combine_params=True)
 
-                layer = Layer()
-                print("load ", model_path)
-                layer.load(model_path, paddle.CPUPlace())
-                x = paddle.ones([498, 80])
-                out = layer.forward(x)
-                out = paddle.unsqueeze(out[0], 0)
-                np.testing.assert_equal(out.shape, [1, 498, 80])
+            layer = Layer()
+            layer.load(model_path, paddle.CPUPlace())
+            x = paddle.ones([498, 80])
+            out = layer.forward(x)
+            out = paddle.unsqueeze(out[0], 0)
+            np.testing.assert_equal(out.shape, [1, 498, 80])
 
     def test_mkl_jit_output(self):
         with _dygraph_place_guard(place=paddle.CPUPlace()):
-            net = SaveLinear()
+            net = create_save_linear()
             x = paddle.ones([498, 80])
             orig_out = net.forward(x)
             model_path = os.path.join(self.temp_dir.name, 'save_linear')

@@ -78,7 +78,6 @@ UNARY_OPS_TO_MAGIC_NAMES: dict[UnaryOp, str] = {
     operator.abs: "__abs__",
     operator.index: "__index__",
     operator.inv: "__inv__",
-    operator.not_: "__not__",
     operator.truth: "__bool__",
     bool: "__bool__",
     abs: "__abs__",
@@ -128,3 +127,15 @@ def magic_method_builtin_dispatch(fn: BinaryOp | UnaryOp) -> list[MagicMethod]:
         magic_name = UNARY_OPS_TO_MAGIC_NAMES[fn]
         return [MagicMethod(magic_name)]
     return []
+
+
+def non_inplace_op_to_inplace_op(
+    fn: BinaryOp,
+) -> BinaryOp | None:
+    for inplace_op, (
+        _,
+        non_inplace_op,
+    ) in INPLACE_BINARY_OPS_TO_MAGIC_NAMES.items():
+        if fn is non_inplace_op:
+            return inplace_op
+    return None

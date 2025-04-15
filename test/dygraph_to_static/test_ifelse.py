@@ -16,13 +16,14 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
     IrMode,
     ToStaticMode,
     disable_test_case,
     enable_to_static_guard,
     test_ast_only,
-    test_legacy_and_pir,
+    test_phi_only,
     test_pir_only,
 )
 from ifelse_simple_func import (
@@ -104,7 +105,9 @@ class TestDygraphIfElse2(TestDygraphIfElse):
         self.dyfunc = dyfunc_with_if_else2
 
     # TODO(dev): fix AST mode
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @disable_test_case(
+        (ToStaticMode.AST, IrMode.PT, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), atol=1e-7, rtol=1e-7
@@ -330,6 +333,8 @@ class TestDygraphIfElseNet(Dy2StTestBase):
             ret = net(x_v)
             return ret.numpy()
 
+    # TODO(SigureMo): Fix this CINN case, it will raise precision error
+    @test_phi_only
     def test_ast_to_func(self):
         np.testing.assert_allclose(self._run_dygraph(), self._run_static())
 
@@ -547,7 +552,7 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_pir_only
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False

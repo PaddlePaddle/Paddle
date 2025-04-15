@@ -1740,7 +1740,15 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     promote_result = x.dtype();
   }
   out->set_dtype(promote_result);
-  out->set_layout(x.layout());
+
+  // layout need change when meet input layout contain kNHWC
+  auto layout = [&]() {
+    if (x.layout() == DataLayout::kNHWC || y.layout() == DataLayout::kNHWC)
+      return DataLayout::kNHWC;
+    return x.layout();
+  }();
+
+  out->set_layout(layout);
   out->share_lod(x);
 }
 

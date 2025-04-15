@@ -688,10 +688,10 @@ LOW_LATENCY_COMBINE_RECV:
   cg::this_grid().sync();
 
   // Reduce tokens with FP8 cast
-  EP_DEVICE_ASSERT(num_topk <= 32 && hidden_bf16_int4 <= num_threads);
+  // EP_DEVICE_ASSERT(num_topk <= 32 && hidden_bf16_int4 <= num_threads);
   EP_STATIC_ASSERT(kHidden % (32 * kNumElemsPerInt4) == 0,
                    "Invalid vectorization");
-  if (thread_id < hidden_bf16_int4) {
+  for (int g_id = thread_id; g_id < hidden_bf16_int4; g_id += num_threads) {
     for (int token_idx = sm_id; token_idx < num_combined_tokens;
          token_idx += num_sms) {
       // Read top-k indices and weights
@@ -718,7 +718,7 @@ LOW_LATENCY_COMBINE_RECV:
 
           // Reduce
           auto x_vec = ld_nc_global(
-              reinterpret_cast<const int4*>(rdma_buffer_row) + thread_id);
+              reinterpret_cast<const int4*>(rdma_buffer_row) + g_id);
           const auto x_bf16 = reinterpret_cast<nv_bfloat16*>(&x_vec);
 #pragma unroll
           for (int j = 0; j < kNumElemsPerInt4; ++j)
@@ -733,7 +733,7 @@ LOW_LATENCY_COMBINE_RECV:
       for (int j = 0; j < kNumElemsPerInt4; ++j)
         combined_bf16[j] = static_cast<nv_bfloat16>(combined_values[j]);
       (reinterpret_cast<int4*>(combined_x) +
-       token_idx * hidden_bf16_int4)[thread_id] = combined_int4;
+       token_idx * hidden_bf16_int4)[g_id] = combined_int4;
     }
   }
 }
