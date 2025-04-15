@@ -49,9 +49,9 @@ namespace {
 void PrintProgram(const pir::Program& prog, const std::string& stage) {
   bool print_flag = VLOG_IS_ON(1);
 #ifdef PADDLE_WITH_CINN
-  print_flag &= FLAGS_cinn_debug
+  print_flag &= FLAGS_cinn_debug;
 #endif
-      if (print_flag) {
+  if (print_flag) {
     std::cout << "===================== [AutoLayoutPass] " << stage
               << " =====================\n"
               << prog << std::endl;
@@ -60,9 +60,9 @@ void PrintProgram(const pir::Program& prog, const std::string& stage) {
 void PrintConvTransposeInfo(int conv_num, int transpose_num, int scale) {
   bool print_flag = true;
 #ifdef PADDLE_WITH_CINN
-  print_flag &= FLAGS_cinn_debug
+  print_flag &= FLAGS_cinn_debug;
 #endif
-      if (print_flag) {
+  if (print_flag) {
     LOG(INFO) << "end IsNeedAllTranspose"
               << " conv_count_: " << conv_num
               << " transpose_count_: " << transpose_num
