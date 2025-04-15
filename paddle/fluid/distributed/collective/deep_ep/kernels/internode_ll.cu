@@ -372,7 +372,6 @@ LOW_LATENCY_DISPATCH_RECV:
     EP_STATIC_ASSERT(kNumWarpsPerGroup > 1,
                      "Requires more than one warp per group");
     if (sub_warp_id == 1 && lane_id == 0) {
-      // printf("enter recv meta\n");
       while ((num_recv_tokens = ld_acquire_global(
                   rdma_recv_count + local_expert_idx * num_ranks + src_rank)) ==
              0) {
