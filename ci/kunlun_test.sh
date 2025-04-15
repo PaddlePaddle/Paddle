@@ -15,6 +15,19 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
+function get_multi_card_ut_list_for_xpu() {
+    input_file="${PADDLE_ROOT}/tools/xpu/multi_card_ut_xpu_kl3.local"
+    if [ ! -f "$input_file" ]; then
+        echo "input file not exist: $input_file"
+        exit 102
+    fi
+    multi_card_ut_list_for_xpu=$(sed 's/^/^/; s/$/$/' "$input_file" | paste -sd'|' -)
+    echo "========================================="
+    echo "The following unittests are for xpu multi card:"
+    echo ${multi_card_ut_list_for_xpu}
+    echo "========================================="
+}
+
 function parallel_test_base_xpu() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -30,7 +43,12 @@ set +x
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
-        test_cases=$(ctest -N -V -E "$disable_ut_quickly" -LE "(RUN_TYPE=DIST_KUNLUN)")        # cases list which would be run exclusively
+        get_multi_card_ut_list_for_xpu
+        test_cases=$(ctest -N -V -E "$disable_ut_quickly|$multi_card_ut_list_for_xpu")        # cases list which would be run exclusively
+        echo "========================================="
+        echo "RAW test cases for XPU, already EXCLUDED disable_ut and multi_card:"
+        echo ${test_cases}
+        echo "========================================="
 
         single_card_test_num=0
         while read -r line; do
@@ -59,8 +77,25 @@ set +x
                 single_card_tests="$single_card_tests|^$testcase$"
             fi
         done <<< "$test_cases";
-        card_test "$single_card_tests" 1 4
-        card_test "$single_card_tests_1" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using single card, part 1:"
+        echo ${single_card_tests}
+        echo "========================================="
+        card_test "${single_card_tests}" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using single card, part 2:"
+        echo ${single_card_tests_1}
+        echo "========================================="
+        card_test "${single_card_tests_1}" 1 4
+
+        echo "========================================="
+        echo "start to run XPU ut using multiple cards:"
+        echo ${multi_card_ut_list_for_xpu}
+        echo "========================================="
+        card_test "${multi_card_ut_list_for_xpu}" 2 1
+
         failed_test_lists=''
         collect_failed_tests
         xputest_error=0
@@ -116,46 +151,6 @@ set +x
                 # There are more than 10 failed unit tests, so no unit test retry
                 is_retry_execute=1
             fi
-
-        fi
-        if [[ "$IF_KUNLUN3" == "ON" ]]; then
-            export FLAGS_enable_pir_api=0
-            #install paddlex
-            echo "::group::Install paddlex and dependencies..."
-            git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
-            cd PaddleX
-            pip install -e .
-
-            #install paddle x dependency
-            paddlex --install PaddleClas
-            echo "::endgroup"
-
-            #download paddle dataset
-            wget --no-proxy -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
-            tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
-
-            #train Reset50
-            echo "Starting to train ResNet50 model..."
-            python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
-                -o Global.mode=train \
-                -o Global.dataset_dir=./dataset/cls_flowers_examples \
-                -o Global.output=resnet50_output \
-                -o Global.device="xpu:${CUDA_VISIBLE_DEVICES}"
-            echo "Training Resnet50 completed!"
-
-            #inference Reset50
-            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
-            echo ${DEVICES[0]}
-
-            echo "Starting to predict ResNet50 model..."
-            python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
-                -o Global.mode=predict \
-                -o Predict.model_dir="./resnet50_output/best_model/inference" \
-                -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
-                -o Global.device="xpu:${DEVICES[0]}"
-            echo "Predicting Resnet50 completed!"
-            cd ..
-            export FLAGS_enable_pir_api=1
         fi
 set -x
         ut_endTime_s=`date +%s`
