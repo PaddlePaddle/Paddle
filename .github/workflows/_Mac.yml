@@ -20,8 +20,8 @@ env:
   WITH_TESTING: "ON"
   WITH_INFERENCE_API_TEST: "OFF"
   INSTALL_PREFIX: "/Users/paddle/CI_install_path"
-  PYTHON_ABI: "cp39-cp39"
-  PY_VERSION: 3.9
+  PYTHON_ABI: "cp310-cp310"
+  PY_VERSION: 3.10
   WITH_AVX: "OFF"
   WITH_ARM: "ON"
   PROC_RUN: 8
@@ -49,8 +49,8 @@ jobs:
       run: |
         set -x
         cd ${work_dir}
-        [ -d "${work_dir}/Paddle" ] && sudo rm -rf ${work_dir}/Paddle
-        [ -d "${work_dir}/Paddle.tar.gz" ] && sudo rm -rf ${work_dir}/Paddle.tar.gz
+        [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
+        [ -d "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         tar xf Paddle.tar.gz && cd Paddle
 
@@ -65,15 +65,15 @@ jobs:
         git merge --no-edit $BRANCH
         pwd
 
-    - name: Build with mac python3.9
+    - name: Build with mac python3.10
       run: |
         set -x
         cd ${work_dir}/Paddle
-        bash ${work_dir}/Paddle/ci/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
+        bash -x ${work_dir}/Paddle/ci/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
         EXCODE=$?
         exit $EXCODE
 
-    - name: Test with mac python3.9
+    - name: Test with mac python3.10
       run: |
         cd ${work_dir}/Paddle
         bash ${work_dir}/Paddle/ci/run_mac_test.sh ${PYTHON_ABI:-""} ${PROC_RUN:-""}
