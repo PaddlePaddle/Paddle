@@ -1128,10 +1128,17 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   }
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
+  int64_t params = 0;
+  for (auto op : pir_program_.get()->block()->ops()) {
+    if (op->isa<::pir::ParameterOp>()) {
+      params += 1;
+    }
+  }
   if (std::find(config_.deleted_passes_.begin(),
                 config_.deleted_passes_.end(),
                 params_sync_among_devices_pass->name()) ==
-      config_.deleted_passes_.end()) {
+          config_.deleted_passes_.end() &&
+      params > 0) {
     params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
     params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
                                                 sub_scope_);
@@ -1369,11 +1376,16 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
       }
 
     } else {
-      pir::LoadCombineFunction(config_.params_file(),
-                               filter_param_names,
-                               &tensor_out,
-                               false,
-                               place_);
+      if (std::filesystem::exists(config_.params_file())) {
+        pir::LoadCombineFunction(config_.params_file(),
+                                 filter_param_names,
+                                 &tensor_out,
+                                 false,
+                                 place_);
+      } else {
+        LOG(WARNING) << "【Pir Load】Parameter Path not exists: "
+                     << config_.params_file();
+      }
     }
   }
   return true;
