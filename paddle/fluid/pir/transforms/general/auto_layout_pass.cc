@@ -41,14 +41,33 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
+#ifdef PADDLE_WITH_CINN
 COMMON_DECLARE_bool(cinn_debug);
+#endif
 
 namespace {
 void PrintProgram(const pir::Program& prog, const std::string& stage) {
-  if (FLAGS_cinn_debug && VLOG_IS_ON(1)) {
+  bool print_flag = VLOG_IS_ON(1);
+#ifdef PADDLE_WITH_CINN
+  print_flag &= FLAGS_cinn_debug
+#endif
+      if (print_flag) {
     std::cout << "===================== [AutoLayoutPass] " << stage
               << " =====================\n"
               << prog << std::endl;
+  }
+}
+void PrintConvTransposeInfo(int conv_num, int transpose_num, int scale) {
+  bool print_flag = true;
+#ifdef PADDLE_WITH_CINN
+  print_flag &= FLAGS_cinn_debug
+#endif
+      if (print_flag) {
+    LOG(INFO) << "end IsNeedAllTranspose"
+              << " conv_count_: " << conv_num
+              << " transpose_count_: " << transpose_num
+              << " transpose_scale_ * transpose_count_: "
+              << scale * transpose_num;
   }
 }
 class AutoLayoutPass : public pir::Pass {
@@ -120,14 +139,8 @@ class AutoLayoutPass : public pir::Pass {
         }
       }
     }
-    if (FLAGS_cinn_debug) {
-      LOG(INFO) << "end IsNeedAllTranspose"
-                << " conv_count_: " << conv_count_
-                << " transpose_count_: " << transpose_count_
-                << " transpose_scale_ * transpose_count_: "
-                << transpose_scale_ * transpose_count_ << std::endl;
-    }
 
+    PrintConvTransposeInfo(conv_count_, transpose_count_, transpose_scale_);
     return conv_count_ > transpose_scale_ * transpose_count_;
   }
 
