@@ -274,7 +274,7 @@ class DummyGuard : public GuardBase {
 
 class GuardTreeNode {
  public:
-  virtual std::string stringify(FrameProxy* frame) = 0;
+  virtual std::string stringify() = 0;
 };
 
 class AttributeExprNode;
@@ -293,7 +293,7 @@ class ConstantExprNode : public ExprNode {
   }
   ~ConstantExprNode() { Py_DECREF(value_ptr_); }
   PyObject* eval(FrameProxy* frame) override;
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
 
  private:
   PyObject* value_ptr_;
@@ -308,7 +308,7 @@ class ExternVarExprNode : public ExprNode {
 
   ~ExternVarExprNode() { Py_DECREF(value_ptr_); }
   PyObject* eval(FrameProxy* frame) override;
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
 
  private:
   PyObject* value_ptr_;
@@ -321,7 +321,7 @@ class LocalVarExprNode : public ExprNode {
       : var_name_(var_name) {}
 
   PyObject* eval(FrameProxy* frame) override;
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
 
  private:
   std::string var_name_;
@@ -332,7 +332,7 @@ class GlobalVarExprNode : public ExprNode {
       : var_name_(var_name) {}
 
   PyObject* eval(FrameProxy* frame) override;
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
 
  private:
   std::string var_name_;
@@ -344,7 +344,7 @@ class AttributeExprNode : public ExprNode {
       : var_expr_(var_expr), attr_name_(attr_name) {}
 
   PyObject* eval(FrameProxy* frame) override;
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
 
  private:
   std::shared_ptr<ExprNode> var_expr_;
@@ -357,7 +357,7 @@ class ItemExprNode : public ExprNode {
       : var_expr_(var_expr), key_expr_(key_expr) {}
 
   PyObject* eval(FrameProxy* frame) override;
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
 
  private:
   std::shared_ptr<ExprNode> var_expr_;
@@ -379,7 +379,7 @@ class GuardNode : public GuardTreeNode {
         exprs(exprs),
         next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
-  std::string stringify(FrameProxy* frame) override;
+  std::string stringify() override;
   std::optional<int> lookup(FrameProxy* frame);
 };
 
@@ -393,7 +393,7 @@ class GuardTree {
   }
   void add_guard_chain(
       const std::vector<std::shared_ptr<GuardNode>>& guard_chain);
-  std::string stringify(FrameProxy* frame);
+  std::string stringify();
   std::optional<int> lookup(FrameProxy* frame);
 
  private:

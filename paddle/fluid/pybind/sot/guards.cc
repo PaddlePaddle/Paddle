@@ -194,14 +194,10 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
-std::string ConstantExprNode::stringify(FrameProxy* frame) {
-  return py::str(value_ptr_);
-}
+std::string ConstantExprNode::stringify() { return py::str(value_ptr_); }
 
 PyObject* ExternVarExprNode::eval(FrameProxy* frame) { return value_ptr_; }
-std::string ExternVarExprNode::stringify(FrameProxy* frame) {
-  return py::str(value_ptr_);
-}
+std::string ExternVarExprNode::stringify() { return py::str(value_ptr_); }
 
 PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_13_PLUS
@@ -212,7 +208,7 @@ PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
   return PyDict_GetItemString(frame->f_locals, var_name_.c_str());
 #endif
 }
-std::string LocalVarExprNode::stringify(FrameProxy* frame) {
+std::string LocalVarExprNode::stringify() {
   return "locals[" + var_name_ + "]";
 }
 
@@ -223,7 +219,7 @@ PyObject* GlobalVarExprNode::eval(FrameProxy* frame) {
   return PyDict_GetItemString(frame->f_globals, var_name_.c_str());
 #endif
 }
-std::string GlobalVarExprNode::stringify(FrameProxy* frame) {
+std::string GlobalVarExprNode::stringify() {
   return "globals[" + var_name_ + "]";
 }
 
@@ -231,9 +227,9 @@ PyObject* AttributeExprNode::eval(FrameProxy* frame) {
   PyObject* var = var_expr_->eval(frame);
   return PyObject_GetAttrString(var, attr_name_.c_str());
 }
-std::string AttributeExprNode::stringify(FrameProxy* frame) {
+std::string AttributeExprNode::stringify() {
   std::stringstream ss;
-  ss << var_expr_->stringify(frame) << "." << attr_name_;
+  ss << var_expr_->stringify() << "." << attr_name_;
   return ss.str();
 }
 
@@ -242,10 +238,9 @@ PyObject* ItemExprNode::eval(FrameProxy* frame) {
   PyObject* key = key_expr_->eval(frame);
   return PyObject_GetItem(var, key);
 }
-std::string ItemExprNode::stringify(FrameProxy* frame) {
+std::string ItemExprNode::stringify() {
   std::stringstream ss;
-  ss << var_expr_->stringify(frame) << "[" << key_expr_->stringify(frame)
-     << "]";
+  ss << var_expr_->stringify() << "[" << key_expr_->stringify() << "]";
   return ss.str();
 }
 
@@ -266,10 +261,10 @@ std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   }
   return std::nullopt;
 }
-std::string GuardNode::stringify(FrameProxy* frame) {
+std::string GuardNode::stringify() {
   std::stringstream ss;
   ss << guard->get_guard_name();
-  ss << "(" << exprs.back()->stringify(frame) << ")";
+  ss << "(" << exprs.back()->stringify() << ")";
   return ss.str();
 }
 
@@ -296,13 +291,13 @@ std::optional<int> GuardTree::lookup(FrameProxy* frame) {
   }
   return std::nullopt;
 }
-std::string GuardTree::stringify(FrameProxy* frame) {
+std::string GuardTree::stringify() {
   std::stringstream ss;
   for (size_t i = 0; i < guard_nodes_.size(); ++i) {
     if (i > 0) {
       ss << " and ";
     }
-    ss << guard_nodes_[i]->stringify(frame);
+    ss << guard_nodes_[i]->stringify();
   }
   return ss.str();
 }

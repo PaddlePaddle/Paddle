@@ -158,12 +158,7 @@ void BindGuardTree(pybind11::module *m) {
             self.add_guard_chain(guard_chain);
           },
           py::arg("guard_chain"))
-      .def(
-          "stringify",
-          [](GuardTree &self, py::object frame) {
-            return self.stringify(reinterpret_cast<FrameProxy *>(frame.ptr()));
-          },
-          py::arg("frame"));
+      .def("stringify", &GuardTree::stringify);
 
   py::class_<GuardNode, std::shared_ptr<GuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
@@ -185,12 +180,7 @@ void BindGuardTree(pybind11::module *m) {
             return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
           py::arg("frame"))
-      .def(
-          "stringify",
-          [](ExprNode &self, py::object frame) {
-            return self.stringify(reinterpret_cast<FrameProxy *>(frame.ptr()));
-          },
-          py::arg("frame"));
+      .def("stringify", &GuardNode::stringify);
 
   py::class_<ExprNode, std::shared_ptr<ExprNode>>(
       *m, "ExprNode", R"DOC(ExprNode Class.)DOC")
@@ -200,12 +190,7 @@ void BindGuardTree(pybind11::module *m) {
             return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
           py::arg("frame"))
-      .def(
-          "stringify",
-          [](ExprNode &self, py::object frame) {
-            return self.stringify(reinterpret_cast<FrameProxy *>(frame.ptr()));
-          },
-          py::arg("frame"));
+      .def("stringify", &ExprNode::stringify);
 
   py::class_<ConstantExprNode, ExprNode, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
