@@ -83,7 +83,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker run --privileged --pids-limit 409600 --shm-size=128G -d -t \
+          sudo docker run --privileged --pids-limit 409600 --shm-size=128G -d -t \
             --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --name ${container_name} \
             -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
             -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
@@ -97,6 +97,7 @@ jobs:
             -e COMMIT_ID \
             -e work_dir \
             -e PADDLE_ROOT \
+            -e PADDLE_VERSION \
             -e ASCEND_RT_VISIBLE_DEVICES \
             -e WITH_COVERAGE \
             -e GITHUB_API_TOKEN \
@@ -131,7 +132,7 @@ jobs:
           # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/${PR_ID}/${COMMIT_ID}/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/cpu_whl/72249/f53ad88ebe58369720ff3727bd6382ccc6cb2535/paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl --no-check-certificate
           PATH=/usr/local/bin:${PATH}
-          echo "PATH=$PATH" >> ~/.bashrc
+          echo "export PATH=$PATH" >> ~/.bashrc
           ln -sf $(which python3.9) /usr/local/bin/python
           ln -sf $(which pip3.9) /usr/local/bin/pip
           ln -sf $(which python3.9) /usr/bin/python
