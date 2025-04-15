@@ -229,7 +229,6 @@ function clean_build_files() {
 
 function determine_xpu_runner() {
     runner_name=$1
-    echo $GITHUB_ENV
     if [[ $runner_name == "paddle-1" ]]; then
         echo "ASCEND_RT_VISIBLE_DEVICES=0,1,2,3" >> $GITHUB_ENV
     elif [[ $runner_name == "paddle-2" ]]; then
@@ -242,7 +241,6 @@ function determine_xpu_runner() {
         echo "Unknown runner name: $runner_name"
         exit 1
     fi
-    echo ${ASCEND_RT_VISIBLE_DEVICES}
 }
 
 function cmake_base() {
