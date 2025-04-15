@@ -393,13 +393,8 @@ class TestMLP(unittest.TestCase):
         sub_block_ops = dist_main_prog.blocks[1].ops
         sub_block_ops = [op.type for op in sub_block_ops]
 
-        self.assertTrue(
-            "c_allreduce_sum" in global_block_ops
-            or "all_reduce" in global_block_ops
-        )
-        self.assertTrue(
-            "c_allreduce_sum" in sub_block_ops or "all_reduce" in sub_block_ops
-        )
+        self.assertTrue("all_reduce" in global_block_ops)
+        self.assertTrue("all_reduce" in sub_block_ops)
 
         # test fill_constant_batch_size_like
         self.assertIsNotNone(fill_op)
