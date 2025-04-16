@@ -255,7 +255,10 @@ class DummyGuard : public GuardBase {
   bool check(PyObject* value) override { return true; }
 };
 
-class GuardTreeNode {};
+class GuardTreeNode {
+ public:
+  virtual ~GuardTreeNode() = default;
+};
 
 class AttributeExprNode;
 class ItemExprNode;
@@ -353,6 +356,7 @@ class GuardNode : public GuardTreeNode {
         exprs(exprs),
         next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
+  virtual ~GuardNode() = default;
 
   std::optional<int> lookup(FrameProxy* frame);
 };
