@@ -84,6 +84,10 @@ bool TypeMatchGuard::check(PyObject* value) {
 bool IdMatchGuard::check(PyObject* value) { return value == expected_; }
 
 bool ValueMatchGuard::check(PyObject* value) {
+  if (value == NULL) {
+    PyErr_Clear();
+    return false;
+  }
   return PyObject_Equal(value, expected_value_);
 }
 
@@ -107,6 +111,10 @@ bool DtypeMatchGuard::check(PyObject* value) {
 }
 
 bool ShapeMatchGuard::check(PyObject* value) {
+  if (value == NULL) {
+    PyErr_Clear();
+    return false;
+  }
   auto tensor = GetTensorFromPyObject(value);
   if (!tensor) {
     return false;
