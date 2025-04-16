@@ -6028,6 +6028,36 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   scale->set_dtype(x.dtype());
 }
 
+void SlogdetInferMeta(const MetaTensor& x, MetaTensor* sign, MetaTensor* out) {
+  DDim x_dims = x.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      2,
+      errors::InvalidArgument("Input(X) should be a 2-D tensor, but got %u.",
+                              x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[rank - 1],
+      x_dims[rank - 2],
+      errors::InvalidArgument("the input matrix should be square matrix."));
+  auto x_dtype = x.dtype();
+  auto x_layout = x.layout();
+
+  auto out_dims = slice_ddim(x_dims, 0, rank - 2);
+  sign->set_dtype(x_dtype);
+  sign->layout(x_layout);
+  sign->set_dims(out_dims);
+
+  if (x_dtype == DataType::COMPLEX64)
+    out->set_dtype(DataType::FLOAT32);
+  else if (x_dtype == DataType::COMPLEX128)
+    out->set_dtype(DataType::FLOAT64);
+  else
+    out->set_dtype(x_dtype);
+  out->set_layout(x_layout);
+  out->set_dims(out_dims);
+}
+
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
