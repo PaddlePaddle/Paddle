@@ -45,11 +45,11 @@ struct SlogDeterminantFunctor {
                   const DenseTensor& input,
                   int64_t rank,
                   int64_t batch_count,
-                  DenseTensor* output) {
+                  DenseTensor* sign,
+                  DenseTensor* logdet) {
     std::vector<T> input_vec;
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
-    std::vector<T> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
@@ -71,10 +71,8 @@ struct SlogDeterminantFunctor {
           : log_vec.push_back(std::log(std::abs(
                 det_val)));  // for computing log value of a negative value.
     }
-    // merge sign_vec and log_vec as final output_vec
-    output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
-    output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    phi::TensorFromVector(sign_vec, dev_ctx, sign);
+    phi::TensorFromVector(log_vec, dev_ctx, logdet);
   }
 };
 
@@ -84,13 +82,13 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
                   const DenseTensor& input,
                   int64_t rank,
                   int64_t batch_count,
-                  DenseTensor* output) {
+                  DenseTensor* sign,
+                  DenseTensor* logdet) {
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
     std::vector<phi::dtype::complex<T>> input_vec;
     std::vector<phi::dtype::complex<T>> sign_vec;
     std::vector<phi::dtype::complex<T>> log_vec;
-    std::vector<phi::dtype::complex<T>> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
@@ -110,25 +108,23 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
       T abs_det_val = std::abs(det_val);
       sign_vec.push_back(static_cast<phi::dtype::complex<T>>(
           sign(det_val, static_cast<std::complex<T>>(abs_det_val))));
-      log_vec.push_back(
-          static_cast<phi::dtype::complex<T>>(std::log(abs_det_val)));
+      log_vec.push_back(std::log(abs_det_val));
     }
-    // merge sign_vec and log_vec as final output_vec
-    output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
-    output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    phi::TensorFromVector(output_vec, dev_ctx, output);
+    phi::TensorFromVector(sign_vec, dev_ctx, sign);
+    phi::TensorFromVector(log_vec, dev_ctx, logdet);
   }
 };
 
 template <typename T, typename Context>
 void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
-                           DenseTensor* out) {
+                           DenseTensor* sign,
+                           DenseTensor* logdet) {
   auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());
-  VLOG(2) << "input dim:" << x.dims();
+  VLOG(1) << "input dim:" << x.dims();
   PADDLE_ENFORCE_GE(
       input_dim_size,
       2,
@@ -139,17 +135,9 @@ void SlogDeterminantKernel(const Context& dev_ctx,
       input_dim[input_dim_size - 2],
       errors::InvalidArgument("the input matrix should be square matrix."));
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
-  SlogDeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);
-  std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
-  if (input_dim.size() == static_cast<size_t>(2)) {
-    // when input is a two-dimension matrix, The det value is a number.
-    output_dim_vec = {};
-  }
-  output_dim_vec.insert(output_dim_vec.begin(),
-                        2);  // make the output dims as same as numpy
-  auto output_dims = common::make_ddim(output_dim_vec);
-  out->Resize(output_dims);
-  VLOG(2) << "output dim:" << out->dims();
+  SlogDeterminantFunctor<T, Context>()(
+      dev_ctx, x, rank, batch_count, sign, logdet);
+  VLOG(1) << "sign dim:" << sign->dims();
 }
 
 }  // namespace phi

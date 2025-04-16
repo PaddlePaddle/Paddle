@@ -4689,9 +4689,9 @@
 
 - op : slogdet
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(sign), Tensor(logdet)
   infer_meta :
-    func : UnchangedInferMeta
+    func : SlogdetInferMeta
   kernel :
     func : slogdet
   backward : slogdet_grad

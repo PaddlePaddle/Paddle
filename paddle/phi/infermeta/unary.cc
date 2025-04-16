@@ -6028,7 +6028,9 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
   scale->set_dtype(x.dtype());
 }
 
-void SlogdetInferMeta(const MetaTensor& x, MetaTensor* sign, MetaTensor* out) {
+void SlogdetInferMeta(const MetaTensor& x,
+                      MetaTensor* sign,
+                      MetaTensor* logdet) {
   DDim x_dims = x.dims();
   int rank = x_dims.size();
   PADDLE_ENFORCE_GE(
@@ -6049,13 +6051,14 @@ void SlogdetInferMeta(const MetaTensor& x, MetaTensor* sign, MetaTensor* out) {
   sign->set_dims(out_dims);
 
   if (x_dtype == DataType::COMPLEX64)
-    out->set_dtype(DataType::FLOAT32);
+    logdet->set_dtype(DataType::FLOAT32);
   else if (x_dtype == DataType::COMPLEX128)
-    out->set_dtype(DataType::FLOAT64);
+    logdet->set_dtype(DataType::FLOAT64);
   else
-    out->set_dtype(x_dtype);
-  out->set_layout(x_layout);
-  out->set_dims(out_dims);
+    logdet->set_dtype(x_dtype);
+
+  logdet->set_layout(x_layout);
+  logdet->set_dims(out_dims);
 }
 
 void ChannelShuffleInferMeta(const MetaTensor& x,
