@@ -805,7 +805,7 @@ void BuildOpFuncList(const phi::Place& place,
         op_func_node.type_ =
             AnalyseOpFuncType(op_func_node, kernel_type.place_);
 
-        VLOG(0) << op_with_kernel->Type()
+        VLOG(3) << op_with_kernel->Type()
                 << " : finally selected kernel_key: " << kernel_type;
 
         // step 3. data transform
@@ -868,20 +868,21 @@ void BuildOpFuncList(const phi::Place& place,
               auto original_stream =
                   static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
               distributed::ProcessGroup* pg = map->get(ring_id);
-            auto comm_context =
-                static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
-                    ->GetOrCreateCommContext(place);
-            dev_ctx =
-                static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-                    ->GetDevContext();
-            dev_ctx->SetCommContext(comm_context);
-            static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
-                original_stream, false);
-            auto& instance =
-                paddle::memory::allocation::AllocatorFacade::Instance();
-            dev_ctx->SetAllocator(
-                instance
-                    .GetAllocator(
+              auto comm_context =
+                  static_cast<paddle::distributed::ProcessGroupNCCL*>(pg)
+                      ->GetOrCreateCommContext(place);
+              dev_ctx =
+                  static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                      ->GetDevContext();
+              dev_ctx->SetCommContext(comm_context);
+
+              static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                  original_stream, false);
+              auto& instance =
+                  paddle::memory::allocation::AllocatorFacade::Instance();
+              dev_ctx->SetAllocator(
+                  instance
+                      .GetAllocator(
                           place,
                           static_cast<phi::GPUContext*>(dev_ctx)->stream())
                       .get());

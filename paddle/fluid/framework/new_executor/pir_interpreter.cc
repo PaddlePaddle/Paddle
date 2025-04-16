@@ -1153,17 +1153,11 @@ void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
   if (instr->Name() == "pd_op.p_send") {
     ::pir::Operation* op = instr->Operation();
     int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
-    if (FLAGS_dynamic_static_unified_comm) {
-      const auto& comm_context_manager =
-          phi::distributed::CommContextManager::GetInstance();
-      stream = static_cast<phi::distributed::NCCLCommContext*>(
-                   comm_context_manager.Get(std::to_string(ring_id)))
-                   ->GetStream();
-    } else {
-      stream = platform::NCCLCommContext::Instance()
-                   .Get(ring_id, instr->DeviceContext().GetPlace())
-                   ->stream();
-    }
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    stream = static_cast<phi::distributed::NCCLCommContext*>(
+                 comm_context_manager.Get(std::to_string(ring_id)))
+                 ->GetStream();
   }
 #endif
   auto TensorRecordStream = [&stream,
