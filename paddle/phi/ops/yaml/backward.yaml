@@ -632,6 +632,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : cosh_grad
   inplace : (out_grad -> x_grad)
