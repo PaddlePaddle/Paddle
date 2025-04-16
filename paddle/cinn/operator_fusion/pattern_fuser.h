@@ -142,68 +142,11 @@ static StmtPattern MergePatternImpl(const TrivialPattern& first,
                                       second.loop_axis_mapping()));
 }
 
-// RR & RT
-
-static int InsertUpstreamIntoTree(const ReduceTreePattern& upstream,
-                                  ReduceTreePattern& downstream) {  // NOLINT
-  auto is_direct_upstream = [&](const ReducePattern& upstream,
-                                const ReducePattern& downstream) -> bool {
-    auto upstream_result = upstream.GetReduceOp()->result(0);
-    auto user_ops = FindUserOp(downstream.ops(), upstream_result);
-    return !user_ops.empty();
-  };
-
-  if (is_direct_upstream(upstream.GetRootPattern(),
-                         downstream.GetRootPattern())) {
-    downstream.InsertChild(upstream);
-    return 1;
-  }
-  int insert_num = 0;
-  for (auto& child : downstream.children()) {
-    insert_num += InsertUpstreamIntoTree(upstream, child);
-  }
-  return insert_num;
-}
-
-static StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
-                                    const ReduceTreePattern& downstream) {
-  ReduceTreePattern result = ReduceTreePattern(
-      downstream.children(),
-      downstream.GetRootPattern(),
-      std::make_shared<FusionTracker>(upstream.tracker_,
-                                      downstream.tracker_));  // copy first.
-  int insert_num = InsertUpstreamIntoTree(upstream, result);
-  result.set_loop_axis_mapping(LoopAxisMappingMerge(
-      upstream.loop_axis_mapping(), downstream.loop_axis_mapping(), false));
-  PADDLE_ENFORCE_EQ(insert_num,
-                    1,
-                    ::common::errors::PreconditionNotMet(
-                        "Must insert only once, but insert %d", insert_num));
-  return result;
-}
-
-static StmtPattern MergePatternImpl(const ReduceTreePattern& first,
-                                    const TrivialPattern& second) {
-  auto result = ReduceTreePlusTrivialPattern(
-      first,
-      second,
-      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
-  result.set_loop_axis_mapping(ReducePlusTrivialLoopAxisMappingMerge(
-      first.loop_axis_mapping(), second.loop_axis_mapping()));
-  return result;
-}
-
 static StmtPattern MergePattern(const StmtPattern& first,
                                 const StmtPattern& second) {
   VLOG(4) << "MergePattern: " << GetPatternId(first) << " x "
           << GetPatternId(second);
   const auto PatternMatch = adt::match{
-      [&](const ReduceTreePattern& lhs, const ReduceTreePattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
-      [&](const ReduceTreePattern& lhs, const TrivialPattern& rhs) {
-        return MergePatternImpl(lhs, rhs);
-      },
       [&](const TrivialPattern& lhs, const ReducePattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },

@@ -60,7 +60,7 @@ struct MergeTrivialPatternOperation {
   }
 };
 
-struct MergeReduceTreeOperation {
+struct ReducePlusReduceFusionOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
@@ -69,18 +69,43 @@ struct MergeReduceTreeOperation {
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
-    auto merged_node = graph->MergeNode(node, downstream, MergePattern);
+    auto loop_sink_transform_opt = GetValidAdjacentLoopTransform(
+        node->loop_axis_mapping(), downstream->loop_axis_mapping(), false);
+    if (loop_sink_transform_opt == std::nullopt) return node;
+    auto loop_sink_transform = InsertSubstituteReduceAxis(
+        loop_sink_transform_opt.value(), node->loop_axis_mapping());
+    VLOG(4) << "Start AnchorFusionOperation";
+    VLOG(4) << "Upstream: \n" << node->DebugStr();
+    VLOG(4) << "Downstream: \n" << downstream->DebugStr();
+    const auto merge_pattern_fn =
+        [](const StmtPattern& upstream,
+           const StmtPattern& downstream) -> StmtPattern {
+      return AnchorPattern(
+          UniqueConcatVector(GetOpsInPattern(upstream),
+                             GetOpsInPattern(downstream)),
+          std::make_shared<FusionTracker>(GetFusionTracker(upstream),
+                                          GetFusionTracker(downstream)),
+          LoopAxisMappingMerge(GetPatternLoopAxisMapping(upstream),
+                               GetPatternLoopAxisMapping(downstream),
+                               false));
+    };
+    auto merged_node = graph->MergeNode(node, downstream, merge_pattern_fn);
+    // Update tracker
+    auto node_tmp_id = GetNewTmpId(node->id());
+    merged_node->AppendInstr(std::make_shared<AxisTransformInstr>(
+        node->id(), node_tmp_id, loop_sink_transform));
+    merged_node->AppendInstr(std::make_shared<CombineInstr>(
+        std::vector<std::string>{node_tmp_id, downstream->id()},
+        merged_node->id()));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
-    VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
-            << "\ndownstream " << downstream->DebugStr() << "\nmerged "
-            << merged_node->DebugStr();
+    VLOG(4) << "Merged: \n" << merged_node->DebugStr();
     merged_node->UpdateTracker();
     return merged_node;
   }
 };
 
-struct MergeReduceTreeAndTrivialOperation {
+struct ReducePlusTrivialFusionOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
@@ -89,25 +114,42 @@ struct MergeReduceTreeAndTrivialOperation {
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
-    VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
-            << node->DebugStr() << "\ndownstream " << downstream->DebugStr();
-    auto fake_reduce_iter_idx = graph->policy_manager()
-                                    .template GetPolicy<RelativeJudgePolicy>()
-                                    ->GetFakeReduceIterIdx(node, downstream);
-    const auto merge_pattern_fn = [&fake_reduce_iter_idx](
-                                      const StmtPattern& first,
-                                      const StmtPattern& secend) {
-      auto rt_pattern =
-          std::get<ReduceTreePlusTrivialPattern>(MergePattern(first, secend));
-      rt_pattern.fake_reduce_iter_idx = fake_reduce_iter_idx;
-      return rt_pattern;
+    auto loop_transform_pair = GetReducePlusTrivialLoopTransform(
+        node->loop_axis_mapping(), downstream->loop_axis_mapping());
+    if (loop_transform_pair == std::nullopt) return node;
+    VLOG(4) << "Start AnchorFusionOperation";
+    VLOG(4) << "Upstream: \n" << node->DebugStr();
+    VLOG(4) << "Downstream: \n" << downstream->DebugStr();
+    auto upstream_loop_transform = InsertSubstituteReduceAxis(
+        loop_transform_pair.value().first, node->loop_axis_mapping());
+    auto downstream_loop_transform = loop_transform_pair.value().second;
+    const auto merge_pattern_fn =
+        [&](const StmtPattern& upstream,
+            const StmtPattern& downstream) -> StmtPattern {
+      return AnchorPattern(
+          UniqueConcatVector(GetOpsInPattern(upstream),
+                             GetOpsInPattern(downstream)),
+          std::make_shared<FusionTracker>(GetFusionTracker(upstream),
+                                          GetFusionTracker(downstream)),
+          ReducePlusTrivialLoopAxisMappingMerge(
+              GetPatternLoopAxisMapping(upstream),
+              GetPatternLoopAxisMapping(downstream),
+              downstream_loop_transform));
     };
-    PatternNodePtr merged_node =
-        graph->MergeNode(node, downstream, merge_pattern_fn);
-
+    auto merged_node = graph->MergeNode(node, downstream, merge_pattern_fn);
+    // Update tracker
+    auto node_tmp_id = GetNewTmpId(node->id());
+    auto downstream_tmp_id = GetNewTmpId(downstream->id());
+    merged_node->AppendInstr(std::make_shared<AxisTransformInstr>(
+        node->id(), node_tmp_id, upstream_loop_transform));
+    merged_node->AppendInstr(std::make_shared<AxisTransformInstr>(
+        downstream->id(), downstream_tmp_id, downstream_loop_transform));
+    merged_node->AppendInstr(std::make_shared<CombineInstr>(
+        std::vector<std::string>{node_tmp_id, downstream_tmp_id},
+        merged_node->id()));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
-    VLOG(4) << "merged " << merged_node->DebugStr();
+    VLOG(4) << "Merged: \n" << merged_node->DebugStr();
     merged_node->UpdateTracker();
     return merged_node;
   }
@@ -202,6 +244,7 @@ struct AnchorFusionOperation {
     return merged_node;
   }
 };
+
 struct SplitRecomputeOperation {
   void operator()(PatternGraph* graph, PatternNodePtr upstream) {
     auto origin_name = upstream->id();

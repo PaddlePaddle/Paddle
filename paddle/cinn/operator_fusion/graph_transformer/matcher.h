@@ -105,33 +105,29 @@ struct CanFuseRxTMatcher {
   }
 };
 
-struct CanFuseReduceTreeMatcher {
+struct CanFuseReducePlusReduceMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
-    return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-           !node->downstream().empty() &&
-           std::holds_alternative<ReduceTreePattern>(
-               node->downstream().at(0)->stmt_pattern()) &&
+    return StmtPatternGraphMatcher<AnchorPattern>()(graph, node) &&
+           node->loop_axis_mapping().reduce_axis_num > 0 &&
+           node->downstream().size() == 1 &&
+           node->downstream().at(0)->loop_axis_mapping().reduce_axis_num > 0 &&
            graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
                ->CanFuse(node, node->downstream().at(0)) &&
-           graph.policy_manager()
-               .template GetPolicy<RelativeJudgePolicy>()
-               ->CanFuse(node, node->downstream().at(0));
+           CanFuseReducePlusReduce(
+               node->loop_axis_mapping(),
+               node->downstream().at(0)->loop_axis_mapping());
   }
 };
 
-struct CanFuseReduceTreeAndTrivialMatcher {
+struct CanFuseReducePlusTrivialMatcher {
   bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
-    return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
-           !node->downstream().empty() &&
-           std::holds_alternative<TrivialPattern>(
-               node->downstream().at(0)->stmt_pattern()) &&
-           node->downstream().at(0)->downstream().size() == 0 &&
+    return StmtPatternGraphMatcher<AnchorPattern>()(graph, node) &&
+           node->loop_axis_mapping().reduce_axis_num > 0 &&
+           node->downstream().size() == 1 &&
+           node->downstream().at(0)->loop_axis_mapping().reduce_axis_num == 0 &&
            graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
-               ->CanFuse(node, node->downstream().at(0)) &&
-           graph.policy_manager()
-               .template GetPolicy<RelativeJudgePolicy>()
                ->CanFuse(node, node->downstream().at(0));
   }
 };

@@ -31,12 +31,6 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   VLOG(4) << "[Group Cluster] After SinkTrivialPattern: ";
   PrintGraphInfo();
 
-  // ReducePattern -> ReduceTreePattern
-  VLOG(4) << "[Group Cluster] Start ReduceLiftReduceTree";
-  ReduceLiftReduceTree();
-  VLOG(4) << "[Group Cluster] After ReduceLiftReduceTree: ";
-  PrintGraphInfo();
-
   // ReduceTreePattern + ReduceTreePattern fusion
   VLOG(4) << "[Group Cluster] Start ReduceTreeGrown";
   ReduceTreeGrown();
@@ -153,24 +147,20 @@ void PatternGraph::SinkTrivialPattern() {
                    MergeTrivialPatternOperation>(this);
 }
 
-void PatternGraph::ReduceLiftReduceTree() {
-  GraphTransformer<
-      NodePattern,
-      And<DownstreamSmallerThan<2>, StmtPatternGraphMatcher<ReducePattern>>,
-      LiftReduceToReduceTreeOperation>(this);
-}
-
 void PatternGraph::ReduceTreeGrown() {
   GraphTransformer<NodePattern,
-                   And<CanFuseReduceTreeMatcher, Not<IsOutputNodeMatcher>>,
-                   MergeReduceTreeOperation>(this);
+                   StmtPatternGraphMatcher<ReducePattern>,
+                   LiftToAnchorPatternOperation>(this);
+
+  GraphTransformer<NodePattern,
+                   CanFuseReducePlusReduceMatcher,
+                   ReducePlusReduceFusionOperation>(this);
 }
 
 void PatternGraph::ReduceTree_Trivial_Fusion() {
-  GraphTransformer<
-      NodePattern,
-      And<CanFuseReduceTreeAndTrivialMatcher, Not<IsOutputNodeMatcher>>,
-      MergeReduceTreeAndTrivialOperation>(this);
+  GraphTransformer<NodePattern,
+                   CanFuseReducePlusTrivialMatcher,
+                   ReducePlusTrivialFusionOperation>(this);
 }
 
 void PatternGraph::AnchorFusion() {

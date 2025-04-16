@@ -200,6 +200,20 @@ LoopAxisMapping TrivialSinkLoopAxisMappingMerge(
   return result;
 }
 
+std::vector<int> GetTargetRelatedAxisIdx(
+    const std::vector<symbol::DimExpr>& source,
+    const AxisTransformRoute& route) {
+  AxisTransformSimulator simulator(route, source);
+  auto source_related_ids = simulator.GetRelatedAxisIds(simulator.source_ids_);
+  std::vector<int> result;
+  for (int i = 0; i < simulator.target_ids_.size(); ++i) {
+    if (source_related_ids.count(simulator.target_ids_[i])) {
+      result.push_back(i);
+    }
+  }
+  return result;
+}
+
 std::vector<int> GetFakeReduceAxisIdx(const std::vector<symbol::DimExpr>& loop,
                                       const AxisTransformRoute& route,
                                       int reduce_axis_num) {
@@ -232,110 +246,55 @@ std::vector<int> GetFakeReduceAxisIdx(const std::vector<symbol::DimExpr>& loop,
   return fake_reduce_idx;
 }
 
+bool CanFuseReducePlusReduce(const LoopAxisMapping& upstream,
+                             const LoopAxisMapping& downstream) {
+  auto upstream_reduce_loop =
+      SliceVector(upstream.loop,
+                  upstream.loop.size() - upstream.reduce_axis_num,
+                  upstream.loop.size());
+  auto downstream_reduce_loop =
+      SliceVector(downstream.loop,
+                  downstream.loop.size() - downstream.reduce_axis_num,
+                  downstream.loop.size());
+  if (upstream.reduce_axis_num != downstream.reduce_axis_num ||
+      upstream_reduce_loop != downstream_reduce_loop) {
+    return false;
+  }
+  auto loop_sink_route = GetLoopSinkRoute(upstream, downstream);
+  if (HasUnsupportedTransform(loop_sink_route)) return false;
+  auto downstream_related_axis =
+      GetTargetRelatedAxisIdx(upstream.loop, loop_sink_route);
+  for (auto idx : downstream_related_axis) {
+    if (idx >= downstream.loop.size() - downstream.reduce_axis_num) {
+      return false;
+    }
+  }
+  return true;
+}
+
 LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
-    const LoopAxisMapping& upstream, const LoopAxisMapping& downstream) {
-  // Signal downstream reduce plus trivial fusion loop is downstream trivial
-  // loop plus upstream reduce loop.
+    const LoopAxisMapping& upstream,
+    const LoopAxisMapping& downstream,
+    const AxisTransformRoute& downstream_loop_transform) {
   PADDLE_ENFORCE(
       upstream.reduce_axis_num > 0 && downstream.reduce_axis_num == 0,
       ::common::errors::InvalidArgument(
           "Upstream should be reduce pattern and "
           "downstream should be trivial pattern."));
-  auto loop_sink_route = GetLoopSinkRoute(upstream, downstream);
-  if (HasUnsupportedTransform(loop_sink_route)) {
-    // TODO(huangjiyi): fix unsupported transform in RT fusion
-    auto result = LoopAxisMappingMergeImpl(upstream, downstream, false);
-    result.DisableLoopAxisMapping();
-    return result;
+  auto result = LoopAxisMappingMergeImpl(upstream, downstream, false);
+  AxisTransformSimulator simulator(downstream_loop_transform, downstream.loop);
+  result.loop = simulator.out_shape_;
+  for (auto& route : result.input2loop) {
+    route.insert(route.end(),
+                 downstream_loop_transform.begin(),
+                 downstream_loop_transform.end());
   }
-  auto reduce_axis_num = upstream.reduce_axis_num;
-  auto reduce_axis = ArangeVector<int64_t>(
-      upstream.loop.size() - reduce_axis_num, upstream.loop.size());
-  auto reduce_loop = SliceVector(upstream.loop,
-                                 upstream.loop.size() - reduce_axis_num,
-                                 upstream.loop.size());
-  // Check whether downstream trivial can reuse upstream reduce axis.
-  auto fake_reduce_idx =
-      GetFakeReduceAxisIdx(upstream.loop, loop_sink_route, reduce_axis_num);
-  VLOG(4) << "fake_reduce_idx: " << cinn::utils::Join(fake_reduce_idx, ",");
-  LoopAxisMapping result;
-  if (fake_reduce_idx.empty()) {
-    AxisTransform append_reduce_axis =
-        std::make_shared<AppendAxisTransform>(reduce_axis, reduce_loop);
-    auto upstream_copy = upstream;
-    for (auto& route : upstream_copy.input2loop) {
-      route.push_back(append_reduce_axis);
-    }
-    upstream_copy.loop.insert(
-        upstream_copy.loop.end(), reduce_loop.begin(), reduce_loop.end());
-    result = LoopAxisMappingMergeImpl(upstream_copy, downstream, false);
-    result.loop = ConcatVector(downstream.loop, reduce_loop);
-    AxisTransform delete_reduce_axis = std::make_shared<DeleteAxisTransform>(
-        ArangeVector<int64_t>(downstream.loop.size(), result.loop.size()),
-        reduce_loop);
-    for (auto& route : result.loop2output) {
-      route.insert(route.begin(), delete_reduce_axis);
-    }
-    auto fake_reduce_idx = ArangeVector<int64_t>(
-        downstream.loop.size(), downstream.loop.size() + reduce_axis_num);
-    AxisTransform append_fake_reduce_idx =
-        std::make_shared<AppendAxisTransform>(fake_reduce_idx, reduce_loop);
-    for (int i = upstream.input2loop.size(); i < result.input2loop.size();
-         ++i) {
-      result.input2loop[i].push_back(append_fake_reduce_idx);
-    }
-  } else {
-    // Transpose fake reduce axis to the end
-    auto perm = ArangeVector<int>(0, downstream.loop.size());
-    for (auto index : fake_reduce_idx) {
-      perm.push_back(index);
-    }
-    std::sort(fake_reduce_idx.begin(), fake_reduce_idx.end());
-    std::reverse(fake_reduce_idx.begin(), fake_reduce_idx.end());
-    for (auto index : fake_reduce_idx) {
-      perm.erase(perm.begin() + index);
-    }
-    result = LoopAxisMappingMergeImpl(upstream, downstream, false);
-    AxisTransformRoute fake_reduce_axis_transforms;
-    if (perm != ArangeVector<int>(0, downstream.loop.size())) {
-      result.loop = TransposeVector(result.loop, perm);
-      auto transpose_trans = std::make_shared<TransposeTransform>(perm);
-      fake_reduce_axis_transforms.push_back(transpose_trans);
-    }
-    // Check whether fake reduce axis reuse all reduce axis
-    if (fake_reduce_idx.size() < reduce_axis_num) {
-      std::vector<int64_t> one_reduce_axis;
-      for (int i = 0; i < reduce_loop.size(); ++i) {
-        bool has_reuse = false;
-        for (const auto& downstream_idx : fake_reduce_idx) {
-          if (reduce_loop[i] == downstream.loop[downstream_idx]) {
-            has_reuse = true;
-            break;
-          }
-        }
-        if (!has_reuse) {
-          PADDLE_ENFORCE_EQ(reduce_loop[i],
-                            symbol::DimExpr(1),
-                            ::common::errors::PreconditionNotMet(
-                                "Reduce axis not been reused must be 1."));
-          one_reduce_axis.push_back(downstream.loop.size() -
-                                    fake_reduce_idx.size() + i);
-        }
-      }
-      auto append_one_reduce_axis =
-          std::make_shared<AppendAxisTransform>(one_reduce_axis);
-      fake_reduce_axis_transforms.push_back(append_one_reduce_axis);
-    }
-    for (auto& route : result.input2loop) {
-      route.insert(route.end(),
-                   fake_reduce_axis_transforms.begin(),
-                   fake_reduce_axis_transforms.end());
-    }
-    for (auto& route : result.loop2output) {
-      route.insert(route.begin(),
-                   fake_reduce_axis_transforms.begin(),
-                   fake_reduce_axis_transforms.end());
-    }
+  auto reverse_loop_transform =
+      ReverseTransformRoute(downstream_loop_transform);
+  for (auto& route : result.loop2output) {
+    route.insert(route.begin(),
+                 reverse_loop_transform.begin(),
+                 reverse_loop_transform.end());
   }
   result.SimplifyForwardMapping();
   result.SetReverseMapping();
@@ -383,6 +342,113 @@ LoopAxisMapping HorizontalLoopAxisMappingMerge(const LoopAxisMapping& source,
   result.SimplifyForwardMapping();
   result.SetReverseMapping();
   return result;
+}
+
+AxisTransformRoute InsertSubstituteReduceAxis(const AxisTransformRoute& route,
+                                              const LoopAxisMapping& source) {
+  auto result = route;
+  // Because reduce axis can not be transformed, we need to add
+  // same fake axis to substitute reduce axis for transformation.
+  std::vector<int64_t> append_reduce_axis = ArangeVector<int64_t>(
+      source.loop.size() - source.reduce_axis_num, source.loop.size());
+  std::vector<symbol::DimExpr> append_reduce_shape =
+      GatherVector(source.loop, append_reduce_axis);
+  result.insert(result.begin(),
+                std::make_shared<AppendAxisTransform>(append_reduce_axis,
+                                                      append_reduce_shape));
+  // Remove substitute reduce axis.
+  AxisTransformSimulator simulator(result, source.loop);
+  std::vector<int64_t> delete_reduce_axis = ArangeVector<int64_t>(
+      simulator.target_ids_.size() - source.reduce_axis_num * 2,
+      simulator.target_ids_.size() - source.reduce_axis_num);
+  PADDLE_ENFORCE_GE(
+      simulator.target_ids_.size(),
+      source.reduce_axis_num * 2,
+      ::common::errors::InvalidArgument("Reduce axis num is not enough."));
+  auto delete_reduce_shape =
+      GatherVector(simulator.out_shape_, delete_reduce_axis);
+  PADDLE_ENFORCE(append_reduce_shape == delete_reduce_shape,
+                 ::common::errors::InvalidArgument(
+                     "Reduce axis shape is not equal after transform."));
+  result.push_back(std::make_shared<DeleteAxisTransform>(delete_reduce_axis,
+                                                         delete_reduce_shape));
+  return result;
+}
+
+std::optional<std::pair<AxisTransformRoute, AxisTransformRoute>>
+GetReducePlusTrivialLoopTransform(const LoopAxisMapping& upstream,
+                                  const LoopAxisMapping& downstream) {
+  PADDLE_ENFORCE(
+      upstream.reduce_axis_num > 0 && downstream.reduce_axis_num == 0,
+      ::common::errors::InvalidArgument(
+          "Upstream should be reduce pattern and "
+          "downstream should be trivial pattern."));
+  auto loop_sink_route = GetLoopSinkRoute(upstream, downstream);
+  if (HasUnsupportedTransform(loop_sink_route)) {
+    return std::nullopt;
+  }
+  auto reduce_axis_num = upstream.reduce_axis_num;
+  auto non_reduce_idx =
+      ArangeVector<int>(0, upstream.loop.size() - reduce_axis_num);
+  auto non_reduce_loop = GatherVector(upstream.loop, non_reduce_idx);
+  auto reduce_loop = GatherVectorExcept(upstream.loop, non_reduce_idx);
+  auto fake_reduce_idx =
+      GetFakeReduceAxisIdx(upstream.loop, loop_sink_route, reduce_axis_num);
+  VLOG(4) << "fake_reduce_idx: " << cinn::utils::Join(fake_reduce_idx, ",");
+
+  bool can_merge = [&]() -> bool {
+    auto downstream_non_fake_reduce_loop =
+        GatherVectorExcept(downstream.loop, fake_reduce_idx);
+    return ShapeProductSmallerOrEqual(downstream_non_fake_reduce_loop,
+                                      non_reduce_loop);
+  }();
+  if (!can_merge) return std::nullopt;
+
+  AxisTransformRoute downstream_loop_transform;
+  if (fake_reduce_idx.empty()) {
+    downstream_loop_transform.push_back(std::make_shared<AppendAxisTransform>(
+        ArangeVector<int64_t>(downstream.loop.size(), reduce_axis_num),
+        reduce_loop));
+  } else {
+    // Transpose fake reduce axis to the end
+    auto perm = ArangeVector<int>(0, downstream.loop.size());
+    for (auto index : fake_reduce_idx) {
+      perm.push_back(index);
+    }
+    std::sort(fake_reduce_idx.begin(), fake_reduce_idx.end());
+    std::reverse(fake_reduce_idx.begin(), fake_reduce_idx.end());
+    for (auto index : fake_reduce_idx) {
+      perm.erase(perm.begin() + index);
+    }
+    downstream_loop_transform.push_back(
+        std::make_shared<TransposeTransform>(perm));
+    // Append non reused reduce axis
+    std::vector<int64_t> append_axis;
+    std::vector<symbol::DimExpr> append_loop;
+    if (fake_reduce_idx.size() < reduce_axis_num) {
+      for (int i = 0; i < reduce_loop.size(); ++i) {
+        bool has_reuse = false;
+        for (const auto& downstream_idx : fake_reduce_idx) {
+          if (reduce_loop[i] == downstream.loop[downstream_idx]) {
+            has_reuse = true;
+            break;
+          }
+        }
+        if (!has_reuse) {
+          append_axis.push_back(downstream.loop.size() + i);
+          append_loop.push_back(reduce_loop[i]);
+        }
+      }
+    }
+    downstream_loop_transform.push_back(
+        std::make_shared<AppendAxisTransform>(append_axis, append_loop));
+  }
+  auto upstream_loop_transform =
+      ConcatVector(loop_sink_route, downstream_loop_transform);
+
+  return std::make_pair(
+      SimplifyTransformRoute(upstream_loop_transform, upstream.loop),
+      SimplifyTransformRoute(downstream_loop_transform, downstream.loop));
 }
 
 std::optional<AxisTransformRoute> GetValidLoopTransformRoute(

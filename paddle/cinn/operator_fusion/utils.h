@@ -677,6 +677,9 @@ bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
 bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
                        const std::vector<symbol::DimExpr>& out_shape);
 
+bool ShapeProductSmallerOrEqual(const std::vector<symbol::DimExpr>& first,
+                                const std::vector<symbol::DimExpr>& second);
+
 std::vector<std::pair<int, int>> PartitionReshapeAxes(
     const std::vector<symbol::DimExpr>& in_shape,
     const std::vector<symbol::DimExpr>& out_shape);

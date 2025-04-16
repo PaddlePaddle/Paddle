@@ -24,9 +24,18 @@ LoopAxisMapping LoopAxisMappingMerge(const LoopAxisMapping& upstream,
 LoopAxisMapping TrivialSinkLoopAxisMappingMerge(
     const LoopAxisMapping& upstream, const LoopAxisMapping& downstream);
 LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
-    const LoopAxisMapping& upstream, const LoopAxisMapping& downstream);
+    const LoopAxisMapping& upstream,
+    const LoopAxisMapping& downstream,
+    const AxisTransformRoute& downstream_loop_transform);
 LoopAxisMapping HorizontalLoopAxisMappingMerge(const LoopAxisMapping& source,
                                                const LoopAxisMapping& target);
+bool CanFuseReducePlusReduce(const LoopAxisMapping& upstream,
+                             const LoopAxisMapping& downstream);
+AxisTransformRoute InsertSubstituteReduceAxis(const AxisTransformRoute& route,
+                                              const LoopAxisMapping& source);
+std::optional<std::pair<AxisTransformRoute, AxisTransformRoute>>
+GetReducePlusTrivialLoopTransform(const LoopAxisMapping& upstream,
+                                  const LoopAxisMapping& downstream);
 
 // Try to find a valid axis transform route with specific direction between
 // upstream and downstream LoopAxisMapping. The following cases are considered

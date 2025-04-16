@@ -288,6 +288,18 @@ bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
       in_shape, out_shape, 0, in_shape.size(), 0, out_shape.size());
 }
 
+bool ShapeProductSmallerOrEqual(const std::vector<symbol::DimExpr>& first,
+                                const std::vector<symbol::DimExpr>& second) {
+  if (first.empty()) return true;
+  const auto& first_product = GetShapeProduct(first);
+  const auto& second_product = GetShapeProduct(second);
+  if (first_product.isa<int64_t>() && second_product.isa<int64_t>()) {
+    return first_product.dyn_cast<int64_t>() <=
+           second_product.dyn_cast<int64_t>();
+  }
+  return first_product == second_product;
+}
+
 std::vector<std::pair<int, int>> PartitionReshapeAxes(
     const std::vector<symbol::DimExpr>& in_shape,
     const std::vector<symbol::DimExpr>& out_shape) {
