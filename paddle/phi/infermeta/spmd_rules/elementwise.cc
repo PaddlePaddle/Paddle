@@ -534,4 +534,63 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
   info.first.emplace(info.first.begin() + 2, out_grad.dist_attr());
   return info;
 }
+// round
+SpmdInfo RoundInfoSpmd(const DistMetaTensor& x, int decimals) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// mish
+SpmdInfo MishInfoSpmd(const DistMetaTensor& x, float lambda) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// elu
+SpmdInfo EluInfoSpmd(const DistMetaTensor& x, float alpha) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// selu
+SpmdInfo SeluInfoSpmd(const DistMetaTensor& x, float alpha, float scale) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// celu
+SpmdInfo CeluInfoSpmd(const DistMetaTensor& x, float alpha) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// stanh
+SpmdInfo StanhInfoSpmd(const DistMetaTensor& x, float scale_a, float scale_b) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// softplus
+SpmdInfo SoftplusInfoSpmd(const DistMetaTensor& x,
+                          float beta,
+                          float threshold) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// softshrink
+SpmdInfo SoftshrinkInfoSpmd(const DistMetaTensor& x, float threshold) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// thresholded_relu
+SpmdInfo ThresholdedReluInfoSpmd(const DistMetaTensor& x,
+                                 float threshold,
+                                 float value) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// gelu
+SpmdInfo GeluInfoSpmd(const DistMetaTensor& x, bool approximate) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
+// logit
+SpmdInfo LogitInfoSpmd(const DistMetaTensor& x, float eps) {
+  return ElementwiseUnaryInferSpmd(x);
+}
+
 }  // namespace phi::distributed
