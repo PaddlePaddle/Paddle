@@ -264,14 +264,6 @@ class TestCase15(TestSetItemBase):
         y = func(x, H, W)
         return (y,)
 
-    def test_case(self):
-        func = self.init_func()
-        dy_res = self.run_dygraph(func)
-        st_res = self.run_to_static(func)
-
-        for dy_out, st_out in zip(dy_res, st_res):
-            np.testing.assert_allclose(dy_out.numpy(), st_out.numpy())
-
 
 if __name__ == '__main__':
     unittest.main()
