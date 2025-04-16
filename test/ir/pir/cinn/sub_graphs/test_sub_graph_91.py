@@ -14,7 +14,7 @@
 
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^RedNet^RedNet38
-# api:paddle.nn.functional.conv._conv_nd||method:reshape||method:unsqueeze||api:paddle.nn.functional.common.unfold||method:reshape||method:__mul__||method:sum||method:reshape
+# api:paddle.nn.functional.conv._conv_nd||method:reshape||method:__mul__||method:reshape||method:__add__||method:reshape||method:__sub__||method:reshape||method:__truediv__||method:reshape||method:sum||method:reshape
 from base import *  # noqa: F403
 
 from paddle.static import InputSpec
