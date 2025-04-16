@@ -38,7 +38,7 @@ from .utils import (
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
-    train_guards,
+    runtime_guards,
 )
 
 if TYPE_CHECKING:
@@ -732,7 +732,7 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=False)
         inputs = self._valid_vars(in_vars)
 
-        with train_guards(self._backend):
+        with runtime_guards(self._backend):
             _C_ops.run_program(
                 inputs,
                 self._valid_vars(self._params),
@@ -759,7 +759,7 @@ class PartialProgramLayer:
         attrs = self._prepare_attributes(in_sot_mode=True)
         inputs = self._valid_vars(inputs)
 
-        with train_guards(self._backend):
+        with runtime_guards(self._backend):
             _C_ops.run_program(
                 inputs,
                 self._valid_vars(self._params),
