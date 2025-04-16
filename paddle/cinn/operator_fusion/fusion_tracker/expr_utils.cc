@@ -232,19 +232,4 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   return result;
 }
 
-std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
-                                 const std::vector<int>& padding_pos) {
-  std::vector<FusibleOp> results;
-  auto expr_vec = std::visit(FusibleOp2Expr(), fusion_op);
-  for (auto expr : expr_vec) {
-    auto squeezed = UnSqueezeExpr(expr, padding_pos);
-    if (IsReduceBody(expr)) {
-      results.emplace_back(ReduceOp(squeezed));
-    } else {
-      results.emplace_back(TrivialOp(squeezed));
-    }
-  }
-  return results;
-}
-
 }  // namespace cinn::fusion

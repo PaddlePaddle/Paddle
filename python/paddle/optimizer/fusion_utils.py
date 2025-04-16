@@ -229,7 +229,7 @@ class FusionStorageHelper:
         self.buffer_ipc_meta = buffer_ipc_meta
 
         self.buffer = paddle.to_tensor(
-            paddle.base.core.LoDTensor._new_shared_cuda(self.buffer_ipc_meta)
+            paddle.base.core.DenseTensor._new_shared_cuda(self.buffer_ipc_meta)
         )
         self.cpu_buffer = self.buffer.pin_memory()
         self.buffer_length = self.buffer._numel()

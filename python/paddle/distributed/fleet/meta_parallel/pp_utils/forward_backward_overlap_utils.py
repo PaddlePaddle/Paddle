@@ -38,16 +38,42 @@ class ScheduleChunk:
 
 
 def detach_and_requires_grad(inputs):
-    ret = []
-    for input in inputs:
-        if isinstance(input, (tuple, list)):
-            ret.append(detach_and_requires_grad(input))
-        else:
-            tmp = input.detach() if input is not None else None
-            if tmp is not None:
-                tmp.stop_gradient = input.stop_gradient
-            ret.append(tmp)
-    return ret
+    if isinstance(inputs, (tuple, list)):
+        is_tuple = isinstance(inputs, tuple)
+        ret = []
+        for input in inputs:
+            if isinstance(input, (tuple, list)):
+                ret.append(detach_and_requires_grad(input))
+            else:
+                tmp = input.detach() if input is not None else None
+                if tmp is not None:
+                    tmp.stop_gradient = input.stop_gradient
+                ret.append(tmp)
+        if is_tuple:
+            ret = tuple(ret)
+        return ret
+    else:
+        tmp = inputs.detach()
+        tmp.stop_gradient = inputs.stop_gradient
+        return tmp
+
+
+def clone_and_clear_dataptr(outputs, clear_dataptr=False):
+    if isinstance(outputs, (tuple, list)):
+        is_tuple = isinstance(outputs, tuple)
+        ret = [FakeClone.apply(o) for o in outputs if o is not None]
+
+        if clear_dataptr:
+            for o in ret:
+                o._clear_dataptr()
+        if is_tuple:
+            ret = tuple(ret)
+        return ret
+    else:
+        ret = FakeClone.apply(outputs)
+        if clear_dataptr:
+            ret._clear_dataptr()
+        return ret
 
 
 class FakeClone(paddle.autograd.PyLayer):
@@ -76,8 +102,6 @@ class ScheduleNode:
         self.scale_loss_factor = None
 
     def forward(self, inputs=()):
-        if not isinstance(inputs, (tuple, list)):
-            inputs = (inputs,)
         detached_inputs = detach_and_requires_grad(inputs)
         self.inputs = detached_inputs
         if self.labels is not None:
@@ -86,13 +110,10 @@ class ScheduleNode:
             outputs = self.fwd_func(self.inputs)
         if self.scale_loss_factor is not None:
             outputs /= self.scale_loss_factor
-        if not isinstance(outputs, (tuple, list)):
-            outputs = (outputs,)
-        self.outputs = [FakeClone.apply(o) for o in outputs if o is not None]
-        if self.labels is None:
-            # Do not release the loss tensor.
-            for o in self.outputs:
-                o._clear_dataptr()
+
+        # Do not release the loss tensor.
+        clear_dataptr = self.labels is None
+        self.outputs = clone_and_clear_dataptr(outputs, clear_dataptr)
         return outputs
 
     def backward(self, output_grad=None, scaler=None):
@@ -100,6 +121,8 @@ class ScheduleNode:
             if isinstance(self.outputs, (tuple, list)):
                 assert len(self.outputs) == 1
                 outputs = self.outputs[0]
+            else:
+                outputs = self.outputs
             assert isinstance(outputs, paddle.Tensor)
             if scaler is not None:
                 paddle.autograd.backward(scaler.scale(outputs))
@@ -117,7 +140,12 @@ class ScheduleNode:
             ), f"{len(outputs)} of {type(outputs[0])} vs {len(output_grad)} of {type(output_grad[0])}"
 
             paddle.autograd.backward(outputs, output_grad)
-        grad = tuple([e.grad if e is not None else None for e in self.inputs])
+
+        if not isinstance(self.inputs, (tuple, list)):
+            inputs = (self.inputs,)
+        else:
+            inputs = self.inputs
+        grad = tuple([e.grad if e is not None else None for e in inputs])
         self._reset_states()
 
         if len(grad) == 1:

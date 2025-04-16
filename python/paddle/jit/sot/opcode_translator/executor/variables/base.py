@@ -33,6 +33,7 @@ from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
     union_free_vars,
 )
@@ -274,7 +275,7 @@ class VariableFactory:
         return var
 
 
-def infer_debug_name_from_tracker(tracker: Tracker) -> str:
+def infer_debug_name_from_tracker(tracker: Tracker) -> str | None:
     res = None
     if isinstance(tracker, (LocalTracker, GlobalTracker, BuiltinTracker)):
         res = f"{tracker.name}"
@@ -343,6 +344,16 @@ class VariableBase:
 
     def __hash__(self):
         return hash(self.id)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        expr = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                [expr],
+            )
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:

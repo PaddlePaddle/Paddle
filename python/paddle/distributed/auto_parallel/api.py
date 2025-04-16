@@ -64,7 +64,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     alignment,
     get_current_device_type,
 )
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import core
 from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
     _InfiniteIterableSampler,
@@ -1456,195 +1456,264 @@ class _ShardOptimizer(Optimizer):
             }
         return (views, param_buffer)
 
+    def _fused_comm_before_apply_optimize(self, flags, params_grads):
+        '''
+        In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
+        Below are 2 methods to modify grad partial state by fusing comms before optimize:
+            1) fuse allreduce: Change all partial state in placements to replicate via `allreduce` comms,
+                e.g.
+                    a) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, shard(0), partial] -> [replicate, shard(0), replicate].
+
+            2) fuse reduce_scatter: Keep shard states in placements unchanged, transform others to `shard(dim)`
+               states via `reduce_scatter` comms if possible, or replicate states otherwise. In particular,
+               the `placement[sharding_axis]` should be `shard(0)` if possible.
+                e.g.
+                    a) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
+                    b) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, shard(0), partial ] -> [shard(1), shard(0), replicate]
+        '''
+        new_params_grads = []
+
+        if flags["fuse_allreduce"]:
+            for param, grad in params_grads:
+                new_grad = grad
+                new_placements = copy.deepcopy(grad.placements)
+                for mesh_axis, placement in enumerate(grad.placements):
+                    # 1. Convert all partial states to allreduce states.
+                    if placement.is_partial():
+                        new_placements[mesh_axis] = dist.Replicate()
+
+                if grad.placements != new_placements:
+                    # 2. Add allreduce comms via reshard API.
+                    new_grad = dist.reshard(
+                        grad, grad.process_mesh, new_placements
+                    )
+                new_params_grads.append((param, new_grad))
+
+        elif flags["fuse_reducescatter"]:
+            # Get the first non-shard dim of tensor shape in ascending order.
+            # `shard_dims_set` records if dim is marked as shard in placement.
+            def get_first_can_shard_dim(tensor_shape, shard_dims_set):
+                for dim in range(len(tensor_shape)):
+                    if dim not in shard_dims_set:
+                        return dim
+                return -1
+
+            for param, grad in params_grads:
+                new_placements = copy.deepcopy(grad.placements)
+                new_grad = grad
+                tensor_shape = grad._local_shape
+                shard_dims_set = set()
+
+                # 1. `shard_dims_set` records dims marked as shard in placement.
+                for placement in grad.placements:
+                    if placement.is_shard():
+                        dim = placement.get_dim()
+                        shard_dims_set.add(dim)
+
+                # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
+                dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                if dim != -1:
+                    shard_dims_set.add(dim)
+                    new_placements[self._sharding_axis] = dist.Shard(dim)
+                else:
+                    new_placements[self._sharding_axis] = dist.Replicate()
+
+                for mesh_axis, placement in enumerate(grad.placements):
+                    if mesh_axis == self._sharding_axis:
+                        continue
+                    # 3. Keep shard states in placements unchanged.
+                    if placement.is_shard():
+                        continue
+                    dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                    if dim != -1:
+                        # 4. Turn other placements into shard state if possible.
+                        shard_dims_set.add(dim)
+                        new_placements[mesh_axis] = dist.Shard(dim)
+                    else:
+                        # 5. When all tensor dims are in shard state, set remaining placements to replicate.
+                        new_placements[mesh_axis] = dist.Replicate()
+
+                if grad.placements != new_placements:
+                    # 6. Add reduce_scatter comms via reshard API.
+                    new_grad = dist.reshard(
+                        grad, grad.process_mesh, new_placements
+                    )
+
+                new_params_grads.append((param, new_grad))
+        else:
+            new_params_grads = params_grads
+        return new_params_grads
+
+    def _tensor_fusion(self, params_grads):
+        if self.do_tensor_fusion:
+            mesh = dist.auto_parallel.get_mesh()
+            shard_groups = get_mesh_comm_list(mesh, "dp")
+            for group in shard_groups:
+                comm_group = dist.new_group(sorted(group))
+                if dist.get_rank() in group:
+                    self.comm_group = comm_group
+            self.do_tensor_fusion = False
+            parameters = [p_g[0] for p_g in params_grads]
+            comm_buffer_size_MB = 256
+            group_size = comm_buffer_size_MB * 1024 * 1024
+            is_sparse_gradient = [False] * len(parameters)
+            shape_dict = {param.name: param.shape for param in parameters}
+            dense_params = [param._local_value() for param in parameters]
+            group_indices = core.eager_assign_group_by_size(
+                dense_params, is_sparse_gradient, [group_size, group_size]
+            )
+            var_groups = OrderedDict()
+            for group_idx, indices in enumerate(group_indices):
+                for idx in indices:
+                    var_groups.setdefault(group_idx, []).append(parameters[idx])
+            for group_idx, parameters in var_groups.items():
+                (
+                    fuse_param_view,
+                    param_storage,
+                ) = self.build_fuse_param_view(
+                    parameters,
+                    self.comm_group.nranks,
+                )
+                self.fuse_param_view.append(fuse_param_view)
+                self.param_storage.append(param_storage)
+
+            for i in range(len(self.fuse_param_view)):
+                for name, view in self.fuse_param_view[i].items():
+                    param_shape = view['param'].shape
+                    stop_gradient = view['param'].stop_gradient
+                    view['param'].stop_gradient = True
+                    view['param']._local_value().flatten_()
+                    paddle.assign(
+                        view['param']._local_value(),
+                        self.param_storage[i]._slice(
+                            view['index'],
+                            view['index'] + view['param']._numel(),
+                        ),
+                    )
+                    view['param'].stop_gradient = stop_gradient
+                    tmp_param = paddle._C_ops.view_slice(
+                        self.param_storage[i],
+                        view['index'],
+                        view['index'] + view['param']._numel(),
+                    )
+                    tmp_param.get_tensor()._set_dims(view['param'].shape)
+                    tmp_param = _dtensor_from_local(
+                        tmp_param,
+                        view['param'].process_mesh,
+                        view['param'].placements,
+                    )
+                    view['param'].get_tensor()._share_data_with(
+                        tmp_param.get_tensor()
+                    )
+
+        new_params = []
+        new_grads = []
+        idx = 0
+        for i in range(len(self.fuse_param_view)):
+            grad_buffer = paddle.empty(
+                shape=[self.param_storage[i]._numel()],
+                dtype=params_grads[0][1].dtype,
+            )
+            self.grad_storage.append(grad_buffer)
+            for name, view in self.fuse_param_view[i].items():
+                grad = params_grads[idx][1]
+                idx += 1
+                paddle.assign(
+                    grad._local_value(),
+                    self.grad_storage[i]._slice(
+                        view['index'],
+                        view['index'] + grad._local_value()._numel(),
+                    ),
+                )
+                grad.get_tensor()._clear()
+                shard_size = (
+                    self.param_storage[i]._numel() // self.comm_group.nranks
+                )
+                rank_begin = shard_size * max(self.comm_group.rank, 0)
+                rank_end = rank_begin + shard_size
+                param_begin = max(view['index'], rank_begin)
+                param_end = min(
+                    view['index'] + view['param']._numel(), rank_end
+                )
+                if param_begin >= param_end:
+                    continue
+
+                tmp_param = paddle._C_ops.view_slice(
+                    self.param_storage[i], param_begin, param_end
+                )
+                tmp_param = _dtensor_from_local(
+                    tmp_param,
+                    view['param'].process_mesh,
+                    [dist.Replicate()],
+                )
+                tmp_param.name = name
+                tmp_param.stop_gradient = view['param'].stop_gradient
+                new_params.append(tmp_param)
+
+                tmp_grad = paddle._C_ops.view_slice(
+                    self.grad_storage[i], param_begin, param_end
+                )
+                tmp_grad = _dtensor_from_local(
+                    tmp_grad, view['param'].process_mesh, [dist.Replicate()]
+                )
+                new_grads.append(tmp_grad)
+
+        for i in range(len(self.fuse_param_view)):
+            shard_size = self.grad_storage[i]._numel() // self.comm_group.nranks
+            begin = shard_size * max(self.comm_group.rank, 0)
+            end = begin + shard_size
+            reduce_scattered = paddle._C_ops.view_slice(
+                self.grad_storage[i], begin, end
+            )
+            paddle.distributed.reduce_scatter(
+                reduce_scattered,
+                self.grad_storage[i],
+                op=paddle.distributed.ReduceOp.SUM,
+                group=self.comm_group,
+                sync_op=False,
+            ).wait()
+
+        new_params_grads = list(zip(new_params, new_grads))
+        return new_params_grads
+
     def _apply_optimize(
         self, loss, startup_program, params_grads, param_group_idx=0
     ):
         if self.enable_tensor_fusion:
-            if self.do_tensor_fusion:
-                mesh = dist.auto_parallel.get_mesh()
-                shard_groups = get_mesh_comm_list(mesh, "dp")
-                for group in shard_groups:
-                    comm_group = dist.new_group(sorted(group))
-                    if dist.get_rank() in group:
-                        self.comm_group = comm_group
-                self.do_tensor_fusion = False
-                parameters = [p_g[0] for p_g in params_grads]
-                comm_buffer_size_MB = 256
-                group_size = comm_buffer_size_MB * 1024 * 1024
-                is_sparse_gradient = [False] * len(parameters)
-                shape_dict = {param.name: param.shape for param in parameters}
-                dense_params = [param._local_value() for param in parameters]
-                group_indices = core.eager_assign_group_by_size(
-                    dense_params, is_sparse_gradient, [group_size, group_size]
-                )
-                var_groups = OrderedDict()
-                for group_idx, indices in enumerate(group_indices):
-                    for idx in indices:
-                        var_groups.setdefault(group_idx, []).append(
-                            parameters[idx]
-                        )
-                for group_idx, parameters in var_groups.items():
-                    (
-                        fuse_param_view,
-                        param_storage,
-                    ) = self.build_fuse_param_view(
-                        parameters,
-                        self.comm_group.nranks,
-                    )
-                    self.fuse_param_view.append(fuse_param_view)
-                    self.param_storage.append(param_storage)
-
-                for i in range(len(self.fuse_param_view)):
-                    for name, view in self.fuse_param_view[i].items():
-                        param_shape = view['param'].shape
-                        stop_gradient = view['param'].stop_gradient
-                        view['param'].stop_gradient = True
-                        view['param']._local_value().flatten_()
-                        paddle.assign(
-                            view['param']._local_value(),
-                            self.param_storage[i]._slice(
-                                view['index'],
-                                view['index'] + view['param']._numel(),
-                            ),
-                        )
-                        view['param'].stop_gradient = stop_gradient
-                        tmp_param = paddle._C_ops.view_slice(
-                            self.param_storage[i],
-                            view['index'],
-                            view['index'] + view['param']._numel(),
-                        )
-                        tmp_param.get_tensor()._set_dims(view['param'].shape)
-                        tmp_param = _dtensor_from_local(
-                            tmp_param,
-                            view['param'].process_mesh,
-                            view['param'].placements,
-                        )
-                        view['param'].get_tensor()._share_data_with(
-                            tmp_param.get_tensor()
-                        )
-
-        if self.enable_tensor_fusion:
-            new_params = []
-            new_grads = []
-            idx = 0
-            for i in range(len(self.fuse_param_view)):
-                grad_buffer = paddle.empty(
-                    shape=[self.param_storage[i]._numel()],
-                    dtype=params_grads[0][1].dtype,
-                )
-                self.grad_storage.append(grad_buffer)
-                for name, view in self.fuse_param_view[i].items():
-                    grad = params_grads[idx][1]
-                    idx += 1
-                    paddle.assign(
-                        grad._local_value(),
-                        self.grad_storage[i]._slice(
-                            view['index'],
-                            view['index'] + grad._local_value()._numel(),
-                        ),
-                    )
-                    grad.get_tensor()._clear()
-                    shard_size = (
-                        self.param_storage[i]._numel() // self.comm_group.nranks
-                    )
-                    rank_begin = shard_size * max(self.comm_group.rank, 0)
-                    rank_end = rank_begin + shard_size
-                    param_begin = max(view['index'], rank_begin)
-                    param_end = min(
-                        view['index'] + view['param']._numel(), rank_end
-                    )
-                    if param_begin >= param_end:
-                        continue
-
-                    tmp_param = paddle._C_ops.view_slice(
-                        self.param_storage[i], param_begin, param_end
-                    )
-                    tmp_param = _dtensor_from_local(
-                        tmp_param,
-                        view['param'].process_mesh,
-                        [dist.Replicate()],
-                    )
-                    tmp_param.name = name
-                    tmp_param.stop_gradient = view['param'].stop_gradient
-                    new_params.append(tmp_param)
-
-                    tmp_grad = paddle._C_ops.view_slice(
-                        self.grad_storage[i], param_begin, param_end
-                    )
-                    tmp_grad = _dtensor_from_local(
-                        tmp_grad, view['param'].process_mesh, [dist.Replicate()]
-                    )
-                    new_grads.append(tmp_grad)
-
-            for i in range(len(self.fuse_param_view)):
-                shard_size = (
-                    self.grad_storage[i]._numel() // self.comm_group.nranks
-                )
-                begin = shard_size * max(self.comm_group.rank, 0)
-                end = begin + shard_size
-                reduce_scattered = paddle._C_ops.view_slice(
-                    self.grad_storage[i], begin, end
-                )
-                paddle.distributed.reduce_scatter(
-                    reduce_scattered,
-                    self.grad_storage[i],
-                    op=paddle.distributed.ReduceOp.SUM,
-                    group=self.comm_group,
-                    sync_op=False,
-                ).wait()
-
-            new_params_grads = list(zip(new_params, new_grads))
-            return super()._apply_optimize(
-                loss, startup_program, new_params_grads, param_group_idx=0
-            )
+            params_grads = self._tensor_fusion(params_grads)
         else:
+            # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
+            if paddle.in_dynamic_mode():
+                # Get fuse optimization flag.
+                def get_env(flag_name):
+                    if os.getenv(flag_name) in ['True', 'true', '1']:
+                        return True
+                    return False
 
-            def get_shard_dim(len, shard_dims):
-                for idx in range(len):
-                    if idx not in shard_dims:
-                        return idx
-                return -1
+                # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+                # it's controlled by a flag switch and will be removed later.
+                fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+                fuse_reducescatter_in_opt = get_env(
+                    "FLAGS_fuse_reducescatter_in_opt"
+                )
+                assert not (
+                    fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+                ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
 
-            def shard_grad(p_and_g):
-                new_p_and_g = []
-                for p, g in p_and_g:
-                    process_mesh = g.process_mesh
-                    placements = g.placements
-                    new_g = g
-                    need_shard = False
-                    shard_dims = {}
-                    maxlen = len(placements)
-                    for idx in range(maxlen):
-                        placement = placements[idx]
-                        if placement.is_shard():
-                            dim = placement.get_dim()
-                            shard_dims[dim] = 1
+                if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                    flags = {}
+                    flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                    flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                    params_grads = self._fused_comm_before_apply_optimize(
+                        flags, params_grads
+                    )
 
-                    for idx in range(maxlen - 1, -1, -1):
-                        placement = placements[idx]
-                        if placement.is_partial():
-                            need_shard = True
-                            dim = get_shard_dim(len(g._local_shape), shard_dims)
-                            if dim == -1:
-                                placements[idx] = dist.Replicate()
-                            else:
-                                shard_dims[dim] = 1
-                                placements[idx] = dist.Shard(dim)
-                    if need_shard:
-                        new_g = dist.reshard(g, process_mesh, placements)
-                    new_p_and_g.append((p, new_g))
-
-                return new_p_and_g
-
-            if in_dynamic_mode():
-                with paddle.static.program_guard(
-                    paddle.static.default_main_program(),
-                    paddle.static.default_startup_program(),
-                ):
-                    params_grads = shard_grad(params_grads)
-            return super()._apply_optimize(
-                loss, startup_program, params_grads, param_group_idx=0
-            )
+        return super()._apply_optimize(
+            loss, startup_program, params_grads, param_group_idx
+        )
 
     def __getattr__(self, item):
         if "_inner_opt" in self.__dict__:

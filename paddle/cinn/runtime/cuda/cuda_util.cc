@@ -138,6 +138,56 @@ void cinn_call_cuda_kernel(void *kernel_fn,
   }
 }
 
+void cinn_call_cuda_cooperative_kernel(void *kernel_fn,
+                                       void *v_args,
+                                       int num_args,
+                                       int grid_x,
+                                       int grid_y,
+                                       int grid_z,
+                                       int block_x,
+                                       int block_y,
+                                       int block_z,
+                                       int shared_memory_bytes,
+                                       void *stream) {
+  VLOG(3) << "cinn_call_cuda_cooperative_kernel, grid_dim={" << grid_x << ", "
+          << grid_y << ", " << grid_z << "}, block_dim={" << block_x << ", "
+          << block_y << ", " << block_z << "}, num_args=" << num_args
+          << ", shared_memory_bytes=" << shared_memory_bytes
+          << ", stream=" << stream << ", kernel_fn=" << kernel_fn;
+
+  std::vector<void *> kernel_args;
+  {
+    cinn::utils::RecordEvent record_run("prepare_args",
+                                        cinn::utils::EventType::kInstruction);
+    kernel_args.reserve(num_args);
+    cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
+    for (int idx = 0; idx < num_args; ++idx) {
+      if (args[idx].type_code() == ::cinn_type_code<cinn_buffer_t *>()) {
+        kernel_args.emplace_back(
+            &((cinn_buffer_t *)(args[idx]))->memory);  // NOLINT
+      } else {
+        kernel_args.emplace_back(args[idx].data_addr());
+      }
+    }
+  }
+
+  {
+    cinn::utils::RecordEvent record_run("cuLaunchCooperativeKernel",
+                                        cinn::utils::EventType::kInstruction);
+    CUDA_DRIVER_CALL(
+        cuLaunchCooperativeKernel(static_cast<CUfunction>(kernel_fn),
+                                  grid_x,
+                                  grid_y,
+                                  grid_z,
+                                  block_x,
+                                  block_y,
+                                  block_z,
+                                  shared_memory_bytes,
+                                  static_cast<CUstream>(stream),
+                                  kernel_args.data()))
+  }
+}
+
 void cinn_call_cublas(void *v_args,
                       int num_args,
                       bool trans_a,
