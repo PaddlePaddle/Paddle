@@ -1247,9 +1247,6 @@ class SymbolicVariable(VariableBase):
         tracker: Tracker,
         symbolic_inputs: dict[str, dict[int, int] | None],
     ):
-        # The behavior specializes for 0 and 1, so we just ignore them here.
-        if value < 2:
-            return False
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
@@ -1258,6 +1255,8 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
+            if value < 2:  # Specialize 0 and 1
+                return False
             if len(symbolic_input.keys()) > 1:
                 return True
             return False
