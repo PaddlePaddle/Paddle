@@ -240,6 +240,20 @@ void CompilationTask::Lowering() {
 
     context_->broadcast_condition_ = ChangeBroadcastConditionToExpr();
   }
+
+  // Simplify condition finally.
+  auto SimplifyPredicate = [](GroupCompilationContext* context) {
+    for (auto& expr : context->predicates_) {
+      optim::SimplifyLogical(&expr);
+    }
+    optim::SimplifyLogical(&context->broadcast_condition_);
+    for (auto& expr : context->CX86_predicates_) {
+      optim::SimplifyLogical(&expr);
+    }
+  };
+
+  SimplifyPredicate(context_);
+
   VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
@@ -300,7 +314,7 @@ CompilationTask::CompileBroadcastModules(
     backend_resource->GetBackendCompiler()->Build(ir_module, "");
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }
-
+  // update broadcast_conditions.
   ir::Module wrapper_module(
       cinn::backends::CreateSwitchWithBroadcastConditionModule(
           broadcast_conditions,
