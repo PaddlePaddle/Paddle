@@ -132,6 +132,31 @@ class TestTakeAlongAxisSPMDRule(unittest.TestCase):
         )
 
         # axis: 0
+        # x_shape = [64, 32, 48], index_shape = [8, 4, 48]
+        # dims_mapping: [0, -1, -1], [0, -1, -1] --> [-1, -1, -1], [0, -1, -1], [0, -1, -1]
+        self.attrs['axis'] = 0
+        self.x_diff_shape_spec.set_dims_mapping([0, -1, -1])
+        self.index_diff_shape_spec.set_dims_mapping([0, -1, -1])
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_diff_shape_spec,
+            self.index_diff_shape_spec,
+            self.attrs['axis'],
+        )
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(len(result_dist_attrs), 2)
+        self.assertEqual(len(inferred_input_dist_attrs), 2)
+        self.assertEqual(len(inferred_output_dist_attrs), 1)
+
+        self.assertEqual(
+            inferred_input_dist_attrs[0].dims_mapping, [-1, -1, -1]
+        )
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, -1, -1])
+        self.assertEqual(
+            inferred_output_dist_attrs[0].dims_mapping, [0, -1, -1]
+        )
+
+        # axis: 0
         # x_shape = [64, 32, 48], index_shape = [64, 32, 48]
         # dims_mapping: [-1, 0, -1], [-1, -1, -1] --> [-1, 0, -1], [-1, 0, -1], [-1, 0, -1]
         self.attrs['axis'] = 0

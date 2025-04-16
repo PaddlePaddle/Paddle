@@ -66,6 +66,7 @@ SpmdInfo TakeAlongAxisInferSpmd(const DistMetaTensor& x,
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
+  x_dims_mapping[axis] = -1;
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
