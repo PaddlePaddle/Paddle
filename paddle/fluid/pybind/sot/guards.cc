@@ -33,6 +33,12 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
 
+#define HANDLE_NULL_VALUE(value) \
+  if ((value) == NULL) {         \
+    PyErr_Clear();               \
+    return false;                \
+  }
+
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
     return true;
@@ -84,10 +90,7 @@ bool TypeMatchGuard::check(PyObject* value) {
 bool IdMatchGuard::check(PyObject* value) { return value == expected_; }
 
 bool ValueMatchGuard::check(PyObject* value) {
-  if (value == NULL) {
-    PyErr_Clear();
-    return false;
-  }
+  HANDLE_NULL_VALUE(value);
   return PyObject_Equal(value, expected_value_);
 }
 
@@ -111,10 +114,7 @@ bool DtypeMatchGuard::check(PyObject* value) {
 }
 
 bool ShapeMatchGuard::check(PyObject* value) {
-  if (value == NULL) {
-    PyErr_Clear();
-    return false;
-  }
+  HANDLE_NULL_VALUE(value);
   auto tensor = GetTensorFromPyObject(value);
   if (!tensor) {
     return false;
