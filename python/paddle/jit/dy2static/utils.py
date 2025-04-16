@@ -745,6 +745,36 @@ def is_api_in_module_helper(obj, module_prefix):
     return m is not None and m.__name__.startswith(module_prefix)
 
 
+def auto_layout_guard(backend, guard_creators):
+    # AutoLayoutPass may change layout of bn to NHWC, if not enable `FLAGS_cudnn_batchnorm_spatial_persistent`, it will revert to NCHW. So if the user does not set this Flag, we set it to True.
+    if (
+        auto_layout_is_enabled()
+        and backend.is_cinn()
+        and paddle.is_compiled_with_cuda()
+        and os.getenv("FLAGS_cudnn_batchnorm_spatial_persistent") is None
+    ):
+        guard_creators.append(
+            lambda: paddle.base.framework.flag_guard(
+                "FLAGS_cudnn_batchnorm_spatial_persistent",
+                True,
+            )
+        )
+
+
+@contextmanager
+def train_guards(backend):
+    """
+    train_guards is the guard method before program execution, which can integrate and add various guards.
+    """
+    guard_creators = []
+    # Add FLAGS_cudnn_batchnorm_spatial_persistent guard
+    auto_layout_guard(backend, guard_creators)
+    # add more guards here
+
+    with compose_guards(*guard_creators)():
+        yield
+
+
 def auto_layout_is_enabled():
     return paddle.get_flags(["FLAGS_enable_auto_layout_pass"])[
         "FLAGS_enable_auto_layout_pass"

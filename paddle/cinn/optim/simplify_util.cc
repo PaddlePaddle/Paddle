@@ -694,7 +694,8 @@ ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
       MatchPattern(expr,
                    "f % a % b",
                    [](const std::unordered_map<std::string, ir::IndexExpr> &m) {
-                     return m.at("a").node_type() == ir::IrNodeTy::Max;
+                     return m.at("a").node_type() == ir::IrNodeTy::Max ||
+                            m.at("a").node_type() == ir::IrNodeTy::Mul;
                    });
   if (!opt_map) return expr;
 
@@ -702,18 +703,51 @@ ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
   auto ll = map.at("f");
   auto lr = map.at("a");
   auto r = map.at("b");
-  auto lr_elems = GetFlattenExprs<ir::Max>(lr);
-  auto r_elems = GetFlattenExprs<ir::Max>(r);
 
-  // The second modulus is a subset of the first modulus.
-  for (auto &&r_elem : r_elems) {
-    if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
-      return expr;
+  auto CanSimplifyMaxMod = [](const ir::IndexExpr &lr, const ir::IndexExpr &r) {
+    auto lr_elems = GetFlattenExprs<ir::Max>(lr);
+    auto r_elems = GetFlattenExprs<ir::Max>(r);
+
+    // The second modulus is a subset of the first modulus.
+    for (auto &&r_elem : r_elems) {
+      if (std::find(lr_elems.begin(), lr_elems.end(), r_elem) == lr_elems.end())
+        return false;
+    }
+
+    // The first modulus is broadcastable.
+    auto &constraint = cinn::common::ShapeConstraintManager::Instance();
+    return constraint.IsBroadcastable(lr_elems) ? true : false;
+  };
+
+  if (lr.node_type() == ir::IrNodeTy::Max) {
+    if (CanSimplifyMaxMod(lr, r)) return ll % r;
+    return expr;
+  } else {
+    std::unordered_map<ir::IndexExpr, int> r_elems;
+    std::unordered_map<ir::IndexExpr, int> lr_elems;
+    UnpackReduction<ir::Mul>(r, [&](ir::IndexExpr val) { r_elems[val]++; });
+    UnpackReduction<ir::Mul>(lr, [&](ir::IndexExpr val) { lr_elems[val]++; });
+    bool can_simplify = false;
+    for (const auto &[r_first, r_second] : r_elems) {
+      for (auto &[lr_first, lr_second] : lr_elems) {
+        // Check equal relationship between the two operands.
+        if (lr_first == r_first && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+        // Check broadcastable relationship between the two operands.
+        if (lr_first.node_type() == ir::IrNodeTy::Max &&
+            CanSimplifyMaxMod(lr_first, r_first) && lr_second >= r_second) {
+          lr_second -= r_second;
+          can_simplify = true;
+          break;
+        }
+      }
+      if (!can_simplify) return expr;
+    }
+    return ll % r;
   }
-
-  // The first modulus is broadcastable.
-  auto &constraint = cinn::common::ShapeConstraintManager::Instance();
-  return constraint.IsBroadcastable(lr_elems) ? ll % r : expr;
 }
 }  // namespace optim
 }  // namespace cinn

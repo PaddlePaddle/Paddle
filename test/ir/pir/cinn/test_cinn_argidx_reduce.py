@@ -43,12 +43,14 @@ class TestArgIdxReduce(unittest.TestCase):
         x = paddle.randn([128, 256])
         self.eval(func, [x])
 
-    def test_argmax_discrete(self):
-        # discrete reduce
-        def func(x):
-            return x[x.argmax(axis=0, keepdim=True), paddle.arange(x.shape[-1])]
+    def test_argmax_discrete_hfuse(self):
+        # discrete reduce + horizontal fuse
+        bn = paddle.nn.BatchNorm(256)
 
-        x = paddle.randn([66, 256])
+        def func(x):
+            return bn(x), x.argmax(axis=0)
+
+        x = paddle.randn([128, 256])
         self.eval(func, [x])
 
     def test_argmin_all_bc(self):
