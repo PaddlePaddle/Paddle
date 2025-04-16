@@ -721,8 +721,9 @@
     func: SendV2InferMeta
     param: [peer, ring_id]
   kernel :
-    func : send_v2
-    param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
+    func : p_send
+    param : [x, peer, dynamic_shape]
+    data_type: x
   traits : pir::SideEffectTrait
 
 - op : sequence_expand
