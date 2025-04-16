@@ -25,7 +25,9 @@ jobs:
   check-docker:
     name: check docker
     needs: check-bypass
-    uses: tianshuo/.github/actions/docker@main
+    steps:
+      - name: Run Docker action
+        uses: tianshuo/.github/actions/docker@main
 
   run-docker:
     name: run docker
