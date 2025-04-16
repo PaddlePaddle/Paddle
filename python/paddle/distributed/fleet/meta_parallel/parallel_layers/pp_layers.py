@@ -51,6 +51,7 @@ import paddle.distributed as dist
 from paddle import framework, nn
 from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
 from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
+from paddle.framework import core
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
 from ..pp_utils.forward_backward_overlap_utils import (
@@ -716,13 +717,35 @@ class PipelineLayer(nn.Layer):
                 param = getattr(comm['layer'], weight_attr)
                 # need use trace_op to allreduce weight
                 if framework.in_dynamic_mode():
+                    if hasattr(param, "main_grad"):
+                        if param.main_grad is None:
+                            warnings.warn(
+                                f"The param {param.name} doesn't contain main grad, "
+                                f"a zero tensor will be used for allreduce."
+                            )
+                            param.main_grad = core.eager.Tensor(
+                                value=paddle.zeros_like(
+                                    param, dtype='float32'
+                                ).value(),
+                                place=param.place,
+                                name="main_grad@" + param.name,
+                            )
+                        grad_var = param.main_grad
+                    else:
+                        if param.grad is None:
+                            warnings.warn(
+                                f"The param {param.name} doesn't contain grad, "
+                                f"a zero tensor will be used for allreduce."
+                            )
+                            param.grad = core.eager.Tensor(
+                                value=paddle.zeros_like(param).value(),
+                                place=param.place,
+                                name="grad@" + param.name,
+                            )
+                        grad_var = param.grad
                     with paddle.framework.no_grad():
                         paddle.distributed.all_reduce(
-                            (
-                                param.grad
-                                if not hasattr(param, "main_grad")
-                                else param.main_grad
-                            ),
+                            grad_var,
                             group=comm['group'],
                         )
                 else:
