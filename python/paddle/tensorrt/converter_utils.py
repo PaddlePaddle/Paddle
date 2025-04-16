@@ -754,15 +754,24 @@ def convert_conv2d(network, paddle_op, inputs):
     set_layer_name(layer, paddle_op)
     support_fp32_mix_precision(paddle_op.name(), layer)
 
-    filter_param = paddle_op.operands()[1].source().get_defining_op()
-    while filter_param.name() not in ["builtin.parameter", "builtin.constant"]:
-        filter_param = filter_param.operands()[0].source().get_defining_op()
-    if filter_param.name() in ["builtin.parameter", "builtin.constant"]:
-        filter_name = filter_param.attrs()['parameter_name']
-    else:
-        raise ValueError(
-            f"Unsupported filter source operation: {filter_param.name()}"
-        )
+    try:
+        filter_name = paddle_op.operands()[1].source().get_defining_op().attrs()['parameter_name']
+    except:
+        filter_param = paddle_op.operands()[1].source().get_defining_op()
+        while filter_param.name() not in ["builtin.parameter", "builtin.constant"]:
+            filter_param = (
+                filter_param.operands()[0].source().get_defining_op()
+            )
+            if filter_param.name() in [
+                "builtin.parameter",
+                "builtin.constant",
+            ]:
+                filter_name = filter_param.attrs()['parameter_name']
+                break
+        else:
+            raise ValueError(
+                f"Unsupported fliter source operation: {filter_param.name()}"
+            )
     refit_manager = RefitManager()
     refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
@@ -846,15 +855,24 @@ def convert_conv3d(network, paddle_op, inputs):
 
     layer.dilation_nd = nv_dilations
     set_layer_name(layer, paddle_op)
-    filter_param = paddle_op.operands()[1].source().get_defining_op()
-    while filter_param.name() not in ["builtin.parameter", "builtin.constant"]:
-        filter_param = filter_param.operands()[0].source().get_defining_op()
-    if filter_param.name() in ["builtin.parameter", "builtin.constant"]:
-        filter_name = filter_param.attrs()['parameter_name']
-    else:
-        raise ValueError(
-            f"Unsupported filter source operation: {filter_param.name()}"
-        )
+    try:
+        filter_name = paddle_op.operands()[1].source().get_defining_op().attrs()['parameter_name']
+    except:
+        filter_param = paddle_op.operands()[1].source().get_defining_op()
+        while filter_param.name() not in ["builtin.parameter", "builtin.constant"]:
+            filter_param = (
+                filter_param.operands()[0].source().get_defining_op()
+            )
+            if filter_param.name() in [
+                "builtin.parameter",
+                "builtin.constant",
+            ]:
+                filter_name = filter_param.attrs()['parameter_name']
+                break
+        else:
+            raise ValueError(
+                f"Unsupported fliter source operation: {filter_param.name()}"
+            )
     refit_manager = RefitManager()
     refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
