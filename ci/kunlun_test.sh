@@ -205,5 +205,3 @@ echo "=====================build summary======================"
 cat ${PADDLE_ROOT}/build/build_summary.txt
 echo "========================================================"
 fi
-
-exit $EXIT_CODE

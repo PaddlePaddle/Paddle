@@ -169,13 +169,13 @@ jobs:
 
     steps:
 
-    - name: Download build.tar.gz
-      run: |
-        sudo rm -rf * .[^.]*
-        # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-        wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/72068/a58543d2f92bbe5c817e185e9cc24b549c919601/build.tar.gz --no-check-certificate
-        tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
-        rm build.tar.gz
+    # - name: Download build.tar.gz
+    #   run: |
+    #     sudo rm -rf * .[^.]*
+    #     # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+    #     wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/72068/a58543d2f92bbe5c817e185e9cc24b549c919601/build.tar.gz --no-check-certificate
+    #     tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
+    #     rm build.tar.gz
 
     - name:  Determine the runner
       run: |
