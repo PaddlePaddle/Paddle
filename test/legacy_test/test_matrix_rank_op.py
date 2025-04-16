@@ -290,6 +290,22 @@ class TestMatrixRankComplexOP7(TestMatrixRankOP):
         )
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestMatrixRankComplexOP8(TestMatrixRankOP):
+    def init_data(self):
+        x_real = np.eye(3, dtype=np.float64)
+        x_imag = np.eye(3, dtype=np.float64)
+        self.x = x_real + 1j * x_imag
+        self.tol_tensor = None
+        self.tol = np.float32(0.1)
+        self.use_default_tol = False
+        self.hermitian = True
+        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
+
+
 class TestMatrixRankAPI(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
