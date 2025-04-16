@@ -38,7 +38,7 @@ class TestProcessMeshPass(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "process_mesh_demo_unittest_pir.py",
+                "process_mesh_demo_unittest.py",
                 user_defined_envs=envs,
             )
 
