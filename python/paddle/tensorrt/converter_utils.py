@@ -754,15 +754,12 @@ def convert_conv2d(network, paddle_op, inputs):
     set_layer_name(layer, paddle_op)
     support_fp32_mix_precision(paddle_op.name(), layer)
 
+    filter_param = paddle_op.operands()[1].source().get_defining_op()
     try:
-        filter_name = (
-            paddle_op.operands()[1]
-            .source()
-            .get_defining_op()
-            .attrs()['parameter_name']
-        )
+        filter_name = filter_param.attrs()['parameter_name']
     except:
-        filter_param = paddle_op.operands()[1].source().get_defining_op()
+        if filter_param.attrs()['__l_trt__'] == False:
+            break
         while filter_param.name() not in [
             "builtin.parameter",
             "builtin.constant",
@@ -861,15 +858,12 @@ def convert_conv3d(network, paddle_op, inputs):
 
     layer.dilation_nd = nv_dilations
     set_layer_name(layer, paddle_op)
+    filter_param = paddle_op.operands()[1].source().get_defining_op()
     try:
-        filter_name = (
-            paddle_op.operands()[1]
-            .source()
-            .get_defining_op()
-            .attrs()['parameter_name']
-        )
+        filter_name = filter_param.attrs()['parameter_name']
     except:
-        filter_param = paddle_op.operands()[1].source().get_defining_op()
+        if filter_param.attrs()['__l_trt__'] == False:
+            break
         while filter_param.name() not in [
             "builtin.parameter",
             "builtin.constant",
