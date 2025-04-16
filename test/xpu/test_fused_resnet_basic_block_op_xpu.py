@@ -65,7 +65,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             self.has_shortcut = False
 
         def Base(self):
-            with xpu_matmul_quant_type_guard("float"):
+            with xpu_matmul_quant_type_guard("int16"):
                 conv1_weight = base.ParamAttr(
                     initializer=paddle.nn.initializer.XavierNormal(),
                     learning_rate=0.001,
