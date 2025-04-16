@@ -24,7 +24,7 @@ jobs:
   build:
     name: Coverage build
     runs-on:
-      group: GZ_BD-CPU
+      group: test2
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
@@ -42,7 +42,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream develop --no-edit
+          git pull upstream $BRANCH --no-edit
 
       - name: Check bypass
         id: check-bypass
@@ -182,6 +182,7 @@ jobs:
           paddle_whl: paddlepaddle_gpu-0.0.0-cp39-cp39-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           echo "::group::Install bce-python-sdk"
           source ${{ github.workspace }}/../../../proxy
           python -m pip install bce-python-sdk==0.8.74
@@ -201,13 +202,13 @@ jobs:
           rm Paddle.tar.gz
           '
 
-      - name: Terminate and delete the container
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
-        run: |
-          set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+      # - name: Terminate and delete the container
+      #   if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
+      #   run: |
+      #     set +e
+      #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+      #     docker stop ${{ env.container_name }}
+      #     docker rm ${{ env.container_name }}
 
 
   test:
@@ -228,7 +229,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git checkout test
           echo "Pull upstream develop"
-          git pull upstream develop --no-edit
+          git pull upstream $BRANCH --no-edit
 
       - name: Check docker image and run container
         env:
