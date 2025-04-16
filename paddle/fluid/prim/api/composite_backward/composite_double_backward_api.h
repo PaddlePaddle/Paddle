@@ -665,6 +665,38 @@ void silu_double_grad(const Tensor& x,
 }
 
 template <typename T>
+void scatter_double_grad(const Tensor& index,
+                         const Tensor& updates,
+                         const Tensor& out_grad,
+                         const paddle::optional<Tensor>& grad_x_grad,
+                         const paddle::optional<Tensor>& grad_updates_grad,
+                         bool overwrite,
+                         Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    if (grad_x_grad && grad_updates_grad) {
+      // ddx && ddv
+      // ddy = scatter(ddx, index, ddv, overwrite)
+      auto ddy = scatter<T>(
+          grad_x_grad.get(), index, grad_updates_grad.get(), overwrite);
+      set_output<T>(ddy, grad_out_grad);
+    } else if (grad_x_grad) {
+      // only ddx
+      // ddy = ddx
+      by_pass<T>(grad_x_grad.get(), grad_out_grad);
+    } else if (grad_updates_grad) {
+      // only ddv
+      // ddy = scatter(0, index, ddv, overwrite)
+      Tensor zero = full<T>(common::vectorize(out_grad.dims()),
+                            0,
+                            out_grad.dtype(),
+                            out_grad.place());
+      auto ddy = scatter<T>(zero, index, grad_updates_grad.get(), overwrite);
+      set_output<T>(ddy, grad_out_grad);
+    }
+  }
+}
+
+template <typename T>
 void multiply_double_grad(const Tensor& x,
                           const Tensor& y,
                           const Tensor& grad_out,

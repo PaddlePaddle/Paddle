@@ -1810,7 +1810,7 @@
     out : Out
 
 - op : gather
-  backward : gather_grad
+  backward : gather_grad, gather_double_grad
   inputs :
     {x : X, index : Index}
   outputs :
@@ -3291,7 +3291,7 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : scatter
-  backward : scatter_grad
+  backward : scatter_grad, scatter_double_grad
   inputs :
     {x : X, index : Ids, updates : Updates}
   outputs :

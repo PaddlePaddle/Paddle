@@ -1352,6 +1352,12 @@
   kernel :
     func : gammaln_grad
 
+- backward_op : gather_double_grad
+  forward : gather_grad(Tensor x, Tensor index, Tensor grad_out, Scalar axis) -> Tensor(grad_x)
+  args : (Tensor index, Tensor grad_x_grad, Scalar axis)
+  output : Tensor(grad_out_grad)
+  invoke: gather(grad_x_grad, index, axis)
+
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
@@ -1362,8 +1368,8 @@
   kernel :
     data_type: out_grad
     func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, x_grad)
   no_need_buffer : x
+  backward : gather_double_grad
 
 - backward_op : gather_nd_double_grad
   forward : gather_nd_grad (Tensor x, Tensor index, Tensor grad_out) -> Tensor(grad_x)
@@ -2820,6 +2826,17 @@
   output : Tensor(x_grad)
   invoke : scale(out_grad, scale, 0.0f, true)
 
+- backward_op : scatter_double_grad
+  forward : scatter_grad (Tensor index, Tensor updates, Tensor grad_out, bool overwrite) -> Tensor(grad_x), Tensor(grad_updates)
+  args : (Tensor index, Tensor updates, Tensor grad_out, Tensor grad_x_grad, Tensor grad_updates_grad, bool overwrite)
+  output : Tensor(grad_out_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [grad_out]
+  no_need_buffer : updates, grad_out
+  composite: scatter_double_grad(index, updates, grad_out, grad_x_grad, grad_updates_grad, overwrite, grad_out_grad)
+  optional: grad_x_grad, grad_updates_grad
+
 - backward_op : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite=true) -> Tensor(out)
   args : (Tensor index, Tensor updates, Tensor out_grad, bool overwrite)
@@ -2831,7 +2848,8 @@
   kernel :
     func : scatter_grad
   no_need_buffer : updates
-  composite: scatter_grad(index, updates, out_grad, overwrite, x_grad, updates_grad)
+  backward : scatter_double_grad
+  # composite: scatter_grad(index, updates, out_grad, overwrite, x_grad, updates_grad)
 
 - backward_op : scatter_nd_add_grad
   forward : scatter_nd_add (Tensor x, Tensor index, Tensor updates) -> Tensor(out)
