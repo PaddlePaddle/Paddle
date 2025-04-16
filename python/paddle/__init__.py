@@ -94,6 +94,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    cc as cc,
     dataset as dataset,
     decomposition as decomposition,
     device as device,
