@@ -134,11 +134,12 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
                 tensor->impl());
         paddle::Tensor tensor_values(
             std::make_shared<phi::DenseTensor>(tensor_dist->value()));
-        if (tensor_values.initialized() == false) {
+        if (!tensor_values.initialized()) {
           VLOG(3) << "Move Tensor ptr: " << t.impl();
           *tensor = t;
-        }else {
-          paddle::imperative::TensorAdd<paddle::Tensor>(t_values, &tensor_values);
+        } else {
+          paddle::imperative::TensorAdd<paddle::Tensor>(t_values,
+                                                        &tensor_values);
         }
       } else {
         // TODO(jiabin): Support Other TensorBase later
