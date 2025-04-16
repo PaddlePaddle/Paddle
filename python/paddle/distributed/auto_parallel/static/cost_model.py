@@ -264,10 +264,14 @@ class CostModel:
                         self.ring2rank[ring_id] = set()
                     self.ring2rank[ring_id].add(sub_idx)
                     is_bwd = '@GRAD' in op.output('Out')[0]
-                elif op.type.startswith('recv') or op.type.startswith('p_recv'):
+                elif op.type.startswith('recv'):
                     is_bwd = '@GRAD' in op.output('Out')[0]
-                elif op.type.startswith('send') or op.type.startswith('p_send'):
+                elif op.type.startswith('send'):
                     is_bwd = '@GRAD' in op.input('X')[0]
+                elif op.type == 'p_recv':
+                    is_bwd = '@GRAD' in op.output('out')[0]
+                elif op.type == 'p_send':
+                    is_bwd = '@GRAD' in op.input('x')[0]
                 op_node = CommOpCostNode(
                     op, CostNodeType.COMMUNICATION, op_id, is_bwd
                 )
