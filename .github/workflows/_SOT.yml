@@ -22,6 +22,17 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+  check-docker:
+    name: check docker
+    needs: check-bypass
+    uses: tianshuo/.github/actions/docker@main
+
+  run-docker:
+    name: run docker
+    needs: check-bypass
+    steps:
+      run: echo ${{ needs.check-docker.outputs.docker-image }}
+
   check-docker-images:
     name: Check SOT Docker Image
     needs: check-bypass
