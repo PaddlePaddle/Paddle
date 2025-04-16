@@ -310,8 +310,6 @@ namespace ops = paddle::operators;
                     ops::ActivationOpGrad,                                  \
                     ops::ActivationGradOpInplaceInferer);
 
-FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
-
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 
 /* ==========================  register checkpoint ===========================*/

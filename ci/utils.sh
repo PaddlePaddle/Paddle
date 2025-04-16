@@ -1023,6 +1023,127 @@ function check_coverage() {
 }
 
 
+function test_fluid_lib() {
+    cat <<EOF
+    ========================================
+    Testing fluid library for inference ...
+    ========================================
+EOF
+    demo_ci_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    DEMO_EXIT_CODE=$?
+    ./clean.sh
+    demo_ci_endTime_s=`date +%s`
+    echo "demo_ci tests Total time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s"
+    echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+    infer_ut_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    TEST_EXIT_CODE=$?
+    infer_ut_endTime_s=`date +%s`
+    echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
+function check_approvals_of_unittest() {
+    set +x
+    if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
+        return 0
+    fi
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
+    check_times=$1
+    if [ $check_times == 1 ]; then
+        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+        if [ "${approval_line}" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "TRUE" ]; then
+                echo "==================================="
+                echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+                echo "==================================="
+                exit 0
+            fi
+        fi
+    elif [ $check_times == 2 ]; then
+        unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+        if [ "$unittest_spec_diff" != "" ]; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "************************************"
+                echo -e "It is forbidden to disable or delete the unit-test.\n"
+                echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
+                echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
+                echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
+                echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
+                echo "************************************"
+                exit 6
+            fi
+        fi
+    elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
+        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
+        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
+        It means the release version library size growth is about ${AllDiffSize}M.
+        ========================================
+EOF
+        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo "This PR make the release inference library size growth exceeds 20 M."
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "=========================================================================================="
+                exit 6
+            fi
+        fi
+    fi
+    set -x
+}
+
 function check_excode() {
     if [[ $EXCODE -eq 0 ]];then
         echo "Congratulations!  Your PR passed the paddle-build."
