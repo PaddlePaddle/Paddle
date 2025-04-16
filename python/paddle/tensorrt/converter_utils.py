@@ -758,7 +758,10 @@ def convert_conv2d(network, paddle_op, inputs):
     try:
         filter_name = filter_param.attrs()['parameter_name']
     except:
-        if filter_param.attrs()['__l_trt__'] == False:
+        if filter_param.attrs()['__l_trt__'] == False and filter_param in [
+            "pd_op.reshape",
+            "pd_op.batch_norm_",
+        ]:
             return layer.get_output(0)
         while filter_param.name() not in [
             "builtin.parameter",
@@ -862,7 +865,10 @@ def convert_conv3d(network, paddle_op, inputs):
     try:
         filter_name = filter_param.attrs()['parameter_name']
     except:
-        if filter_param.attrs()['__l_trt__'] == False:
+        if filter_param.attrs()['__l_trt__'] == False and filter_param in [
+            "pd_op.reshape",
+            "pd_op.batch_norm_",
+        ]:
             return layer.get_output(0)
         while filter_param.name() not in [
             "builtin.parameter",
