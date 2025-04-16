@@ -847,7 +847,42 @@ void BuildOpFuncList(const phi::Place& place,
             auto ring_id_attr = attrs.at("ring_id");
             int ring_id = PADDLE_GET(int, ring_id_attr);
             auto map = distributed::ProcessGroupMapFromGid::getInstance();
-            if (map->has(ring_id)) {
+            const auto& comm_context_manager =
+                phi::distributed::CommContextManager::GetInstance();
+            if (op_type == "p_send" || op_type == "p_recv") {
+              if (comm_context_manager.Has(std::to_string(ring_id))) {
+                auto comm_context =
+                    comm_context_manager.Get(std::to_string(ring_id));
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+                auto original_stream =
+                    static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
+                dev_ctx = static_cast<phi::distributed::XCCLCommContext*>(
+                              comm_context)
+                              ->GetDevContext();
+                dev_ctx->SetCommContext(comm_context);
+                static_cast<phi::CustomContext*>(dev_ctx)->SetStream(
+                    original_stream);
+#else
+                auto original_stream =
+                    static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
+                dev_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+                              comm_context)
+                              ->GetDevContext();
+                dev_ctx->SetCommContext(comm_context);
+
+                static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                    original_stream, false);
+                auto& instance =
+                    paddle::memory::allocation::AllocatorFacade::Instance();
+                dev_ctx->SetAllocator(
+                    instance
+                        .GetAllocator(
+                            place,
+                            static_cast<phi::GPUContext*>(dev_ctx)->stream())
+                        .get());
+#endif
+              }
+            } else if (map->has(ring_id)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
               auto original_stream =
                   static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
