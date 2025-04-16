@@ -97,12 +97,10 @@ class SameStatusReshardFunction(ReshardFunction):
                         )
 
                 comm_group = new_process_group([src, dst], group_type="p2p")
-                paddle._C_ops.send_v2(
+                paddle._legacy_C_ops.p_send(
                     src_value,
                     comm_group.id,
                     comm_group.ranks.index(dst),
-                    True,
-                    False,
                 )
                 point = paddle.base.libpaddle.pir.get_current_insertion_point()
                 point.prev()
