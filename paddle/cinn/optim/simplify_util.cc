@@ -258,6 +258,44 @@ ir::IndexExpr::IndexType VerifyIndex(const ir::Expr &expr) {
   return ir::IndexExpr::IndexType::kInvalid;
 }
 
+template <typename NodeType>
+static ir::IndexExpr SimplifyMinMax(const ir::IndexExpr &lhs,
+                                    const ir::IndexExpr &rhs,
+                                    const ir::IrNodeTy &ty) {
+  // Currently support only one operand type is min or max.
+  auto recursive_simplify =
+      [&ty](const ir::IndexExpr &lhs,
+            const ir::IndexExpr &rhs) -> std::optional<ir::IndexExpr> {
+    bool can_simplify = false;
+    if (lhs.node_type() == ty && rhs.node_type() != ty) {
+      UnpackReduction<NodeType>(lhs, [&](ir::IndexExpr val) {
+        if (!can_simplify && val == rhs) can_simplify = true;
+      });
+      if (can_simplify) return lhs;
+    }
+    if (lhs.node_type() != ty && rhs.node_type() == ty) {
+      UnpackReduction<NodeType>(rhs, [&](ir::IndexExpr val) {
+        if (!can_simplify && val == rhs) can_simplify = true;
+      });
+      if (can_simplify) return rhs;
+    }
+    return std::nullopt;
+  };
+  // 1. lhs and rhs are same, return lhs directly.
+  if (lhs == rhs) return lhs;
+  // 2. `lhs - rhs` is constant, so we can simplify it directly.
+  auto diff = optim::ArithSimplify(lhs - rhs);
+  if (diff.is_constant()) {
+    if (diff.get_constant() >= 0) return ty == ir::IrNodeTy::Max ? lhs : rhs;
+    return ty == ir::IrNodeTy::Max ? rhs : lhs;
+  }
+  // 3. Recursive simplify lhs and rhs. e.g. max(max(s0, 1), S0) => max(s0, 1).
+  if (auto result = recursive_simplify(lhs, rhs)) return result.value();
+  // 4. Return original expr.
+  return ty == ir::IrNodeTy::Max ? ir::Max::Make(lhs, rhs)
+                                 : ir::Min::Make(lhs, rhs);
+}
+
 ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
                                            const ir::IndexExpr &lhs,
                                            const ir::IndexExpr &rhs,
@@ -274,9 +312,11 @@ ir::IndexExpr ConstructIndexExprByNodeType(const ir::IrNodeTy &ty,
     case ir::IrNodeTy::Mod:
       return simplify_flag ? lhs % rhs : ir::Mod::Make(lhs, rhs);
     case ir::IrNodeTy::Min:
-      return ir::Min::Make(lhs, rhs);
+      return simplify_flag ? SimplifyMinMax<ir::Min>(lhs, rhs, ty)
+                           : ir::Min::Make(lhs, rhs);
     case ir::IrNodeTy::Max:
-      return ir::Max::Make(lhs, rhs);
+      return simplify_flag ? SimplifyMinMax<ir::Max>(lhs, rhs, ty)
+                           : ir::Max::Make(lhs, rhs);
     default:
       PADDLE_THROW(::common::errors::InvalidArgument(
           "Unsupported type in Constructir::IndexExprByNodeType, which is: %s",
