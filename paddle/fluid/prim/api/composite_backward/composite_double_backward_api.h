@@ -681,8 +681,13 @@ void scatter_double_grad(const Tensor& index,
       set_output<T>(ddy, grad_out_grad);
     } else if (grad_x_grad) {
       // only ddx
-      // ddy = ddx
-      by_pass<T>(grad_x_grad.get(), grad_out_grad);
+      // ddy = 0 + ddx
+      Tensor zero = full<T>(common::vectorize(out_grad.dims()),
+                            0,
+                            out_grad.dtype(),
+                            out_grad.place());
+      auto ddy = scatter<T>(grad_x_grad.get(), index, zero, true);
+      set_output<T>(ddy, grad_out_grad);
     } else if (grad_updates_grad) {
       // only ddv
       // ddy = scatter(0, index, ddv, overwrite)
