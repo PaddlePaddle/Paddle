@@ -612,6 +612,9 @@ bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
     } else if (auto type_info =
                    tmp_in.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
       in_dims = type_info.dims();
+      if (type_info.dtype().isa<::pir::BFloat16Type>()) {
+        return false;
+      }
     }
 
     // 1. dynamic shape not need lower x86

@@ -205,23 +205,6 @@ inline bool NeedTypePromotion(
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x_dtype != y_dtype) {
-// TODO(Xi Zhao): we got special case for add now, should remove it in future.
-#ifdef PADDLE_WITH_CUDA
-    if ((op_name == "add" || op_name == "add_") &&
-        x_dtype == DataType::FLOAT32 &&
-        (y_dtype == phi::DataType::BFLOAT16 ||
-         y_dtype == phi::DataType::FLOAT16)) {
-      return false;
-    }
-#elif defined(PADDLE_WITH_XPU)
-    if ((op_name == "add" || op_name == "add_") &&
-        x_dtype == DataType::FLOAT32 &&
-        (y_dtype == phi::DataType::BFLOAT16 ||
-         y_dtype == phi::DataType::FLOAT16)) {
-      return false;
-    }
-#endif
-
     if ((is_support_float(x_dtype) && is_support_float(y_dtype)) ||
         (is_support_complex(x_dtype) || is_support_complex(y_dtype))) {
       return true;
@@ -244,19 +227,6 @@ inline bool NeedTypePromotionOldIr(const std::string& op_name,
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x != y) {
-// TODO(Xi Zhao): we got special case for add now, should remove it in future.
-#ifdef PADDLE_WITH_CUDA
-    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
-        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
-      return false;
-    }
-#elif defined(PADDLE_WITH_XPU)
-    if ((op_name == "add" || op_name == "add_") && x == DataType::FLOAT32 &&
-        (y == phi::DataType::BFLOAT16 || y == phi::DataType::FLOAT16)) {
-      return false;
-    }
-#endif
-
     if ((is_support_float(x) && is_support_float(y)) ||
         (is_support_complex(x) || is_support_complex(y))) {
       return true;
