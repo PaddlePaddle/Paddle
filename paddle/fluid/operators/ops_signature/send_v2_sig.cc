@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature SendV2OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("p_send", {"X"}, {"peer", "dynamic_shape"}, {});
+  return KernelSignature("send_v2_phi", {"X"}, {"peer", "dynamic_shape"}, {});
 }
 
 }  // namespace phi
