@@ -17,7 +17,6 @@ import os
 import weakref
 from collections import OrderedDict
 from distutils.util import strtobool
-# from paddle.distributed.auto_parallel.moe_utils import _dtensor_from_local
 
 import numpy as np
 
@@ -183,7 +182,6 @@ class ShardingGradView:
     def __init__(
         self,
         param,
-        grad,
         param_buffer,
         grad_buffer,
         index,
@@ -194,7 +192,6 @@ class ShardingGradView:
         release_grad=False,
     ):
         self._param = param
-        self._grad = grad
         self._param_buffer = param_buffer
         self._grad_buffer = grad_buffer
         self._index = index
@@ -215,7 +212,6 @@ class ShardingGradView:
 
         self._slice_grad = None
 
-        # self._share_grad_buffer()
         if not self._release_grad:
             self._link_grad_to_buffer()
 
@@ -253,26 +249,11 @@ class ShardingGradView:
         )
         return tmp_grad
 
-    def _slice_param_from_buffer(self):
-        assert self._param_buffer is not None
-        if self._param_begin < self._param_end:
-            self._slice_param = self._param_buffer._slice(
-                self._param_begin, self._param_end
-            )
-        tmp_param = self._param_buffer._slice(
-            self._index, self._index + self._param._numel()
-        )
-        return tmp_param
-
     def _link_grad_to_buffer(self):
         tmp_grad = self._slice_grad_from_buffer()
-        # print("self._param.shape:",self._param.shape)
-        # print("tmp_grad:",tmp_grad)
-        # print("self._param._local_value():",self._param._local_value())
         tmp_grad.get_tensor()._set_dims(self._param.shape)
         if not self._use_main_grad:
-            # self._param._copy_gradient_from(tmp_grad)
-            self._param._local_value()._copy_gradient_from(tmp_grad)
+            self._param._copy_gradient_from(tmp_grad)
         else:
             self._param.main_grad = tmp_grad
 
@@ -280,8 +261,7 @@ class ShardingGradView:
         param_shape = self._param.shape
         stop_gradient = self._param.stop_gradient
         self._param.stop_gradient = True
-        # self._param.flatten_()
-        self._param._local_value().flatten_()
+        self._param.flatten_()
         paddle.assign(
             self._param,
             self._param_buffer._slice(
@@ -290,8 +270,9 @@ class ShardingGradView:
         )
         self._param.get_tensor()._set_dims(param_shape)
         self._param.stop_gradient = stop_gradient
-
-        
+        self._param_buffer._slice(
+            self._index, self._index + self._param._numel()
+        )._share_buffer_to(self._param)
 
     def fill_slice_param(self, slice_param):
         slice_begin = self._param_begin
@@ -347,7 +328,7 @@ class ShardingGradView:
 
 
 def build_reduce_scatter_buffer(
-    p_and_g,
+    parameters,
     sharding_degree,
     rank,
     use_main_grad=False,
@@ -357,7 +338,6 @@ def build_reduce_scatter_buffer(
 ):
     total_buffer_size = 0
     param2index = {}
-    parameters = [p_g[0] for p_g in p_and_g]
     dtype = parameters[0].dtype
 
     def get_padded_size(param):
@@ -387,11 +367,10 @@ def build_reduce_scatter_buffer(
     )
 
     sharding_grad_view = {}
-    for param, grad in p_and_g:
+    for param in parameters:
         padded_size = get_padded_size(param)
         grad_view = ShardingGradView(
             param,
-            grad,
             param_buffer,
             grad_buffer,
             param2index[param.name],

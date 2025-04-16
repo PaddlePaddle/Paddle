@@ -1200,11 +1200,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
              return self;
            })
-      .def("_set_dims",
-           [](DistTensor &self, const std::vector<int64_t> &dim) {
-             self.unsafe_set_dims(common::make_ddim(dim));
-             return self;
-           })
       .def("_numel",
            [](DistTensor &self) -> int64_t { return self.value().numel(); })
       .def("_share_data_with",
@@ -1217,21 +1212,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              } else {
                self.unsafe_mutable_value()->ShareDataWith(src.value());
              }
-             return self;
-           })
-      .def("_share_data_with_nodata",
-           [](DistTensor &self, const DistTensor &src) {
-             VLOG(0) << "self.dims() " << self.dims();
-             VLOG(0) << "src.dims() " << src.dims();
-             VLOG(0) << "self.dist_attr() " << self.dist_attr();
-             VLOG(0) << "src.dist_attr() " << src.dist_attr();
-             VLOG(0) << "self.dims() " << self.value();
-             VLOG(0) << "src.dims() " << src.value();
-
-             self.unsafe_set_dims(src.dims());
-             self.unsafe_set_dist_attr(src.dist_attr());
-             VLOG(0) << "end" << src.dims();
-             VLOG(0) << "end" << src.dist_attr();
              return self;
            })
       .def("_unsafe_set_skip_check_mesh",

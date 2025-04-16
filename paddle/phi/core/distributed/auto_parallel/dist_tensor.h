@@ -110,8 +110,6 @@ class DistTensor final
   /// \return The Placements's const reference
   const Placements& placements() const { return placements_; }
 
-  void set_placements(Placements placements);
-
   /// \brief Returns the num_shard of current dist tensor.
   /// \return int64_t
   int64_t num_shard() const {
