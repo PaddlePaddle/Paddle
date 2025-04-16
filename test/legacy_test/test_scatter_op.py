@@ -72,7 +72,7 @@ class TestScatterOp(OpTest):
         self.check_grad(
             ["X", "Updates"],
             "Out",
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
             max_relative_error=0.008,
@@ -108,7 +108,7 @@ class TestScatterBF16Op(TestScatterOp):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -149,7 +149,7 @@ class TestScatterOp0(OpTest):
         self.check_grad(
             ["X", "Updates"],
             "Out",
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -184,7 +184,7 @@ class TestScatterBF16Op0(TestScatterOp0):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -228,7 +228,7 @@ class TestScatterOp1(OpTest):
         self.check_grad(
             ["X", "Updates"],
             "Out",
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -338,7 +338,7 @@ class TestScatterBF16Op1(TestScatterOp1):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -388,7 +388,7 @@ class TestScatterOp2(OpTest):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -463,7 +463,7 @@ class TestScatterOp3(OpTest):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -524,7 +524,7 @@ class TestScatterOp4(OpTest):
         self.check_grad(
             ['X', 'Updates'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -559,7 +559,7 @@ class TestScatterBF16Op4(TestScatterOp4):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -609,7 +609,7 @@ class TestScatterOp5(OpTest):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -705,7 +705,7 @@ class TestScatterBF16Op6(TestScatterOp6):
                 place,
                 ['X', 'Updates'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
             )

@@ -147,57 +147,6 @@ void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-void gather_grad(const Tensor& x,
-                 const Tensor& index,
-                 const Tensor& out_grad,
-                 const Scalar& axis,
-                 Tensor* grad_x) {
-  auto zero_tensor =
-      full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
-  std::vector<int> tmp_perm;
-
-  // change axis to rank 0
-  int axis_value = axis.to<int>();
-  int rank = x.dims().size();
-  if (axis_value < 0) {
-    axis_value += rank;
-  }
-  tmp_perm.push_back(axis_value);
-  // make other ranks
-  for (int i = 0; i < rank; ++i) {
-    if (i != axis_value) {
-      tmp_perm.push_back(i);
-    }
-  }
-  std::vector<int> reverse_perm(tmp_perm);
-  // make origin ranks
-  for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
-    if (tmp_perm[i] >= 0) {
-      reverse_perm[tmp_perm[i]] = i;
-    } else {
-      reverse_perm[tmp_perm[i] + tmp_perm.size()] = i;
-    }
-  }
-
-  // transpose out_grad and zero grad to target rank.
-  auto tmp_zero_x_grad = zero_tensor;
-  auto tmp_out_grad = out_grad;
-  if (zero_tensor.dims().size() > 0) {
-    tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
-  }
-  if (out_grad.dims().size() > 0) {
-    tmp_out_grad = transpose<T>(out_grad, tmp_perm);
-  }
-  // scatter grad to grad_x
-  auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_transposed = tmp_grad_x;
-  if (tmp_grad_x.dims().size() > 0) {
-    tmp_grad_x_transposed = transpose<T>(tmp_grad_x, reverse_perm);
-  }
-  set_output<T>(tmp_grad_x_transposed, grad_x);
-}
-
-template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
   auto grad_x_tmp = grad_out * (1 - out * out);
@@ -1533,44 +1482,6 @@ template <typename T>
 void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   auto x_grad_tmp = -sin<T>(x) * out_grad;
   set_output<T>(x_grad_tmp, x_grad);
-}
-
-template <typename T>
-void scatter_grad(const Tensor& index,
-                  const Tensor& updates,
-                  const Tensor& out_grad,
-                  bool overwrite,
-                  Tensor* x_grad,
-                  Tensor* updates_grad) {
-  if (x_grad) {
-    auto zero_tensor = full<T>(common::vectorize(updates.dims()),
-                               0.0,
-                               updates.dtype(),
-                               updates.place());
-    auto tmp_grad = scatter<T>(out_grad, index, zero_tensor, false);
-    set_output<T>(tmp_grad, x_grad);
-  }
-
-  if (updates_grad) {
-    Scalar tmp_zero = 0;
-    auto tmp_updates_grad = gather<T>(out_grad, index, tmp_zero);
-
-    // NOTE: len(index) can be smaller than len(updates) when updates is not a
-    // scalar
-    auto updates_dims = common::vectorize(updates.dims());
-    auto index_dims = common::vectorize(index.dims());
-    if (updates_dims.size() > 0 && updates_dims[0] > index_dims[0]) {
-      // Pad zeros to the end of tmp_updates_grad to make its shape the same as
-      // updates.
-      decltype(updates_dims) padding_dims = updates_dims;
-      padding_dims[0] = updates_dims[0] - index_dims[0];
-      auto padding_zeros =
-          full<T>(padding_dims, 0, updates.dtype(), updates.place());
-      tmp_updates_grad =
-          concat<T>({tmp_updates_grad, std::move(padding_zeros)}, 0);
-    }
-    set_output<T>(tmp_updates_grad, updates_grad);
-  }
 }
 
 template <typename T>
