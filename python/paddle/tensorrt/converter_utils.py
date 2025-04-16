@@ -759,7 +759,7 @@ def convert_conv2d(network, paddle_op, inputs):
         filter_name = filter_param.attrs()['parameter_name']
     except:
         if filter_param.attrs()['__l_trt__'] == False:
-            break
+            return layer.get_output(0)
         while filter_param.name() not in [
             "builtin.parameter",
             "builtin.constant",
@@ -863,7 +863,7 @@ def convert_conv3d(network, paddle_op, inputs):
         filter_name = filter_param.attrs()['parameter_name']
     except:
         if filter_param.attrs()['__l_trt__'] == False:
-            break
+            return layer.get_output(0)
         while filter_param.name() not in [
             "builtin.parameter",
             "builtin.constant",
