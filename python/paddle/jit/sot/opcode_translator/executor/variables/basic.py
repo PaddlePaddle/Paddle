@@ -1199,7 +1199,18 @@ class SymbolicVariable(VariableBase):
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        from ..executor_cache import OpcodeExecutorCache
+
+        expr_node = self.tracker.guard_tree_expr_node()
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        # TODO(zrr1999): symbolic_inputs need frame_value_tracer.inlined_expr
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
+        assert frame_value_tracer.inlined_expr in symbolic_inputs
+
         if self.need_guard_value:
+            log(3, f"Need guard value for {self} in {expr_node}\n")
             return super().make_faster_guard()
         raise NotImplementedError(
             f"{self.__class__.__name__}.make_faster_guard is not implemented"
@@ -1484,9 +1495,16 @@ class SliceVariable(VariableBase):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        expr_node = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.TypeMatchGuard(slice),
+                [expr_node],
+            ),
+            *self.getattr("start").make_faster_guard(),
+            *self.getattr("stop").make_faster_guard(),
+            *self.getattr("step").make_faster_guard(),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
