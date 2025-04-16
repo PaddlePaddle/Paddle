@@ -5384,7 +5384,7 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename Enable = void>
 struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   int decimals;
@@ -5396,9 +5396,6 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
 
-    if (std::is_integral<T>::value) {
-      return static_cast<T>(x);
-    }
     if (isnan(x) || isinf(x)) return arg_x;
     if (decimals == 0) {
       return static_cast<T>(round(x));
@@ -5411,6 +5408,22 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
       return static_cast<T>(round(x / static_cast<MPType>(ten_pow_decimals)) *
                             ten_pow_decimals);
     }
+  }
+};
+
+template <typename T>
+struct CudaRoundFunctor<T, std::enable_if_t<std::is_integral_v<T>>>
+    : public BaseActivationFunctor<T> {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"decimals", &decimals}};
+  }
+  // round(x) = round(x)
+  __device__ __forceinline__ T operator()(const T arg_x) const {
+    MPType x = static_cast<MPType>(arg_x);
+    return static_cast<T>(x);
   }
 };
 

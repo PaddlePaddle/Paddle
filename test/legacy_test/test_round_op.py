@@ -98,7 +98,7 @@ class TestRound_decimals2(TestRound_decimals1):
         self.decimals = -1
 
 
-class TestRoundComplex64(TestRound):
+class TestRoundComplexOp1(TestRound):
     def init_dtype(self):
         self.dtype = np.complex64
 
@@ -115,9 +115,89 @@ class TestRoundComplex64(TestRound):
         self.convert_input_output()
 
 
-class TestRoundComplex128(TestRound):
+class TestRoundComplexOp2(TestRound):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def init_decimals(self):
+        self.decimals = 2
+
+    def setUp(self):
+        super().setUp()
+        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
+        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
+        x = x_real + 1j * x_imag
+        out = np.round(x, decimals=self.decimals)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
+        self.convert_input_output()
+
+
+class TestRoundComplexOp3(TestRound):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def init_decimals(self):
+        self.decimals = -1
+
+    def setUp(self):
+        super().setUp()
+        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
+        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
+        x = x_real + 1j * x_imag
+        out = np.round(x, decimals=self.decimals)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
+        self.convert_input_output()
+
+
+class TestRoundComplexOp4(TestRound):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def setUp(self):
+        super().setUp()
+        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
+        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
+        x = x_real + 1j * x_imag
+        out = np.round(x, decimals=self.decimals)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
+        self.convert_input_output()
+
+
+class TestRoundComplexOp5(TestRound):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def init_decimals(self):
+        self.decimals = 2
+
+    def setUp(self):
+        super().setUp()
+        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
+        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
+        x = x_real + 1j * x_imag
+        out = np.round(x, decimals=self.decimals)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
+        self.convert_input_output()
+
+
+class TestRoundComplexOp6(TestRound):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def init_decimals(self):
+        self.decimals = -1
 
     def setUp(self):
         super().setUp()
@@ -162,7 +242,7 @@ class TestRoundInt64(TestRound):
         self.convert_input_output()
 
 
-class TestRoundComplex_ZeroDim(TestRoundComplex64):
+class TestRoundComplex_ZeroDim(TestRoundComplexOp1):
     def init_shape(self):
         self.shape = []
 
