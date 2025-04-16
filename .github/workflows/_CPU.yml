@@ -5,7 +5,7 @@ on:
 
 env:
   dockerfile: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-  docker_image: 077ca344c322
+  docker_image: 3d2fa88da0da
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   work_dir: /paddle
