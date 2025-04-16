@@ -760,7 +760,9 @@ def convert_conv2d(network, paddle_op, inputs):
     if filter_param.name() in ["builtin.parameter", "builtin.constant"]:
         filter_name = filter_param.attrs()['parameter_name']
     else:
-        raise ValueError(f"Unsupported filter source operation: {filter_param.name()}")
+        raise ValueError(
+            f"Unsupported filter source operation: {filter_param.name()}"
+        )
     refit_manager = RefitManager()
     refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
@@ -850,7 +852,9 @@ def convert_conv3d(network, paddle_op, inputs):
     if filter_param.name() in ["builtin.parameter", "builtin.constant"]:
         filter_name = filter_param.attrs()['parameter_name']
     else:
-        raise ValueError(f"Unsupported filter source operation: {filter_param.name()}")
+        raise ValueError(
+            f"Unsupported filter source operation: {filter_param.name()}"
+        )
     refit_manager = RefitManager()
     refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
