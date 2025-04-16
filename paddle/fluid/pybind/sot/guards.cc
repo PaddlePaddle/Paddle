@@ -194,10 +194,12 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
-std::string ConstantExprNode::stringify() { return py::str(value_ptr_); }
+std::string ConstantExprNode::stringify(int indent) {
+  return py::str(value_ptr_);
+}
 
 PyObject* ExternVarExprNode::eval(FrameProxy* frame) { return value_ptr_; }
-std::string ExternVarExprNode::stringify() { return var_name_; }
+std::string ExternVarExprNode::stringify(int indent) { return var_name_; }
 
 PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_13_PLUS
@@ -208,7 +210,7 @@ PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
   return PyDict_GetItemString(frame->f_locals, var_name_.c_str());
 #endif
 }
-std::string LocalVarExprNode::stringify() {
+std::string LocalVarExprNode::stringify(int indent) {
   return "locals[" + var_name_ + "]";
 }
 
@@ -219,7 +221,7 @@ PyObject* GlobalVarExprNode::eval(FrameProxy* frame) {
   return PyDict_GetItemString(frame->f_globals, var_name_.c_str());
 #endif
 }
-std::string GlobalVarExprNode::stringify() {
+std::string GlobalVarExprNode::stringify(int indent) {
   return "globals[" + var_name_ + "]";
 }
 
@@ -227,7 +229,7 @@ PyObject* AttributeExprNode::eval(FrameProxy* frame) {
   PyObject* var = var_expr_->eval(frame);
   return PyObject_GetAttrString(var, attr_name_.c_str());
 }
-std::string AttributeExprNode::stringify() {
+std::string AttributeExprNode::stringify(int indent) {
   std::stringstream ss;
   ss << var_expr_->stringify() << "." << attr_name_;
   return ss.str();
@@ -238,7 +240,7 @@ PyObject* ItemExprNode::eval(FrameProxy* frame) {
   PyObject* key = key_expr_->eval(frame);
   return PyObject_GetItem(var, key);
 }
-std::string ItemExprNode::stringify() {
+std::string ItemExprNode::stringify(int indent) {
   std::stringstream ss;
   ss << var_expr_->stringify() << "[" << key_expr_->stringify() << "]";
   return ss.str();
@@ -261,10 +263,19 @@ std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   }
   return std::nullopt;
 }
-std::string GuardNode::stringify() {
+std::string GuardNode::stringify(int indent) {
   std::stringstream ss;
-  ss << guard->get_guard_name();
+  // TODO(zrr1999): support multiple exprs
+  auto expr = exprs.back();
+  ss << std::string(indent, ' ') << guard->get_guard_name();
   ss << "(" << exprs.back()->stringify() << ")";
+  if (!next_guard_nodes.empty()) {
+    ss << " |" << std::endl;
+    for (auto& next_guard_node : next_guard_nodes) {
+      ss << std::string(indent + 2, ' ');
+      ss << next_guard_node->stringify(indent + 2) << std::endl;
+    }
+  }
   return ss.str();
 }
 
@@ -295,7 +306,7 @@ std::string GuardTree::stringify() {
   std::stringstream ss;
   for (size_t i = 0; i < guard_nodes_.size(); ++i) {
     if (i > 0) {
-      ss << " and ";
+      ss << std::endl << "and" << std::endl;
     }
     ss << guard_nodes_[i]->stringify();
   }

@@ -150,10 +150,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
         cache_index = None
         if enable_strict_guard or enable_guard_tree:
-            log(4, f"[Cache] Guard tree is `{guard_tree.stringify()}`")
+            log(4, f"[Cache] Guard tree: \n{guard_tree.stringify()}")
             cache_index = guard_tree.lookup(frame)
 
-        if not enable_strict_guard:
+        if not enable_strict_guard and enable_guard_tree:
             if cache_index is not None:
                 # TODO(zrr1999): add a mapping between custom_code and cache_index
                 return guarded_fns[cache_index][0]
