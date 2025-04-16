@@ -53,7 +53,7 @@ std::map<std::string, paddle::test::Record> PrepareInput(int batch_size) {
 }
 
 TEST(gpu_tester_ernie_text_cls, analysis_gpu_bz2_buffer) {
-  1 / 0;
+  int aaa = 1 / 0;
   // init input data
   auto my_input_data_map = PrepareInput(2);
   // init output data
