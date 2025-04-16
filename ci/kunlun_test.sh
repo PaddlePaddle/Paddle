@@ -151,6 +151,44 @@ set +x
                 # There are more than 10 failed unit tests, so no unit test retry
                 is_retry_execute=1
             fi
+
+        fi
+        if [[ "$IF_KUNLUN3" == "ON" ]]; then
+            export FLAGS_enable_pir_api=0
+            #install paddlex
+            git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
+            cd PaddleX
+            pip install -e .
+
+            #install paddle x dependency
+            paddlex --install PaddleClas
+
+            #download paddle dataset
+            wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
+            tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
+
+            #train Reset50
+            echo "Starting to train ResNet50 model..."
+            python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
+                -o Global.mode=train \
+                -o Global.dataset_dir=./dataset/cls_flowers_examples \
+                -o Global.output=resnet50_output \
+                -o Global.device="xpu:${CUDA_VISIBLE_DEVICES}"
+            echo "Training Resnet50 completed!"
+
+            #inference Reset50
+            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
+            echo ${DEVICES[0]}
+
+            echo "Starting to predict ResNet50 model..."
+            python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
+                -o Global.mode=predict \
+                -o Predict.model_dir="./resnet50_output/best_model/inference" \
+                -o Predict.input="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
+                -o Global.device="xpu:${DEVICES[0]}"
+            echo "Predicting Resnet50 completed!"
+            cd ..
+            export FLAGS_enable_pir_api=1
         fi
 set -x
         ut_endTime_s=`date +%s`
