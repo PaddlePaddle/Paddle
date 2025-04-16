@@ -17,10 +17,10 @@
 namespace phi {
 
 KernelSignature SendV2OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "send_v2", {"X"}, {"ring_id", "peer", "dynamic_shape"}, {});
+  return KernelSignature("send_v2_phi", {"X"}, {"peer", "dynamic_shape"}, {});
 }
 
 }  // namespace phi
 
+PD_REGISTER_BASE_KERNEL_NAME(send_v2, send_v2_phi);
 PD_REGISTER_ARG_MAPPING_FN(send_v2, phi::SendV2OpArgumentMapping);
