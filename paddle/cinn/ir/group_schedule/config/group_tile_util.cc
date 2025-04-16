@@ -227,7 +227,7 @@ bool CheckTensorIsBroadcastAndContinuous(
     }
     ir::Expr iter_value = iter_var2value.at(iter_var);
 
-    if (!iter_value.as_var() && !iter_value.is_constant()) return false;
+    if (!iter_value.as_var()) return false;
 
     for (; loop_idx < for_iters.size(); ++loop_idx) {
       if (for_iters[loop_idx] == iter_value.as_var_ref()) {
@@ -260,7 +260,7 @@ bool CheckTensorIsContinuous(
       return false;
     }
     ir::Expr iter_value = iter_var2value.at(iter_var);
-    if (!iter_value.as_var() && !iter_value.is_constant()) return false;
+    if (!iter_value.as_var()) return false;
     if (for_iters[i] != iter_value.as_var_ref()) {
       return false;
     }
