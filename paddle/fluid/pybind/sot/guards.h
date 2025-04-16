@@ -274,6 +274,7 @@ class DummyGuard : public GuardBase {
 
 class GuardTreeNode {
  public:
+  virtual ~GuardTreeNode() = default;
   virtual std::string stringify() = 0;
 };
 
@@ -381,6 +382,7 @@ class GuardNode : public GuardTreeNode {
         next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
   std::string stringify() override;
+  virtual ~GuardNode() = default;
   std::optional<int> lookup(FrameProxy* frame);
 };
 
