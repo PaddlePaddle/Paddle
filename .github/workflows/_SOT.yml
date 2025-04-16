@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Run Docker action
         uses: tianshuo/.github/actions/docker@main
+      - name: Echo Docker
+        run: echo ${{ needs.check-docker.outputs.docker-image }}
 
   run-docker:
     name: run docker
