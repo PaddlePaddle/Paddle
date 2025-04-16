@@ -50,48 +50,41 @@ SpmdInfo TakeAlongAxisInferSpmd(const DistMetaTensor& x,
                         index_ndim));
 
   // Step1: Build Einsum Notation
-  // e.g. axis=1, x: azc, index: abc, out: abc
-  std::string alphabet = "abcdefghijklmnopqrstuvwxy";
+  // e.g. axis=1, x: a1c, index: abc, out: abc
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string index_axes = GetBroadcastAxes(index_ndim, index_ndim, alphabet);
   std::string x_axes = index_axes;
-  x_axes.replace(axis, 1, "z");
+  x_axes.replace(axis, 1, "1");
+  for (int i = 0; i < index_ndim; ++i) {
+    if (i != axis && x_shape[i] != index_shape[i]) {
+      x_axes.replace(i, 1, "1");
+      index_axes.replace(i, 1, "1");
+    }
+  }
   std::string out_axes = index_axes;
 
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::vector<int64_t> x_dims_mapping(x_dims_mapping_src);
-  if (x_dims_mapping[axis] != -1) x_dims_mapping[axis] = -1;
-
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
-  for (int i = 0; i < index_ndim; ++i) {
-    if (i != axis) {
-      if (index_dims_mapping[i] != x_dims_mapping[i])
-        index_dims_mapping[i] = x_dims_mapping[i];
-      if (x_shape[i] != index_shape[i] &&
-          (x_dims_mapping[i] != -1 || index_dims_mapping[i] != -1)) {
-        x_dims_mapping[i] = -1;
-        index_dims_mapping[i] = -1;
-      }
-    }
-  }
-
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping}, {index_axes, index_dims_mapping}});
 
+  // Step2.2: Infer output dims mapping
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  x_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(x_axes, axis_to_dim_map));
 
   TensorDistAttr index_dist_attr_dst =
       CopyTensorDistAttrForOutput(index_dist_attr_src);
-  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+  index_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(index_axes, axis_to_dim_map));
 
-  // Step2.2: Infer output dims mapping
-  std::vector<int64_t> out_dims_mapping =
-      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
   TensorDistAttr out_dist_attr =
       CopyTensorDistAttrForOutput(index_dist_attr_src);
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  out_dist_attr.set_dims_mapping(
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map));
 
   VLOG(4) << "x_axes: " << x_axes << " index_axes: " << index_axes
           << " out_axes: " << out_axes;
@@ -111,11 +104,21 @@ SpmdInfo TakeAlongAxisGradInferSpmd(const DistMetaTensor& x,
   EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
 
   // Step1: Build Einsum Notation
-  // e.g. axis=1, out_grad: abc -> x: azc, index: abc, x_grad: azc
-  std::string alphabet = "abcdefghijklmnopqrstuvwxy";
+  // e.g. axis=1, out_grad: abc -> x: a1c, index: abc, x_grad: a1c
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
   std::string out_grad_axes =
       GetBroadcastAxes(out_grad_ndim, out_grad_ndim, alphabet);
   std::string index_axes = out_grad_axes;
+  std::string x_axes = index_axes;
+  x_axes.replace(axis, 1, "1");
+  for (int i = 0; i < index_ndim; ++i) {
+    if (i != axis && x_shape[i] != index_shape[i]) {
+      x_axes.replace(i, 1, "1");
+      index_axes.replace(i, 1, "1");
+      out_grad_axes.replace(i, 1, "1");
+    }
+  }
+  std::string x_grad_axes = x_axes;
 
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
@@ -127,27 +130,19 @@ SpmdInfo TakeAlongAxisGradInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> index_dims_mapping =
       GetDimsMappingForAxes(index_axes, axis_to_dim_map);
   auto index_dist_attr_dst = CopyTensorDistAttrForOutput(index_dist_attr_src);
+  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+
   auto out_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(out_grad_dist_attr_src);
-
-  std::vector<int64_t> x_dims_mapping(index_dims_mapping);
-  if (x_dims_mapping[axis] != -1) x_dims_mapping[axis] = -1;
-  for (int i = 0; i < index_ndim; ++i) {
-    if (i != axis) {
-      if (x_shape[i] != index_shape[i] &&
-          (x_dims_mapping[i] != -1 || index_dims_mapping[i] != -1)) {
-        x_dims_mapping[i] = -1;
-        index_dims_mapping[i] = -1;
-      }
-    }
-  }
-  index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
   out_grad_dist_attr_dst.set_dims_mapping(index_dims_mapping);
 
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  x_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(x_axes, axis_to_dim_map));
+
   auto x_grad_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  x_grad_dist_attr_dst.set_dims_mapping(x_dims_mapping);
+  x_grad_dist_attr_dst.set_dims_mapping(
+      GetDimsMappingForAxes(x_grad_axes, axis_to_dim_map));
 
   VLOG(4) << "out_grad";
   VLOG(4) << "dist_attr: [" << out_grad_dist_attr_dst.to_string() << "]";
