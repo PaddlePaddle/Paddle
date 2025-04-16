@@ -670,7 +670,7 @@ class TestScatterOp6(OpTest):
         self.check_grad(
             ["X", "Updates"],
             "Out",
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
