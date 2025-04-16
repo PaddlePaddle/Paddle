@@ -34,6 +34,15 @@ namespace deep_ep {
 
 namespace internode_ll {
 
+__global__ void barrier_all() { nvshmemx_barrier_all_block(); }
+
+void barrier_all(cudaStream_t stream) {
+  constexpr int kNumThreads = 1;
+
+  SETUP_LAUNCH_CONFIG(1, kNumThreads, stream);
+  LAUNCH_KERNEL(&cfg, barrier_all);
+}
+
 template <int kNumThreads>
 __launch_bounds__(kNumThreads, 1) __global__ void clean_low_latency_buffer(
     int* clean_0, int num_clean_int_0, int* clean_1, int num_clean_int_1) {
@@ -112,7 +121,6 @@ __global__ __launch_bounds__(
 
   // Message package: hidden data, FP8 scales, index at source
   // NOTES: currently we have 3 reserved int fields for future use
-
   using vec_t = typename std::conditional<kUseFP8, int2, int4>::type;
   const size_t num_bytes_per_msg =
       sizeof(int4) + (kUseFP8 ? (kHidden + num_scales * sizeof(float))
@@ -305,13 +313,11 @@ __global__ __launch_bounds__(
                              responsible_expert_idx) != FINISHED_SUM_TAG * 2) {
     }
     if (dst_rank != rank) {
-      nvshmemi_ibgda_rma_p(
+      nvshmemi_ibgda_amo_nonfetch_add(
           rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
           -num_tokens_sent - 1,
           dst_rank,
-          dst_expert_local_idx,
-          0);
-      nvshmemi_ibgda_prepare_recvs(dst_rank, dst_expert_local_idx);
+          dst_expert_local_idx);
     } else {
       st_na_release(rdma_recv_count + dst_expert_local_idx * num_ranks + rank,
                     -num_tokens_sent - 1);
@@ -366,16 +372,9 @@ LOW_LATENCY_DISPATCH_RECV:
     EP_STATIC_ASSERT(kNumWarpsPerGroup > 1,
                      "Requires more than one warp per group");
     if (sub_warp_id == 1 && lane_id == 0) {
-      if (src_rank != rank) {
-        nvshmemi_ibgda_poll_recv(src_rank, local_expert_idx);
-        num_recv_tokens = ld_acquire_sys_global(
-            rdma_recv_count + local_expert_idx * num_ranks + src_rank);
-        EP_DEVICE_ASSERT(num_recv_tokens != 0);
-      } else {
-        while ((num_recv_tokens = ld_acquire_global(
-                    rdma_recv_count + local_expert_idx * num_ranks +
-                    src_rank)) == 0) {
-        }
+      while ((num_recv_tokens = ld_acquire_global(
+                  rdma_recv_count + local_expert_idx * num_ranks + src_rank)) ==
+             0) {
       }
       num_recv_tokens = -num_recv_tokens - 1;
       recv_token_begin_idx =
@@ -539,7 +538,8 @@ __global__ __launch_bounds__(
                     int num_experts,
                     int rank,
                     int num_ranks,
-                    int phases) {
+                    int phases,
+                    bool zero_copy) {
   const auto sm_id = static_cast<int>(blockIdx.x);
   const auto num_sms = static_cast<int>(gridDim.x);
   const auto thread_id = static_cast<int>(threadIdx.x);
@@ -580,7 +580,9 @@ __global__ __launch_bounds__(
     const auto local_expert_idx = responsible_expert_idx % num_local_experts;
     const auto global_expert_idx = rank * num_local_experts + local_expert_idx;
     const auto layout =
-        __ldg(layout_range + local_expert_idx * num_ranks + dst_rank);
+        __ldg(layout_range + local_expert_idx * num_ranks +
+              dst_rank);  // num_recv_tokens, recv_token_begin_idx
+
     const auto local_x = reinterpret_cast<const int4*>(x) +
                          local_expert_idx * num_ranks *
                              num_max_dispatch_tokens_per_rank *
@@ -625,13 +627,14 @@ __global__ __launch_bounds__(
                            st_na_global);
       } else {
         const auto buf_int4_ptr = reinterpret_cast<int4*>(buf_ptr);
-        UNROLLED_WARP_COPY(7,
-                           lane_id,
-                           hidden_bf16_int4,
-                           buf_int4_ptr,
-                           x_int4,
-                           ld_nc_global,
-                           st_na_global);
+        if (!zero_copy)
+          UNROLLED_WARP_COPY(7,
+                             lane_id,
+                             hidden_bf16_int4,
+                             buf_int4_ptr,
+                             x_int4,
+                             ld_nc_global,
+                             st_na_global);
         nvshmemi_ibgda_put_nbi_warp(dst_ptr,
                                     buf_ptr,
                                     hidden * sizeof(nv_bfloat16),
@@ -651,11 +654,8 @@ __global__ __launch_bounds__(
       while (ld_acquire_global(atomic_clean_flag) == 0) {
       }
       if (dst_rank != rank) {
-        nvshmemi_ibgda_rma_p(rdma_recv_flag + global_expert_idx,
-                             1,
-                             dst_rank,
-                             local_expert_idx,
-                             0);
+        nvshmemi_ibgda_amo_nonfetch_add(
+            rdma_recv_flag + global_expert_idx, 1, dst_rank, local_expert_idx);
       } else {
         st_na_release(rdma_recv_flag + global_expert_idx, 1);
       }
@@ -672,18 +672,9 @@ LOW_LATENCY_COMBINE_RECV:
   if (responsible_expert_idx < num_experts) {
     EP_STATIC_ASSERT(kNumWarpsPerGroup > 1,
                      "Invalid number of warps per group");
-    if (sub_warp_id == 0 && lane_id == 0) {
-      // TODO(Xreki): refactor QP indices
-      auto src_rank = responsible_expert_idx / num_local_experts;
-      auto src_expert_idx = responsible_expert_idx % num_local_experts;
-      if (src_rank != rank) {
-        nvshmemi_ibgda_poll_recv(src_rank, src_expert_idx);
-      } else {
-        while (ld_acquire_global(rdma_recv_flag + responsible_expert_idx) ==
-               0) {
-        }
+    if (sub_warp_id == 0 && lane_id == 0)
+      while (ld_acquire_global(rdma_recv_flag + responsible_expert_idx) == 0) {
       }
-    }
   }
   cg::this_grid().sync();
 
@@ -796,7 +787,8 @@ void combine(void* combined_x,
                   num_experts,                                           \
                   rank,                                                  \
                   num_ranks,                                             \
-                  phases);                                               \
+                  phases,                                                \
+                  false);                                                \
   }                                                                      \
   break
 

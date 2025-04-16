@@ -1625,6 +1625,8 @@ void Buffer::clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
 #endif
 }
 
+void Buffer::barrier_all() { internode_ll::barrier_all(calc_ctx->stream()); }
+
 #ifdef PADDLE_WITH_NVSHMEM
 std::tuple<deep_ep::detail::Tensor,
            std::optional<deep_ep::detail::Tensor>,
