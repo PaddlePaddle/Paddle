@@ -107,7 +107,8 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
 
   // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
-  if (phi::is_gpu_place(place) || phi::is_custom_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_custom_place(place) ||
+      phi::is_xpu_place(place)) {
     VLOG(6) << "Parse DeviceContext for " << op_name
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream) {
@@ -136,7 +137,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU_BKCL)
     // NOTE(Ruibiao): Here supports multi-stream overlap for c_allreduce_sum
     // with use_cal_stream==false by returning a device context getting from the
     // global NCCLCommContext instance. Because when use_calc_stream==false, in
@@ -205,7 +206,21 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
             op_name.compare(paddle::dialect::AllToAllOp::name()) == 0 ||
             op_name.compare(
                 paddle::dialect::CSoftmaxWithCrossEntropyOp::name()) == 0) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_XPU_BKCL)
+          if (phi::is_xpu_place(place) && execution_stream == kDefaultStream) {
+            VLOG(3) << "set stream for " << op_name << "in XPU device";
+            if (origin_dev_ctx != nullptr) {
+              // set stream
+              auto default_stream =
+                  static_cast<DEVICE_CONTEXT*>(origin_dev_ctx)->stream();
+              static_cast<DEVICE_CONTEXT*>(dev_ctx)->SetStream(default_stream);
+              // todo set allocator
+            } else {
+              VLOG(3) << "CUSTOM DEVICE op " << op_name << " ring_id "
+                      << ring_id << " origin_dev_ctx is nullptr";
+            }
+          }
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
           if (phi::is_custom_place(place) &&
               execution_stream == kDefaultStream) {
             VLOG(3) << "set stream for " << op_name << "in Custom device";
