@@ -111,7 +111,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
     VLOG(6) << "Parse DeviceContext for " << op_name
             << ", execution stream = " << execution_stream;
     if (execution_stream != kDefaultStream && op_name != "pd_op.p_send" &&
-        op_name != "pd_op.p_send") {
+        op_name != "pd_op.p_recv") {
       dev_ctx = ctx_manager
                     .Get(std::string(kCustomStream) + "-" + execution_stream,
                          place,
