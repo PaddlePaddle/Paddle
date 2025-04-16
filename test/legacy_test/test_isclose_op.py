@@ -369,7 +369,7 @@ class TestIscloseOpDoubleTol(TestIscloseOp):
         self.equal_nan = False
 
 
-class TestIsclosezerosize(TestIscloseOp):
+class TestIscloseZeroSize(TestIscloseOp):
     def set_args(self):
         self.input = np.zeros([3, 0, 5]).astype("float64")
         self.other = np.zeros([3, 0, 5]).astype("float64")
