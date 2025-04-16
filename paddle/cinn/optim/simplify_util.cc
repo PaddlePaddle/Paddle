@@ -263,7 +263,7 @@ static ir::IndexExpr SimplifyMinMax(const ir::IndexExpr &lhs,
                                     const ir::IndexExpr &rhs,
                                     const ir::IrNodeTy &ty) {
   // Currently support only one operand type is min or max.
-  auto recursive_simplify =
+  auto RecursiveSimplify =
       [&ty](const ir::IndexExpr &lhs,
             const ir::IndexExpr &rhs) -> std::optional<ir::IndexExpr> {
     bool can_simplify = false;
@@ -290,7 +290,7 @@ static ir::IndexExpr SimplifyMinMax(const ir::IndexExpr &lhs,
     return ty == ir::IrNodeTy::Max ? rhs : lhs;
   }
   // 3. Recursive simplify lhs and rhs. e.g. max(max(s0, 1), S0) => max(s0, 1).
-  if (auto result = recursive_simplify(lhs, rhs)) return result.value();
+  if (auto result = RecursiveSimplify(lhs, rhs)) return result.value();
   // 4. Return original expr.
   return ty == ir::IrNodeTy::Max ? ir::Max::Make(lhs, rhs)
                                  : ir::Min::Make(lhs, rhs);
