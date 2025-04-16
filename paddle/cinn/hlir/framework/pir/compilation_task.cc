@@ -314,6 +314,7 @@ CompilationTask::CompileBroadcastModules(
     backend_resource->GetBackendCompiler()->Build(ir_module, "");
     backend_resource->GetBackendCompiler()->AppendCX86(ir_moduleCX86);
   }
+
   ir::Module wrapper_module(
       cinn::backends::CreateSwitchWithBroadcastConditionModule(
           broadcast_conditions,
