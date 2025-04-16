@@ -65,6 +65,7 @@ class XPUTestResNetBasicBlockOp(XPUOpTestWrapper):
             self.has_shortcut = False
 
         def Base(self):
+            # NOTE(lijin23): Because the fused_resnet_basic_block uses int16, we force the reference to use int16 too.
             with xpu_matmul_quant_type_guard("int16"):
                 conv1_weight = base.ParamAttr(
                     initializer=paddle.nn.initializer.XavierNormal(),
