@@ -22,7 +22,7 @@ defaults:
 jobs:
   build-and-test:
     runs-on:
-      group: GZ_BD-CPU
+      group: test2
 
     steps:
       - name: Check docker image  and run container
@@ -134,6 +134,7 @@ jobs:
           paddle_whl: paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
