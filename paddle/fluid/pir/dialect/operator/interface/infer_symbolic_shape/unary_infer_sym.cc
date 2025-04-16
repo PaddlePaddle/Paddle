@@ -4193,12 +4193,6 @@ bool UniqueConsecutiveOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  PADDLE_ENFORCE_EQ(
-      x_shape_or_data.data().has_value(),
-      false,
-      common::errors::InvalidArgument(
-          "InferSymbolicShape of UniqueConsecutiveOp only support input with "
-          "value now."));
   const auto &x_dims_sym = x_shape_or_data.shape();
   const size_t rank = x_dims_sym.size();
   std::vector<int> axes =

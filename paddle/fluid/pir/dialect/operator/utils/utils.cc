@@ -36,9 +36,7 @@
 namespace paddle {
 namespace dialect {
 
-const std::unordered_set<std::string> LegacyOpList = {
-    DistributedPushSparseOp::name(),
-};
+const std::unordered_set<std::string> LegacyOpList = {};
 
 enum class AttrType {
   UNDEFINED = 0,

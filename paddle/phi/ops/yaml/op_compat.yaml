@@ -972,14 +972,6 @@
   outputs :
     out : Out
 
-- op : distributed_push_sparse
-  inputs :
-    {ids : Ids, shows : Shows, clicks: Clicks}
-  outputs :
-    output : Outputs
-  extra :
-    attrs : ['int[] slots = {}']
-
 - op : divide (elementwise_div)
   backward : divide_grad (elementwise_div_grad)
   inputs :
@@ -4183,12 +4175,6 @@
     {param: Param, grad: Grad}
   outputs:
     {fp32_fused_param: FP32FusedParam, fp32_fused_grad: FP32FusedGrad, fp16_fused_param: FP16FusedParam, fp16_fused_grad: FP16FusedGrad, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, fused_param_offsets: FusedParamOffsets, fp32_shard_fused_param_offsets: FP32ShardFusedParamOffsets, fp16_shard_fused_param_offsets: FP16ShardFusedParamOffsets, param_info: ParamInfo, param_order: ParamOrder, param_out: ParamOut, master_param_out: MasterParamOut, grad_out: GradOut, global_scale: GlobalScale, step: Step}
-
-- op: distributed_lookup_table
-  inputs:
-    {ids: Ids, w: W}
-  outputs:
-    outputs: Outputs
 
 - op: dpsgd
   inputs:
