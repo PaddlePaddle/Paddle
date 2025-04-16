@@ -98,7 +98,7 @@ void BatchNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(variance_out);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_variance);
-
+  dev_ctx.template Alloc<uint8_t>(reserve_space);
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
@@ -164,4 +164,5 @@ PD_REGISTER_KERNEL(batch_norm,
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
 }
