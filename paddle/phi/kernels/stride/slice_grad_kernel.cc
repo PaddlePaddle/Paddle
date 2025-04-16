@@ -49,13 +49,10 @@ void SliceGradStridedKernel(const Context& dev_ctx,
   tmp.set_meta(out_grad.meta());
   if (out_grad.numel() == 0) {
     // set zero to input_grad
+
     PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                         phi::FullKernel<data_t>(
-                             dev_ctx,
-                             common::vectorize(input.dims()),
-                             0.0,
-                             input.dtype(),
-                             input_grad);
+                         phi::StridedTensorFill<data_t>(
+                             *input_grad, 0, input_grad);
                        }));
 
     return;
