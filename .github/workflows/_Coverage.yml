@@ -24,7 +24,7 @@ jobs:
   build:
     name: Coverage build
     runs-on:
-      group: test2
+      group: CPU-test
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
 
