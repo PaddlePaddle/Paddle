@@ -257,7 +257,7 @@ class TestMatrixPowerOpComplex64Minus(TestMatrixPowerOpComplex64):
 class TestMatrixPowerOpComplex128(TestMatrixPowerOp):
     def config(self):
         self.matrix_shape = [10, 10]
-        self.dtype = "complex64"
+        self.dtype = "complex128"
         self.n = 2
 
     def test_grad(self):
@@ -267,21 +267,21 @@ class TestMatrixPowerOpComplex128(TestMatrixPowerOp):
 class TestMatrixPowerOpBatchedComplex128(TestMatrixPowerOpComplex128):
     def config(self):
         self.matrix_shape = [2, 8, 4, 4]
-        self.dtype = "complex64"
+        self.dtype = "complex128"
         self.n = 2
 
 
 class TestMatrixPowerOpLarge1Complex128(TestMatrixPowerOpComplex128):
     def config(self):
         self.matrix_shape = [32, 32]
-        self.dtype = "complex64"
+        self.dtype = "complex128"
         self.n = 2
 
 
 class TestMatrixPowerOpLarge2Complex128(TestMatrixPowerOpComplex128):
     def config(self):
         self.matrix_shape = [10, 10]
-        self.dtype = "complex64"
+        self.dtype = "complex128"
         self.n = 32
 
 
