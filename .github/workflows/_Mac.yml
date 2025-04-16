@@ -21,7 +21,7 @@ env:
   WITH_INFERENCE_API_TEST: "OFF"
   INSTALL_PREFIX: "/Users/paddle/CI_install_path"
   PYTHON_ABI: "cp310-cp310"
-  PY_VERSION: 3.10
+  PY_VERSION: "3.10"
   WITH_AVX: "OFF"
   WITH_ARM: "ON"
   PROC_RUN: 8
