@@ -159,8 +159,6 @@ set(hlir_src CACHE INTERNAL "" FORCE)
 # but better to move to paddle/CMakeLists.txt
 add_subdirectory(paddle/cinn)
 
-set(core_src "${cinnapi_src}")
-
 cinn_cc_library(
   cinnapi
   SHARED
@@ -184,7 +182,6 @@ add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
-add_dependencies(cinnapi python)
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
@@ -213,6 +210,8 @@ if(WITH_CUTLASS)
   target_link_libraries(cinnapi cutlass)
   add_dependencies(cinnapi cutlass)
 endif()
+
+set(core_src "${cinnapi_src}")
 
 function(gen_cinncore LINKTYPE)
   set(CINNCORE_TARGET cinncore)

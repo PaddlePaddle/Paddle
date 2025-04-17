@@ -42,7 +42,7 @@ if(WITH_CINN)
       cinn_runtime_dialect
       phi
       common
-      cinnapi
+      cinncore_static
       device_context
       op_registry
       ${DEVICE_EVENT_LIBS})
