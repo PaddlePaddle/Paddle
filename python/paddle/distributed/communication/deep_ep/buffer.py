@@ -736,6 +736,9 @@ class Buffer:
         )
         return combined_x, combined_topk_weights, EventOverlap(event)
 
+    def barrier_all(self):
+        self.runtime.barrier_all()
+
     def clean_low_latency_buffer(
         self,
         num_max_dispatch_tokens_per_rank: int,

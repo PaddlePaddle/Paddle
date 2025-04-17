@@ -46,13 +46,23 @@ struct ForRange<phi::CPUContext> {
 
 template <typename Function>
 __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
-  size_t idx = static_cast<size_t>(threadIdx.x);
-  func(idx);
+  func(threadIdx.x);
 }
 
 template <typename Function>
-__global__ static void ForRangeElemwiseOp(Function func, size_t limit) {
-  size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+__global__ static void ForRangeElemwiseOp(Function func, unsigned int limit) {
+  unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < limit) {
+    func(idx);
+  }
+}
+
+template <typename Function>
+__global__ static void ForRangeElemwiseOpLargeSize(Function func,
+                                                   size_t limit) {
+  size_t idx =
+      static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
+      static_cast<size_t>(threadIdx.x);
   if (idx < limit) {
     func(idx);
   }
@@ -79,6 +89,11 @@ struct ForRange<phi::GPUContext> {
     if (grid_size == 1) {
       ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
           func);
+    } else if (limit_ > std::numeric_limits<unsigned int>::max()) {
+      ForRangeElemwiseOpLargeSize<<<grid_size,
+                                    block_size,
+                                    0,
+                                    dev_ctx_.stream()>>>(func, limit_);
     } else {
       ForRangeElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
           func, limit_);

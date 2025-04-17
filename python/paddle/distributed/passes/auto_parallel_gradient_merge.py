@@ -440,7 +440,7 @@ def _move_reduce_to_optimizer_ops_block(
             reduce_op_desc._set_attr(OP_ROLE_KEY, OpRole.Optimize)
             removed_op_idx.append(idx)
 
-            if op.type == "c_allreduce_sum" or (
+            if (
                 op.type == "reduce"
                 and op.attr("reduce_type") == dist.ReduceOp.SUM
             ):

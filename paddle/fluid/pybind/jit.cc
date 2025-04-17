@@ -157,7 +157,8 @@ void BindGuardTree(pybind11::module *m) {
              const std::vector<std::shared_ptr<GuardNode>> &guard_chain) {
             self.add_guard_chain(guard_chain);
           },
-          py::arg("guard_chain"));
+          py::arg("guard_chain"))
+      .def("stringify", &GuardTree::stringify);
 
   py::class_<GuardNode, std::shared_ptr<GuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
@@ -178,7 +179,8 @@ void BindGuardTree(pybind11::module *m) {
           [](GuardNode &self, py::object frame) {
             return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
-          py::arg("frame"));
+          py::arg("frame"))
+      .def("stringify", &GuardNode::stringify);
 
   py::class_<ExprNode, std::shared_ptr<ExprNode>>(
       *m, "ExprNode", R"DOC(ExprNode Class.)DOC")
@@ -187,7 +189,8 @@ void BindGuardTree(pybind11::module *m) {
           [](ExprNode &self, py::object frame) {
             return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
-          py::arg("frame"));
+          py::arg("frame"))
+      .def("stringify", &ExprNode::stringify);
 
   py::class_<ConstantExprNode, ExprNode, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")

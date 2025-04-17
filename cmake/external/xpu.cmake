@@ -34,12 +34,12 @@ if(NOT DEFINED XPU_XHPC_BASE_DATE)
 endif()
 set(XPU_XCCL_BASE_VERSION "3.0.2.5") # For XRE5
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
-  set(XPU_XFT_BASE_VERSION "20230602")
+  set(XPU_XFT_BASE_VERSION "20250402/xpu3")
 endif()
 
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
   if(WITH_XPU_XRE5)
-    set(XPU_XRE_BASE_VERSION "5.0.21.18")
+    set(XPU_XRE_BASE_VERSION "5.0.21.19")
   else()
     set(XPU_XRE_BASE_VERSION "4.32.0.1")
   endif()
@@ -61,7 +61,7 @@ set(XPU_XCCL_BASE_URL
 
 if(NOT XPU_XFT_BASE_URL)
   set(XPU_XFT_BASE_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xft/dev/${XPU_XFT_BASE_VERSION}"
+      "https://klx-sdk-release-public.su.bcebos.com/xft_internal/dev/${XPU_XFT_BASE_VERSION}"
   )
 endif()
 
@@ -112,7 +112,7 @@ else()
     set(XPU_XHPC_DIR_NAME "xhpc-ubuntu1604_x86_64")
   endif()
   set(XPU_XCCL_DIR_NAME "xccl_Linux_x86_64")
-  set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
+  set(XPU_XFT_DIR_NAME "xft_internal_ubuntu2004")
 endif()
 
 set(XPU_XRE_URL
@@ -187,9 +187,9 @@ if(DEFINED ENV{XPU_LIB_ROOT})
   endif()
 
   # XCCL
-  if(DEFINED ENV{XCCL_DIR_NAME})
-    set(XPU_XCCL_URL "${XPU_LIB_ROOT}/$ENV{XCCL_DIR_NAME}")
-    set(XCCL_DIR_NAME "$ENV{XCCL_DIR_NAME}")
+  if(DEFINED ENV{XPU_XCCL_DIR_NAME})
+    set(XPU_XCCL_URL "${XPU_LIB_ROOT}/$ENV{XPU_XCCL_DIR_NAME}")
+    set(XPU_XCCL_DIR_NAME "$ENV{XPU_XCCL_DIR_NAME}")
   endif()
 
   # XHPC

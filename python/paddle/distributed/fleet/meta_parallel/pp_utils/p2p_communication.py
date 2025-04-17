@@ -807,6 +807,9 @@ class P2pHelper:
         if _timers is not None:
             _timers("recv_backward").stop()
 
+        if self._dynamic_shape and need_increase_cnt:
+            self._dynamic_cnt += 1
+
         return output_tensor_grad
 
     def send_forward(
