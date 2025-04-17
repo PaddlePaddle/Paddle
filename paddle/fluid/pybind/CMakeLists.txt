@@ -332,6 +332,7 @@ if(WITH_PYTHON)
       proto_desc
       layer
       tracer
+      engine
       imperative_profiler
       imperative_flag)
 
