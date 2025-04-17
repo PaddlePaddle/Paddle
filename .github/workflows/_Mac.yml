@@ -50,7 +50,7 @@ jobs:
         set -x
         cd ${work_dir}
         [ -d "${work_dir}/Paddle" ] && rm -rf ${work_dir}/Paddle
-        [ -d "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
+        [ -f "${work_dir}/Paddle.tar.gz" ] && rm -rf ${work_dir}/Paddle.tar.gz
         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
         tar xf Paddle.tar.gz && cd Paddle
 
