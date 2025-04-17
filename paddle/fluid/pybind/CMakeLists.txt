@@ -44,7 +44,8 @@ set(PYBIND_DEPS
     prim_utils
     detail_op_handle
     type_info
-    auto_parallel)
+    auto_parallel
+    executor_cache)
 
 if(WITH_GPU)
   list(APPEND PYBIND_DEPS gpu_event_timer)

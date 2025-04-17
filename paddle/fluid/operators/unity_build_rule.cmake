@@ -216,7 +216,6 @@ register_unity_group(
   cc
   roi_align_op.cc
   roll_op.cc
-  run_program_op.cc
   sampling_id_op.cc
   save_combine_op.cc
   save_op.cc
@@ -317,7 +316,6 @@ register_unity_group(
   partial_concat_op.cc
   pyramid_hash_op.cc
   recurrent_op.cc
-  run_program_op.cc
   softmax_with_cross_entropy_op.cc
   warpctc_op.cc)
 register_unity_group(cc lstm_op.cu.cc rnn_op.cu.cc split_op.cu.cc
@@ -439,14 +437,8 @@ register_unity_group(
   pad3d_op.cu
   pad_constant_like_op.cu
   pad_op.cu)
-register_unity_group(
-  cu
-  partial_sum_op.cu
-  pixel_shuffle_op.cu
-  prelu_op.cu
-  run_program_op.cu
-  pull_box_extended_sparse_op.cu
-  pull_box_sparse_op.cu)
+register_unity_group(cu partial_sum_op.cu pixel_shuffle_op.cu prelu_op.cu
+                     pull_box_extended_sparse_op.cu pull_box_sparse_op.cu)
 register_unity_group(cu range_op.cu reverse_op.cu partial_concat_op.cu
                      kldiv_loss_op.cu instance_norm_op.cu)
 register_unity_group(
