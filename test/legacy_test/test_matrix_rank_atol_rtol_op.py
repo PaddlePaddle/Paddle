@@ -95,14 +95,14 @@ class TestMatrixRankAtolRtolOP(OpTest):
         if isinstance(self.atol, (float, int)):
             self.atol = np.full([], self.atol, target_dtype)
         if self.atol.dtype != target_dtype:
-            self.atol = np.asarray(self.atol, dtype=target_dtype)
+            self.atol = self.atol.astype(target_dtype)
 
         if self.rtol is None:
             self.rtol = np.full([], 0.0, target_dtype)
         if isinstance(self.rtol, (float, int)):
             self.rtol = np.full([], self.rtol, target_dtype)
         if self.rtol.dtype != target_dtype:
-            self.rtol = np.asarray(self.rtol, dtype=target_dtype)
+            self.rtol = self.rtol.astype(target_dtype)
 
         self.atol, self.rtol = np.broadcast_arrays(self.atol, self.rtol)
 

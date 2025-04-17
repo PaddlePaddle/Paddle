@@ -37,10 +37,18 @@ class TestMatrixRankOP(OpTest):
         self.python_api = matrix_rank_wrapper
         self.op_type = "matrix_rank"
         self.init_data()
+        target_dtype = (
+            np.float32
+            if self.x.dtype == np.complex64
+            else (np.float64 if self.x.dtype == np.complex128 else self.x.dtype)
+        )
         self.inputs = {'X': self.x}
         self.attrs = {'hermitian': self.hermitian}
         if self.tol_tensor is not None:
-            self.inputs["TolTensor"] = self.tol_tensor
+            if self.tol_tensor.dtype != target_dtype:
+                self.inputs['TolTensor'] = self.tol_tensor.astype(target_dtype)
+            else:
+                self.inputs["TolTensor"] = self.tol_tensor
         if self.tol is not None:
             self.attrs["tol"] = self.tol
         self.attrs["use_default_tol"] = self.use_default_tol
@@ -296,14 +304,16 @@ class TestMatrixRankComplexOP7(TestMatrixRankOP):
 )
 class TestMatrixRankComplexOP8(TestMatrixRankOP):
     def init_data(self):
-        x_real = np.eye(3, dtype=np.float64)
-        x_imag = np.eye(3, dtype=np.float64)
+        x_real = np.random.rand(5, 1).astype(np.float64)
+        x_imag = np.random.rand(5, 1).astype(np.float64)
         self.x = x_real + 1j * x_imag
-        self.tol_tensor = None
-        self.tol = np.float32(0.1)
+        self.tol_tensor = np.random.random([1, 4]).astype(np.float32)
+        self.tol = None
         self.use_default_tol = False
-        self.hermitian = True
-        self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
+        self.hermitian = False
+        self.out = np.linalg.matrix_rank(
+            self.x, self.tol_tensor, self.hermitian
+        )
 
 
 class TestMatrixRankAPI(unittest.TestCase):

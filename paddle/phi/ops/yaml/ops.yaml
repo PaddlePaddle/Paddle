@@ -3336,10 +3336,7 @@
     func : MatrixRankAtolRtolInferMeta
   kernel :
     func : matrix_rank_atol_rtol
-    data_type : x
   optional : rtol
-  data_transform :
-    skip_transform : atol, rtol
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : matrix_rank_tol
@@ -3349,9 +3346,6 @@
     func : MatrixRankTolInferMeta
   kernel :
     func : matrix_rank_tol
-    data_type : x
-  data_transform :
-    skip_transform : atol_tensor
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
