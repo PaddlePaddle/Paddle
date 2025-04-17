@@ -692,13 +692,8 @@ def is_amp_flag_sync_op(op):
 
 def is_global_norm_sync_op(op):
     return (
-        (
-            op.type == "c_allreduce_sum"
-            or (
-                op.type == "all_reduce"
-                and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
-            )
-        )
+        op.type == "all_reduce"
+        and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
         and op.desc.has_attr("op_namescope")
         and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
     )
