@@ -52,6 +52,7 @@ jobs:
 
       - name: Clone PaddleCustomDevice repository
         run: |
+          source ~/.bashrc
           git clone --depth=1000 -b ${BRANCH} https://github.com/PaddlePaddle/PaddleCustomDevice.git
           cd PaddleCustomDevice
           cp -r ../Paddle .
