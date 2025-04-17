@@ -2128,6 +2128,7 @@ class Optimizer:
 
     def use_fusion_storage(self):
         self._use_fusion_storage = True
+        self.need_refuse()
 
     def need_refuse(self):
         self._need_refuse = self._use_fusion_storage
