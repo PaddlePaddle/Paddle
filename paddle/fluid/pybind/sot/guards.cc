@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/guards.h"
 #include <optional>
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/include/tensor.h"
 
 #if SOT_IS_SUPPORTED
@@ -32,6 +33,12 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 #if !PY_3_10_PLUS
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
+
+#define CheckTensorFromPyObject(value)        \
+  auto tensor = GetTensorFromPyObject(value); \
+  if (!tensor) {                              \
+    return false;                             \
+  }
 
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
@@ -98,19 +105,13 @@ bool LengthMatchGuard::check(PyObject* value) {
 }
 
 bool DtypeMatchGuard::check(PyObject* value) {
-  auto tensor = GetTensorFromPyObject(value);
-  if (!tensor) {
-    return false;
-  }
+  CheckTensorFromPyObject(value);
   auto dtype = tensor->type();
   return phi::TransToProtoVarType(dtype) == expected_;
 }
 
 bool ShapeMatchGuard::check(PyObject* value) {
-  auto tensor = GetTensorFromPyObject(value);
-  if (!tensor) {
-    return false;
-  }
+  CheckTensorFromPyObject(value);
   auto shape = tensor->shape();
   if (shape.size() != expected_.size()) {
     return false;
@@ -191,6 +192,21 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #else
   return PyObject_Equal(value, PyWeakref_GetObject(expected_));
 #endif
+}
+
+bool StopGradientMatchGuard::check(PyObject* value) {
+  CheckTensorFromPyObject(value);
+  auto autogradmeta = egr::EagerUtils::autograd_meta(&tensor.value());
+  if (autogradmeta == nullptr) {
+    return false;
+  }
+  bool res = autogradmeta->StopGradient() == expected_;
+  return res;
+}
+
+bool TensorIsDistGuard::check(PyObject* value) {
+  CheckTensorFromPyObject(value);
+  return tensor->is_dist_tensor() == expected_;
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }

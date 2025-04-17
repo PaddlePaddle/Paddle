@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/utils/pybind.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/pytypes.h"
 
 namespace py = pybind11;
 #define PYBIND11_DETAILED_ERROR_MESSAGES
@@ -248,6 +249,28 @@ class WeakRefMatchGuard : public GuardBase {
 
  private:
   PyObject* expected_;
+};
+
+class StopGradientMatchGuard : public GuardBase {
+ public:
+  explicit StopGradientMatchGuard(const py::bool_& stop_gradient)
+      : expected_(stop_gradient.cast<bool>()) {}
+
+  bool check(PyObject* value) override;
+
+ private:
+  bool expected_;
+};
+
+class TensorIsDistGuard : public GuardBase {
+ public:
+  explicit TensorIsDistGuard(const py::bool_& is_dist)
+      : expected_(is_dist.cast<bool>()) {}
+
+  bool check(PyObject* value) override;
+
+ private:
+  bool expected_;
 };
 
 class GuardTreeNode {};

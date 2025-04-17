@@ -125,6 +125,14 @@ void BindGuard(pybind11::module *m) {
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));
+  py::class_<StopGradientMatchGuard,
+             GuardBase,
+             std::shared_ptr<StopGradientMatchGuard>>(
+      *m, "StopGradientMatchGuard", R"DOC(StopGradientMatchGuard Class.)DOC")
+      .def(py::init<const py::bool_ &>(), py::arg("tensor"));
+  py::class_<TensorIsDistGuard, GuardBase, std::shared_ptr<TensorIsDistGuard>>(
+      *m, "TensorIsDistGuard", R"DOC(TensorIsDistGuard Class.)DOC")
+      .def(py::init<const py::bool_ &>(), py::arg("tensor"));
 
   m->def(
       "merge_guard",
