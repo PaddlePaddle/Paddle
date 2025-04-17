@@ -21,8 +21,10 @@ namespace phi {
 template <typename T, typename Context>
 void SlogDeterminantGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const DenseTensor& out,
-                               const DenseTensor& out_grad,
+                               const DenseTensor& sign,
+                               const DenseTensor& logdet,
+                               const DenseTensor& sign_grad,
+                               const DenseTensor& logdet_grad,
                                DenseTensor* x_grad);
 
 }  // namespace phi

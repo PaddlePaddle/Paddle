@@ -17,9 +17,11 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
@@ -32,36 +34,54 @@ namespace phi {
 template <typename T, typename Context>
 void SlogDeterminantGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
-                               const DenseTensor& out,
-                               const DenseTensor& out_grad,
+                               const DenseTensor& sign,
+                               const DenseTensor& logdet,
+                               const DenseTensor& sign_grad,
+                               const DenseTensor& logdet_grad,
                                DenseTensor* x_grad) {
-  PADDLE_ENFORCE_EQ(
-      out_grad.dims()[0],
-      2,
-      errors::InvalidArgument("The grad tensor of SlogDet should contain two"
-                              " grad: sign and absslogdet, but here %ld.",
-                              out_grad.dims()[0]));
-  if (x.dims().size() > 2) {
-    PADDLE_ENFORCE_EQ(
-        out_grad.dims().size() + 1,
-        x.dims().size(),
-        errors::InvalidArgument(
-            "The grad tensor of slogdet dims size should 1 less than"
-            " input tensor's, but here differ %d",
-            x.dims().size() - out_grad.dims().size()));
-  }
+  using RealT = typename phi::dtype::Real<T>::Type;
+  const auto& x_dims = x.dims();
+  const auto& grad_dims = logdet_grad.dims();
+  int x_rank = x_dims.size();
+  int grad_rank = grad_dims.size();
 
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      phi::errors::InvalidArgument(
+          "Input tensor X's rank must be at least 2, but received %d.",
+          x_rank));
+
+  if (x_rank == 2)
+    PADDLE_ENFORCE_EQ(
+        grad_rank,
+        0,
+        phi::errors::InvalidArgument(
+            "For a 2D input tensor X, the gradient tensor (logdet_grad) "
+            "should be a 0D tensor (scalar), but received rank %d.",
+            grad_rank));
+  else if (x_rank > 2)
+    PADDLE_ENFORCE_EQ(
+        grad_rank + 2,
+        x_rank,
+        phi::errors::InvalidArgument(
+            "The rank of gradient tensor (logdet_grad) should be 2 less than "
+            "the input tensor X's rank, but received grad rank %d and X rank "
+            "%d.",
+            grad_rank,
+            x_rank));
+
+  dev_ctx.template Alloc<T>(x_grad);
   // Check Whether the matrix is invertible
   // (matrix A not invertible) == (absslogdet(A)=0)
-  auto slogdet_vec = out.Split(1, 0);
-  auto absslogdet_val = slogdet_vec[0];
-  if (!detail::CheckMatrixInvertible<T, Context>(dev_ctx, &absslogdet_val)) {
+  if (!detail::CheckMatrixInvertible<RealT, Context>(dev_ctx, &logdet)) {
     // The matrix is not invertible
     VLOG(3) << "The input matrix not invertible!";
-    x_grad->Resize(x.dims());
+    // x_grad->Resize(x.dims());
     phi::Full<T>(dev_ctx,
                  common::vectorize(x.dims()),
-                 std::numeric_limits<T>::quiet_NaN(),
+                 std::numeric_limits<T>::quiet_NaN(),  // TODO(aquagull): using
+                                                       // T or RealT?
                  x_grad);
     return;
   }
@@ -75,7 +95,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   // First: inverse(A)
   DenseTensor inverse_A;
   // A must be square matrices!
-  inverse_A.Resize(x.dims());
+  inverse_A.Resize(x_dims);
   dev_ctx.template Alloc<T>(&inverse_A);
 
   phi::funcs::MatrixInverseFunctor<Context, T> mat_inv;
@@ -83,8 +103,15 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
 
   VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
-  // Second: inverse(A).conj()
-  auto conj_inverse_A = phi::Conj<T>(dev_ctx, inverse_A);
+  // Second: inverse(A).conj() for complex
+  DenseTensor conj_inverse_A;
+  if constexpr (IsComplexType(x.dtype())) {
+    conj_inverse_A = phi::Conj<T>(dev_ctx, inverse_A);
+    VLOG(3) << "Performed complex conjugate.";
+  } else {
+    conj_inverse_A.ShareDataWith(inverse_A);
+    VLOG(3) << "Skipped complex conjugate for real type.";
+  }
 
   VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
 
@@ -94,30 +121,51 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
           << transpose_inverse_A.dims();
 
-  // Fourth: split grad value to [sign_grad, absslogdet_grad]
-  auto grad_vec = out_grad.Split(1, 0);
-  auto det_grad = grad_vec[1];
+  DenseTensor combined_grad_term;
+  combined_grad_term.Resize(grad_dims);
+  dev_ctx.template Alloc<T>(&combined_grad_term);
 
-  // remove useless first dimension
-  int det_grad_size = det_grad.dims().size();
-  std::vector<int> det_grad_vec;
-  for (int i = 1; i < det_grad_size; ++i) {
-    det_grad_vec.emplace_back(det_grad.dims()[i]);
+  if constexpr (IsComplexType(x.dtype())) {
+    // a) sign.conj()
+    DenseTensor sign_conj = phi::Conj<T>(dev_ctx, sign);
+
+    // b) sign_term = sign_grad * sign.conj()
+    DenseTensor sign_term =
+        phi::Multiply<T, Context>(dev_ctx, sign_grad, sign_conj);
+
+    // c) change logdet_grad datatype from <RealT> to <T>
+    DenseTensor logdet_grad_complex;
+    logdet_grad_complex.Resize(grad_dims);
+    dev_ctx.template Alloc<T>(&logdet_grad_complex);
+
+    int64_t logdet_numel = logdet_grad.numel();
+    phi::funcs::ForRange<Context> for_range(dev_ctx, logdet_numel);
+    phi::funcs::RealToComplexFunctor<T> functor(
+        &logdet_grad, &logdet_grad_complex, logdet_numel);
+
+    for_range(functor);
+
+    // d) combined_grad = logdet_grad_complex + sign_term
+    phi::Add<T, Context>(
+        dev_ctx, logdet_grad_complex, sign_term, &combined_grad_term);
+
+  } else {
+    // a) sign_grad * sign
+    DenseTensor sign_term = phi::Multiply<T, Context>(dev_ctx, sign_grad, sign);
+
+    // b) combined_grad = logdet_grad + sign_term
+    phi::Add<T>(dev_ctx, logdet_grad, sign_term, &combined_grad_term);
   }
-  det_grad.Resize(det_grad.dims().reshape(det_grad_vec));
+  DenseTensor unsqueezed_combined_grad =
+      phi::funcs::Unsqueeze(combined_grad_term, {-1, -2});
+  VLOG(3) << "unsqueezed_combined_grad dims: "
+          << unsqueezed_combined_grad.dims();
 
-  // Fifth: unsqueeze(dslA, [-1, -2])
-  auto unsqueeze1 = phi::funcs::Unsqueeze(det_grad, -1);
-  auto unsqueeze2 = phi::funcs::Unsqueeze(unsqueeze1, -2);
-  VLOG(3) << "unsqueezed(dslA, [-1, -2]) dims: " << unsqueeze2.dims();
-
-  // Finally: unsqueeze(dslA) * inverse(A)
-  auto res = phi::Multiply<T>(dev_ctx, unsqueeze2, transpose_inverse_A);
-  VLOG(3) << "unsqueeze(dslA) * inverse(A) dims: " << res.dims();
+  DenseTensor res = phi::Multiply<T, Context>(
+      dev_ctx, unsqueezed_combined_grad, transpose_inverse_A);
+  VLOG(3) << "res dims: " << res.dims();
 
   phi::Copy(dev_ctx, res, dev_ctx.GetPlace(), false, x_grad);
-  x_grad->Resize(x.dims());
-  VLOG(3) << "dsl|A| dims: " << x_grad->dims();
 }
 
 }  // namespace phi

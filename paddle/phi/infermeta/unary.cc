@@ -6047,7 +6047,7 @@ void SlogdetInferMeta(const MetaTensor& x,
 
   auto out_dims = slice_ddim(x_dims, 0, rank - 2);
   sign->set_dtype(x_dtype);
-  sign->layout(x_layout);
+  sign->set_layout(x_layout);
   sign->set_dims(out_dims);
 
   if (x_dtype == DataType::COMPLEX64)
