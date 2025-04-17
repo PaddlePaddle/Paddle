@@ -27,7 +27,7 @@ jobs:
   xpu:
     name: Linux-XPU
     uses: ./.github/workflows/_XPU-kunlun.yml
-    # needs: clone
+    needs: clone
 
   inference:
     name: PR-CI-Inference
