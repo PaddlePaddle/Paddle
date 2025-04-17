@@ -31,7 +31,6 @@ EOF
         export https_proxy=
         set -x
 
-        set +ex
         if [ "$1" == "cp38-cp38" ]; then
             pip3.8 uninstall -y paddlepaddle
         elif [ "$1" == "cp39-cp39" ]; then
@@ -43,7 +42,6 @@ EOF
         elif [ "$1" == "cp312-cp312" ]; then
             pip3.12 uninstall -y paddlepaddle
         fi
-        set -ex
 
         if [ "$1" == "cp38-cp38" ]; then
             pip3.8 install --user ${PADDLE_ROOT}/dist/*.whl
@@ -145,7 +143,6 @@ EOF
             fi
 
         fi
-        #mactest_error=$?
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -161,5 +158,21 @@ EOF
         fi
     fi
 }
+
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
+
 
 run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
