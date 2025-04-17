@@ -40,7 +40,7 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           git config pull.rebase false
           git checkout test
-          echo "Pull upstream develop"
+          echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
           git pull upstream $BRANCH --no-edit
 
