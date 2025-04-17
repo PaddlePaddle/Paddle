@@ -19,6 +19,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -130,6 +131,11 @@ void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
 
   if (trans_layout_type != pir::TransLayoutType::INVALID) {
     callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
+      if (!value.type()) return;
+      if (auto type =
+              value.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
+        if (type.dims().size() != 4) return;
+      }
       shape_analysis.UpdateShapeOrDataByTransLayout(value, trans_layout_type);
     };
   }

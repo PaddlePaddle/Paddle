@@ -57,7 +57,7 @@ void PrintProgram(const pir::Program& prog, const std::string& stage) {
               << prog << std::endl;
   }
 }
-void PrintConvTransposeInfo(int conv_num, int transpose_num, int scale) {
+void PrintConvTransposeInfo(int conv_num, int transpose_num, float scale) {
   bool print_flag = true;
 #ifdef PADDLE_WITH_CINN
   print_flag &= FLAGS_cinn_debug;
@@ -87,7 +87,7 @@ class AutoLayoutPass : public pir::Pass {
     pm.AddPass(pir::CreateAutoLayoutSimplifyPass());
     pm.Run(program_clone.get());
 
-    PrintProgram(*program, "Middle");
+    PrintProgram(*program_clone, "Middle");
     if (IsNeedAllTranspose(program_clone->module_op())) {
       pir::PassManager pm_(::pir::IrContext::Instance(), 2);
       pm_.AddPass(pir::CreateAutoLayoutInsertPass({"pd_op.fused_conv2d_add_act",

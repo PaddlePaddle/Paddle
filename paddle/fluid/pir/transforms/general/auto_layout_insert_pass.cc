@@ -81,6 +81,11 @@ class AutoLayoutInsertPass : public pir::Pass {
       auto& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
       callback = [&](pir::Value value, common::DataLayout new_layout) -> void {
+        if (!value.type()) return;
+        if (auto type =
+                value.type().dyn_cast<paddle::dialect::DenseTensorType>()) {
+          if (type.dims().size() != 4) return;
+        }
         shape_analysis.UpdateShapeOrDataByTransLayout(
             value, pir::TransLayoutType::NCHW2NHWC);
       };
@@ -333,7 +338,7 @@ const std::set<std::string> kOpsNchw = {"pd_op.max_pool2d_with_index",
                                         "pd_op.unpool",
                                         // "pd_op.pool2d",
                                         "pd_op.correlation",
-                                        // "pd_op.depthwise_conv2d",
+                                        "pd_op.depthwise_conv2d",
                                         "pd_op.grid_sample",
                                         "pd_op.shuffle_channel",
                                         "cf.yield",
