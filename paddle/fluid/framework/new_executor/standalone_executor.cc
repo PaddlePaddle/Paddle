@@ -115,9 +115,9 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
       }
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       std::string device_type = place_.GetDeviceType();
-      if(phi::DeviceManager::IsCustom(device_type)) {
-          phi::DeviceManager::SetDevice(place_);
-        }
+      if (place_.GetType() == phi::AllocationType::CUSTOM) {
+        phi::DeviceManager::SetDevice(place_);
+      }
 
       if (!FLAGS_enable_custom_engine.empty()) {
         std::string custom_engine_translate_pass = FLAGS_enable_custom_engine;
