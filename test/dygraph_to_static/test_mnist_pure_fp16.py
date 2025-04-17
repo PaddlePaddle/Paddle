@@ -16,9 +16,11 @@ import unittest
 from time import time
 
 import numpy as np
-from test_mnist import MNIST, SEED, TestMNIST
+from test_mnist import MNIST, TestMNIST
 
 import paddle
+
+SEED = 2025
 
 if paddle.base.is_compiled_with_cuda():
     paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
