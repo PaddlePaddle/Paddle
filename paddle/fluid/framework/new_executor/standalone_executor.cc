@@ -114,7 +114,6 @@ StandaloneExecutor::StandaloneExecutor(const phi::Place& place,
         }
       }
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-      std::string device_type = place_.GetDeviceType();
       if (place_.GetType() == phi::AllocationType::CUSTOM) {
         phi::DeviceManager::SetDevice(place_);
       }
