@@ -302,7 +302,7 @@ EOF
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
 	    if [ "$WITH_ARM" == 'ON' ];then
-              ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_arm64;build_error=$?
+              ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_11_0_arm64;build_error=$?
             else
               ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
 	    fi
