@@ -1,25 +1,8 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import numpy as np
 
 import paddle
-import paddle.distributed as dist  # 导入飞桨分布式训练模块
 from paddle.io import BatchSampler, DataLoader, Dataset
 
-# 声明拓扑：定义计算资源
-mesh = dist.ProcessMesh([0, 1, 2, 3], dim_names=['dp'])
 
 
 class RandomDataset(Dataset):
@@ -50,8 +33,6 @@ class MlpModel(paddle.nn.Layer):
         self.w1 = self.create_parameter(shape=[4096, 1024])
 
     def forward(self, x):
-        # 切分张量: 标记输入数据沿第0维切分
-        dist.shard_tensor(x, mesh, [dist.Shard(0)])
         y = paddle.matmul(x, self.w0)
         z = paddle.matmul(y, self.w1)
         return z
