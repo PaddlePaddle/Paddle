@@ -164,7 +164,7 @@ def weight_dequantize(
     ), f"Currently group_size only support -1/64/128. but got {group_size} "
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.weight_dequantize(x, scale, algo, out_dtype, group_size)
+        return _C_ops.weight_dequantize(x, scale, algo, group_size)
     else:
         type = "weight_dequantize"
         helper = LayerHelper(type, **locals())
