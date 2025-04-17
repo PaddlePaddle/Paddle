@@ -18,6 +18,7 @@ import paddle
 from paddle.io import BatchSampler, DataLoader, Dataset
 
 
+
 class RandomDataset(Dataset):
     def __init__(self, seq_len, hidden, num_samples=100):
         super().__init__()
