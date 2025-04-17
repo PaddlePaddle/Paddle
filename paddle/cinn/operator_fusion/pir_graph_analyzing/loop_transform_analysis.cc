@@ -407,7 +407,8 @@ GetReducePlusTrivialLoopTransform(const LoopAxisMapping& upstream,
   AxisTransformRoute downstream_loop_transform;
   if (fake_reduce_idx.empty()) {
     downstream_loop_transform.push_back(std::make_shared<AppendAxisTransform>(
-        ArangeVector<int64_t>(downstream.loop.size(), reduce_axis_num),
+        ArangeVector<int64_t>(downstream.loop.size(),
+                              downstream.loop.size() + reduce_axis_num),
         reduce_loop));
   } else {
     // Transpose fake reduce axis to the end
