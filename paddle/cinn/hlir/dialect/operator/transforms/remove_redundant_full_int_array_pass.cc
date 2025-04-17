@@ -23,10 +23,11 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class RemoveRedundantFullIntArrayPattern 
+class RemoveRedundantFullIntArrayPattern
     : public pir::OpRewritePattern<paddle::dialect::FullIntArrayOp> {
-  public:
-    using pir::OpRewritePattern<paddle::dialect::FullIntArrayOp>::OpRewritePattern;
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::FullIntArrayOp>::OpRewritePattern;
 
   bool MatchAndRewrite(paddle::dialect::FullIntArrayOp op,
                        pir::PatternRewriter& rewriter) const override {
@@ -38,10 +39,11 @@ class RemoveRedundantFullIntArrayPattern
     auto place = attrs.at("place");
 
     for (auto other_op = block->begin(); other_op != block->end(); ++other_op) {
-      if (!other_op->isa<paddle::dialect::FullIntArrayOp>() ) continue;   
+      if (!other_op->isa<paddle::dialect::FullIntArrayOp>()) continue;
       if (op.operation() == &(*other_op)) break;
       pir::AttributeMap other_attrs = other_op->attributes();
-      if (dtype != other_attrs.at("dtype") || place != other_attrs.at("place")) continue;
+      if (dtype != other_attrs.at("dtype") || place != other_attrs.at("place"))
+        continue;
       auto other_value = other_attrs.at("value");
       if (!other_value) continue;
       if (value == other_value) {
@@ -56,14 +58,15 @@ class RemoveRedundantFullIntArrayPattern
 
 class RemoveRedundantFullIntArrayPass : public pir::PatternRewritePass {
  public:
-    RemoveRedundantFullIntArrayPass() : pir::PatternRewritePass("remove_redundant_full_int_array_pass", 1) {}
+  RemoveRedundantFullIntArrayPass()
+      : pir::PatternRewritePass("remove_redundant_full_int_array_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<RemoveRedundantFullIntArrayPattern>(context);
     return ps;
   }
-  
+
   bool CanApplyOn(pir::Operation* op) const override {
     return op->num_regions() > 0;
   }
@@ -76,4 +79,3 @@ std::unique_ptr<pir::Pass> CreateRemoveRedundantFullIntArrayPass() {
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
-
