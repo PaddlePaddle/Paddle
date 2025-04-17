@@ -33,6 +33,10 @@ jobs:
 
     steps:
       # sudo usermod -aG docker $USER
+      - name: Checkout
+        run: |
+          exit 1
+
       - name: Check docker image and run container
         env:
           BRANCH: develop
