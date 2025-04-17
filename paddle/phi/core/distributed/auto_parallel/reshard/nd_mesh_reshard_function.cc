@@ -148,7 +148,8 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // 2. change all the shard status to replicated status
   for (int64_t i = first_diff_axis; i >= 0; --i) {
     int64_t in_mesh_axis = out->dist_attr().dims_mapping()[i];
-    if (in_mesh_axis != -1) {
+    int64_t out_mesh_axis = out_dist_attr_orig.dims_mapping()[i];
+    if (in_mesh_axis != -1 && in_mesh_axis != out_mesh_axis) {
       VLOG(3) << "Step2: in_mesh axis " << in_mesh_axis;
       // 2.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(out->dist_attr());
@@ -223,8 +224,9 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   // 4. Change replicated/partial to shard
   for (int64_t i = first_diff_axis; i >= 0; --i) {
+    int64_t in_mesh_axis = out->dist_attr().dims_mapping()[i];
     int64_t out_mesh_axis = out_dist_attr_orig.dims_mapping()[i];
-    if (out_mesh_axis != -1) {
+    if (in_mesh_axis != out_mesh_axis) {
       const auto& in_partial_status = out->dist_attr().partial_status();
       bool is_partial = in_partial_status.count(out_mesh_axis) != 0;
 

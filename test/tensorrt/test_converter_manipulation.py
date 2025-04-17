@@ -909,6 +909,28 @@ class TestPad3dCase1TRTPattern(TensorRTBaseTest):
         self.check_trt_result()
 
 
+class TestPad3dNDHWCTRTPattern(TensorRTBaseTest):
+    def setUp(self):
+        self.python_api = wrapper_pad3d
+        self.api_args = {
+            "x": np.random.random([1, 1, 1, 2, 3]).astype("float32"),
+            "paddings": np.array([1, 0, 1, 2, 0, 0], dtype="int32"),
+            "mode": "constant",
+            "value": 1.0,
+            "data_format": "NDHWC",
+        }
+        self.program_config = {"feed_list": ["x", "paddings"]}
+        self.min_shape = {"x": [1, 1, 1, 2, 3]}
+        self.opt_shape = {"x": [1, 1, 1, 2, 3]}
+        self.max_shape = {"x": [10, 1, 1, 2, 3]}
+
+    def test_trt_result_fp32(self):
+        self.check_trt_result()
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(precision_mode="fp16")
+
+
 class TestPad3dCaseINTTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = wrapper_pad3d
@@ -990,23 +1012,26 @@ class TestPad3dNoPaddingTRTPattern(TensorRTBaseTest):
         self.check_marker(expected_result=False)
 
 
-class TestPad3dErrorModeTRTPattern(TensorRTBaseTest):
+class TestPad3dCircularModeTRTPattern(TensorRTBaseTest):
     def setUp(self):
-        self.python_api = paddle._C_ops.pad3d
+        self.python_api = wrapper_pad3d
         self.api_args = {
             "x": np.random.random([1, 1, 1, 2, 3]).astype("float32"),
             "paddings": np.array([1, 0, 1, 2, 0, 0], dtype="int32"),
-            "mode": "error",
+            "mode": "circular",
             "value": 1.0,
-            "data_format": "NCDHW",
+            "data_format": "NDHWC",
         }
         self.program_config = {"feed_list": ["x", "paddings"]}
         self.min_shape = {"x": [1, 1, 1, 2, 3]}
         self.opt_shape = {"x": [1, 1, 1, 2, 3]}
         self.max_shape = {"x": [10, 1, 1, 2, 3]}
 
-    def test_trt_result(self):
-        self.check_marker(expected_result=False)
+    def test_trt_result_fp32(self):
+        self.check_trt_result()
+
+    def test_trt_result_fp16(self):
+        self.check_trt_result(precision_mode="fp16")
 
 
 class TestPad3dErrorDataformatTRTPattern(TensorRTBaseTest):
