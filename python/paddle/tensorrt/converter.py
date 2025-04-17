@@ -50,6 +50,7 @@ from .util import (
     RefitRole,
     TensorRTConfigManager,
     TensorRTConstantManager,
+    all_ops_into_trt,
     get_cache_path,
     get_trt_version,
     get_trt_version_list,
@@ -524,6 +525,14 @@ class PaddleToTensorRTConverter:
         trt_params.min_shape_tensor = min_value_map
         trt_params.max_shape_tensor = max_value_map
         trt_params.optim_shape_tensor = opt_value_map
+        trt_params.use_cuda_graph = self.trt_config.use_cuda_graph
+        all_nodes_offload_to_trt = all_ops_into_trt(self.program)
+        if self.trt_config.use_cuda_graph and not all_nodes_offload_to_trt:
+            _logger.info(
+                "You have enabled CudaGraph, but not the entire graph offload to "
+                "trt, now return to normal mode."
+            )
+            trt_params.use_cuda_graph = False
         if self.trt_config.refit_params_path:
             trt_params.refit_params_path = self.trt_config.refit_params_path
             trt_params.refit_param_name = refit_param_name
@@ -642,6 +651,9 @@ class PaddleToTensorRTConverter:
                     constant_array = np.array(
                         tensor_data, dtype=out_dtype
                     ).tolist()
+
+                    if isinstance(constant_array, (int, float)):
+                        constant_array = [constant_array]
 
                     # convert builtin.constant to pd_op.full_int_array/full and then delete it
                     with paddle.pir.core.program_guard(self.program):

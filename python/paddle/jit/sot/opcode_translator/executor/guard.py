@@ -213,19 +213,6 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
         return guard
 
 
-def make_faster_guard(
-    guard_nodes: list[paddle.framework.core.GuardNode],
-) -> Guard:
-    with EventGuard("make_guard"):
-        num_guards = len(guard_nodes)
-        if not num_guards:
-            guard = lambda frame: True
-            return guard
-        guard_tree = paddle.framework.core.GuardTree([guard_nodes])
-        guard = lambda frame: guard_tree.check(frame) is not None
-        return guard
-
-
 def support_weak_ref(obj):
     if isinstance(obj, types.FunctionType):
         return True

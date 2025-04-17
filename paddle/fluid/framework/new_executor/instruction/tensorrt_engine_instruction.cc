@@ -248,6 +248,13 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
 
   VLOG(6) << "Finish build engine for: " << op_name_;
 
+  use_cuda_graph_ =
+      op_attributes.at("use_cuda_graph").dyn_cast<pir::BoolAttribute>().data();
+  if (use_cuda_graph_) {
+    VLOG(6) << "Enabled CudaGraph.";
+    trt_engine_->SetAllNodesLowerToTrt(true);
+  }
+
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 

@@ -240,6 +240,7 @@ class TensorRTConfig:
         optimization_level: int | None = 3,
         disable_passes: list = [],
         workspace_size: int | None = 1 << 30,
+        use_cuda_graph: bool | None = False,
         refit_params_path: str | None = None,
     ) -> None:
         """
@@ -268,6 +269,8 @@ class TensorRTConfig:
                 A list of string representing the names of pass that should not be used for origin program (default is []).
             workspace_size (int, optional):
                 Specifies the maximum GPU memory (in bytes) that TensorRT can use for the optimization process (default is 1 << 30).
+            use_cuda_graph (bool, optional):
+                Specify whether TensorRT enables cuda_graph during the optimization process (default is false).
             refit_params_path(str, optional):
                 The path to the weights that need to be refitted.
         Returns:
@@ -325,6 +328,7 @@ class TensorRTConfig:
         self.disable_passes = disable_passes
         self.optimization_level = optimization_level
         self.workspace_size = workspace_size
+        self.use_cuda_graph = use_cuda_graph
         self.refit_params_path = refit_params_path
         paddle.framework.set_flags(
             {'FLAGS_trt_min_group_size': min_subgraph_size}

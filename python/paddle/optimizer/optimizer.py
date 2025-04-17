@@ -346,8 +346,8 @@ class Optimizer:
     def _create_multi_tensor_dict(self):
         n = len(self._param_groups) if self._param_groups is not None else 1
         return {
-            'FP32_LODTensor': [[] for _ in range(n)],
-            'FP16_LODTensor': [[] for _ in range(n)],
+            'FP32_DenseTensor': [[] for _ in range(n)],
+            'FP16_DenseTensor': [[] for _ in range(n)],
         }
 
     def _get_auxiliary_var(self, key):
@@ -1247,8 +1247,8 @@ class Optimizer:
             'Adam',
         ]:
             if (
-                len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0
-                and len(self._param_dict['FP16_LODTensor'][param_group_idx])
+                len(self._param_dict['FP32_DenseTensor'][param_group_idx]) == 0
+                and len(self._param_dict['FP16_DenseTensor'][param_group_idx])
                 == 0
             ):
                 if isinstance(parameters_and_grads, list):

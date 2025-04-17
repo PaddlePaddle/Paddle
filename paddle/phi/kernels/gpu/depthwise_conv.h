@@ -1009,65 +1009,6 @@ __device__ __inline__ void KernelDepthwiseConvFilterGradNCHW(
   }
 }
 
-template <typename T, bool fuse_relu_before_conv>
-__device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
-    const T* output_grad_data,
-    const T* input_data,
-    const int num,
-    const int output_channels,
-    const int output_height,
-    const int output_width,
-    const int input_channels,
-    const int input_height,
-    const int input_width,
-    const int filter_multiplier,
-    const int filter_height,
-    const int filter_width,
-    const int stride_height,
-    const int stride_width,
-    const int padding_height,
-    const int padding_width,
-    const int dilate_height,
-    const int dilate_width,
-    T* filter_grad_data) {
-  int bid = blockIdx.z;
-  int image_h = blockIdx.y;
-  int kernel_iw = blockIdx.x % filter_width;
-  int kernel_ih = blockIdx.x / filter_width;
-  for (int kernel_id = threadIdx.x; kernel_id < output_channels;
-       kernel_id += blockDim.x) {
-    T s(0);
-    int gbid =
-        ((kernel_id * filter_height) + kernel_ih) * filter_width + kernel_iw;
-    for (int image_w = threadIdx.y; image_w < output_width;
-         image_w += blockDim.y) {
-      int kernel_h = kernel_ih * dilate_height - padding_height;
-      int kernel_w = kernel_iw * dilate_width - padding_width;
-
-      int image_hk = image_h * stride_height + kernel_h;
-      int image_wk = image_w * stride_width + kernel_w;
-      if (image_hk < 0 || image_hk >= input_height) continue;
-      if (image_wk < 0 || image_wk >= input_width) continue;
-#define gaid(N, H, W, C) \
-  ((((N)*output_height + (H)) * output_width + (W)) * output_channels + (C))
-      int input_id =
-          ((bid * input_height + image_hk) * input_width + image_wk) *
-              input_channels +
-          kernel_id / filter_multiplier;
-      if (fuse_relu_before_conv) {
-        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-             static_cast<T>(
-                 max(0.0f, static_cast<double>(input_data[input_id])));
-      } else {
-        s += output_grad_data[gaid(bid, image_h, image_w, kernel_id)] *
-             input_data[input_id];
-      }
-#undef gaid
-    }
-    phi::CudaAtomicAdd(&filter_grad_data[gbid], s);
-  }
-}
-
 template <typename T,
           typename index_t,
           typename std::enable_if_t<std::is_same_v<phi::dtype::float16, T>>* =
@@ -1146,6 +1087,66 @@ __device__ __forceinline__ void NoReturnAtomicAdd(T* tensor,
                                                   const index_t numel,
                                                   T value) {
   phi::CudaAtomicAdd(tensor + index, value);
+}
+
+template <typename T, bool fuse_relu_before_conv>
+__device__ __inline__ void KernelDepthwiseConvFilterGradNHWC(
+    const T* output_grad_data,
+    const T* input_data,
+    const int num,
+    const int output_channels,
+    const int output_height,
+    const int output_width,
+    const int input_channels,
+    const int input_height,
+    const int input_width,
+    const int filter_multiplier,
+    const int filter_height,
+    const int filter_width,
+    const int stride_height,
+    const int stride_width,
+    const int padding_height,
+    const int padding_width,
+    const int dilate_height,
+    const int dilate_width,
+    T* filter_grad_data) {
+  int bid = blockIdx.z;
+  int image_h = blockIdx.y;
+  int kernel_iw = blockIdx.x % filter_width;
+  int kernel_ih = blockIdx.x / filter_width;
+  for (int kernel_id = threadIdx.x; kernel_id < output_channels;
+       kernel_id += blockDim.x) {
+    T s(0);
+    int gbid =
+        ((kernel_id * filter_height) + kernel_ih) * filter_width + kernel_iw;
+    for (int image_w = threadIdx.y; image_w < output_width;
+         image_w += blockDim.y) {
+      int kernel_h = kernel_ih * dilate_height - padding_height;
+      int kernel_w = kernel_iw * dilate_width - padding_width;
+
+      int image_hk = image_h * stride_height + kernel_h;
+      int image_wk = image_w * stride_width + kernel_w;
+      if (image_hk < 0 || image_hk >= input_height) continue;
+      if (image_wk < 0 || image_wk >= input_width) continue;
+      int input_id =
+          ((bid * input_height + image_hk) * input_width + image_wk) *
+              input_channels +
+          kernel_id / filter_multiplier;
+      int output_id =
+          ((bid * output_height + image_h) * output_width + image_w) *
+              output_channels +
+          kernel_id;
+      if (fuse_relu_before_conv) {
+        s += output_grad_data[output_id] *
+             static_cast<T>(
+                 max(0.0f, static_cast<double>(input_data[input_id])));
+      } else {
+        s += output_grad_data[output_id] * input_data[input_id];
+      }
+    }
+    const int numel = output_channels * filter_width * filter_height;
+    NoReturnAtomicAdd(filter_grad_data, gbid, numel, s);
+  }
 }
 
 template <typename T, int c_filter, bool fuse_relu_before_conv>
