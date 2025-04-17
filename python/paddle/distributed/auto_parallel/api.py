@@ -1,8 +1,10 @@
 import numpy as np
 
 import paddle
+import paddle.distributed as dist  # 导入飞桨分布式训练模块
 from paddle.io import BatchSampler, DataLoader, Dataset
 
+mesh = dist.ProcessMesh([0, 1, 2, 3], dim_names=['dp']) # 声明拓扑：定义计算资源
 
 class MlpModel(paddle.nn.Layer):
 
@@ -12,6 +14,7 @@ class MlpModel(paddle.nn.Layer):
         self.w1 = self.create_parameter(shape=[4096, 1024])
 
     def forward(self, x):
+        dist.shard_tensor(x, mesh, [dist.Shard(0)]) # 切分张量: 标记输入数据沿第 0 维切分
         y = paddle.matmul(x, self.w0)
         z = paddle.matmul(y, self.w1)
         return z
@@ -58,3 +61,5 @@ for step, (inputs, labels) in enumerate(dataloader):
     loss.backward()
     opt.step()
     opt.clear_grad()
+
+#
