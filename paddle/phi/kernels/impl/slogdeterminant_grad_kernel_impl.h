@@ -39,7 +39,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
                                const DenseTensor& sign_grad,
                                const DenseTensor& logdet_grad,
                                DenseTensor* x_grad) {
-  using RealT = typename phi::dtype::Real<T>::Type;
+  using RealT = typename phi::dtype::Real<T>;
   const auto& x_dims = x.dims();
   const auto& grad_dims = logdet_grad.dims();
   int x_rank = x_dims.size();
@@ -80,8 +80,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
     // x_grad->Resize(x.dims());
     phi::Full<T>(dev_ctx,
                  common::vectorize(x.dims()),
-                 std::numeric_limits<T>::quiet_NaN(),  // TODO(aquagull): using
-                                                       // T or RealT?
+                 std::numeric_limits<T>::quiet_NaN(),
                  x_grad);
     return;
   }
