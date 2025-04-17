@@ -681,6 +681,10 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
         clear_dynamic_shape()
         # for dynamic_shape
         self.generate_dynamic_shape(attrs)
