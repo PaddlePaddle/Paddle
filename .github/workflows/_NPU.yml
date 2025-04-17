@@ -42,7 +42,14 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git pull upstream $BRANCH --no-edit
 
-      - name:  Determine the runner
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: npu
+
+      - name: Determine the runner
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
@@ -166,9 +173,9 @@ jobs:
           bash backends/npu/tools/pr_ci_npu.sh;EXCODE=$?
           '
 
-      # - name: Terminate and delete the container
-      #   if: always()
-      #   run: |
-      #     docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
-      #     docker stop ${container_name}
-      #     docker rm ${container_name}
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${container_name}
+          docker rm ${container_name}

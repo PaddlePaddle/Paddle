@@ -21,6 +21,7 @@ defaults:
 
 jobs:
   build-and-test:
+    name: Build and test
     runs-on:
       group: GZ_BD-CPU
 
@@ -104,6 +105,13 @@ jobs:
           git checkout test
           git merge --no-edit $BRANCH
           '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: cpu
 
       - name: Build
         run: |

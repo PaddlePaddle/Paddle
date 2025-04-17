@@ -68,6 +68,27 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'PR-CI-SOT / Check bypass for SOT / Check bypass'
 
+
+      - name: Rerun CPU
+        if: ${{ contains(env.comment_body, 'cpu') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-CPU / Build and test'
+
+      - name: Rerun NPU
+        if: ${{ contains(env.comment_body, 'npu')}}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-NPU / Test'
+
       - name: Rerun inference
         if: ${{ contains(env.comment_body, 'inference') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
         uses: ./.github/actions/rerun-workflow
