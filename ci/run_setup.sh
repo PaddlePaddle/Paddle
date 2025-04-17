@@ -196,7 +196,9 @@ function run_setup(){
       echo "::group::Installing PyGithub"
       pip install PyGithub
       echo "::endgroup::"
-      #python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+      if [ "$SYSTEM" != "Darwin" ]; then
+        python ${PADDLE_ROOT}/tools/check_only_change_python_files.py
+      fi
       if [ -f "${PADDLE_ROOT}/build/only_change_python_file.txt" ];then
           export WITH_CPP_TEST=OFF
       else
@@ -299,7 +301,11 @@ EOF
     echo "::group::Build Paddle"
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
-            ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+	    if [ "$WITH_ARM" == 'ON' ];then
+              ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_arm64;build_error=$?
+            else
+              ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+	    fi
         else
             ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
         fi
