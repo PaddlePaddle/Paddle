@@ -98,7 +98,6 @@ void BatchNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(variance_out);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_variance);
-  dev_ctx.template Alloc<uint8_t>(reserve_space);
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
