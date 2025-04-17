@@ -1,11 +1,20 @@
 import numpy as np
 
 import paddle
-import paddle.distributed as dist  # 导入飞桨分布式训练模块
 from paddle.io import BatchSampler, DataLoader, Dataset
 
-mesh = dist.ProcessMesh([0, 1, 2, 3], dim_names=['dp']) # 声明拓扑：定义计算资源
 
+class MlpModel(paddle.nn.Layer):
+
+    def __init__(self):
+        super().__init__()
+        self.w0 = self.create_parameter(shape=[1024, 4096])
+        self.w1 = self.create_parameter(shape=[4096, 1024])
+
+    def forward(self, x):
+        y = paddle.matmul(x, self.w0)
+        z = paddle.matmul(y, self.w1)
+        return z
 
 class RandomDataset(Dataset):
     def __init__(self, seq_len, hidden, num_samples=100):
@@ -25,21 +34,6 @@ class RandomDataset(Dataset):
 
     def __len__(self):
         return self.num_samples
-
-
-class MlpModel(paddle.nn.Layer):
-
-    def __init__(self):
-        super().__init__()
-        self.w0 = self.create_parameter(shape=[1024, 4096])
-        self.w1 = self.create_parameter(shape=[4096, 1024])
-
-    def forward(self, x):
-        dist.shard_tensor(x, mesh, [dist.Shard(0)]) # 切分张量: 标记输入数据沿第 0 维切分
-        y = paddle.matmul(x, self.w0)
-        z = paddle.matmul(y, self.w1)
-        return z
-
 
 with paddle.LazyGuard():
     model = MlpModel()
