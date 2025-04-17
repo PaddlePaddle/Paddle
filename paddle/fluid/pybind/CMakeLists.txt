@@ -361,9 +361,7 @@ if(WITH_PYTHON)
     target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
   endif()
 
-  if(WITH_CINN)
-    target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
-  endif()
+  target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
 
   if(WIN32)
     set(EAGER_CODEGEN_DEPS eager_generator)
