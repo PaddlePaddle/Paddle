@@ -569,6 +569,35 @@ class TestRaiseSumsError(unittest.TestCase):
             self.assertRaises(TypeError, test_dtype1)
 
 
+class TestSumOpDtype(unittest.TestCase):
+    def setUp(self):
+        self.shape = [0, 1, 1]
+        self.axis = 0
+        self.input_dtype = 'int32'
+        self.output_dtype = 'int32'
+        self.paddle_output_dtype = paddle.int32
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x_paddle = paddle.zeros(shape=self.shape, dtype=self.input_dtype)
+            paddle_result = x_paddle.sum(
+                axis=self.axis, dtype=self.output_dtype
+            )
+
+        self.assertEqual(paddle_result.dtype, self.paddle_output_dtype)
+
+    def test_static(self):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(
+                    name='x', shape=self.shape, dtype=self.input_dtype
+                )
+                result = paddle.sum(x, axis=self.axis, dtype=self.output_dtype)
+                self.assertEqual(result[0].dtype, self.paddle_output_dtype)
+
+
 class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
