@@ -1511,7 +1511,7 @@ class SliceVariable(VariableBase):
         frame_value_tracer = self.tracker.trace_value_from_frame()
         result = [
             FasterStringifiedExpression(
-                "id(type({{}})) == id(slice)",
+                f"id(type({{}})) == {id(slice)}",
                 paddle.framework.core.TypeMatchGuard(slice),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
