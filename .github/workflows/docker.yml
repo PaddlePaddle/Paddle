@@ -2,14 +2,13 @@ on:
   workflow_call:
     outputs:
       docker:
-        description: "Whether the workflow can be skipped."
+        description: "Generate images for all CI usage"
         value: ${{ jobs.build-docker-images.outputs.docker-image }}
 
 jobs:
   build-docker-images:
     name: build docker
-    runs-on:
-      group: Docker-build
+    runs-on: Docker-build
     outputs:
       docker-image: ${{steps.build-docker-images.outputs.docker-image}}
     steps:
