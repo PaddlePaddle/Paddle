@@ -22,8 +22,9 @@ from dataclasses import dataclass
 from typing import Callable
 
 import paddle
-import paddle.cc.typing as pct
 from paddle.static import InputSpec
+
+from . import typing as pct
 
 __all__ = ['compile']
 
@@ -184,7 +185,9 @@ def _init_empty_input_spec_make_ctx(annotations, mut_ctx: InputSpecMakeCtx):
 def _init_input_spec_make_ctx_name2dtype_num_candidates(
     pct_type, mut_ctx: InputSpecMakeCtx
 ):
-    assert isinstance(pct_type.dtype, pct.DTypeVar)
+    assert isinstance(
+        pct_type.dtype, pct.DTypeVar
+    ), f"pct_type.dtype should be a DTypeVar, but {type(pct_type.dtype)} were given."
     name = pct_type.dtype.name
     if name in mut_ctx.name2dtype_num_candidates:
         assert mut_ctx.name2dtype_num_candidates[name] == len(

@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.cc import fuse
-
+from . import fuse
 from .compiler import compile
 
 __all__ = ['fuse', 'compile']
