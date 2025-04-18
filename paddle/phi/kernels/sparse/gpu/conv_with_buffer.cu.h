@@ -481,7 +481,6 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                               int* h_buffer) {
   DenseTensor d_buffer = phi::Empty<int>(dev_ctx, {2 * kernel_size + 3});
 
-  // LOG(INFO) << "[debug]: phi::Empty alloc:" << 4 * (2 * kernel_size + 3) << "Byte.";
   const bool is2D = out_dims.size() == 4 ? true : false;
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
@@ -501,7 +500,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                                     counter_ptr);
 
   DenseTensor rulebook_len_tensor = phi::Empty<int>(dev_ctx, {1});
-  // LOG(INFO) << "[debug]: phi::Empty alloc:" << 4 << "Byte.";
+
   cuda_remove<IntT>(dev_ctx,
                     *rulebook,
                     rulebook_rows * rulebook_cols,
@@ -525,7 +524,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
   out_index->ResizeAndAllocate({static_cast<int>(max_nnz)});
   DenseTensor unique_key =
       phi::Empty<int>(dev_ctx, {static_cast<int>(max_nnz)});
-  // LOG(INFO) << "[debug]: phi::Empty alloc:" << 4 * max_nnz / 1024.0 / 1024.0 << " MByte.";
+
   int* out_index_ptr = out_index->data<int>();
   int* unique_key_ptr = unique_key.data<int>();
 
@@ -612,12 +611,9 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
   phi::DenseTensor out_indices =
       phi::Empty<IntT>(dev_ctx, {sparse_dim, out_nnz});
   
-  // LOG(INFO) << "[debug]: phi::Empty alloc:" << 4 * sparse_dim * out_nnz / 1024.0 / 1024.0 << " MByte.";
   phi::DenseTensor out_values = phi::Empty<T>(
       dev_ctx, {out_nnz, kernel_sizes[sparse_dim]});
   out->SetMember(out_indices, out_values, out_dims, false);
-
-  // LOG(INFO) << "[debug]: phi::Empty alloc:" << 4 * kernel_sizes[sparse_dim] * out_nnz / 1024.0 / 1024.0 << " MByte.";
 
   IntT* out_indices_ptr = out_indices.data<IntT>();
 
@@ -645,13 +641,6 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                     rulebook_ptr + rulebook_len,
                                     out_index_ptr,
                                     unique_value_ptr);
-
-
-  // out_indices.Resize({sparse_dim, static_cast<int>(out_nnz)});
-  // unique_value->Resize(
-  //     {static_cast<int>(static_cast<int>(out_nnz) * kernel_size)});
-  // out_values.Resize({out_nnz, kernel_sizes[sparse_dim]});
-  // out->SetMember(out_indices, out_values, out_dims, false);
   return rulebook_len;
 }
 }  // namespace sparse
