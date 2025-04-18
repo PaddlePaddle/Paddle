@@ -19,6 +19,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -90,7 +91,13 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
   // we set dsl|A| = unsqueeze(dslA, [-1, -2]) *
   // inverse(A).conj().transpose(-2, -1)
-
+  std::vector<int64_t> ConvertDDimToVector(const common::DDim& ddim) {
+    std::vector<int64_t> dims;
+    for (int i = 0; i < ddim.size(); ++i) {
+      dims.push_back(ddim[i]);
+    }
+    return dims;
+  }
   // First: inverse(A)
   DenseTensor inverse_A;
   // A must be square matrices!
@@ -133,19 +140,20 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
         phi::Multiply<T, Context>(dev_ctx, sign_grad, sign_conj);
 
     // c) change logdet_grad datatype from <RealT> to <T>
-    DenseTensor logdet_grad_complex;
-    logdet_grad_complex.Resize(grad_dims);
-    dev_ctx.template Alloc<T>(&logdet_grad_complex);
+    DenseTensor logdet_grad_complex =
+        Empty<T>(dev_ctx, ConvertDDimToVector(grad_dims));
 
     int64_t logdet_numel = logdet_grad.numel();
     phi::funcs::ForRange<Context> for_range(dev_ctx, logdet_numel);
     phi::funcs::RealToComplexFunctor<T> functor(
-        &logdet_grad, &logdet_grad_complex, logdet_numel);
+        logdet_grad.data<phi::dtype::Real<T>>(),
+        logdet_grad_complex.data<T>(),
+        logdet_numel);
 
     for_range(functor);
 
     // d) combined_grad = logdet_grad_complex + sign_term
-    phi::Add<T, Context>(
+    Add<T, Context>(
         dev_ctx, logdet_grad_complex, sign_term, &combined_grad_term);
 
   } else {
@@ -153,10 +161,12 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
     DenseTensor sign_term = phi::Multiply<T, Context>(dev_ctx, sign_grad, sign);
 
     // b) combined_grad = logdet_grad + sign_term
-    phi::Add<T>(dev_ctx, logdet_grad, sign_term, &combined_grad_term);
+    Add<T>(dev_ctx, logdet_grad, sign_term, &combined_grad_term);
   }
   DenseTensor unsqueezed_combined_grad =
-      phi::funcs::Unsqueeze(combined_grad_term, {-1, -2});
+      phi::funcs::Unsqueeze(combined_grad_term, -1);
+  unsqueezed_combined_grad =
+      phi::funcs::Unsqueeze(unsqueezed_combined_grad, -2);
   VLOG(3) << "unsqueezed_combined_grad dims: "
           << unsqueezed_combined_grad.dims();
 

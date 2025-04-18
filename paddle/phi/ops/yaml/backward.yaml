@@ -3099,7 +3099,7 @@
     param : [x]
   kernel :
     func : slogdet_grad
-    # data_type : out_grad
+    data_type : sign_grad
 
 - backward_op : softplus_double_grad
   forward : softplus_grad (Tensor x, Tensor grad_out, float beta, float threshold) -> Tensor(grad_x)

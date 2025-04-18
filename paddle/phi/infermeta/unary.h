@@ -829,6 +829,10 @@ void SvdInferMeta(const MetaTensor& x,
                   MetaTensor* s,
                   MetaTensor* vh);
 
+void SlogdetInferMeta(const MetaTensor& x,
+                      MetaTensor* sign,
+                      MetaTensor* logdet);
+
 void TemporalShiftInferMeta(const MetaTensor& x,
                             int seg_num,
                             float shift_ratio,
