@@ -8,7 +8,8 @@ on:
 jobs:
   build-docker-images:
     name: build docker
-    runs-on: Docker-build
+    runs-on:
+    group: Docker-build
     outputs:
       docker-image: ${{steps.build-docker-images.outputs.docker-image}}
     steps:
