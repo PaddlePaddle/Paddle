@@ -274,6 +274,26 @@ Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
   return ret;
 }
 
+Result<axpr::Value> ForEach(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+      std::string() + "foreach() takes 2 arguments but " +
+      std::to_string(args.size()) + " were given."};
+
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<axpr::Value>::CastFrom(args.at(1)));
+  ADT_LET_CONST_REF(lst_size, lst.size());
+  const auto& f = args.at(0);
+  ADT_RETURN_IF_ERR(
+      lst.Visit([&](const auto& elt) -> adt::Result<adt::LoopCtrl> {
+        ADT_LET_CONST_REF(
+            converted_elt,
+            interpreter->InterpretCall(f, std::vector<axpr::Value>{elt}));
+        return adt::Continue{};
+      }));
+  return adt::Nothing{};
+}
+
 Result<axpr::Value> Apply(axpr::InterpreterBase<axpr::Value>* interpreter,
                           const axpr::Value&,
                           const std::vector<axpr::Value>& args) {

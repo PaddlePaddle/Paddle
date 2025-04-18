@@ -48,6 +48,10 @@ Result<axpr::Value> FlatMap(axpr::InterpreterBase<axpr::Value>* interpreter,
                             const axpr::Value&,
                             const std::vector<axpr::Value>& args);
 
+Result<axpr::Value> ForEach(axpr::InterpreterBase<axpr::Value>* interpreter,
+                            const axpr::Value&,
+                            const std::vector<axpr::Value>& args);
+
 Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
                         const axpr::Value&,
                         const std::vector<axpr::Value>& args);
