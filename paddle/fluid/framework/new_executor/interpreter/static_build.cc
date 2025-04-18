@@ -348,7 +348,7 @@ void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
       PADDLE_ENFORCE_EQ(place,
                         dev_ctx.GetPlace(),
                         common::errors::Unavailable(
-                            "The place %s for fack alloc is not equal to "
+                            "The place %s for fake alloc is not equal to "
                             "the place %s of DeviceContext.",
                             place,
                             dev_ctx.GetPlace()));
@@ -525,7 +525,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
   // note(lvyongkang): The assign op in while loop may change the place of
   // variable. However, InterpreterCore fix the kernel of every ops during its
   // first run. A cpu tensor may become gpu tensor after first run. This will
-  // lead to segmetation fault when it's used in a cpu kernel. Here we record
+  // lead to segmentation fault when it's used in a cpu kernel. Here we record
   // the place of every inputs and restore their place after
   // InterpreterCore.run().
   std::map<std::string, phi::Place> input_var_original_places;
@@ -696,7 +696,7 @@ void FakeInitializeOutputsForOperatorBase(
         if (following_input_vars.count(var_name)) {
           PADDLE_THROW(common::errors::PreconditionNotMet(
               "The output %s s' dtype/place of %s is "
-              "changed after static build. Befer static build, the "
+              "changed after static build. Before static build, the "
               "dtype is %s, place is %s. After static "
               "build, the dtype is %s, place is %s.",
               op_type,
