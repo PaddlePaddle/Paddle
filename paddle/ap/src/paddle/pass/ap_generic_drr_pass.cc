@@ -2824,9 +2824,11 @@ class AbstractDrrCtxProvider : public DrrCtxProvider {
 
   adt::Result<DrrCtx> GetDrrCtx(
       const ap::registry::AbstractDrrPassRegistryItem& abstract_drr_pass_item) {
-    ADT_LET_CONST_REF(drr_ctx,
-                      ApDrrHelper{circlable_ref_list_}.Interpret(
-                          abstract_drr_pass_item->cls));
+    static ap::memory::Guard drr_ctx_mem_guard{};
+    ADT_LET_CONST_REF(
+        drr_ctx,
+        ApDrrHelper{drr_ctx_mem_guard.circlable_ref_list()}.Interpret(
+            abstract_drr_pass_item->cls));
     if (!drr_ctx->pass_name.has_value()) {
       drr_ctx.shared_ptr()->pass_name =
           abstract_drr_pass_item->abstract_drr_pass_name;
