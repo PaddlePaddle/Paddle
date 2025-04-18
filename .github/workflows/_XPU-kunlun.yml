@@ -252,6 +252,7 @@ jobs:
 
       - name: Run test
         run: |
+          sudo mkdir -p /run/user/0
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           bash ${ci_scripts}/kunlun_test.sh
           '
@@ -259,6 +260,7 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
+          sudo mkdir -p /run/user/0
           docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${container_name}
           docker rm ${container_name}
