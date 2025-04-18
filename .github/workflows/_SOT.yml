@@ -26,36 +26,6 @@ jobs:
     name: build docker images:
     uses: ./.github/workflows/docker.yml
 
-          #run-docker:
-          #  name: run docker
-          #  needs: check-bypass
-          #  steps:
-          #    run: echo ${{ needs.check-docker.outputs.docker-image }}
-
-          #check-docker-images:
-          #  name: Check SOT Docker Image
-          #  needs: check-bypass
-          #  if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
-          #  runs-on:
-          #    group: Docker-build
-          #  outputs:
-          #    docker_image: ${{ steps.docker-build.outputs.docker_image }}
-
-          #  steps:
-          #    - name: docker build
-          #      id: docker-build
-          #      env:
-          #        docker_image_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-          #      run: |
-          #        set -x
-          #        wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          #        tar xf Paddle.tar.gz --strip-components=1
-          #        rm Paddle.tar.gz
-          #        source ${{ github.workspace }}/ci/check_docker_image.sh
-          #        echo "docker_image=$docker_image" >> "$GITHUB_OUTPUT"
-          #        cd ${{ github.workspace }}
-          #        rm -rf ./*
-
   build-and-test:
     name: Build and Test
     needs: check-docker-images

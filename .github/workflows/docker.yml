@@ -1,0 +1,42 @@
+on:
+  workflow_call:
+    outputs:
+      docker:
+        description: "Whether the workflow can be skipped."
+        value: ${{ jobs.build-docker-images.outputs.docker-image }}
+
+jobs:
+  build-docker-images:
+    name: build docker
+    runs-on:
+    outputs:
+      docker-image: ${{steps.build-docker-images.outputs.docker-image}}
+    steps:
+      - id: build-docker-images
+        name: build docker images
+        env:
+          docker_image_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
+        run: |
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          tar xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          cd tools/dockerfile
+          bash ci_dockerfile.sh
+          docker_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
+          echo $docker_image
+          cd ../../
+
+          set +e
+          docker pull ${docker_image}
+          if [ $? -eq 0 ];then
+            echo use docker cache
+          else
+            docker build -t $docker_image -f tools/dockerfile/${docker_image_file} .
+            docker push $docker_image
+            echo end docker build
+          fi
+          set -e
+
+          cd ${{ github.workspace }}
+          rm -rf ./*
