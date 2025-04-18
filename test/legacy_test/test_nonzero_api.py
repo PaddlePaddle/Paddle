@@ -63,22 +63,6 @@ class TestNonZeroAPI(unittest.TestCase):
         expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
-        data = np.zeros([0, 10, 3]).astype("float32")
-        with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[0, 10, 3], dtype='float32')
-            if not paddle.framework.use_pir_api():
-                x.desc.set_need_check_feed(False)
-            y = paddle.nonzero(x, as_tuple=True)
-            self.assertEqual(type(y), tuple)
-            self.assertEqual(len(y), 3)
-            z = paddle.concat(list(y), axis=0)
-            exe = base.Executor(base.CPUPlace())
-            (res,) = exe.run(
-                feed={'x': data}, fetch_list=[z], return_numpy=False
-            )
-        expect_out = np.array([])
-        np.testing.assert_array_equal(expect_out, np.array(res))
-
     def test_nonzero_api(self):
         paddle.enable_static()
         data = np.array([[1, 0], [0, 1]], dtype="float32")
@@ -204,6 +188,18 @@ class TestZeroSizeOp(TestNonzeroOp):
 
     def init_dtype(self):
         self.dtype = np.float64
+
+
+class TestZeroSizeOpCase2(TestNonzeroOp):
+
+    def init_shape(self):
+        self.shape = [0, 10]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
 
 if __name__ == "__main__":
