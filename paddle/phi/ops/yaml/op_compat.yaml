@@ -3328,12 +3328,6 @@
   outputs :
     out : Out
 
-- op : send_and_recv
-  inputs :
-    x: X
-  outputs :
-    out : Out
-
 - op : send_u_recv(graph_send_recv)
   backward : send_u_recv_grad(graph_send_recv_grad)
   inputs :
