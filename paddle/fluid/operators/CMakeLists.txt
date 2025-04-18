@@ -28,10 +28,6 @@ if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
 endif()
 
-if (WITH_PSCORE)
-    add_subdirectory(pscore)
-endif()
-
 add_subdirectory(reader)
 
 if (NOT WIN32)

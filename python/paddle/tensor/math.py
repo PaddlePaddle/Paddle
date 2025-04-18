@@ -1589,7 +1589,8 @@ def sum(
     dtype_flag = False
     if dtype is not None:
         dtype_flag = True
-        dtype = convert_np_dtype_to_dtype_(dtype)
+        if not isinstance(dtype, paddle.dtype):
+            dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)

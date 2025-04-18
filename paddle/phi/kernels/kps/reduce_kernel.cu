@@ -255,16 +255,8 @@ void SumRawKernel(const Context& dev_ctx,
       }
     }
     out->Resize(phi::make_ddim(out_dims));
-    if (x.dtype() == phi::DataType::BOOL || x.dtype() == phi::DataType::INT32) {
-      dev_ctx.template Alloc<int64_t>(out);
-      FullKernel<int64_t, Context>(
-          dev_ctx, out_dims, 0, phi::CppTypeToDataType<int64_t>::Type(), out);
-    } else {
-      dev_ctx.template Alloc<T>(out);
-      FullKernel<T, Context>(
-          dev_ctx, out_dims, 0, phi::CppTypeToDataType<T>::Type(), out);
-    }
-
+    dev_ctx.template Alloc<T>(out);
+    FullKernel<T, Context>(dev_ctx, out_dims, 0, out_dtype, out);
     return;
   }
   if (x.numel() > std::numeric_limits<int32_t>::max()) {

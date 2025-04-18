@@ -69,17 +69,16 @@ class ReduceOp:
 
 
 def _get_reduce_op(reduce_op):
-    if framework.in_dynamic_mode():
-        if reduce_op == ReduceOp.SUM:
-            return framework.core.ReduceOp.SUM
-        elif reduce_op == ReduceOp.MAX:
-            return framework.core.ReduceOp.MAX
-        elif reduce_op == ReduceOp.MIN:
-            return framework.core.ReduceOp.MIN
-        elif reduce_op == ReduceOp.PROD:
-            return framework.core.ReduceOp.PRODUCT
-        elif reduce_op == ReduceOp.AVG:
-            return framework.core.ReduceOp.AVG
+    if reduce_op == ReduceOp.SUM:
+        return framework.core.ReduceOp.SUM
+    elif reduce_op == ReduceOp.MAX:
+        return framework.core.ReduceOp.MAX
+    elif reduce_op == ReduceOp.MIN:
+        return framework.core.ReduceOp.MIN
+    elif reduce_op == ReduceOp.PROD:
+        return framework.core.ReduceOp.PRODUCT
+    elif reduce_op == ReduceOp.AVG:
+        return framework.core.ReduceOp.AVG
 
     raise ValueError(f"Unknown reduce_op type for {reduce_op}.")
 

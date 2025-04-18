@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
 namespace paddle::framework {
 class OpDesc;
@@ -65,8 +65,6 @@ class MpAllReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 DECLARE_INPLACE_OP_INFERER(MpAllReduceSumInplaceInferer, {"X", "Out"});
-
-DEFINE_C_ALLREDUCE_CPU_KERNEL(MpAllReduceSum, kRedSum);
 
 }  // namespace paddle::operators
 

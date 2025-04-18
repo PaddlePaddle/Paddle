@@ -164,7 +164,21 @@ class TestSubtractHighGradCheck(unittest.TestCase):
     def subtract_wrapper(self, x):
         return paddle.subtract(x[0], x[1])
 
-    @prog_scope()
+    def test_func_double_eager(self):
+        shape1 = self.shape1
+        shape2 = self.shape2
+        dtype = np.float64
+        x = paddle.randn(shape1, dtype=dtype)
+        x.stop_gradient = False
+        y = paddle.randn(shape2, dtype=dtype)
+        y.stop_gradient = False
+        out = paddle.subtract(x, y)
+        dout = paddle.randn(out.shape)
+        dout.stop_gradient = False
+        dy = paddle.grad([out], [y], dout, create_graph=True)[0]
+        ddout = paddle.grad(dy, dout)[0]
+        np.testing.assert_allclose(ddout.numpy(), np.full(ddout.shape, -1.0))
+
     def func_double(self, place):
         shape1 = self.shape1
         shape2 = self.shape2

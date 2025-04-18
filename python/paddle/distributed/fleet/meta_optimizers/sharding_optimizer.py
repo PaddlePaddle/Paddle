@@ -997,9 +997,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             output_names = op.desc.output_arg_names()
             # FIXME(wangxi): need use grads, pipeline grad is @GRAD@MERGE
             if (
-                op.type == "c_allreduce_sum"
-                and op.attr('use_model_parallel') is False
-            ) or (
                 op.type == "all_reduce"
                 and op.attr('reduce_type') == paddle.distributed.ReduceOp.SUM
             ):
@@ -1021,7 +1018,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         # Prune
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type in [
-                "c_allreduce_sum",
                 "all_reduce",
                 "c_sync_comm_stream",
                 "c_calc_comm_stream",

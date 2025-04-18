@@ -13,17 +13,17 @@
 # limitations under the License.
 
 if [ ${BRANCH} != 'develop' ];then
-    return
+    exit 0
 fi
 
 rm -f build_size
 curl --noproxy '*' -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/build_size
 dev_coverage_build_size=`cat build_size|sed 's#G##g'`
-pr_coverage_build_size=`echo "$1" |sed 's#G##g'`
+pr_coverage_build_size=`echo $buildSize |sed 's#G##g'`
 
 echo "========================================================"
 echo "The develop coverage build size is $(cat build_size | tr -d '\n')"
-echo "The pr coverage build size is $1"
+echo "The pr coverage build size is $buildSize"
 echo "========================================================"
 
 diff_coverage_build_size=`echo $(($pr_coverage_build_size - $dev_coverage_build_size))`
