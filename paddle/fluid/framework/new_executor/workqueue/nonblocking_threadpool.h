@@ -50,7 +50,7 @@ class ThreadPoolTempl {
     // and NonEmptyQueueIndex. Iteration is based on the fact that if we take
     // a random starting thread index t and calculate num_threads - 1 subsequent
     // indices as (t + coprime) % num_threads, we will cover all threads without
-    // repetitions (effectively getting a presudo-random permutation of thread
+    // repetitions (effectively getting a pseudo-random permutation of thread
     // indices).
     assert(num_threads_ >= 1 && num_threads_ < kMaxThreads);
     all_coprimes_.reserve(num_threads_);

@@ -450,8 +450,8 @@ void BuildValue(pir::Value value,
   } else {
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
-        "or SelectedRowsType or VectorType or StackType or SpasrCooTensorType "
-        "or SpasreCsrTensorType"));
+        "or SelectedRowsType or VectorType or StackType or SparseCooTensorType "
+        "or SparseCsrTensorType"));
   }
 }
 
@@ -710,9 +710,9 @@ bool IsNeedVarInplace(pir::Operation* op,
 
 // NOTE(chenxi67): Here, we only perform inplace processing for variables that
 // need to be inplaced by var (mostly, whose type is TensorArray or re-Allocated
-// Densetensor). For other types of variables, we only share the holder of
+// DenseTensor). For other types of variables, we only share the holder of
 // DenseTensor but not the var*. The reason is that vector<DenseTensor> in
-// TensorArray (or re-Allocated Densetensor) cannot be shared totally.
+// TensorArray (or re-Allocated DenseTensor) cannot be shared totally.
 void HandleForInplaceVarOp(pir::Operation* op,
                            const std::string& var_name_prefix,
                            ValueExecutionInfo* value_exe_info) {
