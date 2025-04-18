@@ -832,10 +832,11 @@ void subtract_double_grad(const Tensor& y,
                           int axis,
                           Tensor* grad_out_grad) {
   if (grad_out_grad) {
-    // ddout = ddx - ddy
     if (grad_x_grad && grad_y_grad) {
+      // ddout = ddx - ddy
       set_output<T>(grad_x_grad.get() - grad_y_grad.get(), grad_out_grad);
     } else if (grad_x_grad) {
+      // ddout = ddx
       if (grad_x_grad.get().dims() != grad_out.dims()) {
         // broad cast grad_x_grad to grad_out
         auto grad_x_grad_dims = common::vectorize(grad_x_grad.get().dims());
@@ -876,6 +877,7 @@ void subtract_double_grad(const Tensor& y,
         by_pass<T>(grad_x_grad.get(), grad_out_grad);
       }
     } else if (grad_y_grad) {
+      // ddout = -ddy
       if (grad_y_grad.get().dims() != grad_out.dims()) {
         // broad cast grad_y_grad to grad_out
         auto grad_y_grad_dims = common::vectorize(grad_y_grad.get().dims());
@@ -902,18 +904,21 @@ void subtract_double_grad(const Tensor& y,
           }
         }
         if (need_reshape && need_tile) {
-          set_output<T>(tile<T>(reshape<T>(grad_y_grad.get(), broadcast_dims),
+          set_output<T>(tile<T>(reshape<T>(scale<T>(grad_y_grad.get(), -1.0),
+                                           broadcast_dims),
                                 repeat_times),
                         grad_out_grad);
         } else if (need_reshape) {
-          set_output<T>(reshape<T>(grad_y_grad.get(), broadcast_dims),
-                        grad_out_grad);
+          set_output<T>(
+              reshape<T>(scale<T>(grad_y_grad.get(), -1.0), broadcast_dims),
+              grad_out_grad);
         } else if (need_tile) {
-          set_output<T>(tile<T>(grad_y_grad.get(), repeat_times),
-                        grad_out_grad);
+          set_output<T>(
+              tile<T>(scale<T>(grad_y_grad.get(), -1.0), repeat_times),
+              grad_out_grad);
         }
       } else {
-        by_pass<T>(-grad_y_grad.get(), grad_out_grad);
+        by_pass<T>(scale<T>(grad_y_grad.get(), -1.0), grad_out_grad);
       }
     } else {
       set_output<T>(full<T>(common::vectorize(grad_out.dims()),

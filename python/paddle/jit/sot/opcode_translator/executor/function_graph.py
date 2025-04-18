@@ -39,7 +39,7 @@ from ...infer_meta import (
 from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, StatementIR, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
-from ...symbolic_shape import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
+from ...symbolic_shape.operators import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_GUARD_TREE,
