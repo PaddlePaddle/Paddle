@@ -47,6 +47,26 @@ struct GetTypeName2TypeHelper<ValueT, ValueImplType0, ValueImplTypes...> {
   }
 };
 
+template <typename ValueT, typename... ValueImplTypes>
+struct GetNonPyStandardTypeName2TypeHelper;
+
+template <typename ValueT>
+struct GetNonPyStandardTypeName2TypeHelper<ValueT> {
+  static void Call(AttrMap<ValueT>*) {}
+};
+
+template <typename ValueT, typename ValueImplType0, typename... ValueImplTypes>
+struct GetNonPyStandardTypeName2TypeHelper<ValueT,
+                                           ValueImplType0,
+                                           ValueImplTypes...> {
+  static void Call(AttrMap<ValueT>* ret) {
+    TypeImpl<ValueImplType0> type_impl{};
+    ValueT type{type_impl};
+    (*ret)->Set(std::string() + "__builtin__" + type_impl.Name(), type);
+    GetNonPyStandardTypeName2TypeHelper<ValueT, ValueImplTypes...>::Call(ret);
+  }
+};
+
 }  // namespace detail
 
 template <typename ValueT, typename... ValueImplTypes>
@@ -69,6 +89,16 @@ AttrMap<ValueT> GetObjectTypeName2Type() {
                                  PackedArgs<ValueT>,
                                  AttrMap<axpr::SerializableValue>,
                                  ValueImplTypes...>::Call(&object);
+  detail::GetNonPyStandardTypeName2TypeHelper<ValueT,
+                                              DataType,
+                                              DataValue,
+                                              PointerType,
+                                              PointerValue,
+                                              MutableList<ValueT>,
+                                              OrderedDict<ValueT>,
+                                              MutableOrderedDict<ValueT>,
+                                              AttrMap<axpr::SerializableValue>,
+                                              ValueImplTypes...>::Call(&object);
   return object;
 }
 

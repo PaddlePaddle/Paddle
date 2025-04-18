@@ -43,8 +43,10 @@ axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
   axpr::AttrMap<ValueT> attr_map;
   axpr::VisitEachBuiltinFrameAttr<ValueT>(
       [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
-  VisitEachBuiltinFrameAttr<ValueT>(
-      [&](const auto& cls) { attr_map->Set(cls.Name(), cls); });
+  VisitEachBuiltinFrameAttr<ValueT>([&](const auto& cls) {
+    attr_map->Set(cls.Name(), cls);
+    attr_map->Set(std::string("__builtin__") + cls.Name(), cls);
+  });
   return attr_map;
 }
 

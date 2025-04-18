@@ -30,15 +30,7 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
     Yield(k, v);
   }
   Yield("import", &ModuleMgrHelper<ValueT>::ImportModule);
-  Yield("apply", &Apply);
   Yield("print", &Print);
-  Yield("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma);
-  Yield("range", &MakeRange);
-  Yield("flat_map", &FlatMap);
-  Yield("map", &Map);
-  Yield("filter", &Filter);
-  Yield("reduce", &Reduce);
-  Yield("zip", &Zip);
   Yield("max", &Max);
   Yield("min", &Min);
   Yield("len", &Length);
@@ -47,6 +39,20 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   ForEachExceptionConstructor(Yield);
   Yield("raise", &Raise);
   Yield("__builtin_not__", &BuiltinNot);
+
+  Yield("__builtin__foreach", &ForEach);
+  auto YieldTwice = [&](const auto& name, const auto& value) {
+    Yield(name, value);
+    Yield(std::string("__builtin__") + name, value);
+  };
+  YieldTwice("apply", &Apply);
+  YieldTwice("replace_or_trim_left_comma", &ReplaceOrTrimLeftComma);
+  YieldTwice("range", &MakeRange);
+  YieldTwice("flat_map", &FlatMap);
+  YieldTwice("map", &Map);
+  YieldTwice("filter", &Filter);
+  YieldTwice("reduce", &Reduce);
+  YieldTwice("zip", &Zip);
 }
 
 template <typename ValueT>

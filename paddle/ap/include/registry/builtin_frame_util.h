@@ -29,11 +29,12 @@ void VisitEachBuiltinFrameAttr(const DoEachT& DoEach) {
 template <typename ValueT>
 axpr::AttrMap<ValueT> MakeBuiltinFrameAttrMap() {
   axpr::AttrMap<ValueT> attr_map;
-  auto Insert = [&](const std::string& k, const ValueT& v) {
+  axpr::VisitEachBuiltinFrameAttr<ValueT>(
+      [&](const std::string& k, const ValueT& v) { attr_map->Set(k, v); });
+  VisitEachBuiltinFrameAttr<ValueT>([&](const std::string& k, const ValueT& v) {
     attr_map->Set(k, v);
-  };
-  axpr::VisitEachBuiltinFrameAttr<ValueT>(Insert);
-  VisitEachBuiltinFrameAttr<ValueT>(Insert);
+    attr_map->Set(std::string("__builtin__") + k, v);
+  });
   return attr_map;
 }
 
