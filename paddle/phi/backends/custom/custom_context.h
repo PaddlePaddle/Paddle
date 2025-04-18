@@ -59,6 +59,13 @@ class CustomContext : public DeviceContext,
 
   Eigen::DefaultDevice* eigen_device() const;
 
+  void WaitEvent(phi::event::event_t ev) const;
+
+  void RecordEvent(phi::event::event_t ev,
+                   const std::function<void()>& callback) const;
+
+  void RecordEvent(phi::event::event_t ev) const;
+
   static const char* name() { return "CustomContext"; }
 
  public:
