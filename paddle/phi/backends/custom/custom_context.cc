@@ -89,6 +89,21 @@ struct CustomContext::Impl {
 
   void Wait() const { stream_->Wait(); }
 
+  void WaitEvent(phi::event::event_t ev) const {
+    event::Event event_(place_, ev);
+    stream_->WaitEvent(&event_);
+  }
+
+  void RecordEvent(phi::event::event_t ev, const std::function<void()>& callback) const {
+    event::Event event_(place_, ev);
+    stream_->RecordEvent(&event_, callback);
+  }
+
+  void RecordEvent(phi::event::event_t ev) const {
+    event::Event event_(place_, ev);
+    stream_->RecordEvent(&event_);
+  }
+
   phi::ccl::CCLComm xccl_comm() const { return comm_; }
 
   void set_xccl_comm(phi::ccl::CCLComm comm) { comm_ = comm; }
@@ -133,6 +148,14 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
 
 // void CustomContext::SetStream(gpuStream_t stream) { impl_->SetStream(stream); }
 void CustomContext::Wait() const { return impl_->Wait(); }
+
+void CustomContext::RecordEvent(phi::event::event_t ev,
+                            const std::function<void()>& callback) const {
+  impl_->RecordEvent(ev, callback);
+}
+
+void CustomContext::RecordEvent(phi::event::event_t ev) const {
+  impl_->RecordEvent(ev); }
 
 CustomContext::CustomContext(const CustomPlace& place)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {

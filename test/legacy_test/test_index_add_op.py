@@ -20,8 +20,8 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle.base import core
 
-paddle.enable_static()
-
+# paddle.enable_static()
+paddle.disable_static()
 
 def compute_index_add_ref(
     axis, x_shape, x_np, add_value_shape, add_value_np, index_size, index_np
@@ -61,63 +61,76 @@ def raw_index_add(x, index, value, axis):
     return paddle.index_add(x, index, axis, value)
 
 
-class TestIndexAddOp(OpTest):
-    def setUp(self):
-        self.python_api = raw_index_add
-        self.op_type = "index_add"
-        self.set_gpu()
-        self.init_dtype_type()
-        index_np = np.random.randint(
-            low=-self.x_shape[self.axis],
-            high=self.x_shape[self.axis],
-            size=self.index_size,
-        )
-        x_np = np.random.random(self.x_shape).astype(self.x_type)
-        add_value_np = np.random.random(self.add_value_shape).astype(
-            self.x_type
-        )
+# class TestIndexAddOp(OpTest):
+#     def setUp(self):
+#         # paddle.set_device("GPGPU")
+#         self.python_api = raw_index_add
+#         self.op_type = "index_add"
+#         # self.set_gpu()
 
-        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
-        self.attrs = {'axis': self.axis}
-        out = compute_index_add_ref(
-            self.axis,
-            self.x_shape,
-            x_np,
-            self.add_value_shape,
-            add_value_np,
-            self.index_size,
-            index_np,
-        )
-        self.outputs = {'Out': out}
+#         self.init_dtype_type()
+#         index_np = np.random.randint(
+#             low=-self.x_shape[self.axis],
+#             high=self.x_shape[self.axis],
+#             size=self.index_size,
+#         )
+#         x_np = np.random.random(self.x_shape).astype(self.x_type)
+#         add_value_np = np.random.random(self.add_value_shape).astype(
+#             self.x_type
+#         )
 
-    def set_gpu(self):
-        self.__class__.use_custom_device = True
-        self.place = paddle.CustomPlace("GPGPU", 0)
+#         print("=== place ===\n")
+#         print(self.place)
+#         # x_custom = paddle.to_tensor(x_np, place=self.place)
+#         # print("=== Tensor2 ===\n")
+#         # index_custom = paddle.to_tensor(index_np.astype(self.index_type), place=self.place)
+#         # print("=== Tensor3 ===\n")
+#         # add_value_custom = paddle.to_tensor(add_value_np, place=self.place)
+#         # self.inputs = {'X': x_custom, 'Index': index_custom, 'AddValue': add_value_custom}
+#         self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        
+#         print("=== END ===\n")
 
-    def init_dtype_type(self):
-        self.axis = 0
-        self.x_type = np.float64
-        self.index_type = np.int64
-        self.x_shape = (101, 3)
-        self.index_size = 3
-        self.add_value_shape = (3, 3)
+#         self.attrs = {'axis': self.axis}
+#         out = compute_index_add_ref(
+#             self.axis,
+#             self.x_shape,
+#             x_np,
+#             self.add_value_shape,
+#             add_value_np,
+#             self.index_size,
+#             index_np,
+#         )
+#         self.outputs = {'Out': out}
 
-    def test_check_output(self):
-        self.check_output(atol=0, check_pir=True)
+#     def set_gpu(self):
+#         self.__class__.use_custom_device = True
+#         self.place = paddle.CustomPlace("GPGPU", 0)
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out', check_pir=True)
+#     def init_dtype_type(self):
+#         self.axis = 0
+#         self.x_type = np.float64
+#         self.index_type = np.int64
+#         self.x_shape = (101, 3)
+#         self.index_size = 3
+#         self.add_value_shape = (3, 3)
+
+#     def test_check_output(self):
+#         self.check_output(atol=0, check_pir=True)
+
+#     def test_check_grad_normal(self):
+#         self.check_grad(['X', 'AddValue'], 'Out', check_pir=True)
 
 
-class TestIndexAddFP16Op(TestIndexAddOp):
-    def init_dtype_type(self):
-        self.axis = 0
-        self.x_type = np.float16
-        self.index_type = np.int64
-        self.x_shape = (101, 3)
-        self.index_size = 3
-        self.add_value_shape = (3, 3)
-        self.dtype = np.float16
+# class TestIndexAddFP16Op(TestIndexAddOp):
+#     def init_dtype_type(self):
+#         self.axis = 0
+#         self.x_type = np.float16
+#         self.index_type = np.int64
+#         self.x_shape = (101, 3)
+#         self.index_size = 3
+#         self.add_value_shape = (3, 3)
+#         self.dtype = np.float16
 
 
 # @unittest.skipIf(
@@ -178,78 +191,81 @@ class TestIndexAddFP16Op(TestIndexAddOp):
 #         )
 
 
-# class TestIndexAddAPI(unittest.TestCase):
-#     def setUp(self):
-#         self.setType()
-#         self.setPlace()
-#         self.config()
-#         self.check_backward = True
-#         self.generate_input_data()
+class TestIndexAddAPI(unittest.TestCase):
+    def setUp(self):
+        self.setType()
+        self.setPlace()
+        self.config()
+        self.check_backward = True
+        self.generate_input_data()
 
-#         self.index_shape = (self.index_size,)
+        self.index_shape = (self.index_size,)
 
-#         self.rtol = 1e-5
-#         self.atol = 1e-2
-#         if self.x_type is np.float16:
-#             self.atol = 1e-1
+        self.rtol = 1e-5
+        self.atol = 1e-2
+        if self.x_type is np.float16:
+            self.atol = 1e-1
 
-#     def setType(self):
-#         self.x_type = np.float32
-#         self.index_type = np.int32
+    def setType(self):
+        self.x_type = np.float32
+        self.index_type = np.int32
 
+    def setPlace(self):
+        self.place = []
+        self.place.append('cpu')
+        if paddle.is_compiled_with_cuda():
+            self.place.append('gpu')
+        # self.__class__.use_custom_device = True
+        # self.place = paddle.CustomPlace("GPGPU", 0)
+            
     # def setPlace(self):
     #     self.place = []
-    #     self.place.append('cpu')
+    #     if (
+    #         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+    #         in ['1', 'true', 'on']
+    #         or not paddle.is_compiled_with_cuda()
+    #     ):
+    #         self.place.append('cpu')
     #     if paddle.is_compiled_with_cuda():
-    #         self.place.append('gpu')
-#     def setPlace(self):
-#         self.place = []
-#         if (
-#             os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-#             in ['1', 'true', 'on']
-#             or not paddle.is_compiled_with_cuda()
-#         ):
-#             self.place.append('cpu')
-#         if paddle.is_compiled_with_cuda():
-#             self.place.append('gpu')            
-#         self.__class__.use_custom_device = True
-#         self.place = paddle.CustomPlace("GPGPU", 0)
+    #         self.place.append('gpu')            
+    #     self.__class__.use_custom_device = True
+    #     self.place = paddle.CustomPlace("GPGPU", 0)
 
-#     def config(self):
-#         self.axis = 0
-#         self.x_shape = (100, 5)
-#         self.index_size = 20
-#         self.add_value_shape = (20, 5)
+    def config(self):
+        self.axis = 0
+        self.x_shape = (100, 5)
+        self.index_size = 20
+        self.add_value_shape = (20, 5)
 
-#     def generate_input_data(self):
-#         axis = self.axis
-#         if self.axis < 0:
-#             axis = self.axis + len(self.x_shape)
+    def generate_input_data(self):
+        axis = self.axis
+        if self.axis < 0:
+            axis = self.axis + len(self.x_shape)
 
-#         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
-#         self.add_value_np = np.random.random(self.add_value_shape).astype(
-#             self.x_type
-#         )
-#         self.index_np = np.random.randint(
-#             low=-self.x_shape[axis],
-#             high=self.x_shape[axis],
-#             size=self.index_size,
-#         ).astype(self.index_type)
-#         if self.check_backward:
-#             self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
+        self.x_np = np.random.random(self.x_shape).astype(self.x_type)
+        self.add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+        self.index_np = np.random.randint(
+            low=-self.x_shape[axis],
+            high=self.x_shape[axis],
+            size=self.index_size,
+        ).astype(self.index_type)
+        if self.check_backward:
+            self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
 
-#     def compute_index_add_backward_ref(self):
-#         axis = self.axis
-#         if self.axis < 0:
-#             axis = self.axis + len(self.x_shape)
+    def compute_index_add_backward_ref(self):
+        axis = self.axis
+        if self.axis < 0:
+            axis = self.axis + len(self.x_shape)
 
-#         x_grad = self.dout_np
+        x_grad = self.dout_np
 
-#         dout_tensor = paddle.to_tensor(self.dout_np)
-#         index = paddle.to_tensor(self.index_np)
-#         add_value_grad = paddle.index_select(dout_tensor, index, axis)
+        dout_tensor = paddle.to_tensor(self.dout_np)
+        index = paddle.to_tensor(self.index_np)
+        add_value_grad = paddle.index_select(dout_tensor, index, axis)
 
-#         return x_grad, add_value_grad.numpy()
+        return x_grad, add_value_grad.numpy()
 
     # def run_imperative(self, device):
     #     input_tensor = paddle.to_tensor(
@@ -259,106 +275,121 @@ class TestIndexAddFP16Op(TestIndexAddOp):
     #     add_value = paddle.to_tensor(
     #         self.add_value_np, stop_gradient=False, place=device
     #     )
-#     def run_imperative(self, device):
-#         paddle.device.set_device(device)
-#         input_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
-#         index = paddle.to_tensor(self.index_np)
-#         add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
+    def run_imperative(self, device):
+        # paddle.set_device("GPGPU")
+        input_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
+        index = paddle.to_tensor(self.index_np)
+        add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
 
-#         out = paddle.index_add(input_tensor, index, self.axis, add_value)
-#         ref_out = compute_index_add_ref(
-#             self.axis,
-#             self.x_shape,
-#             self.x_np,
-#             self.add_value_shape,
-#             self.add_value_np,
-#             self.index_size,
-#             self.index_np,
-#         )
-#         np.testing.assert_allclose(
-#             ref_out, out.numpy(), rtol=self.rtol, atol=self.atol
-#         )
+        out = paddle.index_add(input_tensor, index, self.axis, add_value)
+        ref_out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            self.x_np,
+            self.add_value_shape,
+            self.add_value_np,
+            self.index_size,
+            self.index_np,
+        )
+        np.testing.assert_allclose(
+            ref_out, out.numpy(), rtol=self.rtol, atol=self.atol
+        )
 
-#         if self.check_backward:
-#             dout_tensor = paddle.to_tensor(self.dout_np)
-#             paddle.autograd.backward([out], [dout_tensor], retain_graph=True)
-#             (
-#                 ref_x_grad,
-#                 ref_add_value_grad,
-#             ) = self.compute_index_add_backward_ref()
-#             np.testing.assert_allclose(
-#                 ref_x_grad,
-#                 input_tensor.grad.numpy(),
-#                 rtol=self.rtol,
-#                 atol=self.atol,
-#             )
-#             np.testing.assert_allclose(
-#                 ref_add_value_grad,
-#                 add_value.grad.numpy(),
-#                 rtol=self.rtol,
-#                 atol=self.atol,
-#             )
+        if self.check_backward:
+            dout_tensor = paddle.to_tensor(self.dout_np)
+            paddle.autograd.backward([out], [dout_tensor], retain_graph=True)
+            (
+                ref_x_grad,
+                ref_add_value_grad,
+            ) = self.compute_index_add_backward_ref()
+            np.testing.assert_allclose(
+                ref_x_grad,
+                input_tensor.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
+            np.testing.assert_allclose(
+                ref_add_value_grad,
+                add_value.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
 
-#     def run_static(self, device):
-#         x = paddle.static.data(name='X', shape=self.x_shape, dtype=self.x_type)
-#         index = paddle.static.data(
-#             name='Index', shape=self.index_shape, dtype=self.index_type
-#         )
-#         add_value = paddle.static.data(
-#             name='AddValue', shape=self.add_value_shape, dtype=self.x_type
-#         )
+    def run_static(self, device):
+        x = paddle.static.data(name='X', shape=self.x_shape, dtype=self.x_type)
+        index = paddle.static.data(
+            name='Index', shape=self.index_shape, dtype=self.index_type
+        )
+        add_value = paddle.static.data(
+            name='AddValue', shape=self.add_value_shape, dtype=self.x_type
+        )
 
-#         out = paddle.index_add(x, index, self.axis, add_value)
+        out = paddle.index_add(x, index, self.axis, add_value)
 
-#         # if device == "cpu":
-#         #     place = paddle.CustomPlace("mlu", 0)
-#         # elif device == "gpu":
-#         #     place = paddle.CustomPlace("mlu", 0)
-#         # else:
-#         #     raise TypeError(
-#         #         "paddle.index_add api only support cpu and gpu device now."
-#         #     )
-#         self.__class__.use_custom_device = True
-#         place = paddle.CustomPlace("GPGPU", 0)
+        if device == "cpu":
+            place = paddle.CustomPlace("mlu", 0)
+        elif device == "gpu":
+            place = paddle.CustomPlace("mlu", 0)
+        else:
+            raise TypeError(
+                "paddle.index_add api only support cpu and gpu device now."
+            )
+        # self.__class__.use_custom_device = True
+        # place = paddle.CustomPlace("GPGPU", 0)
 
-#         exe = paddle.static.Executor(place)
-#         exe.run(paddle.static.default_startup_program())
+        exe = paddle.static.Executor(place)
+        exe.run(paddle.static.default_startup_program())
 
-#         res = exe.run(
-#             paddle.static.default_main_program(),
-#             feed={
-#                 "X": self.x_np,
-#                 "Index": self.index_np,
-#                 "AddValue": self.add_value_np,
-#             },
-#             fetch_list=[out],
-#             return_numpy=False,
-#         )
-#         return res
+        res = exe.run(
+            paddle.static.default_main_program(),
+            feed={
+                "X": self.x_np,
+                "Index": self.index_np,
+                "AddValue": self.add_value_np,
+            },
+            fetch_list=[out],
+            return_numpy=False,
+        )
+        return res
 
-#     def test_static(self):
-#         paddle.enable_static()
-#         for device in self.place:
-#             with paddle.static.program_guard(paddle.static.Program()):
-#                 out = self.run_static(device)
-#             ref_out = compute_index_add_ref(
-#                 self.axis,
-#                 self.x_shape,
-#                 self.x_np,
-#                 self.add_value_shape,
-#                 self.add_value_np,
-#                 self.index_size,
-#                 self.index_np,
-#             )
-#             np.testing.assert_allclose(
-#                 ref_out, np.array(out[0]), rtol=self.rtol, atol=self.atol
-#             )
+    def test_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            out = self.run_static(self.place)
+        ref_out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            self.x_np,
+            self.add_value_shape,
+            self.add_value_np,
+            self.index_size,
+            self.index_np,
+        )
+        np.testing.assert_allclose(
+            ref_out, np.array(out[0]), rtol=self.rtol, atol=self.atol
+        )
+        # for device in self.place:
+        #     with paddle.static.program_guard(paddle.static.Program()):
+        #         out = self.run_static(device)
+        #     ref_out = compute_index_add_ref(
+        #         self.axis,
+        #         self.x_shape,
+        #         self.x_np,
+        #         self.add_value_shape,
+        #         self.add_value_np,
+        #         self.index_size,
+        #         self.index_np,
+        #     )
+        #     np.testing.assert_allclose(
+        #         ref_out, np.array(out[0]), rtol=self.rtol, atol=self.atol
+        #     )
 
-#     def test_dynamic(self):
-#         paddle.disable_static()
-#         self.run_imperative(self.place)
-#         # for device in self.place:
-#         #     self.run_imperative(self.place)
+    def test_dynamic(self):
+        paddle.disable_static()
+        self.run_imperative(self.place)
+        # for device in self.place:
+        #     self.run_imperative(self.place)
 
 if __name__ == '__main__':
+    print("test index_add op start")
     unittest.main()
