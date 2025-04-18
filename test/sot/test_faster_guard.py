@@ -204,8 +204,8 @@ class TestBasicFasterGuard(unittest.TestCase):
 
     def test_tensor_is_dist_guard(self):
         tensor = paddle.randn([2, 3])
-        guard_tensor_is_dist = paddle.framework.core.TensorIsDistGuard(
-            tensor.is_dist()
+        guard_tensor_is_dist = paddle.framework.core.TensorDistMatchGuard(
+            tensor
         )
         self.assertTrue(guard_tensor_is_dist.check(tensor))
 

@@ -267,15 +267,18 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class TensorIsDistGuard : public GuardBase {
+class TensorDistMatchGuard : public GuardBase {
  public:
-  explicit TensorIsDistGuard(const py::bool_& is_dist)
-      : expected_(is_dist.cast<bool>()) {}
+  explicit TensorDistMatchGuard(const py::object& obj) : expected_(obj.ptr()) {
+    Py_INCREF(expected_);
+  }
 
+  ~TensorDistMatchGuard() override { Py_DECREF(expected_); }
   bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "TensorDistMatchGuard"; }
 
  private:
-  bool expected_;
+  PyObject* expected_;
 };
 
 class DummyGuard : public GuardBase {

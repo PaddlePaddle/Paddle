@@ -202,9 +202,60 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #endif
 }
 
-bool TensorIsDistGuard::check(PyObject* value) {
+phi::distributed::DistTensor* get_dist_tensor_from_py_object(PyObject* obj) {
+  if (paddle::pybind::PyCheckTensor(obj)) {
+    auto tensor = reinterpret_cast<paddle::pybind::TensorObject*>(obj)->tensor;
+    if (tensor.is_dist_tensor()) {
+      return static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
+    }
+  }
+  return nullptr;
+}
+
+phi::distributed::DistTensor* get_dist_tensor_from_tensor(
+    const paddle::Tensor& tensor) {
+  if (tensor.is_dist_tensor()) {
+    return static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
+  }
+  return nullptr;
+}
+
+bool TensorDistMatchGuard::check(PyObject* value) {
+  if (value == NULL && expected_ == NULL) {
+    return true;
+  }
   CheckTensorFromPyObject(value);
-  return tensor->is_dist_tensor() == expected_;
+  if (tensor->is_dist_tensor() == false) {
+    return false;
+  }
+
+  // check expected_
+  auto expected_dist_tensor = get_dist_tensor_from_py_object(expected_);
+  if (expected_dist_tensor == nullptr) {
+    return false;
+  }
+
+  auto dist_tensor = get_dist_tensor_from_tensor(*tensor);
+  if (dist_tensor == nullptr) {
+    return false;
+  }
+
+  auto expected_dist_mesh = expected_dist_tensor->process_mesh();
+  auto dist_mesh = dist_tensor->process_mesh();
+
+  // mesh.shape
+  if (expected_dist_mesh.shape() != dist_mesh.shape()) {
+    return false;
+  }
+
+  // mesh.process_ids
+  if (expected_dist_mesh.process_ids() != dist_mesh.process_ids()) {
+    return false;
+  }
+
+  // local_shape
+
+  return true;
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
