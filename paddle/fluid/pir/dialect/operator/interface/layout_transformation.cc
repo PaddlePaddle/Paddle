@@ -457,7 +457,7 @@ common::DataLayout PreferLayoutImpl<Pool2dOp>(pir::Operation* op) {
 
     int k = kernel_size[0];
     // kernel size is all 1, prefer NCHW.
-    if (k == 1) return common::DataLayout::kNCHW;
+    if (k == 1 || k == 2) return common::DataLayout::kNCHW;
 
     if (pool_type == "max") {
       if (h * w <= 64 * 64) {

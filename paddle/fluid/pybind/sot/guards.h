@@ -32,10 +32,10 @@ namespace py = pybind11;
 class GuardBase {
  public:
   GuardBase() = default;
-
   bool check_pybind(py::handle value) { return check(value.ptr()); }
 
   virtual bool check(PyObject* value) = 0;
+  virtual std::string get_guard_name() const = 0;
   virtual ~GuardBase() = default;
 };
 
@@ -51,7 +51,8 @@ class LambdaGuard : public GuardBase {
 
   ~LambdaGuard() { Py_DECREF(guard_check_fn_); }
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "LambdaGuard"; }
 
  private:
   PyObject* guard_check_fn_;
@@ -69,7 +70,8 @@ class GuardGroup : public GuardBase {
       }
     }
   }
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "GuardGroup"; }
 
  private:
   std::vector<std::shared_ptr<GuardBase>> guards_;
@@ -83,7 +85,8 @@ class TypeMatchGuard : public GuardBase {
   explicit TypeMatchGuard(const py::type& py_type)
       : expected_(reinterpret_cast<PyTypeObject*>(py_type.ptr())) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "TypeMatchGuard"; }
 
  private:
   PyTypeObject* expected_;
@@ -96,7 +99,8 @@ class IdMatchGuard : public GuardBase {
   explicit IdMatchGuard(const py::object& py_obj)
       : expected_(reinterpret_cast<PyObject*>(py_obj.ptr())) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "IdMatchGuard"; }
 
  private:
   PyObject* expected_;
@@ -115,7 +119,8 @@ class ValueMatchGuard : public GuardBase {
 
   ~ValueMatchGuard() { Py_DECREF(expected_value_); }
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "ValueMatchGuard"; }
 
  private:
   PyObject* expected_value_;
@@ -126,7 +131,8 @@ class LengthMatchGuard : public GuardBase {
  public:
   explicit LengthMatchGuard(const Py_ssize_t& length) : expected_(length) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "LengthMatchGuard"; }
 
  private:
   Py_ssize_t expected_;
@@ -140,7 +146,8 @@ class DtypeMatchGuard : public GuardBase {
   explicit DtypeMatchGuard(const phi::DataType& dtype_ptr)
       : expected_(phi::TransToProtoVarType(dtype_ptr)) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "DtypeMatchGuard"; }
 
  private:
   int expected_;
@@ -160,7 +167,8 @@ class ShapeMatchGuard : public GuardBase {
     }
   }
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "ShapeMatchGuard"; }
 
  private:
   std::vector<std::optional<int64_t>> expected_;
@@ -172,7 +180,8 @@ class AttributeMatchGuard : public GuardBase {
       : attr_ptr_(PyObject_GetAttrString(obj.ptr(), attr_name.c_str())),
         attr_name_(attr_name) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "AttributeMatchGuard"; }
 
  private:
   PyObject* attr_ptr_;
@@ -185,7 +194,8 @@ class LayerMatchGuard : public GuardBase {
       : layer_ptr_(layer_obj.ptr()),
         training_(layer_obj.attr("training").cast<bool>()) {}
 
-  bool check(PyObject* value);
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "LayerMatchGuard"; }
 
  private:
   PyObject* layer_ptr_;
@@ -202,6 +212,7 @@ class InstanceCheckGuard : public GuardBase {
   ~InstanceCheckGuard() override { Py_DECREF(expected_); }
 
   bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "InstanceCheckGuard"; }
 
  private:
   PyObject* expected_;
@@ -217,6 +228,7 @@ class NumPyDtypeMatchGuard : public GuardBase {
   ~NumPyDtypeMatchGuard() override { Py_DECREF(expected_); }
 
   bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "NumPyDtypeMatchGuard"; }
 
  private:
   PyObject* expected_;
@@ -232,6 +244,9 @@ class NumPyArrayValueMatchGuard : public GuardBase {
   ~NumPyArrayValueMatchGuard() override { Py_DECREF(expected_); }
 
   bool check(PyObject* value) override;
+  std::string get_guard_name() const override {
+    return "NumPyArrayValueMatchGuard";
+  }
 
  private:
   PyObject* expected_;
@@ -246,20 +261,10 @@ class WeakRefMatchGuard : public GuardBase {
   ~WeakRefMatchGuard() override { PyObject_ClearWeakRefs(expected_); }
 
   bool check(PyObject* value) override;
+  std::string get_guard_name() const override { return "WeakRefMatchGuard"; }
 
  private:
   PyObject* expected_;
-};
-
-class StopGradientMatchGuard : public GuardBase {
- public:
-  explicit StopGradientMatchGuard(const py::bool_& stop_gradient)
-      : expected_(stop_gradient.cast<bool>()) {}
-
-  bool check(PyObject* value) override;
-
- private:
-  bool expected_;
 };
 
 class TensorIsDistGuard : public GuardBase {
@@ -273,7 +278,17 @@ class TensorIsDistGuard : public GuardBase {
   bool expected_;
 };
 
-class GuardTreeNode {};
+class DummyGuard : public GuardBase {
+ public:
+  bool check(PyObject* value) override { return true; }
+  std::string get_guard_name() const override { return "DummyGuard"; }
+};
+
+class GuardTreeNode {
+ public:
+  virtual ~GuardTreeNode() = default;
+  virtual std::string stringify(int indent = 0) = 0;
+};
 
 class AttributeExprNode;
 class ItemExprNode;
@@ -281,6 +296,7 @@ class ExprNode : public GuardTreeNode,
                  public std::enable_shared_from_this<ExprNode> {
  public:
   virtual PyObject* eval(FrameProxy* frame) = 0;
+  virtual ~ExprNode() = default;
 };
 class ConstantExprNode : public ExprNode {
  public:
@@ -290,10 +306,27 @@ class ConstantExprNode : public ExprNode {
     Py_INCREF(value_ptr_);
   }
   ~ConstantExprNode() { Py_DECREF(value_ptr_); }
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
 
  private:
   PyObject* value_ptr_;
+};
+class ExternVarExprNode : public ExprNode {
+ public:
+  explicit ExternVarExprNode(const std::string& var_name,
+                             const py::object& value_obj)
+      : value_ptr_(value_obj.ptr()), var_name_(var_name) {
+    Py_INCREF(value_ptr_);
+  }
+
+  ~ExternVarExprNode() { Py_DECREF(value_ptr_); }
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
+
+ private:
+  PyObject* value_ptr_;
+  std::string var_name_;
 };
 
 class LocalVarExprNode : public ExprNode {
@@ -301,7 +334,8 @@ class LocalVarExprNode : public ExprNode {
   explicit LocalVarExprNode(const std::string& var_name)
       : var_name_(var_name) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
 
  private:
   std::string var_name_;
@@ -311,7 +345,8 @@ class GlobalVarExprNode : public ExprNode {
   explicit GlobalVarExprNode(const std::string& var_name)
       : var_name_(var_name) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
 
  private:
   std::string var_name_;
@@ -322,7 +357,8 @@ class AttributeExprNode : public ExprNode {
                              const std::string& attr_name)
       : var_expr_(var_expr), attr_name_(attr_name) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
 
  private:
   std::shared_ptr<ExprNode> var_expr_;
@@ -334,7 +370,8 @@ class ItemExprNode : public ExprNode {
                         std::shared_ptr<ExprNode> key_expr)
       : var_expr_(var_expr), key_expr_(key_expr) {}
 
-  PyObject* eval(FrameProxy* frame);
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
 
  private:
   std::shared_ptr<ExprNode> var_expr_;
@@ -344,36 +381,34 @@ class ItemExprNode : public ExprNode {
 class GuardNode : public GuardTreeNode {
  public:
   std::shared_ptr<GuardBase> guard;
-  std::shared_ptr<ExprNode> expr;
+  std::vector<std::shared_ptr<ExprNode>> exprs;
   std::vector<std::shared_ptr<GuardNode>> next_guard_nodes;
   // return_cache_index is used to record the index of the guard list
   std::optional<int> return_cache_index;
   GuardNode(std::shared_ptr<GuardBase> guard,
-            std::shared_ptr<ExprNode> expr,
+            std::vector<std::shared_ptr<ExprNode>> exprs,
             std::vector<std::shared_ptr<GuardNode>> next_guard_nodes,
             std::optional<int> return_cache_index)
       : guard(guard),
-        expr(expr),
+        exprs(exprs),
         next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
-
+  virtual ~GuardNode() = default;
+  std::string stringify(int indent = 0) override;
   std::optional<int> lookup(FrameProxy* frame);
 };
 
 class GuardTree {
  public:
   GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNode>>>&
-                guard_nodes_list) {
-    for (size_t index = 0; index < guard_nodes_list.size(); ++index) {
-      const auto& guard_nodes = guard_nodes_list[index];
-      for (size_t i = 1; i < guard_nodes.size(); ++i) {
-        guard_nodes[i - 1]->next_guard_nodes.push_back(guard_nodes[i]);
-      }
-      guard_nodes.back()->return_cache_index = index;
-      guard_nodes_.push_back(guard_nodes.front());
+                guard_chain_list) {
+    for (size_t index = 0; index < guard_chain_list.size(); ++index) {
+      add_guard_chain(guard_chain_list[index]);
     }
   }
-
+  void add_guard_chain(
+      const std::vector<std::shared_ptr<GuardNode>>& guard_chain);
+  std::string stringify();
   std::optional<int> lookup(FrameProxy* frame);
 
  private:

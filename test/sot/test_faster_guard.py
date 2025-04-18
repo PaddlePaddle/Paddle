@@ -202,15 +202,6 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
 
-    def test_stop_gradient_guard(self):
-        tensor = paddle.randn([2, 3])
-        guard_stop_gradient = paddle.framework.core.StopGradientMatchGuard(
-            tensor.stop_gradient
-        )
-        self.assertTrue(guard_stop_gradient.check(tensor))
-        tensor.stop_gradient = False
-        self.assertFalse(guard_stop_gradient.check(tensor))
-
     def test_tensor_is_dist_guard(self):
         tensor = paddle.randn([2, 3])
         guard_tensor_is_dist = paddle.framework.core.TensorIsDistGuard(

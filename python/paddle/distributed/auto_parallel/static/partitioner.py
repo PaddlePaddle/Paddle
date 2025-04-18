@@ -67,7 +67,7 @@ class Partitioner:
         self._rank_id = rank_id
         self._serial2dist_varname_mapping = defaultdict(
             dict
-        )  # blockid -> serial_varname -> dist_varname
+        )  # block_id -> serial_varname -> dist_varname
         self._dist_varname_suffix = ""
         self._forward_op_id2forward_op = {}
 
