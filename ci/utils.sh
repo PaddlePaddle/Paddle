@@ -63,10 +63,7 @@ EOF
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
 
         # github action env variable
-        if [ -n "$2" ]; then
-            echo "buildSize=${buildSize}" >> $2
-            echo "buildSize=${buildSize}" >> "$HOME/.bashrc"
-        fi
+        echo "export buildSize=${buildSize}" >> "$HOME/.bashrc"
 
         echo "Build Size: $buildSize"
         echo "ipipe_log_param_Build_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
