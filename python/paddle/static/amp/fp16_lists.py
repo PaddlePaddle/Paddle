@@ -262,7 +262,6 @@ gray_list = {
     'fused_bn_add_activation',
     'c_identity',
     'c_concat',
-    'c_allreduce_sum',
     'all_reduce',
     'concat',
     'split',
