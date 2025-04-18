@@ -531,7 +531,6 @@ PyObject* pylayer_method_apply(PyObject* cls,
 PyObject* call_unpack_hook(PyLayerObject* self) {
   auto unpack_hook = self->unpack_hook;
   auto packed_value = self->container;
-
   auto packed_value_size = PyTuple_GET_SIZE(packed_value);
   auto unpacked_value = PyTuple_New(packed_value_size);
 
@@ -542,10 +541,15 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        PyTuple_SET_ITEM(tmp_list,
-                         j,
-                         reinterpret_cast<PyObject*>(((*unpack_hook)(
-                             reinterpret_cast<void*>(o), nullptr))));
+        if (Py_IsNone(o)) {
+          Py_INCREF(Py_None);
+          PyTuple_SET_ITEM(tmp_list, j, Py_None);
+        } else {
+          PyTuple_SET_ITEM(tmp_list,
+                           j,
+                           reinterpret_cast<PyObject*>(((*unpack_hook)(
+                               reinterpret_cast<void*>(o), nullptr))));
+        }
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_list);
     } else if (PyTuple_Check(obj)) {
@@ -553,12 +557,20 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
       auto tmp_tuple = PyTuple_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        PyTuple_SET_ITEM(tmp_tuple,
-                         j,
-                         reinterpret_cast<PyObject*>((*unpack_hook)(
-                             reinterpret_cast<void*>(o), nullptr)));
+        if (Py_IsNone(o)) {
+          Py_INCREF(Py_None);
+          PyTuple_SET_ITEM(tmp_tuple, j, Py_None);
+        } else {
+          PyTuple_SET_ITEM(tmp_tuple,
+                           j,
+                           reinterpret_cast<PyObject*>((*unpack_hook)(
+                               reinterpret_cast<void*>(o), nullptr)));
+        }
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
+    } else if (Py_IsNone(obj)) {
+      Py_INCREF(Py_None);
+      PyTuple_SET_ITEM(unpacked_value, i, Py_None);
     } else {
       PyTuple_SET_ITEM(unpacked_value,
                        i,
@@ -609,6 +621,9 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                        i,
                        reinterpret_cast<PyObject*>(
                            (*pack_hook)(reinterpret_cast<void*>(obj))));
+    } else if (Py_IsNone(obj)) {
+      Py_INCREF(Py_None);
+      PyTuple_SET_ITEM(packed_value, i, Py_None);
     } else if (PyList_Check(obj)) {
       Py_ssize_t len = PyList_Size(obj);
       auto tmp_list = PyList_New(len);
@@ -619,6 +634,9 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else if (Py_IsNone(o)) {
+          Py_INCREF(Py_None);
+          PyTuple_SET_ITEM(packed_value, i, Py_None);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
@@ -636,6 +654,9 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
+        } else if (Py_IsNone(o)) {
+          Py_INCREF(Py_None);
+          PyTuple_SET_ITEM(packed_value, i, Py_None);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "save_for_backward only support Tensor, list of Tensor, tuple of "
