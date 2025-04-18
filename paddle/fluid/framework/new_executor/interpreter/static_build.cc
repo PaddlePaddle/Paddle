@@ -41,7 +41,6 @@ std::set<std::string> OpsHandledInStaticBuild = {"conditional_block",
 std::set<std::string> OpsCanSkippedFakeAllocInStaticBuild = {
     "c_comm_init",
     "comm_init_all",
-    "c_comm_init_multitrainer",
     "c_gen_bkcl_id",
     "c_gen_nccl_id",
     "sync_calc_stream",
