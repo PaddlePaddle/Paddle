@@ -60,7 +60,7 @@ __global__ static void ForRangeElemwiseOp(Function func, unsigned int limit) {
 template <typename Function>
 __global__ static void ForRangeElemwiseOpLargeSize(Function func,
                                                    size_t limit) {
-  ` size_t idx =
+  size_t idx =
       static_cast<size_t>(blockIdx.x) * static_cast<size_t>(blockDim.x) +
       static_cast<size_t>(threadIdx.x);
   if (idx < limit) {
