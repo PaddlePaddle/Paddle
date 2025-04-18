@@ -253,7 +253,18 @@ bool TensorDistMatchGuard::check(PyObject* value) {
     return false;
   }
 
+  // dims_mapping
+
   // local_shape
+  auto local_shape = dist_tensor->value();
+  auto expected_local_shape = expected_dist_tensor->value();
+  if (local_shape.dims() != expected_local_shape.dims() ||
+      local_shape.numel() != expected_local_shape.numel() ||
+      local_shape.layout() != expected_local_shape.layout() ||
+      local_shape.dtype() != expected_local_shape.dtype() ||
+      local_shape.offset() != expected_local_shape.offset()) {
+    return false;
+  }
 
   return true;
 }

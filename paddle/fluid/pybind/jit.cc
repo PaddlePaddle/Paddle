@@ -132,7 +132,7 @@ void BindGuard(pybind11::module *m) {
              GuardBase,
              std::shared_ptr<TensorDistMatchGuard>>(
       *m, "TensorDistMatchGuard", R"DOC(TensorDistMatchGuard Class.)DOC")
-      .def(py::init<const py::bool_ &>(), py::arg("tensor"));
+      .def(py::init<const py::object &>(), py::arg("tensor"));
 
   m->def(
       "merge_guard",
