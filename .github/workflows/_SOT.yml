@@ -23,7 +23,7 @@ jobs:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-docker:
-    name: build docker images:
+    name: build docker images
     needs: check-bypass
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/docker.yml
