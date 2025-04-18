@@ -46,7 +46,7 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
 endif()
 
 if(WITH_XPU_XRE5)
-  set(XPU_XPTI_BASE_VERSION "0.1.0")
+  set(XPU_XPTI_BASE_VERSION "0.2.0")
 else()
   set(XPU_XPTI_BASE_VERSION "0.0.1")
 endif()
