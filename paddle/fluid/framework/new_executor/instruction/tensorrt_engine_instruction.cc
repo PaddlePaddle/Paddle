@@ -210,11 +210,11 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   try {
     engine_data = ReadBinaryFileToString(engine_serialized_path);
   } catch (const std::exception &e) {
-     std::filesystem::path path(engine_serialized_path);
-     std::string filename =
-         (path.parent_path().filename() / path.filename()).string();
-     std::string file_root = FLAGS_engine_serialized_path;
-     engine_data = ReadBinaryFileToString(file_root + '/' + filename);
+    std::filesystem::path path(engine_serialized_path);
+    std::string filename =
+        (path.parent_path().filename() / path.filename()).string();
+    std::string file_root = FLAGS_engine_serialized_path;
+    engine_data = ReadBinaryFileToString(file_root + '/' + filename);
   }
   trt_engine_->Deserialize(engine_data);
 
