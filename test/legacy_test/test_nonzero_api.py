@@ -63,6 +63,18 @@ class TestNonZeroAPI(unittest.TestCase):
         expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
+        data = np.zeros([10, 3, 0], dtype="float32")
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[10, 3, 0], dtype='float32')
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
+            y = paddle.nonzero(x, as_tuple=True)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 3)
+            expect_out = np.zeros([0])
+            for item in y:
+                np.testing.assert_array_equal(expect_out, item)
+
     def test_nonzero_api(self):
         paddle.enable_static()
         data = np.array([[1, 0], [0, 1]], dtype="float32")
