@@ -100,7 +100,8 @@ __global__ void GetSlogDetFromLUComplex(const Complex_T* lu_data,
       }
     }
     T abs_det = abs(det_val);
-    Complex_T s = det_val / abs_det;
+    Complex_T abs_det_complex = static_cast<Complex_T>(abs_det);
+    Complex_T s = det_val / abs_det_complex;
     T log_abs_det = log(abs_det);
     sign[idx] = s;
     logdet[idx] = log_abs_det;
