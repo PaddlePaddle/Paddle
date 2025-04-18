@@ -1167,6 +1167,10 @@ void ConstructAttrMapForLegacyRunProgram(
       {"cuda_graph_capture_mode", CastPyArg2AttrString},
       {"cuda_graph_pool_id", CastPyArg2AttrLong},
       {"in_pir_pt_mode", CastPyArg2AttrBoolean},
+      {"use_interpretorcore", CastPyArg2AttrBoolean},
+      {"global_block", CastPyArg2AttrBlock},
+      {"start_op_index", CastPyArg2AttrLong},
+      {"end_op_index", CastPyArg2AttrLong},
   };
 
   PyObject* obj = nullptr;
