@@ -360,6 +360,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : ArgsortInferMeta
+    spmd_rule : ArgSortInferSpmd
   kernel :
     func : argsort
   backward : argsort_grad

@@ -2516,6 +2516,192 @@ TEST(Topk, Ctor) {
   check_dim_mapping(backward_info.second[0], {0, -1, 1});
 }
 
+TEST(ArgSortGradInferSpmd, Ctor) {
+  // Sharding along axes besides argsort axis.
+  std::vector<int64_t> x_shape = {16, 32, 48};
+  std::vector<int64_t> indices_shape = {16, 32, 48};
+  std::vector<int64_t> out_grad_shape = {16, 32, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr indices_dist_attr = TensorDistAttr();
+  indices_dist_attr.set_process_mesh(process_mesh);
+  indices_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  indices_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor indices(phi::make_ddim(x_shape),
+                                           indices_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(x_shape),
+                                            out_grad_dist_attr);
+  int axis = -1;
+
+  auto spmdinfo =
+      ArgSortGradInferSpmd(indices, x, out_grad, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on other axes." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding along argsort axis.
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  indices_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  indices = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                             indices_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                              out_grad_dist_attr);
+  axis = 2;
+
+  spmdinfo = ArgSortGradInferSpmd(indices, x, out_grad, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on softmax axis." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding on multi axes.
+  x_shape = {10, 32, 48, 24};
+  indices_shape = {10, 32, 48, 24};
+  out_grad_shape = {10, 32, 48, 24};
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  indices_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  indices = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                             indices_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
+                                              out_grad_dist_attr);
+  axis = 1;
+
+  spmdinfo = ArgSortGradInferSpmd(indices, x, out_grad, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on multi axes." << std::endl
+          << std::endl
+          << std::endl;
+}
+
+TEST(ArgSortInferSpmd, Ctor) {
+  // Sharding along axes besides argsort axis.
+  std::vector<int64_t> x_shape = {16, 32, 48};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  int axis = -1;
+
+  auto spmdinfo = ArgSortInferSpmd(x, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 1UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({0, 1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on other axes." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding along argsort axis.
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, 1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  axis = 2;
+
+  spmdinfo = ArgSortInferSpmd(x, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 1UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({0, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on softmax axis." << std::endl
+          << std::endl
+          << std::endl;
+
+  // Sharding on multi axes.
+  x_shape = {10, 32, 48, 24};
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+
+  axis = 1;
+
+  spmdinfo = ArgSortInferSpmd(x, axis, false, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 1UL);
+  EXPECT_EQ(spmdinfo.second.size(), 2UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[1]),
+            std::vector<int64_t>({0, -1, -1, -1}));
+  VLOG(4) << "Test ArgSortGradInferSpmd sharding on multi axes." << std::endl
+          << std::endl
+          << std::endl;
+}
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
