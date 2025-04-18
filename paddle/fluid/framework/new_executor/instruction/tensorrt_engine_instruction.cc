@@ -210,16 +210,11 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   try {
     engine_data = ReadBinaryFileToString(engine_serialized_path);
   } catch (const std::exception &e) {
-    try {
-      std::filesystem::path path(engine_serialized_path);
-      std::string filename =
-          (path.parent_path().filename() / path.filename()).string();
-      std::string file_root = FLAGS_engine_serialized_path;
-      engine_data = ReadBinaryFileToString(file_root + '/' + filename);
-    } catch (const std::exception &e2) {
-      throw std::runtime_error("Failed to read engine file: " +
-                               std::string(e2.what()));
-    }
+     std::filesystem::path path(engine_serialized_path);
+     std::string filename =
+         (path.parent_path().filename() / path.filename()).string();
+     std::string file_root = FLAGS_engine_serialized_path;
+     engine_data = ReadBinaryFileToString(file_root + '/' + filename);
   }
   trt_engine_->Deserialize(engine_data);
 
@@ -868,9 +863,8 @@ std::string TensorRTEngineInstruction::ReadBinaryFileToString(
     const std::string &filePath) {
   std::ifstream inputFile(filePath, std::ios::binary);
 
-  if (!inputFile) {
-    throw std::runtime_error("Failed to open file: " + filePath);
-  }
+  PADDLE_ENFORCE(inputFile.is_open(),
+                 common::errors::NotFound("Failed to open file: %s", filePath));
 
   inputFile.seekg(0, std::ios::end);
   std::streamsize fileSize = inputFile.tellg();
@@ -878,9 +872,9 @@ std::string TensorRTEngineInstruction::ReadBinaryFileToString(
 
   std::string fileContent(static_cast<size_t>(fileSize), '\0');
 
-  if (!inputFile.read(&fileContent[0], fileSize)) {
-    throw std::runtime_error("Failed to read file: " + filePath);
-  }
+  PADDLE_ENFORCE(inputFile.read(&fileContent[0], fileSize),
+                 common::errors::InvalidArgument(
+                     "Failed to read content from file: %s", filePath));
 
   return fileContent;
 }
