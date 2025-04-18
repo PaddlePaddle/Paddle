@@ -162,8 +162,13 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   DenseTensor rtol_tensor =
       phi::Multiply<RealType>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
-
-  DenseTensor atol_tensor_real = phi::Real<T, Context>(dev_ctx, atol_tensor);
+  DenseTensor atol_tensor_real;
+  if (atol_tensor.dtype() == phi::DataType::COMPLEX64 ||
+      atol_tensor.dtype() == phi::DataType::COMPLEX128) {
+    atol_tensor_real = phi::Real<T, Context>(dev_ctx, atol_tensor);
+  } else {
+    atol_tensor_real = atol_tensor;
+  }
   DenseTensor tol_tensor;
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<RealType>(&tol_tensor);
@@ -270,13 +275,23 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                                     false,
                                     &max_eigenvalue_tensor);
 
-  DenseTensor atol_tensor = phi::Real<T, Context>(dev_ctx, atol);
+  DenseTensor atol_tensor;
+  if (atol.dtype() == phi::DataType::COMPLEX64 ||
+      atol.dtype() == phi::DataType::COMPLEX128) {
+    atol_tensor = phi::Real<T, Context>(dev_ctx, atol);
+  } else {
+    atol_tensor = atol;
+  }
   DenseTensor tol_tensor;
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<RealType>(&tol_tensor);
 
   if (rtol) {
-    DenseTensor rtol_tensor = phi::Real<T, Context>(dev_ctx, *rtol);
+    DenseTensor rtol_tensor = *rtol;
+    if (rtol_tensor.dtype() == phi::DataType::COMPLEX64 ||
+        rtol_tensor.dtype() == phi::DataType::COMPLEX128) {
+      rtol_tensor = phi::Real<T, Context>(dev_ctx, *rtol);
+    }
     DenseTensor tmp_rtol_tensor;
     tmp_rtol_tensor =
         phi::Multiply<RealType>(dev_ctx, rtol_tensor, max_eigenvalue_tensor);

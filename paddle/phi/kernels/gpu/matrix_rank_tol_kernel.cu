@@ -26,6 +26,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/compare_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -719,13 +720,20 @@ void MatrixRankTolKernel(const Context& dev_ctx,
 
   DenseTensor rtol_tensor =
       phi::Multiply<RealType>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
+  DenseTensor atol_tensor_real;
+  if (atol_tensor.dtype() == phi::DataType::COMPLEX64 ||
+      atol_tensor.dtype() == phi::DataType::COMPLEX128) {
+    atol_tensor_real = phi::Real<T, Context>(dev_ctx, atol_tensor);
+  } else {
+    atol_tensor_real = atol_tensor;
+  }
   DenseTensor tol_tensor;
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<RealType>(&tol_tensor);
 
   funcs::ElementwiseCompute<GreaterElementFunctor<RealType>, RealType>(
       dev_ctx,
-      atol_tensor,
+      atol_tensor_real,
       rtol_tensor,
       GreaterElementFunctor<RealType>(),
       &tol_tensor);
@@ -841,17 +849,29 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                                     false,
                                     &max_eigenvalue_tensor);
 
+  DenseTensor atol_tensor;
+  if (atol.dtype() == phi::DataType::COMPLEX64 ||
+      atol.dtype() == phi::DataType::COMPLEX128) {
+    atol_tensor = phi::Real<T, Context>(dev_ctx, atol);
+  } else {
+    atol_tensor = atol;
+  }
   DenseTensor tol_tensor;
   tol_tensor.Resize(dim_out);
   dev_ctx.template Alloc<RealType>(&tol_tensor);
 
   if (rtol) {
+    DenseTensor rtol_tensor = *rtol;
+    if (rtol_tensor.dtype() == phi::DataType::COMPLEX64 ||
+        rtol_tensor.dtype() == phi::DataType::COMPLEX128) {
+      rtol_tensor = phi::Real<T, Context>(dev_ctx, *rtol);
+    }
     DenseTensor tmp_rtol_tensor;
     tmp_rtol_tensor =
-        phi::Multiply<RealType>(dev_ctx, *rtol, max_eigenvalue_tensor);
+        phi::Multiply<RealType>(dev_ctx, rtol_tensor, max_eigenvalue_tensor);
     funcs::ElementwiseCompute<GreaterElementFunctor<RealType>, RealType>(
         dev_ctx,
-        atol,
+        atol_tensor,
         tmp_rtol_tensor,
         GreaterElementFunctor<RealType>(),
         &tol_tensor);
@@ -874,7 +894,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     DenseTensor atol_compare_result;
     atol_compare_result.Resize(default_rtol_tensor.dims());
     phi::EqualKernel<RealType, Context>(
-        dev_ctx, atol, zero_tensor, &atol_compare_result);
+        dev_ctx, atol_tensor, zero_tensor, &atol_compare_result);
 
     DenseTensor selected_rtol_tensor;
     selected_rtol_tensor.Resize(default_rtol_tensor.dims());
@@ -885,7 +905,7 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
                                         &selected_rtol_tensor);
     funcs::ElementwiseCompute<GreaterElementFunctor<RealType>, RealType>(
         dev_ctx,
-        atol,
+        atol_tensor,
         selected_rtol_tensor,
         GreaterElementFunctor<RealType>(),
         &tol_tensor);
