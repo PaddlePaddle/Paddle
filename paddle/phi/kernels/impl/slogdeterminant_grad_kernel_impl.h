@@ -26,9 +26,9 @@
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/impl/determinant_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
 #include "paddle/phi/kernels/slogdeterminant_grad_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -104,7 +104,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
 
   // Second: inverse(A).conj() for complex
   DenseTensor conj_inverse_A;
-  if constexpr (IsComplexType(x.dtype())) {
+  if constexpr (is_complex64_or_complex128<T>::value) {
     conj_inverse_A = phi::Conj<T>(dev_ctx, inverse_A);
     VLOG(3) << "Performed complex conjugate.";
   } else {
@@ -124,7 +124,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   combined_grad_term.Resize(grad_dims);
   dev_ctx.template Alloc<T>(&combined_grad_term);
 
-  if constexpr (IsComplexType(x.dtype())) {
+  if constexpr (is_complex64_or_complex128<T>::value) {
     // a) sign.conj()
     DenseTensor sign_conj = phi::Conj<T>(dev_ctx, sign);
 
