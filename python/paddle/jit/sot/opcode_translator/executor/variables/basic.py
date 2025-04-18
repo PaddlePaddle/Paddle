@@ -564,39 +564,34 @@ class TensorVariable(VariableBase):
             *[
                 (
                     StringifiedExpression(
-                        (
-                            f"{{}}.shape[{i}] == {v}"
-                            if not isinstance(v, SymbolicInt)
-                            else f"{{}}.shape[{i}] >= 2"
-                        ),
+                        f"{{}}.shape[{i}] == {meta.shape[i]}",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                    if not isinstance(meta.shape[i], SymbolicInt)
+                    else StringifiedExpression(
+                        f"{{}}.shape[{i}] >= 2",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )
                 )
-                for i, v in enumerate(meta.shape)
+                for i in range(len(meta.shape))
             ],
             # Check dtype
-            FasterStringifiedExpression(
+            StringifiedExpression(
                 f"{{}}.dtype == {dtype_str}",
-                paddle.framework.core.DtypeMatchGuard(meta.dtype),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars, dtype_free_vars),
             ),
             # Check stop_gradient
-            FasterStringifiedExpression(
+            StringifiedExpression(
                 f"{{}}.stop_gradient == {meta.stop_gradient!r}",
-                paddle.framework.core.StopGradientMatchGuard(
-                    meta.stop_gradient
-                ),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
             # Check whether this tensor is distributed
-            FasterStringifiedExpression(
+            StringifiedExpression(
                 f"{{}}.is_dist() is {(self.meta.dist_info is not None)!r}",
-                paddle.framework.core.TensorIsDistGuard(
-                    self.meta.dist_info is not None
-                ),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
