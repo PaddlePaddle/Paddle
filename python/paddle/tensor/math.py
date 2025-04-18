@@ -4326,6 +4326,9 @@ def cumsum(
         else:
             if x.dtype != convert_np_dtype_to_dtype_(dtype):
                 x = cast(x, dtype)
+    else:
+        if x.dtype == paddle.int32:
+            x = cast(x, paddle.int64)
 
     if in_dynamic_or_pir_mode():
         if axis is None:
