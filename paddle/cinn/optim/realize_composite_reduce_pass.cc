@@ -129,8 +129,7 @@ void SetInitValue(Store store_stmt,
                                          {},
                                          ir::CallType::Intrinsic));
   } else {
-    PADDLE_THROW(::common::errors::Unimplemented(
-        "reduce_type '%d' not allowed.", static_cast<int>(comp_type.type)));
+    CINN_NOT_IMPLEMENTED
   }
 }
 
