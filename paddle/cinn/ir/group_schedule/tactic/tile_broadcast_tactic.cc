@@ -206,6 +206,7 @@ bool IsElementwiseOrBroadcast(const ir::Store& dst, const ir::Load& src) {
 
 bool CheckAllElementwiseOrBroadcast(ir::IRSchedule* sch) {
   for (auto& block : sch->GetAllBlocks()) {
+    if (ir::analyzer::IsReductionSBlock(block)) return false;
     ir::Expr store = ir::analyzer::GetStoreOfSBlock(block);
     auto* store_node = store.As<ir::Store>();
     for (auto& load : CollectLoads(store_node->value)) {
@@ -564,6 +565,7 @@ void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
     block_size = CalcNumWarps(preserved_size_ >> 5);
     if (block_size == -1) {
       applied_layout_ = BroadcastLayout::Invalid;
+      return;
     }
     block_size = std::clamp(block_size << 5, 128, 1024);
   }

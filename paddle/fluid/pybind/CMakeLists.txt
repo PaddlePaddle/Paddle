@@ -171,10 +171,6 @@ else()
   set(PYBIND_DEPS ${PYBIND_DEPS} pir)
 endif()
 
-if(WITH_CUSTOM_DEVICE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
-endif()
-
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
@@ -299,11 +295,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERATOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
-  if(WITH_CUSTOM_DEVICE)
-    set(OP_FUNCTION_GENERATOR_DEPS ${OP_FUNCTION_GENERATOR_DEPS}
-                                   custom_device_common_op_registry)
-  endif()
-
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
   if(WIN32)
@@ -339,11 +330,6 @@ if(WITH_PYTHON)
 
   if(WITH_CINN)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
-  endif()
-
-  if(WITH_CUSTOM_DEVICE)
-    set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
-                             custom_device_common_op_registry)
   endif()
 
   add_executable(
