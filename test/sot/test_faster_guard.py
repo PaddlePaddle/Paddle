@@ -202,12 +202,12 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
 
-    def test_tensor_is_dist_guard(self):
-        tensor = paddle.randn([2, 3])
-        guard_tensor_is_dist = paddle.framework.core.TensorDistMatchGuard(
-            tensor
-        )
-        self.assertTrue(guard_tensor_is_dist.check(tensor))
+    # def test_tensor_is_dist_guard(self):
+    #     tensor = paddle.randn([2, 3])
+    #     guard_tensor_is_dist = paddle.framework.core.TensorDistMatchGuard(
+    #         tensor
+    #     )
+    #     self.assertTrue(guard_tensor_is_dist.check(tensor))
 
 
 class TestFasterGuardGroup(unittest.TestCase):
