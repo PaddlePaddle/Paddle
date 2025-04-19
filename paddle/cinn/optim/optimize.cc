@@ -72,10 +72,20 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   {
     FuncPassManager func_pass_manager;
-    func_pass_manager.AddPass(CreateRealizeCompositeReducePass());
+    target.arch.Match(
+        [&](std::variant<common::NVGPUArch,
+                         common::HygonDCUArchHIP,
+                         common::HygonDCUArchSYCL,
+                         common::ARMArch,
+                         common::UnknownArch>) {
+          func_pass_manager.AddPass(CreateRealizeCompositeReducePass());
+        },
+        [&](std::variant<common::X86Arch>) {
+          func_pass_manager.AddPass(CreateRealizeCompositeReducePass(false));
+        });
     func_pass_manager.AddPass(CreateReindexTransposeBufferPass());
     func_pass_manager.Run(copied);
-    VLOG(4) << "After Optimize CustomizedReduce and ReindexTransposeBuffer: "
+    VLOG(4) << "After Optimize CompositeReducePass and ReindexTransposeBuffer: "
             << copied;
   }
 
@@ -189,7 +199,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   LowerIntrin(&copied->body, target);
   VLOG(10) << "After LowerIntrin:" << copied;
-
+  // re-compute buffer cast exprs since
+  // x86 codegen needs correct buffer types to generate
+  // symbol table
+  copied->PrepareBufferCastExprs(false);
   return copied;
 }
 

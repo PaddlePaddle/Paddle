@@ -76,11 +76,15 @@ namespace optim {
  */
 class RealizeCompositeReducePass : public FuncPass {
  public:
-  RealizeCompositeReducePass() : FuncPass("realize_composite_reduce") {}
+  explicit RealizeCompositeReducePass(bool non_x86 = true)
+      : FuncPass("realize_composite_reduce"), non_x86_(non_x86) {}
   LogicalResult Run(ir::LoweredFunc func) override;
+
+ private:
+  const bool non_x86_;
 };
 
-std::unique_ptr<FuncPass> CreateRealizeCompositeReducePass();
+std::unique_ptr<FuncPass> CreateRealizeCompositeReducePass(bool non_x86 = true);
 
 }  // namespace optim
 }  // namespace cinn
