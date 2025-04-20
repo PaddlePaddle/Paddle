@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle::experimental::detail {
 
 // We need judge whether the allocation is nullptr,
-// whether the allocation is initialized, wo we need GetHolder method
+// whether the allocation is initialized, so we need GetHolder method
 bool HasAllocation(const phi::TensorBase& t) {
   if (phi::DenseTensor::classof(&t)) {
     return phi::DenseTensorUtils::GetHolder(

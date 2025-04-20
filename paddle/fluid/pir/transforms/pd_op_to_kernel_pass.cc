@@ -50,6 +50,7 @@
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -384,7 +385,7 @@ phi::DenseTensorMeta parse_tensor_meta<AllocatedSparseCsrTensorType>(
 }
 
 static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
-    pir::Value input) {
+    pir::Value input, bool build_array_item = false) {
   std::vector<std::shared_ptr<phi::TensorBase>> res;
   auto in_type = input.type();
 
@@ -427,16 +428,22 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
     return sr;
   };
 
-  auto fake_tensor_array = [](const AllocatedDenseTensorArrayType& type) {
-    auto ptr = new phi::Allocation(nullptr, 0, type.place());
-    std::shared_ptr<phi::Allocation> holder(ptr);
-    auto dtype = TransToPhiDataType(type.dtype());
-    phi::DenseTensorMeta meta(dtype, {});
-    phi::DenseTensor dt(holder, meta);
-    auto tensor_array = std::make_shared<phi::TensorArray>(0);
-    tensor_array->set_type(dtype);
-    return tensor_array;
-  };
+  auto fake_tensor_array =
+      [build_array_item](const AllocatedDenseTensorArrayType& type) {
+        auto tensor_array = std::make_shared<phi::TensorArray>(0);
+        auto dtype = TransToPhiDataType(type.dtype());
+        tensor_array->set_type(dtype);
+
+        if (build_array_item) {
+          auto ptr = new phi::Allocation(nullptr, 0, type.place());
+          std::shared_ptr<phi::Allocation> holder(ptr);
+          phi::DenseTensorMeta meta(dtype, {});
+          phi::DenseTensor dt(holder, meta);
+          tensor_array->push_back(dt);
+        }
+
+        return tensor_array;
+      };
 
   if (in_type.isa<AllocatedDenseTensorType>()) {
     res.push_back(fake_dt(in_type.dyn_cast<AllocatedDenseTensorType>()));
@@ -514,9 +521,17 @@ static pir::Value AddPlaceTransferOp(pir::Value in,
     if (src_place.GetType() == phi::AllocationType::CUSTOM) {
       paddle::experimental::detail::KernelKeyParser kernel_key_parser;
 
-      auto fake_tensors = PrepareFakeTensors(in);
+      auto fake_tensors = PrepareFakeTensors(in, true);
       for (auto& fake_tensor : fake_tensors) {
-        kernel_key_parser.AssignKernelKeySet(*fake_tensor);
+        if (phi::TensorArray::classof(fake_tensor.get())) {
+          // AssignKernelKeySet(const phi::TensorBase& tensor) cannot parse
+          // tensor array backend
+          const auto& tensor_array =
+              static_cast<phi::TensorArray&>(*fake_tensor);
+          kernel_key_parser.AssignKernelKeySet(tensor_array);
+        } else {
+          kernel_key_parser.AssignKernelKeySet(*fake_tensor);
+        }
       }
       auto kernel_key = kernel_key_parser.key_set.GetHighestPriorityKernelKey();
       copy_kernel_key.set_backend(kernel_key.backend());
@@ -1285,9 +1300,18 @@ phi::KernelKey GetKernelKey(
         continue;
       }
       auto new_input_tmp = map_value_pair.at(input_tmp);
-      auto fake_tensors = PrepareFakeTensors(new_input_tmp);
+
+      auto fake_tensors = PrepareFakeTensors(new_input_tmp, true);
       for (auto& fake_tensor : fake_tensors) {
-        kernel_key_parser.AssignKernelKeySet(*fake_tensor);
+        if (phi::TensorArray::classof(fake_tensor.get())) {
+          // AssignKernelKeySet(const phi::TensorBase& tensor) cannot parse
+          // tensor array backend
+          const auto& tensor_array =
+              static_cast<phi::TensorArray&>(*fake_tensor);
+          kernel_key_parser.AssignKernelKeySet(tensor_array);
+        } else {
+          kernel_key_parser.AssignKernelKeySet(*fake_tensor);
+        }
       }
 
       // Because we can't make sure the place when build data op

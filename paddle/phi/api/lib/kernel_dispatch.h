@@ -31,6 +31,7 @@ limitations under the License. */
 
 // TODO(chenweihang): split Key, Kernel, Factory into diff files
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/tensor_array.h"
 
 namespace paddle {
 namespace experimental {
@@ -95,6 +96,12 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // this dtype_set is used for cache multi-inputs dtype and used for
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
+
+  inline void AssignKernelKeySet(const phi::TensorArray& array) {
+    for (const auto& tensor : array) {
+      AssignKernelKeySet(tensor);
+    }
+  }
 
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
