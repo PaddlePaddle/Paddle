@@ -113,36 +113,63 @@ def irecv(
 
 
 def recv_object_list(object_list, src=None, group=None, group_src=None):
+    """
+    Receive a list of Python objects from the sender.
+
+    Args:
+        object_list (list): The list to store received objects. Must be pre-allocated with correct size.
+        src (int, optional): The source rank id. Default: 0.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        group_src (int, optional): The source rank within the group. Cannot be specified together with src. Default: None.
+
+    Returns:
+        Return True if the operation is successful, False if the current process is not in the group.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = ["hello", {"key": 100}, [1, 2, 3]]
+            ...     dist.send_object_list(data, dst=1)
+            >>> else:
+            ...     data = [None] * 3  # pre-allocate list with size 3
+            ...     dist.recv_object_list(data, src=0)
+            >>> print(data)
+            >>> # ["hello", {"key": 100}, [1, 2, 3]] (2 GPUs)
+    """
+    if object_list is None or len(object_list) == 0:
+        raise ValueError("object_list cannot be None or empty")
+
     group = _get_global_group() if group is None else group
     if _warn_cur_rank_not_in_group(group):
-        return
+        return False
+
     if group_src is not None:
         if src is not None:
             raise ValueError(
                 "Cannot specify both 'src' and 'group_src' arguments."
             )
-        else:
-            src = group.get_global_rank(group_src)
+        src = group.get_global_rank(group_src)
     else:
-        if src is None:
-            src = 0
+        src = 0 if src is None else src
 
     object_sizes_tensor = paddle.empty((len(object_list),), dtype='int64')
+    recv(object_sizes_tensor, src=src, group=group)
 
-    # Receive object sizes
-    rank_sizes = recv(object_sizes_tensor, src=src, group=group)
-
-    # Tensor to receive serialized objects into.
-    object_tensor = paddle.empty(
-        ((paddle.sum(object_sizes_tensor).view("int64")),),
-        dtype=paddle.uint8,
-    )
-
+    total_size = paddle.sum(object_sizes_tensor).item()
+    object_tensor = paddle.empty((total_size,), dtype=paddle.uint8)
     recv(object_tensor, src=src, group=group)
 
-    # Deserialize objects using their stored sizes.
     offset = 0
     for i, obj_size in enumerate(object_sizes_tensor):
+        obj_size = obj_size.item()
         obj_view = object_tensor[offset : offset + obj_size]
-        offset += obj_size
         object_list[i] = convert_tensor_to_object(obj_view, obj_size)
+        offset += obj_size
+
+    return True

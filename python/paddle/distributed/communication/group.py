@@ -94,6 +94,24 @@ class Group:
     def get_global_rank(self, rank: int) -> int | Literal[-1]:
         """
         Get the global rank of a process within a group.
+
+        Args:
+            rank (int): The local rank within the group.
+
+        Returns:
+            If the current process is a member of the group, returns the corresponding global rank;
+            otherwise returns -1.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+                >>> import paddle.distributed as dist
+
+                >>> dist.init_parallel_env()
+                >>> group = dist.new_group([0, 1])
+                >>> global_rank = group.get_global_rank(0)
+                >>> print(global_rank)
         """
         if self.is_member():
             return self.ranks[rank]
