@@ -31,7 +31,7 @@ set(transforms_deps
     common)
 
 if(WITH_CINN)
-  set(transforms_deps ${transforms_deps} cinncore_static)
+  set(transforms_deps ${transforms_deps} cinnapi)
 endif()
 
 cc_library(

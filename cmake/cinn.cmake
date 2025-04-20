@@ -137,21 +137,6 @@ set(LINK_FLAGS
 set(global_test_args
     "--cinn_x86_builtin_code_root=${CMAKE_SOURCE_DIR}/paddle/cinn/backends")
 
-set(Python_VIRTUALENV FIRST)
-
-if(NOT PYTHON_EXECUTABLE)
-  find_package(PythonInterp ${PY_VERSION} REQUIRED)
-endif()
-
-if(NOT PYTHON_LIBRARIES)
-  find_package(PythonLibs ${PY_VERSION} REQUIRED)
-endif()
-
-message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
-message(STATUS "PYTHON_INCLUDE_DIR: ${PYTHON_INCLUDE_DIR}")
-
-include_directories(${PYTHON_INCLUDE_DIR})
-
 set(core_deps CACHE INTERNAL "" FORCE)
 set(hlir_src CACHE INTERNAL "" FORCE)
 
@@ -232,7 +217,6 @@ function(gen_cinncore LINKTYPE)
     absl
     isl
     ginac
-    pybind
     op_fusion
     cinn_op_dialect
     ${jitify_deps})
@@ -240,9 +224,6 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
   add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
-
-  # add_dependencies(${CINNCORE_TARGET} pybind)
-  target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
 
   if(WITH_MKL)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
