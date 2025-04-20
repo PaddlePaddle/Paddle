@@ -170,6 +170,53 @@ class ReduceMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
   }
 };
 
+template <typename SOURCE_OP, typename TARGET_OP>
+class ArgMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
+ public:
+  using pir::OpRewritePattern<SOURCE_OP>::OpRewritePattern;
+
+  bool Match(SOURCE_OP op) const override {
+    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    return !is_denied && IsDefinedBy<FullOp>(op, 1);
+  }
+
+  void Rewrite(SOURCE_OP op, pir::PatternRewriter &rewriter) const override {
+    const FullOp full_op = CastDefinedTo<FullOp>(op, 1);
+
+    const int64_t axis_value =
+        full_op.attribute("value")
+            .template dyn_cast<paddle::dialect::ScalarAttribute>()
+            .data()
+            .to<int64_t>();
+    const bool flatten = op.attribute("flatten")
+                             .template dyn_cast<::pir::BoolAttribute>()
+                             .data();
+    const bool keepdim = op.attribute("keepdims")
+                             .template dyn_cast<::pir::BoolAttribute>()
+                             .data();
+    const auto &dtype =
+        op.attribute("dtype")
+            .template dyn_cast<paddle::dialect::DataTypeAttribute>()
+            .data();
+
+    // The argmin/argmax has exactly one axis and is only effective when the
+    // `flatten` attr is false.
+    std::vector<int64_t> axis;
+    if (!flatten) {
+      axis = {axis_value};
+    }
+
+    auto cinn_op =
+        rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keepdim, dtype);
+
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_op.result(0));
+    rewriter.EraseOp(op);
+    if (full_op->use_empty()) {
+      rewriter.EraseOp(full_op);
+    }
+  }
+};
+
 class ProdOpPattern : public pir::OpRewritePattern<paddle::dialect::ProdOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::ProdOp>::OpRewritePattern;
@@ -1066,32 +1113,34 @@ class UnsqueezeOpPattern
                              .type()
                              .dyn_cast<paddle::dialect::DenseTensorType>()
                              .dims());
+      const FullIntArrayOp axis_full_op = CastDefinedTo<FullIntArrayOp>(op, 1);
+      auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
+      int output_rank = in_shape.size() + static_cast<int>(axis_vec.size());
+      int cur_output_rank = in_shape.size();
+      std::vector<int> output_shape(output_rank, 0);
 
-      const std::set<int64_t> axis_set = [&] {
-        const FullIntArrayOp axis_full_op =
-            CastDefinedTo<FullIntArrayOp>(op, 1);
-        auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
-        std::set<int64_t> axis_set;
-        for (size_t i = 0; i < axis_vec.size(); ++i) {
-          auto axis = axis_vec[i];
-          int64_t axis_val = axis < 0 ? axis + in_shape.size() + 1 + i : axis;
-          axis_set.insert(axis_val);
-        }
-        return axis_set;
-      }();
+      for (int axis : axis_vec) {
+        int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
 
-      const std::vector<int> output_shape = [&] {
-        const size_t output_rank = in_shape.size() + axis_set.size();
-        std::vector<int> output_shape;
-        for (size_t i = 0, input_index = 0; i < output_rank; ++i) {
-          if (axis_set.count(i)) {
-            output_shape.push_back(1);
-            continue;
+        // Move old axis, and insert new axis
+        for (int i = cur_output_rank; i >= cur; --i) {
+          if (output_shape[i] == 1) {
+            // Move axis
+            output_shape[i + 1] = 1;
+            output_shape[i] = 0;
           }
-          output_shape.push_back(in_shape[input_index++]);
         }
-        return output_shape;
-      }();
+        output_shape[cur] = 1;
+        // Add the output size.
+        cur_output_rank++;
+      }
+
+      // Make output shape
+      for (int in_idx = 0, out_idx = 0; out_idx < output_rank; ++out_idx) {
+        if (output_shape[out_idx] == 0) {
+          output_shape[out_idx] = in_shape[in_idx++];
+        }
+      }
       ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 
@@ -1328,6 +1377,12 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
                                cinn::dialect::ReduceMinOp>>(context);
   ps.Add<ReduceMinMaxOpPattern<paddle::dialect::MaxOp,
                                cinn::dialect::ReduceMaxOp>>(context);
+  ps.Add<
+      ArgMinMaxOpPattern<paddle::dialect::ArgminOp, cinn::dialect::ArgminOp>>(
+      context);
+  ps.Add<
+      ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
+      context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);

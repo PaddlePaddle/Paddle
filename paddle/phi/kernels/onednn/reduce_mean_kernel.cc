@@ -25,16 +25,12 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-
-  if (x.numel() == 0 && out && out->dims().size() == 0) {
+  if (x.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
     return;
   }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceKernel<T, Context>(dev_ctx,
                            x,

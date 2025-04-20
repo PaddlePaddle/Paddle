@@ -56,12 +56,6 @@ namespace ir {
  */
 std::vector<int64_t> GetLoopStrides(const ir::Expr& reduce_compute_body);
 
-// Check whether we can apply grid reduce in this group.
-// We can apply grid reduce if there is no reduce-then-broadcast dependency
-// in this group.
-bool GetCanApplyGridReduce(const std::vector<ir::Expr>& op_compute_bodies,
-                           const std::vector<int64_t>& reduce_axis);
-
 // Check whether we can apply vectorize in this group.
 GroupVectorizeInfo GetGroupVectorizeInfo(
     const std::vector<ir::Expr>& op_compute_bodies,

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import builtins
+import copy
 import inspect
 import sys
 import time
@@ -267,12 +268,13 @@ def count_if(*structures, pred):
 
 
 class Cache:
-    def __init__(self, weak=False):
+    def __init__(self, weak=False, copy=False):
         if not weak:
             self.cache = {}
         else:
             self.cache = WeakValueDictionary()
         self.hit_num = 0
+        self.copy = copy
 
     def __call__(self, *args, **kwargs):
         cache_key = self.key_fn(*args, **kwargs)
@@ -281,7 +283,10 @@ class Cache:
         if cache_key in self.cache:
             log(5, "cache hit: ", cache_key, "\n")
             self.hit_num += 1
-            return self.cache[cache_key]
+            cache_item = self.cache[cache_key]
+            if self.copy:
+                cache_item = copy.deepcopy(cache_item)
+            return cache_item
         value = self.value_fn(*args, **kwargs)
         self.cache[cache_key] = value
         return value

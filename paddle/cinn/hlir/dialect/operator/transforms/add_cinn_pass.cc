@@ -52,6 +52,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_full_int_array_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_group_output_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_zero_scale_to_full_pass.h"
@@ -71,6 +72,7 @@ COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
 COMMON_DECLARE_bool(enable_fusion_fallback);
 COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
+COMMON_DECLARE_bool(cinn_debug);
 
 namespace cinn::dialect::ir {
 
@@ -244,7 +246,8 @@ void ApplyCinnLowerPass(
   }
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-
+  pass_manager->AddPass(
+      cinn::dialect::ir::CreateRemoveRedundantFullIntArrayPass());
   pass_manager->Run(program);
 }
 
@@ -271,6 +274,7 @@ void ApplyCinnPass(
     ::pir::Program* program,
     const std::function<std::shared_ptr<pir::PassManager>()>& CreatePassManager,
     bool is_train_mode) {
+  LOG_FIRST_N(INFO, 1) << "Compiling subgraph with CINN backend ...";
   const uint32_t origin_num_ops = program->num_ops();
   if (origin_num_ops == 0) return;
 
@@ -294,9 +298,11 @@ void ApplyCinnPass(
   PirToPyCodeConverter(program)
       .file_name("fusion_op_programs.py")
       .SaveIfFlagEnabled();
-  LOG(INFO) << "FusionOp count before lowering : *****[ "
-            << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
-            << " ]*****";
+  if (FLAGS_cinn_debug) {
+    LOG(INFO) << "FusionOp count before lowering : *****[ "
+              << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
+              << " ]*****";
+  }
   if (VLOG_IS_ON(1)) {
     auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(program);
     std::cout << "Program before lowering: \n"
@@ -307,15 +313,19 @@ void ApplyCinnPass(
   auto start = std::chrono::high_resolution_clock::now();
   ApplyCinnLowerPass(program, CreatePassManager);
   auto end = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-  LOG(INFO) << "Time of lowering and compiling program: ***** [ "
-            << duration.count() << " ] ***** seconds.";
+  if (FLAGS_cinn_debug) {
+    auto duration =
+        std::chrono::duration_cast<std::chrono::seconds>(end - start);
+    LOG(INFO) << "Time of lowering and compiling program: ***** [ "
+              << duration.count() << " ] ***** seconds.";
 
-  const uint32_t new_num_ops = program->num_ops();
-  LOG(INFO) << "Number of ops in the original program is: " << origin_num_ops
-            << ", after lowering it becomes: " << new_num_ops
-            << ". (compression ratio: " << new_num_ops << "/" << origin_num_ops
-            << " = " << static_cast<float>(new_num_ops) / origin_num_ops << ")";
+    const uint32_t new_num_ops = program->num_ops();
+    LOG(INFO) << "Number of ops in the original program is: " << origin_num_ops
+              << ", after lowering it becomes: " << new_num_ops
+              << ". (compression ratio: " << new_num_ops << "/"
+              << origin_num_ops << " = "
+              << static_cast<float>(new_num_ops) / origin_num_ops << ")";
+  }
 }
 
 }  // namespace cinn::dialect::ir

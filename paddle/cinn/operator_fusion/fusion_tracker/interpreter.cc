@@ -193,11 +193,10 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
     auto exprs = std::visit(FusibleOp2Expr(), fusion_op);
     for (auto expr : exprs) {
       std::string output_var_name = GetOutputTensor(expr)->name;
-      if (interpreter->global_var_names.count(output_var_name)) {
-        expr = ExprTransformerUtils::EliminateUselessIfTransformer()(expr);
-      } else {
+      if (!interpreter->global_var_names.count(output_var_name)) {
         expr = ExprTransformerUtils::RemoveAllAppendIfTransformer()(expr);
       }
+      expr = ExprTransformerUtils::EliminateUselessIfTransformer()(expr);
       result.push_back(expr);
     }
   }

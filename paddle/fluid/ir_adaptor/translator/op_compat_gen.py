@@ -181,15 +181,6 @@ def OpNameNormalizerInitialization(
         "out": "Out",
     }
     op_arg_name_mappings['fused_softmax_mask_grad'].update({"out": "Softmax"})
-    op_arg_name_mappings['push_sparse_v2'].update(
-        {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
-    )
-    op_arg_name_mappings['push_box_sparse'].update(
-        {"out_grad_in": "Out@GRAD", "out_grad_out": "Out@GRAD"}
-    )
-    op_arg_name_mappings['push_gpups_sparse'].update(
-        {"out_grad": "Out@GRAD", "out_grad_grad": "Out@GRAD"}
-    )
 
     sparse_op_yaml_files = sparse_op_yaml_file.split(",")
     for yaml_file in sparse_op_yaml_files:

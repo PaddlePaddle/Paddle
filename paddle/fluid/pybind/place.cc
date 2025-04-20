@@ -69,7 +69,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
@@ -222,7 +221,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    "positive integer",
                    device_type,
                    dev_id);
-               std::exit(-1);
+               PADDLE_THROW(::common::errors::InvalidArgument(
+                   "use wrong place, Please check."));
              }
 
              if (LIKELY(phi::DeviceManager::HasDeviceType(device_type) &&
@@ -235,7 +235,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                               << " because there is no " << device_type
                               << " detected on your "
                                  "machine.";
-                   std::exit(-1);
+                   PADDLE_THROW(::common::errors::InvalidArgument(
+                       "use wrong place, Please check."));
                  } else {
                    LOG(ERROR) << string::Sprintf(
                        "Invalid CustomPlace(%s, %d), dev_id must "
@@ -247,7 +248,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                        dev_count,
                        device_type,
                        dev_count);
-                   std::exit(-1);
+                   PADDLE_THROW(::common::errors::InvalidArgument(
+                       "use wrong place, Please check."));
                  }
                }
                new (&self) phi::CustomPlace(device_type, dev_id);
@@ -258,7 +260,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    "as a custom device.",
                    device_type,
                    dev_id);
-               std::exit(-1);
+               PADDLE_THROW(::common::errors::InvalidArgument(
+                   "use wrong place, Please check."));
              }
 #else
              LOG(ERROR) << string::Sprintf(
@@ -270,7 +273,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                  "If you only have CPU, please change "
                  "CustomPlace(%s, %d) to be CPUPlace().\n",
                  device_type, dev_id);
-             std::exit(-1);
+              PADDLE_THROW(::common::errors::InvalidArgument(
+            "use wrong place, Please check."));
 #endif
            })
       .def("_type", &PlaceIndex<phi::CustomPlace>)
@@ -314,7 +318,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    "Invalid CUDAPlace(%d), device id must be 0 or "
                    "positive integer",
                    dev_id);
-               std::exit(-1);
+               PADDLE_THROW(::common::errors::InvalidArgument(
+                   "use wrong place, Please check."));
              }
 
              if (UNLIKELY(dev_id >= platform::GetGPUDeviceCount())) {
@@ -322,7 +327,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                  LOG(ERROR) << "Cannot use GPU because there is no GPU "
                                "detected on your "
                                "machine.";
-                 std::exit(-1);
+                 PADDLE_THROW(::common::errors::InvalidArgument(
+                     "use wrong place, Please check."));
                } else {
                  LOG(ERROR) << string::Sprintf(
                      "Invalid CUDAPlace(%d), must inside [0, %d), because GPU "
@@ -330,7 +336,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                      dev_id,
                      platform::GetGPUDeviceCount(),
                      platform::GetGPUDeviceCount());
-                 std::exit(-1);
+                 PADDLE_THROW(::common::errors::InvalidArgument(
+                     "use wrong place, Please check."));
                }
              }
 
@@ -344,7 +351,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                  "If you only have CPU, please change CUDAPlace(%d) to be "
                  "CPUPlace().\n",
                  dev_id);
-             std::exit(-1);
+              PADDLE_THROW(::common::errors::InvalidArgument(
+            "use wrong place, Please check."));
 #endif
            })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -400,14 +408,16 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                    "Invalid XPUPlace(%d), device id must be 0 or "
                    "positive integer",
                    dev_id);
-               std::exit(-1);
+               PADDLE_THROW(::common::errors::InvalidArgument(
+                   "use wrong place, Please check."));
              }
              if (UNLIKELY(dev_id >= platform::GetXPUDeviceCount())) {
                if (platform::GetXPUDeviceCount() == 0) {
                  LOG(ERROR) << "Cannot use XPU because there is no XPU "
                                "detected on your "
                                "machine.";
-                 std::exit(-1);
+                 PADDLE_THROW(::common::errors::InvalidArgument(
+                     "use wrong place, Please check."));
                } else {
                  LOG(ERROR) << string::Sprintf(
                      "Invalid XPUPlace(%d), must inside [0, %d), because XPU "
@@ -415,7 +425,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                      dev_id,
                      platform::GetXPUDeviceCount(),
                      platform::GetXPUDeviceCount());
-                 std::exit(-1);
+                 PADDLE_THROW(::common::errors::InvalidArgument(
+                     "use wrong place, Please check."));
                }
              }
              new (&self) phi::XPUPlace(dev_id);
@@ -428,7 +439,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                  "If you only have CPU, please change XPUPlace(%d) to be "
                  "CPUPlace().\n",
                  dev_id);
-             std::exit(-1);
+
+              PADDLE_THROW(::common::errors::InvalidArgument(
+            "use wrong place, Please check."));
 #endif
            })
 #ifdef PADDLE_WITH_XPU
@@ -612,7 +625,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                LOG(ERROR) << "Cannot use IPU because there is no IPU "
                              "detected on your "
                              "machine.";
-               std::exit(-1);
+               PADDLE_THROW(::common::errors::InvalidArgument(
+                   "use wrong place, Please check."));
              }
              // use ipu(0) to compile, while run with the number user configure
              // in sharding and pipeline.
@@ -625,7 +639,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                  "PaddlePaddle by: pip install paddlepaddle*\n"
                  "If you only have CPU, please change IPUPlace to be "
                  "CPUPlace().\n");
-             std::exit(-1);
+              PADDLE_THROW(::common::errors::InvalidArgument(
+            "use wrong place, Please check."));
 #endif
            })
       .def("_type", &PlaceIndex<phi::IPUPlace>)

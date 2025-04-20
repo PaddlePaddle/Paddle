@@ -480,6 +480,10 @@ InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
   return std::nullopt;
 }
 
+void InferSymbolicShapeContext::ClearOpInferSymbolicShapeCache() {
+  infer_symbolic_shape_cache_.clear();
+}
+
 bool InferSymbolicShapeContext::HasPredefinedDimExprForInputName(
     const std::string& input_name) const {
   return predefined_dimexpr_map_for_inputs_.count(input_name) != 0;
@@ -890,6 +894,13 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
 void ShapeConstraintIRAnalysis::SetInputDynamicDimSpec(
     const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
   input_dynamic_dim_spec_ = input_dynamic_dim_spec;
+}
+
+void ShapeConstraintIRAnalysis::AppendInputDynamicDimSpec(
+    const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
+  input_dynamic_dim_spec_.insert(input_dynamic_dim_spec_.end(),
+                                 input_dynamic_dim_spec.begin(),
+                                 input_dynamic_dim_spec.end());
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
