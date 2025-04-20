@@ -166,6 +166,24 @@ class TestHorizontalFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
 
+    def test_slice_concat_with_shared_input(self):
+        def func(x):
+            res = []
+            for i in range(20):
+                a = x[i : i + 1] + 1
+                a = paddle.reshape(a, [1])
+                axis = paddle.full(shape=[1], fill_value=i, dtype='int64')
+                a = paddle.concat([a, axis], axis=0)
+                res.append(a)
+            return res
+
+        def init():
+            x = paddle.rand([20])
+            x = paddle.cast(x, dtype='int64')
+            return (x,)
+
+        self.check_accuracy_and_kernel_num(init, func, kernel_num=1)
+
 
 if __name__ == "__main__":
     unittest.main()

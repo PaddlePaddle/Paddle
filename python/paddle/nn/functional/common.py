@@ -502,7 +502,6 @@ def interpolate(
         if len(x.shape) == 3:
             return paddle.nn.functional.adaptive_avg_pool1d(x, size)
         elif len(x.shape) == 4:
-            print("size :", size)
             return paddle.nn.functional.adaptive_avg_pool2d(x, size)
         elif len(x.shape) == 5:
             return paddle.nn.functional.adaptive_avg_pool3d(x, size)

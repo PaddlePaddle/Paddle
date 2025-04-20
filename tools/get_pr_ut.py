@@ -117,10 +117,12 @@ class PRChecker:
             except Exception as e:
                 print(e)
                 print(
-                    f'PREC download {url} error, retry {ix} time(s) after {ix * 10} secs.[proxy_option={cur_proxy}]'
+                    f'PREC download {url} error, retry {ix} time(s) after {ix * 10} secs.[proxy_option={"Without proxy" if ix // 2 == 0 else "With proxy"}]'
                 )
-                continue
             else:
+                print(
+                    f'PREC download {url} success[proxy_option={"Without proxy" if ix // 2 == 0 else "With proxy"}]'
+                )
                 return True
             time.sleep(ix * 10)
             ix += 1
