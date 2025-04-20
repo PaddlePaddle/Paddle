@@ -122,7 +122,7 @@ function(register_onednn_kernel TARGET)
   if(${onednn_cc_srcs_len} EQUAL 0)
     message(
       FATAL_ERROR
-        "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_onednn_op.cc file"
+        "The ONEDNN kernel file of ${TARGET} should contains at least one *.*_onednn_op.cc file"
     )
   endif()
   if(WITH_ONEDNN)
@@ -138,7 +138,7 @@ function(register_onednn_kernel TARGET)
     set(op_name "")
     find_register(${onednn_src} "REGISTER_OP_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
-      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, ONEDNN);\n")
     endif()
   endforeach()
 endfunction()
@@ -494,7 +494,7 @@ function(op_library TARGET)
       # why change TARGET here?
       # when building paddle with on_infer, the REGISTER_OPERATOR(*_grad) will be removed before compiling (see details in remove_grad_op_and_kernel.py)
       # in elementwise_op.cc, it will find REGISTER_OPERATOR(grad_add) and set TARGET to grad_add
-      # and, in the following "onednn" part, it will add USE_OP_DEVICE_KERNEL(grad_add, MKLDNN) to pybind.h
+      # and, in the following "onednn" part, it will add USE_OP_DEVICE_KERNEL(grad_add, ONEDNN) to pybind.h
       # however, grad_add has no onednn kernel.
       set(TARGET ${op_name})
       set(pybind_flag 1)
@@ -607,18 +607,18 @@ function(op_library TARGET)
     endforeach()
   endif()
 
-  # pybind USE_OP_DEVICE_KERNEL for MKLDNN
+  # pybind USE_OP_DEVICE_KERNEL for ONEDNN
   if(WITH_ONEDNN AND ${onednn_cc_srcs_len} GREATER 0)
-    # Append first implemented MKLDNN activation operator
+    # Append first implemented ONEDNN activation operator
     if(${ONEDNN_FILE} STREQUAL "activation_onednn_op")
-      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, ONEDNN);\n")
     else()
       foreach(onednn_src ${onednn_cc_srcs})
         set(op_name "")
         find_register(${onednn_src} "REGISTER_OP_KERNEL" op_name)
         if(NOT ${op_name} EQUAL "")
           file(APPEND ${pybind_file}
-               "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
+               "USE_OP_DEVICE_KERNEL(${op_name}, ONEDNN);\n")
           set(pybind_flag 1)
         endif()
       endforeach()
