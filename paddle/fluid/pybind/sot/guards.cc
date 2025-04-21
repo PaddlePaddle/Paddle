@@ -202,26 +202,8 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #endif
 }
 
-phi::distributed::DistTensor* get_dist_tensor_from_py_object(PyObject* obj) {
-  if (paddle::pybind::PyCheckTensor(obj)) {
-    auto tensor = reinterpret_cast<paddle::pybind::TensorObject*>(obj)->tensor;
-    if (tensor.is_dist_tensor()) {
-      return static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
-    }
-  }
-  return nullptr;
-}
-
-phi::distributed::DistTensor* get_dist_tensor_from_tensor(
-    const paddle::Tensor& tensor) {
-  if (tensor.is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
-  }
-  return nullptr;
-}
-
-bool TensorDistMatchGuard::check(PyObject* value) {
-  if (value == NULL && expected_ == NULL) {
+bool TensorDistMetaMatchGuard::check(PyObject* value) {
+  if (value == NULL && dist_info_expected_ == NULL) {
     return true;
   }
   CheckTensorFromPyObject(value);
@@ -229,42 +211,39 @@ bool TensorDistMatchGuard::check(PyObject* value) {
     return false;
   }
 
-  // check expected_
-  auto expected_dist_tensor = get_dist_tensor_from_py_object(expected_);
-  if (expected_dist_tensor == nullptr) {
+  phi::distributed::DistTensor* dist_tensor;
+  if (tensor->is_dist_tensor()) {
+    dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(tensor->impl().get());
+  } else {
     return false;
   }
 
-  auto dist_tensor = get_dist_tensor_from_tensor(*tensor);
-  if (dist_tensor == nullptr) {
-    return false;
-  }
-
-  auto expected_dist_mesh = expected_dist_tensor->process_mesh();
   auto dist_mesh = dist_tensor->process_mesh();
 
   // mesh.shape
-  if (expected_dist_mesh.shape() != dist_mesh.shape()) {
+  if (mesh_shape_expected_ != dist_mesh.shape()) {
     return false;
   }
 
   // mesh.process_ids
-  if (expected_dist_mesh.process_ids() != dist_mesh.process_ids()) {
+  if (dims_mapping_expected_ != dist_mesh.process_ids()) {
     return false;
   }
 
   // dims_mapping
+  // dist_tensor->placements();
 
-  // local_shape
-  auto local_shape = dist_tensor->value();
-  auto expected_local_shape = expected_dist_tensor->value();
-  if (local_shape.dims() != expected_local_shape.dims() ||
-      local_shape.numel() != expected_local_shape.numel() ||
-      local_shape.layout() != expected_local_shape.layout() ||
-      local_shape.dtype() != expected_local_shape.dtype() ||
-      local_shape.offset() != expected_local_shape.offset()) {
-    return false;
-  }
+  // // local_shape
+  // auto local_shape = dist_tensor->value();
+  // auto expected_local_shape = expected_dist_tensor->value();
+  // if (local_shape.dims() != expected_local_shape.dims() ||
+  //     local_shape.numel() != expected_local_shape.numel() ||
+  //     local_shape.layout() != expected_local_shape.layout() ||
+  //     local_shape.dtype() != expected_local_shape.dtype() ||
+  //     local_shape.offset() != expected_local_shape.offset()) {
+  //   return false;
+  // }
 
   return true;
 }

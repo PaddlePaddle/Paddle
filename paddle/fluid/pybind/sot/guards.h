@@ -267,18 +267,35 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class TensorDistMatchGuard : public GuardBase {
+class TensorDistMetaMatchGuard : public GuardBase {
  public:
-  explicit TensorDistMatchGuard(const py::object& obj) : expected_(obj.ptr()) {
-    Py_INCREF(expected_);
+  explicit TensorDistMetaMatchGuard(const py::object& obj)
+      : dist_info_expected_(obj.ptr()) {
+    Py_INCREF(dist_info_expected_);
+    if (obj != py::none()) {
+      mesh_shape_expected_ =
+          obj.attr("mesh").attr("shape").cast<std::vector<int64_t>>();
+      mesh_process_ids_expected_ =
+          obj.attr("mesh").attr("process_ids").cast<std::vector<int64_t>>();
+      dims_mapping_expected_ =
+          obj.attr("dims_mapping").cast<std::vector<int64_t>>();
+      local_shape_expected_ =
+          obj.attr("local_shape").cast<std::vector<int64_t>>();
+    }
   }
 
-  ~TensorDistMatchGuard() override { Py_DECREF(expected_); }
+  ~TensorDistMetaMatchGuard() override { Py_DECREF(dist_info_expected_); }
   bool check(PyObject* value) override;
-  std::string get_guard_name() const override { return "TensorDistMatchGuard"; }
+  std::string get_guard_name() const override {
+    return "TensorDistMetaMatchGuard";
+  }
 
  private:
-  PyObject* expected_;
+  PyObject* dist_info_expected_;
+  std::optional<std::vector<int64_t>> mesh_shape_expected_;
+  std::optional<std::vector<int64_t>> mesh_process_ids_expected_;
+  std::optional<std::vector<int64_t>> dims_mapping_expected_;
+  std::optional<std::vector<int64_t>> local_shape_expected_;
 };
 
 class DummyGuard : public GuardBase {
