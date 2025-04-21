@@ -52,6 +52,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/reduce_as_to_sum_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_full_int_array_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_redundant_group_output_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_zero_scale_to_full_pass.h"
@@ -245,7 +246,8 @@ void ApplyCinnLowerPass(
   }
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
-
+  pass_manager->AddPass(
+      cinn::dialect::ir::CreateRemoveRedundantFullIntArrayPass());
   pass_manager->Run(program);
 }
 
