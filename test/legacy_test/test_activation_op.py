@@ -4511,6 +4511,11 @@ class TestSquare_ZeroDim(TestSquare):
         self.shape = []
 
 
+class TestSquare_ZeroSize(TestSquare):
+    def init_shape(self):
+        self.shape = [0, 1, 1]  # 0-size tensor
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA",

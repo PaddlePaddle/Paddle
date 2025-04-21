@@ -28,6 +28,10 @@ void SquareKernel(const Context& dev_ctx,
                   SelectedRows* out) {
   out->set_rows(x.rows());
   out->set_height(x.height());
+  if (x.value().numel() == 0) {
+    dev_ctx.template Alloc<T>(out->mutable_value());
+    return;
+  }
   phi::SquareKernel<T, Context>(dev_ctx, x.value(), out->mutable_value());
 }
 
