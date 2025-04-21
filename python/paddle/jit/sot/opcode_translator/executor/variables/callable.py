@@ -227,7 +227,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
             recursive_var = bound_args.arguments["recursive"]
             assert isinstance(recursive_var, ConstantVariable)
             raise FallbackError(
-                "fallback by psdb.fallback",
+                f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
                 disable_eval_frame=recursive_var.get_py_value(),
             )
         elif self.value is psdb.in_sot:
