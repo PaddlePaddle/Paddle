@@ -11,7 +11,7 @@ jobs:
     runs-on:
       group: Docker-build
     outputs:
-      docker-image: ${{steps.build-docker-images.outputs.docker_image}}
+      docker-image: ${{ steps.build-docker-images.outputs.docker_image }}
     steps:
       - id: build-docker-images
         name: build docker images
@@ -29,6 +29,7 @@ jobs:
           docker_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
           docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
           echo $docker_image
+          echo "docker_image=${docker_image}" >> $GITHUB_OUTPUT
           cd ../../
 
           set +e
