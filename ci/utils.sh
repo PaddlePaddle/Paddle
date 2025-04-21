@@ -224,7 +224,7 @@ function clean_build_files() {
     done
 }
 
-function determine_xpu_runner() {
+function determine_npu_runner() {
     runner_name=$1
     if [[ $runner_name == "paddle-1" ]]; then
         echo "ASCEND_RT_VISIBLE_DEVICES=0,1,2,3" >> $GITHUB_ENV

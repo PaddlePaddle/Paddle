@@ -54,7 +54,7 @@ jobs:
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
           source ${{ github.workspace }}/Paddle/ci/utils.sh
-          determine_xpu_runner ${runner_name}
+          determine_npu_runner ${runner_name}
           echo no_proxy="localhost,127.0.0.1,localaddress,.bj.bcebos.com,.localdomain.com,.cdn.bcebos.com,.baidu.com,.bcebos.com" >> ${{ github.env }}
 
       - name: Clone PaddleCustomDevice repository
