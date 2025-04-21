@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
-          sudo rm -rf  * .[^.]*
+          sudo rm -rf * .[^.]*
           source ~/.bashrc
           set -e
           echo "Downloading Paddle.tar.gz"
