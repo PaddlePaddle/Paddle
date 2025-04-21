@@ -14,6 +14,5 @@
 
 from . import fuse
 from .compiler import compile
-from .util import force_register_fusion
 
-__all__ = ['fuse', 'compile', 'force_register_fusion']
+__all__ = ['fuse', 'compile']
