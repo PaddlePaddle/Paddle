@@ -17,8 +17,18 @@ env:
   CI_name: npu
 
 jobs:
+  check-bypass:
+    name: Check bypass for NPU
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'npu'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   test:
     name: Test
+    needs: check-bypass
+    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: NPU
 
@@ -41,13 +51,6 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git pull upstream $BRANCH --no-edit
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./Paddle/.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: npu
-
       - name: Determine the runner
         run: |
           runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
@@ -63,7 +66,7 @@ jobs:
           cd PaddleCustomDevice
           cp -r ../Paddle .
 
-      - name: Check docker image  and run container
+      - name: Check docker image and run container
         env:
           PADDLE_VERSION: 0.0.0
           WITH_COVERAGE: "OFF"
