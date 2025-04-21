@@ -72,17 +72,7 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   {
     FuncPassManager func_pass_manager;
-    target.arch.Match(
-        [&](std::variant<common::NVGPUArch,
-                         common::HygonDCUArchHIP,
-                         common::HygonDCUArchSYCL,
-                         common::ARMArch,
-                         common::UnknownArch>) {
-          func_pass_manager.AddPass(CreateRealizeCompositeReducePass());
-        },
-        [&](std::variant<common::X86Arch>) {
-          func_pass_manager.AddPass(CreateRealizeCompositeReducePass(false));
-        });
+    func_pass_manager.AddPass(CreateRealizeCompositeReducePass(target));
     func_pass_manager.AddPass(CreateReindexTransposeBufferPass());
     func_pass_manager.Run(copied);
     VLOG(4) << "After Optimize CompositeReducePass and ReindexTransposeBuffer: "
