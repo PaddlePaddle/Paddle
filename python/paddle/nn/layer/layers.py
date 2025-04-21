@@ -462,6 +462,9 @@ class Layer:
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
+        # Records parameters whether they are initialized
+        self._is_lazy_guard_initialized = False
+
     def train(self) -> None:
         """
 
