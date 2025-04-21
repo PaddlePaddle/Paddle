@@ -212,6 +212,67 @@ class TestSumOp7(TestSumOp1):
         self.out = self.x.cumsum(axis=0)
 
 
+class TestSumComplexOp1(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 2}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=2)
+
+
+class TestSumComplexOp2(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': -1, 'reverse': True}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = np.flip(np.flip(self.x, axis=2).cumsum(axis=2), axis=2)
+
+
+class TestSumComplexOp3(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 1}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=1)
+
+
+class TestSumComplexOp4(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 0}
+        x_real = np.random.random((5, 6, 10)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 10)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=0)
+
+
+class TestSumComplexOp5(TestSumOp1):
+    def set_attrs_input_output(self):
+        x_real = np.random.random((5, 20)).astype(self.dtype_)
+        x_imag = np.random.random((5, 20)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=1)
+
+
+class TestSumComplexOp6(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': -1, 'flatten': True}
+        x_real = np.random.random((5, 6, 5)).astype(self.dtype_)
+        x_imag = np.random.random((5, 6, 5)).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum()
+
+
+class TestSumComplexOp7(TestSumOp1):
+    def set_attrs_input_output(self):
+        x_real = np.random.random(100).astype(self.dtype_)
+        x_imag = np.random.random(100).astype(self.dtype_)
+        self.x = x_real + 1j * x_imag
+        self.out = self.x.cumsum(axis=0)
+
+
 class TestCumsumFP16(unittest.TestCase):
     def check_main(self, x_np, dtype):
         paddle.disable_static()
