@@ -275,7 +275,7 @@ class VariableFactory:
         return var
 
 
-def infer_debug_name_from_tracker(tracker: Tracker) -> str:
+def infer_debug_name_from_tracker(tracker: Tracker) -> str | None:
     res = None
     if isinstance(tracker, (LocalTracker, GlobalTracker, BuiltinTracker)):
         res = f"{tracker.name}"
@@ -347,11 +347,11 @@ class VariableBase:
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        expr_node = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ValueMatchGuard(self.get_py_value()),
-                frame_value_tracer,
+                [expr_node],
             )
         ]
 

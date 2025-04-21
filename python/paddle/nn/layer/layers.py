@@ -526,7 +526,7 @@ class Layer:
         Returns:
             None
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import paddle
@@ -582,7 +582,7 @@ class Layer:
         Returns:
             Layer, self
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import paddle
@@ -636,7 +636,7 @@ class Layer:
         Returns:
             str, full name of this layer.
 
-        Example::
+        Examples:
             .. code-block:: python
 
                 >>> import paddle

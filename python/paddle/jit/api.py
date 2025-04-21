@@ -357,7 +357,7 @@ class _NotToStaticDecorator(Protocol):
 
 @overload
 def not_to_static(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]: ...
 
 
@@ -1236,6 +1236,7 @@ def save(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
 
                 concrete_program = (
@@ -1275,6 +1276,7 @@ def save(
                     static_func,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
                 concrete_program = static_function.concrete_program
 

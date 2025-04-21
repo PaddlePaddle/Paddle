@@ -3068,7 +3068,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 class OffloadQueue(queue.Queue):
     def __init__(self, offload=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        logger.info(f"Using OffloadQueue: {offload}")
         self.offload = offload
 
     def put(self, tensor, *args, **kwargs):
@@ -3242,8 +3241,14 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
-            output_tensor_grad = self._p2p_helper.send_forward_recv_backward(
+            # NOTE: `send_forward_recv_backward` is intentionally unused to
+            # prevent hanging bugs in dynamic shape mode.
+            self._p2p_helper.send_forward(
                 output_tensor,
+                self.is_pipeline_last_stage(ignore_virtual=True),
+                batch_p2p_comm=self._use_batch_p2p_comm,
+            )
+            output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
@@ -3270,7 +3275,13 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 backward_send_recv_buffer_queue.put(input_tensor_grad)
 
             if not last_iter:
-                input_tensor = self._p2p_helper.send_backward_recv_forward(
+                # NOTE: `send_backward_recv_forward` is intentionally unused to
+                # prevent hanging bugs in dynamic shape mode.
+                input_tensor = self._p2p_helper.recv_forward(
+                    self.is_pipeline_first_stage(ignore_virtual=True),
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                )
+                self._p2p_helper.send_backward(
                     input_tensor_grad,
                     self.is_pipeline_first_stage(ignore_virtual=True),
                     batch_p2p_comm=self._use_batch_p2p_comm,

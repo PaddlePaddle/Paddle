@@ -89,6 +89,7 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("intranode_combine", &deep_ep::Buffer::intranode_combine_api)
       .def("internode_dispatch", &deep_ep::Buffer::internode_dispatch_api)
       .def("internode_combine", &deep_ep::Buffer::internode_combine_api)
+      .def("barrier_all", &deep_ep::Buffer::barrier_all)
       .def("clean_low_latency_buffer",
            &deep_ep::Buffer::clean_low_latency_buffer)
       .def("low_latency_dispatch", &deep_ep::Buffer::low_latency_dispatch_api)

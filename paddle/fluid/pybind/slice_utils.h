@@ -61,63 +61,6 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   }
   return value;
 }
-
-template <typename T>
-inline void CheckTensorIndexValue(const paddle::Tensor& x,
-                                  const int64_t dim_len) {
-  // skip check if strides are not all 1
-  for (auto i = 0; i < x.strides().size(); i++) {
-    if (x.strides()[i] != 1) {
-      return;
-    }
-  }
-  T value = static_cast<T>(0);
-  int64_t x_numel = x.numel();
-  if (!(x.place().GetType() == phi::AllocationType::CPU)) {
-    auto ten = (*static_cast<phi::DenseTensor*>(x.impl().get()));
-    phi::DenseTensor cpu_x;
-    framework::TensorCopy(ten, phi::CPUPlace(), &cpu_x);
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-    const phi::DeviceContext* dev_ctx = pool.Get(x.place());
-    dev_ctx->Wait();
-#endif
-    for (int i = 0; i < x_numel; i++) {
-      value = cpu_x.data<T>()[i];
-      PADDLE_ENFORCE_EQ(
-          -dim_len <= value && value < dim_len,
-          true,
-          common::errors::OutOfRange(
-              "The index is out of bounds, "
-              "please check whether the dimensions of index and "
-              "input meet the requirements. It should "
-              "be less than [%ld] and greater than or equal to [%ld], but "
-              "received [%ld]",
-              dim_len,
-              -dim_len,
-              value));
-    }
-
-  } else {
-    for (int i = 0; i < x_numel; i++) {
-      value = x.data<T>()[i];
-      PADDLE_ENFORCE_EQ(
-          -dim_len <= value && value < dim_len,
-          true,
-          common::errors::OutOfRange(
-              "The index is out of bounds, "
-              "please check whether the dimensions of index and "
-              "input meet the requirements. It should "
-              "be less than [%ld] and greater than or equal to [%ld], but "
-              "received [%ld]",
-              dim_len,
-              -dim_len,
-              value));
-    }
-  }
-  return;
-}
-
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {
@@ -390,21 +333,6 @@ static void ParseIndex(const paddle::Tensor& tensor,
                                 slice_tensor.shape()[0],
                                 dim_len,
                                 current_dim));
-        } else if (slice_tensor.dtype() == phi::DataType::INT64 ||
-                   slice_tensor.dtype() == phi::DataType::INT32) {
-          // check if current slice_tensor is valid
-          PADDLE_ENFORCE_EQ(
-              current_dim + 1 <= rank,
-              true,
-              common::errors::InvalidArgument(
-                  "Too many indices (%d) for tensor of dimension %d.",
-                  current_dim + 1,
-                  rank));
-          if (slice_tensor.dtype() == phi::DataType::INT32) {
-            CheckTensorIndexValue<int32_t>(slice_tensor, dim_len);
-          } else if (slice_tensor.dtype() == phi::DataType::INT64) {
-            CheckTensorIndexValue<int64_t>(slice_tensor, dim_len);
-          }
         }
         *has_advanced_index = true;
         advanced_index->push_back(std::move(slice_tensor));

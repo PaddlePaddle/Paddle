@@ -646,7 +646,7 @@ void BatchNormKernel(const Context &ctx,
 #elif CUDNN_VERSION_MIN(7, 0, 1)
   // CUDNN_BATCHNORM_SPATIAL_PERSISTENT will cause precisio issue in NCHW
   // format.
-  if (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent) {
+  if (FLAGS_cudnn_batchnorm_spatial_persistent) {
     mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
   } else if (H == 1 && W == 1) {
     mode_ = CUDNN_BATCHNORM_PER_ACTIVATION;
