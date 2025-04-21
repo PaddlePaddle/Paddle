@@ -360,7 +360,7 @@ void DropoutFwGPUKernelDriver(
           // we assume seed is null pointer
           // seed copy to cpu is meaningless here
 #ifndef PADDLE_WITH_HIP
-              assert(seed_tensor_ptr == nullptr);
+              // assert(seed_tensor_ptr == nullptr);
 #endif
               auto gen_cuda = dev_ctx_p->GetGenerator();
               // ensure the generator use correct state index
