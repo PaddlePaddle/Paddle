@@ -1268,9 +1268,10 @@ void ConstructAttrMapForRunProgram(
       it->second(obj, attrs, std::string(key_view), op_type, arg_pos);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
-          "%.*s is not defined in this function.",
+          "Attribute key %.*s is not recognized for operator %s.",
           static_cast<int>(key_view.size()),
-          key_view.data()));  // NOLINT
+          key_view.data(),
+          op_type.c_str()));  // NOLINT
     }
   }
 }
