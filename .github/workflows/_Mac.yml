@@ -69,7 +69,7 @@ jobs:
           set -x
           cd ${work_dir}/Paddle
           source ~/.zshrc
-          bash -x ${work_dir}/Paddle/ci/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""}
+          bash -x ${work_dir}/Paddle/ci/run_setup.sh bdist_wheel ${parallel_number:-""}
           EXCODE=$?
           exit $EXCODE
 
