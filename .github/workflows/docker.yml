@@ -11,7 +11,7 @@ jobs:
     runs-on:
       group: Docker-build
     outputs:
-      docker-image: ${{steps.build-docker-images.outputs.docker-image}}
+      docker-image: ${{steps.build-docker-images.outputs.docker_image}}
     steps:
       - id: build-docker-images
         name: build docker images
