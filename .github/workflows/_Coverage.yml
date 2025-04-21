@@ -171,7 +171,7 @@ jobs:
           rm -rf ./python/build/lib.linux-x86_64-3.9/
           cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
           cd /
-          tar --use-compress-program="pzstd -1" -cpf Paddle.tar.gz paddle
+          tar --use-compress-program="pzstd -1" -cf Paddle.tar.gz paddle
           '
 
       - name: Upload coverage product
@@ -226,7 +226,7 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz --strip-components=1
+          tar  --use-compress-program='pzstd -1' -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
           source ${{ github.workspace }}/../../../proxy
           git checkout test
