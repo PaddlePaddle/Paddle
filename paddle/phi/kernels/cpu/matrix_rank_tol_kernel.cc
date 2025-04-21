@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/where_kernel.h"
 
@@ -156,12 +157,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
                                     false,
                                     &max_eigenvalue_tensor);
 
-  DenseTensor temp_rtol_tensor;
-  temp_rtol_tensor =
-      phi::Full<RealType, Context>(dev_ctx, {1}, static_cast<RealType>(rtol_T));
-
-  DenseTensor rtol_tensor =
-      phi::Multiply<RealType>(dev_ctx, temp_rtol_tensor, max_eigenvalue_tensor);
+  DenseTensor rtol_tensor = phi::Scale<RealType, Context>(
+      dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
   DenseTensor atol_tensor_real;
   if (atol_tensor.dtype() == phi::DataType::COMPLEX64 ||
       atol_tensor.dtype() == phi::DataType::COMPLEX128) {
@@ -307,11 +304,9 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
     // rtol=0.0
     RealType rtol_T =
         std::numeric_limits<RealType>::epsilon() * std::max(rows, cols);
-    DenseTensor default_rtol_tensor;
-    default_rtol_tensor = phi::Full<RealType, Context>(
-        dev_ctx, {1}, static_cast<RealType>(rtol_T));
-    default_rtol_tensor = phi::Multiply<RealType>(
-        dev_ctx, default_rtol_tensor, max_eigenvalue_tensor);
+
+    DenseTensor default_rtol_tensor = phi::Scale<RealType, Context>(
+        dev_ctx, max_eigenvalue_tensor, rtol_T, 0.0f, false);
 
     DenseTensor zero_tensor;
     zero_tensor = phi::FullLike<RealType, Context>(

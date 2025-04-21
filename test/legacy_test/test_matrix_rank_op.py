@@ -156,10 +156,6 @@ class TestMatrixRankOP7(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP(TestMatrixRankOP):
     def init_data(self):
         x_real = np.eye(3, dtype=np.float32)
@@ -172,10 +168,6 @@ class TestMatrixRankComplexOP(TestMatrixRankOP):
         self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP1(TestMatrixRankOP):
     def init_data(self):
         x_real = np.eye(3, k=1, dtype=np.float64)
@@ -208,10 +200,6 @@ class TestMatrixRankComplexOP2(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP3(TestMatrixRankOP):
     def init_data(self):
         x_real = np.eye(200, dtype=np.float64)
@@ -226,10 +214,6 @@ class TestMatrixRankComplexOP3(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP4(TestMatrixRankOP):
     def init_data(self):
         x_real = np.random.rand(1, 10).astype(np.float32)
@@ -244,10 +228,6 @@ class TestMatrixRankComplexOP4(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP5(TestMatrixRankOP):
     def init_data(self):
         x_real = np.random.rand(5, 1).astype(np.float64)
@@ -262,10 +242,6 @@ class TestMatrixRankComplexOP5(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP6(TestMatrixRankOP):
     def init_data(self):
         x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
@@ -280,10 +256,6 @@ class TestMatrixRankComplexOP6(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP7(TestMatrixRankOP):
     def init_data(self):
         x_real = np.eye(200, dtype=np.float64)
@@ -298,10 +270,6 @@ class TestMatrixRankComplexOP7(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP8(TestMatrixRankOP):
     def init_data(self):
         x_real = np.random.rand(5, 1).astype(np.float64)
@@ -314,6 +282,9 @@ class TestMatrixRankComplexOP8(TestMatrixRankOP):
         self.out = np.linalg.matrix_rank(
             self.x, self.tol_tensor, self.hermitian
         )
+
+    def test_check_output(self):
+        self.check_output(check_pir=False)
 
 
 class TestMatrixRankAPI(unittest.TestCase):
