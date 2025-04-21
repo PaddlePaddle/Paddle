@@ -97,3 +97,23 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'PR-CI-Inference / Test'
+
+      - name: Rerun coverage
+        if: ${{ contains(env.comment_body, 'coverage') && !contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'PR-CI-Coverage / Coverage build'
+
+      - name: Rerun coverage test
+        if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'PR-CI-Coverage / Coverage test'
