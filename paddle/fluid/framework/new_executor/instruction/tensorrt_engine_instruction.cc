@@ -872,7 +872,7 @@ std::string TensorRTEngineInstruction::ReadBinaryFileToString(
 
   std::string fileContent(static_cast<size_t>(fileSize), '\0');
 
-  PADDLE_ENFORCE(inputFile.read(&fileContent[0], fileSize),
+  PADDLE_ENFORCE(inputFile.read(&fileContent[0], fileSize).good(),
                  common::errors::InvalidArgument(
                      "Failed to read content from file: %s", filePath));
 
