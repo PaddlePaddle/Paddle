@@ -64,6 +64,7 @@ def compile(func, *args, **kwargs):
 def _compile(
     func,
     input_specs,
+    train=False,
     ap_path=None,
     ap_workspace_dir='/tmp/paddle/ap',
     backend_device='cuda',
@@ -80,11 +81,18 @@ def _compile(
             full_graph=True,
             backend='CINN',
         )
+        if not train:
+            static_fn.eval()
+        else:
+            static_fn.train()
         concrete_program, partial_program_layer = (
-            static_fn.get_concrete_program(*input_specs)
+            static_fn.get_concrete_program(
+                *input_specs, is_train=static_fn._is_train_mode()
+            )
         )
+        partial_program_layer.training = static_fn._is_train_mode()
         # Force to generate the program immediately.
-        forward_program = partial_program_layer.train_program.forward_program
+        _ = partial_program_layer.train_program.forward_program
         return partial_program_layer
 
 
