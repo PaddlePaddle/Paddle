@@ -18,6 +18,7 @@ jobs:
         env:
           docker_image_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
         run: |
+          set -x
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           tar xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
