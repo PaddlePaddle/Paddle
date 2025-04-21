@@ -30,7 +30,7 @@ struct PackedIrOpResultImpl {
   }
 
   graph::PackedIrOpResultTopoCstr node_topo_cstr() const {
-    return graph::PackedIrOpResultTopoCstr{};
+    return graph::PackedIrOpResultTopoCstr{local_uid};
   }
 };
 
