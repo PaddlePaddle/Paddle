@@ -212,6 +212,10 @@ class TestSumOp7(TestSumOp1):
         self.out = self.x.cumsum(axis=0)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp1(TestSumOp1):
     def set_attrs_input_output(self):
         self.attrs = {'axis': 2}
@@ -221,6 +225,10 @@ class TestSumComplexOp1(TestSumOp1):
         self.out = self.x.cumsum(axis=2)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp2(TestSumOp1):
     def set_attrs_input_output(self):
         self.attrs = {'axis': -1, 'reverse': True}
@@ -230,6 +238,10 @@ class TestSumComplexOp2(TestSumOp1):
         self.out = np.flip(np.flip(self.x, axis=2).cumsum(axis=2), axis=2)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp3(TestSumOp1):
     def set_attrs_input_output(self):
         self.attrs = {'axis': 1}
@@ -239,6 +251,10 @@ class TestSumComplexOp3(TestSumOp1):
         self.out = self.x.cumsum(axis=1)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp4(TestSumOp1):
     def set_attrs_input_output(self):
         self.attrs = {'axis': 0}
@@ -248,6 +264,10 @@ class TestSumComplexOp4(TestSumOp1):
         self.out = self.x.cumsum(axis=0)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp5(TestSumOp1):
     def set_attrs_input_output(self):
         x_real = np.random.random((5, 20)).astype(self.dtype_)
@@ -256,6 +276,10 @@ class TestSumComplexOp5(TestSumOp1):
         self.out = self.x.cumsum(axis=1)
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp6(TestSumOp1):
     def set_attrs_input_output(self):
         self.attrs = {'axis': -1, 'flatten': True}
@@ -265,6 +289,10 @@ class TestSumComplexOp6(TestSumOp1):
         self.out = self.x.cumsum()
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
 class TestSumComplexOp7(TestSumOp1):
     def set_attrs_input_output(self):
         x_real = np.random.random(100).astype(self.dtype_)
