@@ -331,11 +331,13 @@ jobs:
         with:
           directory: build/coverage_files
 
-      - name: Judge coverage passed or not
+      - name: Determine whether the coverage rate reaches 90%
         run: |
           if [ "${{ env.COVERAGE_EXIT_CODE }}" -ne 0 ]; then
-            echo "Coverage failed"
+            echo "Coverage check failed, single test has passed, please do not rerun, check whether the code is fully executed and recommit."
             exit ${{ env.COVERAGE_EXIT_CODE }}
+          else
+            echo "Coverage passed"
           fi
 
       - name: Terminate and delete the container
