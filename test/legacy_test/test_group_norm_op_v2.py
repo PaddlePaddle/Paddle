@@ -21,6 +21,8 @@ import paddle
 from paddle import base
 from paddle.base import core
 
+from .utils import dygraph_guard
+
 
 def group_norm_naive_for_general_dimension(
     x, scale, bias, epsilon, groups, channel_last=False
@@ -608,6 +610,23 @@ class TestGroupNormDimException(unittest.TestCase):
                 paddle.static.nn.group_norm(x, 3)
 
             self.assertRaises(ValueError, test_one_dim_input_static_API)
+
+
+class TestGroupNormWithNogradX(unittest.TestCase):
+    def test_group_norm_with_x_stop_gradient(self):
+        with dygraph_guard():
+            origin_device = paddle.device.get_device()
+            paddle.device.set_device("cpu")
+            try:
+                x = paddle.randn([16, 32])
+                x.stop_gradient = True
+                gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
+                y = gpn(x)
+                paddle.grad(y, gpn.weight)
+            except Exception as e:
+                raise e
+            finally:
+                paddle.device.set_device(origin_device)
 
 
 if __name__ == '__main__':

@@ -175,7 +175,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
             tmp_y = y_src_data + cid;
             iter_d_x_data = tmp_d_x + cid;
             for (int imid = 0; imid < imsize;
-                  imid++, iter_d_x_data += C, tmp_x += C, tmp_y += C) {
+                 imid++, iter_d_x_data += C, tmp_x += C, tmp_y += C) {
               T v_y = tmp_x[0];
               T dly = tmp_y[0];
               T dss = dp_scale;
