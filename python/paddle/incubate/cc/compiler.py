@@ -83,7 +83,9 @@ def _compile(
         concrete_program, partial_program_layer = (
             static_fn.get_concrete_program(*input_specs)
         )
-        return partial_program_layer.train_program.forward_program
+        # Force to generate the program immediately.
+        forward_program = partial_program_layer.train_program.forward_program
+        return partial_program_layer
 
 
 @dataclass
@@ -99,7 +101,7 @@ class OverloadedFunc:
         dtypes = tuple(tensor.dtype for tensor in args)
         func = self.func_overload_ctx.dtypes2func.get(dtypes, None)
         assert func is not None, self.mismatched_debug_info(dtypes)
-        return func(*args)
+        return func(inputs=[*args])
 
     def mismatched_debug_info(self, dtypes):
         valid_signatures = "; ".join(
