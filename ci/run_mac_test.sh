@@ -173,6 +173,19 @@ function collect_failed_tests() {
     done
 }
 
+# getting quick disable ut list
+function get_quickly_disable_ut() {
+    python -m pip install httpx
+    if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
+        echo "========================================="
+        echo "The following unittests have been disabled:"
+        echo ${disable_ut_quickly}
+        echo "========================================="
+    else
 
+        exit 102
+        disable_ut_quickly='disable_ut'
+    fi
+}
 
 run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}

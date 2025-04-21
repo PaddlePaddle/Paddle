@@ -75,6 +75,7 @@ jobs:
 
       - name: Test with mac python3.10
         run: |
+          set -ex
           cd ${work_dir}/Paddle
           pip3.10 install -r ${work_dir}/Paddle/python/unittest_py/requirements.txt
           pip3.10 install ${work_dir}/Paddle/dist/*whl
