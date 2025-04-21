@@ -276,9 +276,6 @@ else()
                -DCMAKE_JOB_POOLS:STRING=compile=${FA_JOB_POOLS_COMPILE}
                -DNVCC_ARCH_BIN=${FA_NVCC_ARCH_BIN}
                -DWITH_FLASHATTN_V3=${WITH_FLASHATTN_V3}
-               -DDISABLE_FP8=ON # umiswing: disable FP8, SM8x and PACKGQA on FA3
-               -DDISABLE_SM8X=ON
-               -DDISABLE_PACKGQA=ON
                -DSKIP_BUILD_FA=${SKIP_BUILD_FA}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS
