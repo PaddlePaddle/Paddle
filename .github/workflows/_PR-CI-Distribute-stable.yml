@@ -194,10 +194,31 @@ jobs:
           rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
           '
 
-    # - name: Terminate and delete the container
-    #   if: always()
-    #   run: |
-    #     set +e
-    #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-    #     docker stop ${{ env.container_name }}
-    #     docker rm ${{ env.container_name }}
+        # - name: Terminate and delete the container
+        #   if: always()
+        #   run: |
+        #     set +e
+        #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+        #     docker stop ${{ env.container_name }}
+        #     docker rm ${{ env.container_name }}
+
+  # test:
+  #   name: Test
+  #   needs: build
+  #   runs-on:
+  #     group: Distribute
+  #   steps:
+  #     - name: Download paddle.tar.gz and merge target branch
+  #       run: |
+  #         sudo rm -rf * .[^.]*
+  #         wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}/Paddle.tar.gz --no-check-certificate
+  #         tar --use-compress-program='pzstd' -xf Paddle.tar.gz --strip-components=1
+  #         export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo "-v {}:{}") $(\ls /usr/lib64/libnvidia* | xargs -I{} echo "-v {}:{}")"
+  #         export DEVICES="$(\ls -d /dev/nvidia* | xargs -I{} echo "-v {}:{}") $(\ls /dev/nvidia-caps/* | xargs -I{} echo "-v {}:{}")"
+  #         export SMI="-v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi"
+  #         echo "CUDA_SO=${CUDA_SO}" >> $GITHUB_ENV
+  #         echo "DEVICES=${DEVICES}" >> $GITHUB_ENV
+  #         echo "SMI=${SMI}" >> $GITHUB_ENV
+
+  #     - name: Check docker image and run container
+  #       env:

@@ -37,3 +37,8 @@ jobs:
   # Py3:
   #   uses: ./.github/workflows/_Py3.yml
   #   needs: Clone
+
+  distribute:
+    name: PR-CI-Distribute-stable
+    uses: ./.github/workflows/_PR-CI-Distribute-stable.yml
+    needs: clone
