@@ -732,10 +732,12 @@ def convert_conv2d(network, paddle_op, inputs):
     set_layer_name(layer, paddle_op)
     support_fp32_mix_precision(paddle_op.name(), layer)
 
-    filter_param = paddle_op.operands()[1].source()
-    filter_name = filter_param.get_defining_op().attrs()['parameter_name']
-    refit_manager = RefitManager()
-    refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
+    trt_manager = TensorRTConfigManager()
+    if trt_manager.get_refit_params_path():
+        filter_param = paddle_op.operands()[1].source()
+        filter_name = filter_param.get_defining_op().attrs()['parameter_name']
+        refit_manager = RefitManager()
+        refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
     return layer.get_output(0)
 
@@ -817,10 +819,12 @@ def convert_conv3d(network, paddle_op, inputs):
 
     layer.dilation_nd = nv_dilations
     set_layer_name(layer, paddle_op)
-    filter_param = paddle_op.operands()[1].source()
-    filter_name = filter_param.get_defining_op().attrs()['parameter_name']
-    refit_manager = RefitManager()
-    refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
+    trt_manager = TensorRTConfigManager()
+    if trt_manager.get_refit_params_path():
+        filter_param = paddle_op.operands()[1].source()
+        filter_name = filter_param.get_defining_op().attrs()['parameter_name']
+        refit_manager = RefitManager()
+        refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
     return layer.get_output(0)
 

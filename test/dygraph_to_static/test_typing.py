@@ -109,7 +109,7 @@ class TestTypingTuple(TestTyping):
 
     def run_dy(self):
         out, np_data = self.net(self.x)
-        self.assertTrue(np.equal(np_data, np.ones_like(np_data)).all())
+        np.testing.assert_allclose(np_data, np.ones_like(np_data))
         return out
 
 

@@ -2782,7 +2782,8 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
   const std::string &data_format =
       op->attribute<pir::StrAttribute>("data_format").AsString();
   const std::vector<symbol::DimExpr> &paddings =
-      paddle::dialect::details::GetDataFromTensorOrTensorList(paddings_shape);
+      paddle::dialect::details::GetOrCreateExprVecFromData(paddings_shape,
+                                                           infer_context);
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = x_shape;
     PADDLE_ENFORCE_EQ(paddings.size(),
@@ -3638,12 +3639,62 @@ bool SetValue_OpInferSymbolicShape(
 
 bool SetValueWithTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return SetValueOpInferSymbolicShape(op, infer_context);
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &input_shape = input_shape_or_data.shape();
+  PADDLE_ENFORCE_LT(
+      input_shape.size(),
+      7,
+      common::errors::InvalidArgument("The SetValueOp's rank of input should "
+                                      "be less than 7, but received %d.",
+                                      input_shape.size()));
+
+  if (input_shape_or_data.isa<symbol::TensorShapeOrDataDimExprs>() &&
+      input_shape_or_data.data()) {
+    const auto &value =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    const auto &start =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const auto &end =
+        infer_context->GetShapeOrDataForValue(op->operand_source(3));
+
+    const bool need_set_data = [&] {
+      if (!value.data().has_value() || value.data()->size() != 1) return false;
+      if (!start.data().has_value() || start.data()->size() != 1 ||
+          !start.data()->at(0).isa<int64_t>())
+        return false;
+      if (!end.data().has_value() || end.data()->size() != 1 ||
+          !end.data()->at(0).isa<int64_t>())
+        return false;
+
+      int64_t start_val = start.data()->at(0).dyn_cast<int64_t>();
+      int64_t end_val = end.data()->at(0).dyn_cast<int64_t>();
+      if (end_val - start_val != 1ll || start_val < 0ll ||
+          start_val >= static_cast<int64_t>(input_shape_or_data.data()->size()))
+        return false;
+
+      return true;
+    }();
+
+    if (need_set_data) {
+      auto out_data = input_shape_or_data.data().value();
+      out_data.at(start.data()->at(0).dyn_cast<int64_t>()) =
+          value.data()->at(0);
+      infer_context->SetShapeOrDataForValue(
+          op->result(0),
+          symbol::TensorShapeOrDataDimExprs(input_shape, out_data));
+      return true;
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(input_shape));
+  return true;
 }
 
 bool SetValueWithTensor_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return SetValueOpInferSymbolicShape(op, infer_context);
+  return SetValueWithTensorOpInferSymbolicShape(op, infer_context);
 }
 
 // bool TensorUnfoldOpInferSymbolicShape(

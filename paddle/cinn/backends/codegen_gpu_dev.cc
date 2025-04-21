@@ -230,28 +230,14 @@ void CodeGenGpuDev::Visit(const ir::Max *op) {
 void CodeGenGpuDev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += "void ";
   if (op->cuda_axis_info.valid()) {
-    bool has_symbol_in_thread_num = false;
-    int thread_num = 1;
-    for (int i = 0; i < 3; i++) {
-      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
-      if (block_dim.is_constant()) {
-        thread_num *= block_dim.get_constant();
-      } else {
-        has_symbol_in_thread_num = true;
-        break;
-      }
-    }
-    if (!has_symbol_in_thread_num) {
+    int max_threads_per_block = op->cuda_axis_info.max_threads_per_block();
+    if (max_threads_per_block > 0) {
       str_ += "__launch_bounds__(";
-      str_ += std::to_string(thread_num);
-      // Explicitly set min_blocks_per_sm for grid reduce to prevent launch
-      // failure.
-      if (!op->temp_spaces.empty()) {
-        int min_blocks_per_sm = 1024 / thread_num;
-        if (min_blocks_per_sm > 1) {
-          str_ += ", ";
-          str_ += std::to_string(min_blocks_per_sm);
-        }
+      str_ += std::to_string(max_threads_per_block);
+      int min_blocks_per_sm = op->cuda_axis_info.min_blocks_per_sm();
+      if (min_blocks_per_sm > 0) {
+        str_ += ", ";
+        str_ += std::to_string(min_blocks_per_sm);
       }
       str_ += ") ";
     }
