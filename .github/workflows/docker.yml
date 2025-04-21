@@ -16,6 +16,8 @@ jobs:
       - id: build-docker-images
         name: build docker images
         env:
+          PR_ID: ${{ github.event.pull_request.number }}
+          COMMIT_ID: ${{ github.event.pull_request.head.sha }}
           docker_image_file: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
         run: |
           set -x
