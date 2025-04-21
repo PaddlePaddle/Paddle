@@ -26,6 +26,10 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (x.dtype() == out_dtype) {
+    if (x.dims() == phi::make_ddim({-1})) {
+      *out = x;
+      return;
+    }
     if (!out->IsSharedWith(x)) {
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }

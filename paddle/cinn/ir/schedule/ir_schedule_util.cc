@@ -160,6 +160,31 @@ void SetCudaAxisInfo(ir::LoweredFunc lowered_func) {
     }
     return (x->As<ir::For>() && x->As<ir::For>()->bind_info().valid());
   });
+
+  // Calculate max_threads_per_block
+  int max_threads_per_block = 1;
+  bool has_symbol_in_thread_num = false;
+  for (int i = 0; i < 3; i++) {
+    ir::Expr block_dim = info.block_dim(i);
+    if (block_dim.is_constant()) {
+      max_threads_per_block *= block_dim.get_constant();
+    } else {
+      has_symbol_in_thread_num = true;
+      break;
+    }
+  }
+
+  if (!has_symbol_in_thread_num) {
+    int min_blocks_per_sm = -1;
+    info.set_max_threads_per_block(max_threads_per_block);
+    if (!lowered_func->temp_spaces.empty()) {
+      min_blocks_per_sm = 1024 / max_threads_per_block;
+      if (min_blocks_per_sm > 1) {
+        info.set_min_blocks_per_sm(min_blocks_per_sm);
+      }
+    }
+  }
+
   lowered_func->cuda_axis_info = info;
 }
 

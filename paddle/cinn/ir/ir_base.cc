@@ -734,6 +734,9 @@ void ElevateInt64ToInt32_(Expr &expr) {  // NOLINT
                             "Current only support convert int64_t "
                             "to int32_t, but get type is: %s",
                             expr->type()));
+
+  // althoughtype is Int(32), we also need to convert it indices to Int(32).
+  if (expr->node_type() == IrNodeTy::Load) expr->convert_int64_to_int32();
   if (expr->type() == Int(64)) {
     expr->convert_int64_to_int32();
     if (expr->node_type() == IrNodeTy::Cast) {

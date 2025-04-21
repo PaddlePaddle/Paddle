@@ -219,8 +219,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
   }
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-  if (phi::backends::custom_device::is_in_custom_black_list(
-          phi::TransToFluidOpName(kernel))) {
+  if (phi::backends::custom_device::is_in_custom_black_list(kernel)) {
     phi::KernelKey copy_key = kernel_key;
     copy_key.set_backend(phi::Backend::CPU);
     if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
