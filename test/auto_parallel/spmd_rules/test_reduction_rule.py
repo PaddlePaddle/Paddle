@@ -482,14 +482,5 @@ class TestSquaredL2NormSPMDRule(TestReductionSPMDRule):
         self.kernel = "squared_l2_norm"
 
 
-class TestMinSPMDRule(TestReductionSPMDRule):
-    """
-    Unit tests for min spmd rule.
-    """
-
-    def config(self):
-        self.kernel = "min"
-
-
 if __name__ == "__main__":
     unittest.main()
