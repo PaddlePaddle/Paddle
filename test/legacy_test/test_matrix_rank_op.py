@@ -182,10 +182,6 @@ class TestMatrixRankComplexOP1(TestMatrixRankOP):
         )
 
 
-@unittest.skipIf(
-    core.is_compiled_with_xpu(),
-    "Skip XPU for complex dtype is not fully supported",
-)
 class TestMatrixRankComplexOP2(TestMatrixRankOP):
     def init_data(self):
         x_real = np.random.rand(3, 4, 5, 6).astype(np.float32)
@@ -282,9 +278,6 @@ class TestMatrixRankComplexOP8(TestMatrixRankOP):
         self.out = np.linalg.matrix_rank(
             self.x, self.tol_tensor, self.hermitian
         )
-
-    def test_check_output(self):
-        self.check_output(check_pir=False)
 
 
 class TestMatrixRankAPI(unittest.TestCase):
