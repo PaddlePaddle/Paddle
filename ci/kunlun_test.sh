@@ -190,7 +190,7 @@ set +x
             cd ..
             export FLAGS_enable_pir_api=1
         fi
-set -x
+# set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         python ${PADDLE_ROOT}/build/test/xpu/get_test_cover_info.py
