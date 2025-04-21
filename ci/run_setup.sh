@@ -19,13 +19,15 @@ PATH=/usr/local/bin:${PATH}
 ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
 ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 
-if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ]; then
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "distribute" ]; then
     apt install zstd -y
     pip config set global.cache-dir "/root/.cache/pip"
     pip install --upgrade pip
     echo "::group::Installing python dependencies"
     pip install -r "${work_dir}/python/requirements.txt"
-    pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    if [ "$CI_name" != "distribute" ]; then
+        pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    fi
     echo "::endgroup::"
 fi
 
