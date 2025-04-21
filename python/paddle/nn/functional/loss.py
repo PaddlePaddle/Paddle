@@ -23,6 +23,8 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
+from paddle.distributed.fleet.base import topology as tp
+from paddle.distributed import collective
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -2996,9 +2998,18 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        _, out = _C_ops.cross_entropy_with_softmax(
-            input, label, soft_label, use_softmax, True, ignore_index, axis
+
+        group = tp._HYBRID_PARALLEL_GROUP.get_model_parallel_group()
+        ring_id = group.id
+        nranks = group.nranks
+        global_rank = collective._get_global_env().rank
+        rank = group.get_group_rank(global_rank)
+        _, out = _C_ops.c_softmax_with_cross_entropy(
+            input, label, ignore_index, ring_id, rank, nranks
         )
+        # _, out = _C_ops.cross_entropy_with_softmax(
+        #     input, label, soft_label, use_softmax, True, ignore_index, axis
+        # )
 
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
