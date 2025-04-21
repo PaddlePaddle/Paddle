@@ -168,6 +168,8 @@ __all__ = [
     "destroy_process_group",
     "isend",
     "irecv",
+    "send_object_list",
+    "recv_object_list",
     "reduce_scatter",
     "is_available",
     "get_backend",
