@@ -22,8 +22,8 @@ __all__ = [
 
 
 # Usage:
-#   N = paddle.cc.typing.DimVar("N")
-#   M = paddle.cc.typing.DimVar(4096)
+#   N = paddle.incubate.cc.typing.DimVar("N")
+#   M = paddle.incubate.cc.typing.DimVar(4096)
 class DimVar:
     def __init__(
         self,
@@ -37,7 +37,7 @@ class DimVar:
 
 
 # Usage:
-#   T = paddle.cc.typing.DTypeVar("T", "bfloat16", "float32")
+#   T = paddle.incubate.cc.typing.DTypeVar("T", "bfloat16", "float32")
 class DTypeVar:
     def __init__(self, name: str, *candidates):
         assert len(candidates) > 0
@@ -50,7 +50,7 @@ class DTypeVar:
 
 # Usage:
 #
-# import paddle.cc.typing as pct
+# import paddle.incubate.cc.typing as pct
 # N = pct.DimVar("N")
 # M = pct.DimVar("M")
 # DType = pct.DTypeVar("T")

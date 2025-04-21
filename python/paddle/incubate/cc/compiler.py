@@ -30,8 +30,8 @@ __all__ = ['compile']
 
 
 # Usage:
-# import paddle.cc.typing as t
-# import paddle.cc as pcc
+# import paddle.incubate.cc.typing as pct
+# import paddle.incubate.cc as pcc
 # import paddle.nn.functional as F
 #
 # N = pct.DimVar('N', min=2)
