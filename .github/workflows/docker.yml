@@ -3,7 +3,7 @@ on:
     outputs:
       docker:
         description: "Generate images for all CI usage"
-        value: ${{ jobs.build-docker-images.outputs.docker-image }}
+        value: ${{ jobs.build-docker-images.outputs.docker_image }}
 
 jobs:
   build-docker-images:
@@ -11,7 +11,7 @@ jobs:
     runs-on:
       group: Docker-build
     outputs:
-      docker-image: ${{ steps.build-docker-images.outputs.docker_image }}
+      docker_image: ${{ steps.build-docker-images.outputs.docker_image }}
     steps:
       - id: build-docker-images
         name: build docker images
