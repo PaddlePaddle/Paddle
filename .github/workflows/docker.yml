@@ -1,9 +1,8 @@
 on:
   workflow_call:
     outputs:
-      docker:
+      docker_image:
         description: "Generate images for all CI usage"
-        value: ${{ jobs.build-docker-images.outputs.docker_image }}
 
 jobs:
   build-docker-images:
