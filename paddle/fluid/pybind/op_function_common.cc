@@ -1135,6 +1135,74 @@ void ConstructAttrMapFromPyArgs(
   }
 }
 
+void ConstructAttrMapForLegacyRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t attr_start,
+    ssize_t attr_end,
+    paddle::framework::AttributeMap& attrs) {  // NOLINT
+  PADDLE_ENFORCE_EQ((attr_end - attr_start) % 2,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The number of arguments for attributes should be even "
+                        "but attr_start = %d, attr_end = %d.",
+                        attr_start,
+                        attr_end));
+  using CastFuncType = void (*)(PyObject*,
+                                paddle::framework::AttributeMap&,
+                                const std::string&,
+                                const std::string&,
+                                ssize_t);
+  // Static map from keys to casting function pointers
+  static const std::unordered_map<std::string, CastFuncType> kAttrFuncMap = {
+      {"forward_global_block", CastPyArg2AttrBlock},
+      {"backward_global_block", CastPyArg2AttrBlock},
+      {"is_test", CastPyArg2AttrBoolean},
+      {"program_id", CastPyArg2AttrLong},
+      {"param_grad_names", CastPyArg2AttrStrings},
+      {"x_names", CastPyArg2AttrStrings},
+      {"out_grad_names", CastPyArg2AttrStrings},
+      {"x_grad_names", CastPyArg2AttrStrings},
+      {"cuda_graph_capture_mode", CastPyArg2AttrString},
+      {"cuda_graph_pool_id", CastPyArg2AttrLong},
+      {"in_pir_pt_mode", CastPyArg2AttrBoolean},
+      {"use_interpretorcore", CastPyArg2AttrBoolean},
+      {"global_block", CastPyArg2AttrBlock},
+      {"start_op_index", CastPyArg2AttrLong},
+      {"end_op_index", CastPyArg2AttrLong},
+  };
+
+  PyObject* obj = nullptr;
+  for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
+    VLOG(3) << "Start Process " << arg_pos;
+    Py_ssize_t key_len = 0;
+    const char* key_ptr = nullptr;
+    obj = PyTuple_GET_ITEM(args, arg_pos);
+    if (PyObject_CheckString(obj)) {
+      key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "%s(): argument (position %d) must be str, but got %s",
+          op_type,
+          arg_pos,
+          ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    }
+    std::string_view key_view(key_ptr, static_cast<size_t>(key_len));
+    VLOG(3) << "Start Process " << key_view;
+    obj = PyTuple_GET_ITEM(args, arg_pos + 1);
+    auto it = kAttrFuncMap.find(std::string(key_view));
+    if (it != kAttrFuncMap.end()) {
+      // Call Cast function
+      it->second(obj, attrs, std::string(key_view), op_type, arg_pos);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "%.*s is not defined in this function.",
+          static_cast<int>(key_view.size()),
+          key_view.data()));  // NOLINT
+    }
+  }
+}
+
 void ConstructAttrMapForRunProgram(
     const std::string& op_type,
     PyObject* args,
@@ -1156,17 +1224,11 @@ void ConstructAttrMapForRunProgram(
                                 ssize_t);
   // Static map from keys to casting function pointers
   static const std::unordered_map<std::string, CastFuncType> kAttrFuncMap = {
-      {"cuda_graph_capture_mode", CastPyArg2AttrString},
-      {"global_block", CastPyArg2AttrIRBlock},
       {"forward_program", CastPyArg2AttrIRProgram},
       {"backward_program", CastPyArg2AttrIRProgram},
       {"is_test", CastPyArg2AttrBoolean},
-      {"use_interpretorcore", CastPyArg2AttrBoolean},
       {"in_sot_mode", CastPyArg2AttrBoolean},
-      {"start_op_index", CastPyArg2AttrLong},
-      {"end_op_index", CastPyArg2AttrLong},
       {"program_id", CastPyArg2AttrLong},
-      {"cuda_graph_pool_id", CastPyArg2AttrLong},
       {"fx", CastPyArg2AttrValues},
       {"fp", CastPyArg2AttrValues},
       {"fm", CastPyArg2AttrValues},
@@ -1178,7 +1240,8 @@ void ConstructAttrMapForRunProgram(
       {"bo_g", CastPyArg2AttrValues},
       {"bx_g", CastPyArg2AttrValues},
       {"bp_g", CastPyArg2AttrValues},
-      {"bo", CastPyArg2AttrValues}};
+      {"bo", CastPyArg2AttrValues},
+  };
 
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
