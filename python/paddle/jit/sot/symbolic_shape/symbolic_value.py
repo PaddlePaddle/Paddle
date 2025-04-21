@@ -14,68 +14,9 @@
 
 from __future__ import annotations
 
-import operator
-from typing import TYPE_CHECKING, Generic, TypeVar
-
-if TYPE_CHECKING:
-
-    from .utils.magic_methods import BinaryOp, UnaryOp
+from typing import Generic, TypeVar
 
 _T = TypeVar("_T", "int", "float", "bool")
-
-
-def symbolic_to_bool(x):
-    # Unified api for python number and paddle Tensor
-    return x != 0
-
-
-def symbolic_not(x):
-    return x == 0
-
-
-# All symbolic operations need unified for python number and paddle Tensor
-SYMBOLIC_UNARY_MATH_OPS: list[UnaryOp] = [
-    # Basic
-    operator.neg,
-    # Bitwise
-    operator.invert,
-]
-SYMBOLIC_BINARY_MATH_OPS: list[BinaryOp] = [
-    # Basic
-    operator.add,
-    operator.sub,
-    operator.mul,
-    operator.truediv,
-    operator.floordiv,
-    operator.pow,
-    operator.mod,
-    # Bitwise
-    operator.lshift,
-    operator.rshift,
-    operator.and_,
-    operator.or_,
-    operator.xor,
-]
-SYMBOLIC_UNARY_LOGICAL_OPS: list[UnaryOp] = [
-    symbolic_to_bool,
-    symbolic_not,
-]
-SYMBOLIC_BINARY_LOGICAL_OPS: list[BinaryOp] = [
-    operator.eq,
-    operator.ne,
-    operator.lt,
-    operator.le,
-    operator.gt,
-    operator.ge,
-]
-SYMBOLIC_MATH_OPS = SYMBOLIC_UNARY_MATH_OPS + SYMBOLIC_BINARY_MATH_OPS
-SYMBOLIC_MATH_OPS = SYMBOLIC_UNARY_MATH_OPS + SYMBOLIC_BINARY_MATH_OPS
-SYMBOLIC_UNARY_OPS: list[UnaryOp] = (
-    SYMBOLIC_UNARY_MATH_OPS + SYMBOLIC_UNARY_LOGICAL_OPS
-)
-SYMBOLIC_BINARY_OPS: list[BinaryOp] = (
-    SYMBOLIC_BINARY_MATH_OPS + SYMBOLIC_BINARY_LOGICAL_OPS
-)
 
 
 class SymbolicValue(Generic[_T]):

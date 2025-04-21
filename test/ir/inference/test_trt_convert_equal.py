@@ -81,63 +81,65 @@ class TrtConvertEqualOneInputCornerCase(TrtLayerAutoScanTest):
                     )
                     yield program_config
 
+    def generate_dynamic_shape(self, attrs):
+        # The input.dims[1] must be equal to the weight's length.
+        if self.dims == 0:
+            self.dynamic_shape.min_input_shape = {
+                "input_data1": [],
+                "input_data2": [],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data1": [],
+                "input_data2": [],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data1": [],
+                "input_data2": [],
+            }
+        if self.dims == 2:
+            self.dynamic_shape.min_input_shape = {
+                "input_data1": [1, 1],
+                "input_data2": [1, 1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data1": [4, 1],
+                "input_data2": [4, 1],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data1": [2, 1],
+                "input_data2": [2, 1],
+            }
+        elif self.dims == 3:
+            self.dynamic_shape.min_input_shape = {
+                "input_data1": [1, 1, 4],
+                "input_data2": [1, 1, 4],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data1": [4, 1, 32],
+                "input_data2": [4, 1, 32],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data1": [2, 1, 16],
+                "input_data2": [2, 1, 16],
+            }
+        elif self.dims == 4:
+            self.dynamic_shape.min_input_shape = {
+                "input_data1": [1, 1, 4, 4],
+                "input_data2": [1, 1, 4, 4],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data1": [4, 1, 64, 32],
+                "input_data2": [4, 1, 64, 32],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data1": [2, 1, 32, 16],
+                "input_data2": [2, 1, 32, 16],
+            }
+        return self.dynamic_shape
+
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            # The input.dims[1] must be equal to the weight's length.
-            if self.dims == 0:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [],
-                    "input_data2": [],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [],
-                    "input_data2": [],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [],
-                    "input_data2": [],
-                }
-            if self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [1, 1],
-                    "input_data2": [1, 1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1],
-                    "input_data2": [4, 1],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 1],
-                    "input_data2": [2, 1],
-                }
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [1, 1, 4],
-                    "input_data2": [1, 1, 4],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1, 32],
-                    "input_data2": [4, 1, 32],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 1, 16],
-                    "input_data2": [2, 1, 16],
-                }
-            elif self.dims == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data1": [1, 1, 4, 4],
-                    "input_data2": [1, 1, 4, 4],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1, 64, 32],
-                    "input_data2": [4, 1, 64, 32],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data1": [2, 1, 32, 16],
-                    "input_data2": [2, 1, 32, 16],
-                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -157,19 +159,20 @@ class TrtConvertEqualOneInputCornerCase(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -183,7 +186,7 @@ class TrtConvertEqualOneInputCornerCase(TrtLayerAutoScanTest):
 
     def test(self):
         self.trt_param.workspace_size = 1 << 20
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":
