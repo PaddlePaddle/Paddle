@@ -5461,13 +5461,13 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_dequantize
-  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)
+  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightDequantizeInferMeta
   kernel :
     func : weight_dequantize
-    data_type : out_dtype
+    data_type : scale
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
