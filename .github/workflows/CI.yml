@@ -26,7 +26,7 @@ jobs:
 
   xpu:
     name: Linux-XPU
-    uses: ./.github/workflows/_XPU-kunlun.yml
+    uses: ./.github/workflows/_Linux-XPU.yml
     needs: clone
 
   inference:
