@@ -224,6 +224,33 @@ function clean_build_files() {
     done
 }
 
+function determine_kunlun_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu0" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu2" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu4" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu6" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
+    # rm -rf * .[^.]* .??*
+}
+
 function determine_npu_runner() {
     runner_name=$1
     if [[ $runner_name == "paddle-1" ]]; then
@@ -719,7 +746,7 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile=$tmp_dir/$tmpfile_rand"_"$iget_quickly_disable_ut
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -1034,7 +1061,6 @@ function check_coverage() {
         echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
     fi
 }
-
 
 function test_fluid_lib() {
     cat <<EOF

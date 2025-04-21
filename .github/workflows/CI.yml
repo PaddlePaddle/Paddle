@@ -24,6 +24,11 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: clone
 
+  xpu:
+    name: Linux-XPU
+    uses: ./.github/workflows/_Linux-XPU.yml
+    needs: clone
+
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
