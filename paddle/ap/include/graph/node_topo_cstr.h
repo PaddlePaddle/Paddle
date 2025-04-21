@@ -63,8 +63,12 @@ struct PackedIrOpOperandTopoCstr : public std::monostate {
   using std::monostate::monostate;
 };
 
-struct PackedIrOpResultTopoCstr : public std::monostate {
-  using std::monostate::monostate;
+struct PackedIrOpResultTopoCstr {
+  std::size_t index;
+
+  bool operator==(const PackedIrOpResultTopoCstr& other) const {
+    return this->index == other.index;
+  }
 };
 
 struct OptPackedIrOpTopoCstr {

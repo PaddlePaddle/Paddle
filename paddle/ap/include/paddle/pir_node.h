@@ -248,7 +248,7 @@ struct PackedIrOpResult {
   }
 
   graph::PackedIrOpResultTopoCstr node_topo_cstr() const {
-    return graph::PackedIrOpResultTopoCstr{};
+    return graph::PackedIrOpResultTopoCstr{this->op_result.index()};
   }
 };
 

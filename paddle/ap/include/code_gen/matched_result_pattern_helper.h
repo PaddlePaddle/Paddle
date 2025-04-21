@@ -181,7 +181,9 @@ struct MatchedResultPatternHelper {
       ADT_CHECK(offset + num_ir_values <= output_values.size());
       std::vector<T> slice{output_values.begin() + offset,
                            output_values.begin() + offset + num_ir_values};
-      return DoEach(drr_ir_value, slice);
+      ADT_RETURN_IF_ERR(DoEach(drr_ir_value, slice));
+      offset += num_ir_values;
+      return adt::Ok{};
     };
     return VisitResPtnOutputIrValueByResPtnIrOp(res_ptn_ir_op, DoEachSlice);
   }
