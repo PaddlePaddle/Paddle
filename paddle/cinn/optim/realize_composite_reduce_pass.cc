@@ -98,7 +98,7 @@ void SetInitValue(Store store_stmt,
                   const CompositeTypes& comp_type,
                   std::string prefix = "") {
   // prefix: if target is x86, we can not call constructor for POD struct
-  // the intrinsic function for creating struct is usually "create_"。+ typename
+  // the intrinsic function for creating struct is usually "create_" + typename
   ir::Expr init_value = store_stmt->value();
   auto call_op = init_value.As<ir::Call>();
   // if the type is already a call
