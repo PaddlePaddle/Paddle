@@ -23,13 +23,6 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-        #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac.
-        #see details: https://github.com/PaddlePaddle/Paddle/issues/24738
-        set +x
-        my_proxy=$http_proxy
-        export http_proxy=
-        export https_proxy=
-        set -x
 
         if [ "$1" == "cp38-cp38" ]; then
             pip3.8 uninstall -y paddlepaddle
@@ -88,6 +81,7 @@ EOF
         fi
         failed_test_lists=''
         collect_failed_tests
+	set -x
         mactest_error=0
         retry_unittests_record=''
         retry_time=3
@@ -146,12 +140,6 @@ EOF
         ut_endTime_s=`date +%s`
         echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         echo "ipipe_log_param_Mac_TestCases_Time: $[ $ut_endTime_s - $ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        paddle version
-        # Recovery proxy to avoid failure in later steps
-        set +x
-        export http_proxy=$my_proxy
-        export https_proxy=$my_proxy
-        set -x
 
         if [ "$mactest_error" != 0 ];then
             show_ut_retry_result
