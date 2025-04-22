@@ -39,6 +39,6 @@ jobs:
   #   needs: Clone
 
   distribute:
-    name: PR-CI-Distribute-stable
-    uses: ./.github/workflows/_PR-CI-Distribute-stable.yml
+    name: Distribute-stable
+    uses: ./.github/workflows/_Distribute-stable.yml
     needs: clone
