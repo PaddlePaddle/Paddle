@@ -33,7 +33,7 @@ if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1"
     echo "exit 9" > /tmp/paddle_coverage.result
     python ${PADDLE_ROOT}/tools/get_pr_title.py skip_coverage_check && NOT_CHECK_COVERAGE_PR=1
     if [[ "${NOT_CHECK_COVERAGE_PR}" = "1" ]];then
-        echo "Skip coverage check in the PR-CI-Coverage pipeline."
+        echo "Skip coverage check in the Coverage pipeline."
         exit 0
     fi
     exit 9
