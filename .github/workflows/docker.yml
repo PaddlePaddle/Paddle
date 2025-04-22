@@ -1,9 +1,9 @@
 on:
   workflow_call:
     outputs:
-      docker_image:
+      docker_sot_image:
         description: "Generate images for all CI usage"
-        value: ${{ jobs.build-docker-images.outputs.docker_image }}
+        value: ${{ jobs.build-docker-images.outputs.docker_sot_image }}
 
 jobs:
   build-docker-images:
@@ -26,9 +26,9 @@ jobs:
           rm Paddle.tar.gz
           cd tools/dockerfile
           bash ci_dockerfile.sh
-          docker_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
-          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
-          echo "docker_image=${docker_image}" >> $GITHUB_OUTPUT
+          docker_sot_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
+          docker_sot_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
+          echo "docker_sot_image=${docker_sot_image}" >> $GITHUB_OUTPUT
           cd ../../
 
           set +e

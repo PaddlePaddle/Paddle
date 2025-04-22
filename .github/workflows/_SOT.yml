@@ -22,15 +22,9 @@ jobs:
     secrets:
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  build-docker:
-    name: build docker images
-    needs: check-bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
-    uses: ./.github/workflows/docker.yml
-
   build-and-test:
     name: Build and Test
-    needs: build-docker
+    needs: check-bypass
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: 2-2
@@ -63,7 +57,7 @@ jobs:
           set -x
           container_name=${TASK}-$(date +%s)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ needs.build-docker.outputs.docker_image }}
+          docker_image=${{ needs.build-docker.outputs.docker_sot_image }}
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
