@@ -24,7 +24,7 @@ jobs:
 
   build-and-test:
     name: Build and Test
-    needs: check-bypass
+    needs: [ check-bypass, build-docker ]
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: 2-2
