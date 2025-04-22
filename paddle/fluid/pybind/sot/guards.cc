@@ -319,6 +319,12 @@ std::optional<int> GuardNode::lookup(FrameProxy* frame) {
     }
     return packed_value;
   }();
+
+  if (!value) {
+    PyErr_Clear();
+    return std::nullopt;
+  }
+
   if (guard->check(value)) {
     if (return_cache_index.has_value()) {
       Py_DECREF(value);
