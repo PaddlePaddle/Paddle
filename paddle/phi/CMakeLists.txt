@@ -145,10 +145,18 @@ if(WITH_GPU)
     backends/gpu/gpu_resources.cc
     PROPERTIES COMPILE_FLAGS
                "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
-  nv_library(
-    phi_core ${PHI_BUILD_TYPE}
-    SRCS ${PHI_CORE_SRCS} ${PHI_GPU_SRCS}
-    DEPS ${PHI_DEPS})
+
+  if(CUDA_VERSION GREATER_EQUAL 12.8)
+    nv_library(
+      phi_core ${PHI_BUILD_TYPE}
+      SRCS ${PHI_CORE_SRCS} ${PHI_GPU_SRCS}
+      DEPS ${PHI_DEPS})
+  else()
+    nv_library(
+      phi_core ${PHI_BUILD_TYPE}
+      SRCS ${PHI_CORE_SRCS}
+      DEPS ${PHI_DEPS})
+  endif()
   nv_library(
     phi_gpu ${PHI_BUILD_TYPE}
     SRCS ${PHI_GPU_SRCS}
