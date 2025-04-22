@@ -38,7 +38,7 @@ jobs:
   coverage:
     name: Coverage
     uses: ./.github/workflows/_Coverage.yml
-    # needs: clone
+    needs: clone
 
   cpu:
     name: Linux-CPU
