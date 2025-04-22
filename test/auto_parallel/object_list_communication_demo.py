@@ -16,6 +16,7 @@
 import paddle
 import paddle.distributed as dist
 
+
 class _recv_info:
     def __init__(self, tensor, placements):
         self.obj_size = 10
@@ -28,6 +29,7 @@ class _recv_info:
             paddle.distributed.Partial(),
         ]
         self.dtype = paddle.int64
+
 
 class TestObjectListCommunication:
     def init_dist_env(self):
@@ -96,12 +98,13 @@ class TestObjectListCommunication:
             assert data[0] == 42
             assert data[1] == "hello"
             assert data[2] == {"key": "value"}
+
     def test_custom_object_communication(self):
         """Test objects with distributed attributes"""
         curr_rank = dist.get_rank()
 
         if curr_rank == 0:
-            data1= _recv_info(None, None)
+            data1 = _recv_info(None, None)
             data = [data1]
             result = dist.send_object_list(data, dst=1)
             self.assertTrue(result)
@@ -113,25 +116,19 @@ class TestObjectListCommunication:
             self.assertIsInstance(data[0], _recv_info)
             self.assertEqual(type(data[0].obj_size), int)
             self.assertEqual(data[0].obj_size, 10)
-            
-            self.assertIsInstance(
-                data[0].obj_type1, paddle.distributed.Shard
-            )
-            
+
+            self.assertIsInstance(data[0].obj_type1, paddle.distributed.Shard)
+
             self.assertIsInstance(
                 data[0].obj_type2, paddle.distributed.Replicate
             )
-            
-            self.assertIsInstance(
-                data[0].obj_type3, paddle.distributed.Partial
-            )
-            
+
+            self.assertIsInstance(data[0].obj_type3, paddle.distributed.Partial)
+
             self.assertEqual(data[0].dtype, paddle.int64)
-            
+
             self.assertEqual(len(data[0].obj_list), 3)
-            self.assertIsInstance(
-                data[0].obj_list[0], paddle.distributed.Shard
-            )
+            self.assertIsInstance(data[0].obj_list[0], paddle.distributed.Shard)
             self.assertIsInstance(
                 data[0].obj_list[1], paddle.distributed.Replicate
             )
