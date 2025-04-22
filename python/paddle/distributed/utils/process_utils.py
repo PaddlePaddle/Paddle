@@ -19,7 +19,7 @@ import subprocess
 import paddle
 from paddle.distributed.utils.log_utils import get_logger
 
-logger = get_logger("INFO", "root")
+logger = get_logger("INFO", __name__)
 
 SUCCESS_CODE = 0
 FAIL_CODE = 1
