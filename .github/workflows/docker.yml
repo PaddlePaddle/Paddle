@@ -52,12 +52,10 @@ jobs:
           bash ci_dockerfile.sh
 
           # docker build images
-          cd ../../
-
           declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_coverage"]="$docker_coverage_file" ["docker_build"]="$docker_build_file" ["docker_distribute"]="$docker_distribute_file")
           for name in "${!docker_files[@]}"
           do
-            md5_value=`md5sum ${docker_files[$name]} | awk '{print $1}'`
+            md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
             docker_image="ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${md5_value}"
             declare "${name}_image=${docker_image}"
             echo "${name}_image=${docker_image}" >> $GITHUB_OUTPUT
