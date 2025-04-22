@@ -21,6 +21,7 @@ jobs:
 
   build-docker:
     name: build docker images
+    id: build-docker
     needs: clone
     uses: ./.github/workflows/docker.yml
 

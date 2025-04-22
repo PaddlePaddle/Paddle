@@ -11,7 +11,7 @@ jobs:
     runs-on:
       group: Docker-build
     outputs:
-      docker_image: ${{ steps.build-docker-images.outputs.docker_sot_image }}
+      docker_sot_image: ${{ steps.build-docker-images.outputs.docker_sot_image }}
     steps:
       - id: build-docker-images
         name: build docker images
@@ -32,12 +32,12 @@ jobs:
           cd ../../
 
           set +e
-          docker pull ${docker_image}
+          docker pull ${docker_sot_image}
           if [ $? -eq 0 ];then
             echo use docker cache
           else
-            docker build -t $docker_image -f tools/dockerfile/${docker_image_file} .
-            docker push $docker_image
+            docker build -t $docker_sot_image -f tools/dockerfile/${docker_image_file} .
+            docker push $docker_sot_image
             echo end docker build
           fi
           set -e
