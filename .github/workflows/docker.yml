@@ -27,7 +27,7 @@ jobs:
           cd tools/dockerfile
           bash ci_dockerfile.sh
           docker_sot_md5=`md5sum ${docker_image_file} |awk '{print $1}'`
-          docker_sot_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_md5}
+          docker_sot_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${docker_sot_md5}
           echo "docker_sot_image=${docker_sot_image}" >> $GITHUB_OUTPUT
           cd ../../
 
