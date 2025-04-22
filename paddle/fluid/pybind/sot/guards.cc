@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/sot/guards.h"
 #include <optional>
-#include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/include/tensor.h"
 
 #if SOT_IS_SUPPORTED
@@ -305,11 +304,14 @@ std::string ItemExprNode::stringify(int indent) {
 std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   PyObject* value = [this, frame]() {
     if (exprs.size() == 1) {
-      return exprs.back()->eval(frame);
+      PyObject* v = exprs.back()->eval(frame);
+      Py_XINCREF(v);
+      return v;
     }
     auto values = std::vector<PyObject*>(exprs.size());
     for (size_t i = 0; i < exprs.size(); ++i) {
       values[i] = exprs[i]->eval(frame);
+      Py_XINCREF(values[i]);
     }
     auto packed_value = PyTuple_New(exprs.size());
     for (size_t i = 0; i < exprs.size(); ++i) {
