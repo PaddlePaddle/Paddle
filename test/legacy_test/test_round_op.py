@@ -66,6 +66,27 @@ class TestRound(TestActivation):
         pass
 
 
+class TestRoundEvenTie(TestRound):
+    def setUp(self):
+        self.op_type = "round"
+        self.python_api = paddle.round
+        self.init_dtype()
+        self.init_shape()
+        self.init_decimals()
+
+        np.random.seed(1024)
+        x = test_array = np.array(
+            [[0.5, 1.5, 2.5], [-0.5, -1.5, -2.5], [1.2, -2.3, 3.0]],
+            dtype=np.float32,
+        )
+        out = np.round(x, decimals=self.decimals)
+
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {'decimals': self.decimals}
+        self.convert_input_output()
+
+
 class TestRound_ZeroDim(TestRound):
     def init_shape(self):
         self.shape = []
@@ -115,44 +136,14 @@ class TestRoundComplexOp1(TestRound):
         self.convert_input_output()
 
 
-class TestRoundComplexOp2(TestRound):
-    def init_dtype(self):
-        self.dtype = np.complex64
-
+class TestRoundComplexOp2(TestRoundComplexOp1):
     def init_decimals(self):
         self.decimals = 2
 
-    def setUp(self):
-        super().setUp()
-        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
-        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
-        x = x_real + 1j * x_imag
-        out = np.round(x, decimals=self.decimals)
 
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
-        self.attrs = {'decimals': self.decimals}
-        self.convert_input_output()
-
-
-class TestRoundComplexOp3(TestRound):
-    def init_dtype(self):
-        self.dtype = np.complex64
-
+class TestRoundComplexOp3(TestRoundComplexOp1):
     def init_decimals(self):
         self.decimals = -1
-
-    def setUp(self):
-        super().setUp()
-        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
-        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float32) * 100
-        x = x_real + 1j * x_imag
-        out = np.round(x, decimals=self.decimals)
-
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
-        self.attrs = {'decimals': self.decimals}
-        self.convert_input_output()
 
 
 class TestRoundComplexOp4(TestRound):
@@ -172,44 +163,34 @@ class TestRoundComplexOp4(TestRound):
         self.convert_input_output()
 
 
-class TestRoundComplexOp5(TestRound):
-    def init_dtype(self):
-        self.dtype = np.complex128
-
+class TestRoundComplexOp5(TestRoundComplexOp4):
     def init_decimals(self):
         self.decimals = 2
 
-    def setUp(self):
-        super().setUp()
-        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
-        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
-        x = x_real + 1j * x_imag
-        out = np.round(x, decimals=self.decimals)
 
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
-        self.attrs = {'decimals': self.decimals}
-        self.convert_input_output()
-
-
-class TestRoundComplexOp6(TestRound):
-    def init_dtype(self):
-        self.dtype = np.complex128
-
+class TestRoundComplexOp6(TestRoundComplexOp4):
     def init_decimals(self):
         self.decimals = -1
 
-    def setUp(self):
-        super().setUp()
-        x_real = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
-        x_imag = np.random.uniform(-1, 1, self.shape).astype(np.float64) * 100
-        x = x_real + 1j * x_imag
-        out = np.round(x, decimals=self.decimals)
 
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
-        self.attrs = {'decimals': self.decimals}
-        self.convert_input_output()
+class TestRoundComplexOp7(TestRoundComplexOp4):
+    def init_decimals(self):
+        self.decimals = -4
+
+
+class TestRoundComplexOp8(TestRoundComplexOp4):
+    def init_decimals(self):
+        self.decimals = 4
+
+
+class TestRoundComplexOp9(TestRoundComplexOp4):
+    def init_decimals(self):
+        self.decimals = 3
+
+
+class TestRoundComplexOp10(TestRoundComplexOp4):
+    def init_decimals(self):
+        self.decimals = -3
 
 
 class TestRoundInt32(TestRound):
