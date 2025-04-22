@@ -319,8 +319,8 @@ void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
   }
 }
 
-void CanonicalizeScalarAttrs_copy(const proto::OpProto& op_proto,
-                                  AttributeMap* attrs) {
+void CanonicalizeScalarAttrs_copy1(const proto::OpProto& op_proto,
+                                   AttributeMap* attrs) {
   PADDLE_ENFORCE_NOT_NULL(
       attrs, common::errors::InvalidArgument("attrs can not be nullptr"));
   for (auto& attr : op_proto.attrs()) {
