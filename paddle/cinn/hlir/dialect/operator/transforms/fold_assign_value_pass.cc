@@ -23,7 +23,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class FoldAssignValueOpPattern
+class FoldFullAssignValueOpsPattern
     : public pir::OpRewritePattern<paddle::dialect::AssignValue_Op> {
  public:
   using pir::OpRewritePattern<
@@ -36,25 +36,45 @@ class FoldAssignValueOpPattern
         pre_op->result(0).use_count() > 1) {
       return false;
     }
-    pir::AttributeMap attributes = op.attributes();
-
-    pir::Operation* last_op = op;
-    if (op.result(0).use_count() == 1 &&
-        op.result(0).first_use().owner()->isa<paddle::dialect::CastOp>()) {
-      auto cast_op =
-          op.result(0).first_use().owner()->dyn_cast<paddle::dialect::CastOp>();
-      attributes["dtype"] = cast_op.attribute("dtype");
-      last_op = cast_op;
-    }
-
     auto new_assign_value_op =
-        rewriter.Build<paddle::dialect::AssignValueOp>(attributes);
-    rewriter.ReplaceAllUsesWith(last_op->result(0),
-                                new_assign_value_op->result(0));
-    if (last_op != op) rewriter.EraseOp(last_op);
+        rewriter.Build<paddle::dialect::AssignValueOp>(op.attributes());
+    rewriter.ReplaceAllUsesWith(op.result(0), new_assign_value_op->result(0));
     rewriter.EraseOp(op);
     rewriter.EraseOp(pre_op);
+    return true;
+  }
+};
 
+template <typename AssignValueOpType>
+class FoldAssignValueCastOpsPattern
+    : public pir::OpRewritePattern<AssignValueOpType> {
+ public:
+  using pir::OpRewritePattern<AssignValueOpType>::OpRewritePattern;
+
+  bool MatchAndRewrite(AssignValueOpType op,
+                       pir::PatternRewriter& rewriter) const override {
+    if (op.result(0).use_count() != 1) return false;
+    pir::Operation* next_op = op.result(0).first_use().owner();
+    if (!(next_op->isa<paddle::dialect::CastOp>())) return false;
+
+    auto cast_op = next_op->dyn_cast<paddle::dialect::CastOp>();
+    pir::AttributeMap attributes = op.attributes();
+    attributes["dtype"] = cast_op.attribute("dtype");
+
+    bool is_inplace_op = op.num_operands() == 1;
+    pir::Operation* new_assign_value_op;
+    if (is_inplace_op) {
+      if (op.operand_source(0).use_count() > 1) return false;
+      new_assign_value_op = rewriter.Build<paddle::dialect::AssignValue_Op>(
+          op->operand_source(0), attributes);
+    } else {
+      new_assign_value_op =
+          rewriter.Build<paddle::dialect::AssignValueOp>(attributes);
+    }
+    rewriter.ReplaceAllUsesWith(cast_op->result(0),
+                                new_assign_value_op->result(0));
+    rewriter.EraseOp(cast_op);
+    rewriter.EraseOp(op);
     return true;
   }
 };
@@ -66,7 +86,11 @@ class FoldAssignValueOpPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<FoldAssignValueOpPattern>(context);
+    ps.Add<FoldFullAssignValueOpsPattern>(context);
+    ps.Add<FoldAssignValueCastOpsPattern<paddle::dialect::AssignValue_Op>>(
+        context);
+    ps.Add<FoldAssignValueCastOpsPattern<paddle::dialect::AssignValueOp>>(
+        context);
     return ps;
   }
 
