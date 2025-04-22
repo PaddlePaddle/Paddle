@@ -305,13 +305,17 @@ std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   PyObject* value = [this, frame]() {
     if (exprs.size() == 1) {
       PyObject* v = exprs.back()->eval(frame);
-      Py_XINCREF(v);
+      if (v) {
+        Py_INCREF(v);
+      }
       return v;
     }
     auto values = std::vector<PyObject*>(exprs.size());
     for (size_t i = 0; i < exprs.size(); ++i) {
       values[i] = exprs[i]->eval(frame);
-      Py_XINCREF(values[i]);
+      if (values[i]) {
+        Py_INCREF(values[i]);
+      }
     }
     auto packed_value = PyTuple_New(exprs.size());
     for (size_t i = 0; i < exprs.size(); ++i) {
