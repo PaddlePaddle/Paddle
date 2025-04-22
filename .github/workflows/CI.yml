@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [develop, releases/**]
+    branches: [develop, release/**]
 
 permissions: read-all
 
