@@ -65,6 +65,10 @@ template <typename T, typename Context>
 void NonZeroKernel(const Context &dev_ctx,
                    const DenseTensor &condition,
                    DenseTensor *out) {
+  if (condition.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   DenseTensor in_data;
   auto dims = condition.dims();
   using Functor = IndexFunctor<T, int64_t, int64_t>;
