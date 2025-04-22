@@ -2,6 +2,10 @@ name: Clone-linux
 
 on:
   workflow_call:
+    inputs:
+      pr_dir:
+        required: true
+        type: string
 
 permissions: read-all
 
@@ -70,7 +74,7 @@ jobs:
           echo "::group::Install bce-python-sdk"
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
-          python ${bos_file} Paddle.tar.gz paddle-github-action/PR/Paddle/${PR_ID}/${COMMIT_ID}
+          python ${bos_file} Paddle.tar.gz paddle-github-action/${{ inputs.pr_dir }}/Paddle/${PR_ID}/${COMMIT_ID}
           rm Paddle.tar.gz
           cd -
           git switch ${{ github.event.pull_request.base.ref }}

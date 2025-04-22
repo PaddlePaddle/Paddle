@@ -16,25 +16,35 @@ env:
 
 jobs:
   clone:
-    name: Clone-linux
+    name: Clone-linux-test
     uses: ./.github/workflows/_Clone-linux.yml
+    with:
+      pr_dir: PR-test
 
   xpu:
-    name: Linux-XPU
+    name: Linux-XPU-test
     uses: ./.github/workflows/_Linux-XPU.yml
+    with:
+      pr_dir: PR-test
     needs: clone
 
   coverage:
-    name: PR-CI-Coverage
+    name: PR-CI-Coverage-test
     uses: ./.github/workflows/_Coverage.yml
+    with:
+      pr_dir: PR-test
     needs: clone
 
   cpu:
-    name: Linux-CPU
+    name: Linux-CPU-test
     uses: ./.github/workflows/_CPU.yml
+    with:
+      pr_dir: PR-test
     needs: clone
 
   npu:
-    name: Linux-NPU
+    name: Linux-NPU-test
     uses: ./.github/workflows/_NPU.yml
+    with:
+      pr_dir: PR-test
     needs: cpu
