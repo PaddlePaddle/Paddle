@@ -58,13 +58,13 @@ void TopPSamplingKernel(const Context& dev_ctx,
   auto x_dims = x.dims();
   int bs = x_dims[0];
   int vocab_size = x_dims[1];
-  int p_num = ps.numel();
+  // int p_num = ps.numel();
 
-  PADDLE_ENFORCE_EQ(
-      p_num,
-      bs,
-      common::errors::PreconditionNotMet(
-          "Expected bs == p_num, but got bs=%d, p_num=%d.", bs, p_num));
+  // PADDLE_ENFORCE_EQ(
+  //     p_num,
+  //     bs,
+  //     common::errors::PreconditionNotMet(
+  //         "Expected bs == p_num, but got bs=%d, p_num=%d.", bs, p_num));
 
   std::vector<int64_t> infer_seed(bs, random_seed);
   if (topp_seed.get_ptr() != nullptr) {

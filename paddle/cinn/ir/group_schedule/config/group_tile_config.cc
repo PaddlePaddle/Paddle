@@ -27,7 +27,10 @@ using TileConfigMap =
 namespace {
 
 const int kMaxNumel = BucketInfo::kMaxNumel;
-const int kWarpSize = 32;
+constexpr int kWarpSize = 32;
+constexpr int KMaxWarpSizePerSM = 64;
+constexpr int KMaxBlockSizePerSM = 32;
+constexpr int KMaxRegistersPerSM = 65536;
 
 int64_t CeilPow2(int64_t n) {
   int64_t pow = 1;
@@ -292,8 +295,7 @@ int UpdateWarpNumsInDifferentCase(
   const auto& last_dim = base_info->iter_space_type.back().first;
   if (group_vectorize_info.has_if_else_op && last_dim == "R") {
     warp_nums = Trim(warp_nums, 1, 16);
-  } else if (group_vectorize_info.continuous_arg_nums !=
-                 group_vectorize_info.group_arg_nums &&
+  } else if (!group_vectorize_info.args_broadcast_axis_info.empty() &&
              last_dim == "S") {
     warp_nums = Trim(warp_nums, 1, 8);
   } else {
@@ -348,56 +350,191 @@ bool SpatialRegionCanVectorize(
   return false;
 }
 
-bool SpecialSpatialWithBroadcastCaseCanApplyVectorize(
+int CalculateVectorizeTensorRegisterNums(
+    const GroupVectorizeInfo& group_vectorize_info,
+    const int vectorize_factor) {
+  constexpr int register_bits = 32;
+  int register_sum = 0;
+  for (auto& [tensor_name, tensor] : group_vectorize_info.vetorize_args) {
+    if (group_vectorize_info.args_broadcast_axis_info.count(tensor_name))
+      continue;
+    auto* tensor_ptr = tensor.As<ir::_Tensor_>();
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_ptr,
+        ::common::errors::InvalidArgument(
+            "Expected _Tensor_ node, but received nullptr."));
+    int data_type_bits = tensor_ptr->type().bits();
+    int vectorize_data_bits = data_type_bits * vectorize_factor;
+    int register_nums = CeilDiv(vectorize_data_bits, register_bits);
+    register_sum += register_nums;
+  }
+  return register_sum;
+}
+/*
+Broadcast tensor will deal with different memory in vectorize situation.
+for example, 256 threads in one block situation.
+for i in range(1024):
+  for j in range(256):
+  A[i, 0] = B[0, j]
+
+after vectorize:
+A tensor will deal with scalar tensor with only one data type bits register.
+
+B tensor will deal with vectorize tensor or
+  local buffer with vectorize factor size memory.
+*/
+int IsScalarTensorPreload(
+    const std::vector<int64_t>& loop_ranges,
+    const std::vector<std::vector<bool>> broadcast_axis_infos,
+    const int warp_nums,
+    const int vectorize_factor) {
+  const int threads_deal_elements = warp_nums * kWarpSize * vectorize_factor;
+  bool is_scalar_tensor = true;
+  for (int i = 0; i < broadcast_axis_infos.size(); i++) {
+    int last_dim = broadcast_axis_infos[i].size() - 1;
+    int broadcast_nums = 1;
+    for (int j = last_dim; j >= 0; j--) {
+      if (broadcast_axis_infos[i][j]) {
+        broadcast_nums *= loop_ranges[j];
+        continue;
+      }
+      break;
+    }
+    if (broadcast_nums >= threads_deal_elements) continue;
+    is_scalar_tensor = false;
+  }
+  return is_scalar_tensor;
+}
+
+int CalculateBroadcastTensorRegisterNums(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
-    const int grid_dim_x,
-    const int wrap_nums_per_block) {
-  if (wrap_nums_per_block == 32) {
-    if (grid_dim_x <= 512 && group_vectorize_info.continuous_arg_nums <= 2 &&
-        group_vectorize_info.group_arg_nums >= 9) {
-      return false;
+    const int vectorize_factor,
+    const int warp_nums) {
+  // current only support [S, R] and [S] situation.
+  // thread parellization only current at last dimension in R or S dimension.
+  constexpr int register_bits = 32;
+  int register_sum = 0;
+  for (auto& [tensor_name, tensor] : group_vectorize_info.vetorize_args) {
+    if (!group_vectorize_info.args_broadcast_axis_info.count(tensor_name))
+      continue;
+    auto* tensor_ptr = tensor.As<ir::_Tensor_>();
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_ptr,
+        ::common::errors::InvalidArgument(
+            "Expected _Tensor_ node in load, but received nullptr."));
+    int data_type_bits = tensor_ptr->type().bits();
+    int tensor_buffer_size = 1;
+    // after deal with Grid dimension tiling, broadcast tensor can be deal with
+    // scalar tensor or local buffer.
+    if (!IsScalarTensorPreload(
+            base_info->loop_ranges,
+            group_vectorize_info.args_broadcast_axis_info.at(tensor_name),
+            warp_nums,
+            vectorize_factor)) {
+      tensor_buffer_size *= vectorize_factor;
     }
-
-    if (grid_dim_x >= 10240 && group_vectorize_info.continuous_arg_nums <= 2 &&
-        group_vectorize_info.group_arg_nums >= 10) {
-      return false;
-    }
+    int vectorize_data_bits = tensor_buffer_size * data_type_bits;
+    int register_nums = CeilDiv(vectorize_data_bits, register_bits);
+    register_sum += register_nums;
   }
+  return register_sum;
+}
 
-  if (wrap_nums_per_block == 16 && grid_dim_x >= 10240) {
-    if (group_vectorize_info.continuous_arg_nums <= 2 &&
-        group_vectorize_info.group_arg_nums >= 9) {
-      return false;
-    }
+int CalculateOtherRegisterNums(const GroupVectorizeInfo& group_vectorize_info,
+                               const int vectorize_factor) {
+  constexpr int register_bits = 32;
+  int register_sum = 0;
+  for (auto& [tensor_name, tensor] : group_vectorize_info.vetorize_args) {
+    if (group_vectorize_info.args_broadcast_axis_info.count(tensor_name))
+      continue;
+    auto* tensor_ptr = tensor.As<ir::_Tensor_>();
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_ptr,
+        ::common::errors::InvalidArgument(
+            "Expected _Tensor_ node in load, but received nullptr."));
+    int data_type_bits = tensor_ptr->type().bits();
+    int vectorize_data_bits = vectorize_factor * data_type_bits;
+    int register_nums = CeilDiv(vectorize_data_bits, register_bits);
+    register_sum += register_nums;
+    break;
+  }
+  register_sum = group_vectorize_info.has_if_else_op ? register_sum : 0;
+  return register_sum;
+}
 
-    if (group_vectorize_info.continuous_arg_nums <= 4 &&
-        group_vectorize_info.group_arg_nums >= 11) {
-      return false;
-    }
+bool RegisterNumsLimitedCheckInCTACanApplyVectorize(
+    const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
+    const GroupVectorizeInfo& group_vectorize_info,
+    const int vectorize_factor,
+    const int warp_nums) {
+  int thread_register_occupy_sum = 0;
+  int vectorize_tensor_registers = CalculateVectorizeTensorRegisterNums(
+      group_vectorize_info, vectorize_factor);
+  VLOG(5) << "calculate vectorize tensor registers is : "
+          << vectorize_tensor_registers << "\n";
+  thread_register_occupy_sum += vectorize_tensor_registers;
+  int broadcast_tensor_thread_registers = CalculateBroadcastTensorRegisterNums(
+      base_info, group_vectorize_info, vectorize_factor, warp_nums);
+  thread_register_occupy_sum += broadcast_tensor_thread_registers;
+  VLOG(5) << "calculate broadcast tensor registers is : "
+          << broadcast_tensor_thread_registers << "\n";
+  // other register size is according to human experience.
+  int other_register_occupy_sum =
+      CalculateOtherRegisterNums(group_vectorize_info, vectorize_factor);
+  thread_register_occupy_sum += other_register_occupy_sum;
+  VLOG(5) << "calculate other registers is : " << other_register_occupy_sum
+          << "\n";
+  int max_blocks_per_sm =
+      Trim(CeilDiv(KMaxWarpSizePerSM, warp_nums), 1, KMaxBlockSizePerSM);
+  int best_register_nums_per_thread =
+      KMaxRegistersPerSM / max_blocks_per_sm / warp_nums / kWarpSize;
+  VLOG(5) << "calculatet thread register occupy sum is : "
+          << thread_register_occupy_sum
+          << ", best register nums per thread is : "
+          << best_register_nums_per_thread;
+  // if has if_else_op, overflow register have more influence in CTA.
+  if (group_vectorize_info.has_if_else_op &&
+      thread_register_occupy_sum >= best_register_nums_per_thread) {
+    return false;
+  }
+  best_register_nums_per_thread = best_register_nums_per_thread * 1.3;
+  if (thread_register_occupy_sum >= best_register_nums_per_thread) {
+    return false;
   }
 
   return true;
 }
 
-bool SpecialSpatialCaseCanApplyVectorize(
+bool AvoidTensorAddrCalculateWithLongInVectorize(
+    const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info) {
+  int64_t iter_space_size = 1;
+  for (auto range : base_info->loop_ranges) {
+    iter_space_size *= range;
+  }
+  if (iter_space_size >= 2147483647ll) return false;
+  return true;
+}
+
+bool CheckPerformanceLimitInVectorize(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const GroupVectorizeInfo& group_vectorize_info,
     const int vectorize_factor,
     const int warp_nums) {
-  const int64_t iters_dim = base_info->iter_space_type.size();
-  const auto& last_dim = base_info->iter_space_type.back().first;
-  if (iters_dim != 1 || last_dim == "R") return false;
-
-  int64_t spatial_numel = base_info->spatial_numel;
-  int64_t grid_dim_x = spatial_numel / warp_nums / kWarpSize / vectorize_factor;
-
-  if (SpecialSpatialWithBroadcastCaseCanApplyVectorize(
-          base_info, group_vectorize_info, grid_dim_x, warp_nums)) {
-    return true;
+  if (!RegisterNumsLimitedCheckInCTACanApplyVectorize(
+          base_info, group_vectorize_info, vectorize_factor, warp_nums)) {
+    VLOG(5) << "According to the limit of register, current schedule block "
+               "can't enable vectorize!";
+    return false;
   }
 
-  return false;
+  if (!AvoidTensorAddrCalculateWithLongInVectorize(base_info)) {
+    VLOG(5) << "avoid tensor addr calculate with long in vectorize, current "
+               "schedule block "
+               "can't enable vectorize!";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -468,12 +605,11 @@ TileConfigMap BuildVectorizeConfig(
 
   warp_nums =
       UpdateWarpNumsInDifferentCase(base_info, group_vectorize_info, warp_nums);
-  // Deal with Special Cases
-  if (can_vectorize) {
-    if (!SpecialSpatialCaseCanApplyVectorize(
-            base_info, group_vectorize_info, vectorize_factor, warp_nums)) {
-      can_vectorize = false;
-    }
+
+  if (can_vectorize &&
+      !CheckPerformanceLimitInVectorize(
+          base_info, group_vectorize_info, vectorize_factor, warp_nums)) {
+    can_vectorize = false;
   }
 
   if (!can_vectorize) {

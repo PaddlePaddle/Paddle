@@ -159,14 +159,15 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), (1e-3, 1e-3)
 
         # for dynamic_shape
         self.generate_dynamic_shape()
@@ -205,38 +206,54 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         baseline: dict[str, np.array],
     ):
         if isinstance(tensor, list):
-            tensor = {
-                str(i): t for i, t in enumerate(tensor)
-            }  # 将 list 转换为字典
+            tensor = {str(i): t for i, t in enumerate(tensor)}
         if isinstance(baseline, list):
-            baseline = {
-                str(i): b for i, b in enumerate(baseline)
-            }  # 将 list 转换为字典
-        for key, arr in tensor.items():
-            self.assertEqual(
-                baseline[key].shape,
-                arr.shape,
-                'The output shapes are not equal, the baseline shape is '
-                + str(baseline[key].shape)
-                + ', but got '
-                + str(arr.shape),
-            )
-
-            # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
-            # but for FP32 and FP16 precision, their least value are different.
-            # We set a threshold that is the least value of FP16,
-            # and make the values less than the threshold to be the threshold.
-            def align_less_threshold(arr, threshold):
-                return np.clip(arr, threshold, None)
-
-            fp16_min = np.finfo(np.float16).min
-            baseline_threshold = align_less_threshold(
-                copy.deepcopy(baseline[key]), fp16_min
-            )
-            arr_threshold = align_less_threshold(copy.deepcopy(arr), fp16_min)
-            np.testing.assert_allclose(
-                baseline_threshold, arr_threshold, rtol=rtol, atol=atol
-            )
+            baseline = {str(i): b for i, b in enumerate(baseline)}
+            for key, arr in tensor.items():
+                self.assertEqual(
+                    baseline[key].shape,
+                    arr.shape,
+                    'The output shapes are not equal, the baseline shape is '
+                    + str(baseline[key].shape)
+                    + ', but got '
+                    + str(arr.shape),
+                )
+                # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
+                # but for FP32 and FP16 precision, their least value are different.
+                # We set a threshold that is the least value of FP16,
+                # and make the values less than the threshold to be the threshold.
+                fp16_min = np.finfo(np.float16).min
+                baseline_threshold = np.clip(
+                    copy.deepcopy(baseline[key]), fp16_min
+                )
+                arr_threshold = np.clip(copy.deepcopy(arr), fp16_min)
+                np.testing.assert_allclose(
+                    baseline_threshold, arr_threshold, rtol=rtol, atol=atol
+                )
+        elif isinstance(tensor, list) and isinstance(baseline, list):
+            for idx, (arr, baseline_arr) in enumerate(zip(tensor, baseline)):
+                self.assertEqual(
+                    baseline_arr.shape,
+                    arr.shape,
+                    'The output shapes are not equal, the baseline shape is '
+                    + str(baseline_arr.shape)
+                    + ', but got '
+                    + str(arr.shape),
+                )
+                # The result of Pool2d may have some elements that is the least value (-65504 for FP16),
+                # but for FP32 and FP16 precision, their least value are different.
+                # We set a threshold that is the least value of FP16,
+                # and make the values less than the threshold to be the threshold.
+                fp16_min = np.finfo(np.float16).min
+                baseline_threshold = np.clip(
+                    copy.deepcopy(baseline_arr), fp16_min
+                )
+                arr_threshold = np.clip(copy.deepcopy(arr), fp16_min)
+                np.testing.assert_allclose(
+                    baseline_threshold, arr_threshold, rtol=rtol, atol=atol
+                )
+        else:
+            raise ValueError("The type of tensor or baseline must be dict.")
 
     def test(self):
         self.add_skip_trt_case()

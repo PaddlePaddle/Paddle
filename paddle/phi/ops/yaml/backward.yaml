@@ -58,6 +58,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : acos_grad
   inplace : (out_grad -> x_grad)
@@ -70,6 +71,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : acosh_grad
   inplace : (out_grad -> x_grad)
@@ -189,6 +191,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : asin_grad
   inplace : (out_grad -> x_grad)
@@ -200,6 +203,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : asinh_grad
   inplace : (out_grad -> x_grad)
@@ -221,6 +225,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : atan_grad
   inplace : (out_grad -> x_grad)
@@ -232,6 +237,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : atanh_grad
   inplace : (out_grad -> x_grad)
@@ -350,6 +356,7 @@
     func: c_softmax_with_cross_entropy_grad
     data_type: loss_grad
     param: [softmax, label, loss_grad, ignore_index, rank, nranks]
+  inplace : (softmax -> logits_grad)
 
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
@@ -934,6 +941,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : erf_grad
     data_type : out_grad
@@ -946,6 +954,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : erfinv_grad
 
@@ -1013,6 +1022,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : expm1_grad
   inplace : (out_grad -> x_grad)
@@ -1865,6 +1875,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : lgamma_grad
 
@@ -1890,6 +1901,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log10_grad
   inplace : (out_grad -> x_grad)
@@ -1901,6 +1913,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log1p_grad
   inplace : (out_grad -> x_grad)
@@ -1912,6 +1925,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log2_grad
   inplace : (out_grad -> x_grad)
@@ -1935,6 +1949,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log_grad
   backward : log_double_grad
@@ -1989,6 +2004,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : logsigmoid_grad
   inplace : (out_grad -> x_grad)
@@ -2538,22 +2554,6 @@
     data_type : x
   optional : boxes_num
 
-- backward_op : pull_sparse_v2_grad
-  forward : pull_sparse_v2 (Tensor[] ids, Tensor[] w, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctrlabel_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true) -> Tensor[](out)
-  args : (Tensor[] ids, Tensor[] w, Tensor[] out_grad, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctrlabel_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)
-  output : Tensor[](out_grad_out)
-  invoke : push_sparse_v2(ids, w, out_grad, embedding_dim, table_id, accessor_class, ctrlabel_name, padding_id, scale_sparse_grad, input_names, is_distributed)
-
-- backward_op : push_gpups_sparse
-  forward : pull_gpups_sparse (Tensor w, Tensor[] ids, int[] size={}, bool is_sparse=false, bool is_distributed=false) -> Tensor[](out)
-  args : (Tensor[] ids, Tensor[] out_grad, int[] size, bool is_sparse, bool is_distributed)
-  output : Tensor[](out_grad_grad){out_grad.size()}
-  infer_meta :
-    func : PushGpupsSparseInferMeta
-  kernel :
-    func : push_gpups_sparse
-  inplace : (out_grad -> out_grad_grad)
-
 - backward_op : put_along_axis_grad
   forward : put_along_axis (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true) -> Tensor(out)
   args : (Tensor arr, Tensor indices, Tensor values, Tensor out, Tensor out_grad, int axis, str reduce, bool include_self)
@@ -3082,6 +3082,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sinh_grad
   inplace : (out_grad -> x_grad)
@@ -3158,6 +3159,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : softsign_grad
   inplace : (out_grad -> x_grad)
@@ -3214,6 +3216,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sqrt_grad
   composite : sqrt_grad(out, out_grad, x_grad)
@@ -3379,6 +3382,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : swish_grad
   inplace : (out_grad -> x_grad)
@@ -3422,6 +3426,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tan_grad
   inplace : (out_grad -> x_grad)
@@ -3446,6 +3451,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tanh_grad
   composite : tanh_grad(out, out_grad, x_grad)
@@ -3459,6 +3465,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tanh_shrink_grad
   inplace : (out_grad -> x_grad)

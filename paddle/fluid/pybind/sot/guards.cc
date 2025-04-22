@@ -29,6 +29,16 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 }
 #endif
 
+#if !PY_3_10_PLUS
+#define Py_IsNone(x) ((x) == Py_None)
+#endif
+
+#define HANDLE_NULL_VALUE(value) \
+  if ((value) == NULL) {         \
+    PyErr_Clear();               \
+    return false;                \
+  }
+
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
     return true;
@@ -80,6 +90,7 @@ bool TypeMatchGuard::check(PyObject* value) {
 bool IdMatchGuard::check(PyObject* value) { return value == expected_; }
 
 bool ValueMatchGuard::check(PyObject* value) {
+  HANDLE_NULL_VALUE(value);
   return PyObject_Equal(value, expected_value_);
 }
 
@@ -103,6 +114,7 @@ bool DtypeMatchGuard::check(PyObject* value) {
 }
 
 bool ShapeMatchGuard::check(PyObject* value) {
+  HANDLE_NULL_VALUE(value);
   auto tensor = GetTensorFromPyObject(value);
   if (!tensor) {
     return false;
@@ -136,7 +148,7 @@ bool InstanceCheckGuard::check(PyObject* value) {
   return PyObject_IsInstance(value, expected_);
 }
 
-bool NumpyDtypeMatchGuard::check(PyObject* value) {
+bool NumPyDtypeMatchGuard::check(PyObject* value) {
   if (value == nullptr) {
     return false;
   }
@@ -164,7 +176,38 @@ bool NumPyArrayValueMatchGuard::check(PyObject* value) {
       .cast<bool>();
 }
 
+bool WeakRefMatchGuard::check(PyObject* value) {
+  if (value == nullptr || expected_ == nullptr || Py_IsNone(expected_)) {
+    return false;
+  }
+
+#if PY_3_13_PLUS
+  PyObject* ref = NULL;
+  int get_ref_result = PyWeakref_GetRef(expected_, &ref);
+  if (get_ref_result == -1) {
+    // error
+    PyErr_Print();
+    return false;
+  }
+  if (get_ref_result == 0) {
+    // is dead
+    return false;
+  }
+  bool res = PyObject_Equal(value, ref);
+  Py_DECREF(ref);
+  return res;
+#else
+  return PyObject_Equal(value, PyWeakref_GetObject(expected_));
+#endif
+}
+
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
+std::string ConstantExprNode::stringify(int indent) {
+  return py::str(value_ptr_);
+}
+
+PyObject* ExternVarExprNode::eval(FrameProxy* frame) { return value_ptr_; }
+std::string ExternVarExprNode::stringify(int indent) { return var_name_; }
 
 PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_13_PLUS
@@ -175,6 +218,10 @@ PyObject* LocalVarExprNode::eval(FrameProxy* frame) {
   return PyDict_GetItemString(frame->f_locals, var_name_.c_str());
 #endif
 }
+std::string LocalVarExprNode::stringify(int indent) {
+  return "locals[" + var_name_ + "]";
+}
+
 PyObject* GlobalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_11_PLUS
   return PyDict_GetItemString(frame->frame->f_globals, var_name_.c_str());
@@ -182,17 +229,34 @@ PyObject* GlobalVarExprNode::eval(FrameProxy* frame) {
   return PyDict_GetItemString(frame->f_globals, var_name_.c_str());
 #endif
 }
+std::string GlobalVarExprNode::stringify(int indent) {
+  return "globals[" + var_name_ + "]";
+}
+
 PyObject* AttributeExprNode::eval(FrameProxy* frame) {
   PyObject* var = var_expr_->eval(frame);
   return PyObject_GetAttrString(var, attr_name_.c_str());
 }
+std::string AttributeExprNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << var_expr_->stringify() << "." << attr_name_;
+  return ss.str();
+}
+
 PyObject* ItemExprNode::eval(FrameProxy* frame) {
   PyObject* var = var_expr_->eval(frame);
   PyObject* key = key_expr_->eval(frame);
   return PyObject_GetItem(var, key);
 }
+std::string ItemExprNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << var_expr_->stringify() << "[" << key_expr_->stringify() << "]";
+  return ss.str();
+}
 
 std::optional<int> GuardNode::lookup(FrameProxy* frame) {
+  // TODO(zrr1999): support multiple exprs
+  auto expr = exprs.back();
   auto value = expr->eval(frame);
   if (guard->check(value)) {
     if (return_cache_index.has_value()) {
@@ -207,6 +271,35 @@ std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   }
   return std::nullopt;
 }
+std::string GuardNode::stringify(int indent) {
+  std::stringstream ss;
+  // TODO(zrr1999): support multiple exprs
+  auto expr = exprs.back();
+  ss << std::string(indent, ' ') << guard->get_guard_name();
+  ss << "(" << exprs.back()->stringify() << ")";
+  if (!next_guard_nodes.empty()) {
+    ss << " |" << std::endl;
+    for (auto& next_guard_node : next_guard_nodes) {
+      ss << std::string(indent + 2, ' ');
+      ss << next_guard_node->stringify(indent + 2) << std::endl;
+    }
+  }
+  return ss.str();
+}
+
+void GuardTree::add_guard_chain(
+    const std::vector<std::shared_ptr<GuardNode>>& guard_chain) {
+  if (guard_chain.empty()) {
+    // TODO(zrr1999): empty guard nodes means that some
+    // tracker.make_faster_guard is not implemented.
+    return;
+  }
+  for (size_t i = 1; i < guard_chain.size(); ++i) {
+    guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);
+  }
+  guard_chain.back()->return_cache_index = guard_nodes_.size();
+  guard_nodes_.push_back(guard_chain.front());
+}
 
 std::optional<int> GuardTree::lookup(FrameProxy* frame) {
   for (auto& guard_node : guard_nodes_) {
@@ -216,6 +309,16 @@ std::optional<int> GuardTree::lookup(FrameProxy* frame) {
     }
   }
   return std::nullopt;
+}
+std::string GuardTree::stringify() {
+  std::stringstream ss;
+  for (size_t i = 0; i < guard_nodes_.size(); ++i) {
+    if (i > 0) {
+      ss << std::endl << "and" << std::endl;
+    }
+    ss << guard_nodes_[i]->stringify();
+  }
+  return ss.str();
 }
 
 #endif

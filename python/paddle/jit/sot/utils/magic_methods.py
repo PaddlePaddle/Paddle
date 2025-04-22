@@ -127,3 +127,15 @@ def magic_method_builtin_dispatch(fn: BinaryOp | UnaryOp) -> list[MagicMethod]:
         magic_name = UNARY_OPS_TO_MAGIC_NAMES[fn]
         return [MagicMethod(magic_name)]
     return []
+
+
+def non_inplace_op_to_inplace_op(
+    fn: BinaryOp,
+) -> BinaryOp | None:
+    for inplace_op, (
+        _,
+        non_inplace_op,
+    ) in INPLACE_BINARY_OPS_TO_MAGIC_NAMES.items():
+        if fn is non_inplace_op:
+            return inplace_op
+    return None

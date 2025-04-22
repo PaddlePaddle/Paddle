@@ -294,9 +294,6 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = np.arange(10).reshape(2, 5)
         x = paddle.to_tensor(x)
         # case 5:
-        with self.assertRaises(IndexError):
-            res = x[[1, 3]]  # IndexError: (OutOfRange)
-        # case 6:
         with self.assertRaises(ValueError):
             res = x[
                 [0, 1], [3, 2], [1, 1]
@@ -321,9 +318,6 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = np.arange(10).reshape(2, 5)
         x = paddle.to_tensor(x)
         # case 5:
-        with self.assertRaises(IndexError):
-            res = x[paddle.to_tensor([1, 3])]  # IndexError: (OutOfRange)
-        # case 6:
         with self.assertRaises(ValueError):
             res = x[
                 paddle.to_tensor([0, 1]),

@@ -688,7 +688,7 @@ def monkey_patch_tensor():
                 new_t = t_casted._copy_to(device, blocking)
             else:
                 new_t = t_casted
-
+            new_t.stop_gradient = t.stop_gradient
             return new_t
 
         with warnings.catch_warnings():

@@ -69,9 +69,7 @@ static const std::unordered_set<std::string> &GetOpWithUnusedVarAllowSet() {
       "precision_recall",                   // 1
       "fusion_seqpool_cvm_concat",          // 2
       "fused_batch_norm_act",               // 2
-      "fused_batch_norm_act_grad",          // 2
-      "data_norm",                          // 0
-      "data_norm_grad",                     // 0
+      "fused_batch_norm_act_grad",          // 2                   // 0
       "update_loss_scaling",                // 0
       "fused_embedding_eltwise_layernorm",  // 0
       "trunc_grad",                         // 1
