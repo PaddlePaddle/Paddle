@@ -2873,7 +2873,12 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
       1UL,
       common::errors::InvalidArgument(
           "Input(Condition) should have number of dimension at least 1"));
-  out->set_dims(common::make_ddim({-1, rank}));
+  if (condition.numel() == 0) {
+    out->set_dims(common::make_ddim({0, rank}));
+  } else {
+    out->set_dims(common::make_ddim({-1, rank}));
+  }
+
   out->set_dtype(DataType::INT64);
 }
 
