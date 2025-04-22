@@ -433,6 +433,7 @@ def append_backward_ops(
             if (
                 value not in state.value_to_valuegrad
                 or state.value_to_valuegrad[value] == []
+                or state.value_to_valuegrad[value][0][0] is None
             ):
                 if not value.use_empty() and get_split_op(value) is not None:
                     # pattern case:
