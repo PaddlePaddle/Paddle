@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
-
-import numpy as np
 
 import paddle
 import paddle.distributed as dist
@@ -24,8 +21,6 @@ class TestProcessMesh:
     def init_dist_env(self):
         dist.init_parallel_env()
         paddle.seed(2025)
-        np.random.seed(2025)
-        random.seed(2025)
 
     def test_get_submesh_with_dim(self):
         curr_rank = dist.get_rank()
