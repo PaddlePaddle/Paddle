@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       docker_sot_image:
-        type: SOT CI Docker Image
+        type: string
         required: true
 
 env:
