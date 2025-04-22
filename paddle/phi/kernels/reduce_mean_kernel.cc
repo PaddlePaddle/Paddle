@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"
+#include "paddle/phi/common/float8_e4m3fn.h"
 
 namespace phi {
 
@@ -74,6 +75,7 @@ PD_REGISTER_KERNEL(mean,
                    int64_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif

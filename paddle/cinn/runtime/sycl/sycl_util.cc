@@ -205,12 +205,15 @@ cnnlDataType_t convert_to_cnnl_dtype(void *v_args, int num_args) {
   cnnlDataType_t data_type;
   bool is_float = type_code == cinn_type_float;
   bool is_bfloat16 = type_code == cinn_type_bfloat;
+  bool is_float8e4m3 = type_code == cinn_type_float8e4m3;
   if (is_float && bits == 16) {
     data_type = CNNL_DTYPE_HALF;
   } else if (is_float && bits == 32) {
     data_type = CNNL_DTYPE_FLOAT;
   } else if (is_bfloat16) {
     data_type = CNNL_DTYPE_BFLOAT16;
+  } else if (is_float8e4m3) {
+    data_type = CUDA_R_8F_E4M3;
   } else {
     PADDLE_THROW(
         ::common::errors::InvalidArgument("unsupported cudnn data type: ",
@@ -458,6 +461,7 @@ void cinn_call_cnnl_matmul(void *v_args,
   auto type_code = args[0].operator cinn_buffer_t *()->type.code;
   bool is_float = type_code == cinn_type_float;
   bool is_bfloat16 = type_code == cinn_type_bfloat;
+  bool is_float8e4m3 = type_code == cinn_type_float8e4m3;
   int bytes = args[0].operator cinn_buffer_t *()->type.bits / CHAR_BIT;
   if (is_float && bytes == sizeof(cinn::common::float16)) {
     cnnl_dtype = CNNL_DTYPE_HALF;
@@ -465,6 +469,8 @@ void cinn_call_cnnl_matmul(void *v_args,
     cnnl_dtype = CNNL_DTYPE_FLOAT;
   } else if (is_bfloat16) {
     cnnl_dtype = CNNL_DTYPE_BFLOAT16;
+  } else if (is_float8e4m3) {
+    data_type = CUDA_R_8F_E4M3;
   } else {
     std::stringstream ss;
     ss << "unsupported cublas data type: " << static_cast<int>(type_code)

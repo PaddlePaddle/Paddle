@@ -283,7 +283,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
           in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
-          "float8 dtypes are not currently supported for NCCL reductions"));
+          "float8e4m3 dtypes are not currently supported for NCCL reductions"));
 
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
@@ -544,7 +544,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
           in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
-          "float8 dtypes are not currently supported for NCCL reductions"));
+          "float8e4m3 dtypes are not currently supported for NCCL reductions"));
 
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {
@@ -588,7 +588,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
           in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
-          "float8 dtypes are not currently supported for NCCL reductions"));
+          "float8e4m3 dtypes are not currently supported for NCCL reductions"));
 
   return Collective(
       [&](phi::distributed::NCCLCommContext* comm_context, gpuStream_t stream) {

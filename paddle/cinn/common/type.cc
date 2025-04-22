@@ -292,10 +292,21 @@ bool Type::is_float(int bits, specific_type_t st) const {
             "distinguish FP16/BF16. Use is_float16() or is_bfloat16() for "
             "short."));
     return st == this->specific_type();
+  } else if (type() == type_t::Float && bits == 8) {
+    PADDLE_ENFORCE_NE(
+        st,
+        specific_type_t::None,
+        ::common::errors::InvalidArgument(
+            "When calling is_float(8), 'st' can't be specific_type_t::None to "
+            "distinguish F8E4M3/F8E5M2. Use is_float8e4m3() or is_float8e5m2() for "
+            "short."));
+    return st == this->specific_type();
   } else {
     return type() == type_t::Float && (bits < 0 || bits == this->bits());
   }
 }
+
+bool Type::is_float8e4m3() const { return is_float(8, specific_type_t::F8E4M3); }
 bool Type::is_float16() const { return is_float(16, specific_type_t::FP16); }
 bool Type::is_bfloat16() const { return is_float(16, specific_type_t::BF16); }
 bool Type::is_uint(int bits) const {
@@ -372,6 +383,11 @@ const Type::Storage &Type::GetStorage() const {
 
 Type::Type() : storage_(new Storage) {}
 Type::Type(Type &&other) : storage_(std::move(other.storage_)) {}
+
+const Type &F8E4M3() {
+  static auto t = Float(8, 1, Type::specific_type_t::F8E4M3);
+  return t;
+}
 
 const Type &BF16() {
   static auto t = Float(16, 1, Type::specific_type_t::BF16);

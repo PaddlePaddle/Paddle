@@ -112,7 +112,7 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<float>, COMPLEX64); \
   _ForEachDataTypeHelper_(callback, ::phi::dtype::complex<double>, COMPLEX128);
 
-// complex and float8 are not supported on XPU.
+// complex and float8e4m3 are not supported on XPU.
 #define _ForEachDataTypeForXPU_(callback)                          \
   _ForEachDataTypeHelper_(callback, float, FP32);                  \
   _ForEachDataTypeHelper_(callback, ::phi::dtype::float16, FP16);  \

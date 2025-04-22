@@ -21,6 +21,7 @@
 #include <cstdint>
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/configs.cuh"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
+#include "paddle/fluid/distributed/collective/deep_ep/kernels/utils.cuh"
 
 namespace deep_ep {
 

@@ -161,7 +161,7 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
           in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
-          "float8 dtypes are not currently supported for NCCL reductions"));
+          "float8e4m3 dtypes are not currently supported for NCCL reductions"));
 
   phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
                                                       in_tensor,
@@ -231,7 +231,7 @@ void NCCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
           in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
-          "float8 dtypes are not currently supported for NCCL reductions"));
+          "float8e4m3 dtypes are not currently supported for NCCL reductions"));
 
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,
@@ -263,7 +263,7 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
           in_tensor.dtype() != phi::DataType::FLOAT8_E5M2,
       true,
       common::errors::InvalidArgument(
-          "float8 dtypes are not currently supported for NCCL reductions"));
+          "float8e4m3 dtypes are not currently supported for NCCL reductions"));
 
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
                                                in_tensor,

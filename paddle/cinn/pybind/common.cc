@@ -183,6 +183,7 @@ void BindType(py::module *m) {
            py::arg("st") = Type::specific_type_t::None)
       .def("Float16", &cinn::common::Float16, py::arg("lanes") = 1)
       .def("BFloat16", &cinn::common::BFloat16, py::arg("lanes") = 1)
+      .def("Float8e4m3", &cinn::common::Float8e4m3, py::arg("lanes") = 1)
       .def("Bool", &cinn::common::Bool, py::arg("lanes") = 1)
       .def("String", &cinn::common::String);
 

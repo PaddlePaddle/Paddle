@@ -1511,7 +1511,7 @@ mul_pointer_v2<bf16_8_t, Float8_, uint64_t, CacheType::INT8>(
 #ifdef DEBUG_BLHA
   if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
       threadIdx.x == 0) {
-    printf("mul_pointer_v2 float8 bf16_8 int8\n");
+    printf("mul_pointer_v2 float8e4m3 bf16_8 int8\n");
     printf("scale: %f, zp: %f, b: %lu\n, c: %f\n",
            a.x.x,
            zp.x.x,
@@ -1590,7 +1590,7 @@ mul_pointer_v2<bf16_8_t, bf16_8_t, uint64_t, CacheType::INT8>(
 #ifdef DEBUG_BLHA
   if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
       threadIdx.x == 0) {
-    printf("mul_pointer_v2 float8 bf16_8 int8\n");
+    printf("mul_pointer_v2 float8e4m3 bf16_8 int8\n");
     printf("scale: %f, zp: %f, b: %u\n, c: %f\n",
            static_cast<float>(a.x.x),
            static_cast<float>(zp.x.x),
@@ -1727,7 +1727,7 @@ mul_pointer_v2<bf16_8_t, bf16_8_t, uint64_t, CacheType::INT8>(
 #ifdef DEBUG_BLHA
   if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
       threadIdx.x == 0) {
-    printf("mul_pointer_v2 float8 bf16_8 int8\n");
+    printf("mul_pointer_v2 float8e4m3 bf16_8 int8\n");
     printf("scale: %f, b: %lu\n, c: %f\n",
            static_cast<float>(a.x.x),
            *b,

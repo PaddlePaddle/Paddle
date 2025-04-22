@@ -1902,7 +1902,7 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
   if (x.dtype() != DataType::FLOAT8_E4M3FN ||
       y.dtype() != DataType::FLOAT8_E4M3FN) {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "float8 matmul needs input x and y be float8_e4m3fn"));
+        "float8e4m3 matmul needs input x and y be float8_e4m3fn"));
   }
 
   PADDLE_ENFORCE_EQ(

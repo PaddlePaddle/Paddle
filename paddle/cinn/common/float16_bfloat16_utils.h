@@ -17,8 +17,7 @@
 #include <iostream>
 #include <limits>
 
-#include "paddle/cinn/common/bfloat16.h"
-#include "paddle/cinn/common/float16.h"
+#include "paddle/cinn/common/float8e4m3.h"
 
 namespace std {
 // Override the std::is_pod::value for float16 and bfloat16
