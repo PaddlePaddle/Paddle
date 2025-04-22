@@ -218,7 +218,7 @@ jobs:
     needs: build
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ_v100
+      group: BD_BJ-V100
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
@@ -315,15 +315,13 @@ jobs:
           fi
           '
 
-      - name: Check coverage data
+      - name: Generate coverage information
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
-          COVERAGE_EXIT_CODE=$?
-          echo "COVERAGE_EXIT_CODE=${COVERAGE_EXIT_CODE}" >> ${{ github.env }}
           '
 
       - name: Upload coverage report
@@ -333,12 +331,20 @@ jobs:
 
       - name: Determine whether the coverage rate reaches 90%
         run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ~/.bashrc
+          unset GREP_OPTIONS
+          source ${{ github.workspace }}/../../../proxy
+          source ${ci_scripts}/utils.sh
+          bash $ci_scripts/coverage_judge.sh
+          COVERAGE_EXIT_CODE=$?
           if [ "${{ env.COVERAGE_EXIT_CODE }}" -ne 0 ]; then
-            echo "Coverage check failed, unit test has passed, please do not rerun, check whether the code is fully executed and recommit."
+            echo "Coverage check failed, unit tests have all passed, please do not rerun, check whether the code has been fully executed and recommit."
             exit ${{ env.COVERAGE_EXIT_CODE }}
           else
             echo "Coverage passed"
           fi
+          '
 
       - name: Terminate and delete the container
         if: always()

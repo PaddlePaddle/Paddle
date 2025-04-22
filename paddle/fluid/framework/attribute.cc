@@ -318,4 +318,32 @@ void CanonicalizeScalarAttrs(const proto::OpProto& op_proto,
     }
   }
 }
+
+void CanonicalizeScalarAttrs_copy(const proto::OpProto& op_proto,
+                                  AttributeMap* attrs) {
+  PADDLE_ENFORCE_NOT_NULL(
+      attrs, common::errors::InvalidArgument("attrs can not be nullptr"));
+  for (auto& attr : op_proto.attrs()) {
+    proto::AttrType attr_type = attr.type();
+    const std::string& attr_name = attr.name();
+    auto it = attrs->find(attr_name);
+    if (it == attrs->end()) {
+      continue;
+    }
+    proto::AttrType actual_attr_type = AttrTypeID(it->second);
+    if (actual_attr_type == attr_type) {
+      continue;
+    }
+    if (actual_attr_type == proto::AttrType::VAR ||
+        actual_attr_type == proto::AttrType::VARS) {
+      continue;  // VAR& VARS are not proper attribute
+    }
+    if (attr_type == proto::AttrType::SCALAR) {
+      it->second = Attribute(MakeScalarFromAttribute(it->second));
+    } else if (attr_type == proto::AttrType::SCALARS) {
+      it->second = Attribute(MakeScalarsFromAttribute(it->second));
+    }
+  }
+}
+
 }  // namespace paddle::framework
