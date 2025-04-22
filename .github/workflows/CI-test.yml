@@ -21,6 +21,7 @@ jobs:
     with:
       pr_dir: PR-test
 
+
   xpu:
     name: Linux-XPU-test
     uses: ./.github/workflows/_Linux-XPU.yml
