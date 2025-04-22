@@ -220,19 +220,6 @@ jobs:
     runs-on:
       group: BD_BJ-V100
     steps:
-      - name: Download paddle.tar.gz and update test branch
-        run: |
-          set -e
-          echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar  --use-compress-program='pzstd -1' -xf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
-          source ${{ github.workspace }}/../../../proxy
-          git checkout test
-          echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
-
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
@@ -302,6 +289,22 @@ jobs:
             -e GITHUB_TOKEN \
             -e GITHUB_API_TOKEN  \
             -w /paddle --network host ${docker_image}
+
+      - name: Download paddle.tar.gz and update test branch
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          apt install zstd -y
+          tar --use-compress-program='pzstd -1' -xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          source ${{ github.workspace }}/../../../proxy
+          git checkout test
+          echo "Pull upstream develop"
+          git pull upstream $BRANCH --no-edit
+          '
 
       - name: Test
         run: |
