@@ -12,20 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
-
-import numpy as np
 
 import paddle
 import paddle.distributed as dist
 
+class _recv_info:
+    def __init__(self, tensor, placements):
+        self.obj_size = 10
+        self.obj_type1 = paddle.distributed.Shard(0)
+        self.obj_type2 = paddle.distributed.Replicate()
+        self.obj_type3 = paddle.distributed.Partial()
+        self.obj_list = [
+            paddle.distributed.Shard(0),
+            paddle.distributed.Replicate(),
+            paddle.distributed.Partial(),
+        ]
+        self.dtype = paddle.int64
 
 class TestObjectListCommunication:
     def init_dist_env(self):
         dist.init_parallel_env()
         paddle.seed(2025)
-        np.random.seed(2025)
-        random.seed(2025)
 
     def test_object_list_communication(self):
         """Test object list communication functionalities including parameter validation,
@@ -89,6 +96,48 @@ class TestObjectListCommunication:
             assert data[0] == 42
             assert data[1] == "hello"
             assert data[2] == {"key": "value"}
+    def test_custom_object_communication(self):
+        """Test objects with distributed attributes"""
+        curr_rank = dist.get_rank()
+
+        if curr_rank == 0:
+            data1= _recv_info(None, None)
+            data = [data1]
+            result = dist.send_object_list(data, dst=1)
+            self.assertTrue(result)
+        elif curr_rank == 1:
+            data = [None]
+            result = dist.recv_object_list(data, src=0)
+            self.assertTrue(result)
+
+            self.assertIsInstance(data[0], _recv_info)
+            self.assertEqual(type(data[0].obj_size), int)
+            self.assertEqual(data[0].obj_size, 10)
+            
+            self.assertIsInstance(
+                data[0].obj_type1, paddle.distributed.Shard
+            )
+            
+            self.assertIsInstance(
+                data[0].obj_type2, paddle.distributed.Replicate
+            )
+            
+            self.assertIsInstance(
+                data[0].obj_type3, paddle.distributed.Partial
+            )
+            
+            self.assertEqual(data[0].dtype, paddle.int64)
+            
+            self.assertEqual(len(data[0].obj_list), 3)
+            self.assertIsInstance(
+                data[0].obj_list[0], paddle.distributed.Shard
+            )
+            self.assertIsInstance(
+                data[0].obj_list[1], paddle.distributed.Replicate
+            )
+            self.assertIsInstance(
+                data[0].obj_list[2], paddle.distributed.Partial
+            )
 
 
 if __name__ == '__main__':
