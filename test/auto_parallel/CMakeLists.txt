@@ -140,8 +140,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_moe_utils MODULES test_moe_utils)
   set_tests_properties(test_moe_utils PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                  TIMEOUT 30)
-  py_test_modules(test_object_list_communication MODULES
-                  test_object_list_communication)
+  py_test_modules(test_object_list_communication MODULES test_object_list_communication)
+  set_tests_properties(test_object_list_communication PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
+                                                 TIMEOUT 50)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout

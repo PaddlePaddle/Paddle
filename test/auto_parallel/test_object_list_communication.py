@@ -24,7 +24,6 @@ class TestObjectListCommunication(test_base.CommunicationTestDistBase):
             timeout=50,
         )
         self._default_envs = {
-            "FLAGS_embedding_deterministic": "1",
             "FLAGS_cudnn_deterministic": "1",
             "FLAGS_enable_pir_api": "1",
         }
