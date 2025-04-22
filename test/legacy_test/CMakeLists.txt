@@ -833,6 +833,7 @@ set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_stack_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_interp_recompute_scale_factor PROPERTIES TIMEOUT 60)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 240)
 set_tests_properties(test_norm_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_matrix_nms_op PROPERTIES TIMEOUT 120)
