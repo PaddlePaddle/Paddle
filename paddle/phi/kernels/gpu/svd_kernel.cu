@@ -376,9 +376,6 @@ void SvdKernel(const Context& dev_ctx,
                DenseTensor* S,
                DenseTensor* VH) {
   if (X.numel() == 0) {
-    U->Resize(U->dims());
-    S->Resize(S->dims());
-    VH->Resize(VH->dims());
     dev_ctx.template Alloc<T>(U);
     dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
     dev_ctx.template Alloc<T>(VH);
