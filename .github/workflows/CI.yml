@@ -28,7 +28,7 @@ jobs:
     name: PR-CI-SOT
     needs: build-docker
     uses: ./.github/workflows/_SOT.yml
-    env:
+    with:
       docker_sot_image: ${{ needs.build-docker.outputs.docker_sot_image }}
 
   coverage:
