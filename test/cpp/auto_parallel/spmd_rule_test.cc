@@ -1434,6 +1434,15 @@ TEST(ElementwiseUnaryLike, Ctor) {
     check_dim_mapping(spmd_info.second[0], dims_mapping);
     check_partial_dims(spmd_info.second[0], {});
   };
+  auto check_element_unary_like_backward = [&dims_mapping](auto& spmd_info) {
+    EXPECT_GT(spmd_info.first.size(), static_cast<size_t>(1));
+    EXPECT_EQ(spmd_info.second.size(), static_cast<size_t>(1));
+    for (auto& dim_mapping : spmd_info.first) {
+      check_dim_mapping(dim_mapping, dims_mapping);
+    }
+    check_dim_mapping(spmd_info.second[0], dims_mapping);
+    check_partial_dims(spmd_info.second[0], {});
+  };
 
   // cast
   auto input =
@@ -1459,6 +1468,7 @@ TEST(ElementwiseUnaryLike, Ctor) {
   input =
       phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
   inferred_dist_attrs = phi::distributed::PowGradInferSpmd(input, input, 2);
+  check_element_unary_like_backward(inferred_dist_attrs);
 
   // scale
   input =
@@ -1466,6 +1476,139 @@ TEST(ElementwiseUnaryLike, Ctor) {
   inferred_dist_attrs =
       phi::distributed::ScaleInferSpmd(input, 1.0, 1.0, false);
   check_element_unary_like(inferred_dist_attrs);
+
+  // round
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::RoundInfoSpmd(input, 0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // mish
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::MishInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // mish backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::MishGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // elu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::EluInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // elu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::EluGradInfoSpmd(input, input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // selu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::SeluInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // selu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::SeluGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // celu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::CeluInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // celu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::CeluGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // stanh
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::StanhInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // stanh backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::StanhGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // softplus
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::SoftplusInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // softplus backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::SoftplusGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // softshrink
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::SoftshrinkInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // softshrink backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::SoftshrinkGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // thresholded_relu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::ThresholdedReluInfoSpmd(input, 1.0, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // thresholded_relu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs =
+      phi::distributed::ThresholdedReluGradInfoSpmd(input, input, 1.0, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // gelu
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::GeluInfoSpmd(input, true);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // gelu backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::GeluGradInfoSpmd(input, input, true);
+  check_element_unary_like_backward(inferred_dist_attrs);
+
+  // logit
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::LogitInfoSpmd(input, 1.0);
+  check_element_unary_like(inferred_dist_attrs);
+
+  // logit backward
+  input =
+      phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+  inferred_dist_attrs = phi::distributed::LogitGradInfoSpmd(input, input, 1.0);
+  check_element_unary_like_backward(inferred_dist_attrs);
 }
 
 TEST(EmbeddingGradInferSpmd, Ctor) {

@@ -394,6 +394,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : CeluGradInfoSpmd
   kernel :
     func : celu_grad
   backward : celu_double_grad
@@ -916,6 +917,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : EluGradInfoSpmd
   kernel :
     func : elu_grad
   backward : elu_double_grad
@@ -1413,6 +1415,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : GeluGradInfoSpmd
   kernel :
     func : gelu_grad
   composite: gelu_grad(x, out_grad, approximate, x_grad)
@@ -1993,6 +1996,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : LogitGradInfoSpmd
   kernel :
     func : logit_grad
 
@@ -2219,6 +2223,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : MishGradInfoSpmd
   kernel :
     func : mish_grad
   inplace : (out_grad -> x_grad)
@@ -2879,6 +2884,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : SeluGradInfoSpmd
   kernel :
     func : selu_grad
     data_type : out
@@ -3135,6 +3141,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftplusGradInfoSpmd
   kernel :
     func : softplus_grad
   backward : softplus_double_grad
@@ -3147,6 +3154,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : SoftshrinkGradInfoSpmd
   kernel :
     func : softshrink_grad
   inplace : (out_grad -> x_grad)
@@ -3306,6 +3314,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : StanhGradInfoSpmd
   kernel :
     func : stanh_grad
 
@@ -3500,6 +3509,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ThresholdedReluGradInfoSpmd
   kernel :
     func : thresholded_relu_grad
   inplace : (out_grad -> x_grad)
