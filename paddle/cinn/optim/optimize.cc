@@ -108,7 +108,6 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #endif
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-#ifdef CINN_WITH_HIP
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
           VLOG(4) << "Before removing GPU for loops:\n" << copied;
@@ -127,7 +126,6 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         func_pass_manager.AddPass(CreateTransBufferWithDynamicShapePass());
         func_pass_manager.Run(copied);
         VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
-#endif
       },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       });

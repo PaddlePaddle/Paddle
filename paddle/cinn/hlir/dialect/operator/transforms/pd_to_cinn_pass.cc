@@ -1254,6 +1254,7 @@ class SigmoidOpPattern
             .dyn_cast<paddle::dialect::DenseTensorType>()
             .dtype());
 
+    auto one_type = input_dtype;
     auto in = op->operand_source(0);
     bool need_cast = (input_dtype == phi::DataType::FLOAT16 ||
                       input_dtype == phi::DataType::BFLOAT16 ||
@@ -1261,12 +1262,13 @@ class SigmoidOpPattern
     if (need_cast) {
       in = rewriter.Build<paddle::dialect::CastOp>(in, phi::DataType::FLOAT32)
                .result(0);
+      one_type = phi::DataType::FLOAT32;
     }
 
     // 1 / ( 1 + exp(-x))
     auto one = rewriter
                    .Build<paddle::dialect::FullOp>(
-                       std::vector<int64_t>({1}), 1.0, phi::DataType::FLOAT32)
+                       std::vector<int64_t>({1}), 1.0, one_type)
                    .result(0);
     auto minus_x =
         rewriter.Build<paddle::dialect::ScaleOp>(in, -1.0, 0.0).result(0);

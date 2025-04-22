@@ -166,11 +166,11 @@ lcov --extract coverage-full.info \
     -o coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-cp coverage-diff.info coverage_files
-
 python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
+
+cp coverage-diff.info coverage_files
 
 # python coverage
 
@@ -213,11 +213,11 @@ lcov --extract python-coverage-full.info \
     -o python-coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-cp python-coverage-diff.info coverage_files
-
 python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
 
 mv -f python-coverage-diff.tmp python-coverage-diff.info
+
+cp python-coverage-diff.info coverage_files
 
 # assert coverage lines
 
