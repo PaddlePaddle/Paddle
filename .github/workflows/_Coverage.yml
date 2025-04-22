@@ -350,6 +350,7 @@ jobs:
         if: always()
         run: |
           set +e
+          rm Paddle.tar.gz
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
