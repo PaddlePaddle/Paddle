@@ -47,7 +47,7 @@ void AddKernel(const Context& dev_ctx,
       const float* x_data = x.data<float>();
       float* z_data = out->data<float>();
 
-      int ret = xpu::SUCCESS;
+      int ret = 0;
       if (y.dtype() == phi::DataType::BFLOAT16) {
         using YType = DataTypeToCppType<phi::DataType::BFLOAT16>::type;
         using XPUYType = typename XPUTypeTrait<YType>::Type;
@@ -100,8 +100,8 @@ void GradAddXPUKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   dev_ctx.template Alloc<T>(out);
-  auto x_shape = common::vectorize<int>(x.dims());
-  auto y_shape = common::vectorize<int>(y.dims());
+  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto y_shape = common::vectorize<int64_t>(y.dims());
   int r = xpu::broadcast_add(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
                              reinterpret_cast<const XPUType*>(y.data<T>()),

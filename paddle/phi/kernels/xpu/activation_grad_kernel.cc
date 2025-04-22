@@ -144,7 +144,7 @@ int xpu_activation_backward(const Context& dev_ctx,
                                               const XPUType*,
                                               const XPUType*,
                                               XPUType*,
-                                              int)> func) {
+                                              int64_t)> func) {
   /* TODO: relu tanh sigmoid are inplace */
   const XPUType* x_data = nullptr;
   const XPUType* y_data = nullptr;
@@ -446,9 +446,9 @@ void PowGradKernel(const Context& dev_ctx,
   T* x_grad = dx->data<T>();
 
   // check dims: all dims should equal
-  auto x_dims = common::vectorize<int>(x.dims());
-  auto dy_dims = common::vectorize<int>(dout.dims());
-  auto dx_dims = common::vectorize<int>(dx->dims());
+  auto x_dims = common::vectorize<int64_t>(x.dims());
+  auto dy_dims = common::vectorize<int64_t>(dout.dims());
+  auto dx_dims = common::vectorize<int64_t>(dx->dims());
   PADDLE_ENFORCE_EQ(x_dims,
                     dy_dims,
                     errors::PreconditionNotMet("x_dims should match dy_dims."));

@@ -115,7 +115,7 @@ void TileKernel(const Context& dev_ctx,
   }
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int ret = XPU_SUCCESS;
+  int ret = 0;
   if (std::is_same<T, bool>::value) {
     ret = xpu::broadcast<int8_t>(dev_ctx.x_context(),
                                  reinterpret_cast<const int8_t*>(x.data<T>()),
