@@ -296,8 +296,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/72392/f8763ee3d6c2badbaa43b3536f722e84be87a317/Paddle.tar.gz --no-check-certificate
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
