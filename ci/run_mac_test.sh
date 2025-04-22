@@ -15,6 +15,7 @@
 function run_mac_test() {
     export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
+    tmp_dir='/tmp'
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
@@ -81,7 +82,6 @@ EOF
         fi
         failed_test_lists=''
         collect_failed_tests
-	set -x
         mactest_error=0
         retry_unittests_record=''
         retry_time=3
@@ -173,6 +173,39 @@ function get_quickly_disable_ut() {
 
         exit 102
         disable_ut_quickly='disable_ut'
+    fi
+}
+
+function get_precision_ut_mac() {
+    on_precision=0
+    UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
+    precision_cases=""
+    if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
+        python $PADDLE_ROOT/tools/get_pr_ut.py
+        if [[ -f "ut_list" ]]; then
+            echo "PREC length: "`wc -l ut_list`
+            precision_cases=`cat ut_list`
+        fi
+    fi
+    if [ ${PRECISION_TEST:-OFF} == "ON" ] && [[ "$precision_cases" != "" ]];then
+        UT_list_re=''
+        on_precision=1
+        re=$(cat ut_list|awk -F ' ' '{print }' | awk 'BEGIN{ all_str=""}{if (all_str==""){all_str=$1}else{all_str=all_str"$|^"$1}} END{print "^"all_str"$"}')
+        UT_list_prec_1='ut_list_prec2'
+        for ut_case in $UT_list; do
+            flag=$(echo $ut_case|grep -oE $re)
+            if [ -n "$flag" ];then
+                if [ -z "$UT_list_prec" ];then
+                    UT_list_prec="^$ut_case$"
+                elif [[ "${#UT_list_prec}" -gt 10000 ]];then
+                    UT_list_prec_1="$UT_list_prec_1|^$ut_case$"
+                else
+                    UT_list_prec="$UT_list_prec|^$ut_case$"
+                fi
+            else
+                echo ${ut_case} "won't run in PRECISION_TEST mode."
+            fi
+        done
     fi
 }
 
