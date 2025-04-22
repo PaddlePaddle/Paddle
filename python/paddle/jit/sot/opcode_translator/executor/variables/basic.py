@@ -532,8 +532,9 @@ class TensorVariable(VariableBase):
                     self.meta.dist_info
                 ),
                 [
+                    expr_node,
                     paddle.framework.core.ExternVarExprNode(
-                        "expr_node", expr_node
+                        "___dist_info_from_tensor", DistInfo.from_tensor
                     ),
                 ],
             ),

@@ -34,16 +34,19 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
 
-#define CheckTensorFromPyObject(value)        \
-  auto tensor = GetTensorFromPyObject(value); \
-  if (!tensor) {                              \
-    return false;                             \
+#define HANDLE_NULL_TENSOR(tensor) \
+  {                                \
+    if (!tensor) {                 \
+      return false;                \
+    }                              \
   }
 
 #define HANDLE_NULL_VALUE(value) \
-  if ((value) == NULL) {         \
-    PyErr_Clear();               \
-    return false;                \
+  {                              \
+    if ((value) == NULL) {       \
+      PyErr_Clear();             \
+      return false;              \
+    }                            \
   }
 
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
@@ -112,14 +115,16 @@ bool LengthMatchGuard::check(PyObject* value) {
 }
 
 bool DtypeMatchGuard::check(PyObject* value) {
-  CheckTensorFromPyObject(value);
+  auto tensor = GetTensorFromPyObject(value);
+  HANDLE_NULL_TENSOR(tensor);
   auto dtype = tensor->type();
   return phi::TransToProtoVarType(dtype) == expected_;
 }
 
 bool ShapeMatchGuard::check(PyObject* value) {
   HANDLE_NULL_VALUE(value);
-  CheckTensorFromPyObject(value);
+  auto tensor = GetTensorFromPyObject(value);
+  HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
   if (shape.size() != expected_.size()) {
     return false;
@@ -203,47 +208,43 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 }
 
 bool TensorDistMetaMatchGuard::check(PyObject* value) {
-  if (value == NULL && dist_info_expected_ == NULL) {
-    return true;
-  }
-  CheckTensorFromPyObject(value);
-  if (tensor->is_dist_tensor() == false) {
+  HANDLE_NULL_VALUE(value);
+
+  PyObject* expr_node = PyTuple_GetItem(value, 0);
+  HANDLE_NULL_VALUE(expr_node);
+
+  auto tensor = GetTensorFromPyObject(expr_node);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
+  if (!tensor->is_dist_tensor()) return false;  // tensor not dist tensor
+
+  PyObject* dist_info_from_tensor_func = PyTuple_GetItem(value, 1);
+  HANDLE_NULL_VALUE(dist_info_from_tensor_func);
+
+  PyObject* dist_info =
+      PyObject_CallOneArg(dist_info_from_tensor_func, expr_node);
+  HANDLE_NULL_VALUE(dist_info);
+
+  PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
+
+  PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
+  PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
+  PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
+  PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
+
+  HANDLE_NULL_VALUE(mesh_shape);
+  HANDLE_NULL_VALUE(process_ids);
+  HANDLE_NULL_VALUE(dims_mapping);
+  HANDLE_NULL_VALUE(local_shape);
+
+  if (!PyObject_Equal(mesh_shape, mesh_shape_expected_.value()) ||
+      !PyObject_Equal(process_ids, mesh_process_ids_expected_.value()) ||
+      !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
+      !PyObject_Equal(local_shape, local_shape_expected_.value())) {
+    PyErr_Clear();
     return false;
   }
-
-  phi::distributed::DistTensor* dist_tensor;
-  if (tensor->is_dist_tensor()) {
-    dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(tensor->impl().get());
-  } else {
-    return false;
-  }
-
-  auto dist_mesh = dist_tensor->process_mesh();
-
-  // mesh.shape
-  if (mesh_shape_expected_ != dist_mesh.shape()) {
-    return false;
-  }
-
-  // mesh.process_ids
-  if (dims_mapping_expected_ != dist_mesh.process_ids()) {
-    return false;
-  }
-
-  // dims_mapping
-  // dist_tensor->placements();
-
-  // // local_shape
-  // auto local_shape = dist_tensor->value();
-  // auto expected_local_shape = expected_dist_tensor->value();
-  // if (local_shape.dims() != expected_local_shape.dims() ||
-  //     local_shape.numel() != expected_local_shape.numel() ||
-  //     local_shape.layout() != expected_local_shape.layout() ||
-  //     local_shape.dtype() != expected_local_shape.dtype() ||
-  //     local_shape.offset() != expected_local_shape.offset()) {
-  //   return false;
-  // }
 
   return true;
 }
@@ -302,20 +303,34 @@ std::string ItemExprNode::stringify(int indent) {
 }
 
 std::optional<int> GuardNode::lookup(FrameProxy* frame) {
-  // TODO(zrr1999): support multiple exprs
-  auto expr = exprs.back();
-  auto value = expr->eval(frame);
+  PyObject* value = [this, frame]() {
+    if (exprs.size() == 1) {
+      return exprs.back()->eval(frame);
+    }
+    auto values = std::vector<PyObject*>(exprs.size());
+    for (size_t i = 0; i < exprs.size(); ++i) {
+      values[i] = exprs[i]->eval(frame);
+    }
+    auto packed_value = PyTuple_New(exprs.size());
+    for (size_t i = 0; i < exprs.size(); ++i) {
+      PyTuple_SetItem(packed_value, i, values[i]);
+    }
+    return packed_value;
+  }();
   if (guard->check(value)) {
     if (return_cache_index.has_value()) {
+      Py_DECREF(value);
       return return_cache_index.value();
     }
     for (auto& next_guard_node : next_guard_nodes) {
       auto ret = next_guard_node->lookup(frame);
       if (ret.has_value()) {
+        Py_DECREF(value);
         return ret.value();
       }
     }
   }
+  Py_DECREF(value);
   return std::nullopt;
 }
 std::string GuardNode::stringify(int indent) {
