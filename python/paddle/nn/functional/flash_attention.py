@@ -401,6 +401,50 @@ def flash_attention(
     name: str | None = ...,
 ) -> tuple[Tensor, Tensor | None]: ...
 
+def flash_attention_v3_varlen(
+    query,
+    key,
+    value,
+    cu_seqlens_q,
+    cu_seqlens_k,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
+    name=None,
+    softmax_scale=None,
+    max_seqlen_q=0,
+    max_seqlen_k=0,
+):
+    if softmax_scale is None:
+        softmax_scale = query.shape[-1] ** (-0.5)
+    out, softmax_lse = _C_ops.flash_attn_v3_varlen(
+        query,
+        key,
+        value,
+        cu_seqlens_q,
+        cu_seqlens_k,
+        None,  # q_v_
+        None,  # q_descale_
+        None,  # k_descale_
+        None,  # v_descale_
+        softmax_scale,
+        causal,
+        -1,  # window_size_left
+        -1,  # window_size_right
+        0.0,  # softcap
+        1,  # num_splits
+        False,  # manual_set_pack_gqa
+        False,  # pack_gqa_
+        0,  # sm_margin,
+        max_seqlen_q,
+        max_seqlen_k
+    )
+    return out, None  # return_softmax
+
 
 def flash_attention(
     query,

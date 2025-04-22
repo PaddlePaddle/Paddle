@@ -704,9 +704,11 @@ if(NOT WITH_GPU
    OR (ARCH_BIN_CONTAINS_90 EQUAL -1))
   set(WITH_NVSHMEM OFF)
 endif()
+# set(WITH_NVSHMEM ON)
+message(STATUS "goto Using loaded nvshmem now")
 if(WITH_NVSHMEM)
+  message(STATUS "Using loaded nvshmem now")
   include(external/nvshmem)
-  list(APPEND third_party_deps extern_nvshmem)
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
