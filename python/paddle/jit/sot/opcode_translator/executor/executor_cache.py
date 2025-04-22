@@ -29,6 +29,7 @@ from ...utils import (
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     BreakGraphError,
     CompileCountInfo,
+    ConditionalFallbackError,
     FallbackError,
     InfoCollector,
     InnerError,
@@ -307,10 +308,11 @@ def start_translate(
     Returns:
         tuple[CustomCode, Guard | None, GuardChain | None]: The translated code object, its guard function and its guard tree node, or None if translation fails.
     """
+    simulator = None
     graph = FunctionGraph(frame.f_code, frame.f_globals, **kwargs)
-    vframe = VirtualFrame.from_real_frame(frame, graph)
-    simulator = OpcodeExecutor(vframe, graph)
     try:
+        vframe = VirtualFrame.from_real_frame(frame, graph)
+        simulator = OpcodeExecutor(vframe, graph)
         simulator.check_code_simulatable()
         InfoCollector().attach(CompileCountInfo, frame.f_code)
         with sot_simulation_mode_guard(True):
@@ -332,9 +334,9 @@ def start_translate(
             f"Found BreakGraphError raised, it should not be catch at start_translate!\n{e}"
         )
     except FallbackError as e:
-        if simulator.vframe.code in NO_FALLBACK_CODES:
+        if frame.f_code in NO_FALLBACK_CODES:
             raise InnerError(
-                f"{simulator.vframe.code.co_name} should not fallback, but got '{e}'"
+                f"{frame.f_code.co_name} should not fallback, but got '{e}'"
             )
         if is_strict_mode():
             raise
@@ -343,7 +345,6 @@ def start_translate(
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-
         dummy_guard_chain = [
             # TODO(zrr1999): GuardNode should support zero-expr constructor
             paddle.framework.core.GuardNode(
@@ -351,14 +352,23 @@ def start_translate(
                 [paddle.framework.core.ConstantExprNode(True)],
             )
         ]
+        guard, guard_chain = dummy_guard, dummy_guard_chain
+
+        if isinstance(e, ConditionalFallbackError):
+            # Guard global variables only
+            graph.input_variables.clear()
+            guard = graph.guard_fn
+            guard_chain = graph.guard_chain
+
         return (
             CustomCode(None, e.disable_eval_frame),
-            dummy_guard,
-            dummy_guard_chain,
+            guard,
+            guard_chain,
         )
     except Exception as e:
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:
-        simulator.cleanup()
+        if simulator is not None:
+            simulator.cleanup()
         del simulator
         gc.collect()

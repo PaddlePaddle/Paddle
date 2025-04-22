@@ -72,6 +72,7 @@ from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     ConstTypes,
     DataDependencyDynamicShapeBreak,
     DataDependencyOperationBreak,
@@ -112,6 +113,7 @@ from ..tracker import (
     GetItemTracker,
     GetIterTracker,
     GlobalTracker,
+    LocalTracker,
     SymbolicOperationTracker,
     Tracker,
 )
@@ -570,7 +572,7 @@ class TensorVariable(VariableBase):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 2",
+                        f"{{}}.shape[{i}] >= 1",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )
@@ -951,7 +953,7 @@ class SymbolicVariable(VariableBase):
                 (
                     GreaterEqualConstraintNode(
                         SymbolicConstraintNode(self.var_name),
-                        ConstantConstraintNode(2),
+                        ConstantConstraintNode(1),
                     ),
                     {self.var_name: self},
                 )
@@ -1258,7 +1260,7 @@ class SymbolicVariable(VariableBase):
         value: Any,
         tracker: Tracker,
         symbolic_inputs: dict[str, dict[int, int] | None],
-    ):
+    ) -> bool | None:
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
@@ -1267,7 +1269,9 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
-            if value < 2:  # Specialize 0 and 1
+            if value == 0:
+                return None  # Fallback to dygraph
+            if value < 1:  # Specialize 0 and 1
                 return False
             if len(symbolic_input.keys()) > 1:
                 return True
@@ -1291,6 +1295,15 @@ class SymbolicVariable(VariableBase):
         tensor_var = dim_tracker.container.tracker.obj
         shape_idx = dim_tracker.key
         return tensor_var, shape_idx
+
+    @staticmethod
+    def has_local_leaf(tracker: Tracker) -> bool:
+        if isinstance(tracker, LocalTracker):
+            return True
+        return any(
+            SymbolicVariable.has_local_leaf(input.tracker)
+            for input in tracker.inputs
+        )
 
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -1322,6 +1335,8 @@ class SymbolicVariable(VariableBase):
             return None
         if not tracker.is_traceable():
             return None
+        if not SymbolicVariable.has_local_leaf(tracker):
+            return None
 
         from ..executor_cache import OpcodeExecutorCache
 
@@ -1329,9 +1344,21 @@ class SymbolicVariable(VariableBase):
             graph.pycode_gen._origin_code
         )
 
-        if SymbolicVariable.should_create_symbolic_variable(
+        should_create_sym = SymbolicVariable.should_create_symbolic_variable(
             value, tracker, symbolic_inputs
+        )
+        if (
+            should_create_sym is None
+            and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
+            graph.add_global_guarded_variable(
+                ConstantVariable(value, graph, tracker)
+            )
+            raise ConditionalFallbackError(
+                "Fallback graph since input has 0 size Tensor",
+                disable_eval_frame=True,
+            )
+        elif should_create_sym:
             return SymbolicVariable(SymbolicInt(value), graph, tracker)
         return None
 
