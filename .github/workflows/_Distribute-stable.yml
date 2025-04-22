@@ -70,6 +70,8 @@ jobs:
             -e COMMIT_ID \
             -e work_dir \
             -e PADDLE_ROOT \
+            -e ci_scripts \
+            -e CI_name \
             -e WITH_SHARED_PHI \
             -e WITH_MKL \
             -e WITH_TESTING \
@@ -82,7 +84,6 @@ jobs:
             -e GENERATOR \
             -e CCACHE_MAXSIZE \
             -e CCACHE_LIMIT_MULTIPLE \
-            -e ci_scripts \
             -e WITH_AVX \
             -e CACHE_DIR \
             -e CCACHE_DIR \
@@ -134,7 +135,10 @@ jobs:
           set +e
           flashattn_version=$(git submodule status | grep flashattn | awk "{print \$1}" | sed "s#-##g")
           echo "flashattn_version=${flashattn_version}" >> ${{ github.env }}
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/flashattn_cache/${PR_ID}/${COMMIT_ID}/flashattn_libs_${flashattn_version}.tar.gz --no-check-certificate; FACODE=$?
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/gpups/flashattn_cache/flashattn_libs_${flashattn_version}.tar.gz --no-check-certificate; FACODE=$?
+          if [ $FACODE -ne 0 ]; then
+            echo "flashattn_cached_package=true" >> ${{ github.env }}
+          fi
           '
 
       - name: Build
@@ -151,11 +155,13 @@ jobs:
       - name: Packaging of products
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          cd ${work_dir}/build/third_party/install/flashattn/lib
-          mkdir flashattn_libs_${flashattn_version} && cd flashattn_libs_${flashattn_version}
-          mkdir fa_libs && cp ../lib*.so fa_libs && tar -zcf fa_libs.tar ./fa_libs && rm -rf ./fa_libs
-          md5sum fa_libs.tar |awk '{print $1}' >MD5.txt
-          cd .. && tar -zcf flashattn_libs_${flashattn_version}.tar ./flashattn_libs_${flashattn_version}
+          if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
+            cd ${work_dir}/build/third_party/install/flashattn/lib
+            mkdir flashattn_libs_${flashattn_version} && cd flashattn_libs_${flashattn_version}
+            mkdir fa_libs && cp ../lib*.so fa_libs && tar -zcf fa_libs.tar ./fa_libs && rm -rf ./fa_libs
+            md5sum fa_libs.tar |awk '{print $1}' >MD5.txt
+            cd .. && tar -zcf flashattn_libs_${flashattn_version}.tar ./flashattn_libs_${flashattn_version}
+          fi
           cd build
           rm -rf $(find . -name "*.a")
           rm -rf $(find . -name "*.o")
@@ -184,9 +190,11 @@ jobs:
           echo "Uploading whl to bos"
           mv ${work_dir}/dist/${{ env.paddle_whl }} .
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
-          echo "Uploading flashattn_libs_${flashattn_version}.tar.gz to bos"
-          mv ${work_dir}/build/third_party/install/flashattn/lib/flashattn_libs_${flashattn_version}.tar .
-          python ${{ env.bos_file }} flashattn_libs_${flashattn_version}.tar.gz paddle-github-action/PR/gpups/flashattn_cache/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
+            echo "Uploading flashattn_libs_${flashattn_version}.tar.gz to bos"
+            mv ${work_dir}/build/third_party/install/flashattn/lib/flashattn_libs_${flashattn_version}.tar .
+            python ${{ env.bos_file }} flashattn_libs_${flashattn_version}.tar.gz paddle-github-action/PR/gpups/flashattn_cache
+          fi
           rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
           '
 
@@ -263,6 +271,8 @@ jobs:
           -e COMMIT_ID \
           -e work_dir \
           -e PADDLE_ROOT \
+          -e ci_scripts \
+          -e CI_name \
           -e FLAGS_fraction_of_gpu_memory_to_use \
           -e CTEST_OUTPUT_ON_FAILURE \
           -e CTEST_PARALLEL_LEVEL \
