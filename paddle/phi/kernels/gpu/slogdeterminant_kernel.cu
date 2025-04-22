@@ -52,8 +52,8 @@ struct SlogDeterminantFunctor {
                   DenseTensor* sign,
                   DenseTensor* logdet) {
     std::vector<T> input_vec;
-    std::vector<T> sign_vec;
-    std::vector<T> log_vec;
+    T* sign_data = dev_ctx.template Alloc<T>(sign);
+    T* logdet_data = dev_ctx.template Alloc<T>(logdet);
     phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
@@ -69,14 +69,12 @@ struct SlogDeterminantFunctor {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
-      sign_vec.push_back(phi::sign(det_val));
+      sign_data[i] = phi::sign(det_val);
       det_val >= 0
-          ? log_vec.push_back(std::log(det_val))
-          : log_vec.push_back(std::log(std::abs(
-                det_val)));  // for computing log value of a negative value.
+          ? logdet_data[i] = std::log(det_val)
+          : logdet_data[i] = std::log(std::abs(
+                det_val));  // for computing log value of a negative value.
     }
-    phi::TensorFromVector(sign_vec, dev_ctx, sign);
-    phi::TensorFromVector(log_vec, dev_ctx, logdet);
   }
 };
 
