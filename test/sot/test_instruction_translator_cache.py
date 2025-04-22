@@ -90,6 +90,8 @@ class GuardCode:
         self.func = lambda frame: recompile
         self.mirror_guard = self.func
         self.expr = f"lambda frame: {recompile}"
+        self.inlined_expr = f"lambda frame: {recompile}"
+        self.__globals__ = {}
 
     def __call__(self, *args, **kwargs):
         return self.func(*args, **kwargs)

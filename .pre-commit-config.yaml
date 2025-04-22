@@ -152,17 +152,17 @@ repos:
           (?x)^(
             cmake/external/onnxruntime.cmake
           )$
-#   # For YAML files
-#   - repo: https://github.com/google/yamlfmt
-#     rev: v0.16.0
-#     hooks:
-#       - id: yamlfmt
-#         files: |
-#           (?x)^(
-#             \.github/.+\.(yaml|yml)|
-#             \.pre-commit-config\.yaml|
-#             \.yamlfmt
-#           )
+  # For YAML files
+  - repo: https://github.com/PFCCLab/yamlfmt-pre-commit-mirror.git
+    rev: v0.16.0
+    hooks:
+      - id: yamlfmt
+        files: |
+          (?x)^(
+            \.github/.+\.(yaml|yml)|
+            \.pre-commit-config\.yaml|
+            \.yamlfmt
+          )
   # Others
   - repo: local
     hooks:

@@ -21,8 +21,7 @@ function is_run_distribute_in_op_test() {
         DISTRIBUTE_CHANGE=`git diff --name-only upstream/$BRANCH | grep -F "${DISTRIBUTE_FILE}"|| true`
         if [ "${DISTRIBUTE_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
             export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
-            echo "FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1" >> $1
-            echo "FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1" >> "$HOME/.bashrc"
+            echo "export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1" >> "$HOME/.bashrc"
         fi
     done
     ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"|| true`
@@ -31,8 +30,7 @@ function is_run_distribute_in_op_test() {
         ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_auto_parallel=" || true`
         if [ "${ALL_OPTEST_BAN_AUTO_PARALLEL_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
             export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
-            echo "FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1" >> $1
-            echo "FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1" >> "$HOME/.bashrc"
+            echo "export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1" >> "$HOME/.bashrc"
         fi
     done
 }

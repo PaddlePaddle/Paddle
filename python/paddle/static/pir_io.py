@@ -172,15 +172,11 @@ def pir_prune_with_input(program, feed_vars, target_vars):
 
     total_ops = program.global_block().ops
     intersection_op_flags = [True] * len(total_ops)
-    skip_prune_ops = ["builtin.parameter"]
 
     # from output to input
     target_vars_ = ValueSet(target_vars)
     for i, op in reversed(list(enumerate(total_ops))):
-        if (
-            some_in_set(get_real_op_outputs(op), target_vars_)
-            or op.name() in skip_prune_ops
-        ):
+        if some_in_set(get_real_op_outputs(op), target_vars_):
             for operand in get_real_op_inputs(op):
                 target_vars_.add(operand)
         else:
@@ -417,7 +413,6 @@ def save_vars_pir(
             save_path = ''
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
-
             core.save_combine_func(
                 save_var_list,
                 save_var_names,

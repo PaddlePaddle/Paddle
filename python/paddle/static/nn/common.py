@@ -2624,8 +2624,6 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'fuse_with_relu',
-                False,
                 'use_global_stats',
                 use_global_stats,
             )
@@ -2637,8 +2635,6 @@ def batch_norm(
                 is_test,
                 'data_layout',
                 data_layout,
-                'fuse_with_relu',
-                False,
                 'use_global_stats',
                 use_global_stats,
             )

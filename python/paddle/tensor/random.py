@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.framework import _current_expected_place
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import Variable
@@ -1696,17 +1696,8 @@ def randint_like(
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             shape = paddle.utils.convert_shape_to_list(shape)
-            out = _legacy_C_ops.randint(
-                'shape',
-                shape,
-                'low',
-                low,
-                'high',
-                high,
-                'seed',
-                0,
-                'dtype',
-                core.VarDesc.VarType.INT64,
+            out = _C_ops.randint(
+                low, high, shape, DataType.INT64, _current_expected_place()
             )
         else:
             check_type(

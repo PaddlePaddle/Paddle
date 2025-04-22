@@ -38,7 +38,7 @@ from paddle.framework import use_pir_api
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
-from .symbolic_shape import SymbolicInt
+from .symbolic_shape.symbolic_value import SymbolicInt
 from .utils import (
     Cache,
     Singleton,

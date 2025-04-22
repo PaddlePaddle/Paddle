@@ -264,6 +264,11 @@ class TensorRTConfigManager:
             return self.trt_config.ops_run_float
         return []
 
+    def get_refit_params_path(self):
+        if self.trt_config and self.trt_config.refit_params_path:
+            return self.trt_config.refit_params_path
+        return None
+
 
 class TensorRTConstantManager:
     _instance = None
