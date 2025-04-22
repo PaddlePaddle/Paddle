@@ -199,6 +199,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
     def handle_psdb_function(self, /, *args, **kwargs):
         # special function for inner debug.
         if self.value is psdb.assert_true:
+            self.graph.add_global_guarded_variable(args[0])
             return ConstantVariable.wrap_literal(
                 self.value(args[0].value), self.graph
             )
@@ -220,7 +221,19 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 PsdbBreakReason("breakgraph by psdb.breakgraph")
             )
         elif self.value is psdb.fallback:
-            raise FallbackError("fallback by psdb.fallback")
+            fallback_sig = inspect.signature(psdb.fallback)
+            bound_args = fallback_sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            recursive_var = VariableFactory.from_value(
+                bound_args.arguments["recursive"],
+                graph=self.graph,
+                tracker=DanglingTracker(),
+            )
+            assert isinstance(recursive_var, ConstantVariable)
+            raise FallbackError(
+                f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
+                disable_eval_frame=recursive_var.get_py_value(),
+            )
         elif self.value is psdb.in_sot:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
