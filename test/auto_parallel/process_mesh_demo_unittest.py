@@ -30,6 +30,8 @@ class TestProcessMesh:
 
         # Test case 1: Get submesh for dp dimension
         dp_mesh = mesh_2d.get_submesh_with_dim("dp")
+        dp_mesh_ = mesh_2d["dp"]
+        assert dp_mesh == dp_mesh_
         if curr_rank == 0:
             assert dp_mesh.process_ids == [0, 2]
         elif curr_rank == 1:
@@ -37,6 +39,8 @@ class TestProcessMesh:
 
         # Test case 2: Get submesh for tp dimension
         tp_mesh = mesh_2d.get_submesh_with_dim("tp")
+        tp_mesh_ = mesh_2d["tp"]
+        assert tp_mesh == tp_mesh_
         if curr_rank == 0:
             assert tp_mesh.process_ids == [0, 1]
         elif curr_rank == 1:
@@ -49,8 +53,14 @@ class TestProcessMesh:
 
         # Test each dimension
         pp_mesh = mesh_3d.get_submesh_with_dim("pp")
+        pp_mesh_ = mesh_3d["pp"]
+        assert pp_mesh == pp_mesh_
         dp_mesh = mesh_3d.get_submesh_with_dim("dp")
+        dp_mesh_ = mesh_3d["dp"]
+        assert dp_mesh == dp_mesh_
         tp_mesh = mesh_3d.get_submesh_with_dim("tp")
+        tp_mesh_ = mesh_3d["tp"]
+        assert tp_mesh == tp_mesh_
 
         # Verify pp dimension results
         if curr_rank == 0:

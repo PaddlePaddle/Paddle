@@ -208,7 +208,7 @@ class ProcessMesh(core.ProcessMesh):
         return self._unique_id
 
     def __getitem__(
-        self, index: slice | tuple[slice, ...] | SupportsIndex
+        self, index: slice | tuple[slice, ...] | str | SupportsIndex
     ) -> ProcessMesh:
         if isinstance(index, tuple):
             new_dim_names = []
@@ -225,6 +225,8 @@ class ProcessMesh(core.ProcessMesh):
             new_mesh = self._mesh[index]
             new_dim_names = self._dim_names
             return ProcessMesh(new_mesh, new_dim_names)
+        elif isinstance(index, str):
+            return self.get_submesh_with_dim(index)
         else:
             new_mesh = self._mesh[index]
             new_dim_names = self._dim_names[1:]
