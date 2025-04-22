@@ -99,7 +99,7 @@ class TestObjectListCommunication:
             assert data[1] == "hello"
             assert data[2] == {"key": "value"}
 
-    def test_custom_object_communication(self):
+    def test_distributed_object_communication(self):
         """Test objects with distributed attributes"""
         curr_rank = dist.get_rank()
 
