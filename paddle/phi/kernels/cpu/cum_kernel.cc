@@ -58,7 +58,9 @@ void ScanKernel(const Context& dev_ctx,
                 Reducer reducer,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-
+  if (out->numel() == 0) {
+    return;
+  }
   if (x.numel() == 1) {
     auto raw_dims = out->dims();
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
@@ -271,9 +273,7 @@ PD_REGISTER_KERNEL(cumsum,
                    double,
                    int16_t,
                    int,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(
     logcumsumexp, CPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
