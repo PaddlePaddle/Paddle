@@ -16,12 +16,11 @@ import os
 import unittest
 
 import numpy as np
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
 from paddle.base import core
-
-from .utils import dygraph_guard
 
 
 def group_norm_naive_for_general_dimension(
