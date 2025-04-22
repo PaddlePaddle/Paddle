@@ -51,7 +51,7 @@ class Parallelizer:
         assert self._dist_context._is_initialized
         self._pass_context = self._dist_context.pass_context
         self._strategy = self._dist_context.strategy
-        self._logger = get_logger(logging.INFO)
+        self._logger = get_logger(logging.INFO, __name__)
 
     @property
     def is_train(self):

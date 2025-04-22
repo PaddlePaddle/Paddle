@@ -20,7 +20,7 @@ from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
 from .pipeline_pass_base import PipelinePassBase
 
-logger = get_logger(logging.INFO)
+logger = get_logger(logging.INFO, __name__)
 
 
 @register_pass("pipeline_scheduler_Eager1F1B")

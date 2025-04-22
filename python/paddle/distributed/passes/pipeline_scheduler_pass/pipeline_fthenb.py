@@ -23,7 +23,7 @@ from ..pass_utils import (
 )
 from .pipeline_pass_base import PipelinePassBase
 
-logger = get_logger(logging.INFO)
+logger = get_logger(logging.INFO, __name__)
 
 
 @register_pass("pipeline_scheduler_FThenB")

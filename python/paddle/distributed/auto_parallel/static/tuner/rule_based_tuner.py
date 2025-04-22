@@ -1056,7 +1056,7 @@ class RuleBasedTuner:
         self._mode = mode
         assert level in ["o1", "o2"]
         self._level = level
-        self._logger = get_logger(logging.INFO)
+        self._logger = get_logger(logging.INFO, __name__)
         self._use_dp = False
 
         # forward sub program

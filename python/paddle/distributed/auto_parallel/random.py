@@ -22,7 +22,7 @@ from ..utils.log_utils import get_logger
 from .process_mesh import retrieve_unique_id_for_process_mesh
 from .static.utils import _get_idx_in_axis
 
-_logger = get_logger(logging.INFO)
+_logger = get_logger(logging.INFO, __name__)
 
 _rng_name_to_seed = {}
 _rng_name_to_states = {}

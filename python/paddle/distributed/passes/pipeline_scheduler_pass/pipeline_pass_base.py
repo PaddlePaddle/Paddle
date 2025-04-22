@@ -23,7 +23,7 @@ from ..pass_utils import (
     set_skip_gc_vars,
 )
 
-logger = get_logger(logging.INFO)
+logger = get_logger(logging.INFO, __name__)
 
 
 class PipelinePassBase(PassBase):

@@ -16,7 +16,7 @@ import logging
 
 from ...utils.log_utils import get_logger
 
-_logger = get_logger(logging.INFO)
+_logger = get_logger(logging.INFO, __name__)
 from ..random import determinate_rng, is_enable_auto_rand_ctrl
 from .common import (
     DistributedOperatorImplContainer,

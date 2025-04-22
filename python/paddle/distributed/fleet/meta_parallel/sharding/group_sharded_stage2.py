@@ -37,7 +37,7 @@ from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
 from .group_sharded_storage import GradStorage
 from .group_sharded_utils import Type, device_guard
 
-logger_ = get_logger(logging.WARNING)
+logger_ = get_logger(logging.WARNING, __name__)
 
 
 def _trainable(param):

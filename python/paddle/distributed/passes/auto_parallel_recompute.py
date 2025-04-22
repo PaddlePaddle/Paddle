@@ -41,7 +41,7 @@ from ..auto_parallel.static.utils import (
 from ..utils.log_utils import get_logger
 from .pass_base import PassBase, register_pass
 
-logger = get_logger(logging.INFO)
+logger = get_logger(logging.INFO, __name__)
 
 
 class RecomputeState(ProgramStats):

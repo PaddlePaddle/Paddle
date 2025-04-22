@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from paddle.distributed.communication.group import Group
     from paddle.nn import Layer
 
-logger_ = get_logger(logging.WARNING)
+logger_ = get_logger(logging.WARNING, __name__)
 
 
 def group_sharded_parallel(

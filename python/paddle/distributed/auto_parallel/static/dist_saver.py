@@ -52,7 +52,7 @@ def _process_path(path):
 
 class DistributedSaver:
     def __init__(self):
-        self._logger = get_logger(logging.INFO)
+        self._logger = get_logger(logging.INFO, __name__)
 
     def save(self, path, serial_program, dist_main_program, dist_context):
         def _save_state(program, path, mode="param"):

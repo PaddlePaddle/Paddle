@@ -44,7 +44,7 @@ class Converter:
         self._tensors_dict = self._check_tensor_dict(tensors_dict)
         self._pre_strategy = self._check_pre_strategy(pre_strategy)
         self._cur_strategy = self._check_cur_strategy(cur_strategy)
-        self._logger = get_logger(logging.INFO)
+        self._logger = get_logger(logging.INFO, __name__)
 
     def _check_tensor_dict(self, tensors_dict):
         if not tensors_dict:

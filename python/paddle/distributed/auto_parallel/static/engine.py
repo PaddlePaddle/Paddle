@@ -228,7 +228,7 @@ class Engine:
             )
         self._strategy = strategy or Strategy()
 
-        self._logger = get_logger(logging.INFO)
+        self._logger = get_logger(logging.INFO, __name__)
 
         # for compute cost
         # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs

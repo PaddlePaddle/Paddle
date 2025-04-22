@@ -73,7 +73,7 @@ class Planner:
         return self._completer
 
     def plan(self):
-        logger = get_logger(logging.INFO)
+        logger = get_logger(logging.INFO, __name__)
         path = None
         if self._dist_context._json_config:
             try:

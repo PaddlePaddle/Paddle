@@ -1230,7 +1230,7 @@ class Cluster:
         return self.__str__()
 
 
-logger = get_logger(logging.INFO)
+logger = get_logger(logging.INFO, __name__)
 
 
 def get_default_cluster(json_config=None, auto_config=None):

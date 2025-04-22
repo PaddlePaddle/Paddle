@@ -26,7 +26,7 @@ from paddle.utils import strtobool
 
 from ..utils.log_utils import get_logger
 
-logger = get_logger("INFO", "root")
+logger = get_logger("INFO", __name__)
 
 
 def get_cluster_from_args(args, selected_gpus):
