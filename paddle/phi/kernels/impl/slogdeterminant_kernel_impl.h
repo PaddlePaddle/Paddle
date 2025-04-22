@@ -84,10 +84,10 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
                   DenseTensor* logdet) {
     using MatrixType =
         Eigen::Matrix<std::complex<T>, Eigen::Dynamic, Eigen::Dynamic>;
-    using RealT = typename phi::dtype::Real<T>;
-    std::vector<phi::dtype::complex<T>> input_vec;
-    T* sign_data = dev_ctx.template Alloc<T>(sign);
-    RealT* logdet_data = dev_ctx.template Alloc<RealT>(logdet);
+    using Complex_T = typename phi::dtype::complex<T>;
+    std::vector<Complex_T> input_vec;
+    Complex_T* sign_data = dev_ctx.template Alloc<Complex_T>(sign);
+    T* logdet_data = dev_ctx.template Alloc<T>(logdet);
     phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
@@ -104,8 +104,8 @@ struct SlogDeterminantFunctor<phi::dtype::complex<T>, Context> {
       VLOG(2) << "det value: " << matrix.determinant();
       VLOG(2) << "matrix val: " << matrix;
       std::complex<T> det_val = matrix.determinant();
-      RealT abs_det_val = std::abs(det_val);
-      sign_data[i] = static_cast<phi::dtype::complex<T>>(
+      T abs_det_val = std::abs(det_val);
+      sign_data[i] = static_cast<Complex_T>(
           phi::sign(det_val, static_cast<std::complex<T>>(abs_det_val)));
       logdet_data[i] = std::log(abs_det_val);
     }
