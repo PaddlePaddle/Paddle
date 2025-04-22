@@ -1113,32 +1113,34 @@ class UnsqueezeOpPattern
                              .type()
                              .dyn_cast<paddle::dialect::DenseTensorType>()
                              .dims());
+      const FullIntArrayOp axis_full_op = CastDefinedTo<FullIntArrayOp>(op, 1);
+      auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
+      int output_rank = in_shape.size() + static_cast<int>(axis_vec.size());
+      int cur_output_rank = in_shape.size();
+      std::vector<int> output_shape(output_rank, 0);
 
-      const std::set<int64_t> axis_set = [&] {
-        const FullIntArrayOp axis_full_op =
-            CastDefinedTo<FullIntArrayOp>(op, 1);
-        auto axis_vec = cinn::dialect::ir::GetVectorAttr(axis_full_op, "value");
-        std::set<int64_t> axis_set;
-        for (size_t i = 0; i < axis_vec.size(); ++i) {
-          auto axis = axis_vec[i];
-          int64_t axis_val = axis < 0 ? axis + in_shape.size() + 1 + i : axis;
-          axis_set.insert(axis_val);
-        }
-        return axis_set;
-      }();
+      for (int axis : axis_vec) {
+        int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
 
-      const std::vector<int> output_shape = [&] {
-        const size_t output_rank = in_shape.size() + axis_set.size();
-        std::vector<int> output_shape;
-        for (size_t i = 0, input_index = 0; i < output_rank; ++i) {
-          if (axis_set.count(i)) {
-            output_shape.push_back(1);
-            continue;
+        // Move old axis, and insert new axis
+        for (int i = cur_output_rank; i >= cur; --i) {
+          if (output_shape[i] == 1) {
+            // Move axis
+            output_shape[i + 1] = 1;
+            output_shape[i] = 0;
           }
-          output_shape.push_back(in_shape[input_index++]);
         }
-        return output_shape;
-      }();
+        output_shape[cur] = 1;
+        // Add the output size.
+        cur_output_rank++;
+      }
+
+      // Make output shape
+      for (int in_idx = 0, out_idx = 0; out_idx < output_rank; ++out_idx) {
+        if (output_shape[out_idx] == 0) {
+          output_shape[out_idx] = in_shape[in_idx++];
+        }
+      }
       ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 

@@ -609,15 +609,6 @@ void IRSchedule::Bind(const Expr& loop, const std::string& thread_axis) {
                                    {}));
 }
 
-Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
-  auto result = impl_->Rfactor(rf_loop, rf_axis);
-  trace_.Append(ScheduleDesc::Step("Rfactor",
-                                   {{"rf_loop", std::vector<Expr>({rf_loop})}},
-                                   {{"rf_axis", rf_axis}},
-                                   {result}));
-  return result;
-}
-
 Expr IRSchedule::FactorizeReduction(const Expr& rf_loop,
                                     int rf_axis,
                                     bool with_write_back_block_init) {

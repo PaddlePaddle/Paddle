@@ -6010,10 +6010,10 @@ def tensordot(
         sx, sy = shape_x[dim_x], shape_y[dim_y]
         if sx == 1:
             shape_y[dim_y] = 1
-            y = y.sum(dim_y).reshape(shape_y)
+            y = y.sum(dim_y, dtype=y.dtype).reshape(shape_y)
         elif sy == 1:
             shape_x[dim_x] = 1
-            x = x.sum(dim_x).reshape(shape_x)
+            x = x.sum(dim_x, dtype=x.dtype).reshape(shape_x)
         else:
             assert sx == sy, (
                 "The dimensional size for 'x' and 'y' in "
