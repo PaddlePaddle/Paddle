@@ -35,7 +35,7 @@ jobs:
     needs: clone
 
   coverage:
-    name: PR-CI-Coverage
+    name: Coverage
     uses: ./.github/workflows/_Coverage.yml
     needs: clone
 

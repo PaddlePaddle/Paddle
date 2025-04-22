@@ -127,7 +127,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-Coverage / Coverage build'
+          JOB_NAME: 'Coverage / Coverage build'
 
       - name: Rerun coverage test
         if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'test') }}
@@ -137,7 +137,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'PR-CI-Coverage / Coverage test'
+          JOB_NAME: 'Coverage / Coverage test'
 
       - name: Rerun XPU
         if: ${{ contains(env.comment_body, 'xpu') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
