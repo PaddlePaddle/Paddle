@@ -13,38 +13,39 @@ concurrency:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_DIR: PR-test
 
 jobs:
   clone:
     name: Clone-linux-test
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      pr_dir: PR-test
+      pr_dir: ${{ env.PR_DIR }}
 
   xpu:
     name: Linux-XPU-test
     uses: ./.github/workflows/_Linux-XPU.yml
     with:
-      pr_dir: PR-test
+      pr_dir: ${{ env.PR_DIR }}
     needs: clone
 
   coverage:
     name: PR-CI-Coverage-test
     uses: ./.github/workflows/_Coverage.yml
     with:
-      pr_dir: PR-test
+      pr_dir: ${{ env.PR_DIR }}
     needs: clone
 
   cpu:
     name: Linux-CPU-test
     uses: ./.github/workflows/_CPU.yml
     with:
-      pr_dir: PR-test
+      pr_dir: ${{ env.PR_DIR }}
     needs: clone
 
   npu:
     name: Linux-NPU-test
     uses: ./.github/workflows/_NPU.yml
     with:
-      pr_dir: PR-test
+      pr_dir: ${{ env.PR_DIR }}
     needs: cpu

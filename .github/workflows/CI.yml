@@ -13,24 +13,25 @@ concurrency:
 env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_DIR: PR
 
 jobs:
   clone:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
     with:
-      pr_dir: PR
+      pr_dir: ${{ env.PR_DIR }}
 
   sot:
     name: PR-CI-SOT
     uses: ./.github/workflows/_SOT.yml
     with:
-      pr_dir: PR
+      pr_dir: ${{ env.PR_DIR }}
     needs: clone
 
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
     with:
-      pr_dir: PR
+      pr_dir: ${{ env.PR_DIR }}
     needs: clone
