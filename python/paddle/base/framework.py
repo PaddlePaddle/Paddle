@@ -7790,6 +7790,7 @@ class EagerParamBase(core.eager.Tensor):
         # hook functions for lazy initialization
         self._init_func = None
         self._init_op_creator = None
+        self.main_grad = None
 
     @classmethod
     def from_tensor(cls, tensor, **kwargs):
