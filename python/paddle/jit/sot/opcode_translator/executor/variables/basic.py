@@ -526,7 +526,6 @@ class TensorVariable(VariableBase):
                     )
                 ],
             ),
-            # TODO(zrr1999): use TensorMetaMatchGuard to support dist_info check
             paddle.framework.core.GuardNode(
                 paddle.framework.core.TensorDistMetaMatchGuard(
                     self.meta.dist_info
