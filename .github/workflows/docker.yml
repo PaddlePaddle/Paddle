@@ -50,6 +50,7 @@ jobs:
           rm Paddle.tar.gz
           cd tools/dockerfile
           bash ci_dockerfile.sh
+          cd ../..
 
           # docker build images
           declare -A docker_files=(["docker_cpu"]="$docker_cpu_file" ["docker_inference"]="$docker_inference_file" ["docker_coverage"]="$docker_coverage_file" ["docker_build"]="$docker_build_file" ["docker_distribute"]="$docker_distribute_file")
