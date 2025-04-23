@@ -302,42 +302,44 @@ class ProcessMesh(core.ProcessMesh):
         Returns:
             A :class:`ProcessMesh` object
 
-        The following program runs on each process/rank in an SPMD manner in a world size of 8.
-        In the first example:
-            Calling mesh_2d["dp"] on rank 0, 4 returns a 1D submesh of  DeviceMesh:([0, 4]).
-            Calling mesh_2d["dp"] on rank 1, 5 returns a 1D submesh of  DeviceMesh:([1, 5]).
-            Calling mesh_2d["dp"] on rank 2, 6 returns a 1D submesh of  DeviceMesh:([2, 6]).
-            Calling mesh_2d["dp"] on rank 3, 7 returns a 1D submesh of  DeviceMesh:([3, 7]).
-            Calling mesh_2d["tp"] on rank 0, 1, 2, 3 returns a 1D submesh of DeviceMesh:([0, 1, 2, 3]).
-            Calling mesh_2d["tp"] on rank 4, 5, 6, 7 returns a 1D submesh of  DeviceMesh:([4, 5, 6, 7]).
-
-        In the second example:
-            Calling mesh_3d["pp"] on rank 0, 4 returns a 2D submesh of DeviceMesh:([0, 4]).
-            Calling mesh_3d["pp"] on rank 1, 5 returns a 2D submesh of DeviceMesh:([1, 5]).
-            Calling mesh_3d["pp"] on rank 2, 6 returns a 2D submesh of DeviceMesh:([2, 6]).
-            Calling mesh_3d["pp"] on rank 3, 7 returns a 2D submesh of DeviceMesh:([3, 7]).
-            Calling mesh_3d["dp"] on rank 0, 2 returns a 2D submesh of DeviceMesh:([0, 2]).
-            Calling mesh_3d["dp"] on rank 1, 3 returns a 2D submesh of DeviceMesh:([1, 3]).
-            Calling mesh_3d["dp"] on rank 4, 6 returns a 2D submesh of DeviceMesh:([4, 6]).
-            Calling mesh_3d["dp"] on rank 5, 7 returns a 2D submesh of DeviceMesh:([5, 7]).
-            Calling mesh_3d["tp"] on rank 0, 1 returns a 2D submesh of DeviceMesh:([0, 1]).
-            Calling mesh_3d["tp"] on rank 2, 3 returns a 2D submesh of DeviceMesh:([2, 3]).
-            Calling mesh_3d["tp"] on rank 4, 5 returns a 2D submesh of DeviceMesh:([4, 5]).
-            Calling mesh_3d["tp"] on rank 6, 7 returns a 2D submesh of DeviceMesh:([6, 7]).
         Examples:
-        .. code-block:: python
+            .. code-block:: python
 
-            >>> import paddle
-            >>> import paddle.distributed as dist
+                >>> import paddle
+                >>> import paddle.distributed as dist
 
-            >>> dist.init_parallel_env()
-            >>> mesh_2d = dist.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "tp"])
-            >>> dp_mesh = mesh_2d["dp"]
-            >>> tp_mesh = mesh_2d["tp"]
-            >>> mesh_3d = dist.ProcessMesh([[[0, 1],[2, 3]], [[4, 5], [6, 7]]], dim_names=["pp","dp","tp"])
-            >>> pp_mesh = mesh_3d["pp"]
-            >>> dp_mesh = mesh_3d["dp"]
-            >>> tp_mesh = mesh_3d["tp"]
+                >>> dist.init_parallel_env()
+                >>> mesh_2d = dist.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "tp"])
+
+                >>> dp_mesh = mesh_2d.get_submesh_with_dim("dp")
+                >>> # ProcessMesh:([0, 4]) on rank 0, 4
+                >>> # ProcessMesh:([1, 5]) on rank 1, 5
+                >>> # ProcessMesh:([2, 6]) on rank 2, 6
+                >>> # ProcessMesh:([3, 7]) on rank 3, 7
+
+                >>> tp_mesh = mesh_2d.get_submesh_with_dim("tp")
+                >>> # ProcessMesh:([0, 1, 2, 3]) on rank 0, 1, 2, 3
+                >>> # ProcessMesh:([4, 5, 6, 7]) on rank 4, 5, 6, 7
+
+                >>> mesh_3d = dist.ProcessMesh([[[0, 1],[2, 3]], [[4, 5], [6, 7]]], dim_names=["pp","dp","tp"])
+
+                >>> pp_mesh = mesh_3d.get_submesh_with_dim("pp")
+                >>> # ProcessMesh:([0, 4]) on rank 0, 4
+                >>> # ProcessMesh:([1, 5]) on rank 1, 5
+                >>> # ProcessMesh:([2, 6]) on rank 2, 6
+                >>> # ProcessMesh:([3, 7]) on rank 3, 7
+
+                >>> dp_mesh = mesh_3d.get_submesh_with_dim("dp")
+                >>> # ProcessMesh:([0, 2]) on rank 0, 2
+                >>> # ProcessMesh:([1, 3]) on rank 1, 3
+                >>> # ProcessMesh:([4, 6]) on rank 4, 6
+                >>> # ProcessMesh:([5, 7]) on rank 5, 7
+
+                >>> tp_mesh = mesh_3d.get_submesh_with_dim("tp")
+                >>> # ProcessMesh:([0, 1]) on rank 0, 1
+                >>> # ProcessMesh:([2, 3]) on rank 2, 3
+                >>> # ProcessMesh:([4, 5]) on rank 4, 5
+                >>> # ProcessMesh:([6, 7]) on rank 6, 7
         """
 
         reorder_mesh = self.get_mesh_with_dim(dim_name)._mesh.reshape(
