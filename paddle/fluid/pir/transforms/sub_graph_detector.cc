@@ -411,7 +411,7 @@ class SubgraphDetector {
  private:
   void ReorderIndexOfSubgraphs();
 
-  void MergeSource2Target(const SubGraphPtr& source, const SubGraphPtr& target);
+  bool MergeSource2Target(const SubGraphPtr& source, const SubGraphPtr& target);
 
   void FallbackSubGraphFusion(const SubGraphPtr& source,
                               const SubGraphPtr& target,
@@ -492,49 +492,61 @@ void SubgraphDetector::ReorderIndexOfSubgraphs() {
   }
 }
 
-void SubgraphDetector::MergeSource2Target(const SubGraphPtr& source,
+bool SubgraphDetector::MergeSource2Target(const SubGraphPtr& source,
                                           const SubGraphPtr& target) {
   VLOG(6) << "Merge source: " << source->DebugStr();
   VLOG(6) << "Merge target: " << target->DebugStr();
+  SubGraph source_back = *source;
+  SubGraph target_back = *target;
   target->Merge(source);
   for (const auto& op : source->ops) {
     op2subgraph_[op] = target;
   }
-  int max_index = std::max(source->topo_index, target->topo_index);
-  int min_index = std::min(source->topo_index, target->topo_index);
-  auto merged = target;
-  // Check if merged subgraph and its related subgraphs
-  // satisfy the topological order condition.
-  int upstream_max_index = -1, downstream_min_index = INT_MAX;
-  for (const auto& upstream : merged->upstreams) {
-    upstream_max_index = std::max(upstream->topo_index, upstream_max_index);
-  }
-  for (const auto& downstream : merged->downstreams) {
-    downstream_min_index =
-        std::min(downstream->topo_index, downstream_min_index);
-  }
-  // 1. If satisfy the topological order after merging, just set max_index
-  VLOG(6) << "Check if satisfy the topological order after merging";
-  if (min_index > upstream_max_index && max_index < downstream_min_index) {
-    merged->topo_index = max_index;
-    subgraph_index_set_.erase(min_index);
-    return;
-  }
-  // 2. If not satisfy the order, find a index between upstream_max_index
-  // and downstream_min_index while not in subgraph_index_set_.
-  VLOG(6) << "Try to find a valid index not in subgraph_index_set_";
-  for (int i = upstream_max_index + 1; i < downstream_min_index; ++i) {
-    if (!subgraph_index_set_.count(i)) {
-      merged->topo_index = i;
+  const auto& update_topo_index = [&]() -> void {
+    int max_index = std::max(source->topo_index, target->topo_index);
+    int min_index = std::min(source->topo_index, target->topo_index);
+    auto merged = target;
+    // Check if merged subgraph and its related subgraphs
+    // satisfy the topological order condition.
+    int upstream_max_index = -1, downstream_min_index = INT_MAX;
+    for (const auto& upstream : merged->upstreams) {
+      upstream_max_index = std::max(upstream->topo_index, upstream_max_index);
+    }
+    for (const auto& downstream : merged->downstreams) {
+      downstream_min_index =
+          std::min(downstream->topo_index, downstream_min_index);
+    }
+    // 1. If satisfy the topological order after merging, just set max_index
+    VLOG(6) << "Check if satisfy the topological order after merging";
+    if (min_index > upstream_max_index && max_index < downstream_min_index) {
+      merged->topo_index = max_index;
       subgraph_index_set_.erase(min_index);
-      subgraph_index_set_.erase(max_index);
-      subgraph_index_set_.insert(i);
       return;
     }
+    // 2. If not satisfy the order, find a index between upstream_max_index
+    // and downstream_min_index while not in subgraph_index_set_.
+    VLOG(6) << "Try to find a valid index not in subgraph_index_set_";
+    for (int i = upstream_max_index + 1; i < downstream_min_index; ++i) {
+      if (!subgraph_index_set_.count(i)) {
+        merged->topo_index = i;
+        subgraph_index_set_.erase(min_index);
+        subgraph_index_set_.erase(max_index);
+        subgraph_index_set_.insert(i);
+        return;
+      }
+    }
+    // 3. If can not find a valid index, reorder topo index of all subgraphs.
+    VLOG(6) << "Reorder topo index of all subgraphs";
+    ReorderIndexOfSubgraphs();
+  };
+  update_topo_index();
+  if (CheckSideEffectOpsOrder()) {
+    VLOG(6) << "Merged subgraph: " << target->DebugStr();
+    return true;
+  } else {
+    FallbackSubGraphFusion(source, target, source_back, target_back);
+    return false;
   }
-  // 3. If can not find a valid index, reorder topo index of all subgraphs.
-  VLOG(6) << "Reorder topo index of all subgraphs";
-  ReorderIndexOfSubgraphs();
 }
 
 void SubgraphDetector::FallbackSubGraphFusion(const SubGraphPtr& source,
@@ -698,7 +710,6 @@ void SubgraphDetector::SubgraphFusion() {
       if (upstream == downstream || !upstream->substitute) continue;
       if (CanFuseUpstream2Downstream(upstream, downstream)) {
         MergeSource2Target(upstream, downstream);
-        VLOG(6) << "Merged subgraph: " << downstream->DebugStr();
       }
     }
   }
@@ -714,7 +725,6 @@ void SubgraphDetector::SubgraphFusion() {
         if (brother == subgraph || !brother->substitute) continue;
         if (!HasRoute(subgraph, brother) && !HasRoute(brother, subgraph)) {
           MergeSource2Target(brother, subgraph);
-          VLOG(6) << "Merged subgraph: " << subgraph->DebugStr();
         }
       }
     }
@@ -734,12 +744,9 @@ void SubgraphDetector::SubgraphFusion() {
       }
       SubGraph lhs_back = *lhs;
       SubGraph rhs_back = *rhs;
-      MergeSource2Target(rhs, lhs);
-      if (CheckSideEffectOpsOrder()) {
+      if (MergeSource2Target(rhs, lhs)) {
         subgraph_list.erase(subgraph_list.begin() + j);
-        VLOG(6) << "Merged subgraph: " << lhs->DebugStr();
       } else {
-        FallbackSubGraphFusion(rhs, lhs, rhs_back, lhs_back);
         ++j;
       }
     }
