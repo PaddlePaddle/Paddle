@@ -321,7 +321,7 @@ jobs:
       - name: Test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          bash ${ci_script}/distribute_test.sh
+          bash ${ci_scripts}/distribute_test.sh
           '
 
     # - name: Terminate and delete the container
