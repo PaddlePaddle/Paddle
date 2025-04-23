@@ -2,10 +2,12 @@ name: PR-CI-Inference
 
 on:
   workflow_call:
+    inputs:
+      docker_inference_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
-  docker_image: 0ca5c4c33a67
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -100,7 +102,7 @@ jobs:
           -e ci_scripts \
           -e CUDA_ARCH_NAME \
           -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
-          -w /paddle --network host ${docker_image} /bin/bash
+          -w /paddle --network host ${{ inputs.docker_inference_image }} /bin/bash
 
       - name: Download paddle.tar.gz and update test branch
         run: |
@@ -237,7 +239,7 @@ jobs:
           -e CUDA_ARCH_NAME \
           -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
           -e GITHUB_API_TOKEN \
-          -w /paddle --network host ${docker_image} /bin/bash
+          -w /paddle --network host ${{ inputs.docker_inference_image }} /bin/bash
 
       - name: Download paddle.tar.gz
         run: |

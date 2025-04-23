@@ -26,8 +26,8 @@ jobs:
 
   sot:
     name: PR-CI-SOT
-    needs: build-docker
     uses: ./.github/workflows/_SOT.yml
+    needs: build-docker
     with:
       docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
@@ -39,7 +39,9 @@ jobs:
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
 
   coverage:
     name: PR-CI-Coverage
