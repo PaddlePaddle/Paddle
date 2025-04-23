@@ -330,6 +330,8 @@ class TensorRTConfig:
         self.workspace_size = workspace_size
         self.use_cuda_graph = use_cuda_graph
         self.refit_params_path = refit_params_path
+        if self.refit_params_path:
+            self.disable_passes.append("constant_folding_pass")
         paddle.framework.set_flags(
             {'FLAGS_trt_min_group_size': min_subgraph_size}
         )

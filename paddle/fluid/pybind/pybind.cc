@@ -86,7 +86,6 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
 #include "paddle/common/macros.h"
-#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -176,7 +175,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/phi/capi/capi.h"
 #include "paddle/phi/core/platform/collective_helper.h"
@@ -2571,14 +2569,7 @@ All parameter, weight, gradient are variables in Paddle.
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });
-  m.def("init_devices", []() {
-    framework::InitDevices();
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-    for (auto &dev_type : phi::DeviceManager::GetAllCustomDeviceTypes()) {
-      paddle::operators::RegisterCustomDeviceCommonKernel(dev_type);
-    }
-#endif
-  });
+  m.def("init_devices", []() { framework::InitDevices(); });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
   m.def("init_tensor_operants", []() {
@@ -3591,11 +3582,6 @@ All parameter, weight, gradient are variables in Paddle.
   GetWorkerInfoByRank(&m);
   GetCurrentWorkerInfo(&m);
   GetAllWorkerInfos(&m);
-#endif
-
-#if defined(PADDLE_WITH_CINN)
-  BindTest(&m);
-  cinn::pybind::BindCINN(&m);
 #endif
 
   BindPir(&m);

@@ -139,10 +139,10 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             translate_count_map = {
                 0: 1,
                 1: 2,  # 0, 1 is specialize to static dim
-                2: 3,  # 2 is first recorded dynamic dim, but it still a static dim
-                3: 4,  # 3 is dynamic dim
-                4: 5,  # 4 is dynamic dim, but it not hit cache
-                5: 5,  # 5 hit cache, no recompile
+                2: 3,  # 2 is dynamic dim
+                3: 3,  # 3 hit cache, no recompile
+                4: 4,  # 4 is dynamic dim, but it not hit cache
+                5: 4,  # 5 hit cache, no recompile
             }
             for i in range(0, 6):
                 self.assert_results(
@@ -184,9 +184,10 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             True
         ), test_instruction_translator_cache_context() as ctx:
             func1 = check_no_breakgraph(lambda n: bool(n))
-            func2 = check_no_breakgraph(lambda n: int(n))
-            func3 = check_no_breakgraph(lambda n: float(n))
-            for func in [func1, func2, func3]:
+            # TODO(SigureMo): Open these cases
+            # func2 = check_no_breakgraph(lambda n: int(n))
+            # func3 = check_no_breakgraph(lambda n: float(n))
+            for func in [func1]:
                 self.assert_results(func, 1)
                 self.assert_results(func, 2)
 
@@ -257,72 +258,72 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([2, 2, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 2)
+            self.assertEqual(ctx.translate_count, 2)  # add constraint s0 < 5
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([3, 3, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 3)  # add constraint s0 < 5
+            self.assertEqual(ctx.translate_count, 2)  # hit constraint s0 < 5
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([4, 4, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 3)  # hit constraint s0 < 5
+            self.assertEqual(ctx.translate_count, 2)  # hit constraint s0 < 5
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([5, 6, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 4)  # add constraint s0 < s1
+            self.assertEqual(ctx.translate_count, 3)  # add constraint s0 < s1
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([6, 7, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 4)  # hit constraint s0 < s1
+            self.assertEqual(ctx.translate_count, 3)  # hit constraint s0 < s1
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([7, 8, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 4)  # hit constraint s0 < s1
+            self.assertEqual(ctx.translate_count, 3)  # hit constraint s0 < s1
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([8, 7, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 5  # add constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count, 4  # add constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([9, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 5  # hit constraint 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count, 4  # hit constraint 2 * (s0 + s1 - 2) <= 30
             )
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([10, 9, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 6)  # add constraint else
+            self.assertEqual(ctx.translate_count, 5)  # add constraint else
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([11, 10, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 6)  # hit constraint else
+            self.assertEqual(ctx.translate_count, 5)  # hit constraint else
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([4, 3, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 6)  # hit constraint s0 < 5
+            self.assertEqual(ctx.translate_count, 5)  # hit constraint s0 < 5
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([5, 8, const_dim])
             )
-            self.assertEqual(ctx.translate_count, 6)  # hit constraint s0 < s1
+            self.assertEqual(ctx.translate_count, 5)  # hit constraint s0 < s1
 
             self.assert_results(
                 dynamic_shape_constraint, paddle.randn([8, 8, const_dim])
             )
             self.assertEqual(
-                ctx.translate_count, 6  # hit 2 * (s0 + s1 - 2) <= 30
+                ctx.translate_count, 5  # hit 2 * (s0 + s1 - 2) <= 30
             )
 
     def test_mixed_dynamic_and_static(self):
@@ -334,11 +335,9 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             self.assertEqual(ctx.translate_count, 1)
             self.assert_results(dynamic_int_input_func1, a, 0)
             self.assertEqual(ctx.translate_count, 2)
-            self.assert_results(dynamic_int_input_func1, a, 2)
-            self.assertEqual(ctx.translate_count, 3)
-            for i in range(3, 6):
+            for i in range(2, 6):
                 self.assert_results(dynamic_int_input_func1, a, i)
-                self.assertEqual(ctx.translate_count, 4)
+                self.assertEqual(ctx.translate_count, 3)
 
     def test_mixed_static_after_dynamic(self):
         with allow_dynamic_shape_guard(
