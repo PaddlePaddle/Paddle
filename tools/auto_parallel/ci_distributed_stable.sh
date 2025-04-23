@@ -124,6 +124,8 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     for case in ${case_list[*]};do
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "llama_auto" ]];then
+            # The docker container mount path is changed from /workspace/Paddle to /paddle
+            # The original writing is /workspace/PaddleNLP, and it is changed to /paddle/../PaddleNLP to be consistent with the action. However, in the distribute_test function, the PaddleNLP repository is downloaded to the Paddle (/paddle/Paddle) directory. This is just to keep the original state, but it should be wrong.
             bash ${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "llama" | head -n 1 | awk '{print $9}'` ${case}
             export FLAGS_install_deps=1
