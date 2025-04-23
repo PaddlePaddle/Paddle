@@ -145,7 +145,7 @@ class OpTransInfo {
                                                     "matmul_grad",
                                                     "embedding_grad",
                                                     "embedding",
-                                                    "arange",
+                                                    // "arange",
                                                     "argsort",
                                                     "assign_value",
                                                     "one_hot",

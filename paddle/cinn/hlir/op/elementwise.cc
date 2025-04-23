@@ -1260,11 +1260,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
       true,
       ::common::errors::InvalidArgument(
           "No start attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("stop"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No stop attribute in attrs.attr_store! Please check."));
+  PADDLE_ENFORCE_EQ(attr_store.count("end"),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "No end attribute in attrs.attr_store! Please check."));
   PADDLE_ENFORCE_EQ(
       attr_store.count("step"),
       true,
@@ -1276,9 +1275,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
       ::common::errors::InvalidArgument(
           "No dtype attribute in attrs.attr_store! Please check."));
 
-  auto start = absl::get<float>(attr_store.at("start"));
-  auto stop = absl::get<float>(attr_store.at("stop"));
-  auto step = absl::get<float>(attr_store.at("step"));
+  auto start = absl::get<double>(attr_store.at("start"));
+  auto stop = absl::get<double>(attr_store.at("end"));
+  auto step = absl::get<double>(attr_store.at("step"));
   auto dtype =
       cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
 
@@ -1320,7 +1319,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                     0U,
                     ::common::errors::InvalidArgument(
                         "No start attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("stop"),
+  PADDLE_ENFORCE_GT(attr_store.count("end"),
                     0U,
                     ::common::errors::InvalidArgument(
                         "No stop attribute in arange Op! Please check."));
@@ -1333,9 +1332,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                     ::common::errors::InvalidArgument(
                         "No dtype attribute in arange Op! Please check."));
 
-  auto start = absl::get<float>(attr_store.at("start"));
-  auto stop = absl::get<float>(attr_store.at("stop"));
-  auto step = absl::get<float>(attr_store.at("step"));
+  auto start = absl::get<double>(attr_store.at("start"));
+  auto stop = absl::get<double>(attr_store.at("end"));
+  auto step = absl::get<double>(attr_store.at("step"));
   auto dtype =
       cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
 

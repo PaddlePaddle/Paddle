@@ -36,6 +36,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
+using paddle::dialect::DataOp;
 using paddle::dialect::FullIntArrayOp;
 using paddle::dialect::FullOp;
 
@@ -254,6 +255,11 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
 
   bool Match(paddle::dialect::ScaleOp op) const override {
     const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+    VLOG(4) << "Scale Attributes (skip): " << *op.operation();
+    auto attrs_ = op->attributes();
+    for (auto [k, v] : attrs_) {
+      VLOG(4) << "Key: " << k << ", value: " << v;
+    }
     return !is_denied;
   }
 
@@ -526,6 +532,90 @@ class SliceOpPattern : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
     cinn_slice.result(0).set_type(op.result(0).type());
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_slice.result(0));
     rewriter.EraseOp(op);
+  }
+};
+
+class ArangeOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ArangeOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ArangeOp>::OpRewritePattern;
+
+  bool Match(paddle::dialect::ArangeOp op) const override {
+    VLOG(4) << "Arange Attributes (skip):" << *op.operation();
+    auto attrs_ = op->attributes();
+    for (auto [k, v] : attrs_) {
+      VLOG(4) << "Key: " << k << ", value: " << v;
+    }
+    {
+      for (int i = 0; i < 3; i++) {
+        pir::Value src = op->operand_source(i);
+        std::stringstream ss, ss_type;
+        src.Print(ss);
+        src.type().Print(ss_type);
+        auto def_op = src.defining_op();
+        VLOG(4) << "Defined op for operand source " << i + 1 << ": " << *def_op;
+        if (IsDefinedBy<DataOp>(op, i)) {
+          DataOp data_op = CastDefinedTo<DataOp>(op, i);
+          pir::Value out_v = data_op.result(0);
+          ss_type.clear();
+          ss_type.str("");
+          out_v.type().Print(ss_type);
+          ss.clear();
+          ss.str("");
+          VLOG(4) << "Out v type: " << ss_type.str() << ", value: " << ss.str();
+          std::vector<int64_t> shape_v =
+              data_op.attribute("shape")
+                  .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                  .data()
+                  .GetData();
+          VLOG(4) << "Data shape:";
+          for (int64_t v : shape_v) {
+            VLOG(4) << v << ", ";
+          }
+        } else {
+          const FullOp full_op = CastDefinedTo<FullOp>(op, i);
+          double value = full_op.attribute("value")
+                             .dyn_cast<paddle::dialect::ScalarAttribute>()
+                             .data()
+                             .to<double>();
+          VLOG(4) << "Operand source " << i + 1 << ": " << ss.str()
+                  << ", type: " << ss_type.str() << ", def op: " << *def_op
+                  << ", val: " << value;
+        }
+      }
+    }
+    bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
+
+    return !is_denied && IsDefinedBy<FullOp>(op, 0) &&
+           IsDefinedBy<FullOp>(op, 1) && IsDefinedBy<FullOp>(op, 2);
+  }
+
+  void Rewrite(paddle::dialect::ArangeOp op,
+               pir::PatternRewriter &rewriter) const override {
+    VLOG(4) << "Start to rewrite ArangeOp.";
+    const auto &dtype = op.attributes()
+                            .at("dtype")
+                            .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                            .data();
+    // TODO(heqianyue): tensor/int/float, ScalarAttribute?
+    VLOG(4) << "ArangeOp before building... " << dtype;
+
+    double input_list[3] = {0, 0, 1};
+    for (int i = 0; i < 3; i++) {
+      const FullOp full_op = CastDefinedTo<FullOp>(op, i);
+      double value = full_op.attribute("value")
+                         .dyn_cast<paddle::dialect::ScalarAttribute>()
+                         .data()
+                         .to<double>();
+      input_list[i] = value;
+    }
+    auto cinn_arange = rewriter.Build<cinn::dialect::ArangeOp>(
+        input_list[0], input_list[1], input_list[2], dtype);
+    VLOG(4) << "Rewriter built in ArangeOp.";
+    cinn_arange.result(0).set_type(op.result(0).type());
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_arange.result(0));
+    rewriter.EraseOp(op);
+    VLOG(4) << "Rewriter ends in ArangeOp.";
   }
 };
 
@@ -1385,6 +1475,7 @@ pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
   ps.Add<
       ArgMinMaxOpPattern<paddle::dialect::ArgmaxOp, cinn::dialect::ArgmaxOp>>(
       context);
+  ps.Add<ArangeOpPattern>(context);
   ps.Add<ProdOpPattern>(context);
   ps.Add<ReshapeOpPattern>(context);
   ps.Add<PowOpPattern>(context);

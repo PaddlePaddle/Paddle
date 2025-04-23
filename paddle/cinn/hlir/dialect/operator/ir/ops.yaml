@@ -1,3 +1,11 @@
+- op : arange
+  args : (double start, double end, double step, DataType dtype=DataType::INT64)
+  output : Tensor(out)x
+  infer_meta :
+    func : ArangeInferMeta
+    param : [start, end, step, dtype]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : argmax
   args : (Tensor x, int64_t[] axis, bool keepdim=false, DataType dtype=DataType::INT64)
   output : Tensor(out)

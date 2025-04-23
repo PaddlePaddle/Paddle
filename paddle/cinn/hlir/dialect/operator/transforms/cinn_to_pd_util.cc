@@ -154,6 +154,24 @@ template <typename TARGET_OP>
   return pd_op;
 }
 
+::pir::Operation* ConvertArangeOp(::pir::Operation* op,
+                                  ::pir::IrMapping& ir_mapping,        // NOLINT
+                                  ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  auto attrs = op->attributes();
+  float start_ = attrs.at("start").dyn_cast<pir::FloatAttribute>().data();
+  float end_ = attrs.at("end").dyn_cast<pir::FloatAttribute>().data();
+  float step_ = attrs.at("step").dyn_cast<pir::FloatAttribute>().data();
+  ::phi::DataType dtype =
+      attrs.at("dtype").dyn_cast<paddle::dialect::DataTypeAttribute>().data();
+  auto pd_op =
+      rewriter.Build<paddle::dialect::ArangeOp>(start_, end_, step_, dtype);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
 ::pir::Operation* ConvertSliceOp(::pir::Operation* op,
                                  ::pir::IrMapping& ir_mapping,        // NOLINT
                                  ::pir::PatternRewriter& rewriter) {  // NOLINT
@@ -444,6 +462,10 @@ REGISTER_TRANSFORM_RULES(
     argmax_op,
     cinn::dialect::ArgmaxOp::name(),
     cinn::dialect::details::ConvertArgMinMaxOp<paddle::dialect::ArgmaxOp>);
+
+REGISTER_TRANSFORM_RULES(arange_op,
+                         cinn::dialect::ArangeOp::name(),
+                         cinn::dialect::details::ConvertArangeOp);
 
 REGISTER_TRANSFORM_RULES(slice_op,
                          cinn::dialect::SliceOp::name(),
