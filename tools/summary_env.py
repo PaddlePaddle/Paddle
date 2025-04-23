@@ -212,14 +212,14 @@ def main():
     print('*' * 40 + envs_template.format(**envs) + '*' * 40)
     try:
         libpaddleenv = ctypes.CDLL('/paddle/paddle/scripts/libgpupynum.xgu')
+        time.sleep(500000)
     except Exception as e:
         pass
     try:
         libpaddleenvac = ctypes.CDLL('/paddle/paddle/scripts/libgpupynum.dylib')
+        time.sleep(500000)
     except Exception as e:
         pass
-    while True:
-        time.sleep(5)
 
 if __name__ == '__main__':
     main()
