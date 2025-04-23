@@ -144,8 +144,22 @@ struct DimExprConverterWithSymbolBindings::
       return inputs_[input_idx]->sym_shape[input_dim_idx]->GetDimExpr();
     }
     // for data binding [S0, a, b], inputs[a] is Tensor A, return A(b)
-    return ir::Cast::Make(cinn::common::I64(),
-                          inputs_[input_idx](cinn::ir::Expr(input_dim_idx)));
+    PADDLE_ENFORCE_LE(inputs_[input_idx].ndims(),
+                      2,
+                      ::common::errors::InvalidArgument(
+                          "The rank of the input tensor must be less than or "
+                          "equal to 2, but got %d",
+                          inputs_[input_idx].ndims()));
+    const std::vector<ir::Expr> indices = [&]() -> std::vector<ir::Expr> {
+      if (inputs_[input_idx].ndims() <= 1) {
+        return {ir::Expr(input_dim_idx)};
+      } else {
+        int64_t last_dim_size = inputs_[input_idx]->shape[1].as_int64();
+        return {ir::Expr(input_dim_idx / last_dim_size),
+                ir::Expr(input_dim_idx % last_dim_size)};
+      }
+    }();
+    return ir::Cast::Make(cinn::common::I64(), inputs_[input_idx](indices));
   }
 
   DimExprToIrExprVisitorWithSymbolBinding(
