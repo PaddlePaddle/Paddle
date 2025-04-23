@@ -1,5 +1,5 @@
 - op : arange
-  args : (Tensor start_, Tensor end_, Tensor step_, ScalarType start, ScalarType end, ScalarType step, DataType dtype=DataType::INT64)
+  args : (double start, double end, double step, DataType dtype=DataType::INT64)
   output : Tensor(out)x
   infer_meta :
     func : ArangeInferMeta
