@@ -54,7 +54,6 @@
 - mean
 - memcpy_d2h
 - memcpy_h2d
-- mish
 - mp_allreduce_sum
 - norm
 - one_hot

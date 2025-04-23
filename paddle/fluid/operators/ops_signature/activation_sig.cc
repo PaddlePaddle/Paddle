@@ -40,7 +40,6 @@ namespace phi {
 #define comma ,
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
 
 KernelSignature HardSwishOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
@@ -50,6 +49,4 @@ KernelSignature HardSwishOpArgumentMapping(
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(hard_swish, hardswish);
-PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
-
 PD_REGISTER_ARG_MAPPING_FN(hard_swish, phi::HardSwishOpArgumentMapping);
