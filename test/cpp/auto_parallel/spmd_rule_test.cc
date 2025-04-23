@@ -937,12 +937,16 @@ TEST(ArgminRule, Ctor) {
   t_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor x = phi::distributed::DistMetaTensor(
       common::make_ddim({4, 6, 8}), t_dist_attr);
-  phi::IntArray axis = {1};
+  phi::Scalar axis(1);
   bool keep_dim = false;
   bool flatten = false;
-  DataType dtype = 5;
   phi::distributed::SpmdInfo forward_info =
-      phi::distributed::ArgMinInferSpmdDynamic(x, axis, keep_dim, flatten);
+      phi::distributed::ArgMinInferSpmdDynamic(
+          x, axis, keep_dim, flatten, phi::DataType::FLOAT32);
+  check_dim_mapping(forward_info.first[0], {0, -1, -1});
+  check_partial_dims(forward_info.first[0], {});
+  check_dim_mapping(forward_info.second[0], {0, -1});
+  check_partial_dims(forward_info.second[0], {});
 }
 TEST(ReduceMaxRule, Ctor) {
   std::vector<int64_t> mesh_shape = {2};
