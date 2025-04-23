@@ -1458,8 +1458,6 @@ def concat(
         else:
             input = [input]
 
-        if not isinstance(input, paddle.pir.Value):
-            input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     else:
         check_type(input, 'input', (list, tuple, Variable), 'concat')
