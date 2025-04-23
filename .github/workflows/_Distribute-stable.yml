@@ -187,6 +187,7 @@ jobs:
           paddle_whl: paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
@@ -195,6 +196,7 @@ jobs:
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
           cd ..
+          source ${{ github.workspace }}/../../../unproxy
           echo "Uploading Paddle.tar.gz to bos"
           python ${{ env.bos_file }} Paddle.tar.gz paddle-github-action/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading whl to bos"
@@ -205,7 +207,7 @@ jobs:
             mv ${work_dir}/build/third_party/install/flashattn/lib/flashattn_libs_${flashattn_version}.tar .
             python ${{ env.bos_file }} flashattn_libs_${flashattn_version}.tar.gz paddle-github-action/PR/gpups/flashattn_cache
           fi
-          rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
+          # rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
           '
 
         # - name: Terminate and delete the container
