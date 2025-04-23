@@ -611,7 +611,7 @@ class TestGroupNormDimException(unittest.TestCase):
             self.assertRaises(ValueError, test_one_dim_input_static_API)
 
 
-class TestGroupNormWithNogradX(unittest.TestCase):
+class TestGroupNormWithOptionalgradX(unittest.TestCase):
     def test_group_norm_with_x_stop_gradient(self):
         with dygraph_guard():
             origin_device = paddle.device.get_device()
@@ -619,6 +619,21 @@ class TestGroupNormWithNogradX(unittest.TestCase):
             try:
                 x = paddle.randn([16, 32])
                 x.stop_gradient = True
+                gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
+                y = gpn(x)
+                paddle.grad(y, gpn.weight)
+            except Exception as e:
+                raise e
+            finally:
+                paddle.device.set_device(origin_device)
+
+    def test_group_norm_with_x_requires_gradient(self):
+        with dygraph_guard():
+            origin_device = paddle.device.get_device()
+            paddle.device.set_device("cpu")
+            try:
+                x = paddle.randn([16, 32])
+                x.stop_gradient = False
                 gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
                 y = gpn(x)
                 paddle.grad(y, gpn.weight)
