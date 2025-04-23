@@ -826,7 +826,7 @@ def round(x: Tensor, decimals: int = 0, name: str | None = None) -> Tensor:
             >>> out = paddle.round(x)
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1., -0.,  1.,  2.])
+            [-0., -0.,  1.,  2.])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.round(x, decimals)
