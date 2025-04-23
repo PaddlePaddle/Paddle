@@ -126,6 +126,7 @@ class FoldOutputDataDerivableOps : public pir::RewritePattern {
         new_ops.emplace_back(std::nullopt);
         continue;
       }
+      if (!result.type().isa<pir::DenseTensorType>()) return false;
       auto dtype = pir::GetValueDtype(result);
       auto& shape_analysis =
           pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
