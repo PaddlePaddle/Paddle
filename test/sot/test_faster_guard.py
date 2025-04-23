@@ -222,7 +222,7 @@ class TestBasicFasterGuard(unittest.TestCase):
             y, mesh2, [dist.Replicate()], stop_gradient=False
         )
         guard_tensor_is_dist = paddle.framework.core.TensorDistMetaMatchGuard(
-            dist_x1
+            DistInfo.from_tensor(dist_x1)
         )
         self.assertTrue(
             guard_tensor_is_dist.check(DistInfo.from_tensor(dist_x1))
