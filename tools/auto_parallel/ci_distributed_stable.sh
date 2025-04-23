@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-source /workspace/Paddle/tools/auto_parallel/target_path_lists.sh
+source ${work_dir}/tools/auto_parallel/target_path_lists.sh
 
 export paddle=$1
-export paddle_dir=/workspace/Paddle
-mkdir -p /workspace/case_logs
-export log_path=/workspace/case_logs
+export paddle_dir=${work_dir}
+mkdir -p ${work_dir}/../case_logs
+export log_path=${work_dir}/../case_logs
 export case_list=()
 
 install_paddle(){
@@ -124,25 +124,25 @@ if [[ ${#case_list[*]} -ne 0 ]];then
     for case in ${case_list[*]};do
         echo -e "\033[31m ---- running case $case_num/${#case_list[*]}: ${case} \033"
         if [[ ${case} == "llama_auto" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
+            bash ${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "llama" | head -n 1 | awk '{print $9}'` ${case}
             export FLAGS_install_deps=1
             export FLAGS_download_data="llama ""$FLAGS_download_data"
             let case_num++
         elif [[ ${case} == "auto_unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh auto_unit_test
+            bash ${work_dir}/tools/auto_parallel/ci_case_unit.sh auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "gpt-3_dygraph" ]];then
-            bash /workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
+            bash ${work_dir}/../PaddleNLP/scripts/distribute/ci_case_dy.sh llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             print_info $? `ls -lt ${log_path} | grep "llm_gpt" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "dygraph_unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
+            bash ${work_dir}/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "llama_auto_unit_test" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh llama_auto_unit_test
+            bash ${work_dir}/tools/auto_parallel/ci_case_unit.sh llama_auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else

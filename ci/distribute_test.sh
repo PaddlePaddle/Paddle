@@ -80,15 +80,17 @@ function distribute_test() {
         echo "PR's title with 'CINN' or 'BUAA', skip the run distribute ci test !"
         exit 0
     fi
-    echo "Start gpups tests"
+    echo "::group::Start gpups tests"
     parallel_test_base_gpups
     echo "End gpups tests"
+    echo "::endgroup::"
 
-    echo "Start FA tests"
+    echo "::group::Start FA tests"
     parallel_fa_unit
     echo "End FA tests"
+    echo "::endgroup::"
 
-    echo "Downloading ...."
+    echo "Downloading PaddleNLP_stable_paddle.tar.gz..."
     cd ${work_dir}
     wget https://paddlenlp.bj.bcebos.com/wheels/PaddleNLP_stable_paddle.tar.gz --no-proxy
     tar -zvxf PaddleNLP_stable_paddle.tar.gz
@@ -111,18 +113,20 @@ function distribute_test() {
     rm -rf ./paddlenlp/upload/*
     rm -rf ./paddlenlp/models/bigscience/*
 
-    echo "Start LLM Test"
+    echo "::group::Start LLM Test"
     cd ${work_dir}/PaddleNLP
     # Disable Test: test_gradio
     rm tests/llm/test_gradio.py
     # python -m pytest -s -v tests/llm --timeout=3600
     echo "End LLM Test"
+    echo "::endgroup::"
 
-    echo "Start auto_parallel Test"
+    echo "::group::Start auto_parallel Test"
     cd ${work_dir}
     timeout 50m bash tools/auto_parallel/ci_distributed_stable.sh
     EXIT_CODE=$?
     echo "End auto_parallel Test"
+    echo "::endgroup::"
 
     if [[ "$EXIT_CODE" != "0" ]]; then
       exit 8;

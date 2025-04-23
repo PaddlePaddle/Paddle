@@ -11,7 +11,7 @@ env:
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-distribute
-  ci_scripts: ${{ github.workspace }}/ci
+  ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: distribute
 
