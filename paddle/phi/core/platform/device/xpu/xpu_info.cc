@@ -119,6 +119,18 @@ void EmptyCache() {
   }
 }
 
+int GetXPUDeviceUtilizationRate(int dev_id) {
+  return phi::backends::xpu::GetXPUDeviceUtilizationRate(dev_id);
+}
+
+int GetXPUDeviceTotalMemory(int dev_id) {
+  return phi::backends::xpu::GetXPUDeviceTotalMemory(dev_id);
+}
+
+int GetXPUDeviceUsedMemory(int dev_id) {
+  return phi::backends::xpu::GetXPUDeviceUsedMemory(dev_id);
+}
+
 class RecordedXPUMallocHelper {
  private:
   explicit RecordedXPUMallocHelper(int dev_id, uint64_t limit_size = 0)

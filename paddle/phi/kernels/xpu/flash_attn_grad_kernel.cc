@@ -232,6 +232,8 @@ void FlashAttnGradKernelBase(
       is_flashmask ? flashmask_stream : nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
   if (is_flashmask && flashmask_stream != nullptr) {
+    r = xpu_wait(flashmask_stream);
+    PADDLE_ENFORCE_XPU_SUCCESS(r);
     xpu_stream_destroy(flashmask_stream);
   }
 }

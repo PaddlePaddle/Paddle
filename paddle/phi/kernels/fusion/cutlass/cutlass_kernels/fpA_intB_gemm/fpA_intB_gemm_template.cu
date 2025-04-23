@@ -681,7 +681,6 @@ void CutlassFpAIntBGemmRunner<T, WeightType>::run_gemm<EpilogueTag,
         VLOG(4) << "elapsed time: " << elapsed;
         VLOG(4) << "best_time: " << best_time;
       } catch (const std::exception& e) {
-        found_one = false;
         VLOG(4) << ii << ": Exception caught in main: " << e.what();
       }
     }

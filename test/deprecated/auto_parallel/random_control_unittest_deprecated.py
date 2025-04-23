@@ -25,13 +25,13 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 
 paddle.enable_static()
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.distributed.fleet import auto
 
 
 def dy_broadcast_helper(tensor):
     tensor = paddle._C_ops.broadcast(tensor, 0, 1)
-    _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
+    _C_ops.sync_calc_stream(tensor)
     return tensor
 
 
