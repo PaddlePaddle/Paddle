@@ -42,6 +42,7 @@ void EraseOpRecursively(pir::Operation* op,
     if (no_result_used) {
       for (const pir::Value& operand_source : cur_op->operands_source()) {
         auto producer_op = operand_source.defining_op();
+        if (!producer_op) continue;
         ops_queue.push(producer_op);
       }
       rewriter.EraseOp(cur_op);
@@ -120,12 +121,14 @@ class FoldOutputDataDerivableOps : public pir::RewritePattern {
       return false;
     }
     if (op->num_results() == 0) return false;
+    bool non_result_used = true;
     std::vector<std::optional<pir::Operation*>> new_ops;
     for (pir::Value result : op->results()) {
       if (result.use_count() == 0) {
         new_ops.emplace_back(std::nullopt);
         continue;
       }
+      non_result_used = false;
       if (!result.type().isa<pir::DenseTensorType>()) return false;
       auto dtype = pir::GetValueDtype(result);
       auto& shape_analysis =
@@ -184,6 +187,7 @@ class FoldOutputDataDerivableOps : public pir::RewritePattern {
       }
       new_ops.push_back(new_op);
     }
+    if (non_result_used) return false;
     for (size_t i = 0; i < new_ops.size(); i++) {
       if (new_ops[i].has_value()) {
         rewriter.ReplaceAllUsesWith(op->result(i),
