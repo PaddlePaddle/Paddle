@@ -167,12 +167,12 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
             cd ${work_dir}/build/third_party/install/flashattn/lib
-            mkdir flashattn_libs_${flashattn_version} && cd flashattn_libs_${flashattn_version}
+            mkdir flashattn_libs_${{ env.flashattn_version }} && cd flashattn_libs_${{ env.flashattn_version }}
             mkdir fa_libs && cp ../lib*.so fa_libs && tar -zcf fa_libs.tar ./fa_libs && rm -rf ./fa_libs
             md5sum fa_libs.tar |awk "{print \$1}" >MD5.txt
-            cd .. && tar -zcf flashattn_libs_${flashattn_version}.tar ./flashattn_libs_${flashattn_version}
+            cd .. && tar -zcf flashattn_libs_${{ env.flashattn_version }}.tar ./flashattn_libs_${{ env.flashattn_version }}
           fi
-          cd build
+          cd ${work_dir}/build
           rm -rf $(find . -name "*.a")
           rm -rf $(find . -name "*.o")
           cd ${work_dir}/build/third_party && find `ls | grep -v "dlpack"| grep -v "install"|grep -v "eigen3"|grep -v "gflags" ` -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
@@ -204,10 +204,10 @@ jobs:
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/gpups/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
             echo "Uploading flashattn_libs_${flashattn_version}.tar.gz to bos"
-            mv ${work_dir}/build/third_party/install/flashattn/lib/flashattn_libs_${flashattn_version}.tar .
-            python ${{ env.bos_file }} flashattn_libs_${flashattn_version}.tar.gz paddle-github-action/PR/gpups/flashattn_cache
+            mv ${work_dir}/build/third_party/install/flashattn/lib/flashattn_libs_${{ env.flashattn_version }}.tar .
+            python ${{ env.bos_file }} flashattn_libs_${{ env.flashattn_version }}.tar paddle-github-action/PR/gpups/flashattn_cache
           fi
-          # rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
+          rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
           '
 
   # - name: Terminate and delete the container
