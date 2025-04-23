@@ -142,9 +142,11 @@ void BindGuardTree(pybind11::module *m) {
 #if SOT_IS_SUPPORTED
   py::class_<GuardTree, std::shared_ptr<GuardTree>>(
       *m, "GuardTree", R"DOC(GuardTree Class.)DOC")
-      .def(py::init<
-               const std::vector<std::vector<std::shared_ptr<GuardNode>>> &>(),
+      .def(py::init<const std::vector<
+               std::vector<std::shared_ptr<GuardNodeBase>>> &>(),
            py::arg("guard_chain_list"))
+      .def_property_readonly(
+          "guard_nodes", [](GuardTree &self) { return self.get_guard_nodes(); })
       .def(
           "lookup",
           [](GuardTree &self, py::object frame) {
@@ -154,73 +156,117 @@ void BindGuardTree(pybind11::module *m) {
       .def(
           "add_guard_chain",
           [](GuardTree &self,
-             const std::vector<std::shared_ptr<GuardNode>> &guard_chain) {
+             const std::vector<std::shared_ptr<GuardNodeBase>> &guard_chain) {
             self.add_guard_chain(guard_chain);
           },
           py::arg("guard_chain"))
       .def("stringify", &GuardTree::stringify);
 
-  py::class_<GuardNode, std::shared_ptr<GuardNode>>(
+  py::class_<GuardNodeBase, std::shared_ptr<GuardNodeBase>>(
+      *m, "GuardNodeBase", R"DOC(GuardNodeBase Class.)DOC")
+      .def_property(
+          "return_cache_index",
+          [](GuardNodeBase &self) { return self.return_cache_index; },
+          [](GuardNodeBase &self, int index) {
+            self.return_cache_index = index;
+          })
+      .def_property(
+          "next_guard_nodes",
+          [](GuardNodeBase &self) { return self.next_guard_nodes; },
+          [](GuardNodeBase &self,
+             const std::vector<std::shared_ptr<GuardNodeBase>>
+                 &next_guard_nodes) {
+            self.next_guard_nodes = next_guard_nodes;
+          })
+      .def(
+          "lookup",
+          [](GuardNodeBase &self, py::object frame) {
+            return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"))
+      .def("stringify", &GuardNodeBase::stringify, py::arg("indent") = 0);
+
+  py::class_<ExprNodeBase, std::shared_ptr<ExprNodeBase>>(
+      *m, "ExprNodeBase", R"DOC(ExprNodeBase Class.)DOC")
+      .def(
+          "eval",
+          [](ExprNodeBase &self, py::object frame) {
+            return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"))
+      .def("stringify", &ExprNodeBase::stringify, py::arg("indent") = 0);
+
+  py::class_<GuardNode, GuardNodeBase, std::shared_ptr<GuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
       .def(py::init<const std::shared_ptr<GuardBase> &,
-                    const std::vector<std::shared_ptr<ExprNode>> &,
-                    const std::vector<std::shared_ptr<GuardNode>> &,
+                    const std::vector<std::shared_ptr<ExprNodeBase>> &,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
                     const std::optional<int> &>(),
            py::arg("guard"),
            py::arg("exprs"),
            py::arg("next_guard_nodes") = py::list(),
-           py::arg("return_cache_index") = py::none())
-      .def_property(
-          "return_cache_index",
-          [](GuardNode &self) { return self.return_cache_index; },
-          [](GuardNode &self, int index) { self.return_cache_index = index; })
-      .def(
-          "lookup",
-          [](GuardNode &self, py::object frame) {
-            return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
-          },
-          py::arg("frame"))
-      .def("stringify", &GuardNode::stringify, py::arg("indent") = 0);
+           py::arg("return_cache_index") = py::none());
 
-  py::class_<ExprNode, std::shared_ptr<ExprNode>>(
-      *m, "ExprNode", R"DOC(ExprNode Class.)DOC")
-      .def(
-          "eval",
-          [](ExprNode &self, py::object frame) {
-            return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
-          },
-          py::arg("frame"))
-      .def("stringify", &ExprNode::stringify, py::arg("indent") = 0);
+  py::class_<ExprGuardNode, GuardNodeBase, std::shared_ptr<ExprGuardNode>>(
+      *m, "ExprGuardNode", R"DOC(ExprGuardNode Class.)DOC")
+      .def(py::init<const std::shared_ptr<ExprNodeBase> &,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("expr"),
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none());
 
-  py::class_<ConstantExprNode, ExprNode, std::shared_ptr<ConstantExprNode>>(
+  py::class_<ConstantExprNode, ExprNodeBase, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("value_ptr"));
 
-  py::class_<ExternVarExprNode, ExprNode, std::shared_ptr<ExternVarExprNode>>(
+  py::class_<ExternVarExprNode,
+             ExprNodeBase,
+             std::shared_ptr<ExternVarExprNode>>(
       *m, "ExternVarExprNode", R"DOC(ExternVarExprNode Class.)DOC")
       .def(py::init<const std::string &, const py::object &>(),
            py::arg("var_name"),
            py::arg("value_ptr"));
 
-  py::class_<LocalVarExprNode, ExprNode, std::shared_ptr<LocalVarExprNode>>(
+  py::class_<LocalVarExprNode, ExprNodeBase, std::shared_ptr<LocalVarExprNode>>(
       *m, "LocalVarExprNode", R"DOC(LocalVarExprNode Class.)DOC")
       .def(py::init<const std::string &>(), py::arg("var_name"));
 
-  py::class_<GlobalVarExprNode, ExprNode, std::shared_ptr<GlobalVarExprNode>>(
+  py::class_<GlobalVarExprNode,
+             ExprNodeBase,
+             std::shared_ptr<GlobalVarExprNode>>(
       *m, "GlobalVarExprNode", R"DOC(GlobalVarExprNode Class.)DOC")
       .def(py::init<const std::string &>(), py::arg("var_name"));
 
-  py::class_<AttributeExprNode, ExprNode, std::shared_ptr<AttributeExprNode>>(
+  py::class_<AttributeExprNode,
+             ExprNodeBase,
+             std::shared_ptr<AttributeExprNode>>(
       *m, "AttributeExprNode", R"DOC(AttributeExprNode Class.)DOC")
-      .def(py::init<std::shared_ptr<ExprNode>, const std::string &>(),
+      .def(py::init<std::shared_ptr<ExprNodeBase>, const std::string &>(),
            py::arg("var_expr"),
            py::arg("attr_name"));
 
-  py::class_<ItemExprNode, ExprNode, std::shared_ptr<ItemExprNode>>(
+  py::class_<ItemExprNode, ExprNodeBase, std::shared_ptr<ItemExprNode>>(
       *m, "ItemExprNode", R"DOC(ItemExprNode Class.)DOC")
-      .def(py::init<std::shared_ptr<ExprNode>, std::shared_ptr<ExprNode>>(),
+      .def(py::init<std::shared_ptr<ExprNodeBase>,
+                    std::shared_ptr<ExprNodeBase>>(),
            py::arg("var_expr"),
            py::arg("key_expr"));
+
+  py::class_<BinaryExprNode, ExprNodeBase, std::shared_ptr<BinaryExprNode>>(
+      *m, "BinaryExprNode", R"DOC(BinaryExprNode Class.)DOC")
+      .def(py::init<std::shared_ptr<ExprNodeBase>,
+                    std::shared_ptr<ExprNodeBase>,
+                    const std::string &>(),
+           py::arg("lhs"),
+           py::arg("rhs"),
+           py::arg("op"));
+
+  py::class_<UnaryExprNode, ExprNodeBase, std::shared_ptr<UnaryExprNode>>(
+      *m, "UnaryExprNode", R"DOC(UnaryExprNode Class.)DOC")
+      .def(py::init<std::shared_ptr<ExprNodeBase>, const std::string &>(),
+           py::arg("expr"),
+           py::arg("op"));
 #endif
 }
 
