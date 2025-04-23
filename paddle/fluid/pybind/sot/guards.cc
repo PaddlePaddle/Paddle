@@ -40,6 +40,15 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                              \
   }
 
+#define HANDLE_NULL_VALUE_DECREF(value) \
+  {                                     \
+    if ((value) == NULL) {              \
+      Py_DECREF(value);                 \
+      PyErr_Clear();                    \
+      return false;                     \
+    }                                   \
+  }
+
 #define HANDLE_NULL_VALUE(value) \
   {                              \
     if ((value) == NULL) {       \
@@ -223,28 +232,38 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
 
   PyObject* dist_info =
       PyObject_CallOneArg(dist_info_from_tensor_func, expr_node);
-  HANDLE_NULL_VALUE(dist_info);
+  HANDLE_NULL_VALUE_DECREF(dist_info);
 
   PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
+  HANDLE_NULL_VALUE_DECREF(mesh);
 
   PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
+  HANDLE_NULL_VALUE_DECREF(mesh_shape);
   PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
+  HANDLE_NULL_VALUE_DECREF(process_ids);
   PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
+  HANDLE_NULL_VALUE_DECREF(dims_mapping);
   PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
-
-  HANDLE_NULL_VALUE(mesh_shape);
-  HANDLE_NULL_VALUE(process_ids);
-  HANDLE_NULL_VALUE(dims_mapping);
-  HANDLE_NULL_VALUE(local_shape);
+  HANDLE_NULL_VALUE_DECREF(local_shape);
 
   if (!PyObject_Equal(mesh_shape, mesh_shape_expected_.value()) ||
       !PyObject_Equal(process_ids, mesh_process_ids_expected_.value()) ||
       !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
       !PyObject_Equal(local_shape, local_shape_expected_.value())) {
+    Py_DECREF(mesh);
+    Py_DECREF(mesh_shape);
+    Py_DECREF(process_ids);
+    Py_DECREF(dims_mapping);
+    Py_DECREF(local_shape);
     PyErr_Clear();
     return false;
   }
 
+  Py_DECREF(mesh);
+  Py_DECREF(mesh_shape);
+  Py_DECREF(process_ids);
+  Py_DECREF(dims_mapping);
+  Py_DECREF(local_shape);
   return true;
 }
 
