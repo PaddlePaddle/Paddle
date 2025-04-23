@@ -112,28 +112,62 @@ def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task | None:
 
 
 def send_object_list(object_list, dst=None, group=None, group_dst=None):
+    """
+    Send a list of Python objects to the receiver.
+
+    Args:
+        object_list (list): The list of Python objects to send.
+        dst (int, optional): The destination rank id. Default: 0.
+        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
+        group_dst (int, optional): The destination rank within the group. Cannot be specified together with dst. Default: None.
+
+    Returns:
+        This function does not return any value.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
+
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = ["hello", {"key": 100}, [1, 2, 3]]
+            ...     dist.send_object_list(data, dst=1)
+            >>> else:
+            ...     data = [None] * 3  # pre-allocate list with size 3
+            ...     dist.recv_object_list(data, src=0)
+            >>> print(data)
+            >>> # ["hello", {"key": 100}, [1, 2, 3]] (2 GPUs)
+    """
+    if object_list is None or len(object_list) == 0:
+        raise ValueError("object_list cannot be None or empty")
+
     group = _get_global_group() if group is None else group
     if _warn_cur_rank_not_in_group(group):
         return
+
     if group_dst is not None:
         if dst is not None:
             raise ValueError(
                 "Cannot specify both 'dst' and 'group_dst' arguments."
             )
-        else:
-            dst = group.get_global_rank(group_dst)
+        dst = group.get_global_rank(group_dst)
     else:
-        if dst is None:
-            dst = 0
+        dst = 0 if dst is None else dst
 
+    # Convert objects to tensors and get their sizes
     tensor_list, size_list = zip(
         *[convert_object_to_tensor(obj) for obj in object_list]
     )
     size_list_values = [size.item() for size in size_list]
 
+    # Send sizes first
     object_sizes_tensor = paddle.to_tensor(size_list_values, dtype='int64')
-
     send(object_sizes_tensor, dst=dst, group=group)
+
+    # Send object data
     if len(tensor_list) == 1:
         object_tensor = tensor_list[0]
     else:
