@@ -341,9 +341,10 @@ jobs:
           source ${ci_scripts}/utils.sh
           bash $ci_scripts/coverage_judge.sh
           COVERAGE_EXIT_CODE=$?
-          if [ "${{ env.COVERAGE_EXIT_CODE }}" -ne 0 ]; then
+          echo $COVERAGE_EXIT_CODE
+          if [ "$COVERAGE_EXIT_CODE" -ne 0 ]; then
             echo "Coverage check failed, unit tests have all passed, please do not rerun, check whether the code has been fully executed and recommit."
-            exit ${{ env.COVERAGE_EXIT_CODE }}
+            exit $COVERAGE_EXIT_CODE
           else
             echo "Coverage passed"
           fi
