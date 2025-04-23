@@ -46,7 +46,7 @@ class TestClipOp(OpTest):
         else:
             max_v = self.attrs['max']
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        input = self.generate_input()
         input[np.abs(input - min_v) < self.max_relative_error] = 0.5
         input[np.abs(input - max_v) < self.max_relative_error] = 0.5
         self.inputs['X'] = input
@@ -67,7 +67,7 @@ class TestClipOp(OpTest):
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
         paddle.disable_static()
 
     def initTestCase(self):
@@ -77,6 +77,9 @@ class TestClipOp(OpTest):
         self.min = 0.3
         self.inputs['Max'] = np.array([0.8]).astype(self.dtype)
         self.inputs['Min'] = np.array([0.1]).astype(self.dtype)
+
+    def generate_input(self):
+        return np.random.random(self.shape).astype(self.dtype)
 
 
 class TestCase1(TestClipOp):
@@ -121,6 +124,19 @@ class TestCase5(TestClipOp):
         self.min = 0.5
 
 
+class TestCase6(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float32
+        self.shape = (4, 8, 16)
+        self.max = 1.0
+        self.min = 0.5
+
+    def generate_input(self):
+        return np.random.choice([self.min, self.max], self.shape).astype(
+            self.dtype
+        )
+
+
 class TestFP16Case1(TestClipOp):
     def initTestCase(self):
         self.dtype = np.float16
@@ -161,6 +177,19 @@ class TestFP16Case5(TestClipOp):
         self.shape = (4, 8, 16)
         self.max = 0.5
         self.min = 0.5
+
+
+class TestFP16Case6(TestClipOp):
+    def initTestCase(self):
+        self.dtype = np.float16
+        self.shape = (4, 8, 16)
+        self.max = 1.0
+        self.min = 0.5
+
+    def generate_input(self):
+        return np.random.choice([self.min, self.max], self.shape).astype(
+            self.dtype
+        )
 
 
 @unittest.skipIf(

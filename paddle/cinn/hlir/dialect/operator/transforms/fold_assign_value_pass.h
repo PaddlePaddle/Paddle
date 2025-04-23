@@ -1,4 +1,4 @@
-// Copyright (c) 2022 CINN Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/common/python_interpreter_guard.h"
+#pragma once
 
-#include <pybind11/embed.h>
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
-namespace common {
+namespace dialect {
+namespace ir {
 
-PythonInterpreterGuard::PythonInterpreterGuard() {
-  pybind11::initialize_interpreter();
-}
+std::unique_ptr<pir::Pass> CreateFoldAssignValueOpPass();
 
-PythonInterpreterGuard::~PythonInterpreterGuard() {
-  pybind11::finalize_interpreter();
-}
-
-PythonInterpreterGuard& PythonInterpreterGuard::Guard() {
-  static PythonInterpreterGuard guard;
-  return guard;
-}
-
-}  // namespace common
+}  // namespace ir
+}  // namespace dialect
 }  // namespace cinn

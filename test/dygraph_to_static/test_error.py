@@ -20,6 +20,9 @@ import numpy as np
 
 import paddle
 from paddle.jit.dy2static import error
+from paddle.jit.dy2static.utils import ENV_ENABLE_CINN_IN_DY2ST
+
+ENV_ENABLE_CINN_IN_DY2ST.set(False)
 
 
 def inner_func():

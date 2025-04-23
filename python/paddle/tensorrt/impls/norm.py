@@ -36,6 +36,7 @@ from paddle.tensorrt.util import (
     RefitManager,
     RefitRole,
     TensorRTConstantManager,
+    support_fp32_mix_precision,
 )
 
 _logger = get_logger(
@@ -47,8 +48,6 @@ _logger = get_logger(
     "pd_op.layer_norm", trt_version="trt_version_ge=8.6"
 )
 def layernorm_converter(network, paddle_op, inputs):
-    from paddle.tensorrt.util import support_fp32_mix_precision
-
     input_a, scale, bias = inputs
 
     begin_norm_axis = paddle_op.attrs().get("begin_norm_axis", 0)
@@ -187,6 +186,7 @@ def batch_norm_converter(network, paddle_op, inputs):
     batch_norm_layer = network.add_scale(
         input_tensor, trt.ScaleMode.CHANNEL, bias, scale, power
     )
+    support_fp32_mix_precision(paddle_op.name(), batch_norm_layer)
     set_layer_name(batch_norm_layer, paddle_op)
     if isinstance(mean, trt.ITensor):
         refit_manager.set_mapping(

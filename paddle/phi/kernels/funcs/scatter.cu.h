@@ -20,7 +20,9 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
 namespace funcs {
@@ -54,17 +56,19 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices,
   }
 }
 
-template <typename T, typename IndexT = int>
+template <typename T, typename IndexT, bool Overwrite, int VecSize>
 __global__ void ScatterCUDAKernel(const T* params,
                                   const IndexT* indices,
                                   T* output,
                                   int64_t output_count,
                                   size_t index_size,
-                                  size_t slice_size,
-                                  bool overwrite) {
-  CUDA_KERNEL_LOOP_TYPE(i, index_size * slice_size, int64_t) {
+                                  size_t slice_size) {
+  int64_t num = index_size * slice_size;
+  int64_t block_size = blockDim.x;
+  int64_t i = (blockIdx.x * block_size + threadIdx.x) * VecSize;
+  for (; i < num; i += gridDim.x * block_size * VecSize) {
     int64_t indices_i = i / slice_size;
-    int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
+    int64_t slice_i = i % slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
 
     PADDLE_ENFORCE(
@@ -81,8 +85,11 @@ __global__ void ScatterCUDAKernel(const T* params,
     }
 
     int64_t out_i = scatter_i * slice_size + slice_i;
-    if (overwrite) {
-      *(output + out_i) = *(params + i);
+    if constexpr (Overwrite) {
+      using VecType = kps::details::VectorType<T, VecSize>;
+      const VecType* src = reinterpret_cast<const VecType*>(params + i);
+      VecType* dst = reinterpret_cast<VecType*>(output + out_i);
+      *dst = *src;
     } else {
       phi::CudaAtomicAdd(output + out_i, *(params + i));
     }
@@ -186,15 +193,39 @@ void GPUScatterAssign(const phi::GPUContext& ctx,
   if (!overwrite) {
     ScatterInitCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(
         p_index, p_output, output_dims[0], index_size, slice_size);
+
+    ScatterCUDAKernel<T, IndexT, false, 1><<<grid, block, 0, ctx.stream()>>>(
+        p_src, p_index, p_output, output_dims[0], index_size, slice_size);
+    return;
   }
 
-  ScatterCUDAKernel<T, IndexT><<<grid, block, 0, ctx.stream()>>>(p_src,
-                                                                 p_index,
-                                                                 p_output,
-                                                                 output_dims[0],
-                                                                 index_size,
-                                                                 slice_size,
-                                                                 overwrite);
+  // for overwrite mode, use vectorization
+  int vec_size = 4;
+  vec_size = std::min(phi::GetVectorizedSize(&src), vec_size);
+  vec_size = std::min(phi::GetVectorizedSize(output), vec_size);
+  while (vec_size > 1 && slice_size % vec_size != 0) {
+    vec_size /= 2;
+  }
+
+  constexpr int loop_count = 4;
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx, n, vec_size * loop_count);
+
+  switch (vec_size) {
+#define CASE_VEC_SIZE(__Sz)                                                    \
+  case __Sz:                                                                   \
+    ScatterCUDAKernel<T, IndexT, true, __Sz>                                   \
+        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>( \
+            p_src, p_index, p_output, output_dims[0], index_size, slice_size); \
+    break
+    CASE_VEC_SIZE(4);
+    CASE_VEC_SIZE(2);
+    CASE_VEC_SIZE(1);
+#undef CASE_VEC_SIZE
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported vectorized size: %d", vec_size));
+  }
 }
 
 // The function is only for scatter grad x,
