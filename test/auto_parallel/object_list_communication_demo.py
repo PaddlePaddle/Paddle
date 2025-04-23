@@ -59,13 +59,9 @@ class TestObjectListCommunication:
         # Test case 2: Group operations - rank not in group
         excluded_group = dist.new_group([2, 3])
         if curr_rank == 0:
-            result = dist.send_object_list(
-                ["test"], dst=1, group=excluded_group
-            )
-            assert result is False
+            dist.send_object_list(["test"], dst=1, group=excluded_group)
         elif curr_rank == 1:
-            result = dist.recv_object_list([None], src=0, group=excluded_group)
-            assert result is False
+            dist.recv_object_list([None], src=0, group=excluded_group)
 
         # Test case 3: Group operations - parameter conflicts
         if curr_rank == 0:
@@ -81,60 +77,57 @@ class TestObjectListCommunication:
             except ValueError:
                 pass
 
-        # Test case 4: Normal communication process
+        # Test case 4: Group operations - using group_src/group_dst
+        test_group = dist.new_group([0, 1])
+        if curr_rank == 0:
+            data = ["test_group_dst"]
+            dist.send_object_list(data, group=test_group, group_dst=1)
+        elif curr_rank == 1:
+            data = [None]
+            dist.recv_object_list(data, group=test_group, group_src=0)
+            assert data[0] == "test_group_dst"
+
+        # Test case 5: Normal communication process
         if curr_rank == 0:
             data = [
                 42,  # integer
                 "hello",  # string
                 {"key": "value"},  # dictionary
             ]
-            result = dist.send_object_list(data, dst=1)
-            assert result is True
+            dist.send_object_list(data, dst=1)
         elif curr_rank == 1:
             data = [None] * 3
-            result = dist.recv_object_list(data, src=0)
-            assert result is True
+            dist.recv_object_list(data, src=0)
 
             assert data[0] == 42
             assert data[1] == "hello"
             assert data[2] == {"key": "value"}
 
-    def test_distributed_object_communication(self):
-        """Test objects with distributed attributes"""
+        # Test case 6: Test objects with distributed attributes
         curr_rank = dist.get_rank()
 
         if curr_rank == 0:
             data1 = _recv_info(None, None)
             data = [data1]
-            result = dist.send_object_list(data, dst=1)
-            self.assertTrue(result)
+            dist.send_object_list(data, dst=1)
         elif curr_rank == 1:
             data = [None]
-            result = dist.recv_object_list(data, src=0)
-            self.assertTrue(result)
+            dist.recv_object_list(data, src=0)
 
-            self.assertIsInstance(data[0], _recv_info)
-            self.assertEqual(type(data[0].obj_size), int)
-            self.assertEqual(data[0].obj_size, 10)
+            assert isinstance(data[0], _recv_info)
+            assert type(data[0].obj_size) == int
+            assert data[0].obj_size == 10
 
-            self.assertIsInstance(data[0].obj_type1, paddle.distributed.Shard)
+            assert isinstance(data[0].obj_type1, paddle.distributed.Shard)
+            assert isinstance(data[0].obj_type2, paddle.distributed.Replicate)
+            assert isinstance(data[0].obj_type3, paddle.distributed.Partial)
 
-            self.assertIsInstance(
-                data[0].obj_type2, paddle.distributed.Replicate
-            )
+            assert data[0].dtype == paddle.int64
 
-            self.assertIsInstance(data[0].obj_type3, paddle.distributed.Partial)
-
-            self.assertEqual(data[0].dtype, paddle.int64)
-
-            self.assertEqual(len(data[0].obj_list), 3)
-            self.assertIsInstance(data[0].obj_list[0], paddle.distributed.Shard)
-            self.assertIsInstance(
-                data[0].obj_list[1], paddle.distributed.Replicate
-            )
-            self.assertIsInstance(
-                data[0].obj_list[2], paddle.distributed.Partial
-            )
+            assert len(data[0].obj_list) == 3
+            assert isinstance(data[0].obj_list[0], paddle.distributed.Shard)
+            assert isinstance(data[0].obj_list[1], paddle.distributed.Replicate)
+            assert isinstance(data[0].obj_list[2], paddle.distributed.Partial)
 
 
 if __name__ == '__main__':

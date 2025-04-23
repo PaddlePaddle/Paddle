@@ -122,7 +122,7 @@ def send_object_list(object_list, dst=None, group=None, group_dst=None):
         group_dst (int, optional): The destination rank within the group. Cannot be specified together with dst. Default: None.
 
     Returns:
-        Return True if the operation is successful, False if the current process is not in the group.
+        This function does not return any value.
 
     Examples:
         .. code-block:: python
@@ -146,7 +146,7 @@ def send_object_list(object_list, dst=None, group=None, group_dst=None):
 
     group = _get_global_group() if group is None else group
     if _warn_cur_rank_not_in_group(group):
-        return False
+        return
 
     if group_dst is not None:
         if dst is not None:
@@ -173,5 +173,3 @@ def send_object_list(object_list, dst=None, group=None, group_dst=None):
     else:
         object_tensor = paddle.concat(tensor_list)
     send(object_tensor, dst=dst, group=group)
-
-    return True

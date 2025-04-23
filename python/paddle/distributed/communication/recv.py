@@ -123,7 +123,7 @@ def recv_object_list(object_list, src=None, group=None, group_src=None):
         group_src (int, optional): The source rank within the group. Cannot be specified together with src. Default: None.
 
     Returns:
-        Return True if the operation is successful, False if the current process is not in the group.
+        This function does not return any value.
 
     Examples:
         .. code-block:: python
@@ -147,7 +147,7 @@ def recv_object_list(object_list, src=None, group=None, group_src=None):
 
     group = _get_global_group() if group is None else group
     if _warn_cur_rank_not_in_group(group):
-        return False
+        return
 
     if group_src is not None:
         if src is not None:
@@ -171,5 +171,3 @@ def recv_object_list(object_list, src=None, group=None, group_src=None):
         obj_view = object_tensor[offset : offset + obj_size]
         object_list[i] = convert_tensor_to_object(obj_view, obj_size)
         offset += obj_size
-
-    return True
