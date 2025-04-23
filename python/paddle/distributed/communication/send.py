@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import paddle
 from paddle.distributed.communication import stream
@@ -111,7 +111,12 @@ def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task | None:
     return send(tensor, dst, group, sync_op=False)
 
 
-def send_object_list(object_list, dst=None, group=None, group_dst=None):
+def send_object_list(
+    object_list: list[Any],
+    dst: int | None = None,
+    group: Group | None = None,
+    group_dst: int | None = None,
+):
     """
     Send a list of Python objects to the receiver.
 
@@ -133,10 +138,10 @@ def send_object_list(object_list, dst=None, group=None, group_dst=None):
 
             >>> dist.init_parallel_env()
             >>> if dist.get_rank() == 0:
-            ...     data = ["hello", {"key": 100}, [1, 2, 3]]
+            ...     data = ["hello", {"key": 100}, [1, 2, 3]]  # type: ignore
             ...     dist.send_object_list(data, dst=1)
             >>> else:
-            ...     data = [None] * 3  # pre-allocate list with size 3
+            ...     data = [None] * 3  # type: ignore
             ...     dist.recv_object_list(data, src=0)
             >>> print(data)
             >>> # ["hello", {"key": 100}, [1, 2, 3]] (2 GPUs)
