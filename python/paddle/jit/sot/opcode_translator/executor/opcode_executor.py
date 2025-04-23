@@ -31,11 +31,12 @@ from paddle.jit.utils import OrderedSet
 
 from ...profiler import EventGuard
 from ...psdb import NO_BREAKGRAPH_CODES
+from ...symbolic_shape.constraints import LogicalNotConstraintNode
 from ...utils import (
     ENV_MIN_GRAPH_SIZE,
     ENV_SOT_FORCE_FALLBACK_SIR_IDS,
     BreakGraphError,
-    BuiltinFunctionBreak,
+    DataDependencyDynamicShapeBreak,
     FallbackError,
     InnerError,
     SotUndefinedVar,
@@ -225,7 +226,23 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                 )(res)
 
             assert isinstance(res, (ConstantVariable, SymbolicVariable))
-            is_jump = res.get_py_value()
+            if isinstance(res, SymbolicVariable):
+                constraint_node, symbolic_vars = res.create_constraint_tree()
+                if not all(
+                    var.value.is_backed() for var in symbolic_vars.values()
+                ):
+                    raise BreakGraphError(
+                        DataDependencyDynamicShapeBreak(
+                            f"Symbolic variable {symbolic_vars} is not backed."
+                        )
+                    )
+                is_jump = res.get_example_value()
+                if not is_jump:
+                    constraint_node = LogicalNotConstraintNode(constraint_node)
+                for var in symbolic_vars.values():
+                    var.add_constraint((constraint_node, symbolic_vars))
+            else:
+                is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
                 assert instr.jump_to is not None
@@ -396,6 +413,7 @@ class OpcodeExecutorBase:
         self._graph = graph
         self.new_code: types.CodeType | None = self.empty_code  # type: ignore
         self.guard_fn = None
+        self.guard_chain = None
         self._name = "Executor"
         self._call_shape: tuple[str, ...] | None = (
             None  # store kwnames for Python 3.11 and 3.12
@@ -798,10 +816,32 @@ class OpcodeExecutorBase:
 
     @call_break_graph_decorator(push_n=1)
     def LOAD_SUPER_ATTR(self, instr: Instruction):
-        # This bytecode is for Python 3.12+, and it will break graph in Python 3.11-.
-        # We align it's behavior with Python 3.11-.
-        raise BreakGraphError(
-            BuiltinFunctionBreak(reason_str="call super is not supported")
+        # Handle LOAD_SUPER_ATTR bytecode (introduced in Python 3.12+) by simulating its execution
+
+        assert isinstance(instr.arg, int)
+
+        name_idx = instr.arg >> 2  # Name index in co_names
+        is_method = bool(instr.arg & 1)  # Method binding flag
+
+        args = self.stack.pop_n(2)
+        super_func = self.stack.pop()
+        self.stack.push(super_func(*args))
+
+        attr_name = self.vframe.code.co_names[name_idx]
+
+        if is_method:
+            # Handle method binding
+            self.load_method(attr_name)
+            return
+
+        # Handle attribute lookup
+        attr_name_var = ConstantVariable.wrap_literal(attr_name, self._graph)
+        obj = self.stack.pop()
+
+        self.stack.push(
+            BuiltinVariable(
+                getattr, graph=self._graph, tracker=DanglingTracker()
+            )(obj, attr_name_var)
         )
 
     def LOAD_CONST(self, instr: Instruction):
@@ -1144,6 +1184,19 @@ class OpcodeExecutorBase:
             )
         )
 
+    def handle_super_init_without_args(self, fn, args, kwargs):
+        if (
+            isinstance(fn, BuiltinVariable)
+            and fn.value is super
+            and len(args) == 0
+        ):
+            self_name = self.vframe.code.co_varnames[0]
+            args = (
+                self.vframe.cells['__class__'].value,
+                self.vframe.locals[self_name],
+            )
+        return fn, args, kwargs
+
     @call_break_graph_decorator(push_n=1)
     def PRECALL__CALL(self, instr: Instruction):
         """
@@ -1193,6 +1246,7 @@ class OpcodeExecutorBase:
         if not is_method:
             # pop the NULL variable
             self.stack.pop()
+        fn, args, kwargs = self.handle_super_init_without_args(fn, args, kwargs)
         self.stack.push(fn(*args, **kwargs))
         self._call_shape = None
 
@@ -1262,6 +1316,7 @@ class OpcodeExecutorBase:
         args = self.stack.pop_n(n_args)
         kwargs = {}
         fn = self.stack.pop()
+        fn, args, kwargs = self.handle_super_init_without_args(fn, args, kwargs)
         ret = fn(*args, **kwargs)
         self.stack.push(ret)
 
@@ -1983,6 +2038,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._graph.pycode_gen.gen_return()
             self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
         return Stop(state="Return")
 
     def get_compute_fn_and_update_changed_vars(
@@ -2177,6 +2233,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     @fallback_when_occur_error
     def _break_graph_when_call(
@@ -2289,6 +2346,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen.gen_return()
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     @fallback_when_occur_error
     def _break_graph_when_for_loop(
@@ -2537,6 +2595,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     def _inline_call_for_loop(
         self, iterator: VariableBase, for_iter: Instruction

@@ -72,7 +72,6 @@ void RegisterCpuIntrinRule() {
 #define __(intrin_name__, id)                                         \
   ir::Registry::Register("lower_cpu_intrinsic_" #intrin_name__, true) \
       .SetBody(MakeFloatIntrinOp<id, 1>);
-  __(exp, ::llvm::Intrinsic::exp)
   __(exp2, ::llvm::Intrinsic::exp2)
   __(sqrt, ::llvm::Intrinsic::sqrt)
   __(log, ::llvm::Intrinsic::log)
@@ -102,7 +101,53 @@ void RegisterCpuIntrinRule() {
       .SetBody(MakeFloatIntrinOp<::llvm::Intrinsic::fmuladd, 3, false>);
 
   ir::Registry::Register("lower_cpu_intrinsic_pow", true)
-      .SetBody(MakeFloatIntrinOp<::llvm::Intrinsic::pow, 2, false>);
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
+        Expr arg0 = args[0];
+        ir::Call *node = arg0->as<ir::Call>();
+        PADDLE_ENFORCE_NOT_NULL(
+            node,
+            ::common::errors::InvalidArgument(
+                "The argument must be a valid call expression."));
+        PADDLE_ENFORCE_EQ(
+            node->read_args.size(),
+            2U,
+            ::common::errors::InvalidArgument(
+                "The number of read arguments of 'pow' should be 2."));
+        Type type = common::Float(64);
+        Expr casted_arg0 = ir::Cast::Make(type, node->read_args[0]);
+        Expr casted_arg1 = ir::Cast::Make(type, node->read_args[1]);
+        Expr log_base = lang::Log(casted_arg0);
+        Expr product = log_base * casted_arg1;
+        *rv = ir::Cast::Make(node->type(), lang::Exp(product));
+      });
+
+  ir::Registry::Register("lower_cpu_intrinsic_exp", true)
+      .SetBody([](lang::Args args, lang::RetValue *rv) {
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          ::common::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
+        Expr arg0 = args[0];
+        ir::Call *node = arg0->as<ir::Call>();
+        PADDLE_ENFORCE_NOT_NULL(
+            node,
+            ::common::errors::InvalidArgument(
+                "The argument must be a valid call expression."));
+        PADDLE_ENFORCE_EQ(
+            node->read_args.size(),
+            1,
+            ::common::errors::InvalidArgument(
+                "The number of read arguments of 'exp' should be 1."));
+        Type type = common::Float(64);
+        Expr casted_arg0 = ir::Cast::Make(type, node->read_args[0]);
+        Expr exp = ir::intrinsics::BuiltinIntrin::Make(
+            node->name, casted_arg0, ::llvm::Intrinsic::exp, 1, type);
+        *rv = ir::Cast::Make(node->type(), exp);
+      });
 
   ir::Registry::Register("lower_cpu_intrinsic_bitwise_not", true)
       .SetBody(MakeFloatIntrinOp<-1, 1, false>);

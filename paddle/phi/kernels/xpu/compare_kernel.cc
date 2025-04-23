@@ -34,6 +34,11 @@ void XPUCompareKernelImpl(
                       bool*,
                       const std::vector<int64_t>&,
                       const std::vector<int64_t>&)> func) {
+  auto* out_data = dev_ctx.template Alloc<bool>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+
   auto x_shape = common::vectorize<int64_t>(x.dims());
   auto y_shape = common::vectorize<int64_t>(y.dims());
 
@@ -46,7 +51,6 @@ void XPUCompareKernelImpl(
 
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
-  auto* out_data = dev_ctx.template Alloc<bool>(out);
 
   int ret =
       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);

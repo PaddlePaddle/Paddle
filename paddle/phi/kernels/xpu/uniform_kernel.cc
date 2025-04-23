@@ -37,14 +37,19 @@ void UniformKernel(const Context &dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t real_seed = seed != 0 ? seed : dev_ctx.GetGenerator()->Random64();
 
-  // int random(Context* ctx, T* x, int64_t len, T min, T max, int64_t seed);
-  int r = xpu::random<XPUType>(dev_ctx.x_context(),
-                               reinterpret_cast<XPUType *>(data),
-                               out->numel(),
-                               static_cast<XPUType>(min.to<float>()),
-                               static_cast<XPUType>(max.to<float>()),
-                               real_seed);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "random");
+  // algo:
+  //       0: philox4x32_10_pytorch
+  //       1: mt
+  //       2: philox4x32_10_curand
+  int algo = 0;
+  int r = xpu::uniform<XPUType>(dev_ctx.x_context(),
+                                reinterpret_cast<XPUType *>(data),
+                                out->numel(),
+                                static_cast<XPUType>(min.to<float>()),
+                                static_cast<XPUType>(max.to<float>()),
+                                real_seed,
+                                algo);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "uniform");
 }
 
 }  // namespace phi

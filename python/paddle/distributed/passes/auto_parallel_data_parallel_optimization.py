@@ -280,7 +280,6 @@ class DataParallelOptimizationPass(PassBase):
         # comm wait calc to finish
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_data_parallel_reduce_op(op):
-                assert op.has_attr('use_calc_stream')
                 assert op.has_attr('ring_id')
 
                 op._set_attr('use_calc_stream', False)
@@ -436,8 +435,7 @@ class DataParallelOptimizationPass(PassBase):
 
         remove_op_types = [
             'scale',
-            'c_allreduce_avg',
-            'c_allreduce_sum',
+            'all_reduce',
             'c_wait_compute',
         ]
 
@@ -491,10 +489,11 @@ class DataParallelOptimizationPass(PassBase):
                 )
 
             allreduce_op = block.ops[group.allreduce_op_idx]
-            assert allreduce_op.type in [
-                'c_allreduce_avg',
-                'c_allreduce_sum',
-            ], f"should found c_allreduce_avg or c_allreduce_sum op but found {allreduce_op}"
+            assert (
+                allreduce_op.type == 'all_reduce'
+                and allreduce_op.attr('reduce_type')
+                == paddle.distributed.ReduceOp.SUM
+            ), f"should found all_reduce sum op but found {allreduce_op}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
@@ -746,7 +745,11 @@ class GradientsGroup:
         if len(self.gradients) == 1:
             # TODO Remove this is a temporary hack for Tensor Parallel. the logic
             # for find grad_op should be more general.
-            if self.ops[grad_op_idx].type == "c_allreduce_sum":
+            if (
+                self.ops[grad_op_idx].type == "all_reduce"
+                and self.ops[grad_op_idx].attr("reduce_type")
+                == paddle.distributed.ReduceOp.SUM
+            ):
                 grad_op_idx -= 1
 
             grad_op = self.ops[grad_op_idx]

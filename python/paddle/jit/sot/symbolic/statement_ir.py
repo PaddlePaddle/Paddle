@@ -110,10 +110,7 @@ class Statement:
 
     @staticmethod
     def to_string(inps):
-        inps = [x.__str__() for x in flatten(inps) if isinstance(x, Symbol)]
-        if len(inps) == 0:
-            return "(Empty)"
-        return ", ".join(inps)
+        return ", ".join(repr(x) for x in flatten(inps))
 
 
 class CallStatement(Statement):

@@ -34,6 +34,7 @@ using cinn::common::float162;
 using cinn::common::bfloat168;
 using cinn::common::bfloat164;
 using cinn::common::bfloat162;
+#include <cooperative_groups.h>
 #include "cinn_cuda_runtime_source.cuh"
 )";
 const std::string CodeGenCudaDev::source_header_ =  // NOLINT
@@ -55,8 +56,8 @@ using cinn::common::float162;
 using cinn::common::bfloat168;
 using cinn::common::bfloat164;
 using cinn::common::bfloat162;
+#include <cooperative_groups.h>
 #include <cinn_cuda_runtime_source_h>
-
 )";
 
 const std::string &CodeGenCudaDev::GetSourceHeader() { return source_header_; }

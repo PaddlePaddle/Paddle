@@ -68,7 +68,7 @@ class TrtConvertBitwiseAndTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 4:
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 3 - 1, 3 - 1, 24 - 1],
@@ -135,7 +135,7 @@ class TrtConvertBitwiseAndTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
