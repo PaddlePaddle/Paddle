@@ -33,6 +33,7 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
 
+// check if the tensor is null, tensor is std::optional<paddle::Tensor>
 #define HANDLE_NULL_TENSOR(tensor) \
   {                                \
     if (!tensor) {                 \
@@ -40,6 +41,7 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                              \
   }
 
+// check if the value is null and decref it
 #define HANDLE_NULL_VALUE_DECREF(value) \
   {                                     \
     if ((value) == NULL) {              \
@@ -49,6 +51,7 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                                   \
   }
 
+// check if the value is null
 #define HANDLE_NULL_VALUE(value) \
   {                              \
     if ((value) == NULL) {       \
@@ -225,7 +228,9 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
   HANDLE_NULL_TENSOR(tensor);
 
   if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
-  if (!tensor->is_dist_tensor()) return false;  // tensor not dist tensor
+  if (tensor->is_dist_tensor() != is_dist_) {
+    return false;  // tensor not dist tensor
+  }
 
   PyObject* dist_info_from_tensor_func = PyTuple_GetItem(value, 1);
   HANDLE_NULL_VALUE(dist_info_from_tensor_func);
@@ -321,10 +326,12 @@ std::string ItemExprNode::stringify(int indent) {
 }
 
 std::optional<int> GuardNode::lookup(FrameProxy* frame) {
+  // TODO(zrr1999): support multiple exprs
   PyObject* value = [this, frame]() {
     if (exprs.size() == 1) {
       PyObject* v = exprs.back()->eval(frame);
       if (v) {
+        // TODO(dev): DECREF v.
         Py_INCREF(v);
       }
       return v;
