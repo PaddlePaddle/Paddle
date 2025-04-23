@@ -130,8 +130,42 @@ class ContainerVariable(VariableBase):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        expr_node = self.tracker.guard_tree_expr_node()
+
+        if self.get_py_type() is dict:
+            # TODO(zrr1999): Use TypeMatchGuard
+            type_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
+                [expr_node],
+            )
+        else:
+            type_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            )
+        len_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.LengthMatchGuard(len(self.init_value)),
+            [expr_node],
+        )
+
+        if isinstance(self, (ListVariable, TupleVariable)):
+            guard_variables = self.proxy.reproduce(0)
+        elif isinstance(self, DictVariable):
+            guard_variables = filter(
+                lambda var: not isinstance(var, MutableDictLikeData.Empty),
+                self.proxy.reproduce(0).values(),
+            )
+        else:
+            raise InnerError(f"Unsupported container type: {type(self)}")
+
+        return reduce(
+            operator.add,
+            [[type_guard, len_guard]]
+            + [
+                item.make_faster_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
         )
 
 

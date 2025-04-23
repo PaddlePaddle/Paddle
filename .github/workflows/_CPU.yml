@@ -1,0 +1,163 @@
+name: PR-CI-CPU
+
+on:
+  workflow_call:
+
+env:
+  dockerfile: Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
+  docker_image: 3d2fa88da0da
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  work_dir: /paddle
+  PADDLE_ROOT: /paddle
+  TASK: paddle-CI-${{ github.event.pull_request.number }}-cpu
+  ci_scripts: ${{ github.workspace }}/ci
+  BRANCH: ${{ github.event.pull_request.base.ref }}
+  CI_name: cpu
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on:
+      group: GZ_BD-CPU
+
+    steps:
+      - name: Check docker image  and run container
+        env:
+          WITH_SHARED_PHI: "ON"
+          WITH_MKL: "OFF"
+          WITH_TESTING: "ON"
+          COVERALLS_UPLOAD: "OFF"
+          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          PADDLE_VERSION: 0.0.0
+          WITH_DISTRIBUTE: "ON"
+          PREC_SUFFIX: .py3
+          WITH_UNITY_BUILD: "ON"
+          PY_VERSION: 3.9
+          PROC_RUN: 12
+          FLAGS_enable_eager_mode: 1
+          WITH_TENSORRT: "OFF"
+          GENERATOR: "Ninja"
+          CCACHE_MAXSIZE: 150G
+          CCACHE_LIMIT_MULTIPLE: 0.8
+          WITH_AVX: "OFF"
+          CCACHE_DIR: "/root/.ccache/cpu"
+        run: |
+          container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
+          echo "container_name=${container_name}" >> ${{ github.env }}
+          docker run -d -t --name ${container_name} \
+            -v "/home/data/cfs:/home/data/cfs" \
+            -v "/home/data/cfs/.cache/python35-cpu:/root/.cache" \
+            -v "/home/data/cfs/.ccache:/root/.ccache" \
+            -v "/dev/shm:/dev/shm"  \
+            -v ${{ github.workspace }}/../../..:${{ github.workspace }}/../../.. \
+            -v ${{ github.workspace }}:/paddle \
+            -e BRANCH \
+            -e PR_ID \
+            -e COMMIT_ID \
+            -e work_dir \
+            -e PADDLE_ROOT \
+            -e WITH_SHARED_PHI \
+            -e WITH_MKL \
+            -e WITH_TESTING \
+            -e COVERALLS_UPLOAD \
+            -e GIT_PR_ID \
+            -e PADDLE_VERSION \
+            -e WITH_DISTRIBUTE \
+            -e PREC_SUFFIX \
+            -e WITH_UNITY_BUILD \
+            -e PY_VERSION \
+            -e PROC_RUN \
+            -e FLAGS_enable_eager_mode \
+            -e WITH_TENSORRT \
+            -e GENERATOR \
+            -e CCACHE_MAXSIZE \
+            -e CCACHE_LIMIT_MULTIPLE \
+            -e GITHUB_ENV \
+            -e ci_scripts \
+            -e WITH_AVX \
+            -e CCACHE_DIR \
+            -w /paddle --network host ${docker_image}
+
+      - name: Download paddle.tar.gz and merge target branch
+        env:
+          work_dir: ${{ github.workspace }}
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf  * .[^.]*
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          tar xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          git config --global user.name "PaddleCI"
+          git config --global user.email "paddle_ci@example.com"
+          git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          source ${{ github.workspace }}/../../../proxy
+          git checkout $BRANCH
+          git pull upstream $BRANCH
+          git fetch upstream $BRANCH
+          git checkout test
+          git merge --no-edit $BRANCH
+          '
+
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: cpu
+
+      - name: Build
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
+          EXCODE=$?
+          exit $EXCODE
+          '
+
+      - name: Test
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_linux_cpu_test.sh
+          EXCODE=$?
+          source ${ci_scripts}/utils.sh; clean_build_files
+          echo "::group::Install bce-python-sdk"
+          python -m pip install bce-python-sdk==0.8.74
+          echo "::endgroup::"
+          exit $EXCODE
+          '
+
+      - name: Upload paddle_whl
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos/BosClient.py
+          paddle_whl: paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
+            mkdir ${{ env.home_path }}/bos
+            tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
+          fi
+          cd dist
+          echo "Uploading paddle_whl to bos"
+          python3.9 ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/cpu_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
+          '
+
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

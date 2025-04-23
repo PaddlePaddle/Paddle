@@ -10,6 +10,7 @@ if(${TENSORRT_VERSION_NUMBER} GREATER_EQUAL 85)
          phi
          common
          pir_save_load
+         pir_transforms
          pir_tensorrt_plugin)
   set_tests_properties(test_tensorrt_engine_instruction PROPERTIES TIMEOUT 120)
   if(WITH_ONNXRUNTIME AND WIN32)

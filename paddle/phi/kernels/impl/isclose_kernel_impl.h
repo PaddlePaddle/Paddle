@@ -249,6 +249,10 @@ void IscloseKernel(const Context& dev_ctx,
                    const Scalar& atol,
                    bool equal_nan,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       atol.dtype(),
       DataType::FLOAT64,

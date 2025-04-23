@@ -206,6 +206,13 @@ void ConstructAttrMapFromPyArgs(
     ssize_t attr_end,
     paddle::framework::AttributeMap& attrs);  // NOLINT
 
+void ConstructAttrMapForLegacyRunProgram(
+    const std::string& op_type,
+    PyObject* args,
+    ssize_t attr_start,
+    ssize_t attr_end,
+    paddle::framework::AttributeMap& attrs);  // NOLINT
+
 void ConstructAttrMapForRunProgram(
     const std::string& op_type,
     PyObject* args,
