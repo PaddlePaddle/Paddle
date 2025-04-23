@@ -6201,5 +6201,79 @@ void TopPSamplingInferMeta(const MetaTensor& x,
   }
 }
 
+void MoeUnzipInferMeta(const MetaTensor& X,
+                       const MetaTensor& XScale,
+                       const MetaTensor& expert_routemap_topk,
+                       const MetaTensor& expert_prob_topk,
+                       int topk,
+                       int num_experts,
+                       int max_tokens_per_expert,
+                       MetaTensor* X_unzipped,
+                       MetaTensor* zipped_expertwise_rowmap,
+                       MetaTensor* token_prob_unzipped,
+                       MetaTensor* XScale_unzipped) {
+  auto x_dim = X.dims();
+  auto xscale_dim = XScale.dims();
+  auto expert_routemap_topk_dim = expert_routemap_topk.dims();
+  auto expert_prob_topk_dim = expert_prob_topk.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      2,
+      errors::InvalidArgument("Input X should have 2 dimensions"));
+
+  PADDLE_ENFORCE((X.dtype() == phi::DataType::BFLOAT16 ||
+                  X.dtype() == phi::DataType::FLOAT8_E4M3FN),
+                 errors::InvalidArgument(
+                     "The input X type should be bfloat16 or float8_e4mefn"));
+
+  PADDLE_ENFORCE_EQ(
+      xscale_dim.size(),
+      2,
+      errors::InvalidArgument("Input XScale should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      XScale.dtype(),
+      phi::DataType::FLOAT32,
+      errors::InvalidArgument("The input XScale type should be float32"));
+
+  PADDLE_ENFORCE_EQ(expert_routemap_topk_dim.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input expert_routemap_topk should have 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(expert_routemap_topk.dtype(),
+                    phi::DataType::INT32,
+                    errors::InvalidArgument(
+                        "The input expert_routemap_topk type should be int32"));
+
+  PADDLE_ENFORCE_EQ(expert_prob_topk_dim.size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input expert_prob_topk should have 2 dimensions"));
+  PADDLE_ENFORCE(
+      (expert_prob_topk.dtype() == phi::DataType::BFLOAT16 ||
+       expert_prob_topk.dtype() == phi::DataType::FLOAT32),
+      errors::InvalidArgument(
+          "The input expert_prob_topk type should be float32 or bfloat16"));
+
+  int seqlen = x_dim[0];
+  int token_len = x_dim[1];
+  int u_seqlen = (max_tokens_per_expert + 127) / 128 * 128;
+
+  X_unzipped->set_dims(phi::make_ddim({u_seqlen, token_len}));
+  X_unzipped->set_dtype(X.dtype());
+
+  zipped_expertwise_rowmap->set_dims(phi::make_ddim({seqlen, num_experts}));
+  zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
+
+  token_prob_unzipped->set_dims(phi::make_ddim({u_seqlen, 1}));
+  token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
+
+  XScale_unzipped->set_dims(
+      phi::make_ddim({u_seqlen, (token_len + 127) / 128}));
+  XScale_unzipped->set_dtype(XScale.dtype());
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

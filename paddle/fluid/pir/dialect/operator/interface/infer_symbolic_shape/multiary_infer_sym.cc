@@ -4989,4 +4989,79 @@ bool YoloBoxPostOpInferSymbolicShape(
   return true;
 }
 
+bool MoeUnzipOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  const symbol::ShapeOrDataDimExprs &xs_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &xs_shape = xs_shape_or_data.shape();
+
+  const symbol::ShapeOrDataDimExprs &ert_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &ert_shape = ert_shape_or_data.shape();
+
+  const symbol::ShapeOrDataDimExprs &ept_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const std::vector<symbol::DimExpr> &ept_shape = ept_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      2,
+      common::errors::InvalidArgument("The input(X) must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(
+      xs_shape.size(),
+      2,
+      common::errors::InvalidArgument("The input(XScale) must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(ert_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input(expert_routemap_topk) must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(ept_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input(expert_prob_topk) must be a 2D Tensor"));
+
+  std::vector<symbol::DimExpr> x_unzipped_shape;
+  std::vector<symbol::DimExpr> zipped_expertwise_rowmap_shape;
+  std::vector<symbol::DimExpr> token_prob_unzipped_shape;
+  std::vector<symbol::DimExpr> XScale_unzipped_shape;
+
+  int num_experts = op->attribute<pir::Int32Attribute>("num_experts").data();
+  int max_tokens_per_expert =
+      op->attribute<pir::Int32Attribute>("max_tokens_per_expert").data();
+  int u_seqlen = (max_tokens_per_expert + 127) / 128 * 128;
+
+  x_unzipped_shape = {u_seqlen, x_shape[1]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(x_unzipped_shape)});
+
+  zipped_expertwise_rowmap_shape = {x_shape[0], num_experts};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_shape)});
+
+  token_prob_unzipped_shape = {u_seqlen, 1};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_shape)});
+
+  XScale_unzipped_shape = {u_seqlen, (x_shape[1] + 127) / 128};
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(XScale_unzipped_shape)});
+
+  return true;
+}
+
 }  // namespace paddle::dialect
