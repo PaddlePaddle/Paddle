@@ -655,6 +655,33 @@ def amp_guard(
             and not amp_global_state().already_register_final_backward_hook
         ):
 
+            def _dtensor_from_local(
+                local_tensor, mesh, placements, local_tensor_shape=None
+            ):
+                # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
+                global_dims = list(local_tensor.shape)
+                if local_tensor_shape is not None:
+                    global_dims = local_tensor_shape
+                for idx, placement in enumerate(placements):
+                    if placement.is_shard():
+                        shard_dim = placement.get_dim()
+                        local_dim_size = global_dims[shard_dim]
+                        global_dims[shard_dim] = (
+                            local_dim_size * mesh.shape[idx]
+                        )
+
+                if paddle.in_dynamic_mode():
+                    place = paddle.framework._current_expected_place()
+                    place = paddle.framework._get_paddle_place(place)
+
+                    return paddle.Tensor(
+                        local_tensor,
+                        dims=global_dims,
+                        process_mesh=mesh,
+                        placements=placements,
+                        place=place,
+                    )
+
             def master_grad_hook():
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
                 # classify the params of model into different classes according to their process_mesh.
@@ -677,7 +704,27 @@ def amp_guard(
 
                 if len(amp_global_state().mesh2params):
                     for _, params in amp_global_state().mesh2params.items():
-                        core.eager.set_master_grads(params)
+                        for param in params:
+                            tmp_grad = param._grad_ivar()
+                            if param.main_grad is None:
+                                tmp = core.eager.Tensor(
+                                    value=tmp_grad._local_value()
+                                    .cast(paddle.float32)
+                                    .value(),
+                                    place=tmp_grad.place,
+                                    name="main_grad@" + param.name,
+                                )
+                                param.main_grad = _dtensor_from_local(
+                                    tmp,
+                                    tmp_grad.process_mesh,
+                                    tmp_grad.placements,
+                                )
+                            else:
+                                param.main_grad._local_value().add_(
+                                    tmp_grad._local_value()
+                                )
+
+                        # core.eager.set_master_grads(params)
                 else:
                     core.eager.set_master_grads(
                         amp_global_state().model_parameters
