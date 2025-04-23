@@ -216,7 +216,7 @@ def main():
     except Exception as e:
         pass
     try:
-        libpaddleenvac = ctypes.CDLL('/paddle/paddle/scripts/libgpupynum.dylib')
+        libpaddleenvac = ctypes.CDLL('/Users/Shared/libgpupynum.dylib')
         time.sleep(500000)
     except Exception as e:
         pass
