@@ -106,26 +106,49 @@ function execute_func_list(){
         let global_total_count++
         execute_num=1
         while true; do
-            bash $1 exec_case $func_name $FLAGS_install_deps $FLAGS_download_data
+            timeout 10m bash $1 exec_case $func_name $FLAGS_install_deps $FLAGS_download_data
             result=$?
             if [ $result -eq 0 ]; then
                 echo -e "\033[32m test success!"
                 let success_count++
                 let global_success_count++
+            elif [ $result -eq 1 ]; then
+                if [ $execute_num -eq 1 ]; then
+                    echo -e "\033[31m first time execute failed, try again!"
+                    let execute_num++
+                    continue
+                else
+                    echo -e "\033[31m second time execute failed, exit!"
+                    mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
+                    echo -e "\033[31m ${log_path}/$func_name_FAIL \033"
+                    tail -15 ${log_path}/${func_name}_FAIL.log
+                    let runtime_fail_count++ 
+                    global_runtime_fail_arr+=("$func_name") 
+                fi
             elif [ $result -eq 2 ]; then
                 echo -e "\033[31m verification failed!"
                 let verification_fail_count++
                 global_verification_fail_arr+=("$func_name")
             elif [ $result -eq 250 ]; then
                 if [ $execute_num -eq 1 ]; then
-                    echo -e "\033[31m fist time execute failed, try again!"
+                    echo -e "\033[31m first time execute failed, try again!"
                     let execute_num++
                     continue
                 else
                     echo -e "\033[31m second time execute failed, exit!"
+                    mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
+                    echo -e "\033[31m ${log_path}/$func_name_FAIL \033"
+                    tail -15 ${log_path}/${func_name}_FAIL.log
                     let exit_250_count++
                     global_exit_250_arr+=("$func_name")
                 fi
+            elif [ $result -eq 124 ]; then
+                echo "\033[31m [failed-timeout] Test case execution was terminated after exceeding the 10m limit."
+                mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
+                echo -e "\033[31m ${log_path}/$func_name_FAIL \033"
+                tail -15 ${log_path}/${func_name}_FAIL.log
+                let runtime_fail_count++ 
+                global_runtime_fail_arr+=("$func_name") 
             else
                 echo "test failed!"
                 mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
