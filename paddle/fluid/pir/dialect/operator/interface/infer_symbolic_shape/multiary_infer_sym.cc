@@ -5007,6 +5007,11 @@ bool MoeUnzipOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const std::vector<symbol::DimExpr> &ept_shape = ept_shape_or_data.shape();
 
+  const auto &mtpe_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  int max_tokens_per_expert =
+      static_cast<int>(mtpe_shape_or_data.data().value().at(0).Get<int64_t>());
+
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       2,
@@ -5033,8 +5038,6 @@ bool MoeUnzipOpInferSymbolicShape(
   std::vector<symbol::DimExpr> XScale_unzipped_shape;
 
   int num_experts = op->attribute<pir::Int32Attribute>("num_experts").data();
-  int max_tokens_per_expert =
-      op->attribute<pir::Int32Attribute>("max_tokens_per_expert").data();
   int u_seqlen = (max_tokens_per_expert + 127) / 128 * 128;
 
   x_unzipped_shape = {u_seqlen, x_shape[1]};
@@ -5055,11 +5058,11 @@ bool MoeUnzipOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_shape)});
 
-  XScale_unzipped_shape = {u_seqlen, (x_shape[1] + 127) / 128};
+  xscale_unzipped_shape = {u_seqlen, (x_shape[1] + 127) / 128};
   infer_context->SetShapeOrDataForValue(
       op->result(3),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(XScale_unzipped_shape)});
+          symbol::TensorShapeOrDataDimExprs(xscale_unzipped_shape)});
 
   return true;
 }

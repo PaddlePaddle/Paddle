@@ -8,7 +8,7 @@
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : _moe_unzip
-  args : (Tensor X, Tensor XScale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int topk, int num_experts, int max_tokens_per_expert)
+  args : (Tensor X, Tensor XScale, Tensor expert_routemap_topk, Tensor expert_prob_topk, Scalar(int) max_tokens_per_expert, int topk, int num_experts)
   output : Tensor(X_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(XScale_unzipped)
   infer_meta :
     func : MoeUnzipInferMeta

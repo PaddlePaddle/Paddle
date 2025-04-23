@@ -6205,9 +6205,9 @@ void MoeUnzipInferMeta(const MetaTensor& X,
                        const MetaTensor& XScale,
                        const MetaTensor& expert_routemap_topk,
                        const MetaTensor& expert_prob_topk,
+                       const Scalar& max_tokens_per_expert,
                        int topk,
                        int num_experts,
-                       int max_tokens_per_expert,
                        MetaTensor* X_unzipped,
                        MetaTensor* zipped_expertwise_rowmap,
                        MetaTensor* token_prob_unzipped,
@@ -6262,7 +6262,8 @@ void MoeUnzipInferMeta(const MetaTensor& X,
 
   int seqlen = x_dim[0];
   int token_len = x_dim[1];
-  int u_seqlen = (max_tokens_per_expert + 127) / 128 * 128;
+  int max_tokens_per_expert_int = max_tokens_per_expert.to<int>();
+  int u_seqlen = (max_tokens_per_expert_int + 127) / 128 * 128;
 
   X_unzipped->set_dims(phi::make_ddim({u_seqlen, token_len}));
   X_unzipped->set_dtype(X.dtype());
