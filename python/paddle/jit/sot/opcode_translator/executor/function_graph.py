@@ -390,10 +390,15 @@ class FunctionGraph:
         self.pycode_gen.gen_enable_eval_frame()
 
         name_gen = NameGenerator("___graph_fn_saved_orig_")
+        stored_var_ids = set()
 
         # here is not update changed values, it just give names to stack vars
         # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
+            if var.id in stored_var_ids:
+                self.pycode_gen.gen_pop_top()
+                continue
+            stored_var_ids.add(var.id)
             if not store_var_info.get(var.id, []):
                 name = name_gen.next()
                 store_var_info.setdefault(var.id, [])

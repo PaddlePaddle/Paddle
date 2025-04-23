@@ -61,7 +61,6 @@ const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
       {"depthwise_conv2d_transpose", 1},
       {"conv2d", 1},
       {"lamb", 1},
-      {"send_and_recv", 1},
       {"gaussian_random", 1},
       {"unique_consecutive", 1},
       {"conv3d", 1},

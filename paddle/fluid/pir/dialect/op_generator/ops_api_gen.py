@@ -219,8 +219,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'legacy_matmul_double_grad',
     'global_scatter',
     'global_gather',
-    'send_and_recv',
-    'send_and_recv_',
     'straight_through_estimator',
     "multiply_grad",
     "scale_grad",

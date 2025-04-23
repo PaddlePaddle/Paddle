@@ -685,17 +685,6 @@
   traits : pir::SideEffectTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : send_and_recv
-  args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
-  output : Tensor[](out){x.size()}
-  infer_meta :
-    func : UnchangedVectorInferMeta
-    param : [x]
-  kernel :
-    func : send_and_recv
-    param : [x, message_name, mode, send_var_name, recv_var_name, trainer_id, endpoints, next_endpoints, previous_endpoints]
-  inplace: (x -> out)
-
 - op : send_v2
   args : (Tensor x, int ring_id = 0, int peer = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output :

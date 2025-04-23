@@ -9,7 +9,8 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   TASK: paddle-CI-${{ github.event.pull_request.number }}-sot
-  ci_scripts: ${{ github.workspace }}/ci
+  ci_scripts: /paddle/ci
+  CI_name: sot
 
 defaults:
   run:
@@ -35,9 +36,9 @@ jobs:
       # sudo usermod -aG docker $USER
       - name: Check docker image and run container
         env:
-          BRANCH: develop
-          work_dir: ${{ github.workspace }}
-          PADDLE_ROOT: ${{ github.workspace }}
+          BRANCH: ${{ github.base_ref }}
+          work_dir: /paddle
+          PADDLE_ROOT: /paddle
           WITH_SHARED_PHI: "ON"
           WITH_MKL: "OFF"
           WITH_TESTING: "OFF"
@@ -64,7 +65,9 @@ jobs:
             -v "/home/data/cfs/.cache:/root/.cache" \
             -v "/home/data/cfs/.ccache:/root/.ccache" \
             -v "/dev/shm:/dev/shm" \
-            -v "${{ github.workspace }}/../../../..:${{ github.workspace }}/../../../.." \
+            -v "${{ github.workspace }}/../../..:${{ github.workspace }}/../../.." \
+            -v ${{ github.workspace }}:/paddle \
+            -e CI_name \
             -e BRANCH \
             -e PR_ID \
             -e COMMIT_ID \
@@ -89,9 +92,9 @@ jobs:
             -e ci_scripts \
             -e WITH_AVX \
             -e CCACHE_DIR \
-            -w ${{ github.workspace }} --network host ${docker_image}
+            -w /paddle --network host ${docker_image}
 
-      - name: Download paddle.tar.gz and merge develop
+      - name: Download paddle.tar.gz and merge $BRANCH
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
@@ -102,12 +105,12 @@ jobs:
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
-          . ../../../proxy
-          git checkout develop
-          git pull upstream develop
-          git fetch upstream develop
+          source ${{ github.workspace }}/../../../proxy
+          git checkout $BRANCH
+          git pull upstream $BRANCH
+          git fetch upstream $BRANCH
           git checkout test
-          git merge --no-edit develop
+          git merge --no-edit $BRANCH
           '
 
       - name: Determine sot ci trigger
@@ -116,7 +119,7 @@ jobs:
           PADDLE_ROOT: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/determine_sot_ci_trigger.sh
           determine_excode=$?
           echo "determine_excode=$determine_excode" >> ${{ github.env }}
@@ -129,8 +132,9 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
-          bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.8
+          export PY_VERSION=3.8
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -142,13 +146,12 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.8
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
           '
-
 
       - name: Build with python3.9
         env:
@@ -157,8 +160,9 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
-          bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.9
+          export PY_VERSION=3.9
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -170,13 +174,12 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.9
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
           '
-
 
       - name: Build with python3.10
         env:
@@ -185,8 +188,9 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
-          bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.10
+          export PY_VERSION=3.10
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -198,7 +202,7 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.10
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
@@ -212,8 +216,9 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
-          bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.11
+          export PY_VERSION=3.11
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -225,13 +230,12 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.11
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
           '
-
 
       - name: Build with python3.12
         env:
@@ -240,8 +244,9 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
-          bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.12
+          export PY_VERSION=3.12
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -253,13 +258,12 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.12
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
           exit $EXCODE
           '
-
 
       - name: Build with python3.13
         env:
@@ -268,8 +272,9 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
-          bash ${ci_scripts}/run_setup.sh ${PYTHON_ABI:-""} bdist_wheel ${parallel_number:-""} sot 3.13
+          export PY_VERSION=3.13
+          source ${{ github.workspace }}/../../../proxy
+          bash ${ci_scripts}/run_setup.sh bdist_wheel
           EXCODE=$?
           exit $EXCODE
           '
@@ -281,7 +286,7 @@ jobs:
         if: ${{ env.determine_excode == 0 }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          . ../../../proxy
+          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_sot_test.sh 3.13
           EXCODE=$?
           rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt

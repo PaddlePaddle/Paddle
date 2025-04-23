@@ -4515,7 +4515,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
 void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
-                               DataType out_dtype,
                                const int32_t group_size,
                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size(),
@@ -4582,7 +4581,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int n = static_cast<int>(x.dims()[1]);
   int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
-  out->set_dtype(out_dtype);
+  out->set_dtype(scale.dtype());
 }
 
 }  // namespace phi
