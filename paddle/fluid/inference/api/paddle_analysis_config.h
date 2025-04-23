@@ -1041,7 +1041,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether logs in Paddle inference are muted.
   ///
   bool glog_info_disabled() const {
-    return !with_glog_info_ or !FLAGS_trt_glog_info;
+    return !with_glog_info_ || !FLAGS_trt_glog_info;
   }
 
   ///
