@@ -140,6 +140,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           echo "::group::Install bce-python-sdk"
+          source ${{ github.workspace }}/../../../proxy
           python -m pip install bce-python-sdk==0.8.74
           echo "::endgroup::"
           export AK=paddle
@@ -151,6 +152,7 @@ jobs:
           fi
           cd dist
           echo "Uploading paddle_whl to bos"
+          source ${{ github.workspace }}/../../../unproxy
           python3.9 ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/cpu_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '
 
