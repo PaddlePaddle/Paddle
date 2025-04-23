@@ -3297,15 +3297,17 @@ bool SlogdetOpInferSymbolicShape(
                                       "greater than or equal to 2."));
   infer_context->AddEqualCstr(x_shape[x_shape_size - 1],
                               x_shape[x_shape_size - 2]);
-  std::vector<symbol::DimExpr> out_shape = {2};
-  size_t additional_dims = x_shape.size() - 2;
-  for (size_t i = 0; i < additional_dims; i++) {
-    out_shape.push_back(x_shape[i]);
+  std::vector<symbol::DimExpr> out_dims;
+  if (x_shape_size > 2) {
+    out_dims.assign(x_shape.begin(), x_shape.end() - 2);
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
   return true;
 }
 
