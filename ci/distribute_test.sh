@@ -93,7 +93,8 @@ function distribute_test() {
     echo "Downloading PaddleNLP_stable_paddle.tar.gz..."
     cd ${work_dir}
     wget https://paddlenlp.bj.bcebos.com/wheels/PaddleNLP_stable_paddle.tar.gz --no-proxy
-    tar -zvxf PaddleNLP_stable_paddle.tar.gz
+    echo "Extracting PaddleNLP_stable_paddle.tar.gz..."
+    tar -zxf PaddleNLP_stable_paddle.tar.gz
     cd PaddleNLP
     sed -i '/lac/d' scripts/regression/requirements_ci.txt
 
@@ -102,9 +103,12 @@ function distribute_test() {
     pip install -r scripts/regression/requirements_ci.txt
     pip install -r ./csrc/requirements.txt
     echo "::endgroup::"
+
+    echo "::group::Install PaddleNLP"
     python setup.py install
     python -m pip install pytest-timeout
     cd csrc && python setup_cuda.py install
+    echo "::endgroup::"
 
     cd ${work_dir}
     wget -q --no-proxy https://paddle-qa.bj.bcebos.com/paddlenlp/Bos.zip --no-check-certificate

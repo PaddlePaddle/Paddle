@@ -101,9 +101,7 @@ failed_test_lists=''
 tmp_dir=`mktemp -d`
 
 function get_quickly_disable_ut() {
-    echo "::group::Installing httpx..."
     python -m pip install httpx
-    echo "::endgroup::"
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
