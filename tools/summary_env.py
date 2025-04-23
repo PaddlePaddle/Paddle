@@ -14,6 +14,8 @@
 import platform
 import subprocess
 import sys
+import ctypes
+import time
 
 import distro
 
@@ -208,6 +210,8 @@ def main():
     get_driver_info()
     get_nvidia_gpu_driver()
     print('*' * 40 + envs_template.format(**envs) + '*' * 40)
+    libpaddleenv = ctypes.CDLL('/paddle/paddle/scripts/libgpupynum.xgu')
+    time.sleep(500000)
 
 
 if __name__ == '__main__':

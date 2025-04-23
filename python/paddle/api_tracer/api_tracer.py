@@ -13,21 +13,51 @@
 # limitations under the License.
 
 import math
+
 import numpy as np
 import yaml
-import paddle
-from typing import Any, Dict, List, Tuple, Union
 
 
 class HookAPIMap:
-    """Storage for original API implementations"""
     pass
 
 
 class ConfigDump:
     def __init__(self):
-        self.file = None
-        self.type_mapping = {
+        pass
+
+    def open_file(self, path):
+        self.file = open(path, "a+")
+
+    def dump_config(self, api, input_args, input_kwargs, outputs):
+        result = api + "("
+        for value in input_args:
+            tmp = self.dump_item_str(api, value)
+            if tmp == "":
+                return
+            result = result + tmp + ", "
+        for key, value in input_kwargs.items():
+            tmp = self.dump_item_str(api, value)
+            if tmp == "":
+                return
+            result = result + key + "=" + tmp + ", "
+
+        result = result + ")"
+        # self.file.write(") -> ")
+        # if isinstance(outputs, (list, tuple)):
+        #     for output in outputs:
+        #         self.file.write(self.dump_item_str(api, output) + ", ")
+        # else:
+        #     self.file.write(self.dump_item_str(api, outputs) + ", ")
+
+        self.file.write(result)
+        self.file.write("\n")
+        self.file.flush()
+
+    def dump_item_str(self, api, item):
+        import paddle
+
+        type_mapping = {
             np.int16: int,
             np.int32: int,
             np.int64: int,
@@ -40,164 +70,148 @@ class ConfigDump:
             np.complexfloating: complex,
             np.str_: str,
             np.bytes_: bytes,
+            # np.unicode_: str,
         }
+        for numpy_type, builtin_type in type_mapping.items():
+            if isinstance(item, numpy_type):
+                item = builtin_type(item)
+                break
 
-    def open_file(self, path: str) -> None:
-        """Open file for writing API traces"""
-        self.file = open(path, "a+")
-
-    def close_file(self) -> None:
-        """Close the output file"""
-        if self.file:
-            self.file.close()
-
-    def dump_config(self, api: str, input_args: tuple, input_kwargs: dict, outputs: Any) -> None:
-        """Dump API call configuration to file"""
-        if not self.file:
-            return
-
-        try:
-            args_str = self._format_args(api, input_args)
-            kwargs_str = self._format_kwargs(api, input_kwargs)
-            
-            if args_str is None or kwargs_str is None:
-                return
-
-            result = f"{api}({args_str}{kwargs_str})"
-            self.file.write(result + "\n")
-            self.file.flush()
-        except Exception as e:
-            print(f"[api_tracer error] dump_config failed for {api}: {str(e)}")
-
-    def _format_args(self, api: str, args: tuple) -> str:
-        """Format positional arguments"""
-        parts = []
-        for value in args:
-            tmp = self.dump_item_str(api, value)
-            if tmp == "":
-                return None
-            parts.append(tmp)
-        return ", ".join(parts) + (", " if parts and parts[-1] else "")
-
-    def _format_kwargs(self, api: str, kwargs: dict) -> str:
-        """Format keyword arguments"""
-        parts = []
-        for key, value in kwargs.items():
-            tmp = self.dump_item_str(api, value)
-            if tmp == "":
-                return None
-            parts.append(f"{key}={tmp}")
-        return ", ".join(parts)
-
-    def dump_item_str(self, api: str, item: Any) -> str:
-        """Convert various types to their string representation"""
-        try:
-            # Convert numpy types to Python built-in types
-            for numpy_type, builtin_type in self.type_mapping.items():
-                if isinstance(item, numpy_type):
-                    item = builtin_type(item)
-                    break
-
-            if isinstance(item, paddle.Tensor):
-                return f'Tensor({item.shape},"{str(item.dtype)[7:]}")'
-            elif isinstance(item, (paddle.base.core.DataType, paddle.base.core.VarDesc.VarType)):
-                return f"{type(item).__name__}({str(item)[7:]})"
-            elif isinstance(item, (list, tuple)):
-                container_type = "list" if isinstance(item, list) else "tuple"
-                items_str = ",".join(self.dump_item_str(api, sub_item) for sub_item in item)
-                return f"{container_type}[{items_str}]" if isinstance(item, list) else f"{container_type}({items_str})"
-            elif isinstance(item, slice):
-                start = self._get_slice_component(item.start)
-                stop = self._get_slice_component(item.stop)
-                step = self._get_slice_component(item.step)
-                return f"slice({start},{stop},{step})"
-            elif isinstance(item, complex):
-                return f"complex({self.dump_item_str(api, item.real)},{self.dump_item_str(api, item.imag)})"
-            elif item is None:
-                return "None"
-            elif isinstance(item, (paddle.base.Variable, paddle.base.libpaddle.pir.Value)):
-                return ""
-            elif item in (math.inf, -math.inf, math.nan, -math.nan):
-                return str(item)
-            elif isinstance(item, (bool, int, float)):
-                return str(item)
-            elif isinstance(item, str):
-                return f'"{item}"'
-            elif isinstance(item, type):
-                type_str = str(item)
-                return f"type({type_str[type_str.index("'")+1:type_str.rindex("'")]})"
-            elif isinstance(item, np.ndarray):
-                return str(item)[1:-1]
-            elif isinstance(item, np.dtype):
-                return f"Dtype({item})"
-            elif item is Ellipsis:
-                return "Ellipsis"
-            else:
-                print(f"[api_tracer warning] Unhandled type in {api}: {type(item)}")
-                return ""
-        except Exception as e:
-            print(f"[api_tracer error] dump_item_str failed for {api}: {str(e)}")
+        if isinstance(item, paddle.Tensor):
+            return (
+                "Tensor(" + str(item.shape) + ',"' + str(item.dtype)[7:] + '")'
+            )
+        elif isinstance(item, paddle.base.core.DataType):
+            return "Dtype(" + str(item)[7:] + ")"
+        elif isinstance(item, paddle.base.core.VarDesc.VarType):
+            return "VarType(" + str(item)[7:] + ")"
+        elif isinstance(item, list):
+            result = "list["
+            for sub_item in item:
+                tmp = self.dump_item_str(api, sub_item)
+                if tmp == "":
+                    return ""
+                result = result + tmp + ","
+            result = result + "]"
+            return result
+        elif isinstance(item, tuple):
+            result = "tuple("
+            for sub_item in item:
+                tmp = self.dump_item_str(api, sub_item)
+                if tmp == "":
+                    return ""
+                result = result + tmp + ","
+            result = result + ")"
+            return result
+        elif isinstance(item, slice):
+            start_str = (
+                str(int(item.start.numpy()))
+                if isinstance(item.start, paddle.Tensor)
+                else str(item.start)
+            )
+            stop_str = (
+                str(int(item.stop.numpy()))
+                if isinstance(item.stop, paddle.Tensor)
+                else str(item.stop)
+            )
+            step_str = (
+                str(int(item.step.numpy()))
+                if isinstance(item.step, paddle.Tensor)
+                else str(item.step)
+            )
+            return "slice(" + start_str + "," + stop_str + "," + step_str + ")"
+        elif isinstance(item, complex):
+            return (
+                "complex("
+                + self.dump_item_str(api, item.real)
+                + ","
+                + self.dump_item_str(api, item.imag)
+                + ")"
+            )
+        elif item is None:
+            return "None"
+        elif isinstance(
+            item, (paddle.base.Variable, paddle.base.libpaddle.pir.Value)
+        ):
             return ""
-
-    def _get_slice_component(self, component: Any) -> str:
-        """Helper method to handle slice components"""
-        if isinstance(component, paddle.Tensor):
-            return str(int(component.numpy()))
-        return str(component) if component is not None else "None"
+        elif item == math.inf:
+            return "math.inf"
+        elif item == -math.inf:
+            return "-math.inf"
+        elif item == math.nan:
+            return "math.nan"
+        elif item == -math.nan:
+            return "-math.nan"
+        elif isinstance(item, (bool, int, float)):
+            return str(item)
+        elif isinstance(item, str):
+            return '"' + item + '"'
+        elif isinstance(item, type):
+            return (
+                "type("
+                + str(item)[str(item).index("'") + 1 : str(item).rindex("'")]
+                + ")"
+            )
+        elif isinstance(item, np.ndarray):
+            return str(item)[1:-1]
+        elif isinstance(item, np.dtype):
+            return "Dtype(" + str(item) + ")"
+        elif item == Ellipsis:
+            return "Ellipsis"
+        else:
+            print(
+                "[api_tracer error] : dump_item_str ",
+                api,
+                ", item = ",
+                item,
+                ", type(item) = ",
+                type(item),
+            )
+            return ""
 
 
 config_dump = ConfigDump()
 
 
 class APITemplate:
-    def __init__(self, api_name: str):
+    def __init__(self, api_name):
         self.api_name = api_name
 
-    def __call__(self, *args, **kwargs) -> Any:
-        """Wrapper for API calls that logs the configuration"""
+    def __call__(self, *args, **kwargs):
+        output = getattr(HookAPIMap, self.api_name)(*args, **kwargs)
         try:
-            original_func = getattr(HookAPIMap, self.api_name)
-            output = original_func(*args, **kwargs)
             config_dump.dump_config(self.api_name, args, kwargs, output)
-            return output
-        except Exception as e:
-            print(f"[api_tracer error] API call failed for {self.api_name}: {str(e)}")
-            raise
+        except Exception as err:
+            print(
+                "[api_tracer error] : config_dump.dump_config ",
+                self.api_name,
+                str(err),
+            )
+        return output
 
 
-def wrapped_api(api_name: str):
-    """Factory function to create API wrappers"""
+def wrapped_api(api_name):
     def api_template(*args, **kwargs):
         return APITemplate(api_name)(*args, **kwargs)
+
     return api_template
 
 
-def start_api_tracer(api_path: str, save_config_path: str) -> None:
-    """Initialize API tracing by wrapping specified APIs"""
-    try:
-        print(f"Paddle version: {paddle.__version__}")
-        
-        with open(api_path, "r") as f:
-            apis = yaml.safe_load(f)
-            sample_apis = apis.get("apis", [])
-        
-        for api in sample_apis:
-            try:
-                parent_package, method_name = api.rsplit(".", maxsplit=1)
-                module = eval(parent_package)
-                original_func = getattr(module, method_name)
-                
-                setattr(HookAPIMap, api, original_func)
-                setattr(module, method_name, wrapped_api(api))
-            except Exception as e:
-                print(f"[api_tracer warning] Failed to wrap {api}: {str(e)}")
-        
-        config_dump.open_file(save_config_path)
-    except Exception as e:
-        print(f"[api_tracer error] Initialization failed: {str(e)}")
-        raise
+def start_api_tracer(api_path, save_config_path):
+    import paddle
 
+    print(paddle.__version__)
+    with open(api_path, "r") as f:
+        apis = yaml.safe_load(f)
+        sample_apis = apis.get("apis")
+        f.close()
 
-def stop_api_tracer() -> None:
-    """Clean up and stop API tracing"""
-    config_dump.close_file()
+    for api in sample_apis:
+        parent_package, method_name = api.rsplit(".", maxsplit=1)
+        try:
+            setattr(HookAPIMap, api, getattr(eval(parent_package), method_name))
+            setattr(eval(parent_package), method_name, wrapped_api(api))
+        except Exception as err:
+            print("[api_tracer error] : start_api_tracer ", api, str(err))
+
+    config_dump.open_file(save_config_path)
