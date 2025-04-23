@@ -229,7 +229,7 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
 
   if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
   if (tensor->is_dist_tensor() != is_dist_) {
-    return false;  // tensor not dist tensor
+    return false;
   }
 
   PyObject* dist_info_from_tensor_func = PyTuple_GetItem(value, 1);
