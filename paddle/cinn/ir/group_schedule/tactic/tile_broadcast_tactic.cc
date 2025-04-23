@@ -82,7 +82,6 @@ class TileBroadcastTactic final : public ScheduleTactic {
   void Init(ScheduleContext* context, ir::IRSchedule* sch) override;
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-  void ApplyVectorize(ir::IRSchedule* sch, const std::string& block_id);
 
   std::string TacticName() const override { return "TileBroadcastTactic"; }
 
@@ -90,6 +89,10 @@ class TileBroadcastTactic final : public ScheduleTactic {
   void InitBroadcastAxisInfo(ir::IRSchedule* sch);
   void InitBroadcastSizeInfo();
   void FuseAxisGroups(ir::IRSchedule* sch, const std::string& block_id);
+  void ApplyVectorize(ir::IRSchedule* sch,
+                      const std::string& block_id,
+                      const int block_size);
+  bool CanEnableVectorize(const int block_size);
   std::vector<std::string> TileNCHW(ir::IRSchedule* sch,
                                     const std::string& block_id,
                                     int block_size);
@@ -98,8 +101,8 @@ class TileBroadcastTactic final : public ScheduleTactic {
                                     int block_size);
   std::vector<std::string> TileVectorizeNCHW(ir::IRSchedule* sch,
                                              const std::string& block_id,
-                                             int block_size,
-                                             int vetorize_factor);
+                                             const int block_size,
+                                             const int vetorize_factor);
 
  private:
   ScheduleContext* context_;
@@ -282,12 +285,6 @@ std::vector<int> GetCommonBroadcastAxis(ir::IRSchedule* sch) {
   return common_broadcast_axis;
 }
 
-bool ScheduleBlockEnableVectorize(const ScheduleConfig& config,
-                                  const std::string& block_id) {
-  if (!config.base_info->can_apply_vectorize) return false;
-  return true;
-}
-
 static int CalcNumWarps(int64_t num_warps) {
   // NHWC layout: calculate number of warps per block
   constexpr int MAX_WARP_BLOCK = 32;
@@ -441,6 +438,23 @@ void TileBroadcastTactic::InitBroadcastSizeInfo() {
   }
 }
 
+bool TileBroadcastTactic::CanEnableVectorize(const int block_size) {
+  if (!context_->config.base_info->can_apply_vectorize) return false;
+  const int vectorize_factor =
+      static_cast<int>(context_->config.tile_config.vectorize_factor);
+  const int block_element_nums = block_size * vectorize_factor;
+  if (applied_layout_ == BroadcastLayout::NCHWLayout) {
+    if (low_broadcast_size_ <= block_element_nums &&
+        low_broadcast_size_ % vectorize_factor == 0) {
+      return true;
+    } else if (low_broadcast_size_ > block_element_nums &&
+               low_broadcast_size_ % block_element_nums == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::vector<std::string> TileBroadcastTactic::TileNCHW(
     ir::IRSchedule* sch, const std::string& block_id, int block_size) {
   // To achieve best performance, we apply different tiling templates based on
@@ -515,50 +529,40 @@ std::vector<std::string> TileBroadcastTactic::TileNHWC(
 std::vector<std::string> TileBroadcastTactic::TileVectorizeNCHW(
     ir::IRSchedule* sch,
     const std::string& block_id,
-    int block_size,
-    int vectorize_factor) {
+    const int block_size,
+    const int vectorize_factor) {
   /**
+   * block_size = 256, vectorize_factor = 4
+   * block_element_nums = block_size * vectorize_factor = 1024
    * 1. For small size:
-   *        [B, P, B<=256]
+   *        [B, P, B<=block_element_nums]
    *     => [blockY, blockX, (threadX, loop)].
    * 2. For medium size:
-   *        [B, P, 256<B<=2048],
+   *        [B, P, block_element_nums<B],
    *     => [blockY, blockX, (threadX, loop)].
-   * 3. For large size:
-   *        [B, P, B>2048]
-   *     => [blockX', blockY, (blockX, threadX, loop)].
    */
+  const int block_element_nums = block_size * vectorize_factor;
   VLOG(4) << "TileBroadcastTactic using original NCHW layout, "
              "low_broadcast_size_ = "
           << low_broadcast_size_;
-  if (low_broadcast_size_ <= 256) {
+  if (low_broadcast_size_ <= block_element_nums) {
     sch->Split(block_id, 2, {-1, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
-  } else if (low_broadcast_size_ <= 2048) {
+  } else {
     sch->Split(block_id, 2, {-1, block_size, vectorize_factor});
     sch->Fuse(block_id, {1, 2});
-    return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
-  } else {
-    sch->Reorder(block_id, {1, 0});
-    sch->Fuse(block_id, {1, 2});
-    sch->Split(block_id, 1, {-1, block_size, vectorize_factor});
     return {"blockIdx.y", "blockIdx.x", "threadIdx.x", ""};
   }
 }
 
 void TileBroadcastTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {
-  if (applied_layout_ == BroadcastLayout::NCHWLayout &&
-      ScheduleBlockEnableVectorize(context_->config, block_id)) {
-    // TODO(baoqiwen): Due to register overflow issues, NHWC currently has
-    // performance problems. The current vectorization only supports NCHW, and
-    // future support for NHWC is needed.
-    ApplyVectorize(sch, block_id);
-    return;
-  }
-
   if (applied_layout_ == BroadcastLayout::Invalid) return;
   int block_size = 256;
+
+  if (CanEnableVectorize(block_size)) {
+    ApplyVectorize(sch, block_id, block_size);
+  }
   // check the number of warps here, if not a applicable
   // preserved_size, func will return later
   if (applied_layout_ == BroadcastLayout::NHWCLayout) {
@@ -636,13 +640,41 @@ void TileBroadcastTactic::FuseAxisGroups(ir::IRSchedule* sch,
   FuseRange(0, high_axis_num);
 }
 
+/*
+Broadcast layout support vectorize situation:
+To apply vectorize, we should consider threads and
+vectorize factor  dimension is continue, we need to meet
+the following conditions:
+1. can_apply_vectorize must be true
+2. In NCHW layout situation, list of 3 groups of axis,
+as the following graph shows:
+  high_broadcast_axis
+      v     v
+      [B, P, B, P, ..., B, B]
+          ^     ^       ^  ^
+          |     |       low_broadcast_axis
+      preserved_axis
+
+case 1: low_broadcast_axis less than 1024,
+according to low_broadcast_axis be divided by 32 in Init function,
+so low_broadcast_axis must be divisible by vectorize_factor.
+block_size = low_broadcast_axis / vectorize_factor.
+
+case 2: low_broadcast_axis greater than 1024
+block_size is set to 256, so low_broadcast_axis must
+be divisible by vectorize_factor * block_size.
+
+so, after dealing with TileBroadcastTactic threads,
+threads and vectorize dimension is continuous.
+
+3. In NHWC layout situation，current not support vectorize.
+*/
+
 void TileBroadcastTactic::ApplyVectorize(ir::IRSchedule* sch,
-                                         const std::string& block_id) {
-  if (applied_layout_ == BroadcastLayout::Invalid) return;
+                                         const std::string& block_id,
+                                         const int block_size) {
   const auto vectorize_factor =
       static_cast<int>(context_->config.tile_config.vectorize_factor);
-
-  int block_size = 256;
 
   FuseAxisGroups(sch, block_id);
 
