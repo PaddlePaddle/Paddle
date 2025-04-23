@@ -6222,10 +6222,12 @@ void MoeUnzipInferMeta(const MetaTensor& X,
       2,
       errors::InvalidArgument("Input X should have 2 dimensions"));
 
-  PADDLE_ENFORCE((X.dtype() == phi::DataType::BFLOAT16 ||
-                  X.dtype() == phi::DataType::FLOAT8_E4M3FN),
-                 errors::InvalidArgument(
-                     "The input X type should be bfloat16 or float8_e4mefn"));
+  PADDLE_ENFORCE_EQ(
+      (X.dtype() == phi::DataType::BFLOAT16 ||
+       X.dtype() == phi::DataType::FLOAT8_E4M3FN),
+      true,
+      errors::InvalidArgument(
+          "The input X type should be bfloat16 or float8_e4mefn"));
 
   PADDLE_ENFORCE_EQ(
       xscale_dim.size(),
@@ -6251,9 +6253,10 @@ void MoeUnzipInferMeta(const MetaTensor& X,
                     2,
                     errors::InvalidArgument(
                         "Input expert_prob_topk should have 2 dimensions"));
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       (expert_prob_topk.dtype() == phi::DataType::BFLOAT16 ||
        expert_prob_topk.dtype() == phi::DataType::FLOAT32),
+      true,
       errors::InvalidArgument(
           "The input expert_prob_topk type should be float32 or bfloat16"));
 
