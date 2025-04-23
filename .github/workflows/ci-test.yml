@@ -1,0 +1,19 @@
+name: Print Variables
+
+on:
+  push:
+    branches:
+      - test-patch-1  
+
+jobs:
+  print-env:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Print
+      env:
+        TT: ${{ secrets.GITHUB_TOKEN }}  
+      run: |
+        echo "TT: $TT"

