@@ -5007,7 +5007,7 @@ bool MoeUnzipOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const std::vector<symbol::DimExpr> &ept_shape = ept_shape_or_data.shape();
 
-  const auto &mtpe_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &mtpe_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
   int max_tokens_per_expert =
       static_cast<int>(mtpe_shape_or_data.data().value().at(0).Get<int64_t>());
