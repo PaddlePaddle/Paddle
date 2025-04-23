@@ -1118,11 +1118,13 @@ class _ShardOptimizer(Optimizer):
 
         self.fuse_param_view = []
         self.param_storage = []
+        self.grad_storage = []
         self.comm_group = None
         self.do_tensor_fusion = True
         self.enable_tensor_fusion = (
             os.getenv("FLAGS_enable_tensor_fusion") == '1'
         )
+        self.enable_overlap = os.getenv("FLAGS_enable_sharding_overlap") == '1'
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1250,20 +1252,25 @@ class _ShardOptimizer(Optimizer):
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
         if self.enable_tensor_fusion:
-            for i in range(len(self.fuse_param_view)):
-                shard_size = (
-                    self.param_storage[i]._numel() // self.comm_group.nranks
-                )
-                begin = shard_size * max(self.comm_group.rank, 0)
-                end = begin + shard_size
-                slice_buffer = paddle._C_ops.view_slice(
-                    self.param_storage[i], begin, end
-                )
-                self.comm_group.process_group.all_gather(
-                    slice_buffer, self.param_storage[i]
-                ).wait()
+            for grad_storage in self.grad_storage:
+                grad_storage.zero_()
+            if not self.enable_overlap:
+                for i in range(len(self.fuse_param_view)):
+                    shard_size = (
+                        self.param_storage[i]._numel() // self.comm_group.nranks
+                    )
+                    begin = shard_size * max(self.comm_group.rank, 0)
+                    end = begin + shard_size
+                    slice_buffer = paddle._C_ops.view_slice(
+                        self.param_storage[i], begin, end
+                    )
+                    self.comm_group.process_group.all_gather(
+                        slice_buffer, self.param_storage[i]
+                    ).wait()
 
         else:
+            for param, _ in parameters_and_grads:
+                param.main_grad.zero_()
             if isinstance(parameters_and_grads, list):
                 for p, _ in parameters_and_grads:
                     self._reset_placements(p)
@@ -1420,7 +1427,21 @@ class _ShardOptimizer(Optimizer):
                     grad, grad.shape, grad_mesh, [dist.Replicate()]
                 )
             param_and_grad = (param_and_grad[0], grad)
-        return self._inner_opt._append_optimize_op(block, param_and_grad)
+        self._inner_opt._append_optimize_op(block, param_and_grad)
+        if self.enable_overlap:
+            if hasattr(param_and_grad[0], 'last_idx'):
+                idx = param_and_grad[0].last_idx
+                shard_size = (
+                    self.param_storage[idx]._numel() // self.comm_group.nranks
+                )
+                begin = shard_size * max(self.comm_group.rank, 0)
+                end = begin + shard_size
+                slice_buffer = paddle._C_ops.view_slice(
+                    self.param_storage[idx], begin, end
+                )
+                task = self.comm_group.process_group.all_gather(
+                    slice_buffer, self.param_storage[idx]
+                )
 
     def build_fuse_param_view(
         self,
@@ -1444,6 +1465,8 @@ class _ShardOptimizer(Optimizer):
         param_buffer = paddle.zeros(
             shape=[total_buffer_size], dtype=parameters[0].dtype
         )
+        grad_dtype = paddle.float32
+        grad_buffer = paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
         views = {}
         for param in parameters:
             padded_size = get_padded_size(param)
@@ -1451,7 +1474,7 @@ class _ShardOptimizer(Optimizer):
                 'param': param,
                 'index': param2index[param.name],
             }
-        return (views, param_buffer)
+        return (views, param_buffer, grad_buffer)
 
     def _tensor_fusion(self, params_grads):
         if self.do_tensor_fusion:
@@ -1479,13 +1502,16 @@ class _ShardOptimizer(Optimizer):
                 (
                     fuse_param_view,
                     param_storage,
+                    grad_storage,
                 ) = self.build_fuse_param_view(
                     parameters,
                     self.comm_group.nranks,
                 )
                 self.fuse_param_view.append(fuse_param_view)
                 self.param_storage.append(param_storage)
+                self.grad_storage.append(grad_storage)
 
+            idx = 0
             for i in range(len(self.fuse_param_view)):
                 for name, view in self.fuse_param_view[i].items():
                     param_shape = view['param'].shape
@@ -1515,58 +1541,100 @@ class _ShardOptimizer(Optimizer):
                         tmp_param.get_tensor()
                     )
 
+                    grad = params_grads[idx][1]
+                    idx += 1
+                    paddle.assign(
+                        grad._local_value(),
+                        self.grad_storage[i]._slice(
+                            view['index'],
+                            view['index'] + grad._local_value()._numel(),
+                        ),
+                    )
+                    tmp_grad = paddle._C_ops.view_slice(
+                        self.grad_storage[i],
+                        view['index'],
+                        view['index'] + grad._local_value()._numel(),
+                    )
+                    tmp_grad.get_tensor()._set_dims(grad.shape)
+                    tmp_grad = _dtensor_from_local(
+                        tmp_grad,
+                        grad.process_mesh,
+                        grad.placements,
+                    )
+                    view['param'].main_grad = tmp_grad
+
+                if self.enable_overlap:
+                    shard_size = (
+                        self.grad_storage[i]._numel() // self.comm_group.nranks
+                    )
+                    begin = shard_size * max(self.comm_group.rank, 0)
+                    end = begin + shard_size
+                    reduce_scattered = paddle._C_ops.view_slice(
+                        self.grad_storage[i], begin, end
+                    )
+                    paddle.distributed.reduce_scatter(
+                        reduce_scattered,
+                        self.grad_storage[i],
+                        op=paddle.distributed.ReduceOp.SUM,
+                        group=self.comm_group,
+                        sync_op=False,
+                    ).wait()
+
+                    def bw_hook_func(
+                        param, last_name, grad_storage, comm_group
+                    ):
+                        @paddle.autograd.no_grad()
+                        def fused_comm(*_):
+                            if param.name == last_name:
+                                shard_size = (
+                                    grad_storage._numel() // comm_group.nranks
+                                )
+                                begin = shard_size * max(comm_group.rank, 0)
+                                end = begin + shard_size
+                                reduce_scattered = paddle._C_ops.view_slice(
+                                    grad_storage, begin, end
+                                )
+                                task = paddle.distributed.reduce_scatter(
+                                    reduce_scattered,
+                                    grad_storage,
+                                    op=paddle.distributed.ReduceOp.SUM,
+                                    group=comm_group,
+                                    sync_op=False,
+                                )
+
+                        return fused_comm
+
+                    items_list = list(self.fuse_param_view[i].items())
+                    last_name, last_view = items_list[-1]
+                    for name, view in self.fuse_param_view[i].items():
+                        view['param']._register_backward_hook(
+                            bw_hook_func(
+                                view['param'],
+                                last_name,
+                                self.grad_storage[i],
+                                self.comm_group,
+                            )
+                        )
+
         new_params = []
         new_grads = []
-        idx = 0
         for i in range(len(self.fuse_param_view)):
-            group_grad_list = []
-            for name, view in self.fuse_param_view[i].items():
-                grad = params_grads[idx][1]
-                idx += 1
-                group_grad_list.append(grad._local_value())
-            dtype = group_grad_list[0].dtype
-
-            align_size = (
-                fleet.utils.tensor_fusion_helper.alignment[
-                    get_current_device_type()
-                ]
-                // align[params_grads[0][0].dtype]
-            )
-            align_size = (
-                align_size
-                * self._sharding_degree
-                * core.size_of_dtype(dtype)
-                // core.size_of_dtype(params_grads[0][0].dtype)
-            )
-
-            _, fused_grad = paddle._C_ops.coalesce_tensor_(
-                group_grad_list,
-                dtype,
-                True,
-                False,
-                False,
-                0.0,
-                True,
-                align_size,
-                -1,
-                [],
-                [],
-            )
-            for grad in group_grad_list:
-                grad.persistable = True
-            fused_grad.persistable = True
-
-            shard_size = fused_grad._numel() // self.comm_group.nranks
-            begin = shard_size * max(self.comm_group.rank, 0)
-            end = begin + shard_size
-            reduce_scattered = paddle._C_ops.view_slice(fused_grad, begin, end)
-            paddle.distributed.reduce_scatter(
-                reduce_scattered,
-                fused_grad,
-                op=paddle.distributed.ReduceOp.SUM,
-                group=self.comm_group,
-                sync_op=False,
-            ).wait()
+            if not self.enable_overlap:
+                shard_size = (
+                    self.grad_storage[i]._numel() // self.comm_group.nranks
+                )
+                begin = shard_size * max(self.comm_group.rank, 0)
+                end = begin + shard_size
+                reduce_scattered = paddle._C_ops.view_slice(
+                    self.grad_storage[i], begin, end
+                )
+                paddle.distributed.reduce_scatter(
+                    reduce_scattered,
+                    self.grad_storage[i],
+                    op=paddle.distributed.ReduceOp.SUM,
+                    group=self.comm_group,
+                    sync_op=False,
+                ).wait()
 
             for name, view in self.fuse_param_view[i].items():
                 shard_size = (
@@ -1594,12 +1662,14 @@ class _ShardOptimizer(Optimizer):
                 new_params.append(tmp_param)
 
                 tmp_grad = paddle._C_ops.view_slice(
-                    fused_grad, param_begin, param_end
+                    self.grad_storage[i], param_begin, param_end
                 )
                 tmp_grad = _dtensor_from_local(
                     tmp_grad, view['param'].process_mesh, [dist.Replicate()]
                 )
                 new_grads.append(tmp_grad)
+            if self.enable_overlap:
+                new_params[-1].last_idx = i
 
         new_params_grads = list(zip(new_params, new_grads))
         return new_params_grads
