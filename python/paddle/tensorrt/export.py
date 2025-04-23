@@ -339,9 +339,7 @@ class TensorRTConfig:
         paddle.framework.set_flags(
             {'FLAGS_trt_min_group_size': min_subgraph_size}
         )
-        paddle.framework.set_flags(
-            {'FLAGS_trt_glog_info': glog_info}
-        )
+        paddle.framework.set_flags({'FLAGS_trt_glog_info': glog_info})
 
 
 # return an optimized program with pd_op.tensorrt_engine operations.

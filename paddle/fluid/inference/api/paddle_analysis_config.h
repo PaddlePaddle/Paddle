@@ -36,9 +36,9 @@
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
+#include "paddle/common/flags.h"
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
-#include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(trt_glog_info);
 
@@ -1040,7 +1040,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return bool Whether logs in Paddle inference are muted.
   ///
-  bool glog_info_disabled() const { return !with_glog_info_ or !FLAGS_trt_glog_info; }
+  bool glog_info_disabled() const {
+    return !with_glog_info_ or !FLAGS_trt_glog_info;
+  }
 
   ///
   /// \brief Set the AnalysisConfig to be invalid.

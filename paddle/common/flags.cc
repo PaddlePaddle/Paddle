@@ -736,7 +736,9 @@ PHI_DEFINE_EXPORTED_bool(sort_sum_gradient,
  * Example:
  * Note: If True, GLOG info output will be enabled.
  */
-PHI_DEFINE_EXPORTED_bool(trt_glog_info, false, "if trt GLOG info output is enabled.");
+PHI_DEFINE_EXPORTED_bool(trt_glog_info,
+                         false,
+                         "if trt GLOG info output is enabled.");
 
 /**
  * Performance related FLAG
