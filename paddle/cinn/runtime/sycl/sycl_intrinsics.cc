@@ -446,6 +446,16 @@ CINN_REGISTER_HELPER(cinn_sycl_host_api) {
       .AddInputType<int>()     // block_y
       .AddInputType<int>()     // block_z
       .End();
+  using cinn::runtime::sycl::infer_shape_set_value;
+
+  REGISTER_EXTERN_FUNC_HELPER(infer_shape_set_value,
+                              cinn::common::DefaultHostTarget())
+      .SetRetType<void>()
+      .AddInputType<int>()
+      .AddInputType<int>()
+      .AddInputType<int64_t>()
+      .AddInputType<int64_t **>()
+      .End();
 
   using cinn::runtime::sycl::cinn_call_sycl_memset;
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_sycl_memset,

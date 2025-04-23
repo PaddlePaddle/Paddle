@@ -144,7 +144,7 @@ Expr GetOriginOffsetWithVectorizeAxis(Expr offset, Var var_iter) {
 bool CheckTensorAddrLegalCastToVectorize(const std::vector<ir::Expr> &indices,
                                          const std::vector<ir::Expr> &shapes,
                                          const int vectorize_factor) {
-  auto flattened_value = 1;
+  int64_t flattened_value = 1;
   for (int i = 0; i < indices.size(); ++i) {
     auto const_val = shapes[i].As<ir::IntImm>();
     PADDLE_ENFORCE_NOT_NULL(const_val,
@@ -152,29 +152,46 @@ bool CheckTensorAddrLegalCastToVectorize(const std::vector<ir::Expr> &indices,
                                 "vectorize tiling only support static shape"));
     ir::Expr index = indices[i];
     index = optim::ArithSimplify(index);
-    if (index.is_constant() && index.get_constant() == 0) {
+    int64_t value = const_val->value;
+    if (index.is_constant() && index.get_constant() == 0 && value != 1) {
       // If the index is zero (indicating broadcast behavior), reset
       // flattened_value to 1.
       flattened_value = 1;
     } else {
-      flattened_value *= const_val->value;
+      flattened_value *= value;
     }
   }
   return flattened_value % vectorize_factor == 0;
 }
 
-bool CheckTensorOffsetZero(const Expr &offset, const Var &iter_var) {
+// @return Return a pair of bool, indicating tensor index is broadcast or
+// continuous at vectorize axis
+std::pair<bool, bool> CollectTensorInVectorizeAxisInfo(
+    const Expr &offset, const Var &iter_var, const int vectorize_factor) {
   Expr only_vectorize_axis_offset =
       UpdateOffsetOnlyContainsVectorizeAxis(offset, iter_var);
   Expr origin_offset =
       GetOriginOffsetWithVectorizeAxis(only_vectorize_axis_offset, iter_var);
-  Expr compare = CalculateOffsetWithVectorizeAxis(
-      only_vectorize_axis_offset, origin_offset, iter_var, 1);
-  auto const_val = compare.As<ir::IntImm>();
-  if (!const_val || const_val->value != 0) {
-    return false;
+  bool offset_is_zero = true;
+  bool tensor_is_continuous = true;
+  for (int i = 1; i < vectorize_factor; i++) {
+    Expr compare = CalculateOffsetWithVectorizeAxis(
+        only_vectorize_axis_offset, origin_offset, iter_var, i);
+    auto const_val = compare.As<ir::IntImm>();
+    if (!const_val) return {false, false};
+
+    if (const_val->value != 0) {
+      offset_is_zero = false;
+    }
+
+    if (const_val->value != i) {
+      tensor_is_continuous = false;
+      break;
+    }
   }
-  return true;
+
+  if (offset_is_zero) return {true, false};
+  return {false, tensor_is_continuous};
 }
 
 class ForOpWithMultiScheduleBlockSupportVectorize
@@ -425,14 +442,20 @@ class ScheduleBlockTensorVectorizeTeller : public ir::IRMutator<Expr *> {
       return false;
     }
 
-    // situation 3. Do not handle the scenario where there is a % b in the
-    // computation of the index, but b % factor != 0.
-    if (!CheckTensorAddrLegalCastToVectorize(indices, tensor->shape, factor_)) {
+    auto [offset_is_zero, is_continue] =
+        CollectTensorInVectorizeAxisInfo(offset, iter_var_, factor_);
+    if (offset_is_zero) return false;
+
+    if (!is_continue) {
+      vectorize_tensors_.clear();
+      scalar_tensor_without_vectorize_axis_.clear();
+      schedule_block_can_vectorize_ = false;
       return false;
     }
 
-    // situation 4. Do not handle the offset 0.
-    if (CheckTensorOffsetZero(offset, iter_var_)) {
+    // situation 3. Do not handle the scenario where there is a % b in the
+    // computation of the index, but b % factor != 0.
+    if (!CheckTensorAddrLegalCastToVectorize(indices, tensor->shape, factor_)) {
       return false;
     }
 
