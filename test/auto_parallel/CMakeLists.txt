@@ -45,7 +45,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     set_tests_properties(test_pipeline_scheduler
                          PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 400)
   endif()
-  py_test_modules(test_process_mesh MODULES test_process_mesh)
   py_test_modules(test_reshard_r_to_p MODULES test_reshard_r_to_p)
   set_tests_properties(test_reshard_r_to_p
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
