@@ -221,10 +221,10 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 bool TensorDistMetaMatchGuard::check(PyObject* value) {
   HANDLE_NULL_VALUE(value);
 
-  PyObject* expr_node = PyTuple_GetItem(value, 0);
-  HANDLE_NULL_VALUE(expr_node);
+  PyObject* expr = PyTuple_GetItem(value, 0);
+  HANDLE_NULL_VALUE(expr);
 
-  auto tensor = GetTensorFromPyObject(expr_node);
+  auto tensor = GetTensorFromPyObject(expr);
   HANDLE_NULL_TENSOR(tensor);
 
   if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
@@ -235,8 +235,7 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
   PyObject* dist_info_from_tensor_func = PyTuple_GetItem(value, 1);
   HANDLE_NULL_VALUE(dist_info_from_tensor_func);
 
-  PyObject* dist_info =
-      PyObject_CallOneArg(dist_info_from_tensor_func, expr_node);
+  PyObject* dist_info = PyObject_CallOneArg(dist_info_from_tensor_func, expr);
   HANDLE_NULL_VALUE_DECREF(dist_info);
 
   PyObject* mesh = PyObject_GetAttrString(dist_info, "mesh");
