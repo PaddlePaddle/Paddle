@@ -219,7 +219,12 @@ def _packed_nest_with_indices(structure, flat, index):
             packed.append(_sequence_like(s, child))
             index = new_index
         else:
-            packed.append(flat[index])
+            # Paddle requires python version > 3.7, so dict is always OrderedDict
+            packed.append(
+                flat[index]
+                if not isinstance(flat, dict)
+                else list(flat.values())[index]
+            )
             index += 1
     return index, packed
 

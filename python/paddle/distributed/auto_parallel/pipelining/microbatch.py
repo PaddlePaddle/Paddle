@@ -18,7 +18,7 @@ import logging
 from typing import Any
 
 import paddle
-from paddle.utils import flatten, pack_sequence_as
+from paddle.utils import flatten, map_structure, pack_sequence_as
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +101,8 @@ def _split_args_helper(
             )
             chunk_args[key] = arg_of_curr_chunk
 
-        # pack chunk_args as the origin args_dict
-        chunk_args = pack_sequence_as(args_dict, chunk_args)
+        # flatten chunk_args first, and then pack chunk_args as the origin args_dict
+        chunk_args = pack_sequence_as(args_dict, flatten(chunk_args))
         args_split.append(chunk_args)
     return args_split
 
@@ -111,8 +111,24 @@ def split_args_kwargs_into_chunks(
     args: tuple[Any, ...],
     kwargs: dict[str, Any] | None,
     chunks: int,
-    args_chunk_spec: tuple[TensorChunkSpec, ...] | None = None,
-    kwargs_chunk_spec: dict[str, TensorChunkSpec] | None = None,
+    args_chunk_spec: (
+        tuple[
+            tuple[TensorChunkSpec, ...]
+            | list[TensorChunkSpec, ...]
+            | TensorChunkSpec,
+            ...,
+        ]
+        | None
+    ) = None,
+    kwargs_chunk_spec: (
+        dict[
+            str,
+            tuple[TensorChunkSpec, ...]
+            | list[TensorChunkSpec, ...]
+            | TensorChunkSpec,
+        ]
+        | None
+    ) = None,
 ) -> tuple[list[tuple], list[dict]]:
     """
     Given a sequence of args and kwargs, split them into a number of chunks
@@ -134,11 +150,13 @@ def split_args_kwargs_into_chunks(
         kwargs = {}
 
     if args_chunk_spec is None:
-        args_chunk_spec = (TensorChunkSpec(DEFAULT_CHUNK_DIM),) * len(args)
+        args_chunk_spec = map_structure(
+            lambda _: TensorChunkSpec(DEFAULT_CHUNK_DIM), args
+        )
 
     if kwargs_chunk_spec is None:
-        kwargs_chunk_spec = dict.fromkeys(
-            kwargs, TensorChunkSpec(DEFAULT_CHUNK_DIM)
+        kwargs_chunk_spec = map_structure(
+            lambda _: TensorChunkSpec(DEFAULT_CHUNK_DIM), kwargs
         )
 
     args_split_dict = _split_args_helper(
@@ -186,12 +204,13 @@ def merge_chunks(
         return chunks
 
     if chunk_spec is None:
-        chunk0_flat = flatten(chunks[0])
-        # the number of args need to be merged
-        num_args = len(chunk0_flat)
-        chunk_spec = [TensorChunkSpec(DEFAULT_CHUNK_DIM)] * num_args
+        chunk_spec = map_structure(
+            lambda _: TensorChunkSpec(DEFAULT_CHUNK_DIM), chunks[0]
+        )
 
     chunks_flat = []
+    # flatten chunk_spec first
+    chunk_spec = flatten(chunk_spec)
     for chunk in chunks:
         chunk_flat = flatten(chunk)
         assert len(chunk_flat) == len(
@@ -199,7 +218,7 @@ def merge_chunks(
         ), f"Chunk {chunk} did not match chunk spec {chunk_spec}"
         chunks_flat.append(chunk_flat)
 
-    def merge_non_tensor_type_arg(chunks, idx, chunk_spec_of_arg=None):
+    def _merge_non_tensor_type_arg(chunks, idx, chunk_spec_of_arg=None):
         # use the first chunk's value as the merged result
         arg_0 = chunks[0][idx]
         for chunk_idx in range(1, len(chunks)):
@@ -226,11 +245,11 @@ def merge_chunks(
                     "The TensorChunkSpec only supports paddle.Tensor type."
                 )
 
-                merged_arg = merge_non_tensor_type_arg(
+                merged_arg = _merge_non_tensor_type_arg(
                     chunks_flat, arg_idx, chunk_spec_of_arg
                 )
         else:
-            merged_arg = merge_non_tensor_type_arg(
+            merged_arg = _merge_non_tensor_type_arg(
                 chunks_flat, arg_idx, chunk_spec_of_arg
             )
 
