@@ -4033,6 +4033,108 @@ void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
   }
 }
 
+void MoeZipInferMeta(const MetaTensor& unzipped_tokens,
+                     const MetaTensor& zipped_expertwise_rowmap,
+                     const MetaTensor& expert_routemap_topk,
+                     const MetaTensor& unzipped_token_probs,
+                     MetaTensor* zipped_tokens,
+                     MetaTensor* zipped_prob_topk) {
+  /**
+   * input:
+   *   unzipped_tokens            (u_seqlen, token_len)
+   *   zipped_expertwise_rowmap   (seqlen, num_experts)
+   *   expert_routemap_topk       (seqlen， topk)
+   *   unzipped_token_probs       (u_seqlen, (token_len + 127) / 128)
+   * output:
+   *   zipped_tokens              (seqlen, token_len)
+   *   zipped_prob_topk           (seqlen， topk)
+   */
+
+  PADDLE_ENFORCE_EQ(unzipped_tokens.dims().size(),
+                    2,
+                    errors::InvalidArgument(
+                        "Input unzipped_tokens should have 2 dimensions."));
+
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dims().size(),
+      2,
+      errors::InvalidArgument(
+          "Input zipped_expertwise_rowmap should have 2 dimensions."));
+
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dims().size(),
+      2,
+      errors::InvalidArgument(
+          "Input expert_routemap_topk should have 2 dimensions."));
+
+  PADDLE_ENFORCE_EQ(
+      unzipped_token_probs.dims().size(),
+      2,
+      errors::InvalidArgument(
+          "Input unzipped_token_probs should have 2 dimensions."));
+
+  PADDLE_ENFORCE_EQ(
+      (unzipped_tokens.dtype() == phi::DataType::BFLOAT16 ||
+       unzipped_tokens.dtype() == phi::DataType::FLOAT32),
+      true,
+      errors::InvalidArgument(
+          "The input unzipped_tokens type should be bfloat16 or float32."));
+
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dtype(),
+      phi::DataType::INT32,
+      errors::InvalidArgument(
+          "The input zipped_expertwise_rowmap type should be int32."));
+
+  PADDLE_ENFORCE_EQ(
+      expert_routemap_topk.dtype(),
+      phi::DataType::INT32,
+      errors::InvalidArgument(
+          "The input expert_routemap_topk type should be int32."));
+
+  PADDLE_ENFORCE_EQ(
+      (unzipped_token_probs.dtype() == phi::DataType::FLOAT32),
+      true,
+      errors::InvalidArgument(
+          "The input unzipped_token_probs type should be float32."));
+
+  PADDLE_ENFORCE_EQ(unzipped_tokens.dims()[0],
+                    unzipped_token_probs.dims()[0],
+                    errors::InvalidArgument(
+                        "The 0-th dimension (u_seqlen) of unzipped_tokens [%d] "
+                        "must match that of unzipped_token_probs [%d].",
+                        unzipped_tokens.dims()[0],
+                        unzipped_token_probs.dims()[0]));
+
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap.dims()[0],
+      expert_routemap_topk.dims()[0],
+      errors::InvalidArgument(
+          "The 0-th dimension (seqlen) of zipped_expertwise_rowmap [%d] "
+          "must match that of expert_routemap_topk [%d].",
+          zipped_expertwise_rowmap.dims()[0],
+          expert_routemap_topk.dims()[0]));
+
+  PADDLE_ENFORCE_EQ(
+      (unzipped_tokens.dims()[1] + 127) / 128,
+      unzipped_token_probs.dims()[1],
+      errors::InvalidArgument(
+          "The 1st dimension (token scale count) of unzipped_token_probs [%d] "
+          "must match ceil(unzipped_tokens' token length [%d] + 127) / 128).",
+          unzipped_token_probs.dims()[1],
+          unzipped_tokens.dims()[1]));
+
+  int seqlen = static_cast<int>(expert_routemap_topk.dims()[0]);
+  int token_len = static_cast<int>(unzipped_tokens.dims()[1]);
+  int topk = static_cast<int>(expert_routemap_topk.dims()[1]);
+
+  zipped_tokens->set_dims(phi::make_ddim({seqlen, token_len}));
+  zipped_tokens->set_dtype(unzipped_tokens.dtype());
+
+  zipped_prob_topk->set_dims(phi::make_ddim({seqlen, topk}));
+  zipped_prob_topk->set_dtype(phi::DataType::FLOAT32);
+}
+
 void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& velocity,

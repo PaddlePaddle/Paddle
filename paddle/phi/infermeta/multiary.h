@@ -772,6 +772,13 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
 void MeshgridInferMeta(const std::vector<const MetaTensor*>& inputs,
                        std::vector<MetaTensor*> outputs);
 
+void MoeZipInferMeta(const MetaTensor& unzipped_tokens,
+                     const MetaTensor& zipped_expertwise_rowmap,
+                     const MetaTensor& expert_routemap_topk,
+                     const MetaTensor& unzipped_token_probs,
+                     MetaTensor* zipped_tokens,
+                     MetaTensor* zipped_prob_topk);
+
 void MomentumInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& velocity,

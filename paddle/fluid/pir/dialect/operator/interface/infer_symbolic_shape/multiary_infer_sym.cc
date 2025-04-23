@@ -3507,6 +3507,81 @@ bool MoeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool MoeZipOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<symbol::DimExpr> &unzipped_tokens_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<symbol::DimExpr> &zipped_expertwise_rowmap_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const std::vector<symbol::DimExpr> &expert_routemap_topk_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  const std::vector<symbol::DimExpr> &unzipped_token_probs_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+
+  PADDLE_ENFORCE_EQ(unzipped_tokens_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input unzipped_tokens must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The input zipped_expertwise_rowmap must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(expert_routemap_topk_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input expert_routemap_topk must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(unzipped_token_probs_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input unzipped_token_probs must be a 2D Tensor"));
+
+  PADDLE_ENFORCE_EQ(unzipped_tokens_shape[0],
+                    unzipped_token_probs_shape[0],
+                    common::errors::InvalidArgument(
+                        "The 0-th dimension (u_seqlen) of unzipped_tokens [%d] "
+                        "must match that of unzipped_token_probs [%d].",
+                        unzipped_tokens_shape[0],
+                        unzipped_token_probs_shape[0]));
+
+  PADDLE_ENFORCE_EQ(
+      zipped_expertwise_rowmap_shape[0],
+      expert_routemap_topk_shape[0],
+      common::errors::InvalidArgument(
+          "The 0-th dimension (seqlen) of zipped_expertwise_rowmap [%d] "
+          "must match that of expert_routemap_topk [%d].",
+          zipped_expertwise_rowmap_shape[0],
+          expert_routemap_topk_shape[0]));
+
+  PADDLE_ENFORCE_EQ(
+      (unzipped_tokens_shape[1] + 127) / 128,
+      unzipped_token_probs_shape[1],
+      common::errors::InvalidArgument(
+          "The 1st dimension (token scale count) of unzipped_token_probs [%d] "
+          "must match ceil(unzipped_tokens' token length [%d] + 127) / 128).",
+          unzipped_tokens_shape[1],
+          unzipped_token_probs_shape[1]));
+
+  symbol::DimExpr seqlen = zipped_expertwise_rowmap_shape[0];
+  symbol::DimExpr token_len = unzipped_tokens_shape[1];
+  symbol::DimExpr topk = expert_routemap_topk_shape[1];
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({seqlen, token_len})});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({seqlen, topk})});
+
+  return true;
+}
+
 bool MulticlassNms3OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &bboxes_shape_or_data =
