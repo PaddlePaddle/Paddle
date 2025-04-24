@@ -1248,66 +1248,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
   return strategy;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForArange(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  auto attr_store = attrs.attr_store;
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("start"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No start attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(attr_store.count("end"),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "No end attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("step"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No step attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("dtype"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No dtype attribute in attrs.attr_store! Please check."));
-
-  auto start = absl::get<double>(attr_store.at("start"));
-  auto stop = absl::get<double>(attr_store.at("end"));
-  auto step = absl::get<double>(attr_store.at("step"));
-  auto dtype =
-      cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
-
-  framework::CINNCompute arange_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE(!args.empty(),
-                       ::common::errors::InvalidArgument(
-                           "The input argument of arange compute is empty! "
-                           "Please check."));
-        CINNValuePack pack_args = args[0];
-
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            1U,
-            ::common::errors::InvalidArgument("the size of pack_args should be "
-                                              "equal to 1, but got %d.",
-                                              pack_args.size()));
-        std::string tensor_name = pack_args[0].operator std::string();
-
-        auto out = pe::Arange(start, stop, step, dtype, tensor_name);
-        std::vector<cinn::common::CINNValue> res;
-        res.push_back(cinn::common::CINNValue(out));
-        *ret = CINNValuePack{res};
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(arange_compute, "strategy.reshape.x86", 1);
-  return strategy;
-}
-
 std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1332,9 +1272,24 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                     ::common::errors::InvalidArgument(
                         "No dtype attribute in arange Op! Please check."));
 
-  auto start = absl::get<double>(attr_store.at("start"));
-  auto stop = absl::get<double>(attr_store.at("end"));
-  auto step = absl::get<double>(attr_store.at("step"));
+  auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
+    using ElementType = std::decay_t<decltype(start)>;
+    PADDLE_ENFORCE_NE(step,
+                      0,
+                      ::common::errors::InvalidArgument(
+                          "The step of range op should not be 0."));
+
+    int64_t size = 0;
+    if ((start < end && step < 0) || (start > end && step > 0)) {
+      return 0;
+    } else {
+      return std::is_integral_v<ElementType>
+                 ? ((std::abs(end - start) + std::abs(step) - 1) /
+                    std::abs(step))
+                 : std::ceil(std::abs((end - start) / step));
+    }
+  };
+
   auto dtype =
       cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
 
@@ -1374,9 +1329,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       4U,
                       ::common::errors::InvalidArgument(
-                          "The number of input argument of arange should be 4"
-                          "(start, end, step, result). Please check."));
-    std::string tensor_name = pack_args[3].operator std::string();
+                          "The number of input argument of arange should be at "
+                          "last 1. Please check."));
+    std::string tensor_name = pack_args[0].operator std::string();
     auto out = pe::Arange(start, step, dtype, arange_size, tensor_name);
     std::vector<cinn::common::CINNValue> res;
     res.push_back(cinn::common::CINNValue(out));
