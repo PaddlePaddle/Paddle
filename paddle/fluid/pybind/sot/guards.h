@@ -271,13 +271,13 @@ class TensorDistMetaMatchGuard : public GuardBase {
  public:
   explicit TensorDistMetaMatchGuard(const py::object& obj) {
     if (obj != py::none()) {
-      mesh_shape_expected_ = obj.attr("mesh").attr("shape").ptr();
+      mesh_shape_expected_ =
+          obj.attr("mesh").attr("shape").cast<std::vector<int>>();
       mesh_process_ids_expected_ = obj.attr("mesh").attr("process_ids").ptr();
       dims_mapping_expected_ = obj.attr("dims_mapping").ptr();
       local_shape_expected_ = obj.attr("local_shape").ptr();
 
       is_dist_ = true;
-      Py_INCREF(mesh_shape_expected_.value());
       Py_INCREF(mesh_process_ids_expected_.value());
       Py_INCREF(dims_mapping_expected_.value());
       Py_INCREF(local_shape_expected_.value());
@@ -286,7 +286,7 @@ class TensorDistMetaMatchGuard : public GuardBase {
 
   ~TensorDistMetaMatchGuard() override {
     if (is_dist_) {
-      Py_DECREF(mesh_shape_expected_.value());
+      // Py_DECREF(mesh_shape_expected_.value());
       Py_DECREF(mesh_process_ids_expected_.value());
       Py_DECREF(dims_mapping_expected_.value());
       Py_DECREF(local_shape_expected_.value());
@@ -299,7 +299,7 @@ class TensorDistMetaMatchGuard : public GuardBase {
 
  private:
   bool is_dist_ = false;
-  std::optional<PyObject*> mesh_shape_expected_;
+  std::optional<std::vector<int>> mesh_shape_expected_;
   std::optional<PyObject*> mesh_process_ids_expected_;
   std::optional<PyObject*> dims_mapping_expected_;
   std::optional<PyObject*> local_shape_expected_;

@@ -209,8 +209,8 @@ class TestBasicFasterGuard(unittest.TestCase):
         reason='Not compiled with distribute.',
     )
     def test_tensor_is_dist_guard(self):
-        x = paddle.randn([2, 3])
-        y = paddle.randn([2, 3])
+        x = paddle.ones([2, 2])
+        y = paddle.ones([1, 2])
         x.stop_gradient = False
         y.stop_gradient = False
         mesh1 = dist.ProcessMesh([0, 1], dim_names=['x'])
@@ -225,13 +225,13 @@ class TestBasicFasterGuard(unittest.TestCase):
             DistInfo.from_tensor(dist_x1)
         )
         self.assertTrue(
-            guard_tensor_is_dist.check(DistInfo.from_tensor(dist_x1))
+            guard_tensor_is_dist.check((dist_x1, DistInfo.from_tensor))
         )
         self.assertFalse(
-            guard_tensor_is_dist.check(DistInfo.from_tensor(dist_y1))
+            guard_tensor_is_dist.check((dist_y1, DistInfo.from_tensor))
         )
-        self.assertFalse(guard_tensor_is_dist.check(DistInfo.from_tensor(x)))
-        self.assertFalse(guard_tensor_is_dist.check(DistInfo.from_tensor(y)))
+        self.assertFalse(guard_tensor_is_dist.check((x, DistInfo.from_tensor)))
+        self.assertFalse(guard_tensor_is_dist.check((y, DistInfo.from_tensor)))
 
 
 class TestFasterGuardGroup(unittest.TestCase):
