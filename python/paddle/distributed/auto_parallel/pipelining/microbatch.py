@@ -49,6 +49,9 @@ def _split_args_helper(
     args_chunk_spec,
     num_chunks,
 ):
+    """
+    A helper function of split_args_kwargs_into_chunks.
+    """
     assert len(args_dict) == len(
         args_chunk_spec
     ), f"args_dict.keys() = {list(args_dict.keys())} args_chunk_spec.keys() = {list(args_chunk_spec.keys())}"
