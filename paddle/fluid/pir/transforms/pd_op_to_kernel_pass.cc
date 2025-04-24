@@ -50,6 +50,7 @@
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -219,8 +220,7 @@ static bool NeedFallBackCpu(const pir::Operation* op,
   }
 
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-  if (phi::backends::custom_device::is_in_custom_black_list(
-          phi::TransToFluidOpName(kernel))) {
+  if (phi::backends::custom_device::is_in_custom_black_list(kernel)) {
     phi::KernelKey copy_key = kernel_key;
     copy_key.set_backend(phi::Backend::CPU);
     if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
@@ -436,6 +436,7 @@ static std::vector<std::shared_ptr<phi::TensorBase>> PrepareFakeTensors(
     phi::DenseTensor dt(holder, meta);
     auto tensor_array = std::make_shared<phi::TensorArray>(0);
     tensor_array->set_type(dtype);
+    tensor_array->push_back(dt);
     return tensor_array;
   };
 

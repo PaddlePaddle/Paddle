@@ -422,6 +422,7 @@ def index_select(
             x,
             'x',
             [
+                'bool',
                 'uint16',
                 'float16',
                 'float32',

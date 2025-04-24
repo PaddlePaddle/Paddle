@@ -38,7 +38,7 @@ YieldInstruction::YieldInstruction(size_t id,
       continue;
     }
     auto in = op->operand_source(i);
-    if (in && in.type()) {
+    if (in) {
       inputs.emplace(in, GetValueIds(in, *value_exe_info));
       input_vars_.push_back(value_exe_info->GetVarByValue(in));
     }
