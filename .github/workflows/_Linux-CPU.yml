@@ -1,4 +1,4 @@
-name: PR-CI-CPU
+name: Linux-CPU
 
 on:
   workflow_call:
@@ -129,9 +129,6 @@ jobs:
           bash ${ci_scripts}/run_linux_cpu_test.sh
           EXCODE=$?
           source ${ci_scripts}/utils.sh; clean_build_files
-          echo "::group::Install bce-python-sdk"
-          python -m pip install bce-python-sdk==0.8.74
-          echo "::endgroup::"
           exit $EXCODE
           '
 
@@ -142,6 +139,10 @@ jobs:
           paddle_whl: paddlepaddle-0.0.0-cp39-cp39-linux_x86_64.whl
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          echo "::group::Install bce-python-sdk"
+          source ${{ github.workspace }}/../../../proxy
+          python -m pip install bce-python-sdk==0.8.74
+          echo "::endgroup::"
           export AK=paddle
           export SK=paddle
           if [ ! -f "${{ env.bos_file }}" ]; then
@@ -151,6 +152,7 @@ jobs:
           fi
           cd dist
           echo "Uploading paddle_whl to bos"
+          source ${{ github.workspace }}/../../../unproxy
           python3.9 ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/cpu_whl/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '
 
