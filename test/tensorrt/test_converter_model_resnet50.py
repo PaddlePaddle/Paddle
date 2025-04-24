@@ -311,10 +311,13 @@ class TestConverterResNet50(unittest.TestCase):
         _, input_optim_data, _ = input_config.generate_input_data()
         trt_config = TensorRTConfig(inputs=[input_config])
         output_var = program.list_vars()[-1]
-        output_expected = predict_program(program, {"input": input_optim_data}, [output_var])
+        output_expected = predict_program(
+            program, {"input": input_optim_data}, [output_var]
+        )
 
         trt_save_path = os.path.join(self.temp_dir.name, 'resnet50trt')
         trt_config.save_model_dir = trt_save_path
+        cache_path = trt_config.save_model_dir
         trt_config.refit_params_path = save_path + '.pdiparams'
         model_dir = save_path
 
@@ -323,6 +326,7 @@ class TestConverterResNet50(unittest.TestCase):
         params_file = cache_path + '.pdiparams'
 
         import shutil
+
         cache_path_new = '/root/.pp_trt_cache_test'
         config_json_new = cache_path_new + '.json'
         params_file_new = cache_path_new + '.pdiparams'
