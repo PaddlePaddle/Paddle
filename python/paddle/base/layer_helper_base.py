@@ -448,6 +448,8 @@ class LayerHelperBase:
             )
         else:
             if in_pir_mode():
+                if isinstance(dtype, core.VarDesc.VarType):
+                    dtype = paddle.pir.core.vartype_to_datatype[dtype]
                 return paddle.pir.core.create_parameter(
                     dtype=dtype,
                     shape=shape,
