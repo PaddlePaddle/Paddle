@@ -141,9 +141,10 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
     // min(min(S0, 1ll), 1ll) ==> min(min(S0, 1), 1)
     // min(V[S0, S1], 1ll)    ==> min(V[S0, S1], 1ll)
     // min(S0 + 1ll, 1ll)     ==> max(S0 + 1, 1)
-    // IndexType::kValid means expr only has +-*/%, Const, Symbol, Min, Max.
+    // min(V[0], S0)          ==> min((int32)V[0], S1)
+    // min(var_local, S0)     ==> min((int32)var_local, S0)
     // IsDynamic == true means expr has Symbol.
-    if (optim::VerifyIndex(*expr) == ir::IndexExpr::IndexType::kValid &&
+    if (optim::VerifyIndex(*expr) != ir::IndexExpr::IndexType::kInvalid &&
         expr->as_index().IsDynamic()) {
       ir::ElevateInt64ToInt32_((*expr)->operands);
     } else {
@@ -153,7 +154,7 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
   }
   void Visit(const ir::Max* op, Expr* expr) override {
     auto node = expr->As<ir::Max>();
-    if (optim::VerifyIndex(*expr) == ir::IndexExpr::IndexType::kValid &&
+    if (optim::VerifyIndex(*expr) != ir::IndexExpr::IndexType::kInvalid &&
         expr->as_index().IsDynamic()) {
       ir::ElevateInt64ToInt32_((*expr)->operands);
     } else {
