@@ -57,7 +57,7 @@ jobs:
 
       - name: Search cached third_party
         env:
-          cache_dir: ${{ github.workspace }}/../../../../.cache
+          cache_dir: ${{ github.workspace }}/../../../../../.cache
         run: |
           bash -x ${ci_scripts_runner}/download_tp_cache.sh ${cache_dir}/XPU/third_party XPU
 
@@ -83,7 +83,7 @@ jobs:
           CCACHE_LIMIT_MULTIPLE: 0.8
           no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          home_dir: ${{ github.workspace }}/../../../..
+          home_dir: ${{ github.workspace }}/../../../../..
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
@@ -132,8 +132,6 @@ jobs:
           git config --global --add safe.directory ${work_dir}
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           bash -x ${ci_scripts}/run_setup.sh bdist_wheel
-          EXCODE=$?
-          exit $EXCODE
           '
 
       - name: Upload product to bos
@@ -144,14 +142,14 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
           paddle_whl: paddlepaddle_xpu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
+          if [ "${update_cached_package}" == ON ];then
+            cd ${{ github.workspace }}
+            tar --use-compress-program=pigz -cf ${xz_file} -C build third_party
+          fi
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
-          fi
-          if [ "${update_cached_package}" == ON ];then
-            cd ${{ github.workspace }}
-            tar --use-compress-program=pigz -cf ${xz_file} -C build third_party
           fi
           rm -rf `find . -name "*.a"`
           rm -rf `find . -name "*.o"`
