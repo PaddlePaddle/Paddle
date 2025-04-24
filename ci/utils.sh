@@ -171,6 +171,13 @@ function show_ut_retry_result() {
     fi
     if [[ "$is_retry_execute" != "0" ]]  && [[ "${exec_times}" == "0" ]] ;then
         failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+
+        echo "-------failed_test_lists-------0000000000000000000000000000000000000000000000000000000000000"
+        echo "${failed_test_lists}"
+        echo "-------failed_test_lists_ult-------"
+        echo "${failed_test_lists_ult}"
+
+
         echo "========================================="
         echo "There are more than ${exec_retry_threshold_count} failed unit tests in parallel test, so no unit test retry!!!"
         echo "========================================="
@@ -179,6 +186,14 @@ function show_ut_retry_result() {
         exit 8;
     elif [[ "$is_retry_execute" != "0" ]] && [[ "${exec_times}" == "1" ]];then
         failed_test_lists_ult=`echo "${failed_test_lists}" | grep -Po '[^ ].*$'`
+
+        echo "-------failed_test_lists-------1111111111111111111111111111111111111111111111111111111111111"
+        echo "${failed_test_lists}"
+        echo "-------failed_test_lists_ult-------"
+        echo "${failed_test_lists_ult}"
+        echo "----------------------------------------"
+
+
         echo "========================================="
         echo "There are more than 10 failed unit tests, so no unit test retry!!!"
         echo "========================================="
@@ -187,10 +202,25 @@ function show_ut_retry_result() {
         exit 8;
     else
         retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+
+        echo "-------retry_unittests_record---------------------------------------------------------------------"
+        echo "${retry_unittests_record}"
+        echo "-------retry_unittests_ut_name-------"
+        echo "${retry_unittests_ut_name}"
+        echo "----------------------------------------"
+
         if [ "$SYSTEM" == "Darwin" ]; then
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         else
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=2) {print $2}}')
+
+            echo "-------retry_unittests_ut_name----------------------------------------------------------------"
+            echo "${retry_unittests_ut_name}"
+            echo "-------retry_unittests_record_judge-------"
+            echo "${retry_unittests_record_judge}"
+            echo "----------------------------------------"
+
+
         fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -200,6 +230,11 @@ function show_ut_retry_result() {
             echo "${retry_unittests_record}"
         else
             failed_ut_re=$(echo "${retry_unittests_record_judge}" | awk BEGIN{RS=EOF}'{gsub(/\n/,"|");print}')
+
+            echo "-------failed_ut_re----------------------------------------------------------------"
+            echo "${failed_ut_re}"
+            echo "-----------------------------------------------------------------------"
+
             echo -e "${RED}========================================${NONE}"
             echo -e "${RED}There are failed tests, which have been executed re-run,but success rate is less than 50%:${NONE}"
             echo -e "${RED}Summary Failed Tests... ${NONE}"

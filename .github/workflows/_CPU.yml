@@ -23,7 +23,7 @@ jobs:
   build-and-test:
     name: Build and test
     runs-on:
-      group: GZ_BD-CPU
+      group: CPU-test
 
     steps:
       - name: Check docker image  and run container

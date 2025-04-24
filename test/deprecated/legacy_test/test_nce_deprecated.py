@@ -21,6 +21,8 @@ import paddle
 from paddle import base
 from paddle.base import Program, program_guard
 
+a = 1 / 0
+
 
 def nce(
     input, weight, bias, sample_weight, labels, num_classes, num_sample_class
