@@ -744,7 +744,7 @@ void BindPaddlePredictor(py::module *m) {
   paddle_predictor
       .def("run",
            [](PaddlePredictor &self, const std::vector<PaddleTensor> &inputs) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+#if !defined(PADDLE_NO_PYTHON)
              pybind11::gil_scoped_release release;
 #endif
              std::vector<PaddleTensor> outputs;
@@ -756,8 +756,13 @@ void BindPaddlePredictor(py::module *m) {
       .def("get_input_names", &PaddlePredictor::GetInputNames)
       .def("get_output_names", &PaddlePredictor::GetOutputNames)
       .def("zero_copy_run",
-           &PaddlePredictor::ZeroCopyRun,
-           py::arg("switch_stream") = false)
+          [](PaddlePredictor& self, bool switch_stream) {
+#if !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
+              return self.ZeroCopyRun(switch_stream);
+          },
+          py::arg("switch_stream") = false)
       .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
@@ -797,7 +802,7 @@ void BindNativePredictor(py::module *m) {
       .def("run",
            [](NativePaddlePredictor &self,
               const std::vector<PaddleTensor> &inputs) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+#if !defined(PADDLE_NO_PYTHON)
              pybind11::gil_scoped_release release;
 #endif
              std::vector<PaddleTensor> outputs;
@@ -807,7 +812,12 @@ void BindNativePredictor(py::module *m) {
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &NativePaddlePredictor::GetOutputTensor)
       .def("zero_copy_run",
-           &NativePaddlePredictor::ZeroCopyRun,
+           [](NativePaddlePredictor& self, bool switch_stream) {
+#if !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif
+              return self.ZeroCopyRun(switch_stream);
+           },
            py::arg("switch_stream") = false)
       .def("clone",
            [](NativePaddlePredictor &self) { return self.Clone(nullptr); })
@@ -1132,8 +1142,8 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "run",
           [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
+#if !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
 #endif
             std::vector<PaddleTensor> outputs;
             self.Run(inputs, &outputs);
@@ -1145,7 +1155,13 @@ void BindAnalysisPredictor(py::module *m) {
       .def("get_output_names", &AnalysisPredictor::GetOutputNames)
       .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
       .def("zero_copy_run",
-           &AnalysisPredictor::ZeroCopyRun,
+           [](AnalysisPredictor &self, bool switch_stream){
+            std::cout << "AnalysisPredictor  zero_copy_run" << std::endl;
+#if !defined(PADDLE_NO_PYTHON)
+             pybind11::gil_scoped_release release;
+#endif            
+            return self.ZeroCopyRun(switch_stream);
+           },
            py::arg("switch_stream") = false)
       .def("clear_intermediate_tensor",
            &AnalysisPredictor::ClearIntermediateTensor)
@@ -1185,7 +1201,7 @@ void BindPaddleInferPredictor(py::module *m) {
           "run",
           [](paddle_infer::Predictor &self,
              const std::vector<paddle::Tensor> &in_tensor_list) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+#if !defined(PADDLE_NO_PYTHON)
             pybind11::gil_scoped_release release;
 #endif
             std::vector<paddle::Tensor> outputs;
@@ -1195,7 +1211,7 @@ void BindPaddleInferPredictor(py::module *m) {
           py::arg("inputs"))
       .def("run",
            [](paddle_infer::Predictor &self) {
-#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_NO_PYTHON)
+#if !defined(PADDLE_NO_PYTHON)
              pybind11::gil_scoped_release release;
 #endif
              self.Run();
