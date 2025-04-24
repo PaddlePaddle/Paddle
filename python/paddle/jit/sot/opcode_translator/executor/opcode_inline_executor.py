@@ -76,7 +76,7 @@ class FunctionGlobalTracker(Tracker):
         codegen.gen_load_const(self.name)
         codegen.gen_subscribe()
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         fn_tracer = self.fn.tracker.guard_tree_expr_node()
         return paddle.framework.core.ItemExprNode(
             paddle.framework.core.AttributeExprNode(
@@ -134,9 +134,15 @@ class FunctionClosureTracker(Tracker):
         codegen.gen_subscribe()
         codegen.gen_load_attr("cell_contents")
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
-        # TODO(zrr1999): implement FunctionClosureExprNode
-        raise NotImplementedError("FunctionClosureExprNode is not implemented")
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        fn_tracer = self.fn.tracker.guard_tree_expr_node()
+        return paddle.framework.core.ItemExprNode(
+            paddle.framework.core.AttributeExprNode(
+                fn_tracer,
+                "__closure__",
+            ),
+            paddle.framework.core.ConstantExprNode(self.idx),
+        )
 
     def trace_value_from_frame(self):
         """
