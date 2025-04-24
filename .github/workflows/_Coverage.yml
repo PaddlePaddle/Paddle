@@ -343,7 +343,7 @@ jobs:
           COVERAGE_EXIT_CODE=$?
           echo $COVERAGE_EXIT_CODE
           if [ "$COVERAGE_EXIT_CODE" -ne 0 ]; then
-            echo "Coverage check failed, unit tests have all passed, please do not rerun, check whether the code has been fully executed and recommit."
+            echo "Coverage check failed, unit tests have all passed, please do not rerun, check whether the newly added code lines are fully covered by unit tests. If you have any questions, please contact XieYunshen."
             exit $COVERAGE_EXIT_CODE
           else
             echo "Coverage passed"
