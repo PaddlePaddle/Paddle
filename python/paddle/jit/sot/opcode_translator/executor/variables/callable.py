@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import collections
 import dis
 import functools
 import inspect
@@ -966,11 +967,15 @@ class NumpyApiVariable(FunctionVariable):
     @VariableFactory.register_from_value(successor="BuiltinVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         # TODO(wangmingkai02): support other numpy api.
-        if ENV_SOT_TRACE_NUMPY.get() and (
-            value in NUMPY_API_SUPPORTED_DICT
-            or any(
-                value in ufuncs
-                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+        if (
+            ENV_SOT_TRACE_NUMPY.get()
+            and isinstance(value, collections.abc.Hashable)
+            and (
+                value in NUMPY_API_SUPPORTED_DICT
+                or any(
+                    value in ufuncs
+                    for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+                )
             )
         ):
             return NumpyApiVariable(value, graph, tracker)
