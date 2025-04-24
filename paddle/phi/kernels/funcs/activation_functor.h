@@ -5406,11 +5406,13 @@ struct CudaRoundFunctor : public BaseActivationFunctor<T> {
     if (decimals == 0) {
       return static_cast<T>(std::rint(x));
     } else if (decimals > 0) {
-      float ten_pow_decimals = pow(10., decimals);
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(decimals));
       return static_cast<T>(rint(x * static_cast<MPType>(ten_pow_decimals)) /
                             ten_pow_decimals);
     } else {
-      float ten_pow_decimals = pow(10., -decimals);
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(-decimals));
       return static_cast<T>(rint(x / static_cast<MPType>(ten_pow_decimals)) *
                             ten_pow_decimals);
     }
@@ -5451,19 +5453,23 @@ struct CudaRoundFunctor<phi::dtype::complex<T>>
       real = real_special ? real_part : rint(real_part);
       imag = imag_special ? imag_part : rint(imag_part);
     } else if (decimals > 0) {
-      float ten_pow_decimals = pow(10.f, decimals);
-      MPType scale = static_cast<MPType>(ten_pow_decimals);
-      real =
-          real_special ? real_part : rint(real_part * scale) / ten_pow_decimals;
-      imag =
-          imag_special ? imag_part : rint(imag_part * scale) / ten_pow_decimals;
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(decimals));
+      real = real_special
+                 ? real_part
+                 : rint(real_part * ten_pow_decimals) / ten_pow_decimals;
+      imag = imag_special
+                 ? imag_part
+                 : rint(imag_part * ten_pow_decimals) / ten_pow_decimals;
     } else {
-      float ten_pow_decimals = pow(10.f, -decimals);
-      MPType scale = static_cast<MPType>(ten_pow_decimals);
-      real =
-          real_special ? real_part : rint(real_part / scale) * ten_pow_decimals;
-      imag =
-          imag_special ? imag_part : rint(imag_part / scale) * ten_pow_decimals;
+      MPType ten_pow_decimals =
+          pow(static_cast<MPType>(10), static_cast<MPType>(-decimals));
+      real = real_special
+                 ? real_part
+                 : rint(real_part / ten_pow_decimals) * ten_pow_decimals;
+      imag = imag_special
+                 ? imag_part
+                 : rint(imag_part / ten_pow_decimals) * ten_pow_decimals;
     }
     return phi::dtype::complex<T>(static_cast<T>(real), static_cast<T>(imag));
   }
