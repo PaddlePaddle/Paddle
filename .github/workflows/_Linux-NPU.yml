@@ -1,4 +1,4 @@
-name: PR-CI-NPU-910B-Paddle
+name: Linux-NPU
 
 on:
   workflow_call:

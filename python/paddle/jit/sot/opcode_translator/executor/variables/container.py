@@ -129,7 +129,7 @@ class ContainerVariable(VariableBase):
         )
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
 
         if self.get_py_type() is dict:
@@ -766,7 +766,7 @@ class RangeVariable(ContainerVariable):
         return None
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         frame_value_tracer = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(

@@ -254,6 +254,88 @@ std::string ItemExprNode::stringify(int indent) {
   return ss.str();
 }
 
+PyObject* BinaryExprNode::eval(FrameProxy* frame) {
+  PyObject* lhs = lhs_->eval(frame);
+  PyObject* rhs = rhs_->eval(frame);
+
+  if (!lhs || !rhs) {
+    PyErr_Clear();
+    return Py_False;
+  }
+
+  PyObject* result = nullptr;
+  if (op_type_ == OpType::COMPARE) {
+    int bool_result = PyObject_RichCompareBool(lhs, rhs, op_code_);
+    if (bool_result == -1) {
+      PyErr_Clear();
+      return Py_False;
+    }
+    result = bool_result ? Py_True : Py_False;
+  } else {
+    PyNumberMethods* nb = Py_TYPE(lhs)->tp_as_number;
+    if (nb == nullptr) {
+      PyErr_SetString(PyExc_TypeError,
+                      "Object does not support number operations");
+      return Py_False;
+    }
+
+    switch (op_code_) {
+      case 0:  // +
+        result = nb->nb_add(lhs, rhs);
+        break;
+      case 1:  // -
+        result = nb->nb_subtract(lhs, rhs);
+        break;
+      case 2:  // *
+        result = nb->nb_multiply(lhs, rhs);
+        break;
+      case 3:  // /
+        result = nb->nb_true_divide(lhs, rhs);
+        break;
+      case 4:  // //
+        result = nb->nb_floor_divide(lhs, rhs);
+        break;
+      case 5:  // %
+        result = nb->nb_remainder(lhs, rhs);
+        break;
+      case 6:  // **
+        result = nb->nb_power(lhs, rhs, nullptr);
+        break;
+      case 7:  // <<
+        result = nb->nb_lshift(lhs, rhs);
+        break;
+      case 8:  // >>
+        result = nb->nb_rshift(lhs, rhs);
+        break;
+      case 9:  // &
+        result = nb->nb_and(lhs, rhs);
+        break;
+      case 10:  // |
+        result = nb->nb_or(lhs, rhs);
+        break;
+      case 11:  // ^
+        result = nb->nb_xor(lhs, rhs);
+        break;
+      default:
+        PyErr_SetString(PyExc_TypeError, "Unsupported operation");
+        return Py_False;
+    }
+
+    if (result == nullptr) {
+      PyErr_Clear();
+      return Py_False;
+    }
+  }
+
+  return result;
+}
+
+std::string BinaryExprNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << lhs_->stringify() << " " << op_str_ << " " << rhs_->stringify();
+  return ss.str();
+}
+
 std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   // TODO(zrr1999): support multiple exprs
   auto expr = exprs.back();
@@ -287,8 +369,38 @@ std::string GuardNode::stringify(int indent) {
   return ss.str();
 }
 
+std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {
+  auto expr = expr_;
+  auto value = expr->eval(frame);
+  if (PyObject_IsTrue(value)) {
+    if (return_cache_index.has_value()) {
+      return return_cache_index.value();
+    }
+    for (auto& next_guard_node : next_guard_nodes) {
+      auto ret = next_guard_node->lookup(frame);
+      if (ret.has_value()) {
+        return ret.value();
+      }
+    }
+  }
+  return std::nullopt;
+}
+std::string ExprGuardNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << std::string(indent, ' ');
+  ss << "(" << expr_->stringify() << ")";
+  if (!next_guard_nodes.empty()) {
+    ss << " |" << std::endl;
+    for (auto& next_guard_node : next_guard_nodes) {
+      ss << std::string(indent + 2, ' ');
+      ss << next_guard_node->stringify(indent + 2) << std::endl;
+    }
+  }
+  return ss.str();
+}
+
 void GuardTree::add_guard_chain(
-    const std::vector<std::shared_ptr<GuardNode>>& guard_chain) {
+    const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
     // TODO(zrr1999): empty guard nodes means that some
     // tracker.make_faster_guard is not implemented.
@@ -318,6 +430,68 @@ std::string GuardTree::stringify() {
     }
     ss << guard_nodes_[i]->stringify();
   }
+  return ss.str();
+}
+
+std::vector<std::shared_ptr<GuardNodeBase>> GuardTree::get_guard_nodes() const {
+  return guard_nodes_;
+}
+
+PyObject* UnaryExprNode::eval(FrameProxy* frame) {
+  PyObject* value = expr_->eval(frame);
+  if (!value) {
+    PyErr_Clear();
+    return Py_False;
+  }
+
+  PyObject* result = nullptr;
+  if (op_type_ == OpType::NUMBER) {
+    PyNumberMethods* nb = Py_TYPE(value)->tp_as_number;
+    if (nb == nullptr) {
+      PyErr_SetString(PyExc_TypeError,
+                      "Object does not support number operations");
+      return Py_False;
+    }
+
+    switch (op_code_) {
+      case 0:  // +
+        result = nb->nb_positive(value);
+        break;
+      case 1:  // -
+        result = nb->nb_negative(value);
+        break;
+      case 2:  // ~
+        result = nb->nb_invert(value);
+        break;
+      default:
+        PyErr_SetString(PyExc_TypeError, "Unsupported operation");
+        return Py_False;
+    }
+  } else {  // LOGICAL
+    switch (op_code_) {
+      case 0:  // not or !
+        result = PyObject_IsTrue(value) ? Py_False : Py_True;
+        break;
+      case 1:  // bool
+        result = PyObject_IsTrue(value) ? Py_True : Py_False;
+        break;
+      default:
+        PyErr_SetString(PyExc_TypeError, "Unsupported operation");
+        return Py_False;
+    }
+  }
+
+  if (result == nullptr) {
+    PyErr_Clear();
+    return Py_False;
+  }
+
+  return result;
+}
+
+std::string UnaryExprNode::stringify(int indent) {
+  std::stringstream ss;
+  ss << op_str_ << "(" << expr_->stringify() << ")";
   return ss.str();
 }
 

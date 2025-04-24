@@ -548,7 +548,7 @@ class LayerVariable(CallableVariable):
         ]
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(
@@ -624,7 +624,7 @@ class ContainerLayerVariable(LayerVariable):
             return super().make_stringified_guard()
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         if isinstance(self.value, PD_SEQ_CONTAINERS):
             expr_node = self.tracker.guard_tree_expr_node()
             len_guard = paddle.framework.core.GuardNode(
@@ -632,7 +632,7 @@ class ContainerLayerVariable(LayerVariable):
                 [expr_node],
             )
 
-            guards: list[paddle.framework.core.GuardNode] = [len_guard]
+            guards: list[paddle.framework.core.GuardNodeBase] = [len_guard]
             for idx, layer in enumerate(self.value):
                 layer_variable = VariableFactory.from_value(
                     layer, self.graph, GetItemTracker(self, idx)
@@ -693,7 +693,7 @@ class PaddleLayerVariable(LayerVariable):
             return super().make_stringified_guard()
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         if isinstance(self.tracker, CreateLayerTracker):
             return reduce(
                 operator.add,
