@@ -755,12 +755,13 @@ void BindPaddlePredictor(py::module *m) {
       .def("get_output_tensor", &PaddlePredictor::GetOutputTensor)
       .def("get_input_names", &PaddlePredictor::GetInputNames)
       .def("get_output_names", &PaddlePredictor::GetOutputNames)
-      .def("zero_copy_run",
-          [](PaddlePredictor& self, bool switch_stream) {
+      .def(
+          "zero_copy_run",
+          [](PaddlePredictor &self, bool switch_stream) {
 #if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
+            pybind11::gil_scoped_release release;
 #endif
-              return self.ZeroCopyRun(switch_stream);
+            return self.ZeroCopyRun(switch_stream);
           },
           py::arg("switch_stream") = false)
       .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
@@ -811,14 +812,15 @@ void BindNativePredictor(py::module *m) {
            })
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &NativePaddlePredictor::GetOutputTensor)
-      .def("zero_copy_run",
-           [](NativePaddlePredictor& self, bool switch_stream) {
+      .def(
+          "zero_copy_run",
+          [](NativePaddlePredictor &self, bool switch_stream) {
 #if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
+            pybind11::gil_scoped_release release;
 #endif
-              return self.ZeroCopyRun(switch_stream);
-           },
-           py::arg("switch_stream") = false)
+            return self.ZeroCopyRun(switch_stream);
+          },
+          py::arg("switch_stream") = false)
       .def("clone",
            [](NativePaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1143,7 +1145,7 @@ void BindAnalysisPredictor(py::module *m) {
           "run",
           [](AnalysisPredictor &self, const std::vector<PaddleTensor> &inputs) {
 #if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
+            pybind11::gil_scoped_release release;
 #endif
             std::vector<PaddleTensor> outputs;
             self.Run(inputs, &outputs);
@@ -1154,15 +1156,16 @@ void BindAnalysisPredictor(py::module *m) {
       .def("get_input_names", &AnalysisPredictor::GetInputNames)
       .def("get_output_names", &AnalysisPredictor::GetOutputNames)
       .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
-      .def("zero_copy_run",
-           [](AnalysisPredictor &self, bool switch_stream){
+      .def(
+          "zero_copy_run",
+          [](AnalysisPredictor &self, bool switch_stream) {
             std::cout << "AnalysisPredictor  zero_copy_run" << std::endl;
 #if !defined(PADDLE_NO_PYTHON)
-             pybind11::gil_scoped_release release;
-#endif            
+            pybind11::gil_scoped_release release;
+#endif
             return self.ZeroCopyRun(switch_stream);
-           },
-           py::arg("switch_stream") = false)
+          },
+          py::arg("switch_stream") = false)
       .def("clear_intermediate_tensor",
            &AnalysisPredictor::ClearIntermediateTensor)
       .def("try_shrink_memory", &AnalysisPredictor::TryShrinkMemory)
