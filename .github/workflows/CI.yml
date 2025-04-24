@@ -19,30 +19,44 @@ jobs:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
 
+  check-bypass:
+    name: Check bypass for all
+    needs: clone
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'all'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   sot:
     name: PR-CI-SOT
+    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
     uses: ./.github/workflows/_SOT.yml
-    needs: clone
+    needs: check-bypass
 
   xpu:
     name: Linux-XPU
+    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
     uses: ./.github/workflows/_Linux-XPU.yml
-    needs: clone
+    needs: check-bypass
 
   inference:
     name: PR-CI-Inference
+    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
     uses: ./.github/workflows/_Inference.yml
-    needs: clone
+    needs: check-bypass
 
   coverage:
     name: PR-CI-Coverage
+    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
     uses: ./.github/workflows/_Coverage.yml
-    needs: clone
+    needs: check-bypass
 
   cpu:
     name: Linux-CPU
+    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
     uses: ./.github/workflows/_CPU.yml
-    needs: clone
+    needs: check-bypass
 
   npu:
     name: Linux-NPU
