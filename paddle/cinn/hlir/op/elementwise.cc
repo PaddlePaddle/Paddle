@@ -1248,66 +1248,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
   return strategy;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForArange(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  auto attr_store = attrs.attr_store;
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("start"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No start attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(attr_store.count("end"),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "No end attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("step"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No step attribute in attrs.attr_store! Please check."));
-  PADDLE_ENFORCE_EQ(
-      attr_store.count("dtype"),
-      true,
-      ::common::errors::InvalidArgument(
-          "No dtype attribute in attrs.attr_store! Please check."));
-
-  auto start = absl::get<double>(attr_store.at("start"));
-  auto stop = absl::get<double>(attr_store.at("end"));
-  auto step = absl::get<double>(attr_store.at("step"));
-  auto dtype =
-      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
-
-  framework::CINNCompute arange_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        PADDLE_ENFORCE(!args.empty(),
-                       ::common::errors::InvalidArgument(
-                           "The input argument of arange compute is empty! "
-                           "Please check."));
-        CINNValuePack pack_args = args[0];
-
-        PADDLE_ENFORCE_EQ(
-            pack_args.size(),
-            1U,
-            ::common::errors::InvalidArgument("the size of pack_args should be "
-                                              "equal to 1, but got %d.",
-                                              pack_args.size()));
-        std::string tensor_name = pack_args[0].operator std::string();
-
-        auto out = pe::Arange(start, stop, step, dtype, tensor_name);
-        std::vector<cinn::common::CINNValue> res;
-        res.push_back(cinn::common::CINNValue(out));
-        *ret = CINNValuePack{res};
-      });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(arange_compute, "strategy.reshape.x86", 1);
-  return strategy;
-}
-
 std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1332,11 +1272,50 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                     ::common::errors::InvalidArgument(
                         "No dtype attribute in arange Op! Please check."));
 
-  auto start = absl::get<double>(attr_store.at("start"));
-  auto stop = absl::get<double>(attr_store.at("end"));
-  auto step = absl::get<double>(attr_store.at("step"));
+  auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
+    using ElementType = std::decay_t<decltype(start)>;
+    PADDLE_ENFORCE_NE(step,
+                      0,
+                      ::common::errors::InvalidArgument(
+                          "The step of range op should not be 0."));
+
+    int64_t size = 0;
+    if ((start < end && step < 0) || (start > end && step > 0)) {
+      return 0;
+    } else {
+      return std::is_integral_v<ElementType>
+                 ? ((std::abs(end - start) + std::abs(step) - 1) /
+                    std::abs(step))
+                 : std::ceil(std::abs((end - start) / step));
+    }
+  };
+
   auto dtype =
       cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+
+#define EXPR_FROM_ATTR(type)                             \
+  type start_ = absl::get<type>(attr_store.at("start")); \
+  type end_ = absl::get<type>(attr_store.at("end"));     \
+  type step_ = absl::get<type>(attr_store.at("step"));   \
+  arange_size = GetArangeSize(start_, end_, step_);      \
+  start = Expr(start_);                                  \
+  step = Expr(step_);
+
+  Expr start, step;
+  int64_t arange_size = 0;
+  if (dtype.is_float(32)) {
+    EXPR_FROM_ATTR(float)
+  } else if (dtype.is_float(64)) {
+    EXPR_FROM_ATTR(double)
+  } else if (dtype.is_int(32)) {
+    EXPR_FROM_ATTR(int)
+  } else if (dtype.is_int(64)) {
+    EXPR_FROM_ATTR(int64_t)
+  } else {
+    CINN_NOT_IMPLEMENTED
+  }
+
+#undef EXPR_FROM_ATTR
 
   framework::CINNCompute arange_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
@@ -1353,8 +1332,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                           "The number of input argument of arange should be at "
                           "last 1. Please check."));
     std::string tensor_name = pack_args[0].operator std::string();
-
-    auto out = pe::Arange(start, stop, step, dtype, tensor_name);
+    auto out = pe::Arange(start, step, dtype, arange_size, tensor_name);
     std::vector<cinn::common::CINNValue> res;
     res.push_back(cinn::common::CINNValue(out));
     *ret = CINNValuePack{res};
@@ -1820,8 +1798,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .describe("Returns evenly spaced values within a given interval.")
       .set_num_inputs(0)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForArange)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForArangeSymbolic)
       .set_attr<cinn::hlir::framework::OpPatternKind>(
