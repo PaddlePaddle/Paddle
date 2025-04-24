@@ -28,6 +28,7 @@ namespace ir {
 void EraseOpRecursively(pir::Operation* op,
                         pir::PatternRewriter& rewriter) {  // NOLINT
   std::queue<pir::Operation*> ops_queue;
+  std::unordered_set<pir::Operation*> erased;
   ops_queue.push(op);
   while (!ops_queue.empty()) {
     auto cur_op = ops_queue.front();
@@ -39,13 +40,14 @@ void EraseOpRecursively(pir::Operation* op,
         break;
       }
     }
-    if (no_result_used) {
+    if (no_result_used && !erased.count(cur_op)) {
       for (const pir::Value& operand_source : cur_op->operands_source()) {
         auto producer_op = operand_source.defining_op();
         if (!producer_op) continue;
         ops_queue.push(producer_op);
       }
       rewriter.EraseOp(cur_op);
+      erased.insert(cur_op);
     }
   }
 }
@@ -171,7 +173,7 @@ class FoldOutputDataDerivableOps : public pir::RewritePattern {
         }
       }
       pir::Operation* new_op;
-      if (is_all_data_same) {
+      if (is_all_data_same && result_int_data.size() > 0) {
         // Build a new full op
         double fill_value = result_int_data[0];
         new_op = rewriter.Build<paddle::dialect::FullOp>(
