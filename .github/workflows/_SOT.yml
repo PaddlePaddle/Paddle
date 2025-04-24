@@ -94,7 +94,7 @@ jobs:
             -e CCACHE_DIR \
             -w /paddle --network host ${docker_image}
 
-      - name: Download paddle.tar.gz and merge $BRANCH
+      - name: Download paddle.tar.gz and merge target branch
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
