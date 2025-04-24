@@ -1401,22 +1401,9 @@ class NumpyVariable(VariableBase):
         tracker: The Tracker object that tracks the information of this variable.
     """
 
-    var_name_generator = NameGenerator("np_var_")
-    value: np.ndarray
-    mutable_attrs = ["meta"]
-
-    def __init__(self, value_or_meta, graph, tracker):
+    def __init__(self, value, graph, tracker):
         super().__init__(graph, tracker)
-        self.var_name = self.var_name_generator.next()
-        self.graph.side_effects.record_mutable_variable(self)
-
-        if isinstance(value_or_meta, MetaInfo):
-            # TODO(wangmingkai02): self.value
-            self.value = None
-            self.meta = value_or_meta
-        else:
-            self.value = value_or_meta
-            self.meta = MetaInfo.from_tensor(paddle.to_tensor(self.value))
+        self.value = value
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -1424,12 +1411,6 @@ class NumpyVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value
-
-    def get_py_type(self):
-        return np.ndarray
-
-    def get_symbol(self) -> Symbol:
-        return Symbol(self.var_name)
 
     @staticmethod
     def format_dtype(dtype: np.dtype):
@@ -1444,6 +1425,12 @@ class NumpyVariable(VariableBase):
     def format_number(number: np.number):
         return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
 
@@ -1452,15 +1439,6 @@ class NumpyVariable(VariableBase):
         if isinstance(value, np.ndarray):
             return NumpyArrayVariable(value, graph, tracker)
         return None
-
-    @property
-    def out_var_name(self):
-        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
-
-    def _reconstruct(self, codegen: PyCodeGen):
-        codegen.gen_load_fast(self.out_var_name)
-        codegen.gen_load_method("numpy")
-        codegen.gen_call_method(0)
 
 
 class NumpyNumberVariable(NumpyVariable):
@@ -1519,10 +1497,71 @@ class NumpyBoolVariable(NumpyNumberVariable):
 
 
 class NumpyArrayVariable(NumpyVariable):
+    var_name_generator = NameGenerator("np_var_")
+    value: np.ndarray
+    mutable_attrs = ["meta"]
+
+    def __init__(self, value_or_meta, graph, tracker):
+        super().__init__(None, graph, tracker)
+        self.var_name = self.var_name_generator.next()
+        self.graph.side_effects.record_mutable_variable(self)
+
+        if isinstance(value_or_meta, MetaInfo):
+            # TODO(wangmingkai02): self.value
+            self.value = None
+            self.meta = value_or_meta
+        else:
+            self.value = value_or_meta
+            # self.meta = MetaInfo.from_tensor(paddle.to_tensor(self.value))
+            # if not isinstance(self.value, np.ndarray):
+            #     raise BreakGraphError(
+            #         UnsupportedNumpyDataTypeBreak(type_name=type(self.value))
+            #     )
+            self.meta = MetaInfo.from_numpy(self.value)
+
+    def get_py_type(self):
+        return np.ndarray
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, np.ndarray):
+            return NumpyArrayVariable(value, graph, tracker)
+        return None
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("numpy")
+        codegen.gen_call_method(0)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                self.get_py_value().dtype
+            ),
+            [expr_node],
+        )
+        # TODO(wangmingkai02): NumpyArrayShapeMatchGuard
+        value_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyArrayValueMatchGuard(
+                self.get_py_value()
+            ),
+            [expr_node],
+        )
+        return [dtype_guard, value_guard]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        obj_free_var_name = f"__{self.id}"
+        meta = self.meta
 
         dtype_guard = FasterStringifiedExpression(
             f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
@@ -1534,18 +1573,39 @@ class NumpyArrayVariable(NumpyVariable):
         )
 
         return [
-            dtype_guard,
             FasterStringifiedExpression(
-                f"({{}} == {obj_free_var_name}).all()",
-                paddle.framework.core.NumPyArrayValueMatchGuard(
-                    self.get_py_value()
-                ),
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
                 [frame_value_tracer],
-                union_free_vars(
-                    frame_value_tracer.free_vars,
-                    {obj_free_var_name: self.get_py_value()},
-                ),
+                union_free_vars(frame_value_tracer.free_vars),
             ),
+            StringifiedExpression(
+                "isinstance({}, list) == False",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            dtype_guard,
+            StringifiedExpression(
+                f"len({{}}.shape) == {len(meta.shape)}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            *[
+                (
+                    StringifiedExpression(
+                        f"{{}}.shape[{i}] == {meta.shape[i]}",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                    if not isinstance(meta.shape[i], SymbolicInt)
+                    else StringifiedExpression(
+                        f"{{}}.shape[{i}] >= 2",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                )
+                for i in range(len(meta.shape))
+            ],
         ]
 
 

@@ -62,6 +62,9 @@ from .info_collector import (  # noqa: F401
     SubGraphRelationInfo,
 )
 from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
+from .numpy_utils import (  # noqa: F401
+    NUMPY_API_SUPPORTED_DICT,
+)
 from .paddle_api_config import (  # noqa: F401
     get_tensor_methods,
     is_break_graph_tensor_methods,

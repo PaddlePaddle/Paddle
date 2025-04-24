@@ -44,6 +44,7 @@ from ...symbolic_shape import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_GUARD_TREE,
+    NUMPY_API_SUPPORTED_DICT,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -80,7 +81,7 @@ from .variables import (
     GlobalVariable,
     ListVariable,
     NullVariable,
-    NumpyVariable,
+    NumpyArrayVariable,
     PaddleLayerVariable,
     ParameterVariable,
     SymbolicVariable,
@@ -104,10 +105,10 @@ CompileGraphResult: TypeAlias = Tuple[
     ],
 ]
 
-InputVariableType = Union[TensorVariable, SymbolicVariable, NumpyVariable]
-InputVariableTypes = (TensorVariable, SymbolicVariable, NumpyVariable)
+InputVariableType = Union[TensorVariable, SymbolicVariable, NumpyArrayVariable]
+InputVariable = (TensorVariable, SymbolicVariable, NumpyArrayVariable)
 OutputVariableType = InputVariableType
-OutputVariableTypes = InputVariableTypes
+OutputVariable = InputVariable
 
 
 def convert_to_meta(inputs: Any):
@@ -116,7 +117,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, InputVariableTypes):
+        if isinstance(x, InputVariable):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -131,7 +132,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, InputVariableTypes):
+        if isinstance(x, InputVariable):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -155,7 +156,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, InputVariableTypes):
+        if isinstance(value, InputVariable):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -553,9 +554,8 @@ class FunctionGraph:
         Args:
             func: numpy api
         """
+        assert func in NUMPY_API_SUPPORTED_DICT.values()
         log(3, f"call numpy.api : {func.__name__}", "\n")
-
-        assert func is paddle.add
 
         def message_handler(*args, **kwargs):
             return f"Call numpy api error: {func.__name__}, may be not a operator api?"
@@ -792,7 +792,7 @@ class FunctionGraph:
                 list(args) + list(kwargs.values()), func
             )
         elif api_type == APIType.NUMPY:
-            var_cls = NumpyVariable
+            var_cls = NumpyArrayVariable
             tracker = DummyTracker(list(args) + list(kwargs.values()))
         else:
             var_cls = TensorVariable
@@ -919,7 +919,7 @@ class FunctionGraph:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, InputVariableTypes)
+                    isinstance(variable, InputVariable)
                     and variable.get_symbol().name == name
                 ):
                     inputs.add(variable)
@@ -942,8 +942,8 @@ class FunctionGraph:
                 input_var.tracker.gen_instructions(self.pycode_gen)
                 self.pycode_gen.gen_load_const("int64")
                 self.pycode_gen.gen_call_function(3)
-            elif isinstance(input_var, NumpyVariable):
-                # For NumpyVariable, we use paddle.to_tensor(value) to convert it to a Tensor
+            elif isinstance(input_var, NumpyArrayVariable):
+                # For NumpyArrayVariable, we use paddle.to_tensor(value) to convert it to a Tensor
                 self.pycode_gen.gen_load_object(
                     paddle.to_tensor,
                     "___paddle_to_tensor",
@@ -959,7 +959,7 @@ class FunctionGraph:
     ) -> TypeGuard[InputVariableType]:
         return isinstance(
             var.tracker, (DummyTracker, SymbolicOperationTracker)
-        ) and isinstance(var, InputVariableTypes)
+        ) and isinstance(var, InputVariable)
 
     @staticmethod
     def _collect_related_dummy_tensor(var):

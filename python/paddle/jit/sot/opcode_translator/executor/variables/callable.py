@@ -28,8 +28,6 @@ from typing import (
     Callable,
 )
 
-import numpy as np
-
 import paddle
 
 from .... import psdb
@@ -38,6 +36,8 @@ from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
     ENV_SOT_TRACE_NUMPY,
+    NUMPY_API_SUPPORTED_DICT,
+    get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
     is_break_graph_api,
@@ -62,6 +62,7 @@ from ....utils.exceptions import (
     OtherInlineCallBreak,
     PsdbBreakReason,
     SotErrorBase,
+    UnsupportedNumpyAPIBreak,
     UnsupportedOperationBreak,
     UnsupportedPaddleAPIBreak,
 )
@@ -90,6 +91,7 @@ from .base import (
 )
 from .basic import (
     ConstantVariable,
+    NumpyNumberVariable,
     ObjectVariable,
     PrintStmtVariable,
     SliceVariable,
@@ -867,6 +869,8 @@ class NumpyApiVariable(FunctionVariable):
         tracker(Tracker): The Tracker object that tracks the information of this variable.
     """
 
+    _cached_numpy_ufuncs = None
+
     def __init__(
         self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
     ):
@@ -874,13 +878,45 @@ class NumpyApiVariable(FunctionVariable):
 
     def call_function(self, /, *args, **kwargs):
         # TODO(wangmingkai02): judge whether this is a break api
-        assert self.value is np.add, "Only support numpy.add api currently."
-        return self.graph.call_numpy_api(paddle.add, *args, **kwargs)
+        if all(
+            isinstance(arg, (ConstantVariable, NumpyNumberVariable))
+            for arg in args
+        ):
+            if any(
+                self.value in ufuncs
+                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+            ):
+                vars = list(args)
+                var_py_values = [var.get_py_value() for var in vars]
+                return VariableFactory.from_value(
+                    self.value(*var_py_values),
+                    vars[0].graph,
+                    tracker=DummyTracker(vars),
+                )
+        if self.value in NUMPY_API_SUPPORTED_DICT:
+            return self.graph.call_numpy_api(
+                NUMPY_API_SUPPORTED_DICT[self.value], *args, **kwargs
+            )
+        raise BreakGraphError(
+            UnsupportedNumpyAPIBreak(fn_name=self.value.__name__)
+        )
+
+    @classmethod
+    def _get_numpy_ufuncs(cls):
+        if cls._cached_numpy_ufuncs is None:
+            cls._cached_numpy_ufuncs = get_numpy_ufuncs()
+        return cls._cached_numpy_ufuncs
 
     @VariableFactory.register_from_value(successor="BuiltinVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         # TODO(wangmingkai02): support other numpy api.
-        if ENV_SOT_TRACE_NUMPY.get() and callable(value) and value is np.add:
+        if ENV_SOT_TRACE_NUMPY.get() and (
+            value in NUMPY_API_SUPPORTED_DICT
+            or any(
+                value in ufuncs
+                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+            )
+        ):
             return NumpyApiVariable(value, graph, tracker)
         return None
 

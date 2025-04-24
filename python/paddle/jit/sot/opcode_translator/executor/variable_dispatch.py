@@ -37,7 +37,6 @@ from ...utils import (
     UnsupportedIteratorBreak,
     UnsupportedOperationBreak,
     do_until_stop_iteration,
-    get_numpy_ufuncs,
 )
 from ...utils.exceptions import InnerError
 from ...utils.magic_methods import (
@@ -1548,36 +1547,6 @@ Dispatcher.register(
     ),
 )
 
-unary_ufuncs, binary_ufuncs = get_numpy_ufuncs()
-for ufunc in unary_ufuncs:
-    Dispatcher.register(
-        ufunc,
-        ("ConstantVariable | NumpyNumberVariable",),
-        partial(
-            lambda ufunc, var: VariableFactory.from_value(
-                ufunc(var.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var]),
-            ),
-            ufunc,
-        ),
-    )
-for ufunc in binary_ufuncs:
-    Dispatcher.register(
-        ufunc,
-        (
-            "ConstantVariable | NumpyNumberVariable",
-            "ConstantVariable | NumpyNumberVariable",
-        ),
-        partial(
-            lambda ufunc, var, other: VariableFactory.from_value(
-                ufunc(var.get_py_value(), other.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var, other]),
-            ),
-            ufunc,
-        ),
-    )
 
 # place
 Dispatcher.register(
