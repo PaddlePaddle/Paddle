@@ -39,15 +39,6 @@ using framework::shape_t;
 using framework::StrategyFunction;
 
 #define StrategyForBinary(op_name__, pe__)                                     \
-  std::shared_ptr<OpStrategy> StrategyFor##pe__(                               \
-      const framework::NodeAttr &attrs,                                        \
-      const std::vector<ir::Tensor> &inputs,                                   \
-      const std::vector<Type> &out_type,                                       \
-      const std::vector<std::vector<int>> &output_shapes,                      \
-      const Target &target) {                                                  \
-    return StrategyForBroadcast(                                               \
-        attrs, inputs, out_type, output_shapes, target, #op_name__, pe::pe__); \
-  }                                                                            \
   std::shared_ptr<OpStrategy> StrategyFor##pe__##Symbolic(                     \
       const framework::NodeAttr &attrs,                                        \
       const std::vector<ir::Tensor> &inputs,                                   \
@@ -58,75 +49,6 @@ using framework::StrategyFunction;
         attrs, inputs, out_type, output_shapes, target, #op_name__, pe::pe__); \
   }
 
-std::shared_ptr<OpStrategy> StrategyForBroadcast(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target,
-    const std::string &op_name,
-    ir::Tensor (*pe_func)(const ir::Tensor &A,
-                          const ir::Tensor &B,
-                          const std::string &output_name,
-                          const Expr &axis)) {
-  framework::CINNCompute binary_compute([=](lang::Args args,
-                                            lang::RetValue *ret) {
-    PADDLE_ENFORCE_NE(
-        args.empty(),
-        true,
-        ::common::errors::InvalidArgument(
-            "The input argument of %s compute is empty! Please check.",
-            op_name));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_GE(pack_args.size(),
-                      2U,
-                      ::common::errors::InvalidArgument(
-                          "At least 2 input tensors for %s compute, but got %d",
-                          op_name,
-                          pack_args.size()));
-    PADDLE_ENFORCE_GE(pack_args.size(),
-                      3U,
-                      ::common::errors::InvalidArgument(
-                          "At least 3 input tensors for %s compute, but got %d",
-                          op_name,
-                          pack_args.size()));
-    PADDLE_ENFORCE_EQ(
-        pack_args[2].is_string(),
-        true,
-        ::common::errors::InvalidArgument(
-            "Required pack_args[2] must be a string. Please check."));
-    std::string tensor_name = pack_args[2].operator std::string();
-    Expr A_expr = pack_args[0];
-    Expr B_expr = pack_args[1];
-    PADDLE_ENFORCE_NOT_NULL(
-        A_expr.as_tensor(),
-        ::common::errors::InvalidArgument(
-            "Required Input must be a tensor. Please check."));
-    PADDLE_ENFORCE_NOT_NULL(
-        B_expr.as_tensor(),
-        ::common::errors::InvalidArgument(
-            "Required Input must be a tensor. Please check."));
-    ir::Tensor A = A_expr.as_tensor_ref();
-    ir::Tensor B = B_expr.as_tensor_ref();
-    Expr axis;
-    bool trans_a;
-    for (auto &iter : attrs.attr_store) {
-      if (iter.first == "axis") {
-        axis = Expr(absl::get<int>(iter.second));
-        break;
-      }
-    }
-    auto out = pe_func(A, B, tensor_name, axis);
-    *ret = CINNValuePack{{CINNValue(Expr(out.get()))}};
-  });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(binary_compute,
-
-                    "strategy." + op_name + ".x86",
-                    1);
-  return strategy;
-}
 std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -194,74 +116,6 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastSymbolic(
   return strategy;
 }
 
-std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  std::vector<int> out_shape;
-  std::vector<int> broadcast_axes;
-  PADDLE_ENFORCE_GE(
-      attrs.attr_store.count("out_shape"),
-      1,
-      ::common::errors::InvalidArgument(
-          "The attrs.attr_store doesn't have the attribute of 'out_shape'."));
-  out_shape = absl::get<std::vector<int>>(attrs.attr_store.at("out_shape"));
-  PADDLE_ENFORCE_GE(
-      attrs.attr_store.count("broadcast_axes"),
-      1,
-      ::common::errors::InvalidArgument("The attrs.attr_store doesn't have the "
-                                        "attribute of 'broadcast_axes'."));
-  broadcast_axes =
-      absl::get<std::vector<int>>(attrs.attr_store.at("broadcast_axes"));
-  VLOG(3) << "broadcast out shape: " << utils::Join(out_shape, ", ");
-  VLOG(3) << "broadcast_axes shape: " << utils::Join(broadcast_axes, ", ");
-
-  framework::CINNCompute broadcast_to_compute([=](lang::Args args,
-                                                  lang::RetValue *ret) {
-    PADDLE_ENFORCE_NE(
-        args.empty(),
-        true,
-        ::common::errors::InvalidArgument("The input argument of broadcast_to "
-                                          "compute is empty! Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_NE(
-        pack_args.empty(),
-        true,
-        ::common::errors::InvalidArgument("The input tensors of broadcast_to "
-                                          "compute is empty! Please check."));
-    PADDLE_ENFORCE_GE(
-        pack_args.size(),
-        2U,
-        ::common::errors::InvalidArgument(
-            "Required at least 2 input tensors, but got %d", pack_args.size()));
-    PADDLE_ENFORCE_EQ(
-        pack_args[1].is_string(),
-        true,
-        ::common::errors::InvalidArgument(
-            "Required pack_args[1] must be a string. Please check."));
-    std::string tensor_name = pack_args[1].operator std::string();
-
-    Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE_NOT_NULL(
-        A_expr.as_tensor(),
-        ::common::errors::InvalidArgument(
-            "Required Input must be a tensor. Please check."));
-    ir::Tensor A = A_expr.as_tensor_ref();
-    auto out = pe::BroadcastTo(A, out_shape, broadcast_axes, tensor_name);
-    *ret = CINNValuePack{{CINNValue(out)}};
-  });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(broadcast_to_compute,
-
-                    "strategy.broadcast_to.x86",
-                    1);
-
-  return strategy;
-}
-
 std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -323,17 +177,6 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastToSymbolic(
   return strategy;
 }
 
-std::shared_ptr<OpStrategy> StrategyForBroadcastGrad(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  PADDLE_THROW(::common::errors::Fatal(
-      "Gradient operator will be decomposed into several primitive "
-      "operators. Please Use Decomposer Program Pass."));
-}
-
 StrategyForBinary(elementwise_add, Add);
 StrategyForBinary(atan2, Atan2);
 StrategyForBinary(elementwise_mul, Multiply);
@@ -376,8 +219,6 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .describe(#op__ " function")                                       \
       .set_num_inputs(1)                                                 \
       .set_num_outputs(1)                                                \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)    \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(        \
           "CINNStrategySymbolic",                                        \
           cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)          \
@@ -390,8 +231,6 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .describe(#op__ " function")                                       \
       .set_num_inputs(1)                                                 \
       .set_num_outputs(1)                                                \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_strategy__)    \
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(        \
           "CINNStrategySymbolic",                                        \
           cinn::hlir::op::StrategyFor##op_strategy__##Symbolic)          \
@@ -434,8 +273,6 @@ CINN_REGISTER_HELPER(broadcast_ops) {
       .describe("broadcast one tensor to the target shape")
       .set_num_inputs(1)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForBroadcastTo)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForBroadcastToSymbolic)

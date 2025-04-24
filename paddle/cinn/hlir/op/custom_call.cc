@@ -78,80 +78,6 @@ class CustomCallArgsFuncRegistry {
   std::unordered_map<std::string, ArgsFunc> func_map_;
 };
 
-std::shared_ptr<OpStrategy> StrategyForCustomCall(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  framework::CINNCompute compute([=](lang::Args args, lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.size(),
-        1UL,
-        ::common::errors::InvalidArgument(
-            "The size of 'args' should be 1, but received size %d.",
-            args.size()));
-
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        2UL,
-        ::common::errors::InvalidArgument(
-            "The size of 'pack_args' should be 2, but received size %d.",
-            pack_args.size()));
-    PADDLE_ENFORCE_EQ(pack_args[0].is_string() && pack_args[1].is_string(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "The pack_arg[0] and pack_arg[1] should be string."));
-    std::string func_name = pack_args[0].operator std::string();
-    std::string custom_call_api = pack_args[1].operator std::string();
-
-    auto args_func =
-        CustomCallArgsFuncRegistry::Global().Lookup(custom_call_api, target);
-    // create call function.
-    ir::Var kernel_args(KERNEL_ARGS, type_of<void *>());
-    ir::Var kernel_args_num(KERNEL_ARGS_NUM, type_of<int>());
-
-    auto args_list = args_func(attrs, inputs, output_shapes);
-    std::vector<ir::Expr> host_args = {kernel_args, kernel_args_num};
-    host_args.insert(host_args.end(), args_list.begin(), args_list.end());
-    std::vector<ir::Argument> arguments = {
-        ir::Argument(kernel_args, ir::Argument::IO::kOutput),
-        ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
-    // if target is nvgpu, add stream.
-    target.arch.Match(
-        [&](common::NVGPUArch) {
-          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
-          host_args.push_back(kernel_stream);
-          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
-        },
-        [&](std::variant<common::UnknownArch,
-                         common::X86Arch,
-                         common::ARMArch>) {},
-        [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
-          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
-          host_args.push_back(kernel_stream);
-          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
-        });
-    auto call_extern_api = ir::Call::Make(Void(),
-                                          custom_call_api,
-                                          host_args,
-                                          {},
-                                          ir::CallType::Extern,
-                                          ir::FunctionRef(),
-                                          0);
-    auto func =
-        ir::_LoweredFunc_::Make(func_name, arguments, call_extern_api, {});
-
-    VLOG(3) << func;
-    *ret = CINNValuePack{{CINNValue(func)}};
-  });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(compute, "strategy.custom_call.x86", 1);
-  return strategy;
-}
-
 #ifdef CINN_WITH_CUDA
 std::vector<ir::Expr> CustomCallArgsForCublas(
     const framework::NodeAttr &attrs,
@@ -1365,14 +1291,3 @@ static bool registry_custom_call_list_func = RegisterCustomCallArgsFunc();
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
-
-CINN_REGISTER_HELPER(custom_call_op) {
-  CINN_REGISTER_OP(custom_call)
-      .describe("This operator implements the call of extern api!")
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForCustomCall)
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible);
-
-  return true;
-}

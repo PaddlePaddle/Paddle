@@ -264,6 +264,3 @@ CINN_REGISTER_HELPER(reduce_ops) {
 
   return true;
 }
-
-bool __cinn__argmax_ops__registrar() { return true; }
-bool __cinn__argmin_ops__registrar() { return true; }

@@ -519,7 +519,6 @@ std::vector<ir::stmt::BlockRef> OpLowererImpl::LowerOps(
     const std::vector<::pir::Operation*>& ops,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
-  auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<ir::stmt::BlockRef> func_bodies;
 
   for (auto* op : ops) {

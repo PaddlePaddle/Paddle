@@ -1282,68 +1282,6 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
   return strategy;
 }
 
-std::shared_ptr<OpStrategy> StrategyForSelect(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  framework::CINNCompute select_compute([=](lang::Args args,
-                                            lang::RetValue *ret) {
-    PADDLE_ENFORCE_EQ(
-        args.empty(),
-        false,
-        ::common::errors::NotFound(
-            "The input argument of select compute is empty! Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_GE(
-        pack_args.size(),
-        3U,
-        ::common::errors::InvalidArgument("the size of pack_args for select "
-                                          "compute should be greater than or "
-                                          "equal to 3, but got %d.",
-                                          pack_args.size()));
-    Expr condition = pack_args[0];
-    Expr true_value = pack_args[1];
-    Expr false_value = pack_args[2];
-    PADDLE_ENFORCE(condition.as_tensor(),
-                   ::common::errors::InvalidArgument(
-                       "Datatype error! condition is not a tensor."));
-    PADDLE_ENFORCE(true_value.as_tensor(),
-                   ::common::errors::InvalidArgument(
-                       "Datatype error! true_value is not a tensor."));
-    PADDLE_ENFORCE(false_value.as_tensor(),
-                   ::common::errors::InvalidArgument(
-                       "Datatype error! false_value is not a tensor."));
-
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        4U,
-        ::common::errors::InvalidArgument(
-            "the size of pack_args for select compute should be 4, but got %d.",
-            pack_args.size()));
-    PADDLE_ENFORCE(pack_args[3].is_string(),
-                   ::common::errors::InvalidArgument(
-                       "Datatype error! pack_args[3] is not string."));
-    std::string tensor_name = pack_args[3].operator std::string();
-
-    auto out = pe::Select(condition.as_tensor_ref(),
-                          true_value.as_tensor_ref(),
-                          false_value.as_tensor_ref(),
-                          tensor_name);
-
-    *ret = CINNValuePack{{CINNValue(out)}};
-  });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  PADDLE_ENFORCE_EQ(
-      out_type.empty(),
-      false,
-      ::common::errors::NotFound("Out_type of select is empty! Please check."));
-  strategy->AddImpl(select_compute, "strategy.select.x86", 1);
-  return strategy;
-}
-
 std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1403,17 +1341,6 @@ std::shared_ptr<OpStrategy> StrategyForSelectSymbolic(
   return strategy;
 }
 
-std::shared_ptr<OpStrategy> StrategyForGradOp(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<int>> &output_shapes,
-    const Target &target) {
-  PADDLE_THROW(::common::errors::Fatal(
-      "Gradient operator will be decomposed into several primitive "
-      "operators. Please Use Decomposer Program Pass."));
-}
-
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn
@@ -1423,8 +1350,6 @@ CINN_REGISTER_HELPER(nn_ops) {
       .describe("This operator implements the meta op 'Select'.")
       .set_num_inputs(3)
       .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunction>(
-          "CINNStrategy", cinn::hlir::op::StrategyForSelect)
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForSelectSymbolic)
       .set_attr<cinn::hlir::framework::OpPatternKind>(
