@@ -6260,22 +6260,16 @@ void MoeUnzipInferMeta(const MetaTensor& X,
       errors::InvalidArgument(
           "The input expert_prob_topk type should be float32 or bfloat16"));
 
-  int seqlen = x_dim[0];
-  int token_len = x_dim[1];
-  int max_tokens_per_expert_int = max_tokens_per_expert.to<int>();
-  int u_seqlen = (max_tokens_per_expert_int + 127) / 128 * 128;
-
-  X_unzipped->set_dims(phi::make_ddim({u_seqlen, token_len}));
+  X_unzipped->set_dims({-1});  // can not infer
   X_unzipped->set_dtype(X.dtype());
 
-  zipped_expertwise_rowmap->set_dims(phi::make_ddim({seqlen, num_experts}));
+  zipped_expertwise_rowmap->set_dims(phi::make_ddim({x_dim[0], num_experts}));
   zipped_expertwise_rowmap->set_dtype(phi::DataType::INT32);
 
-  token_prob_unzipped->set_dims(phi::make_ddim({u_seqlen, 1}));
+  token_prob_unzipped->set_dims({-1});  // can not infer
   token_prob_unzipped->set_dtype(expert_prob_topk.dtype());
 
-  XScale_unzipped->set_dims(
-      phi::make_ddim({u_seqlen, (token_len + 127) / 128}));
+  XScale_unzipped->set_dims({-1});  // can not infer
   XScale_unzipped->set_dtype(XScale.dtype());
 }
 

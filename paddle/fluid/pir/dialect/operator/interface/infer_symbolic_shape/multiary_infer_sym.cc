@@ -4991,6 +4991,30 @@ bool YoloBoxPostOpInferSymbolicShape(
 
 bool MoeUnzipOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<symbol::DimExpr> &x_unzipped_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    symbol::DimExpr out_shape =
+        infer_context->GetNextSymName();  // unknown until runtime
+    out_dims.push_back(out_shape);
+    return out_dims;
+  }();
+
+  const std::vector<symbol::DimExpr> &token_prob_unzipped_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    symbol::DimExpr out_shape =
+        infer_context->GetNextSymName();  // unknown until runtime
+    out_dims.push_back(out_shape);
+    return out_dims;
+  }();
+
+  const std::vector<symbol::DimExpr> &xscale_unzipped_dims = [&] {
+    std::vector<symbol::DimExpr> out_dims;
+    symbol::DimExpr out_shape =
+        infer_context->GetNextSymName();  // unknown until runtime
+    out_dims.push_back(out_shape);
+    return out_dims;
+  }();
+
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -5006,11 +5030,6 @@ bool MoeUnzipOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &ept_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const std::vector<symbol::DimExpr> &ept_shape = ept_shape_or_data.shape();
-
-  const symbol::ShapeOrDataDimExprs &mtpe_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(4));
-  int max_tokens_per_expert =
-      static_cast<int>(mtpe_shape_or_data.data().value().at(0).Get<int64_t>());
 
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
@@ -5032,37 +5051,30 @@ bool MoeUnzipOpInferSymbolicShape(
                     common::errors::InvalidArgument(
                         "The input(expert_prob_topk) must be a 2D Tensor"));
 
-  std::vector<symbol::DimExpr> x_unzipped_shape;
-  std::vector<symbol::DimExpr> zipped_expertwise_rowmap_shape;
-  std::vector<symbol::DimExpr> token_prob_unzipped_shape;
-  std::vector<symbol::DimExpr> XScale_unzipped_shape;
-
   int num_experts = op->attribute<pir::Int32Attribute>("num_experts").data();
-  int u_seqlen = (max_tokens_per_expert + 127) / 128 * 128;
 
-  x_unzipped_shape = {u_seqlen, x_shape[1]};
+  std::vector<symbol::DimExpr> zipped_expertwise_rowmap_dims;
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(x_unzipped_shape)});
+          symbol::TensorShapeOrDataDimExprs(x_unzipped_dims)});
 
-  zipped_expertwise_rowmap_shape = {x_shape[0], num_experts};
+  zipped_expertwise_rowmap_dims = {x_shape[0], num_experts};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_shape)});
+          symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_dims)});
 
-  token_prob_unzipped_shape = {u_seqlen, 1};
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_shape)});
+          symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_dims)});
 
-  xscale_unzipped_shape = {u_seqlen, (x_shape[1] + 127) / 128};
   infer_context->SetShapeOrDataForValue(
       op->result(3),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(xscale_unzipped_shape)});
+          symbol::TensorShapeOrDataDimExprs(xscale_unzipped_dims)});
 
   return true;
 }
