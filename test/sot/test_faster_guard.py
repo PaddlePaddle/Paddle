@@ -208,7 +208,7 @@ class TestBasicFasterGuard(unittest.TestCase):
         not paddle.is_compiled_with_distribute(),
         reason='Not compiled with distribute.',
     )
-    def test_tensor_is_dist_guard(self):
+    def test_tensor_dist_meta_guard(self):
         x = paddle.ones([2, 2])
         y = paddle.ones([1, 2])
         x.stop_gradient = False
