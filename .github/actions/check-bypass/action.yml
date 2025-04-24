@@ -18,7 +18,7 @@ runs:
     - id: check-bypass
       name: Check Bypass
       env:
-        CI_TEAM_MEMBERS: '["SigureMo", "risemeup1", "tianshuo78520a", "0x3878f", "swgu98", "luotao1"]'
+        CI_TEAM_MEMBERS: '["SigureMo", "risemeup1", "tianshuo78520a", "0x3878f", "swgu98", "luotao1", "XieYunshen"]'
       uses: PFCCLab/ci-bypass@v1
       with:
         github-token: ${{ inputs.github-token }}

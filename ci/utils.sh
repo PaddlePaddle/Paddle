@@ -190,7 +190,7 @@ function show_ut_retry_result() {
         if [ "$SYSTEM" == "Darwin" ]; then
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         else
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=2) {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
         fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -1044,8 +1044,8 @@ set +x
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [ "$WITH_ROCM" != "ON" ];then
-            # cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
-            echo "CTestCostData.txt"
+            mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
         fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
