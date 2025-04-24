@@ -612,36 +612,28 @@ class TestGroupNormDimException(unittest.TestCase):
 
 
 class TestGroupNormWithOptionalgradX(unittest.TestCase):
-    def test_group_norm_with_x_stop_gradient(self):
+    def test_group_norm_cpu_with_optional_grad(self):
         with dygraph_guard():
             origin_device = paddle.device.get_device()
             paddle.device.set_device("cpu")
+            x = paddle.randn([16, 32])
+            x.stop_gradient = False
+            gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
+            y = gpn(x)
+            dw_ref, db_ref, dx_ref = paddle.grad(y, [gpn.weight, gpn.bias, x])
             try:
-                x = paddle.randn([16, 32])
-                x.stop_gradient = True
-                gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
-                y = gpn(x)
-                paddle.grad(y, gpn.weight)
+                dw, db, dx = (
+                    paddle.grad(y, gpn.weight)[0],
+                    paddle.grad(y, gpn.bias)[0],
+                    paddle.grad(y, x)[0],
+                )
             except Exception as e:
                 raise e
             finally:
                 paddle.device.set_device(origin_device)
-
-    def test_group_norm_with_x_requires_gradient(self):
-        with dygraph_guard():
-            origin_device = paddle.device.get_device()
-            paddle.device.set_device("cpu")
-            try:
-                x = paddle.randn([16, 32])
-                x.stop_gradient = False
-                gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
-                y = gpn(x)
-                paddle.grad(y, gpn.weight)
-                paddle.grad(y, x)
-            except Exception as e:
-                raise e
-            finally:
-                paddle.device.set_device(origin_device)
+            np.testing.assert_equal(dw.numpy(), dw_ref.numpy())
+            np.testing.assert_equal(db.numpy(), db_ref.numpy())
+            np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
 
 
 if __name__ == '__main__':
