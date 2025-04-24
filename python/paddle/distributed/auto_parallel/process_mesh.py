@@ -287,7 +287,11 @@ class ProcessMesh(core.ProcessMesh):
         new_mesh = self._mesh.transpose(new_order)
 
         if index is not None:
-            return ProcessMesh(new_mesh[index], new_dim_names[1:])
+            if len(new_dim_names[1:]) > 0:
+                return ProcessMesh(new_mesh[index], new_dim_names[1:])
+            # satisfy the single dimension mesh case
+            else:
+                return ProcessMesh([new_mesh[index]], new_dim_names)
         return ProcessMesh(new_mesh, new_dim_names)
 
     def get_submesh_with_dim(
