@@ -219,16 +219,22 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def backward(ctx, dy):
         x, weight, bias = ctx.saved_tensor()
-        if dy.dtype == weight.dtype:
-            dx = paddle.matmul(dy, weight, transpose_y=True)
+        dw = None
+        dbias = None
+        if x.stop_gradient is True:
+            dx = None
+            task = None
         else:
-            dx = paddle.matmul(
-                dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+            if dy.dtype == weight.dtype:
+                dx = paddle.matmul(dy, weight, transpose_y=True)
+            else:
+                dx = paddle.matmul(
+                    dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+                )
+            op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+            task = ctx.model_parallel_group.process_group.all_reduce(
+                dx, op_type, sync_op=False
             )
-        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
-        task = ctx.model_parallel_group.process_group.all_reduce(
-            dx, op_type, sync_op=False
-        )
         # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
         if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
             global _raise_cuda_env_unset_warning
@@ -249,7 +255,6 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     "Please unset fused_linear_param_grad_add or use paddle compiled "
                     "with cuda 11.6 or higher."
                 )
-
             if bias is None:
                 if hasattr(weight, "main_grad"):
                     (
@@ -258,8 +263,6 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     ) = paddle._C_ops.fused_linear_param_grad_add(
                         x, dy, weight.main_grad, None, True, False
                     )
-                    task.wait()
-                    return dx, None
                 else:
                     if weight.grad is not None:
                         (
@@ -268,17 +271,15 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                         ) = paddle._C_ops.fused_linear_param_grad_add(
                             x, dy, weight.grad, None, False, False
                         )
-                        task.wait()
-                        return dx, None
-                    else:
+                    elif not weight.stop_gradient:
                         (
                             dw,
                             _,
                         ) = paddle._C_ops.fused_linear_param_grad_add(
                             x, dy, None, None, False, False
                         )
-                        task.wait()
-                        return dx, dw
+                task.wait() if task is not None else None
+                return dx, dw
 
             if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
                 (
@@ -292,8 +293,6 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     True,
                     True,
                 )
-                task.wait()
-                return dx, None, None
             else:
                 if weight.grad is not None:
                     assert bias.grad is not None
@@ -303,9 +302,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     ) = paddle._C_ops.fused_linear_param_grad_add(
                         x, dy, weight.grad, bias.grad, False, True
                     )
-                    task.wait()
-                    return dx, None, None
-                else:
+                elif not weight.stop_gradient:
                     # When main_grad is not enabled and gradient_accumulation is used, the grad is not initialized for the first acc step.
                     (
                         dw,
@@ -313,21 +310,24 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     ) = paddle._C_ops.fused_linear_param_grad_add(
                         x, dy, None, None, False, True
                     )
-                    task.wait()
-                    return dx, dw, dbias
+            task.wait() if task is not None else None
+            return dx, dw, dbias
         else:
             dy = dy.reshape([-1, dy.shape[-1]])
-            dw = paddle.matmul(
-                x.reshape([-1, x.shape[-1]]),
-                dy,
-                transpose_x=True,
-            )
+            if not weight.stop_gradient:
+                dw = paddle.matmul(
+                    x.reshape([-1, x.shape[-1]]),
+                    dy,
+                    transpose_x=True,
+                )
             if bias is None:
-                task.wait()
+                task.wait() if task is not None else None
                 return dx, dw
             else:
-                dbias = paddle.sum(dy, axis=0)
-                task.wait()
+                dbias = (
+                    paddle.sum(dy, axis=0) if not bias.stop_gradient else None
+                )
+                task.wait() if task is not None else None
                 return dx, dw, dbias
 
 
