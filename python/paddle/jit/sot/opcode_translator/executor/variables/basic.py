@@ -1240,6 +1240,8 @@ class SymbolicVariable(VariableBase):
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
+        # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
+
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
             self.graph.pycode_gen._origin_code
@@ -1267,7 +1269,6 @@ class SymbolicVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            # TODO(zrr1999): replace it with FasterStringifiedExpression
             *constraint_guards,
         ]
         return guards
