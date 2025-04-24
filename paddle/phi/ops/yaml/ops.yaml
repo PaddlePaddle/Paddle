@@ -450,6 +450,7 @@
   output : Tensor(out)
   infer_meta :
     func : Atan2InferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : atan2
   backward : atan2_grad
@@ -689,6 +690,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_or
     backend : x
@@ -2074,6 +2076,7 @@
   infer_meta :
     param: [x, y]
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : fmax
   backward : fmax_grad
@@ -2086,6 +2089,7 @@
   infer_meta :
     func : ElementwiseInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : fmin
   backward : fmin_grad
@@ -4092,6 +4096,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : reciprocal
   inplace : (x -> out)
