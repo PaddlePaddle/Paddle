@@ -22,6 +22,8 @@ paddle.enable_static()
 from paddle import base
 from paddle.base import core
 
+a = 1 / 0
+
 
 class TestConv2DAPI(unittest.TestCase):
     def test_api(self):
