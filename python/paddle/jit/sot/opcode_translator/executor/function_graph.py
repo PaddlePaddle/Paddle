@@ -318,13 +318,13 @@ class FunctionGraph:
 
     @property
     @event_register("guard_chain")
-    def guard_chain(self) -> list[paddle.framework.core.GuardNode]:
+    def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
 
         if not enable_strict_guard and not enable_guard_tree:
             return []
-        guard_chain: list[paddle.framework.core.GuardNode] = []
+        guard_chain: list[paddle.framework.core.GuardNodeBase] = []
 
         with EventGuard("guard_fn: find vars and make faster guard"):
             try:
