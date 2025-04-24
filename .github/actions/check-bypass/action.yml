@@ -29,12 +29,12 @@ runs:
             "any": [
               {
                 "type": "labeled",
-                "label": ["skip-ci: ${{ inputs.workflow-name }}"],
+                "label": ["skip-ci: ${{ inputs.workflow-name }}", "skip-ci: all"],
                 "username": ${{ env.CI_TEAM_MEMBERS }}
               },
               {
                 "type": "commented",
-                "comment-pattern": [".*/skip-ci ${{ inputs.workflow-name }}.*"],
+                "comment-pattern": [".*/skip-ci ${{ inputs.workflow-name }}.*", ".*/skip-ci all.*"],
                 "username": ${{ env.CI_TEAM_MEMBERS }}
               }
             ]

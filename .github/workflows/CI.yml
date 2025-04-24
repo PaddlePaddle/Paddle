@@ -30,31 +30,31 @@ jobs:
 
   sot:
     name: PR-CI-SOT
-    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_SOT.yml
     needs: check-bypass
 
   xpu:
     name: Linux-XPU
-    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_Linux-XPU.yml
     needs: check-bypass
 
   inference:
     name: PR-CI-Inference
-    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_Inference.yml
     needs: check-bypass
 
   coverage:
     name: PR-CI-Coverage
-    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_Coverage.yml
     needs: check-bypass
 
   cpu:
     name: Linux-CPU
-    if: ${{ needs.check-bypass.outputs.bypass != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     uses: ./.github/workflows/_CPU.yml
     needs: check-bypass
 
