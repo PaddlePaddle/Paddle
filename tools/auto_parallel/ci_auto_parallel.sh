@@ -122,8 +122,8 @@ function execute_func_list(){
                     mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
                     echo -e "\033[31m ${log_path}/$func_name_FAIL \033"
                     tail -15 ${log_path}/${func_name}_FAIL.log
-                    let runtime_fail_count++ 
-                    global_runtime_fail_arr+=("$func_name") 
+                    let runtime_fail_count++
+                    global_runtime_fail_arr+=("$func_name")
                 fi
             elif [ $result -eq 2 ]; then
                 echo -e "\033[31m verification failed!"
@@ -147,8 +147,8 @@ function execute_func_list(){
                 mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
                 echo -e "\033[31m ${log_path}/$func_name_FAIL \033"
                 tail -15 ${log_path}/${func_name}_FAIL.log
-                let runtime_fail_count++ 
-                global_runtime_fail_arr+=("$func_name") 
+                let runtime_fail_count++
+                global_runtime_fail_arr+=("$func_name")
             else
                 echo "test failed!"
                 mv ${log_path}/$func_name ${log_path}/${func_name}_FAIL.log
