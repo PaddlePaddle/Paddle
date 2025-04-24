@@ -41,10 +41,10 @@ void WarpctcKernel(const Context& dev_ctx,
         "XPU only support labels_length is_initialized"));
   }
 
-  int max_sequence_length = logits.dims()[0];
-  int num_sequences = logits.dims()[1];
-  int sequence_width = logits.dims()[2];
-  int max_target_seq_length = label.dims()[1];
+  int64_t max_sequence_length = logits.dims()[0];
+  int64_t num_sequences = logits.dims()[1];
+  int64_t sequence_width = logits.dims()[2];
+  int64_t max_target_seq_length = label.dims()[1];
 
   PADDLE_ENFORCE_GT(max_sequence_length,
                     0,

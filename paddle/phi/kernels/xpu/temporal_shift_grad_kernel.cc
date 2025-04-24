@@ -30,17 +30,17 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
                              DenseTensor* x_grad) {
   auto* input_grad = x_grad;
   auto* output_grad = &out_grad;
-  int t = seg_num;
+  int64_t t = seg_num;
   const DataLayout data_layout = common::StringToDataLayout(data_format_str);
 
-  const int nt = output_grad->dims()[0];
-  const int n = nt / t;
-  const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
-                                                  : output_grad->dims()[3]);
-  const int h = (data_layout == DataLayout::kNCHW ? output_grad->dims()[2]
-                                                  : output_grad->dims()[1]);
-  const int w = (data_layout == DataLayout::kNCHW ? output_grad->dims()[3]
-                                                  : output_grad->dims()[2]);
+  const int64_t nt = output_grad->dims()[0];
+  const int64_t n = nt / t;
+  const int64_t c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
+                                                      : output_grad->dims()[3]);
+  const int64_t h = (data_layout == DataLayout::kNCHW ? output_grad->dims()[2]
+                                                      : output_grad->dims()[1]);
+  const int64_t w = (data_layout == DataLayout::kNCHW ? output_grad->dims()[3]
+                                                      : output_grad->dims()[2]);
 
   DDim in_grad_dims =
       (data_layout == DataLayout::kNCHW ? common::make_ddim({nt, c, h, w})
