@@ -14,59 +14,33 @@
 
 import unittest
 
-import numpy as np
-
-import paddle
+import collective.test_communication_api_base as test_base
 
 
-class TestInitParamsDecorator(unittest.TestCase):
+class TestObjectListCommunication(test_base.CommunicationTestDistBase):
     def setUp(self):
-        paddle.seed(2023)
-        np.random.seed(2023)
+        super().setUp(
+            num_of_devices=4,
+            timeout=120,
+        )
+        self._default_envs = {
+            "dtype": "float32",
+            "seed": "2025",
+        }
+        self._changeable_envs = {
+            "backend": ["gpu"],
+        }
 
-    def test_init_params_decorator(self):
-        # Implicit initialization
-        class LazyInitLayer(paddle.nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self.weight = self.create_parameter(shape=[10, 5])
-
-            def forward(self, x):
-                return paddle.matmul(x, self.weight)
-
-        with paddle.LazyGuard():
-            layer = LazyInitLayer()
-
-        self.assertFalse(layer.weight._is_initialized())
-
-        x = paddle.randn([4, 10])
-        output = layer(x)
-
-        self.assertTrue(layer.weight._is_initialized())
-
-        # Explicit initialization
-        class ManualInitLayer(paddle.nn.Layer):
-            def __init__(self):
-                super().__init__()
-                self.weight = self.create_parameter(shape=[10, 5])
-                self.bias = self.create_parameter(shape=[5], is_bias=True)
-
-            def forward(self, x):
-                return paddle.matmul(x, self.weight) + self.bias
-
-        with paddle.LazyGuard():
-            layer = ManualInitLayer()
-
-        self.assertFalse(layer.weight._is_initialized())
-        self.assertFalse(layer.bias._is_initialized())
-
-        for p in layer.parameters():
-            if not p._is_initialized():
-                p.initialize()
-
-        self.assertTrue(layer.weight._is_initialized())
-        self.assertTrue(layer.bias._is_initialized())
+    def test_process_mesh(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "init_params_decorator_demo.py",
+                user_defined_envs=envs,
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
