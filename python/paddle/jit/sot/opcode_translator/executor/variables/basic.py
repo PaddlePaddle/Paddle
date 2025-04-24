@@ -334,7 +334,7 @@ class TensorDtypeVariable(DataVariable):
         super().__init__(value, graph, tracker)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         raise NotImplementedError
 
     @check_guard
@@ -504,7 +504,7 @@ class TensorVariable(VariableBase):
         codegen.gen_load_fast(self.out_var_name)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert paddle.framework.use_pir_api(), "Only support PIR"
         expr_node = self.tracker.guard_tree_expr_node()
         meta = self.origin_meta
@@ -1199,7 +1199,7 @@ class SymbolicVariable(VariableBase):
         codegen.gen_call_method(0)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
@@ -1214,9 +1214,26 @@ class SymbolicVariable(VariableBase):
         if self.need_guard_value:
             log(3, f"Need guard value for {self} in {expr_node}\n")
             return super().make_faster_guard()
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        constraint_guards: list[paddle.framework.core.GuardNodeBase] = []
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            extern_vars = {
+                var_name: var.tracker.guard_tree_expr_node()
+                for var_name, var in constraint_extern_vars.items()
+            }
+            constraint_guards.append(
+                paddle.framework.core.ExprGuardNode(
+                    constraint_node.create_guard_node(extern_vars)
+                )
+            )
+        guards = [
+            paddle.framework.core.GuardNode(
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            ),
+            *constraint_guards,
+        ]
+        return guards
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1250,7 +1267,7 @@ class SymbolicVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            # TODO: replace it with FasterStringifiedExpression
+            # TODO(zrr1999): replace it with FasterStringifiedExpression
             *constraint_guards,
         ]
         return guards
@@ -1520,7 +1537,7 @@ class SliceVariable(VariableBase):
         )
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(
@@ -1628,7 +1645,7 @@ class DygraphTracerVariable(VariableBase):
         return self.value
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         return []
 
     @check_guard
@@ -1683,7 +1700,7 @@ class NumpyVariable(VariableBase):
         return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         raise NotImplementedError(
             f"{self.__class__.__name__}.make_faster_guard is not implemented"
         )
@@ -1716,7 +1733,7 @@ class NumpyNumberVariable(NumpyVariable):
         ).bind(self, name)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(
@@ -1773,7 +1790,7 @@ class NumpyBoolVariable(NumpyNumberVariable):
 
 class NumpyArrayVariable(NumpyVariable):
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(

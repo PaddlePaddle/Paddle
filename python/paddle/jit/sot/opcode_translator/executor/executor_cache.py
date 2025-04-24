@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 GuardedFunction = Tuple[CustomCode, Guard]
 GuardedFunctions = List[GuardedFunction]
-GuardChain = List[paddle.framework.core.GuardNode]
+GuardChain = List[paddle.framework.core.GuardNodeBase]
 GuardChainList = List[GuardChain]
 
 dummy_guard: Guard = lambda frame: True
