@@ -15,11 +15,16 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-PATH=/usr/local/bin:${PATH}
+export PATH=/usr/local/bin:${PATH}
 ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
 ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 
-if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ]; then
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ]; then
+    if [ "$CI_name" == "xpu" ]; then
+        echo "::group::Installing ninja-build"
+        apt install ninja-build -y
+        echo "::endgroup::"
+    fi
     apt install zstd -y
     pip config set global.cache-dir "/root/.cache/pip"
     pip install --upgrade pip
@@ -313,7 +318,7 @@ EOF
 run_setup "$@"
 
 if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
-echo "=====================build summary======================"
-cat ${PADDLE_ROOT}/build/build_summary.txt
-echo "========================================================"
+    echo "=====================build summary======================"
+    cat ${PADDLE_ROOT}/build/build_summary.txt
+    echo "========================================================"
 fi

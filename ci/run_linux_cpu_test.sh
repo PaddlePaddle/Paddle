@@ -94,7 +94,7 @@ set +x
         rm -f $tmp_dir/*
         exec_times=0
         retry_unittests_record=''
-        retry_time=2
+        retry_time=4
         exec_time_array=('first' 'second' 'third' 'fourth')
         parallel_failed_tests_exec_retry_threshold=120
         exec_retry_threshold=30

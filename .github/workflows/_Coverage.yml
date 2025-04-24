@@ -1,4 +1,4 @@
-name: PR-CI-Coverage
+name: Coverage
 
 on:
   workflow_call:
@@ -171,7 +171,7 @@ jobs:
           rm -rf ./python/build/lib.linux-x86_64-3.9/
           cd "${work_dir}/build/third_party" && find $(ls | grep -v "dlpack" | grep -v "install" | grep -v "eigen3" | grep -v "gflags") -type f ! -name "*.so" -a ! -name "libdnnl.so*" -delete
           cd /
-          tar --use-compress-program="pzstd -1" -cpf Paddle.tar.gz paddle
+          tar --use-compress-program="pzstd -1" -cf Paddle.tar.gz paddle
           '
 
       - name: Upload coverage product
@@ -218,21 +218,8 @@ jobs:
     needs: build
     if: needs.build.outputs.can-skip != 'true'
     runs-on:
-      group: BD_BJ_v100
+      group: BD_BJ-V100
     steps:
-      - name: Download paddle.tar.gz and update test branch
-        run: |
-          set -e
-          echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar  --use-compress-program='pzstd -1' -xpf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
-          source ${{ github.workspace }}/../../../proxy
-          git checkout test
-          echo "Pull upstream develop"
-          git pull upstream $BRANCH --no-edit
-
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
@@ -303,6 +290,22 @@ jobs:
             -e GITHUB_API_TOKEN  \
             -w /paddle --network host ${docker_image}
 
+      - name: Download paddle.tar.gz and update test branch
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          rm -rf * .[^.]*
+          set -e
+          echo "Downloading Paddle.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          echo "Extracting Paddle.tar.gz"
+          tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
+          rm Paddle.tar.gz
+          source ${{ github.workspace }}/../../../proxy
+          git checkout test
+          echo "Pull upstream develop"
+          git pull upstream $BRANCH --no-edit
+          '
+
       - name: Test
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
@@ -315,15 +318,13 @@ jobs:
           fi
           '
 
-      - name: Check coverage data
+      - name: Generate coverage information
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
-          COVERAGE_EXIT_CODE=$?
-          echo "COVERAGE_EXIT_CODE=${COVERAGE_EXIT_CODE}" >> ${{ github.env }}
           '
 
       - name: Upload coverage report
@@ -331,17 +332,29 @@ jobs:
         with:
           directory: build/coverage_files
 
-      - name: Judge coverage passed or not
+      - name: Determine whether the coverage rate reaches 90%
         run: |
-          if [ "${{ env.COVERAGE_EXIT_CODE }}" -ne 0 ]; then
-            echo "Coverage failed"
-            exit ${{ env.COVERAGE_EXIT_CODE }}
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ~/.bashrc
+          unset GREP_OPTIONS
+          source ${{ github.workspace }}/../../../proxy
+          source ${ci_scripts}/utils.sh
+          bash $ci_scripts/coverage_judge.sh
+          COVERAGE_EXIT_CODE=$?
+          echo $COVERAGE_EXIT_CODE
+          if [ "$COVERAGE_EXIT_CODE" -ne 0 ]; then
+            echo "Coverage check failed, unit tests have all passed, please do not rerun, check whether the newly added code lines are fully covered by unit tests. If you have any questions, please contact XieYunshen."
+            exit $COVERAGE_EXIT_CODE
+          else
+            echo "Coverage passed"
           fi
+          '
 
       - name: Terminate and delete the container
         if: always()
         run: |
           set +e
+          rm Paddle.tar.gz
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}

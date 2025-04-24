@@ -369,6 +369,15 @@ class TestIscloseOpDoubleTol(TestIscloseOp):
         self.equal_nan = False
 
 
+class TestIscloseZeroSize(TestIscloseOp):
+    def set_args(self):
+        self.input = np.zeros([3, 0, 5]).astype("float64")
+        self.other = np.zeros([3, 0, 5]).astype("float64")
+        self.rtol = np.array([1e-05]).astype("float64")
+        self.atol = np.array([1e-08]).astype("float64")
+        self.equal_nan = False
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
