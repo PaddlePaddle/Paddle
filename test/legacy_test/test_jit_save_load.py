@@ -2285,6 +2285,7 @@ class TestLayerWithUnusedBuffer(unittest.TestCase):
             layer=layer,
             path=path,
             input_spec=[InputSpec([5, 7], dtype="float32")],
+            skip_prune_program=True,
         )
 
         loaded_layer = paddle.jit.load(path)

@@ -39,7 +39,7 @@ from ...infer_meta import (
 from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, StatementIR, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
-from ...symbolic_shape import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
+from ...symbolic_shape.operators import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_ENABLE_GUARD_TREE,
@@ -390,10 +390,15 @@ class FunctionGraph:
         self.pycode_gen.gen_enable_eval_frame()
 
         name_gen = NameGenerator("___graph_fn_saved_orig_")
+        stored_var_ids = set()
 
         # here is not update changed values, it just give names to stack vars
         # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
+            if var.id in stored_var_ids:
+                self.pycode_gen.gen_pop_top()
+                continue
+            stored_var_ids.add(var.id)
             if not store_var_info.get(var.id, []):
                 name = name_gen.next()
                 store_var_info.setdefault(var.id, [])

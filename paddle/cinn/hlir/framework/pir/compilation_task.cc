@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/common/enforce.h"
 namespace cinn {

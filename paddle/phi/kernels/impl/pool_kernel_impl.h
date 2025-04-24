@@ -27,11 +27,11 @@ limitations under the License. */
 
 namespace phi {
 
-inline int GetReduceNum(const DenseTensor& input,
-                        const DenseTensor* output,
-                        const bool channel_last,
-                        std::vector<int>* reduce_dim) {
-  int reduce_num = 0;
+inline int64_t GetReduceNum(const DenseTensor& input,
+                            const DenseTensor* output,
+                            const bool channel_last,
+                            std::vector<int>* reduce_dim) {
+  int64_t reduce_num = 0;
   const int output_height =
       channel_last ? output->dims()[1] : output->dims()[2];
   const int output_width = channel_last ? output->dims()[2] : output->dims()[3];
@@ -121,7 +121,7 @@ void PoolRawKernel(const Context& ctx,
 
       } else if (true_type == "avg") {
         std::vector<int> reduce_dim;
-        int reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
+        int64_t reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
         if (reduce_num > 0 &&
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)

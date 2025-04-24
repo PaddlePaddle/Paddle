@@ -62,7 +62,7 @@ class CustomPluginCreater : public OpConverter {
 
     std::list<int> int_attrs;
     std::list<float> float_attrs;
-    std::list<double> bool_attrs;
+    std::list<double> double_attrs;
     std::list<std::string> string_attrs;
     std::list<std::vector<int>> ints_attrs;
     std::list<std::vector<float>> floats_attrs;

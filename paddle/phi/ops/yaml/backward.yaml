@@ -59,6 +59,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : acos_grad
   inplace : (out_grad -> x_grad)
@@ -71,6 +72,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : acosh_grad
   inplace : (out_grad -> x_grad)
@@ -190,6 +192,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : asin_grad
   inplace : (out_grad -> x_grad)
@@ -201,6 +204,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : asinh_grad
   inplace : (out_grad -> x_grad)
@@ -222,6 +226,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : atan_grad
   inplace : (out_grad -> x_grad)
@@ -233,6 +238,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : atanh_grad
   inplace : (out_grad -> x_grad)
@@ -351,6 +357,7 @@
     func: c_softmax_with_cross_entropy_grad
     data_type: loss_grad
     param: [softmax, label, loss_grad, ignore_index, rank, nranks]
+  inplace : (softmax -> logits_grad)
 
 - backward_op : cast_grad
   forward : cast (Tensor x, DataType dtype) -> Tensor(out)
@@ -936,6 +943,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : erf_grad
     data_type : out_grad
@@ -948,6 +956,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : erfinv_grad
 
@@ -1015,6 +1024,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : expm1_grad
   inplace : (out_grad -> x_grad)
@@ -1867,6 +1877,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : lgamma_grad
 
@@ -1892,6 +1903,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log10_grad
   inplace : (out_grad -> x_grad)
@@ -1903,6 +1915,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log1p_grad
   inplace : (out_grad -> x_grad)
@@ -1914,6 +1927,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log2_grad
   inplace : (out_grad -> x_grad)
@@ -1937,6 +1951,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log_grad
   backward : log_double_grad
@@ -1991,6 +2006,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : logsigmoid_grad
   inplace : (out_grad -> x_grad)
@@ -3068,6 +3084,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sinh_grad
   inplace : (out_grad -> x_grad)
@@ -3144,6 +3161,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : softsign_grad
   inplace : (out_grad -> x_grad)
@@ -3200,6 +3218,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sqrt_grad
   composite : sqrt_grad(out, out_grad, x_grad)
@@ -3365,6 +3384,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : swish_grad
   inplace : (out_grad -> x_grad)
@@ -3408,6 +3428,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tan_grad
   inplace : (out_grad -> x_grad)
@@ -3432,6 +3453,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tanh_grad
   composite : tanh_grad(out, out_grad, x_grad)
@@ -3445,6 +3467,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : tanh_shrink_grad
   inplace : (out_grad -> x_grad)

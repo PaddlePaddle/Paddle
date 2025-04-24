@@ -1538,7 +1538,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : dropout
-  args : (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed)
+  args : (Tensor x, Tensor seed_tensor, Scalar p = 0.5f, bool is_test = false, str mode = "downgrade_in_infer", int seed = 0, bool fix_seed = false)
   output : Tensor(out), Tensor(mask)
   infer_meta :
     func : DropoutInferMeta
@@ -5464,13 +5464,13 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_dequantize
-  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)
+  args : (Tensor x, Tensor scale, str algo = "weight_only_int8", int group_size = -1)
   output : Tensor(out)
   infer_meta :
     func : WeightDequantizeInferMeta
   kernel :
     func : weight_dequantize
-    data_type : out_dtype
+    data_type : scale
   traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
