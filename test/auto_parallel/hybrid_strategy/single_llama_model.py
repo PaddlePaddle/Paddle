@@ -256,35 +256,20 @@ class LlamaPretrainingCriterion(paddle.nn.Layer):
                 prediction_scores.astype("float32"),
                 masked_lm_labels.unsqueeze(2),
             )
-        # XPU dose not support allgather mask with bool dtype, so we use LocalLayer here.
         if paddle.device.is_compiled_with_xpu():
 
-            class LocalLossLayer(paddle.distributed.LocalLayer):
-                def __init__(self, out_dist_attrs, grad_dist_attrs):
-                    super().__init__(out_dist_attrs, grad_dist_attrs)
+            def LocalLoss(x, mask):
+                masked_lm_loss = paddle.masked_select(x, mask).astype("float32")
+                loss = paddle.mean(masked_lm_loss).unsqueeze(0)
+                return loss.unsqueeze(0)
 
-                def forward(self, x, mask):
-                    masked_lm_loss = paddle.masked_select(x, mask).astype(
-                        "float32"
-                    )
-                    loss = paddle.mean(masked_lm_loss).unsqueeze(0)
-                    return loss.unsqueeze(0)
-
-            out_dist_attrs = [
-                (
-                    masked_lm_loss.process_mesh,
-                    [dist.Shard(0), dist.Replicate()],
-                ),
-            ]
-            grad_dist_attrs = [
-                (
-                    masked_lm_loss.process_mesh,
-                    [dist.Shard(0), dist.Replicate()],
-                ),
-                None,
-            ]
-            loss_func = LocalLossLayer(out_dist_attrs, grad_dist_attrs)
-
+            loss_func = dist.local_map(
+                LocalLoss,
+                [[dist.Shard(0), dist.Replicate()]],
+                [[dist.Shard(0), dist.Replicate()], None],
+                masked_lm_loss.process_mesh,
+                True,
+            )
             loss = loss_func(masked_lm_loss, masked_lm_loss > 0)
             loss = loss.mean()
             return loss

@@ -169,15 +169,8 @@ __device__ inline double FN_FP64(rcp)(double x) {
   __device__ inline TYPENAME operator+(const TYPENAME& a, const TYPENAME& b) { \
     DTYPE delta = b.mean - a.mean;                             \
     DTYPE weight = a.weight + b.weight;                        \
-    DTYPE mean, m2;                                            \
-    if (b.weight == 1) {                                       \
-      mean = a.mean + delta * RCP_FUNC(weight);                \
-      m2 = a.m2 + delta * (b.mean - mean);                     \
-    } else {                                                   \
-      DTYPE w2_over_w = a.weight == b.weight ? (DTYPE)0.5 : b.weight * RCP_FUNC(weight); \
-      mean = a.mean + delta * w2_over_w;                       \
-      m2 = a.m2 + b.m2 + delta * delta * a.weight * w2_over_w; \
-    }                                                          \
+    DTYPE mean = a.mean + delta * RCP_FUNC(weight);            \
+    DTYPE m2 = a.m2 + delta * (b.mean - mean);                 \
     return {mean, m2, weight};                                 \
   }
 
@@ -214,7 +207,7 @@ EXPAND_WELFORD_MACRO(fp64, double)
     __device__ explicit operator ITYPE() { return index; } \
   };
 
-// comparison operator for argidx
+// TODO(heqianyue): improve the memory access pattern, make it SoA layout
 #define ARGIDX_COMBINE_MACRO(TYPENAME) \
   __device__ TYPENAME cinn_min_##TYPENAME(TYPENAME a, TYPENAME b) { \
     return a.value == b.value ? (a.index < b.index ? a : b) : (a.value < b.value ? a : b); \
@@ -222,8 +215,8 @@ EXPAND_WELFORD_MACRO(fp64, double)
   __device__ TYPENAME cinn_max_##TYPENAME(TYPENAME a, TYPENAME b) { \
     return a.value == b.value ? (a.index < b.index ? a : b) : (a.value > b.value ? a : b); \
   } \
-  __device__ TYPENAME min(TYPENAME a, TYPENAME b) { return cinn_min_##TYPENAME(a, b); } \
-  __device__ TYPENAME max(TYPENAME a, TYPENAME b) { return cinn_max_##TYPENAME(a, b); }
+  __device__ TYPENAME min(TYPENAME a, TYPENAME b) { return a.value <= b.value ? a : b; } \
+  __device__ TYPENAME max(TYPENAME a, TYPENAME b) { return a.value >= b.value ? a : b; }
 
 // shfl primitives for argidx
 #define ARGIDX_SHFL_SYNC_MACRO(TYPENAME, DTYPE, ITYPE, SHFL_FUNC, ARG2_TYPE, ARG2) \
@@ -526,16 +519,28 @@ __device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
   EXPAND_ARGIDX_OP_MACRO(MACRO, u8,   CINN_UINT8_MIN, CINN_UINT8_MAX, INAME)
 
 #define EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(MACRO) \
-  EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int, i32)        \
+  EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int, i32)   \
   EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int64_t, i64)
 
 // *************************************************************** //
 // reduce operator, need `--expt-relaxed-constexpr` option to call std function in device kernel
-#define EXPAND_REDUCE_INT32_MARCO(MARCO, ...)       \
-  MARCO(sum_int32, 0, int, ##__VA_ARGS__)           \
-  MARCO(prod_int32, 1, int, ##__VA_ARGS__)          \
-  MARCO(max_int32, CINN_INT32_MIN, int, ##__VA_ARGS__) \
+#define EXPAND_REDUCE_INT32_MARCO(MARCO, ...)           \
+  MARCO(sum_int32, 0, int, ##__VA_ARGS__)               \
+  MARCO(prod_int32, 1, int, ##__VA_ARGS__)              \
+  MARCO(max_int32, CINN_INT32_MIN, int, ##__VA_ARGS__)  \
   MARCO(min_int32, CINN_INT32_MAX, int, ##__VA_ARGS__)
+
+// parallel reduction template for welford variance type reduction
+#define WELFORD_PARALLEL_COMBINE_MACRO(DTYPE, TYPE_SUFFIX)       \
+  __device__ inline welford_##TYPE_SUFFIX cinn_sum_welford_##TYPE_SUFFIX(welford_##TYPE_SUFFIX a, welford_##TYPE_SUFFIX b) {  \
+    DTYPE delta = b.mean - a.mean;                                                                                            \
+    DTYPE weight = a.weight + b.weight;                                                                                       \
+    DTYPE w2_over_w = b.weight * cinn_nvgpu_rcp_##TYPE_SUFFIX(weight);                                                        \
+    w2_over_w = weight == 0 ? (DTYPE)0 : w2_over_w;                                                                           \
+    DTYPE mean = a.mean + delta * w2_over_w;                                                                                  \
+    DTYPE m2 = a.m2 + b.m2 + delta * delta * a.weight * w2_over_w;                                                            \
+    return {mean, m2, weight};                                                                                                \
+  }
 
 __device__ inline int cinn_sum_int32(const int left, const int right) { return left + right; }
 __device__ inline int cinn_prod_int32(const int left, const int right) { return left * right; }
@@ -572,7 +577,8 @@ __device__ inline float cinn_sum_fp32(const float left, const float right) { ret
 __device__ inline float cinn_prod_fp32(const float left, const float right) { return left * right; }
 __device__ inline float cinn_max_fp32(const float left, const float right) { return max(left, right); }
 __device__ inline float cinn_min_fp32(const float left, const float right) { return min(left, right); }
-__device__ inline welford_fp32 cinn_sum_welford_fp32(welford_fp32 left, welford_fp32 right) { return left + right; }
+WELFORD_PARALLEL_COMBINE_MACRO(float, fp32)
+
 
 #ifdef CINN_CUDA_BF16
 
@@ -613,7 +619,9 @@ __device__ inline double cinn_sum_fp64(const double left, const double right) { 
 __device__ inline double cinn_prod_fp64(const double left, const double right) { return left * right; }
 __device__ inline double cinn_max_fp64(const double left, const double right) { return max(left, right); }
 __device__ inline double cinn_min_fp64(const double left, const double right) { return min(left, right); }
-__device__ inline welford_fp64 cinn_sum_welford_fp64(welford_fp64 left, welford_fp64 right) { return left + right; }
+WELFORD_PARALLEL_COMBINE_MACRO(double, fp64)
+
+#undef WELFORD_PARALLEL_COMBINE_MACRO
 
 #define EXPAND_REDUCE_BOOL_MACRO(MACRO, ...) \
   MACRO(all, true, bool, ##__VA_ARGS__)      \

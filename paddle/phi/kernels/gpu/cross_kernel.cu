@@ -27,11 +27,11 @@ template <typename T>
 __global__ void Cross(const T* x,
                       const T* y,
                       T* out,
-                      const int stride,
-                      const int N,
-                      phi::funcs::IndexCalculator index_calculator) {
+                      const int64_t stride,
+                      const int64_t N,
+                      phi::funcs::IndexCalculator<int> index_calculator) {
   CUDA_KERNEL_LOOP(i, N) {
-    int offset = index_calculator(i);
+    int64_t offset = index_calculator(i);
 
     auto pos0 = offset + 0 * stride;
     auto pos1 = offset + 1 * stride;
@@ -106,21 +106,21 @@ void CrossKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output);
     return;
   }
-  std::vector<int> cal_dims;
-  std::vector<int> left_strides;
-  std::vector<int> full_strides;
-  std::vector<int> merged_dims;
+  std::vector<int64_t> cal_dims;
+  std::vector<int64_t> left_strides;
+  std::vector<int64_t> full_strides;
+  std::vector<int64_t> merged_dims;
 
-  for (int i = 0; i < dim; i++) {
+  for (int64_t i = 0; i < dim; i++) {
     if (i == 0) {
       merged_dims.push_back(input_x_dims[i]);
     } else {
       merged_dims[0] *= input_x_dims[i];
     }
   }
-  int merge_axis = merged_dims.size();
+  int64_t merge_axis = merged_dims.size();
   merged_dims.push_back(input_x_dims[dim]);
-  for (int i = dim + 1; i < input_x_dims.size(); i++) {
+  for (int64_t i = dim + 1; i < input_x_dims.size(); i++) {
     if (i == dim + 1) {
       merged_dims.push_back(input_x_dims[i]);
     } else {
@@ -128,8 +128,8 @@ void CrossKernel(const Context& dev_ctx,
     }
   }
 
-  int full_dim = 1;
-  for (int i = 0; i < merged_dims.size(); i++) {
+  int64_t full_dim = 1;
+  for (int64_t i = 0; i < merged_dims.size(); i++) {
     full_strides.insert(full_strides.begin(), full_dim);
     full_dim *= merged_dims[merged_dims.size() - i - 1];
     if (i == merge_axis) {
@@ -137,8 +137,8 @@ void CrossKernel(const Context& dev_ctx,
     }
     cal_dims.push_back(i);
   }
-  int left_dim = 1;
-  for (int i = merged_dims.size() - 1; i >= 0; i--) {
+  int64_t left_dim = 1;
+  for (int64_t i = merged_dims.size() - 1; i >= 0; i--) {
     if (i == merge_axis) {
       continue;
     }
@@ -149,7 +149,7 @@ void CrossKernel(const Context& dev_ctx,
   const auto* input_x_data = input_x.data<T>();
   const auto* input_y_data = input_y.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
-  auto index_calculator = phi::funcs::IndexCalculator(
+  auto index_calculator = phi::funcs::IndexCalculator<int>(
       merged_dims.size() - 1, cal_dims, left_strides, full_strides);
 
   int64_t numel = x.numel();

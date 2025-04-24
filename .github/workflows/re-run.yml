@@ -66,4 +66,105 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Check bypass for SOT / Check bypass'
+          JOB_NAME: 'PR-CI-SOT / Check bypass for SOT / Check bypass'
+
+
+      - name: Rerun CPU
+        if: ${{ contains(env.comment_body, 'cpu') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-CPU / Build and test'
+
+      - name: Rerun NPU
+        if: ${{ contains(env.comment_body, 'npu')}}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-NPU / Test'
+
+      - name: Rerun inference
+        if: ${{ contains(env.comment_body, 'inference') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'PR-CI-Inference / Check bypass for inference / Check bypass'
+
+      - name: Rerun inference build
+        if: ${{ contains(env.comment_body, 'inference') && contains(env.comment_body, 'build') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'PR-CI-Inference / Build'
+
+      - name: Rerun inference test
+        if: ${{ contains(env.comment_body, 'inference') && contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'PR-CI-Inference / Test'
+
+      - name: Rerun coverage
+        if: ${{ contains(env.comment_body, 'coverage') && !contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage / Coverage build'
+
+      - name: Rerun coverage test
+        if: ${{ contains(env.comment_body, 'coverage') && contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage / Coverage test'
+
+      - name: Rerun XPU
+        if: ${{ contains(env.comment_body, 'xpu') && !contains(env.comment_body, 'build') && !contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-XPU / Check bypass for XPU / Check bypass'
+
+      - name: Rerun XPU build
+        if: ${{ contains(env.comment_body, 'xpu') && contains(env.comment_body, 'build') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-XPU / Build'
+
+      - name: Rerun XPU test
+        if: ${{ contains(env.comment_body, 'xpu') && contains(env.comment_body, 'test') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Linux-XPU / Test'
