@@ -637,6 +637,7 @@ class TestGroupNormWithOptionalgradX(unittest.TestCase):
                 gpn = paddle.nn.GroupNorm(num_groups=8, num_channels=32)
                 y = gpn(x)
                 paddle.grad(y, gpn.weight)
+                paddle.grad(y, x)
             except Exception as e:
                 raise e
             finally:
