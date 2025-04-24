@@ -41,6 +41,7 @@ from .exceptions import (  # noqa: F401
     BreakGraphError,
     BreakGraphReasonBase,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     DataDependencyControlFlowBreak,
     DataDependencyDynamicShapeBreak,
     DataDependencyOperationBreak,
