@@ -1,4 +1,4 @@
-name: PR-CI-CPU
+name: Linux-CPU
 
 on:
   workflow_call:
