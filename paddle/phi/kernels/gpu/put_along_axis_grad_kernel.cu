@@ -41,6 +41,15 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                     errors::PreconditionNotMet(
                         "PutAlongAxisGradOpCUDAKernel only runs on GPU."));
 
+  if (x.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (value_grad) {
+      dev_ctx.template Alloc<T>(value_grad);
+    }
+    return;
+  }
   const auto& index_type = index.dtype();
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
