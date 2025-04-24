@@ -44,20 +44,20 @@ PermuteINT8WeightOnlyPattern::PermuteINT8WeightOnlyPattern(
     PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* input = pattern->NewNode(input_repr())
-                    ->assert_is_op_input("weight_only_linear_xpu", "x")
+                    ->assert_is_op_input("weight_only_linear", "x")
                     ->AsInput();
   auto* weight = pattern->NewNode(weight_repr())
-                     ->assert_is_op_input("weight_only_linear_xpu", "weight")
+                     ->assert_is_op_input("weight_only_linear", "weight")
                      ->AsInput();
   auto* weight_scale =
       pattern->NewNode(weight_scale_repr())
-          ->assert_is_op_input("weight_only_linear_xpu", "weight_scale")
+          ->assert_is_op_input("weight_only_linear", "weight_scale")
           ->AsInput();
   auto* out = pattern->NewNode(out_repr())
-                  ->assert_is_op_output("weight_only_linear_xpu", "out")
+                  ->assert_is_op_output("weight_only_linear", "out")
                   ->AsOutput();
   auto* weight_only_linear = pattern->NewNode(weight_only_linear_repr())
-                                 ->assert_is_op("weight_only_linear_xpu");
+                                 ->assert_is_op("weight_only_linear");
 
   std::vector<PDNode*> input_vars{input, weight, weight_scale};
   std::vector<PDNode*> output_vars{out};
@@ -236,4 +236,4 @@ REGISTER_PASS(weight_only_linear_xpu_pass,
 REGISTER_PASS_CAPABILITY(weight_only_linear_xpu_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "weight_only_linear_xpu", 0));
+            "weight_only_linear", 0));

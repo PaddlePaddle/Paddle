@@ -294,6 +294,27 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     ]
 
 
+@check_faster_guard
+def object_equal_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    expr_node = self.tracker.guard_tree_expr_node()
+
+    weak_ref_obj = self.get_py_value()
+    if support_weak_ref(weak_ref_obj):
+        weak_ref_obj = weakref.ref(self.get_py_value())
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.WeakRefMatchGuard(self.get_py_value()),
+                [expr_node],
+            )
+        ]
+    return [
+        paddle.framework.core.GuardNode(
+            paddle.framework.core.ValueMatchGuard(weak_ref_obj),
+            [expr_node],
+        )
+    ]
+
+
 def stringify_pyobject(obj: object) -> tuple[str, dict[str, Any]]:
     if isinstance(obj, paddle.core.VarDesc.VarType):
         return f"paddle.core.VarDesc.VarType({obj.value})", {"paddle": paddle}

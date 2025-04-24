@@ -664,7 +664,7 @@ class TensorParallel(ParallelModel):
             shard_param_list = []
             # Find some plan for specific parameter, such as
             # "lm_head.weight": ColWiseParallel()
-            # "qkv_porj.lora_A" ColWiseParallel()
+            # "qkv_proj.lora_A" ColWiseParallel()
             # if there is no plan for specific parameter, layer will be sharded by default: layer.weight and layer.bias
             if key.endswith(f".{attr_name}"):
                 if hasattr(layer, attr_name) and is_tensor(
