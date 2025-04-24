@@ -18,6 +18,42 @@ from paddle.base import core
 __all__ = []
 
 
+def get_current_amp_state():
+    state = {}
+
+    try:
+        from paddle.amp.auto_cast import _g_amp_state_
+
+        if _g_amp_state_ is not None:
+            state.update(_g_amp_state_)
+    except ImportError:
+        pass
+
+    try:
+        from paddle.fluid.dygraph.base import _dygraph_tracer
+
+        tracer = _dygraph_tracer()
+        if tracer is not None:
+            state.update(
+                {
+                    'level': tracer._amp_level,
+                    'dtype': tracer._amp_dtype,
+                    'use_promote': getattr(tracer, '_use_promote', True),
+                }
+            )
+            white_list, black_list = tracer._get_amp_op_list()
+            state.update(
+                {
+                    'custom_white_list': white_list,
+                    'custom_black_list': black_list,
+                }
+            )
+    except ImportError:
+        pass
+
+    return state
+
+
 def with_metaclass(meta, *bases):
     class impl(meta):
         def __new__(cls, name, temp_bases, attrs):
@@ -255,7 +291,8 @@ class PyLayerContext:
 
 class PyLayerBackward(core.eager.PyLayer, PyLayerContext):
     def backward(self, *args):
-        return self._forward_cls.backward(self, *args)
+        with paddle.amp.auto_cast(**self.amp_state):
+            return self._forward_cls.backward(self, *args)
 
 
 class PyLayerMeta(type):
@@ -263,6 +300,14 @@ class PyLayerMeta(type):
         cls._backward_function = type(
             name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
         )
+        original_forward = cls.forward
+
+        @staticmethod
+        def amp_forward(ctx, *args, **kwargs):
+            ctx.amp_state = get_current_amp_state()
+            return original_forward(ctx, *args, **kwargs)
+
+        cls.forward = amp_forward
 
         return super().__init__(name, bases, attrs)
 
