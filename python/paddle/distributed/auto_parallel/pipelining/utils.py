@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 
 import paddle
 from paddle.distributed import fleet
+from paddle.utils import map_structure
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,14 @@ def detach_and_keep_grad(x):
     o = x.detach_()
     o.stop_gradient = x.stop_gradient
     return o
+
+
+def zero_initialize_with_meta(meta, mesh):
+    assert isinstance(meta, TensorMeta)
+    x = paddle.zeros(meta.shape, dtype=meta.dtype)
+    if meta.placements:
+        x = paddle.distributed.shard_tensor(x, mesh, meta.placements)
+    return x
 
 
 def flatten_args(args):
@@ -87,26 +96,7 @@ def validate_tensors_metadata(
 NestedStruct = Union[List[Any], Tuple[Any, ...], Dict[Any, Any]]
 
 
-def any_map_structure(
-    fn: Callable[[Any], Any], structures: NestedStruct
-) -> NestedStruct:
-    """
-    Apply `fn` to each entry in `structures` and return a new structure with the same shape.
-    """
-    if isinstance(structures, (list, tuple)):
-        return type(structures)(
-            [any_map_structure(fn, item) for item in structures]
-        )
-    elif isinstance(structures, dict):
-        return {
-            key: any_map_structure(fn, value)
-            for key, value in structures.items()
-        }
-    else:
-        return fn(structures)
-
-
-def any_map_structure_only(
+def map_structure_only(
     type_: Any, fn: Callable[[Any], Any], structure: NestedStruct
 ) -> NestedStruct:
     """
@@ -114,11 +104,11 @@ def any_map_structure_only(
     """
     if isinstance(structure, (list, tuple)):
         return type(structure)(
-            [any_map_structure_only(type_, fn, item) for item in structure]
+            [map_structure_only(type_, fn, item) for item in structure]
         )
     elif isinstance(structure, dict):
         return {
-            key: any_map_structure_only(type_, fn, value)
+            key: map_structure_only(type_, fn, value)
             for key, value in structure.items()
         }
     else:
@@ -152,6 +142,17 @@ def get_pp_mesh(pp_idx=0, pp_dim_names="pp"):
     return mesh
 
 
+def get_stage_mesh(stage_index, pp_group_size, style=None):
+    if style == "v":
+        raise NotImplementedError
+    if style is not None:
+        raise ValueError(f"Unknown style: {style}, style can be None, v.")
+    else:
+
+        pp_idx = stage_index % pp_group_size
+        return get_pp_mesh(pp_idx)
+
+
 def friendly_debug_info(v):
     """
     Helper function to print out debug info in a friendly way.
@@ -167,4 +168,4 @@ def map_debug_info(a):
     Helper function to apply `friendly_debug_info` to items in `a`.
     `a` may be a list, tuple, or dict.
     """
-    return any_map_structure(friendly_debug_info, a)
+    return map_structure(friendly_debug_info, a)
