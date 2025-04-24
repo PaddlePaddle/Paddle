@@ -37,6 +37,7 @@ from ...utils import (
     is_strict_mode,
     log,
     log_do,
+    log_once,
 )
 from ..custom_code import CustomCode
 from .function_graph import FunctionGraph
@@ -70,16 +71,20 @@ class OpcodeExecutorCache(metaclass=Singleton):
     """
 
     MAX_CACHE_SIZE = 20
+    MAX_COMPILE_TIME_PER_CODE = 40
+    MAX_COMPILE_TIME_TOTAL = 15 * 60
     cache: dict[
         types.CodeType, tuple[GuardedFunctions, paddle.framework.core.GuardTree]
     ]
     translate_count: int
     code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
+    compile_time_stats: dict[types.CodeType, float]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
         self.code_symbolic_inputs = {}
+        self.compile_time_stats = {}
 
     def get_symbolic_inputs(
         self, code: types.CodeType
@@ -94,23 +99,26 @@ class OpcodeExecutorCache(metaclass=Singleton):
         self.cache.clear()
         self.translate_count = 0
         self.code_symbolic_inputs.clear()
+        self.compile_time_stats.clear()
 
     def dump_state(self):
         return {
             "cache": self.cache,
             "translate_count": self.translate_count,
             "code_symbolic_inputs": self.code_symbolic_inputs,
+            "compile_time_stats": self.compile_time_stats,
         }
 
     def load_state(self, state):
         self.cache = state["cache"]
         self.translate_count = state["translate_count"]
         self.code_symbolic_inputs = state["code_symbolic_inputs"]
+        self.compile_time_stats = state["compile_time_stats"]
 
     def __call__(self, frame: types.FrameType, **kwargs) -> CustomCode:
         code: types.CodeType = frame.f_code
         if code not in self.cache:
-            log(2, f"[Cache]: Firstly call {code}\n")
+            log(2, f"[Cache] Firstly call {code}\n")
             new_custom_code, guard_fn, guard_chain = self.translate(
                 frame, **kwargs
             )
@@ -121,7 +129,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
             ], paddle.framework.core.GuardTree([guard_chain])
             return new_custom_code
         guarded_fns, guard_tree = self.cache[code]
-        return self.lookup(frame, guarded_fns, guard_tree, **kwargs)
+        compile_time_for_code = self.compile_time_stats.get(code, 0)
+        compile_time_total = sum(self.compile_time_stats.values())
+        return self.lookup(
+            frame,
+            guarded_fns,
+            guard_tree,
+            compile_time_for_code,
+            compile_time_total,
+            **kwargs,
+        )
 
     @event_register("lookup")
     def lookup(
@@ -129,6 +146,8 @@ class OpcodeExecutorCache(metaclass=Singleton):
         frame: types.FrameType,
         guarded_fns: GuardedFunctions,
         guard_tree: paddle.framework.core.GuardTree,
+        compile_time_for_code: float,
+        compile_time_total: float,
         **kwargs,
     ) -> CustomCode:
         """
@@ -143,7 +162,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         """
 
         if len(guarded_fns) >= self.MAX_CACHE_SIZE:
-            log(2, "[Cache]: Exceed max cache size, skip it\n")
+            log(2, "[Cache] Exceed max cache size, skip it\n")
             return CustomCode(None, False)
 
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
@@ -159,7 +178,22 @@ class OpcodeExecutorCache(metaclass=Singleton):
                 # TODO(zrr1999): add a mapping between custom_code and cache_index
                 return guarded_fns[cache_index][0]
             else:
-                log(2, "[Cache]: all guards missed (guard tree mode)\n")
+                log(2, "[Cache] all guards missed (guard tree mode)\n")
+                if compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE:
+                    log(
+                        2,
+                        "[Cache] Exceed max compile time per code, skip it\n",
+                    )
+                    return CustomCode(None, False)
+                if compile_time_total >= self.MAX_COMPILE_TIME_TOTAL:
+                    log_once(
+                        f"[SOT] Current total compile time is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, fallback new function to dygraph"
+                    )
+                    log(
+                        2,
+                        "[Cache] Exceed max compile time total, skip it\n",
+                    )
+                    return CustomCode(None, False)
                 new_custom_code, guard_fn, guard_chain = self.translate(
                     frame, **kwargs
                 )
@@ -230,7 +264,19 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         f"mirror_guard_error: {mirror_guard_error},"
                     )
 
-        log(2, "[Cache]: all guards missed\n")
+        log(2, "[Cache] all guards missed\n")
+        if compile_time_for_code >= self.MAX_COMPILE_TIME_PER_CODE:
+            log(2, "[Cache] Exceed max compile time per code, skip it\n")
+            return CustomCode(None, False)
+        if compile_time_total >= self.MAX_COMPILE_TIME_TOTAL:
+            log_once(
+                f"[SOT] Current compile time total is {compile_time_total}, exceed max compile time total {self.MAX_COMPILE_TIME_TOTAL}, fallback new function to dygraph"
+            )
+            log(
+                2,
+                "[Cache] Exceed max compile time total, skip it\n",
+            )
+            return CustomCode(None, False)
         new_custom_code, guard_fn, guard_chain = self.translate(frame, **kwargs)
         if guard_fn is not None:
             assert guard_chain is not None
@@ -288,9 +334,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
                     )
                     return
                 if result is False:
-                    print(f"[Cache]: missed at {guard_str}")
+                    print(f"[Cache] missed at {guard_str}")
                     return
-            print("[Cache]: missed guard not found.")
+            print("[Cache] missed guard not found.")
 
         return inner
 

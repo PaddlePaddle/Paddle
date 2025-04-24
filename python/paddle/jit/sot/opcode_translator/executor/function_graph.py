@@ -45,6 +45,7 @@ from ...utils import (
     ENV_SOT_ENABLE_GUARD_TREE,
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     NameGenerator,
+    SIRToCodeMap,
     SotUndefinedVar,
     inner_error_default_handler,
     is_inplace_api,
@@ -462,6 +463,7 @@ class FunctionGraph:
                 OrderedSet(),
                 OrderedSet(),
             )
+        SIRToCodeMap().register(statement_ir, self.pycode_gen._origin_code)
         input_names = statement_ir.inputs
         symbolic_inputs = self._find_tensor_inputs(input_names)
         compiled_fn = self.sir_ctx.compile_fn(
