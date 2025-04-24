@@ -3,6 +3,7 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize]
+    branches: [develop, release/**]
 
 permissions: read-all
 
@@ -35,7 +36,7 @@ jobs:
     needs: clone
 
   coverage:
-    name: PR-CI-Coverage
+    name: Coverage
     uses: ./.github/workflows/_Coverage.yml
     needs: clone
 
