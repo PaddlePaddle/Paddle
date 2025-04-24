@@ -4999,22 +4999,6 @@ bool MoeUnzipOpInferSymbolicShape(
     return out_dims;
   }();
 
-  const std::vector<symbol::DimExpr> &token_prob_unzipped_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims;
-    symbol::DimExpr out_shape =
-        infer_context->GetNextSymName();  // unknown until runtime
-    out_dims.push_back(out_shape);
-    return out_dims;
-  }();
-
-  const std::vector<symbol::DimExpr> &xscale_unzipped_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims;
-    symbol::DimExpr out_shape =
-        infer_context->GetNextSymName();  // unknown until runtime
-    out_dims.push_back(out_shape);
-    return out_dims;
-  }();
-
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -5054,6 +5038,8 @@ bool MoeUnzipOpInferSymbolicShape(
   int num_experts = op->attribute<pir::Int32Attribute>("num_experts").data();
 
   std::vector<symbol::DimExpr> zipped_expertwise_rowmap_dims;
+  std::vector<symbol::DimExpr> token_prob_unzipped_dims;
+  std::vector<symbol::DimExpr> xscale_unzipped_dims;
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -5066,11 +5052,13 @@ bool MoeUnzipOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_dims)});
 
+  token_prob_unzipped_dims = {x_unzipped_dims[0], 1};
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_dims)});
 
+  xscale_unzipped_dims = {x_unzipped_dims[0], (x_shape[0] + 127) / 128};
   infer_context->SetShapeOrDataForValue(
       op->result(3),
       symbol::ShapeOrDataDimExprs{

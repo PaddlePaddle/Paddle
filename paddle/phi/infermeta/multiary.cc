@@ -6260,6 +6260,38 @@ void MoeUnzipInferMeta(const MetaTensor& X,
       errors::InvalidArgument(
           "The input expert_prob_topk type should be float32 or bfloat16"));
 
+  PADDLE_ENFORCE_EQ(
+      x_dim[0],
+      xscale_dim[0],
+      errors::InvalidArgument("The 0-th dimension (seqlen) of X [%d] "
+                              "must match that of XScale [%d].",
+                              x_dim[0],
+                              xscale_dim[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[0],
+      expert_routemap_topk_dim[0],
+      errors::InvalidArgument("The 0-th dimension (seqlen) of X [%d] "
+                              "must match that of expert_routemap_topk [%d].",
+                              x_dim[0],
+                              expert_routemap_topk_dim[0]));
+
+  PADDLE_ENFORCE_EQ(
+      x_dim[0],
+      expert_prob_topk_dim[0],
+      errors::InvalidArgument("The 0-th dimension (seqlen) of X [%d] "
+                              "must match that of expert_prob_topk [%d].",
+                              x_dim[0],
+                              expert_prob_topk_dim[0]));
+
+  PADDLE_ENFORCE_EQ((x_dim[1] + 127) / 128,
+                    xscale_dim[1],
+                    errors::InvalidArgument(
+                        "The 1st dimension (token scale count) of XScale [%d] "
+                        "must match ceil(X' token length [%d] + 127) / 128).",
+                        xscale_dim[1],
+                        x_dim[1]));
+
   X_unzipped->set_dims({-1});  // can not infer
   X_unzipped->set_dtype(X.dtype());
 
