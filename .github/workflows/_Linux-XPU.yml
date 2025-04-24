@@ -55,6 +55,12 @@ jobs:
           echo "Pull upstream develop or target branch"
           git pull upstream $BRANCH --no-edit
 
+      - name: Search cached third_party
+        env:
+          cache_dir: ${{ github.workspace }}/../../../../.cache
+        run: |
+          bash -x ${ci_scripts_runner}/download_tp_cache.sh ${cache_dir}/XPU/third_party XPU
+
       - name: Check docker image and run  container
         env:
           WITH_SHARED_PHI: "ON"
@@ -130,7 +136,7 @@ jobs:
           exit $EXCODE
           '
 
-      - name: Upload build.tar.gz and paddle_whl to bos
+      - name: Upload product to bos
         env:
           AK: paddle
           SK: paddle
@@ -143,7 +149,13 @@ jobs:
             mkdir ${{ env.home_path }}/bos
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
-          cd ..
+          if [ "${update_cached_package}" == ON ];then
+            cd ${{ github.workspace }}
+            tar --use-compress-program=pigz -cf ${xz_file} -C build third_party
+          fi
+          rm -rf `find . -name "*.a"`
+          rm -rf `find . -name "*.o"`
+          cd ${{ github.workspace }}/..
           tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
           python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
@@ -173,7 +185,6 @@ jobs:
         run: |
           sudo rm -rf * .[^.]*
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/72068/a58543d2f92bbe5c817e185e9cc24b549c919601/build.tar.gz --no-check-certificate
           tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
           rm build.tar.gz
 
