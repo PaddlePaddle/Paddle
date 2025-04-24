@@ -4859,7 +4859,9 @@ function main() {
         ;;
       hyg_dcu_test)
         parallel_test
-        #hybrid_paddlex
+        if [[ "$IF_DCU" == "ON" ]]; then
+          hybrid_paddlex
+	fi
         ;;
       nv_cicheck_coverage)
         parallel_test
