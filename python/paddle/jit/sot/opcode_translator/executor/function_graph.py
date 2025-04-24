@@ -46,9 +46,9 @@ from ...utils import (
     ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     NameGenerator,
     SotUndefinedVar,
+    already_unified_in_dynamic_and_static_graph,
     inner_error_default_handler,
     is_inplace_api,
-    is_paddle_api,
     log,
     log_do,
     map_if,
@@ -529,7 +529,7 @@ class FunctionGraph:
         Args:
             func: paddle api
         """
-        assert is_paddle_api(func)
+        assert already_unified_in_dynamic_and_static_graph(func)
         # not fallback api, start symbolic trace.
         # TODO(xiokgun): may have python builtin object inside metas.
         # TODO(xiokgun): 4 kinds of python arguments. support it !!

@@ -19,6 +19,7 @@ from .api import (
     load,
     not_to_static,
     save,
+    skip_transform,  # noqa: F401
     to_static,
 )
 from .dy2static.logging_utils import set_code_level, set_verbosity

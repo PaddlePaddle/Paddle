@@ -35,6 +35,7 @@ from ....profiler import EventGuard
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
+    already_unified_in_dynamic_and_static_graph,
     get_obj_stable_repr,
     get_static_function,
     is_break_graph_api,
@@ -42,7 +43,6 @@ from ....utils import (
     is_builtin_fn,
     is_directly_run_api,
     is_not_supported_paddle_layer,
-    is_paddle_api,
     log,
     log_do,
     magic_method_builtin_dispatch,
@@ -348,7 +348,9 @@ class PaddleApiVariable(FunctionVariable):
         successor="UserDefinedFunctionVariable"
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if callable(value) and is_paddle_api(value):
+        if callable(value) and already_unified_in_dynamic_and_static_graph(
+            value
+        ):
             return PaddleApiVariable(value, graph, tracker)
         return None
 

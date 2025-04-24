@@ -25,8 +25,7 @@ from dygraph_to_static_utils import (
 
 import paddle
 import paddle.jit.dy2static as _jst
-from paddle.jit.dy2static.convert_call_func import CONVERSION_OPTIONS
-from paddle.jit.dy2static.utils import func_to_source_code
+from paddle.jit.dy2static.utils import TransformOptions, func_to_source_code
 
 SEED = 2020
 np.random.seed(SEED)
@@ -227,15 +226,22 @@ class NotToStaticHelper(paddle.nn.Layer):
 class TestNotToConvert(TestRecursiveCall2):
     def set_func(self):
         self.net = NotToStaticHelper()
-        paddle.jit.not_to_static(self.net.sum)
+        paddle.jit.not_to_static()(self.net.sum)
         self.dygraph_func = paddle.jit.to_static(self.net.outer)
 
     @test_pir_only
-    def test_conversion_options(self):
+    def test_transform_options(self):
         self.set_func()
-        options = getattr(self.net.sum, CONVERSION_OPTIONS, None)
-        self.assertIsNotNone(options)
-        self.assertTrue(options.not_convert)
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                self.net.sum, TransformOptions.ToStaticMode.AST
+            )
+        )
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                self.net.sum, TransformOptions.ToStaticMode.SOT
+            )
+        )
 
     @test_pir_only
     def test_code(self):
@@ -254,11 +260,18 @@ class TestNotToConvert2(TestRecursiveCall2):
         self.dygraph_func = paddle.jit.to_static(self.net.sum)
 
     @test_pir_only
-    def test_conversion_options(self):
+    def test_transform_options(self):
         self.set_func()
-        options = getattr(self.net.sum, CONVERSION_OPTIONS, None)
-        self.assertIsNotNone(options)
-        self.assertTrue(options.not_convert)
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                self.net.sum, TransformOptions.ToStaticMode.AST
+            )
+        )
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                self.net.sum, TransformOptions.ToStaticMode.SOT
+            )
+        )
 
     @test_ast_only
     @test_pir_only
@@ -302,6 +315,139 @@ class TestConvertPaddleAPI(Dy2StTestBase):
         paddle.jit.to_static(bn)
         self.assertNotIn("_jst.IfElse", bn.forward.code)
         self.assertIn("if x.shape[0] > 1", bn.forward.code)
+
+
+class TestSkipTransform(Dy2StTestBase):
+
+    def test_plain_function(self):
+        def fn(x):
+            return x
+
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_decorator_skip_sot_only(self):
+        @paddle.jit.skip_transform(sot=True, ast=False)
+        def fn(x):
+            return x
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_decorator_skip_ast_only(self):
+        @paddle.jit.skip_transform(sot=False, ast=True)
+        def fn(x):
+            return x
+
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_decorator_skip_ast_and_sot(self):
+        @paddle.jit.skip_transform(sot=True, ast=True)
+        def fn(x):
+            return x
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_decorator_no_arg(self):
+        @paddle.jit.skip_transform
+        def fn(x):
+            return x
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_function_call_skip_sot_only(self):
+        def fn(x):
+            return x
+
+        paddle.jit.skip_transform(fn, sot=True, ast=False)
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_function_call_skip_ast_only(self):
+        def fn(x):
+            return x
+
+        paddle.jit.skip_transform(fn, sot=False, ast=True)
+
+        self.assertTrue(
+            TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
+
+    def test_function_call_skip_ast_and_sot(self):
+        def fn(x):
+            return x
+
+        paddle.jit.skip_transform(fn, sot=True, ast=True)
+
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.SOT
+            )
+        )
+        self.assertTrue(
+            not TransformOptions.check_fn_need_transform(
+                fn, TransformOptions.ToStaticMode.AST
+            )
+        )
 
 
 if __name__ == '__main__':

@@ -69,7 +69,7 @@ from paddle.utils.environments import (
 )
 
 from .dy2static import logging_utils
-from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
+from .dy2static.convert_call_func import add_ignore_module
 from .dy2static.program_translator import (
     ASTStaticFunction,
     ProgramTranslator,
@@ -80,6 +80,7 @@ from .dy2static.program_translator import (
 from .dy2static.utils import (
     ENV_ENABLE_SOT,
     Backend,
+    TransformOptions,
     infer_use_cinn_backend,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
@@ -400,12 +401,30 @@ def not_to_static(func=None):
             Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[2., 2.]])
     """
-    if func is None:
-        return not_to_static
+    return skip_transform(func, sot=False, ast=True)
 
-    options = ConversionOptions(not_convert=True)
-    options.attach(func)
-    return func
+
+def skip_transform(
+    fn: Callable[_InputT, _RetT] | None = None,
+    *,
+    sot: bool = True,
+    ast: bool = True,
+) -> Callable[_InputT, _RetT]:
+    def _skip_transform(fn, *, sot: bool, ast: bool):
+        mode = TransformOptions.ToStaticMode.Nil()
+        if sot:
+            mode |= TransformOptions.ToStaticMode.SOT
+        if ast:
+            mode |= TransformOptions.ToStaticMode.AST
+        options = TransformOptions(
+            skip_transform_mode=mode,
+        )
+        options.attach(fn)
+        return fn
+
+    if fn is None:
+        return lambda fn: _skip_transform(fn, sot=sot, ast=ast)
+    return _skip_transform(fn, sot=sot, ast=ast)
 
 
 class _SaveLoadConfig:
