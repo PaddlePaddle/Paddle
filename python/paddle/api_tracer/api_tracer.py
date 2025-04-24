@@ -35,7 +35,7 @@ from types import ModuleType
  
 class HookAPIMap:
     pass
- 
+
  
 class ConfigDump:
     def __init__(self):
