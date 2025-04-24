@@ -327,15 +327,10 @@ class FunctionGraph:
         guard_chain: list[paddle.framework.core.GuardNodeBase] = []
 
         with EventGuard("guard_fn: find vars and make faster guard"):
-            try:
-                for variable in find_traceable_vars(
-                    self.input_variables + list(self._global_guarded_variables)
-                ):
-                    guard_chain.extend(variable.make_faster_guard())
-            except NotImplementedError as e:
-                log(2, f"[Guard] make faster guard nodes error: {e}\n")
-                # TODO(zrr1999): empty list means that some tracker.make_faster_guard is not implemented.
-                return []
+            for variable in find_traceable_vars(
+                self.input_variables + list(self._global_guarded_variables)
+            ):
+                guard_chain.extend(variable.make_faster_guard())
         return guard_chain
 
     @property

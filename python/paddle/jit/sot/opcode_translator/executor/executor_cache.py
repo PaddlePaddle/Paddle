@@ -194,9 +194,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
-                    # assert (
-                    #     cache_index is None or index == cache_index
-                    # ), f"cache_index({cache_index}) is not equal to index({index})"
+                    assert (
+                        cache_index is None or index == cache_index
+                    ), f"cache_index({cache_index}) is not equal to index({index})"
                     return custom_code
                 else:
                     log_do(
