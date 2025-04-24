@@ -222,14 +222,15 @@ inline bool NeedTypePromotion(
     }
 #endif
 
-    if ((is_support_float(x_dtype) && is_support_float(y_dtype)) ||
+    if ((is_support_int(x_dtype) && is_support_int(y_dtype)) ||
+        (is_support_float(x_dtype) && is_support_float(y_dtype)) ||
         (is_support_complex(x_dtype) || is_support_complex(y_dtype))) {
       return true;
     } else {
       PADDLE_THROW(common::errors::InvalidType(
-          "Type promotion only support calculations between floating-point "
-          "numbers and between complex and real numbers. But got different "
-          "data type x: %s, y: %s.",
+          "Type promotion supports calculations between integers, between "
+          "floating-point numbers, and between complex and real numbers. But "
+          "got incompatible data type: x: %s, y: %s.",
           x_dtype,
           y_dtype));
     }
