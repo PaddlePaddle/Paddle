@@ -14,7 +14,7 @@
 #pragma once
 
 #include "paddle/cinn/ir/ir.h"
-
+#include <unordered_set>
 namespace cinn {
 namespace hlir::framework::pir {
 struct GroupVectorizeInfo;

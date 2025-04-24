@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <isl/cpp.h>
 
 #include <algorithm>

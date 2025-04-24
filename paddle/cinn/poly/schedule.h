@@ -16,7 +16,7 @@
 /**
  * This file defines Schedule related concepts.
  */
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 
 #include <algorithm>
 #include <map>

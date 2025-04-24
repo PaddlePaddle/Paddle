@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <absl/strings/string_view.h>
 
 #include <memory>
@@ -118,14 +118,14 @@ struct FunctionProto {
 
 class FunctionProtoRegistry {
  public:
-  FunctionProto* Register(absl::string_view name, FunctionProto* x);
+  FunctionProto* Register(std::string name, FunctionProto* x);
 
   FunctionProto* Lookup(const std::string& name);
 
   std::string debug_string() const;
 
  private:
-  absl::flat_hash_map<std::string, std::unique_ptr<FunctionProto>> data_;
+  paddle::flat_hash_map<std::string, std::unique_ptr<FunctionProto>> data_;
 };
 
 }  // namespace backends

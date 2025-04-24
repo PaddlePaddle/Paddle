@@ -15,7 +15,7 @@
 #pragma once
 #include "paddle/cinn/ir/stmt.h"
 #include "paddle/cinn/pass/pass.h"
-
+#include <unordered_set>
 namespace cinn {
 namespace optim {
 

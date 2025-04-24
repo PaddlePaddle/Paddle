@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 
 #include <string>
 #include <vector>

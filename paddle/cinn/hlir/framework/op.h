@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <absl/types/any.h>
 #include <glog/logging.h>
 
@@ -71,7 +71,7 @@ enum OpPatternKind {
 struct OpRegistry : public Registry<Operator> {
   std::recursive_mutex mutex;
   std::atomic<int> op_counter{0};
-  absl::flat_hash_map<std::string, std::unique_ptr<absl::any>> attrs;
+  paddle::flat_hash_map<std::string, std::unique_ptr<absl::any>> attrs;
 
   static OpRegistry* Global() {
     static OpRegistry x;

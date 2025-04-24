@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 
 #include <iostream>
 #include <map>
@@ -111,13 +111,13 @@ class LowerImpl {
    * \brief Get a map, for each tensor in the tensor_args, map from name to
    * itself.
    */
-  inline absl::flat_hash_map<std::string, Tensor> GenTensorArgMap();
+  inline paddle::flat_hash_map<std::string, Tensor> GenTensorArgMap();
 
   /**
    * \brief Get a map, for each tensor in the computation graph, map from name
    * to itself.
    */
-  inline absl::flat_hash_map<std::string, Tensor> GenAllTensorMap();
+  inline paddle::flat_hash_map<std::string, Tensor> GenAllTensorMap();
 
   /**
    * \brief Get all the tensors, including the input, output and temporary ones.

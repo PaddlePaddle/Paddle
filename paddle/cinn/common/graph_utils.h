@@ -15,7 +15,7 @@
 #pragma once
 //! \file This file contains the utilities of graph.
 
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -300,9 +300,9 @@ class Graph {
   std::string Visualize() const;
 
   void ClearUnlinkedNodes(
-      absl::flat_hash_map<std::string, std::vector<int>>* shape_dict,
-      absl::flat_hash_map<std::string, cinn::common::Type>* type_dict,
-      absl::flat_hash_map<std::string, std::string>* layout_dict);
+      paddle::flat_hash_map<std::string, std::vector<int>>* shape_dict,
+      paddle::flat_hash_map<std::string, cinn::common::Type>* type_dict,
+      paddle::flat_hash_map<std::string, std::string>* layout_dict);
 
   size_t num_nodes() const { return nodes_.size(); }
 

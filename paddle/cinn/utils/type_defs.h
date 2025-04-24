@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <absl/types/variant.h>
 #include <string>
 #include <vector>
@@ -39,7 +39,7 @@ using Attribute = absl::variant<bool,
                                 // the followings are only for generate shape op
                                 std::vector<symbol::DimExpr>,
                                 cinn::dialect::SymbolBindings>;
-using AttributeMap = absl::flat_hash_map<std::string, Attribute>;
+using AttributeMap = paddle::flat_hash_map<std::string, Attribute>;
 
 // shape type defs
 using ShapeType = std::vector<int32_t>;

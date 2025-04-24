@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <cuda_runtime.h>
 
 #include <string>
@@ -167,7 +167,7 @@ void cinn_call_batched_cublas(void* v_args,
 
 #ifdef CINN_WITH_CUDNN
 void cinn_gpu_cudnn_conv2d(
-    const absl::flat_hash_map<std::string, int>& attr,
+    const paddle::flat_hash_map<std::string, int>& attr,
     cinn_buffer_t* x,
     cinn_buffer_t* w,
     cinn_buffer_t* y,
@@ -175,14 +175,14 @@ void cinn_gpu_cudnn_conv2d(
     cinn::common::Layout target = cinn::common::Layout::kNCHW);
 
 void cinn_gpu_cudnn_conv2d_backward_data(
-    const absl::flat_hash_map<std::string, int>& attr,
+    const paddle::flat_hash_map<std::string, int>& attr,
     cinn_buffer_t* w,
     cinn_buffer_t* dy,
     cinn_buffer_t* dx,
     cudaStream_t stream = nullptr);
 
 void cinn_gpu_cudnn_conv2d_backward_filter(
-    const absl::flat_hash_map<std::string, int>& attr,
+    const paddle::flat_hash_map<std::string, int>& attr,
     cinn_buffer_t* x,
     cinn_buffer_t* dy,
     cinn_buffer_t* dw,

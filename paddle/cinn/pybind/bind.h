@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 #include <absl/strings/string_view.h>
 #include <absl/types/variant.h>
 #include <pybind11/cast.h>
@@ -28,8 +28,8 @@ template <typename Key,
           typename Hash,
           typename Equal,
           typename Alloc>
-struct type_caster<absl::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
-    : map_caster<absl::flat_hash_map<Key, Value, Hash, Equal, Alloc>,
+struct type_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
+    : map_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>,
                  Key,
                  Value> {};
 

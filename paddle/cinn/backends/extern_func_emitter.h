@@ -18,7 +18,7 @@
  */
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
+#include "paddle/utils/flat_hash_map.h"
 
 #include <memory>
 #include <string>
@@ -127,7 +127,7 @@ class ExternFunctionEmitterRegistry {
   const std::string& Lookup(const ExternFuncID& name) const;
 
  private:
-  absl::flat_hash_map<ExternFuncID, std::string> data_;
+  paddle::flat_hash_map<ExternFuncID, std::string> data_;
 
   ExternFunctionEmitterRegistry();
   CINN_DISALLOW_COPY_AND_ASSIGN(ExternFunctionEmitterRegistry);
