@@ -262,6 +262,9 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
   void Scalarize(const Expr &e,
                  std::function<void(int i, llvm::Value *v)> flambda);
 
+  llvm::Value *CastCompositeType(const ir::Expr &op_v);
+  void RegisterCustomizedPODStructType();
+
   llvm::Module *m_;
   llvm::IRBuilder<> *b_;
   // Current function

@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import builtins
-import dis
 import sys
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -28,6 +27,7 @@ from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ...utils.magic_methods import BinaryOp, UnaryOp
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
 
@@ -131,9 +131,9 @@ class SymbolicOperationTracker(Tracker):
         inputs (list[VariableBase]): The input variables associated with the generated variables.
     """
 
-    def __init__(self, inputs: Sequence[VariableBase], method_name: str):
+    def __init__(self, inputs: Sequence[VariableBase], op: UnaryOp | BinaryOp):
         super().__init__(inputs)
-        self.method_name = method_name
+        self.op = op
 
     def gen_instructions(self, codegen: PyCodeGen):
         raise InnerError("SymbolicOperationTracker has no instructions")
@@ -147,11 +147,6 @@ class SymbolicOperationTracker(Tracker):
         return f"SymbolicOperationTracker(num_inputs={len(self.inputs)})"
 
     def is_traceable(self):
-        # TODO(zrr1999): to implement gen_instructions and trace_value_from_frame
-        return False
-
-    def need_guard(self) -> bool:
-        # TODO(zrr1999): to implement gen_instructions and trace_value_from_frame
         return False
 
 
@@ -309,68 +304,6 @@ class ConstTracker(Tracker):
 
     def need_guard(self) -> bool:
         return False
-
-
-class BinaryOperatorTracker(Tracker):
-    def __init__(
-        self, operator: str, operands: list[VariableBase], addition=None
-    ):
-        """
-        addition is for the case that the operator is "COMPARE_OP", which represents the dis.cmp_op's index.
-        """
-        super().__init__(operands, False)
-        assert len(operands) == 2, "Currently only support binary operator."
-        self.operands = operands
-        self.operator = operator
-        self.addition = addition
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        for operand in self.operands:
-            operand.tracker.gen_instructions(codegen)
-        self.gen_operator_instr(codegen)
-
-    def gen_operator_instr(self, codegen: PyCodeGen):
-        if self.operator == "COMPARE_OP":
-            codegen.gen_compare(self.addition)
-        else:
-            codegen.gen_operator(self.operator)
-
-    def get_operator_symbol(self):
-        if self.operator == "COMPARE_OP":
-            return dis.cmp_op[self.addition]
-        return {
-            "BINARY_ADD": "+",
-            "BINARY_SUBTRACT": "-",
-            "BINARY_MUL": "*",
-            "BINARY_POWER": "**",
-        }[self.operator]
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
-        assert (
-            len(self.operands) == 2
-        ), "Currently only support binary operator."
-        # TODO(zrr1999): implement BinaryExprNode
-        raise NotImplementedError("BinaryExprNode is not implemented")
-        # left_expr = self.operands[0].tracker.guard_tree_expr_node()
-        # right_expr = self.operands[1].tracker.guard_tree_expr_node()
-        # return paddle.framework.core.BinaryExprNode(
-        #     left_expr,
-        #     right_expr,
-        #     self.get_operator_symbol(),
-        # )
-
-    def trace_value_from_frame(self):
-        sub_exprs = [x.tracker.trace_value_from_frame() for x in self.operands]
-        sub_frees = [x.free_vars for x in sub_exprs]
-        expr = f"({{}} {self.get_operator_symbol()} {{}})"
-        return StringifiedExpression(
-            expr,
-            list(sub_exprs),
-            union_free_vars(*list(sub_frees)),
-        )
-
-    def __repr__(self) -> str:
-        return f"BinaryOperatorTracker(operator={self.operator})"
 
 
 class GetAttrTracker(Tracker):

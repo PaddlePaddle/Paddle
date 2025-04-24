@@ -327,7 +327,7 @@ class Optimizer:
 
         # for fusion storage
         self._use_fusion_storage = False
-        self._need_refuse = True
+        self._need_refuse = False
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None
@@ -346,8 +346,8 @@ class Optimizer:
     def _create_multi_tensor_dict(self):
         n = len(self._param_groups) if self._param_groups is not None else 1
         return {
-            'FP32_LODTensor': [[] for _ in range(n)],
-            'FP16_LODTensor': [[] for _ in range(n)],
+            'FP32_DenseTensor': [[] for _ in range(n)],
+            'FP16_DenseTensor': [[] for _ in range(n)],
         }
 
     def _get_auxiliary_var(self, key):
@@ -1247,8 +1247,8 @@ class Optimizer:
             'Adam',
         ]:
             if (
-                len(self._param_dict['FP32_LODTensor'][param_group_idx]) == 0
-                and len(self._param_dict['FP16_LODTensor'][param_group_idx])
+                len(self._param_dict['FP32_DenseTensor'][param_group_idx]) == 0
+                and len(self._param_dict['FP16_DenseTensor'][param_group_idx])
                 == 0
             ):
                 if isinstance(parameters_and_grads, list):
@@ -2128,6 +2128,7 @@ class Optimizer:
 
     def use_fusion_storage(self):
         self._use_fusion_storage = True
+        self.need_refuse()
 
     def need_refuse(self):
         self._need_refuse = self._use_fusion_storage

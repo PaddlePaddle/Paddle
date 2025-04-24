@@ -276,10 +276,10 @@ def create_paddle_case(op_type, callback):
             if self.op_type == "not_equal":
                 paddle.disable_static()
                 x = paddle.to_tensor(
-                    np.array([1.2e-8, 2, 2, 1]), dtype="float32"
+                    np.array([1.2e-15, 2, 2, 1]), dtype="float32"
                 )
                 y = paddle.to_tensor(
-                    np.array([1.1e-8, 2, 2, 1]), dtype="float32"
+                    np.array([1.1e-15, 2, 2, 1]), dtype="float32"
                 )
                 op = eval(f"paddle.{self.op_type}")
                 out = op(x, y)

@@ -212,6 +212,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : min_grad
   composite : min_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)

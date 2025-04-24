@@ -27,6 +27,7 @@ from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
 )
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
@@ -122,6 +123,46 @@ class ContainerVariable(VariableBase):
             [[type_guard, len_guard]]
             + [
                 item.make_stringified_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        expr_node = self.tracker.guard_tree_expr_node()
+
+        if self.get_py_type() is dict:
+            # TODO(zrr1999): Use TypeMatchGuard
+            type_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
+                [expr_node],
+            )
+        else:
+            type_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            )
+        len_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.LengthMatchGuard(len(self.init_value)),
+            [expr_node],
+        )
+
+        if isinstance(self, (ListVariable, TupleVariable)):
+            guard_variables = self.proxy.reproduce(0)
+        elif isinstance(self, DictVariable):
+            guard_variables = filter(
+                lambda var: not isinstance(var, MutableDictLikeData.Empty),
+                self.proxy.reproduce(0).values(),
+            )
+        else:
+            raise InnerError(f"Unsupported container type: {type(self)}")
+
+        return reduce(
+            operator.add,
+            [[type_guard, len_guard]]
+            + [
+                item.make_faster_guard()
                 for item in guard_variables
                 if item.tracker.need_guard()
             ],
@@ -348,7 +389,7 @@ class ListVariable(ContainerVariable):
         permutation = list(range(self.proxy.length))
         permutation.sort(
             key=lambda x: key.get_py_value()(
-                Dispatcher.call(operator.getitem, self, x).value
+                Dispatcher.call(operator.getitem, self, x).get_py_value()
             ),
             reverse=reverse.get_py_value(),
         )
@@ -723,6 +764,19 @@ class RangeVariable(ContainerVariable):
             range_variable.__init__(start, stop, step, graph, tracker)
             return range_variable
         return None
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(range),
+                [frame_value_tracer],
+            ),
+            *self.start.make_faster_guard(),
+            *self.stop.make_faster_guard(),
+            *self.step.make_faster_guard(),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:

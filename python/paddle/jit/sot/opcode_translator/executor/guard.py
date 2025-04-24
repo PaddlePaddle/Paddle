@@ -213,19 +213,6 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
         return guard
 
 
-def make_faster_guard(
-    guard_nodes: list[paddle.framework.core.GuardNode],
-) -> Guard:
-    with EventGuard("make_guard"):
-        num_guards = len(guard_nodes)
-        if not num_guards:
-            guard = lambda frame: True
-            return guard
-        guard_tree = paddle.framework.core.GuardTree([guard_nodes])
-        guard = lambda frame: guard_tree.check(frame) is not None
-        return guard
-
-
 def support_weak_ref(obj):
     if isinstance(obj, types.FunctionType):
         return True
@@ -284,8 +271,9 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     if support_weak_ref(weak_ref_obj):
         weak_ref_obj = weakref.ref(self.get_py_value())
         return [
-            StringifiedExpression(
+            FasterStringifiedExpression(
                 f"{obj_free_var_name}() is not None and {{}} == {obj_free_var_name}()",
+                paddle.framework.core.WeakRefMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(
                     frame_value_tracer.free_vars,
@@ -302,6 +290,27 @@ def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
                 frame_value_tracer.free_vars,
                 {obj_free_var_name: self.get_py_value()},
             ),
+        )
+    ]
+
+
+@check_faster_guard
+def object_equal_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    expr_node = self.tracker.guard_tree_expr_node()
+
+    weak_ref_obj = self.get_py_value()
+    if support_weak_ref(weak_ref_obj):
+        weak_ref_obj = weakref.ref(self.get_py_value())
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.WeakRefMatchGuard(self.get_py_value()),
+                [expr_node],
+            )
+        ]
+    return [
+        paddle.framework.core.GuardNode(
+            paddle.framework.core.ValueMatchGuard(weak_ref_obj),
+            [expr_node],
         )
     ]
 

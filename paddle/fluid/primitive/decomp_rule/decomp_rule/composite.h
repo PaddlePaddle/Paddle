@@ -931,17 +931,17 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto min_reshape = min;
   auto max_reshape = max;
 
-  if (x.shape().size() == 0) {
-    min_reshape = reshape<T>(min_reshape, {});
-    max_reshape = reshape<T>(max_reshape, {});
-  }
-
   if (has_dynamic_shape(x.shape())) {
     min_reshape = backend::expand<T>(min_reshape, shape64<T>(x));
     max_reshape = backend::expand<T>(max_reshape, shape64<T>(x));
   } else {
-    min_reshape = expand<T>(min_reshape, x.shape());
-    max_reshape = expand<T>(max_reshape, x.shape());
+    if (x.shape().size() == 0) {
+      min_reshape = reshape<T>(min_reshape, {});
+      max_reshape = reshape<T>(max_reshape, {});
+    } else {
+      min_reshape = expand<T>(min_reshape, x.shape());
+      max_reshape = expand<T>(max_reshape, x.shape());
+    }
   }
   if (min_reshape.dtype() != x.dtype()) {
     min_reshape = cast<T>(min_reshape, x.dtype());
@@ -950,8 +950,9 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   if (max_reshape.dtype() != x.dtype()) {
     max_reshape = cast<T>(max_reshape, x.dtype());
   }
-
-  auto ans = maximum<T>(minimum<T>(x, max_reshape), min_reshape);
+  auto ans = where<T>(x <= max_reshape,
+                      where<T>(x >= min_reshape, x, min_reshape),
+                      max_reshape);
   return ans;
 }
 

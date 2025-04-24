@@ -746,6 +746,14 @@ class DygraphShardingOptimizerV2:
 
         return fused_allreduce
 
+    def _increase_comm_buffers_acc_steps(self, increment):
+        for buffer in self._comm_buffer_list:
+            buffer._acc_steps += increment
+
+    def _reset_comm_buffers_acc_steps(self, acc_steps):
+        for buffer in self._comm_buffer_list:
+            buffer._acc_steps = acc_steps
+
     def _build_comm_buffers(
         self, acc_steps, group_size=256 * 1024 * 1024, free_grads_in_comm=False
     ):

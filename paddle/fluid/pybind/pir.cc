@@ -23,7 +23,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
@@ -53,6 +52,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/shape_analysis_utils.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
@@ -73,6 +73,7 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_mapping.h"
 #include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
@@ -147,6 +148,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_ir_value_pytype = nullptr;
+namespace py = pybind11;
 
 void BindOpsAPI(pybind11::module *module);
 
@@ -427,6 +429,7 @@ void BindProgram(py::module *m) {
         **we have** :ref:`api_paddle_static_default_startup_program` **and** :ref:`api_paddle_static_default_main_program`
         **by default, a pair of them will shared the parameters. The** :ref:`api_paddle_static_default_startup_program` **only run once to initialize parameters,**
         :ref:`api_paddle_static_default_main_program` **run in every mini batch and adjust the weights.**
+
 
     Returns:
         Program: An empty Program.
@@ -998,6 +1001,7 @@ void BindOperation(py::module *m) {
              }
              return attrs_dict;
            })
+
       .def("copy_attrs_from",
            [](Operation &self, Operation &other) {
              for (auto &pair : other.attributes()) {
@@ -1679,6 +1683,101 @@ void BindOpOperand(py::module *m) {
 bool GetValueBoolAttr(Value value, const std::string &attr_name) {
   auto bool_attr = value.attribute<BoolAttribute>(attr_name);
   return !bool_attr || bool_attr.data();
+}
+
+std::string GetAttrsMapJson(pir::Operation *op) {
+  if (!op) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Operation pointer cannot be nullptr."));
+  }
+  auto attributes = op->attributes();
+  ::pir::ProgramWriter writer(1, false);
+  auto attrs_map_info = writer.GetAttributesMapJson(op->attributes()).dump();
+  return attrs_map_info;
+}
+
+pir::AttributeMap ConvertAttrsToAttributeMap(py::dict attrs) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::AttributeMap attrs_map;
+
+  for (auto item : attrs) {
+    std::string key = py::cast<std::string>(item.first);
+    py::handle value = item.second;
+
+    if (py::isinstance<py::bool_>(value)) {
+      attrs_map[key] = pir::BoolAttribute::get(ctx, py::cast<bool>(value));
+    } else if (py::isinstance<py::float_>(value)) {
+      attrs_map[key] = pir::FloatAttribute::get(ctx, py::cast<float>(value));
+    } else if (py::isinstance<py::str>(value)) {
+      attrs_map[key] =
+          pir::StrAttribute::get(ctx, py::cast<std::string>(value));
+    } else if (py::isinstance<py::list>(value)) {
+      py::list list_value = py::cast<py::list>(value);
+      std::vector<pir::Attribute> attr_list;
+      if (list_value.size() > 0) {
+        auto first_elem = list_value[0];
+        if (py::isinstance<py::bool_>(first_elem)) {
+          for (auto elem : list_value) {
+            attr_list.push_back(
+                pir::BoolAttribute::get(ctx, py::cast<bool>(elem)));
+          }
+        } else if (py::isinstance<py::str>(first_elem)) {
+          for (auto elem : list_value) {
+            attr_list.push_back(
+                pir::StrAttribute::get(ctx, py::cast<std::string>(elem)));
+          }
+        } else if (py::isinstance<py::int_>(first_elem)) {
+          for (auto elem : list_value) {
+            int64_t val = py::cast<int64_t>(elem);
+            attr_list.push_back(pir::Int64Attribute::get(ctx, val));
+          }
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "Unsupported list element type, key: %s", key));
+        }
+      }
+      attrs_map[key] = pir::ArrayAttribute::get(ctx, attr_list);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported attribute type, key: %s", key));
+    }
+  }
+  return attrs_map;
+}
+
+std::string GetAttrsMapJson(py::dict attrs) {
+  pir::AttributeMap attrs_map = ConvertAttrsToAttributeMap(attrs);
+  ::pir::ProgramWriter writer(1, false);
+  return writer.GetAttributesMapJson(attrs_map).dump();
+}
+
+std::string GetTypeJson(pir::Operation *op, bool is_input) {
+  if (!op) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Operation pointer cannot be nullptr"));
+  }
+  ::pir::ProgramWriter writer(1, false);
+  std::stringstream type_info_ss;
+  if (is_input) {
+    for (auto operand : op->operands_source()) {
+      type_info_ss << (writer.GetTypeJson(operand.type()).dump())
+                   << '\n';  // use '\n' as separator
+    }
+  } else {
+    for (auto result : op->results()) {
+      type_info_ss << (writer.GetTypeJson(result.type()).dump())
+                   << '\n';  // use '\n' as separator
+    }
+  }
+  return type_info_ss.str();
+}
+
+std::string GetInputsTypeJson(pir::Operation *op) {
+  return GetTypeJson(op, true);
+}
+
+std::string GetOutputsTypeJson(pir::Operation *op) {
+  return GetTypeJson(op, false);
 }
 
 void BindType(py::module *m) {
@@ -2633,6 +2732,18 @@ void BindUtils(pybind11::module *m) {
     return cinn::hlir::framework::CompilationCache::Instance().Size();
 #endif
   });
+  m->def("get_attrs_map_json",
+         py::overload_cast<pir::Operation *>(&GetAttrsMapJson),
+         py::arg("op"));
+  m->def("get_attrs_map_json",
+         py::overload_cast<py::dict>(&GetAttrsMapJson),
+         py::arg("attrs"));
+  m->def("get_inputs_type_json",
+         &GetInputsTypeJson,
+         "Get operation input types as JSON string.");
+  m->def("get_outputs_type_json",
+         &GetOutputsTypeJson,
+         "Get operation output types as JSON string.");
 }
 
 namespace {
