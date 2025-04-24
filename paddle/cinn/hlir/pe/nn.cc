@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/nn.h"
 
-#include "paddle/utils/flat_hash_map.h"
-
 #include <functional>
 #include <numeric>
 #include <string>
@@ -32,6 +30,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace hlir {
 namespace pe {

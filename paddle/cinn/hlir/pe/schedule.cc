@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/schedule.h"
 
-#include "paddle/utils/flat_hash_map.h"
 #include <isl/cpp.h>
 #include <math.h>
 
@@ -30,6 +29,7 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 namespace cinn {
 namespace hlir {
@@ -37,7 +37,7 @@ namespace pe {
 
 using ParamsT =
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>;
+                          paddle::flat_hash_map<std::string, std::vector<int>>>;
 
 ParamsT CreateParamsImpl(common::UnknownArch) {
   PADDLE_THROW(::common::errors::InvalidArgument(
@@ -495,7 +495,7 @@ void CreateX86SerialData(const std::string &file_name) {
 
 inline void InputDirectConvCudaParam(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
@@ -519,7 +519,7 @@ inline void InputDirectConvCudaParam(
 
 inline void InputWinogradConvCudaParam(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
@@ -536,10 +536,10 @@ inline void InputWinogradConvCudaParam(
 }
 
 paddle::flat_hash_map<std::string,
-                    paddle::flat_hash_map<std::string, std::vector<int>>>
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateCudaParams() {
   paddle::flat_hash_map<std::string,
-                      paddle::flat_hash_map<std::string, std::vector<int>>>
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       model_data;
   // The format of serial data is:
   // hash_key: string = name of schedule + shape of input_pad + shape of weights
@@ -1253,7 +1253,7 @@ int GetMaxSplitter(int a, int b) {
 
 void LoadSerialData(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *params,
     const std::string &file_name) {
   proto::ModelData read_model_data;

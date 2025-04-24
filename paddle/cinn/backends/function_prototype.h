@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
 #include <absl/strings/string_view.h>
 
 #include <memory>
@@ -23,6 +22,7 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace backends {

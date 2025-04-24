@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
-
 #include <string>
 #include <vector>
+
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
@@ -25,46 +25,46 @@ namespace pe {
 
 void InputX86Param(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data,
     const std::string &key,
     const paddle::flat_hash_map<std::string, std::vector<int>> &schedule_data);
 
 paddle::flat_hash_map<std::string,
-                    paddle::flat_hash_map<std::string, std::vector<int>>>
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateX86Params();
 void LoadResNet18Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadResNet50Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadMobileNetV1Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadMobileNetV2Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadFaceDetParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadEfficientNetParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 void LoadSqueezeNetParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 
 void CreateX86Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data);
 
 }  // namespace pe

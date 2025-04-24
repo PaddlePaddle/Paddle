@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
 #include <absl/strings/string_view.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
@@ -35,6 +34,7 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace backends {

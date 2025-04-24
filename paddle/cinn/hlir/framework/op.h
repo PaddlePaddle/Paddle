@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/utils/flat_hash_map.h"
 #include <absl/types/any.h>
 #include <glog/logging.h>
 
@@ -29,6 +28,7 @@
 #include "paddle/cinn/utils/registry.h"
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 template <typename R, typename... Args>
 inline auto MakeOpFunction(R (*func)(Args...)) {
   return std::function<R(Args...)>(func);

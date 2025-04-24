@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
-
 #include <string>
 #include <vector>
 
@@ -24,6 +22,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
@@ -50,7 +49,7 @@ class ScheduleParam {
     return instance;
   }
   paddle::flat_hash_map<std::string,
-                      paddle::flat_hash_map<std::string, std::vector<int>>>
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       &GetParam() {
     return param_data;
   }
@@ -63,7 +62,7 @@ class ScheduleParam {
  private:
   explicit ScheduleParam(cinn::common::Arch arch);
   paddle::flat_hash_map<std::string,
-                      paddle::flat_hash_map<std::string, std::vector<int>>>
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       param_data;
 };
 
@@ -140,7 +139,7 @@ void CreateX86SerialData(const std::string &file_name = "default_serial.log");
 
 void LoadSerialData(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *params,
     const std::string &file_name = "default_serial.log");
 
@@ -153,7 +152,7 @@ void SaveSerialData(
 int GetMaxSplitter(int a, int b);
 
 paddle::flat_hash_map<std::string,
-                    paddle::flat_hash_map<std::string, std::vector<int>>>
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateCudaParams();
 
 }  // namespace pe

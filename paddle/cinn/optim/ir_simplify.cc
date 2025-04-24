@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/optim/ir_simplify.h"
 
-#include "paddle/utils/flat_hash_map.h"
 #include <ginac/ginac.h>
 #include <glog/logging.h>
 
@@ -30,6 +29,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace optim {

@@ -15,7 +15,6 @@
 #pragma once
 //! \file This file contains the utilities of graph.
 
-#include "paddle/utils/flat_hash_map.h"
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -32,6 +31,7 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace common {
 

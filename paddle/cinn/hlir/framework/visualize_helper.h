@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -26,8 +25,8 @@
 #include <vector>
 
 #include "paddle/cinn/utils/dot_lang.h"
-
 #include "paddle/common/errors.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {

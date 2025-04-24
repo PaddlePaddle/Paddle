@@ -24,7 +24,7 @@ namespace pe {
 
 void InputX86Param(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data,
     const std::string &key,
     const paddle::flat_hash_map<std::string, std::vector<int>> &schedule_data) {
@@ -36,7 +36,7 @@ void InputX86Param(
 
 void LoadX86DefaultParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -308,7 +308,7 @@ void LoadX86DefaultParams(
 
 void LoadResNet18Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -464,7 +464,7 @@ void LoadResNet18Params(
 
 void LoadResNet50Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -844,7 +844,7 @@ void LoadResNet50Params(
 
 void LoadMobileNetV1Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1042,7 +1042,7 @@ void LoadMobileNetV1Params(
 
 void LoadMobileNetV2Params(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1428,7 +1428,7 @@ void LoadMobileNetV2Params(
 
 void LoadSqueezeNetParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1619,7 +1619,7 @@ void LoadSqueezeNetParams(
 
 void LoadFaceDetParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -1992,7 +1992,7 @@ void LoadFaceDetParams(
 
 void LoadEfficientNetParams(
     paddle::flat_hash_map<std::string,
-                        paddle::flat_hash_map<std::string, std::vector<int>>>
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
   PADDLE_ENFORCE_NOT_NULL(
       model_data,
@@ -2331,10 +2331,10 @@ void LoadEfficientNetParams(
 }
 
 paddle::flat_hash_map<std::string,
-                    paddle::flat_hash_map<std::string, std::vector<int>>>
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateX86Params() {
   paddle::flat_hash_map<std::string,
-                      paddle::flat_hash_map<std::string, std::vector<int>>>
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       model_data;
   LoadX86DefaultParams(&model_data);
   LoadResNet18Params(&model_data);

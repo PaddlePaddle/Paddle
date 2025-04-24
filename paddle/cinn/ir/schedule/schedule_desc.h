@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/utils/flat_hash_map.h"
 
 #include <map>
 #include <string>
@@ -24,6 +23,7 @@
 #include "paddle/cinn/ir/stmt.h"
 #include "paddle/cinn/utils/registry.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace ir {

@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 
-#include "paddle/utils/flat_hash_map.h"
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <curand.h>
@@ -37,6 +36,7 @@
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/cinn/utils/timer.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace runtime {

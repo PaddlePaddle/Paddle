@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
 #include <glog/logging.h>
 #include <isl/cpp.h>
 
@@ -32,6 +31,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/poly/domain.h"
 #include "paddle/cinn/poly/map.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace poly {

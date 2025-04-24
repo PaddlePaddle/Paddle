@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/utils/flat_hash_map.h"
 #include <gtest/gtest.h>
 #include <vector>
+#include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/ir/ir.h"

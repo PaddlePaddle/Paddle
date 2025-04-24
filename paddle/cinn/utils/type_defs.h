@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/utils/flat_hash_map.h"
 #include <absl/types/variant.h>
 #include <string>
 #include <vector>
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace utils {

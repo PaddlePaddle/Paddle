@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/utils/flat_hash_map.h"
 
 #include <set>
 #include <string>
@@ -25,7 +24,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/poly/stage.h"
-
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace ast_gen_ius {
 

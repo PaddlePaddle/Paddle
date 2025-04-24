@@ -299,7 +299,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
   }
   // generate final groups.
   paddle::flat_hash_map<DataFlowGraphNode* /*ancestor*/,
-                      std::vector<DataFlowGraphNode*>>
+                        std::vector<DataFlowGraphNode*>>
       clusters;
   for (auto* n : nodes_in_order) {
     auto* node = n->safe_as<DataFlowGraphNode>();

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/utils/flat_hash_map.h"
 
 #include <string>
 #include <vector>
@@ -22,6 +21,7 @@
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {

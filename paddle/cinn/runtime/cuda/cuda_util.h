@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/utils/flat_hash_map.h"
 #include <cuda_runtime.h>
 
 #include <string>
@@ -22,6 +21,7 @@
 
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace runtime {
