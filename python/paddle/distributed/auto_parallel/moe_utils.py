@@ -33,6 +33,7 @@ from .static.reshard_funcs.nd_mesh_reshard_func import get_1D_sub_process_mesh
 if TYPE_CHECKING:
     from paddle.distributed import Placement
     from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+a = 1 / 0
 
 
 def _specific_alltoall_dim(

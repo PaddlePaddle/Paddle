@@ -156,10 +156,6 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/run_setup.sh bdist_wheel
-          echo "::group::Install bce-python-sdk"
-          python -m pip install bce-python-sdk==0.8.74
-          echo "::endgroup::"
-          exit $EXCODE
           '
 
       - name: Packaging of products
@@ -190,6 +186,10 @@ jobs:
           set -x
           export AK=paddle
           export SK=paddle
+          source ${{ github.workspace }}/../../../proxy
+          echo "::group::Install bce-python-sdk"
+          python -m pip install bce-python-sdk==0.8.74
+          echo "::endgroup::"
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos

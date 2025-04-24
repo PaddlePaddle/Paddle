@@ -34,7 +34,6 @@ _basic_name = ""
 # use Prime number as offset to avoid conflict
 _mesh_offset = 173
 _dim_offsets = [11, 23, 37, 73]
-a = 1 / 0
 
 
 def is_enable_auto_rand_ctrl():
