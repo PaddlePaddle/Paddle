@@ -1159,7 +1159,6 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "zero_copy_run",
           [](AnalysisPredictor &self, bool switch_stream) {
-            std::cout << "AnalysisPredictor  zero_copy_run" << std::endl;
 #if !defined(PADDLE_NO_PYTHON)
             pybind11::gil_scoped_release release;
 #endif
