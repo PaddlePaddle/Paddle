@@ -76,7 +76,7 @@ class FunctionGlobalTracker(Tracker):
         codegen.gen_load_const(self.name)
         codegen.gen_subscribe()
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         fn_tracer = self.fn.tracker.guard_tree_expr_node()
         return paddle.framework.core.ItemExprNode(
             paddle.framework.core.AttributeExprNode(
@@ -103,58 +103,6 @@ class FunctionGlobalTracker(Tracker):
 
     def __repr__(self) -> str:
         return f"FunctionGlobalTracker(fn={self.fn}, name={self.name})"
-
-
-class FunctionClosureTracker(Tracker):
-    """
-    A tracker class that represents a function closure variable.
-
-    Args:
-        fn: The FunctionVariable object.
-        idx: The index of the closure variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, idx: int):
-        super().__init__([fn])
-        self.fn = fn
-        self.idx = idx
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions to trace the value of the function closure variable.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__closure__")
-        codegen.gen_load_const(self.idx)
-        codegen.gen_subscribe()
-        codegen.gen_load_attr("cell_contents")
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
-        # TODO(zrr1999): implement FunctionClosureExprNode
-        raise NotImplementedError("FunctionClosureExprNode is not implemented")
-
-    def trace_value_from_frame(self):
-        """
-        Trace the value of the function closure variable from the frame.
-
-        Returns:
-            The traced value of the function closure variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__closure__[{self.idx}].cell_contents",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
 
 
 def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):

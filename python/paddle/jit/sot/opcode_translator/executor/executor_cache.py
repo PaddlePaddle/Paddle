@@ -124,9 +124,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
             )
             assert guard_fn is not None
             assert guard_chain is not None
-            self.cache[code] = [
-                (new_custom_code, guard_fn)
-            ], paddle.framework.core.GuardTree([guard_chain])
+            self.cache[code] = (
+                [(new_custom_code, guard_fn)],
+                paddle.framework.core.GuardTree([guard_chain]),
+            )
             return new_custom_code
         guarded_fns, guard_tree = self.cache[code]
         compile_time_for_code = self.compile_time_stats.get(code, 0)
@@ -228,9 +229,9 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         f"[Cache] Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
                     # TODO(zrr1999): cache_index should be equal to index when enable_strict_guard.
-                    # assert (
-                    #     cache_index is None or index == cache_index
-                    # ), f"cache_index({cache_index}) is not equal to index({index})"
+                    assert (
+                        cache_index is None or index == cache_index
+                    ), f"cache_index({cache_index}) is not equal to index({index})"
                     return custom_code
                 else:
                     log_do(
@@ -373,6 +374,14 @@ def start_translate(
                 None,
             )
         guard_chain = simulator.guard_chain
+        if len(guard_chain) == 0:
+            # TODO(zrr1999): GuardNode should support zero-expr constructor, to implement DummyGuardNode
+            guard_chain: GuardChain = [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(True)],
+                )
+            ]
         return new_custom_code, guard_fn, guard_chain
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
@@ -391,7 +400,7 @@ def start_translate(
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-        dummy_guard_chain = [
+        dummy_guard_chain: GuardChain = [
             # TODO(zrr1999): GuardNode should support zero-expr constructor
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DummyGuard(),

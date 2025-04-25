@@ -20,6 +20,8 @@ import re
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+import paddle
+
 from ...utils import log
 from .guard import StringifiedExpression, union_free_vars
 from .tracker import (
@@ -81,6 +83,19 @@ class FunctionClosureTracker(Tracker):
         codegen.gen_load_const(self.idx)
         codegen.gen_subscribe()
         codegen.gen_load_attr("cell_contents")
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        fn_tracer = self.fn.tracker.guard_tree_expr_node()
+        return paddle.framework.core.AttributeExprNode(
+            paddle.framework.core.ItemExprNode(
+                paddle.framework.core.AttributeExprNode(
+                    fn_tracer,
+                    "__closure__",
+                ),
+                paddle.framework.core.ConstantExprNode(self.idx),
+            ),
+            "cell_contents",
+        )
 
     def trace_value_from_frame(self):
         """

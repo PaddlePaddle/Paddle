@@ -402,9 +402,7 @@ std::string ExprGuardNode::stringify(int indent) {
 void GuardTree::add_guard_chain(
     const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    // TODO(zrr1999): empty guard nodes means that some
-    // tracker.make_faster_guard is not implemented.
-    return;
+    throw std::runtime_error("Empty guard chain");
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {
     guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);

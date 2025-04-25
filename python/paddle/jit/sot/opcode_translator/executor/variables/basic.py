@@ -335,7 +335,19 @@ class TensorDtypeVariable(DataVariable):
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
-        raise NotImplementedError
+        if isinstance(self.tracker, GetAttrTracker) and isinstance(
+            self.tracker.obj, TensorVariable
+        ):
+            expr_node = self.tracker.obj.tracker.guard_tree_expr_node()
+            assert paddle.framework.use_pir_api(), "Only support PIR"
+            return [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DtypeMatchGuard(self.value),
+                    [expr_node],
+                )
+            ]
+        else:
+            return object_equal_faster_guard(self)
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1240,6 +1252,8 @@ class SymbolicVariable(VariableBase):
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
+        # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
+
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
             self.graph.pycode_gen._origin_code
@@ -1267,7 +1281,6 @@ class SymbolicVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            # TODO(zrr1999): replace it with FasterStringifiedExpression
             *constraint_guards,
         ]
         return guards

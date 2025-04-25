@@ -61,7 +61,7 @@ class Tracker:
         """
         raise NotImplementedError
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         raise NotImplementedError(
             f"{self.__class__.__name__} has no guard_tree_expr_node"
         )
@@ -197,7 +197,7 @@ class LocalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_fast(self.name)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.LocalVarExprNode(self.name)
 
     def trace_value_from_frame(self) -> StringifiedExpression:
@@ -211,7 +211,7 @@ class CellTracker(LocalTracker):
     def gen_instructions(self, codegen: PyCodeGen):
         codegen.gen_load_deref(self.name)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.LocalVarExprNode(self.name)
 
     def trace_value_from_frame(self):
@@ -236,7 +236,7 @@ class GlobalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.GlobalVarExprNode(self.name)
 
     def trace_value_from_frame(self) -> StringifiedExpression:
@@ -261,7 +261,7 @@ class BuiltinTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.ConstantExprNode(
             getattr(builtins, self.name)
         )
@@ -290,7 +290,7 @@ class ConstTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen):
         codegen.gen_load_const(self.value)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         return paddle.framework.core.ConstantExprNode(self.value)
 
     def trace_value_from_frame(self):
@@ -324,7 +324,7 @@ class GetAttrTracker(Tracker):
         self.obj.tracker.gen_instructions(codegen)
         codegen.gen_load_attr(self.attr)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         obj_tracer = self.obj.tracker.guard_tree_expr_node()
         return paddle.framework.core.AttributeExprNode(
             obj_tracer,
@@ -377,7 +377,7 @@ class GetItemTracker(Tracker):
             codegen.gen_load_const(self.key)
         codegen.gen_subscribe()
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         container_tracer = self.container.tracker.guard_tree_expr_node()
         return paddle.framework.core.ItemExprNode(
             container_tracer,
@@ -418,7 +418,7 @@ class GetIterTracker(Tracker):
         self.iter_source.tracker.gen_instructions(codegen)
         codegen.add_instr("GET_ITER")
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         # TODO(zrr1999): implement IterExprNode
         raise NotImplementedError("IterExprNode is not implemented")
 
@@ -459,7 +459,7 @@ class CreateLayerTracker(Tracker):
             codegen.gen_build_map(len(self.kwargs))
             codegen.gen_call_function_ex(has_kwargs=True)
 
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNode:
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
         # TODO(zrr1999): implement LayerExprNode
         raise NotImplementedError("LayerExprNode is not implemented")
 
