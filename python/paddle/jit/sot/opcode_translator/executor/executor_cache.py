@@ -375,7 +375,6 @@ def start_translate(
             guard_chain,
         )
     except Exception as e:
-        raise e
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:
         if simulator is not None:
