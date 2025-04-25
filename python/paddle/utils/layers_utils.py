@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import copy
+import functools
 import typing
 from collections import defaultdict
 from collections.abc import Sequence
@@ -593,3 +594,32 @@ def is_same_shape(shape1: ShapeLike, shape2: ShapeLike) -> bool:
         if s1 != s2:
             return False
     return True
+
+
+def _init_params_decorator(func):
+    """
+    Only in dygraph mode, Decorator function that initializes parameters before calling the decorated method.
+
+    This decorator checks whether each parameter has been initialized using the '_is_initialized' property.
+    If any parameter is uninitialized, it calls the 'initialize' method on that parameter.
+
+    Args:
+        func (function): The function being decorated.
+
+    Returns:
+        function: A wrapped version of the input function that performs parameter initialization before calling the original function.
+    """
+    if not in_dygraph_mode():
+        return func
+
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if not self._is_parameters_initialized:
+            for _, param in self.named_parameters():
+                if not param._is_initialized():
+                    param.initialize()
+            self._is_parameters_initialized = True
+
+        return func(self, *args, **kwargs)
+
+    return wrapper

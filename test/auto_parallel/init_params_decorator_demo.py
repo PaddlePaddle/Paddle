@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.io import BatchSampler, DataLoader, Dataset
+from paddle.utils import _init_params_decorator
 
 
 class TestInitParamsDecorator:
@@ -36,6 +37,7 @@ class TestInitParamsDecorator:
                 super().__init__()
                 self.weight = self.create_parameter(shape=[10, 5])
 
+            @_init_params_decorator
             def forward(self, x):
                 return paddle.matmul(x, self.weight)
 
@@ -56,6 +58,7 @@ class TestInitParamsDecorator:
                 self.weight = self.create_parameter(shape=[10, 5])
                 self.bias = self.create_parameter(shape=[5], is_bias=True)
 
+            @_init_params_decorator
             def forward(self, x):
                 return paddle.matmul(x, self.weight) + self.bias
 
@@ -103,6 +106,7 @@ class TestInitParamsDecorator:
                 self.w0 = dist.shard_tensor(self.w0, mesh, [dist.Shard(1)])
                 self.w1 = dist.shard_tensor(self.w1, mesh, [dist.Shard(0)])
 
+            @_init_params_decorator
             def forward(self, x):
                 y = paddle.matmul(x, self.w0)
                 z = paddle.matmul(y, self.w1)

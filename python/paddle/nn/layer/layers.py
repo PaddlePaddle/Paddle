@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import copy
-import functools
 import inspect
 import re
 import typing
@@ -1559,35 +1558,6 @@ class Layer:
 
         return outputs
 
-    def _init_params_decorator(func):
-        """
-        Only in dygraph mode, Decorator function that initializes parameters before calling the decorated method.
-
-        This decorator checks whether each parameter has been initialized using the '_is_initialized' property.
-        If any parameter is uninitialized, it calls the 'initialize' method on that parameter.
-
-        Args:
-            func (function): The function being decorated.
-
-        Returns:
-            function: A wrapped version of the input function that performs parameter initialization before calling the original function.
-        """
-        if not in_dygraph_mode():
-            return func
-
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            if not self._is_parameters_initialized:
-                for _, param in self.named_parameters():
-                    if not param._is_initialized():
-                        param.initialize()
-                self._is_parameters_initialized = True
-
-            return func(self, *args, **kwargs)
-
-        return wrapper
-
-    @_init_params_decorator
     def __call__(self, *inputs: Any, **kwargs: Any) -> Any:
         if (
             (not in_to_static_mode())
