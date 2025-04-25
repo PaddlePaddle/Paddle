@@ -88,8 +88,8 @@ struct ApPirAttribute : public ApPirAttributeImpl<ApPirAttribute> {
   adt::Result<pir::Attribute> CastToPirAttributeImpl(
       const axpr::DataType& impl) const {
     ADT_LET_CONST_REF(phi_data_type, axpr::GetPhiDataTypeFromDataType(impl));
-    return paddle::dialect::DataTypeAttribute::get(pir::IrContext::Instance(),
-                                                   phi_data_type);
+    return ::paddle::dialect::DataTypeAttribute::get(pir::IrContext::Instance(),
+                                                     phi_data_type);
   }
 
   adt::Result<pir::Attribute> CastToPirAttributeImpl(
