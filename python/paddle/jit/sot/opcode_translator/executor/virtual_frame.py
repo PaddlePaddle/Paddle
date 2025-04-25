@@ -18,6 +18,7 @@ import builtins
 import inspect
 import re
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from ...utils import log
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
 
     from typing_extensions import TypeAlias
 
+    from ..instruction_utils import Instruction
     from .function_graph import FunctionGraph
     from .pycode_generator import PyCodeGen
     from .variables.callable import FunctionVariable
@@ -121,12 +123,22 @@ def validate_value(value):
     ), f"dangling variable {value} should not be pushed into stack."
 
 
+@dataclass
+class BlockStackItem:
+    # `PyTryBlock` in CPython source code
+    type: str
+    inst: Instruction
+    handler: Instruction
+    level: int
+
+
 class VirtualFrameState(NamedTuple):
     locals: dict[str, VariableBase]
     builtins: dict[str, VariableBase]
     cells: dict[str, VariableBase]
     lasti: int
     stack_data: list[VariableBase]
+    block_stack: list[BlockStackItem]
 
 
 class VirtualFrame:
@@ -138,6 +150,7 @@ class VirtualFrame:
     cells: dict[str, Any]
     lasti: int
     stack: VariableStack
+    block_stack: list[BlockStackItem]
 
     def __init__(self, code: types.CodeType):
         self.code = code
@@ -148,6 +161,7 @@ class VirtualFrame:
         self.lasti = 0
         self.consts = []
         self.stack = VariableStack(validate_value_func=validate_value)
+        self.block_stack: list[BlockStackItem] = []
 
     @staticmethod
     def from_real_frame(frame: types.FrameType, graph: FunctionGraph):
@@ -295,6 +309,7 @@ class VirtualFrame:
             cells=self.cells.copy(),
             lasti=self.lasti,
             stack_data=list(self.stack._data),
+            block_stack=self.block_stack.copy(),
         )
 
     def restore_state(self, state: VirtualFrameState):
@@ -303,3 +318,4 @@ class VirtualFrame:
         self.cells = state.cells
         self.lasti = state.lasti
         self.stack._data = state.stack_data
+        self.block_stack = state.block_stack
