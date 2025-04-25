@@ -210,13 +210,13 @@ jobs:
           rm -rf Paddle.tar.gz ${{ env.paddle_whl }} flashattn_libs_${flashattn_version}.tar
           '
 
-  # - name: Terminate and delete the container
-  #   if: always()
-  #   run: |
-  #     set +e
-  #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-  #     docker stop ${{ env.container_name }}
-  #     docker rm ${{ env.container_name }}
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}
 
   test:
     name: Test
@@ -323,13 +323,13 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          bash -x ${ci_scripts}/distribute_test.sh
+          bash ${ci_scripts}/distribute_test.sh
           '
 
-    # - name: Terminate and delete the container
-    #   if: always()
-    #   run: |
-    #     set +e
-    #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-    #     docker stop ${{ env.container_name }}
-    #     docker rm ${{ env.container_name }}
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}
