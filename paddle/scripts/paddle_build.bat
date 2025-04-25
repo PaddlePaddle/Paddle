@@ -47,13 +47,13 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
-wmic process where name="cvtres.exe" call terminate 2>NUL
-wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="cl.exe" call terminate 2>NUL
-wmic process where name="lib.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+powershell -Command "Stop-Process -Name 'eager_generator' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'eager_legacy_op_function_generator' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cvtres' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'rc' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cl' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'lib' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'python' -Force 2>$null"
 
 rem variable to control building process
 if not defined GENERATOR set GENERATOR="Visual Studio 15 2017 Win64"
@@ -165,7 +165,7 @@ if %ERRORLEVEL% EQU 0 (
     git branch last_pr
 )
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set datetime=%%i
 set day_now=%datetime:~6,2%
 set day_before=-1
 set /p day_before=< %cache_dir%\day.txt
@@ -366,7 +366,7 @@ set PATH=C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64;%PATH%
 rem Use 64-bit ToolSet to compile
 set PreferredToolArchitecture=x64
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set start=%%i
 set start=%start:~4,10%
 
 if not defined CUDA_TOOLKIT_ROOT_DIR set CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2
@@ -410,7 +410,7 @@ if "%WITH_TPCACHE%"=="OFF" (
 )
 
 rem clear third party cache every ten days
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set datetime=%%i
 set day_now=%datetime:~6,2%
 set day_before=-1
 set /p day_before=< %cache_dir%\day_third_party.txt
@@ -559,7 +559,7 @@ echo    ========================================
 echo    Step 2. Build Paddle ...
 echo    ========================================
 
-for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
+for /F %%# in ('powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).NumberOfLogicalProcessors"') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
 echo "PARALLEL PROJECT COUNT is %PARALLEL_PROJECT_COUNT%"
 
 set build_times=1
@@ -611,13 +611,13 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
-wmic process where name="cmake.exe" call terminate 2>NUL
-wmic process where name="cvtres.exe" call terminate 2>NUL
-wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="cl.exe" call terminate 2>NUL
-wmic process where name="lib.exe" call terminate 2>NUL
+powershell -Command "Stop-Process -Name 'eager_generator' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'eager_legacy_op_function_generator' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cmake' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cvtres' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'rc' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cl' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'lib' -Force 2>$null"
 
 if "%WITH_TESTING%"=="ON" (
     for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
@@ -666,7 +666,7 @@ echo    ========================================
 
 setlocal enabledelayedexpansion
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set end=%%i
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
 
@@ -759,7 +759,7 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 5
 )
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set start=%%i
 set start=%start:~4,10%
 
 set FLAGS_call_stack_level=2
@@ -791,7 +791,7 @@ if "%WITH_GPU%"=="ON" (
 
 set error_code=%ERRORLEVEL%
 
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
+for /f "usebackq" %%i in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMddHHmmss'"`) do set end=%%i
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "1 card TestCases Total"
 call :timestamp "%start%" "%end%" "TestCases Total"
@@ -1014,13 +1014,13 @@ taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="eager_generator.exe" call terminate 2>NUL
-wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
-wmic process where name="cvtres.exe" call terminate 2>NUL
-wmic process where name="rc.exe" call terminate 2>NUL
-wmic process where name="cl.exe" call terminate 2>NUL
-wmic process where name="lib.exe" call terminate 2>NUL
-wmic process where name="python.exe" call terminate 2>NUL
+powershell -Command "Stop-Process -Name 'eager_generator' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'eager_legacy_op_function_generator' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cvtres' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'rc' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'cl' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'lib' -Force 2>$null"
+powershell -Command "Stop-Process -Name 'python' -Force 2>$null"
 if "%WITH_TESTING%"=="ON" (
     for /F "tokens=1 delims= " %%# in ('tasklist ^| findstr /i test') do taskkill /f /im %%# /t
 )
