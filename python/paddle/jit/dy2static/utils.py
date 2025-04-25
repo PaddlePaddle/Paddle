@@ -25,6 +25,7 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import time
 import types
 import warnings
 from contextlib import contextmanager
@@ -106,6 +107,27 @@ class Backend(Enum):
 
     def is_phi(self):
         return self == Backend.PHI
+
+
+class TimeCounter:
+    def __init__(self):
+        self._time_history: list[float] = []
+
+    def get_last_time(self):
+        if len(self._time_history) == 0:
+            return 0
+        return self._time_history[-1]
+
+    def get_total_time(self):
+        return sum(self._time_history)
+
+    @contextmanager
+    def record(self):
+        start_time = time.perf_counter()
+        yield
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self._time_history.append(elapsed_time)
 
 
 def data_layer_not_check(name, shape, dtype='float32'):

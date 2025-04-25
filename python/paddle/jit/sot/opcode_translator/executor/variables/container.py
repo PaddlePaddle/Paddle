@@ -260,7 +260,7 @@ class ListVariable(ContainerVariable):
     def setitem(self, key, value):
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
         if isinstance(key, int):
             self.proxy.set(key, value)
@@ -297,7 +297,7 @@ class ListVariable(ContainerVariable):
     def delitem(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key to delete."
+                f"[{self.__class__.__name__}] received {key} as key to delete."
             )
         self.proxy.delete(key)
         self.graph.side_effects.record_proxy_variable(self)
@@ -601,17 +601,13 @@ class TupleVariable(ContainerVariable):
             )
 
     def setitem(self, key, value):
-        raise InnerError(
-            f"[{self.__class__.__name__}]: setitem is not allowed."
-        )
+        raise InnerError(f"[{self.__class__.__name__}] setitem is not allowed.")
 
     def __delitem__(self, key):
         return self.delitem(key)
 
     def delitem(self, key):
-        raise InnerError(
-            f"[{self.__class__.__name__}]: delitem is not allowed."
-        )
+        raise InnerError(f"[{self.__class__.__name__}] delitem is not allowed.")
 
     def concat(self, tuple_):
         assert isinstance(tuple_, TupleVariable)
@@ -850,7 +846,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: received {key} as key."
+                    f"[{self.__class__.__name__}] received {key} as key."
                 )
             key_var = ConstantVariable.wrap_literal(key, self.graph)
             value_var = self[key]
@@ -879,7 +875,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: received {key} as key."
+                    f"[{self.__class__.__name__}] received {key} as key."
                 )
             items[key] = self[key]
         return items
@@ -908,7 +904,7 @@ class DictVariable(ContainerVariable):
         self.graph.add_global_guarded_variable(self)
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} to get value."
+                f"[{self.__class__.__name__}] received {key} to get value."
             )
 
         if default is None:
@@ -928,12 +924,12 @@ class DictVariable(ContainerVariable):
     def setitem(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key."
+                f"[{self.__class__.__name__}] received {key} as key."
             )
 
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
 
         self.proxy.set(key, value)
@@ -954,7 +950,7 @@ class DictVariable(ContainerVariable):
     def delitem(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key to delete."
+                f"[{self.__class__.__name__}] received {key} as key to delete."
             )
         self.proxy.delete(key)
         self.graph.side_effects.record_proxy_variable(self)
