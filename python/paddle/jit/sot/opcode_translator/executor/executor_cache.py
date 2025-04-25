@@ -116,9 +116,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
             )
             assert guard_fn is not None
             assert guard_chain is not None
-            self.cache[code] = [
-                (new_custom_code, guard_fn)
-            ], paddle.framework.core.GuardTree([guard_chain])
+            self.cache[code] = (
+                [(new_custom_code, guard_fn)],
+                paddle.framework.core.GuardTree([guard_chain]),
+            )
             return new_custom_code
         guarded_fns, guard_tree = self.cache[code]
         return self.lookup(frame, guarded_fns, guard_tree, **kwargs)
@@ -327,6 +328,14 @@ def start_translate(
                 None,
             )
         guard_chain = simulator.guard_chain
+        if len(guard_chain) == 0:
+            # TODO(zrr1999): GuardNode should support zero-expr constructor, to implement DummyGuardNode
+            guard_chain: GuardChain = [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DummyGuard(),
+                    [paddle.framework.core.ConstantExprNode(True)],
+                )
+            ]
         return new_custom_code, guard_fn, guard_chain
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
@@ -345,7 +354,7 @@ def start_translate(
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-        dummy_guard_chain = [
+        dummy_guard_chain: GuardChain = [
             # TODO(zrr1999): GuardNode should support zero-expr constructor
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DummyGuard(),
@@ -366,6 +375,7 @@ def start_translate(
             guard_chain,
         )
     except Exception as e:
+        raise e
         raise InnerError(OpcodeExecutorBase.error_message_summary(e)) from e
     finally:
         if simulator is not None:

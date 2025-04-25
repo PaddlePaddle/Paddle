@@ -42,8 +42,6 @@ from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...symbolic_shape.operators import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
-    ENV_SOT_ENABLE_GUARD_TREE,
-    ENV_SOT_ENABLE_STRICT_GUARD_CHECK,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -319,11 +317,6 @@ class FunctionGraph:
     @property
     @event_register("guard_chain")
     def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
-        enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
-        enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
-
-        if not enable_strict_guard and not enable_guard_tree:
-            return []
         guard_chain: list[paddle.framework.core.GuardNodeBase] = []
 
         with EventGuard("guard_fn: find vars and make faster guard"):
