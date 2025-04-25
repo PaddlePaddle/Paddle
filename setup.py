@@ -2206,6 +2206,7 @@ def get_setup_parameters():
         'paddle.text',
         'paddle.text.datasets',
         'paddle.incubate',
+        'paddle.incubate.cc',
         'paddle.incubate.nn',
         'paddle.incubate.jit',
         'paddle.incubate.nn.functional',

@@ -592,4 +592,4 @@ class ConstrainedInputSpec(InputSpec):
         )  # (idx of dim, min, max)
         super().__init__(*args, **kwargs)
         for i in dynamic_axes:
-            self.ranges.append((i, 2, None))
+            self.ranges.append((i, 1, None))
