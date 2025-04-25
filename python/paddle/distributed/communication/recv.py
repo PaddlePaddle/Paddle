@@ -139,7 +139,7 @@ def recv_object_list(
 
             >>> dist.init_parallel_env()
             >>> if dist.get_rank() == 0:
-            ...     data = ["hello", {"key": 100}, [1, 2, 3]]  # type: ignore
+            ...     data = ["hello", {"key": 100}, [1, 2, 3]]
             ...     dist.send_object_list(data, dst=1)
             >>> else:
             ...     data = [None] * 3  # type: ignore
