@@ -251,7 +251,8 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
   HANDLE_NULL_VALUE_DECREF(local_shape);
 
   if (py::handle(mesh_shape).cast<std::vector<int>>() != mesh_shape_expected_ ||
-      !PyObject_Equal(process_ids, mesh_process_ids_expected_.value()) ||
+      py::handle(process_ids).cast<std::vector<int>>() !=
+          mesh_process_ids_expected_.value() ||
       !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
       !PyObject_Equal(local_shape, local_shape_expected_.value())) {
     Py_DECREF(mesh);

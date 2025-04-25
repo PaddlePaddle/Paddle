@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <Python.h>
 #include <memory>
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 #include "paddle/fluid/pybind/sot/frame_proxy.h"
@@ -273,12 +274,12 @@ class TensorDistMetaMatchGuard : public GuardBase {
     if (obj != py::none()) {
       mesh_shape_expected_ =
           obj.attr("mesh").attr("shape").cast<std::vector<int>>();
-      mesh_process_ids_expected_ = obj.attr("mesh").attr("process_ids").ptr();
+      mesh_process_ids_expected_ =
+          obj.attr("mesh").attr("process_ids").cast<std::vector<int>>();
       dims_mapping_expected_ = obj.attr("dims_mapping").ptr();
       local_shape_expected_ = obj.attr("local_shape").ptr();
 
       is_dist_ = true;
-      Py_INCREF(mesh_process_ids_expected_.value());
       Py_INCREF(dims_mapping_expected_.value());
       Py_INCREF(local_shape_expected_.value());
     }
@@ -286,8 +287,6 @@ class TensorDistMetaMatchGuard : public GuardBase {
 
   ~TensorDistMetaMatchGuard() override {
     if (is_dist_) {
-      // Py_DECREF(mesh_shape_expected_.value());
-      Py_DECREF(mesh_process_ids_expected_.value());
       Py_DECREF(dims_mapping_expected_.value());
       Py_DECREF(local_shape_expected_.value());
     }
@@ -300,7 +299,7 @@ class TensorDistMetaMatchGuard : public GuardBase {
  private:
   bool is_dist_ = false;
   std::optional<std::vector<int>> mesh_shape_expected_;
-  std::optional<PyObject*> mesh_process_ids_expected_;
+  std::optional<std::vector<int>> mesh_process_ids_expected_;
   std::optional<PyObject*> dims_mapping_expected_;
   std::optional<PyObject*> local_shape_expected_;
 };
