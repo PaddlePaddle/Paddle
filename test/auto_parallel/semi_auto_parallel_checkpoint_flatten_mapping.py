@@ -18,7 +18,7 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestSemiautoSaveLoad:
+class TestSemiAutoSaveLoad:
     def __init__(self):
         self._ckpt_path = os.getenv("ckpt_path")
 
@@ -71,4 +71,4 @@ class TestSemiautoSaveLoad:
 
 
 if __name__ == '__main__':
-    TestSemiautoSaveLoad().run_test_case()
+    TestSemiAutoSaveLoad().run_test_case()
