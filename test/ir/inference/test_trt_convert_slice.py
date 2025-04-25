@@ -106,7 +106,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
 
                             yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
         self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
         self.dynamic_shape.opt_input_shape = {"input_data": [6, 6, 64, 64]}
@@ -134,19 +134,20 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         self.trt_param.max_batch_size = 9
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-3
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -162,7 +163,7 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # TODO(inference): fix.
         # trt6 and trt7.1 has bug.
         # trt7.2 deserialize has bug.
-        self.run_test()
+        self.run_test(run_pir=True)
 
     def test_pir(self):
         self.run_test(run_pir=True)

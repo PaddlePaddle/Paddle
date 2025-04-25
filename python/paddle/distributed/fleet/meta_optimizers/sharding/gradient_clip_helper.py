@@ -248,13 +248,13 @@ class GradientClipHelper:
             idx = idx + 1
             block._insert_op_without_sync(
                 idx,
-                type='c_allreduce_sum',
-                inputs={'X': var},
-                outputs={'Out': var},
+                type='all_reduce',
+                inputs={'x': var},
+                outputs={'out': var},
                 attrs={
                     'ring_id': ring_id,
                     'op_namescope': "/gradient_clip_model_parallelism",
-                    'use_calc_stream': True,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )

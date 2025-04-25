@@ -38,7 +38,7 @@ from paddle.framework import use_pir_api
 from paddle.static import InputSpec
 from paddle.utils import flatten, is_sequence
 
-from .symbolic_shape import SymbolicInt
+from .symbolic_shape.symbolic_value import SymbolicInt
 from .utils import (
     Cache,
     Singleton,
@@ -592,4 +592,4 @@ class ConstrainedInputSpec(InputSpec):
         )  # (idx of dim, min, max)
         super().__init__(*args, **kwargs)
         for i in dynamic_axes:
-            self.ranges.append((i, 2, None))
+            self.ranges.append((i, 1, None))

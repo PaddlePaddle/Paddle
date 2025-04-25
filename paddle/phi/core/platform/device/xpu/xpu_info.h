@@ -94,6 +94,10 @@ bool IsXPUMallocRecorded(int dev_id);
 
 void EmptyCache(void);
 
+int GetXPUDeviceUtilizationRate(int dev_id);
+int GetXPUDeviceTotalMemory(int dev_id);
+int GetXPUDeviceUsedMemory(int dev_id);
+
 }  // namespace platform
 }  // namespace paddle
 #endif

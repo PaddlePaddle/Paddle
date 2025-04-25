@@ -17,8 +17,11 @@ from __future__ import annotations
 import contextlib
 import copy
 import inspect
+import random
 import weakref
 from typing import TYPE_CHECKING, Any, TypedDict
+
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -113,16 +116,23 @@ def check_recompute_necessary(inputs):
 
 
 @contextlib.contextmanager
-def switch_rng_state_tracker(rng_state, tracker):
+def switch_rng_state_tracker(rng_state, tracker, numpy_state, random_state):
     orig_rng_state = paddle.get_rng_state()
     orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
     paddle.set_rng_state(rng_state)
     get_rng_state_tracker().set_states_tracker(tracker)
+
+    orig_numpy_state = np.random.get_state()
+    orig_random_state = random.getstate()
+    np.random.set_state(numpy_state)
+    random.setstate(random_state)
     try:
         yield
     finally:
         paddle.set_rng_state(orig_rng_state)
         get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
+        np.random.set_state(orig_numpy_state)
+        random.setstate(orig_random_state)
 
 
 class RecomputeFunction(PyLayer):
@@ -147,6 +157,8 @@ class RecomputeFunction(PyLayer):
             ctx.fwd_rng_state_tracker = (
                 get_rng_state_tracker().get_states_tracker()
             )
+            ctx.fwd_numpy_state = np.random.get_state()
+            ctx.fwd_random_state = random.getstate()
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -252,7 +264,10 @@ class RecomputeFunction(PyLayer):
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
                 with switch_rng_state_tracker(
-                    ctx.fw_rng_state, ctx.fwd_rng_state_tracker
+                    ctx.fw_rng_state,
+                    ctx.fwd_rng_state_tracker,
+                    ctx.fwd_numpy_state,
+                    ctx.fwd_random_state,
                 ):
                     with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
@@ -353,6 +368,9 @@ def _recompute_without_reentrant(
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )
+        fwd_numpy_state = np.random.get_state()
+        fwd_random_state = random.getstate()
+
     tracer = framework._dygraph_tracer()
     is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
     if tracer._amp_level == core.AmpLevel.O2:
@@ -423,7 +441,10 @@ def _recompute_without_reentrant(
 
             if preserve_rng_state:
                 with switch_rng_state_tracker(
-                    fw_cuda_rng_state, fwd_cuda_rng_state_tracker
+                    fw_cuda_rng_state,
+                    fwd_cuda_rng_state_tracker,
+                    fwd_numpy_state,
+                    fwd_random_state,
                 ):
                     with paddle.set_grad_enabled(True):
                         with paddle.amp.auto_cast(

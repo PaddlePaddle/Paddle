@@ -138,19 +138,28 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
   }
   void Visit(const ir::Min* op, Expr* expr) override {
     auto node = expr->As<ir::Min>();
-    if (node->a().is_index() && node->b().is_index()) {
+    // min(min(S0, 1ll), 1ll) ==> min(min(S0, 1), 1)
+    // min(V[S0, S1], 1ll)    ==> min(V[S0, S1], 1ll)
+    // min(S0 + 1ll, 1ll)     ==> max(S0 + 1, 1)
+    // IndexType::kValid means expr only has +-*/%, Const, Symbol, Min, Max.
+    // IsDynamic == true means expr has Symbol.
+    if (optim::VerifyIndex(*expr) == ir::IndexExpr::IndexType::kValid &&
+        expr->as_index().IsDynamic()) {
       ir::ElevateInt64ToInt32_((*expr)->operands);
+    } else {
+      ir::IRMutator<>::Visit(&node->a(), &node->a());
+      ir::IRMutator<>::Visit(&node->b(), &node->b());
     }
-    ir::IRMutator<>::Visit(&node->a(), &node->a());
-    ir::IRMutator<>::Visit(&node->b(), &node->b());
   }
   void Visit(const ir::Max* op, Expr* expr) override {
     auto node = expr->As<ir::Max>();
-    if (node->a().is_index() && node->b().is_index()) {
+    if (optim::VerifyIndex(*expr) == ir::IndexExpr::IndexType::kValid &&
+        expr->as_index().IsDynamic()) {
       ir::ElevateInt64ToInt32_((*expr)->operands);
+    } else {
+      ir::IRMutator<>::Visit(&node->a(), &node->a());
+      ir::IRMutator<>::Visit(&node->b(), &node->b());
     }
-    ir::IRMutator<>::Visit(&node->a(), &node->a());
-    ir::IRMutator<>::Visit(&node->b(), &node->b());
   }
 };
 
