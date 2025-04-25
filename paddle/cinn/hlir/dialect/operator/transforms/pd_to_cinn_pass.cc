@@ -560,8 +560,14 @@ class ArangeOpPattern
       }
       input_list[i] = input;
     }
-    auto cinn_arange = rewriter.Build<cinn::dialect::ArangeOp>(
-        input_list[0], input_list[1], input_list[2], dtype);
+    auto cinn_arange =
+        rewriter.Build<cinn::dialect::ArangeOp>(op->operand_source(0),
+                                                op->operand_source(1),
+                                                op->operand_source(2),
+                                                input_list[0],
+                                                input_list[1],
+                                                input_list[2],
+                                                dtype);
     cinn_arange.result(0).set_type(op.result(0).type());
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_arange.result(0));
     rewriter.EraseOp(op);

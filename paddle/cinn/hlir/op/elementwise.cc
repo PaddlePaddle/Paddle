@@ -1326,11 +1326,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     CINNValuePack pack_args = args[0];
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
-                      1U,
+                      4U,
                       ::common::errors::InvalidArgument(
-                          "The number of input argument of arange should be at "
-                          "last 1. Please check."));
-    std::string tensor_name = pack_args[0].operator std::string();
+                          "The number of input argument of arange should be 4"
+                          "(start, end, step, result). Please check."));
+    std::string tensor_name = pack_args[3].operator std::string();
     auto out = pe::Arange(start, step, dtype, arange_size, tensor_name);
     std::vector<cinn::common::CINNValue> res;
     res.push_back(cinn::common::CINNValue(out));
