@@ -318,13 +318,13 @@ class FunctionGraph:
 
     @property
     @event_register("guard_chain")
-    def guard_chain(self) -> list[paddle.framework.core.GuardNode]:
+    def guard_chain(self) -> list[paddle.framework.core.GuardNodeBase]:
         enable_strict_guard = ENV_SOT_ENABLE_STRICT_GUARD_CHECK.get()
         enable_guard_tree = ENV_SOT_ENABLE_GUARD_TREE.get()
 
         if not enable_strict_guard and not enable_guard_tree:
             return []
-        guard_chain: list[paddle.framework.core.GuardNode] = []
+        guard_chain: list[paddle.framework.core.GuardNodeBase] = []
 
         with EventGuard("guard_fn: find vars and make faster guard"):
             try:
@@ -390,10 +390,15 @@ class FunctionGraph:
         self.pycode_gen.gen_enable_eval_frame()
 
         name_gen = NameGenerator("___graph_fn_saved_orig_")
+        stored_var_ids = set()
 
         # here is not update changed values, it just give names to stack vars
         # and want keep same interface as _build_compile_fn_with_name_store
         for var in stack_vars[::-1]:
+            if var.id in stored_var_ids:
+                self.pycode_gen.gen_pop_top()
+                continue
+            stored_var_ids.add(var.id)
             if not store_var_info.get(var.id, []):
                 name = name_gen.next()
                 store_var_info.setdefault(var.id, [])

@@ -63,10 +63,7 @@ EOF
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
 
         # github action env variable
-        if [ -n "$2" ]; then
-            echo "buildSize=${buildSize}" >> $2
-            echo "buildSize=${buildSize}" >> "$HOME/.bashrc"
-        fi
+        echo "export buildSize=${buildSize}" >> "$HOME/.bashrc"
 
         echo "Build Size: $buildSize"
         echo "ipipe_log_param_Build_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -104,9 +101,7 @@ failed_test_lists=''
 tmp_dir=`mktemp -d`
 
 function get_quickly_disable_ut() {
-    echo "::group::Installing httpx..."
     python -m pip install httpx
-    echo "::endgroup::"
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
@@ -193,7 +188,7 @@ function show_ut_retry_result() {
         if [ "$SYSTEM" == "Darwin" ]; then
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         else
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=2) {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
         fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -225,6 +220,49 @@ function clean_build_files() {
           rm -rf "$file"
       fi
     done
+}
+
+function determine_kunlun_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu0" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu2" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu4" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu6" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
+    # rm -rf * .[^.]* .??*
+}
+
+function determine_npu_runner() {
+    runner_name=$1
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=0,1,2,3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=4,5,6,7" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=8,9,10,11" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=12,13,14,15" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
 }
 
 function cmake_base() {
@@ -706,7 +744,7 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile=$tmp_dir/$tmpfile_rand"_"$iget_quickly_disable_ut
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -1004,8 +1042,8 @@ set +x
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [ "$WITH_ROCM" != "ON" ];then
-            # cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
-            echo "CTestCostData.txt"
+            mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
         fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
@@ -1021,7 +1059,6 @@ function check_coverage() {
         echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
     fi
 }
-
 
 function test_fluid_lib() {
     cat <<EOF

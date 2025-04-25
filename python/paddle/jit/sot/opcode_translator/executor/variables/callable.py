@@ -68,6 +68,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    object_equal_faster_guard,
     object_equal_stringified_guard,
     union_free_vars,
 )
@@ -177,12 +178,7 @@ class FunctionVariable(CallableVariable):
         )
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
 
 class UserDefinedFunctionVariable(FunctionVariable):
@@ -203,6 +199,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
     def handle_psdb_function(self, /, *args, **kwargs):
         # special function for inner debug.
         if self.value is psdb.assert_true:
+            self.graph.add_global_guarded_variable(args[0])
             return ConstantVariable.wrap_literal(
                 self.value(args[0].value), self.graph
             )
@@ -224,7 +221,19 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 PsdbBreakReason("breakgraph by psdb.breakgraph")
             )
         elif self.value is psdb.fallback:
-            raise FallbackError("fallback by psdb.fallback")
+            fallback_sig = inspect.signature(psdb.fallback)
+            bound_args = fallback_sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            recursive_var = VariableFactory.from_value(
+                bound_args.arguments["recursive"],
+                graph=self.graph,
+                tracker=DanglingTracker(),
+            )
+            assert isinstance(recursive_var, ConstantVariable)
+            raise FallbackError(
+                f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
+                disable_eval_frame=recursive_var.get_py_value(),
+            )
         elif self.value is psdb.in_sot:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
@@ -350,12 +359,7 @@ class PaddleApiVariable(FunctionVariable):
         }
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
 
 class TensorFunctionVariable(FunctionVariable):
@@ -544,10 +548,14 @@ class LayerVariable(CallableVariable):
         ]
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.LayerMatchGuard(self.get_py_value()),
+                [expr_node],
+            )
+        ]
 
 
 class ContainerLayerVariable(LayerVariable):
@@ -616,10 +624,23 @@ class ContainerLayerVariable(LayerVariable):
             return super().make_stringified_guard()
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        if isinstance(self.value, PD_SEQ_CONTAINERS):
+            expr_node = self.tracker.guard_tree_expr_node()
+            len_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.LengthMatchGuard(len(self.value)),
+                [expr_node],
+            )
+
+            guards: list[paddle.framework.core.GuardNodeBase] = [len_guard]
+            for idx, layer in enumerate(self.value):
+                layer_variable = VariableFactory.from_value(
+                    layer, self.graph, GetItemTracker(self, idx)
+                )
+                guards.extend(layer_variable.make_faster_guard())
+            return guards
+        else:
+            return super().make_faster_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -672,10 +693,14 @@ class PaddleLayerVariable(LayerVariable):
             return super().make_stringified_guard()
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        if isinstance(self.tracker, CreateLayerTracker):
+            return reduce(
+                operator.add,
+                [var.make_faster_guard() for var in self.tracker.inputs],
+            )
+        else:
+            return super().make_faster_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -992,12 +1017,7 @@ class ClassVariable(CallableVariable):
         return new_object_variable
 
     make_stringified_guard = object_equal_stringified_guard
-
-    @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+    make_faster_guard = object_equal_faster_guard
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

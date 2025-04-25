@@ -3,6 +3,7 @@ name: CI
 on:
   pull_request:
     types: [opened, synchronize]
+    branches: [develop, release/**]
 
 permissions: read-all
 
@@ -24,16 +25,27 @@ jobs:
     uses: ./.github/workflows/_SOT.yml
     needs: clone
 
+  xpu:
+    name: Linux-XPU
+    uses: ./.github/workflows/_Linux-XPU.yml
+    needs: clone
+
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
     needs: clone
 
   coverage:
-    name: PR-CI-Coverage
+    name: Coverage
     uses: ./.github/workflows/_Coverage.yml
     needs: clone
 
-  # Py3:
-  #   uses: ./.github/workflows/_Py3.yml
-  #   needs: Clone
+  cpu:
+    name: Linux-CPU
+    uses: ./.github/workflows/_Linux-CPU.yml
+    needs: clone
+
+  npu:
+    name: Linux-NPU
+    uses: ./.github/workflows/_Linux-NPU.yml
+    needs: cpu
