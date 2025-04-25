@@ -112,8 +112,6 @@ if(WITH_GPU)
   add_definitions(-DPADDLE_WITH_CUDA)
   add_definitions(-DEIGEN_USE_GPU)
 
-  find_package(CUDA REQUIRED)
-
   if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 10.1)
     message(FATAL_ERROR "Paddle needs CUDA >= 10.1 to compile")
   endif()

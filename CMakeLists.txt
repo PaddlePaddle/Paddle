@@ -18,11 +18,10 @@ if(APPLE AND WITH_ARM)
   cmake_policy(VERSION 3.19.2)
 else()
   cmake_minimum_required(VERSION 3.15)
-  cmake_policy(VERSION 3.10)
+  cmake_policy(VERSION 3.12)
 endif()
 # use to get_property location of static lib
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
-cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -44,7 +43,8 @@ project(paddle CXX C)
 
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
-find_package(CUDA QUIET)
+find_package(CUDAToolkit)
+set(CUDA_CUDART_LIBRARY "${CUDAToolkit_LIBRARY_DIR}/lib64/libcudart.so")
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})

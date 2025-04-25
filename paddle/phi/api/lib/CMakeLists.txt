@@ -143,7 +143,7 @@ set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
 set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
 
 if(NOT PYTHONINTERP_FOUND)
-  find_package(PythonInterp REQUIRED)
+  find_package(Python3 COMPONENTS Interpreter Development)
 endif()
 
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
