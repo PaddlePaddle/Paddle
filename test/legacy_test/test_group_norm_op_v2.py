@@ -635,6 +635,31 @@ class TestGroupNormWithOptionalgradX(unittest.TestCase):
             np.testing.assert_equal(db.numpy(), db_ref.numpy())
             np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
 
+    def test_group_norm_cpu_with_optional_grad_nhwc(self):
+        with dygraph_guard():
+            origin_device = paddle.device.get_device()
+            paddle.device.set_device("cpu")
+            x = paddle.randn([4, 32, 32, 32])
+            x.stop_gradient = False
+            gpn = paddle.nn.GroupNorm(
+                num_groups=8, num_channels=32, data_format="NHWC"
+            )
+            y = gpn(x)
+            dw_ref, db_ref, dx_ref = paddle.grad(y, [gpn.weight, gpn.bias, x])
+            try:
+                dw, db, dx = (
+                    paddle.grad(y, gpn.weight)[0],
+                    paddle.grad(y, gpn.bias)[0],
+                    paddle.grad(y, x)[0],
+                )
+            except Exception as e:
+                raise e
+            finally:
+                paddle.device.set_device(origin_device)
+            np.testing.assert_equal(dw.numpy(), dw_ref.numpy())
+            np.testing.assert_equal(db.numpy(), db_ref.numpy())
+            np.testing.assert_equal(dx.numpy(), dx_ref.numpy())
+
 
 if __name__ == '__main__':
     unittest.main()
