@@ -24,19 +24,14 @@ from get_program import (
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.quantization import PTQ, QuantConfig
-from paddle.quantization.observers import AbsmaxObserver
 from paddle.tensorrt.export import (
     Input,
-    PrecisionMode,
     TensorRTConfig,
-    convert,
     convert_to_trt,
 )
 from paddle.tensorrt.util import (
     predict_program,
 )
-from paddle.vision.models import resnet18
 
 
 def standardize(array):
