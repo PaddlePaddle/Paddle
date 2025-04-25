@@ -14,8 +14,6 @@
 
 import paddle
 
-__all__ = ['matmul']
-
 
 def matmul(x, w, epilogue, **kwargs):
     x = paddle.matmul(x, w, **kwargs)
