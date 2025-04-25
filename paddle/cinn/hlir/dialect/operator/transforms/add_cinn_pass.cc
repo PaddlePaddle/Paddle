@@ -27,6 +27,7 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
+#include "paddle/ap/include//paddle/pass/convert_pd_facade_to_ap_facade.h"
 #include "paddle/ap/include/memory/guard.h"
 #include "paddle/ap/include/paddle/pass/ap_generic_drr_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -225,6 +226,7 @@ void ApplyApGenericDrrPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   ap::memory::Guard guard{};
   if (auto pass = CreateApGenericClassicDrrPass(guard.circlable_ref_list())) {
+    pass_manager->AddPass(CreateConvertPdFacadeToApFacadePass());
     pass_manager->AddPass(std::move(pass.value()));
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
     pir::IrPrinter(LOG(ERROR) << "before ApGenericClassicDrrPass:\n")

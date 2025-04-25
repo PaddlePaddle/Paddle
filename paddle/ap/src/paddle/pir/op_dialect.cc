@@ -25,6 +25,7 @@ OperatorDialect::OperatorDialect(::pir::IrContext *context)
 }
 
 void OperatorDialect::initialize() {
+  RegisterOp<FacadeOp>();
   RegisterOp<UpSpiderOp>();
   RegisterOp<DownSpiderOp>();
   RegisterOp<LoadFromRegisterOp>();

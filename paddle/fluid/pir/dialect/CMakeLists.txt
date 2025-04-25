@@ -308,6 +308,7 @@ set(op_dialect_deps
     phi
     common
     pir
+    ap_pir
     type_info
     string_helper
     global_utils

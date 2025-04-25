@@ -14,19 +14,28 @@
 
 #pragma once
 
-#include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/method_class.h"
-#include "paddle/ap/include/axpr/naive_class_ops.h"
-#include "paddle/ap/include/axpr/type.h"
-#include "paddle/ap/include/axpr/value.h"
-#include "paddle/ap/include/paddle/phi/place_method_class.h"
-#include "paddle/ap/include/paddle/pir/attribute_method_class.h"
-#include "paddle/ap/include/paddle/pir/pir.h"
-#include "paddle/ap/include/paddle/pir/shape_or_data_method_class.h"
-#include "paddle/ap/include/paddle/pir/type_method_class.h"
+#include <memory>
+#include <optional>
+#include "paddle/pir/include/pass/pass.h"
 
-namespace ap::paddle {
+namespace ap::memory {
 
-void ForceLinkPir();
+class CirclableRefListBase;
 
-}  // namespace ap::paddle
+}
+
+namespace ap::axpr {
+
+struct Value;
+
+}
+
+namespace cinn {
+namespace dialect {
+namespace ir {
+
+std::unique_ptr<::pir::Pass> CreateConvertPdFacadeToApFacadePass();
+
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

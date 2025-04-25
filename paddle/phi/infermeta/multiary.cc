@@ -491,6 +491,24 @@ void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
 #endif
 }
 
+void ApFacadeInferMeta(const std::vector<const MetaTensor*>& xs,
+                       int64_t num_outputs,
+                       const std::string& serialized_attributes,
+                       std::vector<MetaTensor*> outs,
+                       MetaConfig config) {
+#ifdef PADDLE_WITH_CINN
+  ApInferMetaHelper helper{};
+  const auto& ret =
+      helper.InferMetaByAxprHook(&xs, serialized_attributes, &outs);
+  PADDLE_ENFORCE(!ret.HasError(),
+                 "ApFacadeInferMeta failed. \nTraceback (most recent call "
+                 "last):\n%s\n%s: %s. ",
+                 ret.GetError().CallStackToString(),
+                 ret.GetError().class_name(),
+                 ret.GetError().msg());
+#endif
+}
+
 // TODO(YuanRisheng) This InferMeta is used in Fluid
 //                   and will be deleted in the future.
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
