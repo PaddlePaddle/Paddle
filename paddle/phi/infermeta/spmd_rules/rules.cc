@@ -705,6 +705,11 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdBase),
     PD_INFER_SPMD(phi::distributed::ArgMaxInferSpmdReverseBase));
 
+// argmax
+PD_REGISTER_SPMD_RULE(topk,
+                      PD_INFER_SPMD(phi::distributed::TopkInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::TopkGradInferSpmd));
+
 // unbind
 PD_REGISTER_SPMD_RULE(unbind,
                       PD_INFER_SPMD(phi::distributed::UnbindInferSpmd),

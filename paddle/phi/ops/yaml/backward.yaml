@@ -3516,6 +3516,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule: TopkGradInferSpmd
   kernel :
     func : topk_grad
     data_type : out_grad
