@@ -1253,6 +1253,12 @@ class _ShardOptimizer(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
+        enable_inplace_master_grad = (
+            os.getenv("FLAGS_enable_inplace_master_grad") == '1'
+        )
+        if enable_inplace_master_grad:
+            for param, _ in parameters_and_grads:
+                param.main_grad._local_value().zero_()
         if isinstance(parameters_and_grads, list):
             for p, _ in parameters_and_grads:
                 self._reset_placements(p)
