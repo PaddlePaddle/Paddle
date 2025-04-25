@@ -233,7 +233,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             let case_num++
         elif [[ ${case} == "llama_auto" ]];then
             cmd=/workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
-            bash $cmd prepare_case llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
+            timeout 5m bash $cmd prepare_case llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd llama_auto
             # There is no need to reinstall the related packages of `PaddleNLP` afterward.
             export FLAGS_install_deps=1
@@ -244,7 +244,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             clean_file /workspace/PaddleNLP/llm/auto_parallel/llama
         elif [[ ${case} == "gpt-3_auto" ]];then
             cmd=/workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
-            bash $cmd prepare_case llm_gpt_case_list_auto $FLAGS_install_deps $FLAGS_download_data
+            timeout 5m bash $cmd prepare_case llm_gpt_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd gpt-3_auto
             # there is no need to repeat the `gpt` download process later.
             export FLAGS_download_data="gpt ""$FLAGS_download_data"
@@ -252,7 +252,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             clean_file /workspace/PaddleNLP/llm/auto_parallel/gpt-3
         elif [[ ${case} == "gpt-3_dygraph" ]];then
             cmd=/workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh
-            bash $cmd prepare_case llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
+            timeout 5m bash $cmd prepare_case llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd gpt-3_dygraph
             let case_num++
             clean_file /workspace/PaddleNLP/llm
