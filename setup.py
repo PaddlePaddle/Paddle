@@ -1375,6 +1375,9 @@ def get_package_data_and_package_dir():
     package_data['paddle.libs'] += [
         ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
     ]
+    if os.name == 'nt':
+        package_data['paddle.libs'] += ['common.lib']
+        shutil.copy(env_dict.get("COMMON_LINK"), libs_path)
     shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
