@@ -26,15 +26,11 @@ XHPC_DIR_NAME=$4
 XCCL_URL=$5
 XCCL_DIR_NAME=$6
 
-XFFT_URL=$7
-XFFT_DIR_NAME=$8
-
-WITH_XPU_XRE5=$9
+WITH_XPU_XRE5=$7
 
 mkdir -p xpu/include/xhpc/xblas
 mkdir -p xpu/include/xhpc/xfa
 mkdir -p xpu/include/xhpc/xpudnn
-mkdir -p xpu/include/xfft
 mkdir -p xpu/include/xpu
 mkdir -p xpu/include/xre
 mkdir -p xpu/lib
@@ -103,13 +99,6 @@ function xccl_prepare() {
   patchelf --set-rpath '$ORIGIN/' xpu/lib/libbkcl.so
 }
 
-function xfft_prepare() {
-  check_files ${XFFT_DIR_NAME}/include/cufft.h ${XFFT_DIR_NAME}/lib64/libcufft.so
-  cp -r ${XFFT_DIR_NAME}/include/* xpu/include/xpu/
-  cp -r ${XFFT_DIR_NAME}/lib64/* xpu/lib/
-  cp -r ${XFFT_DIR_NAME}/include/* xpu/include/xfft
-}
-
 function local_prepare() {
     # xre prepare
     if [[ ! -d ${LOCAL_PATH}/${XRE_DIR_NAME} ]]; then
@@ -128,12 +117,6 @@ function local_prepare() {
         XHPC_TAR_NAME=${XHPC_DIR_NAME}.tar.gz
         tar -zxf  ${LOCAL_PATH}/${XHPC_TAR_NAME} -C ${LOCAL_PATH}
     fi
-
-    # xfft prepare
-    if [[ ! -d ${LOCAL_PATH}/${XFFT_DIR_NAME} ]]; then
-        XFFT_TAR_NAME=${XFFT_DIR_NAME}.tar.gz
-        tar -zxf  ${LOCAL_PATH}/${XFFT_TAR_NAME} -C ${LOCAL_PATH}
-    fi
 }
 
 function local_assemble() {
@@ -145,11 +128,6 @@ function local_assemble() {
     # xccl assemble
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/include/* xpu/include/xpu/
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/so/* xpu/lib/
-
-    # xfft assemble
-    cp -r ${LOCAL_PATH}/$XFFT_DIR_NAME/include/* xpu/include/xpu/
-    cp -r ${LOCAL_PATH}/$XFFT_DIR_NAME/so/* xpu/lib/
-    cp -r ${LOCAL_PATH}/$XFFT_DIR_NAME/include/* xpu/include/xfft
 
     # xhpc assemble
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
@@ -183,9 +161,7 @@ else
     download_from_bos ${XRE_URL}
     download_from_bos ${XHPC_URL}
     download_from_bos ${XCCL_URL}
-    download_from_bos ${XFFT_URL}
     xre_prepare
     xhpc_prepare
     xccl_prepare
-    xfft_prepare
 fi

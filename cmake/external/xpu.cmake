@@ -164,7 +164,6 @@ set(XPU_CUDA_RT_LIB "${XPU_LIB_DIR}/${XPU_CUDA_RT_LIB_NAME}")
 set(XPU_ML_LIB "${XPU_LIB_DIR}/${XPU_ML_LIB_NAME}")
 set(XPU_XFA_LIB "${XPU_LIB_DIR}/${XPU_XFA_LIB_NAME}")
 set(XPU_XPUDNN_LIB "${XPU_LIB_DIR}/${XPU_XPUDNN_LIB_NAME}")
-set(XPU_FFT_LIB "${XPU_LIB_DIR}/${XPU_FFT_LIB_NAME}")
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 
@@ -233,11 +232,12 @@ if(WITH_XPU_XRE5)
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} ${XPU_FFT_URL} ${XPU_FFT_DIR_NAME} 1
-      && wget ${XPU_XFT_GET_DEPENCE_URL} && bash ${XFT_COMMAND} ${XPU_XFT_URL}
-      ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 && wget ${XPU_XFT_GET_DEPENCE_URL}
+      && bash ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
-      ${XPU_XPTI_DIR_NAME}
+      ${XPU_XPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
+      ${XPU_FFT_DIR_NAME}
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -249,8 +249,7 @@ if(WITH_XPU_XRE5)
     BUILD_BYPRODUCTS ${XPU_RT_LIB}
     BUILD_BYPRODUCTS ${XPU_CUDA_RT_LIB}
     BUILD_BYPRODUCTS ${XPU_ML_LIB}
-    BUILD_BYPRODUCTS ${XPU_BKCL_LIB}
-    BUILD_BYPRODUCTS ${XPU_FFT_LIB})
+    BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
 else()
   ExternalProject_Add(
     ${XPU_PROJECT}
@@ -260,11 +259,12 @@ else()
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} ${XPU_FFT_URL} ${XPU_FFT_DIR_NAME} 0
-      && wget ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh
-      ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 0 && wget ${XPU_XFT_GET_DEPENCE_URL}
+      && bash get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
-      ${XPU_XPTI_DIR_NAME}
+      ${XPU_XPTI_DIR_NAME} && bash
+      ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}
+      ${XPU_FFT_DIR_NAME}
     DOWNLOAD_NO_PROGRESS 1
     UPDATE_COMMAND ""
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
