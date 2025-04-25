@@ -28,6 +28,7 @@ set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 set(XPU_XPUDNN_LIB_NAME "libxpu_dnn.so")
+set(XPU_FFT_LIB_NAME "libcufft.so")
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
   set(XPU_XHPC_BASE_DATE "dev/20250417")
@@ -81,6 +82,11 @@ if(WITH_XPU_XRE5)
   )
 endif()
 
+if(WITH_XPU_FFT)
+  set(XPU_FFT_BASE_URL "https://paddle-org.bj.bcebos.com/paddlescience")
+  set(XPU_FFT_DIR_NAME "xpufft")
+endif()
+
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
   set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no kylin output now.
@@ -130,6 +136,10 @@ if(WITH_XPTI)
   set(XPU_XPTI_URL "${XPU_XPTI_BASE_URL}/${XPU_XPTI_DIR_NAME}.tar.gz")
 endif()
 
+if(WITH_XPU_FFT)
+  set(XPU_FFT_URL "${XPU_FFT_BASE_URL}/${XPU_FFT_DIR_NAME}.tar.gz")
+endif()
+
 set(XPU_XHPC_URL
     "https://klx-sdk-release-public.su.bcebos.com/xhpc/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
@@ -154,6 +164,7 @@ set(XPU_CUDA_RT_LIB "${XPU_LIB_DIR}/${XPU_CUDA_RT_LIB_NAME}")
 set(XPU_ML_LIB "${XPU_LIB_DIR}/${XPU_ML_LIB_NAME}")
 set(XPU_XFA_LIB "${XPU_LIB_DIR}/${XPU_XFA_LIB_NAME}")
 set(XPU_XPUDNN_LIB "${XPU_LIB_DIR}/${XPU_XPUDNN_LIB_NAME}")
+set(XPU_FFT_LIB "${XPU_LIB_DIR}/${XPU_FFT_LIB_NAME}")
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 
@@ -205,6 +216,12 @@ if(DEFINED ENV{XPU_LIB_ROOT})
     set(XFT_COMMAND
         "${CMAKE_SOURCE_DIR}/tools/xpu/get_xft_dependence_from_custom_path.sh")
   endif()
+
+  # FFT
+  if(DEFINED ENV{XPU_FFT_DIR_NAME})
+    set(XPU_FFT_URL "${XPU_LIB_ROOT}/$ENV{XPU_FFT_DIR_NAME}")
+    set(XPU_FFT_DIR_NAME "$ENV{XPU_FFT_DIR_NAME}")
+  endif()
 endif()
 
 if(WITH_XPU_XRE5)
@@ -216,8 +233,9 @@ if(WITH_XPU_XRE5)
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 && wget ${XPU_XFT_GET_DEPENCE_URL}
-      && bash ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} ${XPU_FFT_URL} ${XPU_FFT_DIR_NAME} 1
+      && wget ${XPU_XFT_GET_DEPENCE_URL} && bash ${XFT_COMMAND} ${XPU_XFT_URL}
+      ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME}
     DOWNLOAD_NO_PROGRESS 1
@@ -231,7 +249,8 @@ if(WITH_XPU_XRE5)
     BUILD_BYPRODUCTS ${XPU_RT_LIB}
     BUILD_BYPRODUCTS ${XPU_CUDA_RT_LIB}
     BUILD_BYPRODUCTS ${XPU_ML_LIB}
-    BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
+    BUILD_BYPRODUCTS ${XPU_BKCL_LIB}
+    BUILD_BYPRODUCTS ${XPU_FFT_LIB})
 else()
   ExternalProject_Add(
     ${XPU_PROJECT}
@@ -241,8 +260,9 @@ else()
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 0 && wget ${XPU_XFT_GET_DEPENCE_URL}
-      && bash get_xft_dependence.sh ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} ${XPU_FFT_URL} ${XPU_FFT_DIR_NAME} 0
+      && wget ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh
+      ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME}
     DOWNLOAD_NO_PROGRESS 1
@@ -270,6 +290,16 @@ if(WITH_XPU_XFT)
   include_directories(${XPU_XFT_INC_DIR})
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
   target_link_libraries(xpulib ${XPU_XFT_LIB})
+endif()
+
+if(WITH_XPU_FFT)
+  message(STATUS "Compile with XPU FFT!")
+  add_definitions(-DPADDLE_WITH_XPU_FFT)
+
+  set(XPU_FFT_INC_DIR "${XPU_INC_DIR}/fft")
+  include_directories(${XPU_FFT_INC_DIR})
+  set(XPU_FFT_LIB "${XPU_LIB_DIR}/${XPU_FFT_LIB_NAME}")
+  target_link_libraries(xpulib ${XPU_FFT_LIB})
 endif()
 
 set(XPU_XHPC_INC_DIR "${XPU_INC_DIR}/xhpc")
