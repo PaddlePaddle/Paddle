@@ -15,10 +15,11 @@ limitations under the License. */
 
 #include "paddle/common/exception.h"
 #include "paddle/phi/backends/device_guard.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/backends/stream.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/stream.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 namespace phi {
 
@@ -29,6 +30,7 @@ struct CustomContext::Impl {
     phi::DeviceGuard guard(place_);
     if (owned_) {
       DeviceManager::DestoryEigenDevice(place_, eigen_device_);
+      // DestroyInternalEigenDevice()
     }
     if (stream_owned_ && stream_) {
       stream_->Destroy();
@@ -38,8 +40,6 @@ struct CustomContext::Impl {
   void Init() {
     owned_ = true;
     phi::DeviceGuard guard(place_);
-    stream_.reset(new phi::stream::Stream());
-    stream_->Init(place_);
     compute_capability_ = DeviceManager::GetComputeCapability(place_);
     runtime_version_ = DeviceManager::GetRuntimeVersion(place_);
     driver_version_ = DeviceManager::GetDriverVersion(place_);
@@ -47,7 +47,33 @@ struct CustomContext::Impl {
     max_threads_per_mp_ = DeviceManager::GetMaxThreadsPerMultiProcessor(place_);
     max_threads_per_block_ = DeviceManager::GetMaxThreadsPerBlock(place_);
     max_grid_dim_size_ = DeviceManager::GetMaxGridDimSize(place_);
-    eigen_device_ = DeviceManager::InitEigenDevice(place_);
+    eigen_device_ = DeviceManager::InitEigenDevice(
+        place_, stream_->raw_stream(), allocator_);
+
+    stream_.reset(new phi::stream::Stream());
+    stream_->Init(place_);
+  }
+
+  void PartialInitWithoutAllocator() {
+    owned_ = true;
+    stream_owned_ = true;
+    phi::DeviceGuard guard(place_);
+    compute_capability_ = DeviceManager::GetComputeCapability(place_);
+    runtime_version_ = DeviceManager::GetRuntimeVersion(place_);
+    driver_version_ = DeviceManager::GetDriverVersion(place_);
+    multi_process_ = DeviceManager::GetMultiProcessors(place_);
+    max_threads_per_mp_ = DeviceManager::GetMaxThreadsPerMultiProcessor(place_);
+    max_threads_per_block_ = DeviceManager::GetMaxThreadsPerBlock(place_);
+    max_grid_dim_size_ = DeviceManager::GetMaxGridDimSize(place_);
+
+    stream_.reset(new phi::stream::Stream());
+    stream_->Init(place_);
+  }
+
+  void PartialInitWithAllocator() {
+    owned_ = true;
+    stream_owned_ = true;
+    phi::DeviceGuard guard(place_);
   }
 
   const Place& GetPlace() const { return place_; }
@@ -74,7 +100,8 @@ struct CustomContext::Impl {
       if (!eigen_device_) {
         if (!eigen_device_creator_) {
           // use default initial
-          eigen_device_ = DeviceManager::InitEigenDevice(place_);
+          eigen_device_ = DeviceManager::InitEigenDevice(
+              place_, stream_->raw_stream(), allocator_);
         } else {
           eigen_device_ = eigen_device_creator_();
         }
@@ -94,7 +121,8 @@ struct CustomContext::Impl {
     stream_->WaitEvent(&event_);
   }
 
-  void RecordEvent(phi::event::event_t ev, const std::function<void()>& callback) const {
+  void RecordEvent(phi::event::event_t ev,
+                   const std::function<void()>& callback) const {
     event::Event event_(place_, ev);
     stream_->RecordEvent(&event_, callback);
   }
@@ -111,6 +139,8 @@ struct CustomContext::Impl {
   Place place_;
 
   std::shared_ptr<phi::stream::Stream> stream_;
+
+  Allocator* allocator_{nullptr};
 
   phi::ccl::CCLComm comm_;
 
@@ -129,10 +159,31 @@ struct CustomContext::Impl {
   std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   std::once_flag flag_eigen_device_;
 
-  // std::unique_ptr<void*> eigen_stream_{nullptr};
+  // std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
-void CustomContext::Init() { impl_->Init(); }
+CustomContext::CustomContext(const CustomPlace& place)
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  // impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  // VLOG(4) << "Custom_context constructor allocator: " << impl_->allocator_;
+  impl_->PartialInitWithoutAllocator();
+}
+
+CustomContext::~CustomContext() { impl_.reset(); }
+
+void CustomContext::Init() {
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->Init();
+}
+
+void CustomContext::PartialInitWithoutAllocator() {
+  impl_->PartialInitWithoutAllocator();
+}
+
+void CustomContext::PartialInitWithAllocator() {
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
+  impl_->PartialInitWithAllocator();
+}
 
 const Place& CustomContext::GetPlace() const { return impl_->GetPlace(); }
 
@@ -143,26 +194,38 @@ std::shared_ptr<phi::stream::Stream> CustomContext::GetStream() const {
 }
 
 void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
+#if !defined(_WIN32)
+  this->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                         .GetAllocator(impl_->GetPlace(), stream->raw_stream())
+                         .get());
+#endif
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetStream(stream);
 }
 
-// void CustomContext::SetStream(gpuStream_t stream) { impl_->SetStream(stream); }
 void CustomContext::Wait() const { return impl_->Wait(); }
 
 void CustomContext::RecordEvent(phi::event::event_t ev,
-                            const std::function<void()>& callback) const {
+                                const std::function<void()>& callback) const {
   impl_->RecordEvent(ev, callback);
 }
 
 void CustomContext::RecordEvent(phi::event::event_t ev) const {
-  impl_->RecordEvent(ev); }
-
-CustomContext::CustomContext(const CustomPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
-  impl_->Init();
+  impl_->RecordEvent(ev);
 }
 
-CustomContext::~CustomContext() { impl_.reset(); }
+Eigen::GpuDevice* CustomContext::eigen_device() const {
+  return impl_->eigen_device();
+}
+
+void CustomContext::SetEigenDevice(Eigen::GpuDevice* device) {
+  impl_->SetEigenDevice(device);
+}
+
+void CustomContext::SetEigenDevice(
+    std::function<Eigen::GpuDevice*()>&& creator) {
+  impl_->SetEigenDevice(std::move(creator));
+}
 
 phi::ccl::CCLComm CustomContext::xccl_comm() const {
   return impl_->xccl_comm();
@@ -211,6 +274,8 @@ void CustomContext::SetMaxGridDimSize(const std::array<unsigned int, 3>& val) {
 
 void CustomContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 
-void CustomContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
+void CustomContext::SetRuntimeVersion(int val) {
+  impl_->runtime_version_ = val;
+}
 ////////////////////////for cuda///////////////////////////////
 }  // namespace phi

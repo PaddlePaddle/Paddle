@@ -588,7 +588,8 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_max_threads_per_mp) {
       pimpl_->get_max_threads_per_mp(device, &threads_per_mp);
     }
-    VLOG(10) << Type() << " get max threads per multiprocessor " << threads_per_mp;
+    VLOG(10) << Type() << " get max threads per multiprocessor "
+             << threads_per_mp;
     return threads_per_mp;
   }
 
@@ -608,29 +609,33 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->get_max_grid_dim_size) {
       pimpl_->get_max_grid_dim_size(device, &grid_dim_size);
     }
-    VLOG(10) << Type() << " get max grid dim size [" 
-         << grid_dim_size[0] << ", " 
-         << grid_dim_size[1] << ", " 
-         << grid_dim_size[2] << "]";
+    VLOG(10) << Type() << " get max grid dim size [" << grid_dim_size[0] << ", "
+             << grid_dim_size[1] << ", " << grid_dim_size[2] << "]";
     return grid_dim_size;
   }
 
-  Eigen::GpuDevice* InitEigenDevice(size_t dev_id) override {
-    const auto device = &devices_pool[dev_id];
+  Eigen::GpuDevice* InitEigenDevice(Place& place,
+                                    phi::stream::stream_t stream,
+                                    phi::Allocator* allocator) override {
+    // const auto device = &devices_pool[dev_id];
     Eigen::GpuDevice* eigen_device = nullptr;
     if (pimpl_->init_eigen_device) {
       // void* raw_ptr = reinterpret_cast<void*>(&eigen_device);
-      pimpl_->init_eigen_device(device, eigen_device);
+      pimpl_->init_eigen_device(reinterpret_cast<C_Place>(&place),
+                                reinterpret_cast<C_EigenDevice*>(&eigen_device),
+                                reinterpret_cast<C_Stream>(stream),
+                                reinterpret_cast<C_Allocator>(allocator));
     }
     VLOG(10) << Type() << " init eigen device ";
     return eigen_device;
   }
 
-  void DestoryEigenDevice(size_t dev_id, Eigen::GpuDevice* eigen_device) override {
+  void DestoryEigenDevice(size_t dev_id,
+                          Eigen::GpuDevice* eigen_device) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->destory_eigen_device) {
-      // void* raw_ptr = reinterpret_cast<void*>(&eigen_device);
-      pimpl_->destory_eigen_device(device, eigen_device);
+      pimpl_->destory_eigen_device(
+          device, reinterpret_cast<C_EigenDevice*>(&eigen_device));
     }
     VLOG(10) << Type() << " destory eigen device ";
   }

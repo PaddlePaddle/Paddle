@@ -15,9 +15,9 @@
 #pragma once
 #if !defined(_WIN32)
 #include <stdint.h>
+#include <array>
 #include <cstddef>
 #include <cstring>
-#include <array>
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #ifdef __cplusplus
@@ -69,11 +69,17 @@ typedef enum {
 
 typedef struct C_Device_st {
   int id;
-} * C_Device;
+}* C_Device;
 
 typedef struct C_Stream_st* C_Stream;
 
 typedef struct C_Event_st* C_Event;
+
+typedef struct C_Allocator_st* C_Allocator;
+
+typedef struct C_Place_st* C_Place;
+
+typedef struct C_EigenDevice_st* C_EigenDevice;
 
 typedef void (*C_Callback)(C_Device device,
                            C_Stream stream,
@@ -529,7 +535,8 @@ struct C_DeviceInterface {
    *
    * @param[size_t*]    compute_capability
    */
-  C_Status (*get_compute_capability)(const C_Device device, size_t* compute_capability);
+  C_Status (*get_compute_capability)(const C_Device device,
+                                     size_t* compute_capability);
 
   /**
    * @brief Get runtime version
@@ -557,36 +564,42 @@ struct C_DeviceInterface {
    *
    * @param[size_t*]    threads_per_mp
    */
-  C_Status (*get_max_threads_per_mp)(const C_Device device, size_t* threads_per_mp);
+  C_Status (*get_max_threads_per_mp)(const C_Device device,
+                                     size_t* threads_per_mp);
 
   /**
    * @brief Get Max Threads Per Block
    *
    * @param[size_t*]    threads_per_block
    */
-  C_Status (*get_max_threads_per_block)(const C_Device device, size_t* threads_per_block);
+  C_Status (*get_max_threads_per_block)(const C_Device device,
+                                        size_t* threads_per_block);
 
   /**
    * @brief Get Max Grid Dim Size
    *
    * @param[std::array<unsigned int, 3>*]    grid_dim_size
    */
-  C_Status (*get_max_grid_dim_size)(const C_Device device, std::array<unsigned int, 3>* grid_dim_size);
+  C_Status (*get_max_grid_dim_size)(const C_Device device,
+                                    std::array<unsigned int, 3>* grid_dim_size);
 
   /**
    * @brief init eigen device
    *
    * @param[Eigen::GpuDevice*]    eigen_device
    */
-  C_Status (*init_eigen_device)(const C_Device device, Eigen::GpuDevice* eigen_device);
+  C_Status (*init_eigen_device)(C_Place place,
+                                C_EigenDevice* eigen_device,
+                                C_Stream stream,
+                                C_Allocator allocator);
 
   /**
-   * @brief init eigen device
+   * @brief destory eigen device
    *
    * @param[Eigen::GpuDevice*]    eigen_device
    */
-  C_Status (*destory_eigen_device)(const C_Device device, Eigen::GpuDevice* eigen_device);
-   
+  C_Status (*destory_eigen_device)(const C_Device device,
+                                   C_EigenDevice* eigen_device);
 
   void* reserved_info_api[8];
 
