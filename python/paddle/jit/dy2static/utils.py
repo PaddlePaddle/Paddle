@@ -25,6 +25,7 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import time
 import types
 import warnings
 from contextlib import contextmanager
@@ -106,6 +107,27 @@ class Backend(Enum):
 
     def is_phi(self):
         return self == Backend.PHI
+
+
+class TimeCounter:
+    def __init__(self):
+        self._time_history: list[float] = []
+
+    def get_last_time(self):
+        if len(self._time_history) == 0:
+            return 0
+        return self._time_history[-1]
+
+    def get_total_time(self):
+        return sum(self._time_history)
+
+    @contextmanager
+    def record(self):
+        start_time = time.perf_counter()
+        yield
+        end_time = time.perf_counter()
+        elapsed_time = end_time - start_time
+        self._time_history.append(elapsed_time)
 
 
 def data_layer_not_check(name, shape, dtype='float32'):
@@ -743,6 +765,36 @@ def prim_is_enabled():
 def is_api_in_module_helper(obj, module_prefix):
     m = inspect.getmodule(obj)
     return m is not None and m.__name__.startswith(module_prefix)
+
+
+def add_auto_layout_guard(backend, guard_creators):
+    # AutoLayoutPass may change layout of bn to NHWC, if not enable `FLAGS_cudnn_batchnorm_spatial_persistent`, it will revert to NCHW. So if the user does not set this Flag, we set it to True.
+    if (
+        auto_layout_is_enabled()
+        and backend.is_cinn()
+        and paddle.is_compiled_with_cuda()
+        and os.getenv("FLAGS_cudnn_batchnorm_spatial_persistent") is None
+    ):
+        guard_creators.append(
+            lambda: paddle.base.framework.flag_guard(
+                "FLAGS_cudnn_batchnorm_spatial_persistent",
+                True,
+            )
+        )
+
+
+@contextmanager
+def runtime_guards(backend):
+    """
+    runtime_guards is the guard method before program execution, which can integrate and add various guards.
+    """
+    guard_creators = []
+    # Add FLAGS_cudnn_batchnorm_spatial_persistent guard
+    add_auto_layout_guard(backend, guard_creators)
+    # add more guards here
+
+    with compose_guards(*guard_creators)():
+        yield
 
 
 def auto_layout_is_enabled():

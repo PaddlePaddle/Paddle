@@ -18,5 +18,11 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matrix_power_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    matrix_power, GPU, ALL_LAYOUT, phi::MatrixPowerKernel, float, double) {}
+PD_REGISTER_KERNEL(matrix_power,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MatrixPowerKernel,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

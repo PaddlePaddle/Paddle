@@ -23,6 +23,7 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
@@ -127,6 +128,17 @@ class ResumeFnNameFactory(metaclass=Singleton):
         return name
 
 
+class SIRToCodeMap(metaclass=Singleton):
+    def __init__(self):
+        self._map = {}
+
+    def register(self, sir, code):
+        self._map[sir.name] = code
+
+    def get(self, sir):
+        return self._map.get(sir.name)
+
+
 def log(level, *args):
     cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
@@ -147,6 +159,11 @@ def log_format(level, str, *args):
 
 def log_enabled(level):
     return level <= ENV_SOT_LOG_LEVEL.get()
+
+
+@lru_cache
+def log_once(msg):
+    print(msg, flush=True)
 
 
 def no_eval_frame(func):

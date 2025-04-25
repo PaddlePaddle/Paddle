@@ -1656,18 +1656,6 @@ class ArgsortOpPattern
         return false;
       }
     }
-    pir::Value x = op.x();
-    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto x_shape = x_type.dims();
-    int axis = op->attribute<pir::Int32Attribute>("axis").data();
-    if (axis < 0) {
-      axis += x_shape.size();
-    }
-    if (x_shape[axis] > 3840) {
-      VLOG(3)
-          << "In pd_op.argsort,the axis dim of input should be less than 3840";
-      return false;
-    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -2557,17 +2545,19 @@ class Pad3dOpPattern : public pir::OpRewritePattern<paddle::dialect::Pad3dOp> {
     }
     if (op->HasAttribute("mode")) {
       auto mode = op->attribute<pir::StrAttribute>("mode").AsString();
-      if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+      if (mode != "constant" && mode != "reflect" && mode != "replicate" &&
+          mode != "circular") {
         VLOG(3) << "The pad3d layer of TRT only support "
-                   "constant/reflect/replicate mode.";
+                   "constant/reflect/replicate/circular mode.";
         return false;
       }
     }
     if (op->HasAttribute("data_format")) {
       auto data_format =
           op->attribute<pir::StrAttribute>("data_format").AsString();
-      if (data_format != "NCDHW") {
-        VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
+      if (data_format != "NDHWC" && data_format != "NCDHW") {
+        VLOG(3) << "The pad3d layer of TRT only support NCDHW and NDHWC data "
+                   "format.";
         return false;
       }
     }

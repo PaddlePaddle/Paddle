@@ -195,6 +195,9 @@ class FallbackError(SotErrorBase):
         self.disable_eval_frame = disable_eval_frame
 
 
+class ConditionalFallbackError(FallbackError): ...
+
+
 # raise in inline function call strategy.
 class BreakGraphError(SotErrorBase):
     def __init__(self, reason: BreakGraphReasonBase = None):
