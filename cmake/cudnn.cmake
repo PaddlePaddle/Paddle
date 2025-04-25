@@ -31,7 +31,7 @@ list(
   ${CUDNN_ROOT}/lib
   ${CUDNN_ROOT}/lib/x64
   ${CUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
-  ${CUDNN_ROOT}/local/cuda-${CUDA_VERSION}/targets/${TARGET_ARCH}-linux/lib/
+  ${CUDNN_ROOT}/local/cuda-${CUDAToolkit_VERSION}/targets/${TARGET_ARCH}-linux/lib/
   $ENV{CUDNN_ROOT}
   $ENV{CUDNN_ROOT}/lib64
   $ENV{CUDNN_ROOT}/lib

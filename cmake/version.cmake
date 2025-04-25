@@ -103,7 +103,7 @@ function(version version_file)
     "WITH_IPU: ${WITH_IPU}\n")
   if(WITH_GPU)
     file(APPEND ${version_file}
-         "CUDA version: ${CUDA_VERSION}\n"
+         "CUDA version: ${CUDAToolkit_VERSION}\n"
          "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
   endif()
   if(WITH_ROCM)

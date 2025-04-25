@@ -17,6 +17,10 @@ include(python_module)
 check_py_version(${PY_VERSION})
 
 # Find Python with minimum PY_VERSION specified or will raise error!
+execute_process(
+  COMMAND which python3
+  OUTPUT_VARIABLE Python3_EXECUTABLE
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
 find_package(Python3 ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
 
 if(WIN32)
