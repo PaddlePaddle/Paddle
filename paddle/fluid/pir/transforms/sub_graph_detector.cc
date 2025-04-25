@@ -253,16 +253,23 @@ struct SubGraph : public std::enable_shared_from_this<SubGraph> {
     return std::string("Subgraph_") + std::to_string(id);
   }
 
-  struct compare {
+  struct CompareById {
     bool operator()(const SubGraphPtr& lhs, const SubGraphPtr& rhs) const {
       // sort by reverse order of topo id
       return lhs->id > rhs->id;
     }
   };
 
+  struct CompareByTopo {
+    bool operator()(const SubGraphPtr& lhs, const SubGraphPtr& rhs) const {
+      // sort by topo index
+      return lhs->topo_index > rhs->topo_index;
+    }
+  };
+
   std::vector<pir::Operation*> ops;
-  std::set<SubGraphPtr, compare> upstreams;
-  std::set<SubGraphPtr, compare> downstreams;
+  std::set<SubGraphPtr, CompareById> upstreams;
+  std::set<SubGraphPtr, CompareById> downstreams;
 
   bool substitute;  // whether this subgraph can be merged
   int topo_index;
@@ -357,8 +364,8 @@ bool CanFuseUpstream2Downstream(const SubGraphPtr& upstream,
 
 std::optional<std::string> DetectCirclesInSubgraphs(
     const std::vector<SubGraphPtr>& subgraph_list) {
-  std::set<SubGraphPtr, SubGraph::compare> subgraph_set(subgraph_list.begin(),
-                                                        subgraph_list.end());
+  std::set<SubGraphPtr, SubGraph::CompareById> subgraph_set(
+      subgraph_list.begin(), subgraph_list.end());
   std::unordered_map<SubGraphPtr, size_t> in_degree;
   std::unordered_map<SubGraphPtr, size_t> out_degree;
   for (const auto& subgraph : subgraph_set) {
@@ -470,7 +477,10 @@ void SubgraphDetector::ReorderIndexOfSubgraphs() {
   // After merging subgraphs with direct relation, brother subgraphs with
   // indirect relation may not be detected by index order. So we need to
   // reorder the index of subgraphs.
-  std::queue<SubGraphPtr> queue;
+  using SubGraphQueue = std::priority_queue<SubGraphPtr,
+                                            std::vector<SubGraphPtr>,
+                                            SubGraph::CompareByTopo>;
+  SubGraphQueue queue;  // min heap
   std::unordered_map<SubGraphPtr, int> in_degree;
   for (auto it = sort_ops_.rbegin(); it != sort_ops_.rend(); ++it) {
     auto subgraph = GetOpSubgraph(*it);
@@ -481,7 +491,7 @@ void SubgraphDetector::ReorderIndexOfSubgraphs() {
   subgraph_index_set_.clear();
   int index = 0;
   while (!queue.empty()) {
-    auto subgraph = queue.front();
+    auto subgraph = queue.top();
     queue.pop();
     subgraph->topo_index = index++;
     subgraph_index_set_.insert(subgraph->topo_index);
