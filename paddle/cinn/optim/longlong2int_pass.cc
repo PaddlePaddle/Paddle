@@ -162,6 +162,20 @@ class CastLonglong2IntMutator : public ir::IRMutator<> {
       ir::IRMutator<>::Visit(&node->b(), &node->b());
     }
   }
+  void Visit(const ir::Call* op, Expr* expr) override {
+    auto node = expr->As<ir::Call>();
+    if (op->name == "CINN_ENTAIL_LOOP_CONDITION") {
+      // args of CINN_ENTAIL_LOOP_CONDITION is [loop_var, condition, stride],
+      // loop_var type is equal to stride type, so we only need to elevate
+      // condition and stride to int32.
+      ir::ElevateInt64ToInt32_(node->read_args[1]->operands);
+      ir::ElevateInt64ToInt32_(node->read_args[2]);
+    } else {
+      for (auto& expr : node->read_args) {
+        ir::IRMutator<>::Visit(&expr, &expr);
+      }
+    }
+  }
 };
 
 class LongLong2IntStmtPass : public StmtPass {
