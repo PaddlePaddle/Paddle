@@ -25,7 +25,7 @@ from paddle.framework import core
 class TestMeanAllSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule = core.get_phi_spmd_rule("mean_all")
-        x_shape = [4, 4, 8]
+        x_shape = [4, 8]
         out_shape = []
         process_mesh = auto.ProcessMesh(mesh=[[0, 1], [2, 3]])
 
