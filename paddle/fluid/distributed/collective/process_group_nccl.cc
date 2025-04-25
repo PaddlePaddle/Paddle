@@ -29,6 +29,7 @@
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include <stdio.h>
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(benchmark_nccl);
@@ -870,6 +871,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
           << ", gid: " << gid_ << ", place key: " << place_key
           << ", store_key: " << store_key;
 
+  printf("0s_group_call_counter: %lu\n", s_group_call_counter);
   for (size_t i = 0; i < s_group_call_counter; ++i) {
     NCCL_CHECK(phi::dynload::ncclGroupEnd());
   }
@@ -949,9 +951,64 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
 
+  printf("1s_group_call_counter: %lu\n", s_group_call_counter);
+  printf("place_to_calc_ctx_ size: %lu\n", place_to_calc_ctx_.size());
+  printf("place_to_comm_ctx_ size: %lu\n", place_to_comm_ctx_.size());
+  printf("CreateNCCLEnvCache place_key: %s\n", place_key.c_str());
   for (size_t i = 0; i < s_group_call_counter; ++i) {
     NCCL_CHECK(phi::dynload::ncclGroupStart());
   }
+  // for (size_t i = 0; i < s_group_call_counter; ++i) {
+  //   NCCL_CHECK(phi::dynload::ncclGroupEnd());
+  // }
+  // auto nccl_comm_ctx_test = place_to_comm_ctx_.at(place_key).get();
+  // auto nccl_comm_test = nccl_comm_ctx_test->nccl_comm();
+  // NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_test));
+}
+
+void ProcessGroupNCCL::shutdown() {
+  printf("start shutdown process group nccl\n");
+  for (size_t i = 0; i < s_group_call_counter; ++i) {
+    NCCL_CHECK(phi::dynload::ncclGroupEnd());
+  }
+
+  const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
+  const auto& place = phi::GPUPlace(deviceId);
+  const auto key = GetKeyFromPlace(place);
+  printf("shutdown place_key: %s\n", key.c_str());
+  auto nccl_comm_ctx_ = place_to_comm_ctx_.at(key).get();
+  auto nccl_comm_ = nccl_comm_ctx_->nccl_comm();
+  VLOG(3) << "before shutdown nccl comm: " << nccl_comm_;
+  NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
+  VLOG(3) << "after shutdown nccl comm: " << nccl_comm_;
+  printf("end shutdown process group nccl\n");
+}
+
+// void ProcessGroupNCCL::CreateNCCLComm() {
+//   const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
+//   const auto& place = phi::GPUPlace(deviceId);
+//   const auto key = GetKeyFromPlace(place);
+//   // auto nccl_comm_ctx_ = place_to_comm_ctx_.at(key).get();
+//   // auto nccl_comm_ = nccl_comm_ctx_->initNCCLComm();
+
+//   std::string store_key;
+//   GetStoreKey(key, CommType::ALLREDUCE, &store_key);
+//   printf("CreateNCCLComm key %s , store_key %s\n", key.c_str(), store_key.c_str());
+//   this->GetCommContext(&store_key)->initNCCLComm();
+// }
+
+void ProcessGroupNCCL::CreateNCCLComm() {
+  const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
+  const auto& place = phi::GPUPlace(deviceId);
+  const auto key = GetKeyFromPlace(place);
+  // auto nccl_comm_ctx_ = place_to_comm_ctx_.at(key).get();
+  // auto nccl_comm_ = nccl_comm_ctx_->initNCCLComm();
+
+  std::string store_key;
+  GetStoreKey(key, CommType::ALLREDUCE, &store_key);
+
+  phi::distributed::CommContextManager::CreateNCCLCommContext_new(
+      store_, store_key, rank_, "123");
 }
 
 void ProcessGroupNCCL::SyncCalcStream(const Place& place,
@@ -971,6 +1028,8 @@ void ProcessGroupNCCL::EagerConnect() {
   platform::CUDADeviceGuard cuda_guard(place);
   std::string store_key;
   GetStoreKey(key, CommType::ALLREDUCE, &store_key);
+
+  printf("EagerConnect key %s , store_key %s\n", key.c_str(), store_key.c_str());
 
   auto it = place_to_comm_ctx_.find(key);
   if (it == place_to_comm_ctx_.end()) {

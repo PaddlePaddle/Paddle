@@ -49,6 +49,8 @@ class NCCLCommContext final : public CommContext {
 
   ncclComm_t GetNcclComm();
 
+  void initNCCLComm(ncclUniqueId nccl_id);
+
   gpuStream_t GetStream();
 
   gpuEvent_t GetComputeEvent();
@@ -132,6 +134,11 @@ class NCCLCommContext final : public CommContext {
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
   std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> comm_event_;
+
+  int nranks;
+  ncclUniqueId commId;
+  int myrank;
+  int param;
 };
 
 }  // namespace distributed
