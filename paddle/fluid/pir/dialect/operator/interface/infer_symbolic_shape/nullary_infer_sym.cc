@@ -19,13 +19,7 @@ namespace paddle::dialect {
 
 bool ArangeOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
-  const auto &start_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &end_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const auto &step_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
-
+  // cinn_op.arange does not have any operand, the inputs should be static
   const auto result = op->result(0);
   bool contain_unknown_dim = [&]() {
     bool check = result && result.type() &&
@@ -44,21 +38,69 @@ bool ArangeOpInferSymbolicShape(pir::Operation *op,
     return true;
   }
 
+  auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
+    using ElementType = std::decay_t<decltype(start)>;
+    PADDLE_ENFORCE_NE(step,
+                      0,
+                      ::common::errors::InvalidArgument(
+                          "The step of range op should not be 0."));
+
+    if ((start < end && step < 0) || (start > end && step > 0)) {
+      return 0;
+    } else {
+      return std::is_integral_v<ElementType>
+                 ? ((std::abs(end - start) + std::abs(step) - 1) /
+                    std::abs(step))
+                 : std::ceil(std::abs((end - start) / step));
+    }
+  };
+
   const symbol::ShapeOrDataDimExprs &shape_data = [&] {
-    if (!start_shape_or_data.data().has_value() ||
-        !end_shape_or_data.data().has_value() ||
-        !step_shape_or_data.data().has_value()) {
+    if (op->attributes().count("start") == 0 ||
+        op->attributes().count("end") == 0 ||
+        op->attributes().count("step") == 0) {
       return symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{
               symbol::DimExpr(infer_context->GetNextSymName())})};
     }
-    const auto &start = start_shape_or_data.data()->at(0);
-    const auto &end = end_shape_or_data.data()->at(0);
-    const auto &step = step_shape_or_data.data()->at(0);
+
+    int64_t arange_size = 0;
+#define GET_ATTR_FROM_OP(name, type)                            \
+  type name = op->attribute(#name)                              \
+                  .dyn_cast<paddle::dialect::ScalarAttribute>() \
+                  .data()                                       \
+                  .to<type>();
+
+#define GET_ARANGE_SIZE_GIVEN_TYPE(type)           \
+  {                                                \
+    GET_ATTR_FROM_OP(start, type)                  \
+    GET_ATTR_FROM_OP(end, type)                    \
+    GET_ATTR_FROM_OP(step, type)                   \
+    arange_size = GetArangeSize(start, end, step); \
+    break;                                         \
+  }
+
+    const auto &dtype = op->attributes()
+                            .at("dtype")
+                            .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                            .data();
+
+    switch (dtype) {
+      case phi::DataType::FLOAT32:
+        GET_ARANGE_SIZE_GIVEN_TYPE(float)
+      case phi::DataType::FLOAT64:
+        GET_ARANGE_SIZE_GIVEN_TYPE(double)
+      case phi::DataType::INT32:
+        GET_ARANGE_SIZE_GIVEN_TYPE(int)
+      default:
+        GET_ARANGE_SIZE_GIVEN_TYPE(int64_t)
+    }
+
+#undef GET_ARANGE_SIZE_GIVEN_TYPE
+#undef GET_ATTR_FROM_OP
+
     std::vector<symbol::DimExpr> out_dims;
-    // TODO(lanxianghit, jiahy0825): here should be ceil((end - start) / step),
-    // but DimExpr doesn't support ceil and float now
-    out_dims.emplace_back((end - start) / step);
+    out_dims.emplace_back(arange_size);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_dims)};
   }();

@@ -1279,7 +1279,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                       ::common::errors::InvalidArgument(
                           "The step of range op should not be 0."));
 
-    int64_t size = 0;
     if ((start < end && step < 0) || (start > end && step > 0)) {
       return 0;
     } else {

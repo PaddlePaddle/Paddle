@@ -22,12 +22,48 @@ void ArangeInferMeta(const Scalar& start,
                      DataType dtype,
                      MetaTensor* out) {
   if (!start.FromTensor() && !end.FromTensor() && !step.FromTensor()) {
-    double start_value = start.to<double>();
-    double end_value = end.to<double>();
-    double step_value = step.to<double>();
-    int numel =
-        static_cast<int>(std::ceil((end_value - start_value) / step_value));
-    out->set_dims(common::make_ddim(std::vector<int64_t>(1, numel)));
+    auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
+      using ElementType = std::decay_t<decltype(start)>;
+      PADDLE_ENFORCE_NE(step,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The step of range op should not be 0."));
+
+      if ((start < end && step < 0) || (start > end && step > 0)) {
+        return 0;
+      } else {
+        return std::is_integral_v<ElementType>
+                   ? ((std::abs(end - start) + std::abs(step) - 1) /
+                      std::abs(step))
+                   : std::ceil(std::abs((end - start) / step));
+      }
+    };
+
+#define GET_SIZE_GIVEN_TYPE(type)                     \
+  {                                                   \
+    type start_ = start.to<type>();                   \
+    type end_ = end.to<type>();                       \
+    type step_ = step.to<type>();                     \
+    arange_size = GetArangeSize(start_, end_, step_); \
+    break;                                            \
+  }
+
+    int64_t arange_size = 0;
+
+    switch (dtype) {
+      case DataType::FLOAT32:
+        GET_SIZE_GIVEN_TYPE(float)
+      case DataType::FLOAT64:
+        GET_SIZE_GIVEN_TYPE(double)
+      case DataType::INT32:
+        GET_SIZE_GIVEN_TYPE(int)
+      default:
+        GET_SIZE_GIVEN_TYPE(int64_t)
+    }
+
+#undef GET_SIZE_GIVEN_TYPE
+
+    out->set_dims(common::make_ddim(std::vector<int64_t>(1, arange_size)));
   } else {
     out->set_dims({-1});
   }
