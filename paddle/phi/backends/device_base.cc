@@ -62,19 +62,20 @@ size_t DeviceInterface::GetMaxThreadsPerBlock(size_t dev_id) {
 }
 
 std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
-  VLOG(10) << Type() << " get max grid dim size [" 
-         << 0 << ", " 
-         << 0 << ", " 
-         << 0 << "]";
+  VLOG(10) << Type() << " get max grid dim size [" << 0 << ", " << 0 << ", "
+           << 0 << "]";
   return {0, 0, 0};
 }
 
-Eigen::GpuDevice* DeviceInterface::InitEigenDevice(size_t dev_id) {
+Eigen::GpuDevice* DeviceInterface::InitEigenDevice(Place& place,
+                                                   phi::stream::stream_t stream,
+                                                   phi::Allocator* allocator) {
   VLOG(10) << Type() << " init eigen device ";
   return 0;
 }
 
-void DeviceInterface::DestoryEigenDevice(size_t dev_id, Eigen::GpuDevice* eigen_device) {
+void DeviceInterface::DestoryEigenDevice(size_t dev_id,
+                                         Eigen::GpuDevice* eigen_device) {
   VLOG(10) << Type() << " destory eigen device ";
 }
 

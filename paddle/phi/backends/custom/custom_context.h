@@ -14,15 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include <memory>
 #include <complex>
+#include <memory>
 #include "paddle/phi/backends/c_comm_lib.h"
+#include "paddle/phi/backends/device_base.h"
+#include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "unsupported/Eigen/CXX11/Tensor"
-#include "paddle/phi/backends/device_ext.h"
-#include "paddle/phi/backends/device_base.h"
 
 namespace Eigen {
 struct DefaultDevice;
@@ -57,7 +57,7 @@ class CustomContext : public DeviceContext,
 
   void WaitStreamCallback() const { return GetStream()->WaitCallback(); }
 
-  Eigen::DefaultDevice* eigen_device() const;
+  Eigen::GpuDevice* eigen_device() const;
 
   void WaitEvent(phi::event::event_t ev) const;
 
@@ -73,6 +73,14 @@ class CustomContext : public DeviceContext,
   // The interface used by the training scene, DeviceContext will initialize
   // all resources and delete them when destructing.
   void Init();
+
+  // Note that this is a trick implementation, which can be used to partially
+  // initialize when the SetAllocator interface is not called.
+  void PartialInitWithoutAllocator();
+  // Note that this is a trick implementation that can be used to initialize
+  // resources that require an Allocator when the SetAllocator interface is
+  // called.
+  void PartialInitWithAllocator();
 
   /*! \brief  Return xccl communicators. */
   phi::ccl::CCLComm xccl_comm() const;
@@ -112,7 +120,6 @@ class CustomContext : public DeviceContext,
   void SetDriverVersion(int val);
 
   void SetRuntimeVersion(int val);
-
 
  private:
   CustomContext();
