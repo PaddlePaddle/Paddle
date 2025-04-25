@@ -687,7 +687,7 @@ class NamedTupleVariable(TupleVariable):
     def __init__(
         self,
         val_tuple: tuple[VariableBase, ...],
-        cls: list[str],
+        cls: type,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
