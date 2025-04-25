@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
@@ -31,7 +30,7 @@ SpmdInfo TopkInferSpmd(const DistMetaTensor& x,
 SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& indices,
                            const DistMetaTensor& out_grad,
-                           Scalar k,
+                           const Scalar& k,
                            int axis,
                            bool largest,
                            bool sorted);

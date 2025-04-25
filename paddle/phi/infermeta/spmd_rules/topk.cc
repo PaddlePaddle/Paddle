@@ -49,8 +49,8 @@ SpmdInfo TopkInferSpmd(const DistMetaTensor& x,
 
 SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& indices,
-                           Tensor out_grad,
-                           Scalar k,
+                           const DistMetaTensor& out_grad,
+                           const Scalar& k,
                            int axis,
                            bool largest,
                            bool sorted) {
