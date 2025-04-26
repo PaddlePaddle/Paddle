@@ -460,7 +460,7 @@ class CreateLayerTracker(Tracker):
             codegen.gen_call_function_ex(has_kwargs=True)
 
     def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        # TODO(zrr1999): implement LayerExprNode
+        # TODO(zrr1999): implement LayerExprNode.guard_tree_expr_node
         raise NotImplementedError("LayerExprNode is not implemented")
 
     def trace_value_from_frame(self):

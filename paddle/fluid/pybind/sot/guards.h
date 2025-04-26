@@ -323,19 +323,6 @@ class ExprNodeBase : public GuardTreeNodeBase,
   virtual ~ExprNodeBase() = default;
 };
 
-class GuardNodeBase : public GuardTreeNodeBase {
- public:
-  std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes;
-  // return_cache_index is used to record the index of the guard list
-  std::optional<int> return_cache_index;
-  GuardNodeBase(std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
-                std::optional<int> return_cache_index)
-      : next_guard_nodes(next_guard_nodes),
-        return_cache_index(return_cache_index) {}
-  virtual ~GuardNodeBase() = default;
-  virtual std::optional<int> lookup(FrameProxy* frame) = 0;
-};
-
 class ConstantExprNode : public ExprNodeBase {
  public:
   explicit ConstantExprNode(PyObject* value_ptr) : value_ptr_(value_ptr) {}
@@ -511,6 +498,19 @@ class UnaryExprNode : public ExprNodeBase {
   int op_code_;
 };
 
+class GuardNodeBase : public GuardTreeNodeBase {
+ public:
+  std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes;
+  // return_cache_index is used to record the index of the guard list
+  std::optional<int> return_cache_index;
+  GuardNodeBase(std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+                std::optional<int> return_cache_index)
+      : next_guard_nodes(next_guard_nodes),
+        return_cache_index(return_cache_index) {}
+  virtual ~GuardNodeBase() = default;
+  virtual std::optional<int> lookup(FrameProxy* frame) = 0;
+};
+
 class ExprGuardNode : public GuardNodeBase {
  public:
   explicit ExprGuardNode(
@@ -541,6 +541,22 @@ class GuardNode : public GuardNodeBase {
   virtual ~GuardNode() = default;
   std::string stringify(int indent = 0) override;
   std::optional<int> lookup(FrameProxy* frame) override;
+};
+
+class DummyGuardNode : public GuardNodeBase {
+ public:
+  explicit DummyGuardNode(
+      bool return_true,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index),
+        return_true_(return_true) {}
+  virtual ~DummyGuardNode() = default;
+  std::string stringify(int indent = 0) override;
+  std::optional<int> lookup(FrameProxy* frame) override;
+
+ private:
+  bool return_true_;
 };
 
 class GuardTree {
