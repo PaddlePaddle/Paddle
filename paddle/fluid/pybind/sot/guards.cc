@@ -521,7 +521,8 @@ std::string DummyGuardNode::stringify(int indent) {
 void GuardTree::add_guard_chain(
     const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    throw std::runtime_error("Empty guard chain");
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Empty guard chain, please check the guard chain"));
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {
     guard_chain[i - 1]->next_guard_nodes.push_back(guard_chain[i]);

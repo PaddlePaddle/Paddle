@@ -2021,7 +2021,7 @@ class FunctionGlobalVariable(GlobalVariable):
         self.fn = fn
 
     def proxy_getter(self, proxy: MutableDictLikeData, key: Any):
-        from ..opcode_inline_executor import FunctionGlobalTracker
+        from ..tracker import FunctionGlobalTracker
 
         if key not in proxy.original_data:
             return MutableDictLikeData.Empty()

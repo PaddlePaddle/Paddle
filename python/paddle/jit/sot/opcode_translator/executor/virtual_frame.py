@@ -18,17 +18,14 @@ import builtins
 import re
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-import paddle
-
 from ...utils import log
-from .guard import StringifiedExpression, union_free_vars
 from .tracker import (
     BuiltinTracker,
     CellTracker,
     ConstTracker,
     DanglingTracker,
+    FunctionClosureTracker,
     LocalTracker,
-    Tracker,
 )
 from .variable_stack import VariableStack
 from .variables.base import VariableBase, VariableFactory, fn_bind_inputs
@@ -45,72 +42,10 @@ if TYPE_CHECKING:
     from typing_extensions import TypeAlias
 
     from .function_graph import FunctionGraph
-    from .pycode_generator import PyCodeGen
     from .variables.callable import FunctionVariable
 
     # The type to represent the (*args, **kwargs) pack in the call.
     CallArgsPack: TypeAlias = tuple[tuple[Any, ...], dict[str, Any]]
-
-
-class FunctionClosureTracker(Tracker):
-    """
-    A tracker class that represents a function closure variable.
-
-    Args:
-        fn: The FunctionVariable object.
-        idx: The index of the closure variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, idx: int):
-        super().__init__([fn])
-        self.fn = fn
-        self.idx = idx
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions to trace the value of the function closure variable.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__closure__")
-        codegen.gen_load_const(self.idx)
-        codegen.gen_subscribe()
-        codegen.gen_load_attr("cell_contents")
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        fn_tracer = self.fn.tracker.guard_tree_expr_node()
-        return paddle.framework.core.AttributeExprNode(
-            paddle.framework.core.ItemExprNode(
-                paddle.framework.core.AttributeExprNode(
-                    fn_tracer,
-                    "__closure__",
-                ),
-                paddle.framework.core.ConstantExprNode(self.idx),
-            ),
-            "cell_contents",
-        )
-
-    def trace_value_from_frame(self):
-        """
-        Trace the value of the function closure variable from the frame.
-
-        Returns:
-            The traced value of the function closure variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__closure__[{self.idx}].cell_contents",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
 
 
 def validate_value(value):
