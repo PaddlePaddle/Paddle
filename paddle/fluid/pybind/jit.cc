@@ -128,6 +128,13 @@ void BindGuard(pybind11::module *m) {
   py::class_<DummyGuard, GuardBase, std::shared_ptr<DummyGuard>>(
       *m, "DummyGuard", R"DOC(DummyGuard Class.)DOC")
       .def(py::init<>());
+  py::class_<TensorDistMetaMatchGuard,
+             GuardBase,
+             std::shared_ptr<TensorDistMetaMatchGuard>>(
+      *m,
+      "TensorDistMetaMatchGuard",
+      R"DOC(TensorDistMetaMatchGuard Class.)DOC")
+      .def(py::init<const py::object &>(), py::arg("dist_info"));
 
   m->def(
       "merge_guard",
