@@ -33,6 +33,7 @@ void EraseOpRecursively(pir::Operation* op,
   while (!ops_queue.empty()) {
     auto cur_op = ops_queue.front();
     ops_queue.pop();
+    if (erased.count(cur_op)) continue;
     bool no_result_used = true;
     for (const pir::Value& op_result : cur_op->results()) {
       if (op_result.use_count() != 0) {
@@ -40,7 +41,7 @@ void EraseOpRecursively(pir::Operation* op,
         break;
       }
     }
-    if (no_result_used && !erased.count(cur_op)) {
+    if (no_result_used) {
       for (const pir::Value& operand_source : cur_op->operands_source()) {
         auto producer_op = operand_source.defining_op();
         if (!producer_op) continue;
@@ -107,6 +108,16 @@ class FoldAssignValueCastOpsPattern
 };
 
 class FoldOutputDataDerivableOps : public pir::RewritePattern {
+ private:
+  static inline const std::unordered_set<std::string> special_ops = {
+      "pd_op.full",
+      "pd_op.assign_value",
+      "pd_op.assign_value_",
+      "pd_op.full_int_array",
+      "pd_op.assign",
+      "pd_op.memcpy",
+  };
+
  public:
   explicit FoldOutputDataDerivableOps(pir::IrContext* context)
       : RewritePattern(MatchAnyOpTypeTag(),
@@ -116,13 +127,9 @@ class FoldOutputDataDerivableOps : public pir::RewritePattern {
 
   bool MatchAndRewrite(pir::Operation* op,
                        pir::PatternRewriter& rewriter) const override {
-    if (op->isa<paddle::dialect::FullOp>() ||
-        op->isa<paddle::dialect::AssignValueOp>() ||
-        op->isa<paddle::dialect::AssignValue_Op>() ||
-        op->isa<paddle::dialect::FullIntArrayOp>()) {
+    if (special_ops.count(op->name()) || op->num_results() == 0) {
       return false;
     }
-    if (op->num_results() == 0) return false;
     bool non_result_used = true;
     std::vector<std::optional<pir::Operation*>> new_ops;
     for (pir::Value result : op->results()) {
