@@ -1,0 +1,35 @@
+name: prototype-clone
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop, release/**]
+
+jobs:
+  prototype-clone:
+    name: Clone Paddle
+    if: github.repository_owner == 'PaddlePaddle'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout base repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 1000
+
+      - name: Upload to bos
+        run: |
+          echo "Upload to bos"
+          sleep 5
+
+      # 创建 deployment 用于确保后续 wait 的任务能够进行
+      - name: Create deployment
+        id: create_deployment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST /repos/${{ github.repository }}/deployments \
+            -f ref=${{ github.event.pull_request.base.ref }} \
+            -f environment=prototype-clone \
+            -f auto_merge=false \
+            -f required_contexts=[]
