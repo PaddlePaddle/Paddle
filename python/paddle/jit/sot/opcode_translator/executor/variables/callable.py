@@ -41,6 +41,7 @@ from ....utils import (
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
+    is_namedtuple_class,
     is_not_supported_paddle_layer,
     is_paddle_api,
     log,
@@ -86,6 +87,7 @@ from ..virtual_frame import VirtualFrame
 from .base import (
     VariableBase,
     VariableFactory,
+    fn_bind_inputs,
 )
 from .basic import (
     ConstantVariable,
@@ -1076,4 +1078,34 @@ class PureClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isclass(value) and value in PD_PURE_CLASSES:
             return PureClassVariable(value, graph, tracker)
+        return None
+
+
+class NamedTupleClassVariable(ClassVariable):
+    def __init__(
+        self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        from .container import NamedTupleVariable
+
+        parameters = fn_bind_inputs(self.value, self.graph, *args, **kwargs)
+        fields = self.get_py_value()._fields
+        assert all(
+            field in parameters for field in fields
+        ), f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+
+        parameters_tuple = tuple(parameters[field] for field in fields)
+        return NamedTupleVariable(
+            parameters_tuple,
+            self.get_py_value(),
+            self.graph,
+            DummyTracker([self, *args, *kwargs.values()]),
+        )
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if is_namedtuple_class(value):
+            return NamedTupleClassVariable(value, graph, tracker)
         return None
