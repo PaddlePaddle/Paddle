@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
+from utils import dygraph_guard, static_guard
 
 import paddle
 
@@ -298,22 +299,27 @@ class TestSlogDeterminantOp(OpTest):
         self.op_type = "slogdeterminant"
         self.python_api = paddle.linalg.slogdet
         self.init_data()
-        self.outputs = {'Out': self.target}
+        self.outputs = {'Sign': self.sign, 'Logdet': self.logdet}
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=False)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
         self.check_grad(
-            ['Input'], ['Out'], max_relative_error=0.1, check_pir=True
+            ['Input'],
+            ['Sign', 'Logdet'],
+            max_relative_error=0.1,
+            check_pir=True,
         )
 
     def init_data(self):
         np.random.seed(0)
         self.case = np.random.rand(4, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.case))
+        s, l = np.linalg.slogdet(self.case)
+        self.sign = s
+        self.logdet = l
 
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
@@ -321,7 +327,9 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
         np.random.seed(0)
         self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
         self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.case))
+        s, l = np.linalg.slogdet(self.case)
+        self.sign = s
+        self.logdet = l
 
 
 class TestSlogDeterminantAPI(unittest.TestCase):
@@ -332,23 +340,21 @@ class TestSlogDeterminantAPI(unittest.TestCase):
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.shape)
-            out = paddle.linalg.slogdet(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        out_ref = np.array(np.linalg.slogdet(self.x))
-        for out in res:
-            np.testing.assert_allclose(out, out_ref, rtol=0.001)
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape)
+                out = paddle.linalg.slogdet(x)
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'X': self.x}, fetch_list=[out])
+            out_ref = np.array(np.linalg.slogdet(self.x))
+            np.testing.assert_allclose(res, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
-        paddle.disable_static(self.place)
-        x_tensor = paddle.to_tensor(self.x)
-        out = paddle.linalg.slogdet(x_tensor)
-        out_ref = np.array(np.linalg.slogdet(self.x))
-        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
-        paddle.enable_static()
+        with dygraph_guard():
+            x_tensor = paddle.to_tensor(self.x)
+            out = paddle.linalg.slogdet(x_tensor)
+            out_ref = np.array(np.linalg.slogdet(self.x))
+        np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
 
 def slogdeterminant_complex_numeric_grad_single_batch(
@@ -435,31 +441,49 @@ class TestSlogDeterminantAPIComplex(unittest.TestCase):
 
     def test_api_static(self):
         for place in self.places:
-            paddle.enable_static()
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('X', self.shape, self.dtype)
-                x.stop_gradient = False
-                out = paddle.linalg.slogdet(x)
-                x_grad = paddle.static.gradients(out, x)
-                exe = paddle.static.Executor(place)
-                res = exe.run(feed={'X': self.x}, fetch_list=[out, x_grad])
-            out_ref = np.array(np.linalg.slogdet(self.x))
-            np.testing.assert_allclose(res[0], out_ref, rtol=0.001)
-            np.testing.assert_allclose(res[1], self.x_grad_ref_st, rtol=0.001)
+            with static_guard():
+                with paddle.static.program_guard(paddle.static.Program()):
+                    x = paddle.static.data('X', self.shape, self.dtype)
+                    x.stop_gradient = False
+                    sign, logabsdet = paddle.linalg.slogdet(x)
+                    x_grad = paddle.static.gradients(logabsdet, x)
+                    exe = paddle.static.Executor(place)
+                    res = exe.run(
+                        feed={'X': self.x},
+                        fetch_list=[sign, logabsdet, x_grad[0]],
+                    )
+
+            sign_ref = np.array(np.linalg.slogdet(self.x)[0])
+            logabsdet_ref = np.array(np.linalg.slogdet(self.x)[1])
+
+            np.testing.assert_allclose(res[0], sign_ref, rtol=0.001)
+            np.testing.assert_allclose(res[1], logabsdet_ref, rtol=0.001)
+            np.testing.assert_allclose(res[2], self.x_grad_ref_st, rtol=0.001)
 
     def test_api_dygraph(self):
+        sign_ref, logabsdet_ref = np.linalg.slogdet(self.x)
         for place in self.places:
-            paddle.disable_static(place)
-            x_tensor = paddle.to_tensor(self.x)
-            x_tensor.stop_gradient = False
-            out = paddle.linalg.slogdet(x_tensor)
-            out.backward(paddle.to_tensor(self.out_grad))
-            out_ref = np.array(np.linalg.slogdet(self.x))
-            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+            with dygraph_guard():
+                x_tensor = paddle.to_tensor(self.x)
+                x_tensor.stop_gradient = False
+                sign, logabsdet = paddle.linalg.slogdet(x_tensor)
+
+                logabsdet_grad_np = self.out_grad[1]
+                logabsdet_grad_tensor = paddle.to_tensor(
+                    logabsdet_grad_np, dtype=logabsdet.dtype, place=place
+                )
+                logabsdet.backward(logabsdet_grad_tensor)
+
             np.testing.assert_allclose(
-                x_tensor.grad.numpy(), self.x_grad_ref_dy, rtol=0.001
+                sign.numpy(), sign_ref, rtol=1e-5, atol=1e-5
             )
-            paddle.enable_static()
+            np.testing.assert_allclose(
+                logabsdet.numpy(), logabsdet_ref, rtol=1e-5, atol=1e-5
+            )
+
+            np.testing.assert_allclose(
+                x_tensor.grad.numpy(), self.x_grad_ref_dy, rtol=1e-3, atol=1e-4
+            )
 
 
 class TestSlogDeterminantAPIComplex2(TestSlogDeterminantAPIComplex):

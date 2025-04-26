@@ -123,17 +123,9 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
 
   DenseTensor logdet_grad_term = logdet_grad;
   if constexpr (is_complex64_or_complex128<T>::value) {
-    auto ConvertDDimToVector = [](const common::DDim& ddim) {
-      std::vector<int64_t> dims;
-      for (int i = 0; i < ddim.size(); ++i) {
-        dims.push_back(ddim[i]);
-      }
-      return dims;
-    };
-
     // change logdet_grad datatype from <RealT> to <ComplexT>
     DenseTensor logdet_grad_complex =
-        Empty<T>(dev_ctx, ConvertDDimToVector(grad_dims));
+        Empty<T>(dev_ctx, common::vectorize(grad_dims));
 
     int64_t logdet_numel = logdet_grad.numel();
     phi::funcs::ForRange<Context> for_range(dev_ctx, logdet_numel);

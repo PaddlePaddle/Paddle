@@ -24,4 +24,12 @@ PD_REGISTER_KERNEL(slogdet_grad,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  if (kernel_key.dtype() == phi::DataType::COMPLEX64) {
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+  } else if (kernel_key.dtype() == phi::DataType::COMPLEX128) {
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT64);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT64);
+  }
+}
