@@ -6044,7 +6044,7 @@ void SlogdetInferMeta(const MetaTensor& x,
       errors::InvalidArgument("the input matrix should be square matrix."));
   auto x_dtype = x.dtype();
   auto x_layout = x.layout();
-  DDim ut_dims = slice_ddim(x_dims, 0, rank - 2);
+  DDim out_dims = slice_ddim(x_dims, 0, rank - 2);
   sign->set_dtype(x_dtype);
   sign->set_layout(x_layout);
   sign->set_dims(out_dims);
