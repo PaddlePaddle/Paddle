@@ -375,13 +375,7 @@ def start_translate(
             )
         guard_chain = simulator.guard_chain
         if len(guard_chain) == 0:
-            # TODO(zrr1999): GuardNode should support zero-expr constructor, to implement DummyGuardNode
-            guard_chain: GuardChain = [
-                paddle.framework.core.GuardNode(
-                    paddle.framework.core.DummyGuard(),
-                    [paddle.framework.core.ConstantExprNode(True)],
-                )
-            ]
+            guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
         return new_custom_code, guard_fn, guard_chain
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
@@ -400,13 +394,7 @@ def start_translate(
             f"Unsupported Frame is {frame.f_code}, error message is: \n"
             + "".join(traceback.format_exception(type(e), e, e.__traceback__)),
         )
-        dummy_guard_chain: GuardChain = [
-            # TODO(zrr1999): GuardNode should support zero-expr constructor
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.DummyGuard(),
-                [paddle.framework.core.ConstantExprNode(True)],
-            )
-        ]
+        dummy_guard_chain: GuardChain = [paddle.framework.core.DummyGuardNode()]
         guard, guard_chain = dummy_guard, dummy_guard_chain
 
         if isinstance(e, ConditionalFallbackError):

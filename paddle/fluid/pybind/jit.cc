@@ -223,6 +223,15 @@ void BindGuardTree(pybind11::module *m) {
            py::arg("next_guard_nodes") = py::list(),
            py::arg("return_cache_index") = py::none());
 
+  py::class_<DummyGuardNode, GuardNodeBase, std::shared_ptr<DummyGuardNode>>(
+      *m, "DummyGuardNode", R"DOC(DummyGuardNode Class.)DOC")
+      .def(py::init<bool,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("return_true") = true,
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none());
+
   py::class_<ConstantExprNode, ExprNodeBase, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("value_ptr"));

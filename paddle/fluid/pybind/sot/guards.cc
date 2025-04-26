@@ -433,6 +433,8 @@ std::optional<int> GuardNode::lookup(FrameProxy* frame) {
   }();
 
   if (guard->check(value)) {
+    // TODO(zrr1999): To extract the reusable code, we need to add a new method
+    // to GuardNodeBase<N>
     if (return_cache_index.has_value()) {
       Py_DECREF(value);
       return return_cache_index.value();
@@ -467,6 +469,8 @@ std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {
   auto expr = expr_;
   auto value = expr->eval(frame);
   if (PyObject_IsTrue(value)) {
+    // TODO(zrr1999): To extract the reusable code, we need to add a new method
+    // to GuardNodeBase<N>
     if (return_cache_index.has_value()) {
       return return_cache_index.value();
     }
@@ -491,6 +495,27 @@ std::string ExprGuardNode::stringify(int indent) {
     }
   }
   return ss.str();
+}
+
+std::optional<int> DummyGuardNode::lookup(FrameProxy* frame) {
+  if (return_true_) {
+    // TODO(zrr1999): To extract the reusable code, we need to add a new method
+    // to GuardNodeBase
+    if (return_cache_index.has_value()) {
+      return return_cache_index.value();
+    }
+    for (auto& next_guard_node : next_guard_nodes) {
+      auto ret = next_guard_node->lookup(frame);
+      if (ret.has_value()) {
+        return ret.value();
+      }
+    }
+  }
+  return std::nullopt;
+}
+std::string DummyGuardNode::stringify(int indent) {
+  return std::string(indent, ' ') + "DummyGuard(" +
+         (return_true_ ? "True" : "False") + ")";
 }
 
 void GuardTree::add_guard_chain(
