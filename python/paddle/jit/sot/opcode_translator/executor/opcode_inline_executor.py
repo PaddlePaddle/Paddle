@@ -18,8 +18,6 @@ import inspect
 import sys
 from typing import TYPE_CHECKING
 
-import paddle
-
 from ...utils import (
     BreakGraphError,
     DataDependencyControlFlowBreak,
@@ -28,9 +26,8 @@ from ...utils import (
 )
 from ..instruction_utils import Instruction
 from .dispatch_functions import generator_send
-from .guard import StringifiedExpression, union_free_vars
 from .opcode_executor import OpcodeExecutorBase, Stop
-from .tracker import DanglingTracker, Tracker
+from .tracker import DanglingTracker
 from .variables import (
     BuiltinVariable,
     ConstantVariable,
@@ -43,66 +40,7 @@ from .variables import (
 
 if TYPE_CHECKING:
     from .function_graph import FunctionGraph
-    from .pycode_generator import PyCodeGen
-    from .variables import FunctionVariable
     from .virtual_frame import VirtualFrame
-
-
-class FunctionGlobalTracker(Tracker):
-    """
-    A tracker class that represents a function global variable.
-
-    Args:
-        fn: FunctionVariable object.
-        name: The name of the global variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, name: str):
-        super().__init__([fn])
-        self.fn = fn
-        self.name = name
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions in order to put the variables at the top of the stack.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__globals__")
-        codegen.gen_load_const(self.name)
-        codegen.gen_subscribe()
-
-    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
-        fn_tracer = self.fn.tracker.guard_tree_expr_node()
-        return paddle.framework.core.ItemExprNode(
-            paddle.framework.core.AttributeExprNode(
-                fn_tracer,
-                "__globals__",
-            ),
-            paddle.framework.core.ConstantExprNode(self.name),
-        )
-
-    def trace_value_from_frame(self) -> StringifiedExpression:
-        """
-        Trace the value of the function global variable from the frame.
-
-        Returns:
-            StringifiedExpression: The traced value of the function global variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__globals__['{self.name}']",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionGlobalTracker(fn={self.fn}, name={self.name})"
 
 
 def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):
