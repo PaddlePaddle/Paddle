@@ -117,6 +117,9 @@ class TestInitParamsDecorator:
         for p in model.parameters():
             p.initialize()
 
+        assert model.w0._is_initialized()
+        assert model.w1._is_initialized()
+
         dataset = RandomDataset(128, 1024)
         sampler = BatchSampler(
             dataset,
@@ -140,8 +143,6 @@ class TestInitParamsDecorator:
             opt.step()
             opt.clear_grad()
 
-            assert model.w0._is_initialized()
-            assert model.w1._is_initialized()
             assert not paddle.isnan(loss)
 
     def test_params_decorator(self):
