@@ -2287,21 +2287,23 @@ class TestSundryAPI(unittest.TestCase):
         # 2-D input
         x = paddle.randn([3, 3])
         x.stop_gradient = False
-        out = paddle.linalg.slogdet(x)
-        out.retain_grads()
-        out.backward()
+        sign, logabsdet = paddle.linalg.slogdet(x)
+        loss = logabsdet.sum()
+        loss.backward()
 
-        self.assertTrue(out.shape, [2])
+        self.assertEqual(sign.shape, [])
+        self.assertEqual(logabsdet.shape, [])
         self.assertTrue(x.grad.shape, [3, 3])
 
         # 3-D input
         x1 = paddle.randn([3, 3, 3])
         x1.stop_gradient = False
-        out1 = paddle.linalg.slogdet(x1)
-        out1.retain_grads()
-        out1.backward()
+        sign1, logabsdet1 = paddle.linalg.slogdet(x1)
+        loss1 = logabsdet1.sum()
+        loss1.backward()
 
-        self.assertTrue(out1.shape, [2, 3])
+        self.assertTrue(sign1.shape, [3])
+        self.assertTrue(logabsdet1.shape, [3])
         self.assertTrue(x1.grad.shape, [3, 3, 3])
 
     def test_multi_dot(self):

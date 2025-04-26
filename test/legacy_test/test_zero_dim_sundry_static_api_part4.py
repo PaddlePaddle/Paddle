@@ -175,28 +175,28 @@ class TestSundryAPIStatic(unittest.TestCase):
         # 2-D input
         x = paddle.randn([3, 3])
         x.stop_gradient = False
-        out = paddle.linalg.slogdet(x)
+        sign, logabsdet = paddle.linalg.slogdet(x)
         _, x_grad = paddle.static.append_backward(
-            out.sum(), parameter_list=[x]
+            logabsdet.sum(), parameter_list=[x]
         )[0]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x_grad])
-        self.assertEqual(res[0].shape, (2,))
-        self.assertEqual(res[1].shape, (3, 3))
+        res = self.exe.run(prog, fetch_list=[sign, logabsdet, x_grad])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[2].shape, (3, 3))
 
         # 3-D input
         x1 = paddle.randn([3, 3, 3])
         x1.stop_gradient = False
-        out1 = paddle.linalg.slogdet(x1)
+        sign1, logabsdet1 = paddle.linalg.slogdet(x1)
         _, x1_grad = paddle.static.append_backward(
-            out1.sum(), parameter_list=[x1]
+            logabsdet1.sum(), parameter_list=[x1]
         )[0]
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, x1_grad])
-        self.assertEqual(res[0].shape, (2, 3))
-        self.assertEqual(res[1].shape, (3, 3, 3))
+        res = self.exe.run(prog, fetch_list=[sign1, logabsdet1, x1_grad])
+        self.assertEqual(res[0].shape, (3,))
+        self.assertEqual(res[2].shape, (3, 3, 3))
 
     @prog_scope()
     def test_multi_dot(self):
