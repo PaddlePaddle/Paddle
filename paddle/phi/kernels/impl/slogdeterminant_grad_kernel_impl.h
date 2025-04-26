@@ -144,11 +144,9 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   VLOG(3) << "unsqueezed_combined_grad dims: "
           << unsqueezed_combined_grad.dims();
 
-  DenseTensor res = phi::Multiply<T, Context>(
-      dev_ctx, unsqueezed_combined_grad, transpose_inverse_A);
-  VLOG(3) << "res dims: " << res.dims();
-
-  phi::Copy(dev_ctx, res, dev_ctx.GetPlace(), false, x_grad);
+  phi::Multiply<T, Context>(
+      dev_ctx, unsqueezed_combined_grad, transpose_inverse_A, x_grad);
+  VLOG(3) << x_grad->dims();
 }
 
 }  // namespace phi

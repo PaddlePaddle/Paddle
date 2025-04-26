@@ -306,7 +306,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   auto input_dim_size = input_dim.size();
 
   auto batch_count = detail::GetBatchCount(x.dims());
-  VLOG(1) << "input dim:" << x.dims();
+  VLOG(3) << "input dim:" << x.dims();
   PADDLE_ENFORCE_GE(
       input_dim_size,
       2,
@@ -319,7 +319,7 @@ void SlogDeterminantKernel(const Context& dev_ctx,
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
   SlogDeterminantFunctor<T, Context>()(
       dev_ctx, x, rank, batch_count, sign, logdet);
-  VLOG(1) << "sign dim:" << sign->dims();
+  VLOG(3) << "sign dim:" << sign->dims();
 }
 
 }  // namespace phi
