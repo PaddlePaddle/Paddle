@@ -470,15 +470,7 @@ bool LegacyGuardNode::check(std::array<PyObject*, 1> values) {
 std::optional<int> ExprGuardNode::lookup(FrameProxy* frame) {
   auto value = expr->eval(frame);
   if (PyObject_IsTrue(value)) {
-    if (return_cache_index.has_value()) {
-      return return_cache_index.value();
-    }
-    for (auto& next_guard_node : next_guard_nodes) {
-      auto ret = next_guard_node->lookup(frame);
-      if (ret.has_value()) {
-        return ret.value();
-      }
-    }
+    return lookup_next(frame);
   }
   return std::nullopt;
 }
