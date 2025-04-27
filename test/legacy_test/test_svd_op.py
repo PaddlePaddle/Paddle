@@ -107,7 +107,15 @@ class TestSvdOpComplexCase1(TestSvdOp):
         self._input_data = real_part + 1j * imag_part
 
     def test_check_grad(self):
-        pass
+        with dygraph_guard():
+            x = paddle.to_tensor(self._input_data, stop_gradient=False)
+            U, s, Vh = paddle.linalg.svd(x, self.get_full_matrices_option())
+            loss = (
+                paddle.sum(paddle.abs(U))
+                + paddle.sum(paddle.abs(s))
+                + paddle.sum(paddle.abs(Vh))
+            )
+            x_grad = paddle.grad(outputs=[loss], inputs=[x])
 
 
 @unittest.skipIf(
@@ -147,6 +155,9 @@ class TestSvdOpComplexCase4(TestSvdOpComplexCase1):
         real_part = np.random.rand(*self._input_shape).astype("float64")
         imag_part = np.random.rand(*self._input_shape).astype("float64")
         self._input_data = real_part + 1j * imag_part
+
+    def get_full_matrices_option(self):
+        return True
 
 
 class TestSvdCheckGrad2(TestSvdOp):
