@@ -228,9 +228,7 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
   HANDLE_NULL_TENSOR(tensor);
 
   if (tensor->is_dist_tensor() == false && is_dist_ == false) return true;
-  if (tensor->is_dist_tensor() != is_dist_) {
-    return false;
-  }
+  if (tensor->is_dist_tensor() != is_dist_) return false;
 
   PyObject* dist_info_from_tensor_func = PyTuple_GetItem(value, 1);
   HANDLE_NULL_VALUE(dist_info_from_tensor_func);
@@ -243,6 +241,16 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
 
   PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
   HANDLE_NULL_VALUE_DECREF(mesh_shape);
+  auto shape_vector = py::handle(mesh_shape).cast<std::vector<int>>();
+  if (std::any_of(shape_vector.begin(), shape_vector.end(), [](int val) {
+        return val <= 0;
+      })) {
+    Py_DECREF(mesh);
+    Py_DECREF(mesh_shape);
+    PyErr_Clear();
+    return false;
+  }
+
   PyObject* process_ids = PyObject_GetAttrString(mesh, "process_ids");
   HANDLE_NULL_VALUE_DECREF(process_ids);
   PyObject* dims_mapping = PyObject_GetAttrString(dist_info, "dims_mapping");
@@ -250,7 +258,7 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
   PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
   HANDLE_NULL_VALUE_DECREF(local_shape);
 
-  if (py::handle(mesh_shape).cast<std::vector<int>>() != mesh_shape_expected_ ||
+  if (shape_vector != mesh_shape_expected_ ||
       py::handle(process_ids).cast<std::vector<int>>() !=
           mesh_process_ids_expected_.value() ||
       !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
