@@ -38,48 +38,48 @@ void PReluGradKernel(const Context& dev_ctx,
 
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
-
   std::vector<int64_t> x_shape(x_rank);
   if (x_rank == 0) {
     x_shape = std::vector<int64_t>({1});
   } else {
-    for (int i = 0; i < x_rank; i++) {
-      x_shape[i] = x_dim[i];
-    }
+    x_shape = common::vectorize<int64_t>(x_dim);
   }
 
-  // mode = 0: channel_nchw, slope_shape = {c}, default. meanwhile, xshape = {n,
-  // c, h, w}
-  // mode = 1, channel_nhwc, slope_shape = {c}, meanwhile, xshape = {n, h, w, c}
-  // mode = 2, elementwise, slope_shape = {c*h*w}
-  // mode = 3, single slope, slope_shape = {1}
+  // mode = 0: channel_nchw, xshape = {n, c, h, w}, alpha_shape = {c}
+  // mode = 1, channel_nhwc, xshape = {n, h, w, c}, alpha_shape = {c}
+  // mode = 2, elementwise, deprecated in Paddle 2.x
+  // mode = 3, alpha_shape = {} or {1}
 
   int xpu_mode = 0;
 
   if (mode == "channel") {
     if (data_format == "NCHW") {
       xpu_mode = 0;
-    } else {
-      // NHWC
+      if (x_rank == 2) {  // special case for NC shape, use channel last mode
+        xpu_mode = 1;
+      }
+    } else {  // NHWC, channel last
       xpu_mode = 1;
     }
   } else if (mode == "element") {
     xpu_mode = 2;
-  } else {
+  } else if (mode == "all") {
     xpu_mode = 3;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Expected mode of prelu kernel is 'channel' or 'all', But got "
+        "unsupported mode: %s.",
+        mode));
   }
 
-  int r = xpu::prelu_grad(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x_ptr),
-      reinterpret_cast<const XPUType*>(
-          out_grad_ptr), /* const T* y, not used in xpu kernel */
-      reinterpret_cast<const XPUType*>(alpha_ptr),
-      reinterpret_cast<const XPUType*>(out_grad_ptr),
-      reinterpret_cast<XPUType*>(x_grad_ptr),
-      reinterpret_cast<XPUType*>(alpha_grad_ptr),
-      x_shape,
-      xpu_mode);
+  int r = xpu::prelu_grad(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(x_ptr),
+                          reinterpret_cast<const XPUType*>(alpha_ptr),
+                          reinterpret_cast<const XPUType*>(out_grad_ptr),
+                          reinterpret_cast<XPUType*>(x_grad_ptr),
+                          reinterpret_cast<XPUType*>(alpha_grad_ptr),
+                          x_shape,
+                          xpu_mode);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "prelu_grad");
 }
