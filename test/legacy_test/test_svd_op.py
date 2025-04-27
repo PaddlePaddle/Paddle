@@ -41,8 +41,7 @@ class TestSvdOp(OpTest):
             }
 
     def _get_places(self):
-        places = []
-        places.append(base.CPUPlace())
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         return places
@@ -107,15 +106,19 @@ class TestSvdOpComplexCase1(TestSvdOp):
         self._input_data = real_part + 1j * imag_part
 
     def test_check_grad(self):
+        places = self._get_places()
         with dygraph_guard():
-            x = paddle.to_tensor(self._input_data, stop_gradient=False)
-            U, s, Vh = paddle.linalg.svd(x, self.get_full_matrices_option())
-            loss = (
-                paddle.sum(paddle.abs(U))
-                + paddle.sum(paddle.abs(s))
-                + paddle.sum(paddle.abs(Vh))
-            )
-            x_grad = paddle.grad(outputs=[loss], inputs=[x])
+            for place in places:
+                x = paddle.to_tensor(
+                    self._input_data, place=place, stop_gradient=False
+                )
+                U, s, Vh = paddle.linalg.svd(x, self.get_full_matrices_option())
+                loss = (
+                    paddle.sum(paddle.abs(U))
+                    + paddle.sum(paddle.abs(s))
+                    + paddle.sum(paddle.abs(Vh))
+                )
+                x_grad = paddle.grad(outputs=[loss], inputs=[x])
 
 
 @unittest.skipIf(
