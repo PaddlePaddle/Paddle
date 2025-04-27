@@ -7,6 +7,15 @@
 
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : _moe_unzip
+  args : (Tensor X, Tensor XScale, Tensor expert_routemap_topk, Tensor expert_prob_topk, Scalar max_tokens_per_expert, int topk, int num_experts)
+  output : Tensor(X_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(XScale_unzipped)
+  infer_meta :
+    func : MoeUnzipInferMeta
+  kernel :
+    func : moe_unzip
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : abs
   args : (Tensor x)
   output : Tensor(out)
