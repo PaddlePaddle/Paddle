@@ -20,6 +20,8 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
+import paddle.distributed as dist
+from paddle.jit.sot.infer_meta import DistInfo
 
 
 class TestBasicFasterGuard(unittest.TestCase):
@@ -201,6 +203,35 @@ class TestBasicFasterGuard(unittest.TestCase):
         self.assertFalse(guard_object.check(lambda x: x == 1))
         self.assertFalse(guard_object.check(1))
         self.assertFalse(guard_object.check("1"))
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_distribute(),
+        reason='Not compiled with distribute.',
+    )
+    def test_tensor_dist_meta_guard(self):
+        x = paddle.ones([2, 2])
+        y = paddle.ones([1, 2])
+        x.stop_gradient = False
+        y.stop_gradient = False
+        mesh1 = dist.ProcessMesh([0, 1], dim_names=['x'])
+        mesh2 = dist.ProcessMesh([0, 1], dim_names=['y'])
+        dist_x1 = dist.shard_tensor(
+            x, mesh1, [dist.Replicate()], stop_gradient=False
+        )
+        dist_y1 = dist.shard_tensor(
+            y, mesh2, [dist.Replicate()], stop_gradient=False
+        )
+        guard_tensor_is_dist = paddle.framework.core.TensorDistMetaMatchGuard(
+            DistInfo.from_tensor(dist_x1)
+        )
+        self.assertTrue(
+            guard_tensor_is_dist.check((dist_x1, DistInfo.from_tensor))
+        )
+        self.assertFalse(
+            guard_tensor_is_dist.check((dist_y1, DistInfo.from_tensor))
+        )
+        self.assertFalse(guard_tensor_is_dist.check((x, DistInfo.from_tensor)))
+        self.assertFalse(guard_tensor_is_dist.check((y, DistInfo.from_tensor)))
 
 
 class TestFasterGuardGroup(unittest.TestCase):

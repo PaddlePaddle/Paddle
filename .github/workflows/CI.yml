@@ -42,10 +42,10 @@ jobs:
 
   cpu:
     name: Linux-CPU
-    uses: ./.github/workflows/_CPU.yml
+    uses: ./.github/workflows/_Linux-CPU.yml
     needs: clone
 
   npu:
     name: Linux-NPU
-    uses: ./.github/workflows/_NPU.yml
+    uses: ./.github/workflows/_Linux-NPU.yml
     needs: cpu

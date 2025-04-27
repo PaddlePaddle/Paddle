@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <Python.h>
 #include <memory>
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 #include "paddle/fluid/pybind/sot/frame_proxy.h"
@@ -23,6 +24,7 @@ limitations under the License. */
 #include "paddle/utils/pybind.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/pytypes.h"
 
 namespace py = pybind11;
 #define PYBIND11_DETAILED_ERROR_MESSAGES
@@ -266,27 +268,62 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class TensorDistMetaMatchGuard : public GuardBase {
+ public:
+  explicit TensorDistMetaMatchGuard(const py::object& obj) {
+    if (obj != py::none()) {
+      mesh_shape_expected_ =
+          obj.attr("mesh").attr("shape").cast<std::vector<int>>();
+      mesh_process_ids_expected_ =
+          obj.attr("mesh").attr("process_ids").cast<std::vector<int>>();
+      dims_mapping_expected_ = obj.attr("dims_mapping").ptr();
+      local_shape_expected_ = obj.attr("local_shape").ptr();
+
+      is_dist_ = true;
+      Py_INCREF(dims_mapping_expected_.value());
+      Py_INCREF(local_shape_expected_.value());
+    }
+  }
+
+  ~TensorDistMetaMatchGuard() override {
+    if (is_dist_) {
+      Py_DECREF(dims_mapping_expected_.value());
+      Py_DECREF(local_shape_expected_.value());
+    }
+  }
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override {
+    return "TensorDistMetaMatchGuard";
+  }
+
+ private:
+  bool is_dist_ = false;
+  std::optional<std::vector<int>> mesh_shape_expected_;
+  std::optional<std::vector<int>> mesh_process_ids_expected_;
+  std::optional<PyObject*> dims_mapping_expected_;
+  std::optional<PyObject*> local_shape_expected_;
+};
+
 class DummyGuard : public GuardBase {
  public:
   bool check(PyObject* value) override { return true; }
   std::string get_guard_name() const override { return "DummyGuard"; }
 };
 
-class GuardTreeNode {
+class GuardTreeNodeBase {
  public:
-  virtual ~GuardTreeNode() = default;
+  virtual ~GuardTreeNodeBase() = default;
   virtual std::string stringify(int indent = 0) = 0;
 };
 
-class AttributeExprNode;
-class ItemExprNode;
-class ExprNode : public GuardTreeNode,
-                 public std::enable_shared_from_this<ExprNode> {
+class ExprNodeBase : public GuardTreeNodeBase,
+                     public std::enable_shared_from_this<ExprNodeBase> {
  public:
   virtual PyObject* eval(FrameProxy* frame) = 0;
-  virtual ~ExprNode() = default;
+  virtual ~ExprNodeBase() = default;
 };
-class ConstantExprNode : public ExprNode {
+
+class ConstantExprNode : public ExprNodeBase {
  public:
   explicit ConstantExprNode(PyObject* value_ptr) : value_ptr_(value_ptr) {}
   explicit ConstantExprNode(const py::object& value_obj)
@@ -300,7 +337,8 @@ class ConstantExprNode : public ExprNode {
  private:
   PyObject* value_ptr_;
 };
-class ExternVarExprNode : public ExprNode {
+
+class ExternVarExprNode : public ExprNodeBase {
  public:
   explicit ExternVarExprNode(const std::string& var_name,
                              const py::object& value_obj)
@@ -317,7 +355,7 @@ class ExternVarExprNode : public ExprNode {
   std::string var_name_;
 };
 
-class LocalVarExprNode : public ExprNode {
+class LocalVarExprNode : public ExprNodeBase {
  public:
   explicit LocalVarExprNode(const std::string& var_name)
       : var_name_(var_name) {}
@@ -328,7 +366,8 @@ class LocalVarExprNode : public ExprNode {
  private:
   std::string var_name_;
 };
-class GlobalVarExprNode : public ExprNode {
+
+class GlobalVarExprNode : public ExprNodeBase {
  public:
   explicit GlobalVarExprNode(const std::string& var_name)
       : var_name_(var_name) {}
@@ -339,9 +378,10 @@ class GlobalVarExprNode : public ExprNode {
  private:
   std::string var_name_;
 };
-class AttributeExprNode : public ExprNode {
+
+class AttributeExprNode : public ExprNodeBase {
  public:
-  explicit AttributeExprNode(std::shared_ptr<ExprNode> var_expr,
+  explicit AttributeExprNode(std::shared_ptr<ExprNodeBase> var_expr,
                              const std::string& attr_name)
       : var_expr_(var_expr), attr_name_(attr_name) {}
 
@@ -349,58 +389,192 @@ class AttributeExprNode : public ExprNode {
   std::string stringify(int indent = 0) override;
 
  private:
-  std::shared_ptr<ExprNode> var_expr_;
+  std::shared_ptr<ExprNodeBase> var_expr_;
   std::string attr_name_;
 };
-class ItemExprNode : public ExprNode {
+
+class ItemExprNode : public ExprNodeBase {
  public:
-  explicit ItemExprNode(std::shared_ptr<ExprNode> var_expr,
-                        std::shared_ptr<ExprNode> key_expr)
+  explicit ItemExprNode(std::shared_ptr<ExprNodeBase> var_expr,
+                        std::shared_ptr<ExprNodeBase> key_expr)
       : var_expr_(var_expr), key_expr_(key_expr) {}
 
   PyObject* eval(FrameProxy* frame) override;
   std::string stringify(int indent = 0) override;
 
  private:
-  std::shared_ptr<ExprNode> var_expr_;
-  std::shared_ptr<ExprNode> key_expr_;
+  std::shared_ptr<ExprNodeBase> var_expr_;
+  std::shared_ptr<ExprNodeBase> key_expr_;
 };
 
-class GuardNode : public GuardTreeNode {
+class BinaryExprNode : public ExprNodeBase {
  public:
-  std::shared_ptr<GuardBase> guard;
-  std::vector<std::shared_ptr<ExprNode>> exprs;
-  std::vector<std::shared_ptr<GuardNode>> next_guard_nodes;
+  enum class OpType { COMPARE, NUMBER };
+
+  static constexpr std::array<std::pair<const char*, std::pair<OpType, int>>,
+                              18>
+      kOpMap = {{
+          {"<", {OpType::COMPARE, Py_LT}},
+          {"<=", {OpType::COMPARE, Py_LE}},
+          {"==", {OpType::COMPARE, Py_EQ}},
+          {"!=", {OpType::COMPARE, Py_NE}},
+          {">", {OpType::COMPARE, Py_GT}},
+          {">=", {OpType::COMPARE, Py_GE}},
+          {"+", {OpType::NUMBER, 0}},
+          {"-", {OpType::NUMBER, 1}},
+          {"*", {OpType::NUMBER, 2}},
+          {"/", {OpType::NUMBER, 3}},
+          {"//", {OpType::NUMBER, 4}},
+          {"%", {OpType::NUMBER, 5}},
+          {"**", {OpType::NUMBER, 6}},
+          {"<<", {OpType::NUMBER, 7}},
+          {">>", {OpType::NUMBER, 8}},
+          {"&", {OpType::NUMBER, 9}},
+          {"|", {OpType::NUMBER, 10}},
+          {"^", {OpType::NUMBER, 11}},
+      }};
+
+  explicit BinaryExprNode(std::shared_ptr<ExprNodeBase> lhs,
+                          std::shared_ptr<ExprNodeBase> rhs,
+                          const std::string& op_str)
+      : lhs_(lhs), rhs_(rhs) {
+    auto it =
+        std::find_if(kOpMap.begin(), kOpMap.end(), [&op_str](const auto& pair) {
+          return std::string(pair.first) == op_str;
+        });
+    if (it == kOpMap.end()) {
+      throw std::invalid_argument("Invalid operator: " + op_str);
+    }
+    op_str_ = it->first;
+    op_type_ = it->second.first;
+    op_code_ = it->second.second;
+  }
+
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
+
+ private:
+  std::shared_ptr<ExprNodeBase> lhs_;
+  std::shared_ptr<ExprNodeBase> rhs_;
+  std::string op_str_;
+  OpType op_type_;
+  int op_code_;
+};
+
+class UnaryExprNode : public ExprNodeBase {
+ public:
+  enum class OpType { NUMBER, LOGICAL };
+
+  static constexpr std::array<std::pair<const char*, std::pair<OpType, int>>, 6>
+      kOpMap = {{{"+", {OpType::NUMBER, 0}},
+                 {"-", {OpType::NUMBER, 1}},
+                 {"~", {OpType::NUMBER, 2}},
+                 {"not", {OpType::LOGICAL, 0}},
+                 {"!", {OpType::LOGICAL, 0}},
+                 {"bool", {OpType::LOGICAL, 1}}}};
+
+  explicit UnaryExprNode(std::shared_ptr<ExprNodeBase> expr,
+                         const std::string& op_str)
+      : expr_(expr) {
+    auto it =
+        std::find_if(kOpMap.begin(), kOpMap.end(), [&op_str](const auto& pair) {
+          return std::string(pair.first) == op_str;
+        });
+    if (it == kOpMap.end()) {
+      throw std::invalid_argument("Invalid operator: " + op_str);
+    }
+    op_str_ = it->first;
+    op_type_ = it->second.first;
+    op_code_ = it->second.second;
+  }
+
+  PyObject* eval(FrameProxy* frame) override;
+  std::string stringify(int indent = 0) override;
+
+ private:
+  std::shared_ptr<ExprNodeBase> expr_;
+  std::string op_str_;
+  OpType op_type_;
+  int op_code_;
+};
+
+class GuardNodeBase : public GuardTreeNodeBase {
+ public:
+  std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes;
   // return_cache_index is used to record the index of the guard list
   std::optional<int> return_cache_index;
-  GuardNode(std::shared_ptr<GuardBase> guard,
-            std::vector<std::shared_ptr<ExprNode>> exprs,
-            std::vector<std::shared_ptr<GuardNode>> next_guard_nodes,
-            std::optional<int> return_cache_index)
-      : guard(guard),
-        exprs(exprs),
-        next_guard_nodes(next_guard_nodes),
+  GuardNodeBase(std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+                std::optional<int> return_cache_index)
+      : next_guard_nodes(next_guard_nodes),
         return_cache_index(return_cache_index) {}
+  virtual ~GuardNodeBase() = default;
+  virtual std::optional<int> lookup(FrameProxy* frame) = 0;
+};
+
+class ExprGuardNode : public GuardNodeBase {
+ public:
+  explicit ExprGuardNode(
+      std::shared_ptr<ExprNodeBase> expr,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index), expr_(expr) {}
+
+  std::string stringify(int indent = 0) override;
+  std::optional<int> lookup(FrameProxy* frame) override;
+
+ private:
+  std::shared_ptr<ExprNodeBase> expr_;
+};
+
+class GuardNode : public GuardNodeBase {
+ public:
+  std::shared_ptr<GuardBase> guard;
+  std::vector<std::shared_ptr<ExprNodeBase>> exprs;
+  explicit GuardNode(
+      std::shared_ptr<GuardBase> guard,
+      std::vector<std::shared_ptr<ExprNodeBase>> exprs,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index),
+        guard(guard),
+        exprs(exprs) {}
   virtual ~GuardNode() = default;
   std::string stringify(int indent = 0) override;
-  std::optional<int> lookup(FrameProxy* frame);
+  std::optional<int> lookup(FrameProxy* frame) override;
+};
+
+class DummyGuardNode : public GuardNodeBase {
+ public:
+  explicit DummyGuardNode(
+      bool return_true,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index),
+        return_true_(return_true) {}
+  virtual ~DummyGuardNode() = default;
+  std::string stringify(int indent = 0) override;
+  std::optional<int> lookup(FrameProxy* frame) override;
+
+ private:
+  bool return_true_;
 };
 
 class GuardTree {
  public:
-  GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNode>>>&
+  GuardTree(const std::vector<std::vector<std::shared_ptr<GuardNodeBase>>>&
                 guard_chain_list) {
     for (size_t index = 0; index < guard_chain_list.size(); ++index) {
       add_guard_chain(guard_chain_list[index]);
     }
   }
   void add_guard_chain(
-      const std::vector<std::shared_ptr<GuardNode>>& guard_chain);
+      const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain);
   std::string stringify();
   std::optional<int> lookup(FrameProxy* frame);
+  std::vector<std::shared_ptr<GuardNodeBase>> get_guard_nodes() const;
 
  private:
-  std::vector<std::shared_ptr<GuardNode>> guard_nodes_;
+  std::vector<std::shared_ptr<GuardNodeBase>> guard_nodes_;
 };
 
 std::string guard_tree_to_str(const GuardTree& guard_tree);

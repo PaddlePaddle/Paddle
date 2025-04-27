@@ -40,6 +40,8 @@ class IR_API OpResult : public Value {
 
   void *property(const std::string &key) const;
   void set_property(const std::string &key, const Property &value);
+  static bool classof(Value value);
+  static OpResult dyn_cast_from(Value value);
 
  private:
   friend Operation;
@@ -47,8 +49,6 @@ class IR_API OpResult : public Value {
   // Access classof and dyn_cast_from.
   friend Value;
   friend struct std::hash<OpResult>;
-  static bool classof(Value value);
-  static OpResult dyn_cast_from(Value value);
 };
 
 }  // namespace pir

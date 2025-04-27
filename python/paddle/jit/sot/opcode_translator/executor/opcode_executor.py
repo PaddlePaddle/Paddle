@@ -626,7 +626,7 @@ class OpcodeExecutorBase:
             self._current_line = instr.starts_line
         if not hasattr(self, instr.opname):
             raise FallbackError(f"opcode: {instr.opname} is not supported.")
-        log_message = f"[Translate {self._name}]: (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
+        log_message = f"[Translate {self._name}] (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
         log(3, log_message)
         code_file = self.vframe.code.co_filename
         code_line = self._current_line
@@ -2440,7 +2440,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                "[Resumed Function]: break graph in loop create loop body as\n",
+                "[Resumed Function] break graph in loop create loop body as\n",
             )
             log_do(3, lambda: dis.dis(loop_body_fn))
 
@@ -2685,7 +2685,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                f"[Resumed Function]: Inline call for loop function {inline_call_fn.__code__.co_name}\n",
+                f"[Resumed Function] Inline call for loop function {inline_call_fn.__code__.co_name}\n",
             )
             log_do(3, lambda: dis.dis(inline_call_fn))
 

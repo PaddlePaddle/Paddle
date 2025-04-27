@@ -811,13 +811,14 @@ packages=['paddle',
           'paddle.vision.transforms',
           'paddle.vision.datasets',
           'paddle.audio',
-	      'paddle.audio.functional',
-	      'paddle.audio.features',
-	      'paddle.audio.datasets',
-	      'paddle.audio.backends',
+	        'paddle.audio.functional',
+	        'paddle.audio.features',
+	        'paddle.audio.datasets',
+	        'paddle.audio.backends',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
+          'paddle.incubate.cc',
           'paddle.incubate.jit',
           'paddle.incubate.nn',
           'paddle.incubate.nn.functional',
@@ -984,6 +985,9 @@ package_data['paddle.libs']+=[
 package_data['paddle.libs']+=[
     ('libcommon' if os.name != 'nt' else 'common') + ext_name,
 ]
+if os.name == 'nt':
+    package_data['paddle.libs'] += ['common.lib']
+    shutil.copy('${COMMON_LINK}', libs_path)
 shutil.copy('${COMMON_LIB}', libs_path)
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
