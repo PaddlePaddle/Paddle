@@ -531,7 +531,7 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
 
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bfloat16, float16, float32, float64, int32, int64, complex64 or complex128.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -638,6 +638,7 @@ def _elementwise_op(helper):
         "elementwise_mul",
         "elementwise_div",
         "elementwise_max",
+        "elementwise_pow",
     ]
     if original_op_type in bf16_and_complex_supported_ops:
         data_type = [

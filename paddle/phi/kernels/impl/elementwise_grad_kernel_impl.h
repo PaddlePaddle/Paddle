@@ -1444,12 +1444,13 @@ struct PowGradDX<phi::dtype::complex<T>> {
       phi::dtype::complex<T> out,
       phi::dtype::complex<T> dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    return dout * y * pow(x, y - phi::dtype::complex<T>(1, 0));
+    return conj(dout * y * pow(x, y - phi::dtype::complex<T>(1, 0)));
 #else
-    return dout * y *
-           static_cast<phi::dtype::complex<T>>(std::pow(
-               static_cast<std::complex<T>>(x),
-               static_cast<std::complex<T>>(y - phi::dtype::complex<T>(1, 0))));
+    return conj(
+        dout * y *
+        static_cast<phi::dtype::complex<T>>(std::pow(
+            static_cast<std::complex<T>>(x),
+            static_cast<std::complex<T>>(y - phi::dtype::complex<T>(1, 0)))));
 #endif
   }
 };
@@ -1462,12 +1463,12 @@ struct PowGradDY<phi::dtype::complex<T>> {
       phi::dtype::complex<T> out,
       phi::dtype::complex<T> dout) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    return dout * log(x) * pow(x, y);
+    return conj(dout * log(x) * pow(x, y));
 #else
-    return dout * static_cast<phi::dtype::complex<T>>(
-                      std::log(static_cast<std::complex<T>>(x)) *
-                      std::pow(static_cast<std::complex<T>>(x),
-                               static_cast<std::complex<T>>(y)));
+    return conj(dout * static_cast<phi::dtype::complex<T>>(
+                           std::log(static_cast<std::complex<T>>(x)) *
+                           std::pow(static_cast<std::complex<T>>(x),
+                                    static_cast<std::complex<T>>(y))));
 #endif
   }
 };
