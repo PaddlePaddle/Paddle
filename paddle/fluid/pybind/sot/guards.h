@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <Python.h>
 #include <memory>
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/pybind/sot/eval_frame_tools.h"
 #include "paddle/fluid/pybind/sot/frame_proxy.h"
@@ -23,6 +24,7 @@ limitations under the License. */
 #include "paddle/utils/pybind.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/pytypes.h"
 
 namespace py = pybind11;
 #define PYBIND11_DETAILED_ERROR_MESSAGES
@@ -266,6 +268,42 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
+class TensorDistMetaMatchGuard : public GuardBase {
+ public:
+  explicit TensorDistMetaMatchGuard(const py::object& obj) {
+    if (obj != py::none()) {
+      mesh_shape_expected_ =
+          obj.attr("mesh").attr("shape").cast<std::vector<int>>();
+      mesh_process_ids_expected_ =
+          obj.attr("mesh").attr("process_ids").cast<std::vector<int>>();
+      dims_mapping_expected_ = obj.attr("dims_mapping").ptr();
+      local_shape_expected_ = obj.attr("local_shape").ptr();
+
+      is_dist_ = true;
+      Py_INCREF(dims_mapping_expected_.value());
+      Py_INCREF(local_shape_expected_.value());
+    }
+  }
+
+  ~TensorDistMetaMatchGuard() override {
+    if (is_dist_) {
+      Py_DECREF(dims_mapping_expected_.value());
+      Py_DECREF(local_shape_expected_.value());
+    }
+  }
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override {
+    return "TensorDistMetaMatchGuard";
+  }
+
+ private:
+  bool is_dist_ = false;
+  std::optional<std::vector<int>> mesh_shape_expected_;
+  std::optional<std::vector<int>> mesh_process_ids_expected_;
+  std::optional<PyObject*> dims_mapping_expected_;
+  std::optional<PyObject*> local_shape_expected_;
+};
+
 class DummyGuard : public GuardBase {
  public:
   bool check(PyObject* value) override { return true; }
@@ -283,19 +321,6 @@ class ExprNodeBase : public GuardTreeNodeBase,
  public:
   virtual PyObject* eval(FrameProxy* frame) = 0;
   virtual ~ExprNodeBase() = default;
-};
-
-class GuardNodeBase : public GuardTreeNodeBase {
- public:
-  std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes;
-  // return_cache_index is used to record the index of the guard list
-  std::optional<int> return_cache_index;
-  GuardNodeBase(std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
-                std::optional<int> return_cache_index)
-      : next_guard_nodes(next_guard_nodes),
-        return_cache_index(return_cache_index) {}
-  virtual ~GuardNodeBase() = default;
-  virtual std::optional<int> lookup(FrameProxy* frame) = 0;
 };
 
 class ConstantExprNode : public ExprNodeBase {
@@ -473,6 +498,19 @@ class UnaryExprNode : public ExprNodeBase {
   int op_code_;
 };
 
+class GuardNodeBase : public GuardTreeNodeBase {
+ public:
+  std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes;
+  // return_cache_index is used to record the index of the guard list
+  std::optional<int> return_cache_index;
+  GuardNodeBase(std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+                std::optional<int> return_cache_index)
+      : next_guard_nodes(next_guard_nodes),
+        return_cache_index(return_cache_index) {}
+  virtual ~GuardNodeBase() = default;
+  virtual std::optional<int> lookup(FrameProxy* frame) = 0;
+};
+
 class ExprGuardNode : public GuardNodeBase {
  public:
   explicit ExprGuardNode(
@@ -503,6 +541,22 @@ class GuardNode : public GuardNodeBase {
   virtual ~GuardNode() = default;
   std::string stringify(int indent = 0) override;
   std::optional<int> lookup(FrameProxy* frame) override;
+};
+
+class DummyGuardNode : public GuardNodeBase {
+ public:
+  explicit DummyGuardNode(
+      bool return_true,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index),
+        return_true_(return_true) {}
+  virtual ~DummyGuardNode() = default;
+  std::string stringify(int indent = 0) override;
+  std::optional<int> lookup(FrameProxy* frame) override;
+
+ private:
+  bool return_true_;
 };
 
 class GuardTree {

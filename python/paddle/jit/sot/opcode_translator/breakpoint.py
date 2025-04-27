@@ -99,7 +99,7 @@ class BreakpointManager(metaclass=Singleton):
         if cur_exe is None:
             cur_exe = self.cur_exe
         instr = cur_exe._instructions[cur_exe.vframe.lasti - 1]
-        message = f"[Translate {cur_exe}]: (line {cur_exe._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {cur_exe._stack}\n"
+        message = f"[Translate {cur_exe}] (line {cur_exe._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {cur_exe._stack}\n"
         return message
 
     def bt(self):

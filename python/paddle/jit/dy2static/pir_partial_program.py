@@ -35,6 +35,7 @@ from .logging_utils import TranslatorLogger
 from .utils import (
     RETURN_NO_VALUE_MAGIC_NUM,
     Backend,
+    TimeCounter,
     auto_layout_is_enabled,
     backend_guard,
     cse_is_enabled,
@@ -723,6 +724,8 @@ class PartialProgramLayer:
         self._backend = kwargs.get('backend', Backend.PHI)
         self._grad_var_names = {}
 
+        self._compile_time_counter = TimeCounter()
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
@@ -974,12 +977,12 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self) -> RunnableProgram:
-        with backend_guard(self._backend):
+        with backend_guard(self._backend), self._compile_time_counter.record():
             return self._create_program()
 
     @cached_property
     def infer_program(self) -> RunnableProgram:
-        with backend_guard(self._backend):
+        with backend_guard(self._backend), self._compile_time_counter.record():
             return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program, outputs):

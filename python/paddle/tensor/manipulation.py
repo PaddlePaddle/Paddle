@@ -6558,7 +6558,11 @@ def take_along_axis(
         arr = paddle.broadcast_to(arr, broadcast_shape)
     else:
         for i in range(len(arr.shape)):
-            if i != axis and arr.shape[i] < indices.shape[i]:
+            if (
+                i != axis
+                and arr.shape[i] != -1
+                and arr.shape[i] < indices.shape[i]
+            ):
                 raise RuntimeError(
                     f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis}"
                 )
