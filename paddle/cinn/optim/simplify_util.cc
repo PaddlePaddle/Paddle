@@ -750,7 +750,6 @@ ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {
   }
 }
 
-template <typename NodeType>
 ir::IndexExpr MinMaxSimplify(const ir::IndexExpr &expr) {
   const auto ty = expr.node_type();
   if (ty != ir::IrNodeTy::Max && ty != ir::IrNodeTy::Min) return expr;
@@ -762,19 +761,23 @@ ir::IndexExpr MinMaxSimplify(const ir::IndexExpr &expr) {
       [&ty](const ir::IndexExpr &lhs,
             const ir::IndexExpr &rhs) -> std::optional<ir::IndexExpr> {
     bool can_simplify = false;
-    // Simplify max(max, other)
-    if (lhs.node_type() == ty && rhs.node_type() != ty) {
-      UnpackReduction<NodeType>(lhs, [&](ir::IndexExpr val) {
-        if (!can_simplify && val == rhs) can_simplify = true;
-      });
-      if (can_simplify) return lhs;
-    }
-    // Simplify max(other, max)
-    if (lhs.node_type() != ty && rhs.node_type() == ty) {
-      UnpackReduction<NodeType>(rhs, [&](ir::IndexExpr val) {
-        if (!can_simplify && val == rhs) can_simplify = true;
-      });
-      if (can_simplify) return rhs;
+#define SIMPLIFY_MINMAX(NodeType, lhs, rhs, func)                   \
+  if (lhs.node_type() == NodeType && rhs.node_type() != NodeType) { \
+    func(lhs, [&](ir::IndexExpr val) {                              \
+      if (!can_simplify && val == rhs) can_simplify = true;         \
+    });                                                             \
+    if (can_simplify) return lhs;                                   \
+  }
+    if (ty == ir::IrNodeTy::Max) {
+      // simplify max(max(s0, 1), S0)
+      SIMPLIFY_MINMAX(ty, lhs, rhs, UnpackReduction<ir::Max>)
+      // simplify max(S0, max(s0, 1))
+      SIMPLIFY_MINMAX(ty, rhs, lhs, UnpackReduction<ir::Max>)
+    } else if (ty == ir::IrNodeTy::Min) {
+      // simplify min(min(s0, 1), S0)
+      SIMPLIFY_MINMAX(ty, lhs, rhs, UnpackReduction<ir::Min>)
+      // simplify min(S0, min(s0, 1))
+      SIMPLIFY_MINMAX(ty, rhs, lhs, UnpackReduction<ir::Min>)
     }
     return std::nullopt;
   };

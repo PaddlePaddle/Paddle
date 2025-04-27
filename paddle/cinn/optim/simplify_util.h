@@ -351,7 +351,6 @@ ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr);
  * \param expr The `IndexExpr` to be simplified.
  * \return `IndexExpr` after simplification.
  */
-template <typename NodeType>
 ir::IndexExpr MinMaxSimplify(const ir::IndexExpr &expr);
 }  // namespace optim
 }  // namespace cinn
