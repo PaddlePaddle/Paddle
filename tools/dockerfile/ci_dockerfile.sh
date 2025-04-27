@@ -39,6 +39,9 @@ function make_cpu_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-13#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-13#g' ${dockerfile_name}
   sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
+  sed -i 's#cmake-3.18.0-Linux#cmake-4.0.1-linux#g' ${dockerfile_name}
+  sed -i 's#v3.18#v4.0#g' ${dockerfile_name}
+
 }
 
 

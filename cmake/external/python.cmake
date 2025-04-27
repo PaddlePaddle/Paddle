@@ -22,6 +22,7 @@ execute_process(
   OUTPUT_VARIABLE Python3_EXECUTABLE
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 find_package(Python3 ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
+set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 
 if(WIN32)
   execute_process(
