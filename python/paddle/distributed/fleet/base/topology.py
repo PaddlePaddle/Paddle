@@ -724,8 +724,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         self._check_group, self._check_comm_group = self._set_check_group(
             "data", self._dense_topo
         )
-        self.sharding_group, self.sharding_check_comm_group = (
-            self.build_sharding_group(self._dense_topo)
+        self.sharding_check_group, self.sharding_check_comm_group = (
+            "sharding",
+            self._dense_topo,
         )
 
         # (
