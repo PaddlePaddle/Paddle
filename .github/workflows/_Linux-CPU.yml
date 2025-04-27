@@ -14,6 +14,7 @@ env:
   ci_scripts: ${{ github.workspace }}/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: cpu
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -81,6 +82,7 @@ jobs:
             -e ci_scripts \
             -e WITH_AVX \
             -e CCACHE_DIR \
+            -e no_proxy \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
