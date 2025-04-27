@@ -34,6 +34,23 @@ class TestRandnLikeAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    def test_static_api(self):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_float32 = paddle.static.data(
+                    name="x_float32", shape=[10, 12], dtype="float32"
+                )
+                exe = paddle.static.Executor(self.place)
+                outlist = [paddle.randn_like(x_float32)]
+                outs = exe.run(
+                    feed={'x_float32': self.x_float32}, fetch_list=outlist
+                )
+                for out, dtype in zip(outs, self.dtype):
+                    self.assertTrue(out.dtype, np.dtype(dtype))
+                    self.assertTrue(((out >= -25) & (out <= 25)).all(), True)
+
     def test_static_api_with_fp16(self):
         with static_guard():
             if paddle.is_compiled_with_cuda():
@@ -110,6 +127,13 @@ class TestRandnLikeAPI(unittest.TestCase):
                     self.assertTrue(
                         ((out.numpy() >= -25) & (out.numpy() <= 25)).all(), True
                     )
+
+            x_inputs = paddle.to_tensor(self.x_float32)
+            out = paddle.randn_like(x_inputs)
+            self.assertTrue(out.numpy().dtype, np.dtype("float32"))
+            self.assertTrue(
+                ((out.numpy() >= -25) & (out.numpy() <= 25)).all(), True
+            )
 
             if paddle.is_compiled_with_cuda():
                 x_inputs = paddle.to_tensor(self.x_float16)
