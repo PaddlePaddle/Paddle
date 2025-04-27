@@ -614,12 +614,13 @@ class CustomDevice : public DeviceInterface {
     return grid_dim_size;
   }
 
-  Eigen::GpuDevice* InitEigenDevice(Place& place,
+  Eigen::GpuDevice* InitEigenDevice(const Place& place,
                                     phi::stream::stream_t stream,
                                     phi::Allocator* allocator) override {
     Eigen::GpuDevice* eigen_device = nullptr;
+    Place place_t = place;
     if (pimpl_->init_eigen_device) {
-      pimpl_->init_eigen_device(reinterpret_cast<C_Place>(&place),
+      pimpl_->init_eigen_device(reinterpret_cast<C_Place>(&place_t),
                                 reinterpret_cast<C_EigenDevice*>(&eigen_device),
                                 reinterpret_cast<C_Stream>(stream),
                                 reinterpret_cast<C_Allocator>(allocator));
@@ -628,14 +629,14 @@ class CustomDevice : public DeviceInterface {
     return eigen_device;
   }
 
-  void DestoryEigenDevice(size_t dev_id,
+  void DestroyEigenDevice(size_t dev_id,
                           Eigen::GpuDevice* eigen_device) override {
     const auto device = &devices_pool[dev_id];
-    if (pimpl_->destory_eigen_device) {
-      pimpl_->destory_eigen_device(
+    if (pimpl_->destroy_eigen_device) {
+      pimpl_->destroy_eigen_device(
           device, reinterpret_cast<C_EigenDevice*>(&eigen_device));
     }
-    VLOG(10) << Type() << " destory eigen device ";
+    VLOG(10) << Type() << " destroy eigen device ";
   }
 
   C_CCLReduceOp ToXCCLReduceOp(ccl::CCLReduceOp reduce_op) {
@@ -1092,7 +1093,7 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(get_max_threads_per_block, false);
   CHECK_INTERFACE(get_max_grid_dim_size, false);
   CHECK_INTERFACE(init_eigen_device, false);
-  CHECK_INTERFACE(destory_eigen_device, false);
+  CHECK_INTERFACE(destroy_eigen_device, false);
 
   CHECK_INTERFACE(xccl_get_unique_id, false);
   CHECK_INTERFACE(xccl_get_unique_id_size, false);
