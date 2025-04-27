@@ -541,10 +541,8 @@ class TensorVariable(VariableBase):
                 ],
             ),
             # Check dist info
-            paddle.framework.core.GuardNode(
-                paddle.framework.core.TensorDistMetaMatchGuard(
-                    self.meta.dist_info
-                ),
+            paddle.framework.core.TensorDistMetaMatchGuardNode(
+                self.meta.dist_info,
                 [
                     expr_node,
                     paddle.framework.core.ExternVarExprNode(

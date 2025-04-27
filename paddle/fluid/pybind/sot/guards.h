@@ -268,48 +268,6 @@ class WeakRefMatchGuard : public GuardBase {
   PyObject* expected_;
 };
 
-class TensorDistMetaMatchGuard : public GuardBase {
- public:
-  explicit TensorDistMetaMatchGuard(const py::object& obj) {
-    if (obj != py::none()) {
-      mesh_shape_expected_ =
-          obj.attr("mesh").attr("shape").cast<std::vector<int>>();
-      mesh_process_ids_expected_ =
-          obj.attr("mesh").attr("process_ids").cast<std::vector<int>>();
-      dims_mapping_expected_ = obj.attr("dims_mapping").ptr();
-      local_shape_expected_ = obj.attr("local_shape").ptr();
-
-      is_dist_ = true;
-      Py_INCREF(dims_mapping_expected_.value());
-      Py_INCREF(local_shape_expected_.value());
-    }
-  }
-
-  ~TensorDistMetaMatchGuard() override {
-    if (is_dist_) {
-      Py_DECREF(dims_mapping_expected_.value());
-      Py_DECREF(local_shape_expected_.value());
-    }
-  }
-  bool check(PyObject* value) override;
-  std::string get_guard_name() const override {
-    return "TensorDistMetaMatchGuard";
-  }
-
- private:
-  bool is_dist_ = false;
-  std::optional<std::vector<int>> mesh_shape_expected_;
-  std::optional<std::vector<int>> mesh_process_ids_expected_;
-  std::optional<PyObject*> dims_mapping_expected_;
-  std::optional<PyObject*> local_shape_expected_;
-};
-
-class DummyGuard : public GuardBase {
- public:
-  bool check(PyObject* value) override { return true; }
-  std::string get_guard_name() const override { return "DummyGuard"; }
-};
-
 class GuardTreeNodeBase {
  public:
   virtual ~GuardTreeNodeBase() = default;
@@ -509,38 +467,7 @@ class GuardNodeBase : public GuardTreeNodeBase {
         return_cache_index(return_cache_index) {}
   virtual ~GuardNodeBase() = default;
   virtual std::optional<int> lookup(FrameProxy* frame) = 0;
-};
-
-class ExprGuardNode : public GuardNodeBase {
- public:
-  explicit ExprGuardNode(
-      std::shared_ptr<ExprNodeBase> expr,
-      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
-      std::optional<int> return_cache_index)
-      : GuardNodeBase(next_guard_nodes, return_cache_index), expr_(expr) {}
-
-  std::string stringify(int indent = 0) override;
-  std::optional<int> lookup(FrameProxy* frame) override;
-
- private:
-  std::shared_ptr<ExprNodeBase> expr_;
-};
-
-class GuardNode : public GuardNodeBase {
- public:
-  std::shared_ptr<GuardBase> guard;
-  std::vector<std::shared_ptr<ExprNodeBase>> exprs;
-  explicit GuardNode(
-      std::shared_ptr<GuardBase> guard,
-      std::vector<std::shared_ptr<ExprNodeBase>> exprs,
-      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
-      std::optional<int> return_cache_index)
-      : GuardNodeBase(next_guard_nodes, return_cache_index),
-        guard(guard),
-        exprs(exprs) {}
-  virtual ~GuardNode() = default;
-  std::string stringify(int indent = 0) override;
-  std::optional<int> lookup(FrameProxy* frame) override;
+  std::optional<int> lookup_next(FrameProxy* frame);
 };
 
 class DummyGuardNode : public GuardNodeBase {
@@ -557,6 +484,93 @@ class DummyGuardNode : public GuardNodeBase {
 
  private:
   bool return_true_;
+};
+
+class ExprGuardNode : public GuardNodeBase {
+ public:
+  std::shared_ptr<ExprNodeBase> expr;
+  explicit ExprGuardNode(
+      std::shared_ptr<ExprNodeBase> expr,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index), expr(expr) {}
+
+  std::string stringify(int indent = 0) override;
+  std::optional<int> lookup(FrameProxy* frame) override;
+};
+
+template <size_t N>
+class CheckGuardNode : public GuardNodeBase {
+ public:
+  std::array<std::shared_ptr<ExprNodeBase>, N> exprs;
+  explicit CheckGuardNode(
+      std::array<std::shared_ptr<ExprNodeBase>, N> exprs,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : GuardNodeBase(next_guard_nodes, return_cache_index), exprs(exprs) {}
+  virtual ~CheckGuardNode() = default;
+  virtual std::string get_guard_name() const = 0;
+  virtual bool check(std::array<PyObject*, N> values) = 0;
+  std::string stringify(int indent = 0) override;
+  std::optional<int> lookup(FrameProxy* frame) override;
+};
+
+class TensorDistMetaMatchGuardNode : public CheckGuardNode<2> {
+ public:
+  explicit TensorDistMetaMatchGuardNode(
+      const py::object& obj,
+      std::array<std::shared_ptr<ExprNodeBase>, 2> exprs,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : CheckGuardNode<2>(exprs, next_guard_nodes, return_cache_index) {
+    if (obj != py::none()) {
+      mesh_shape_expected_ =
+          obj.attr("mesh").attr("shape").cast<std::vector<int>>();
+      mesh_process_ids_expected_ =
+          obj.attr("mesh").attr("process_ids").cast<std::vector<int>>();
+      dims_mapping_expected_ = obj.attr("dims_mapping").ptr();
+      local_shape_expected_ = obj.attr("local_shape").ptr();
+
+      is_dist_ = true;
+      Py_INCREF(dims_mapping_expected_.value());
+      Py_INCREF(local_shape_expected_.value());
+    }
+  }
+
+  ~TensorDistMetaMatchGuardNode() override {
+    if (is_dist_) {
+      Py_DECREF(dims_mapping_expected_.value());
+      Py_DECREF(local_shape_expected_.value());
+    }
+  }
+  bool check(std::array<PyObject*, 2> values) override;
+  std::string get_guard_name() const override {
+    return "TensorDistMetaMatchGuard";
+  }
+
+ private:
+  bool is_dist_ = false;
+  std::optional<std::vector<int>> mesh_shape_expected_;
+  std::optional<std::vector<int>> mesh_process_ids_expected_;
+  std::optional<PyObject*> dims_mapping_expected_;
+  std::optional<PyObject*> local_shape_expected_;
+};
+
+class LegacyGuardNode : public CheckGuardNode<1> {
+ public:
+  std::shared_ptr<GuardBase> guard;
+  explicit LegacyGuardNode(
+      std::shared_ptr<GuardBase> guard,
+      std::array<std::shared_ptr<ExprNodeBase>, 1> exprs,
+      std::vector<std::shared_ptr<GuardNodeBase>> next_guard_nodes,
+      std::optional<int> return_cache_index)
+      : CheckGuardNode<1>(exprs, next_guard_nodes, return_cache_index),
+        guard(guard) {}
+  virtual ~LegacyGuardNode() = default;
+  std::string get_guard_name() const override {
+    return guard->get_guard_name();
+  };
+  bool check(std::array<PyObject*, 1> values) override;
 };
 
 class GuardTree {
