@@ -143,7 +143,6 @@ struct CustomContext::Impl {
 
   phi::ccl::CCLComm comm_;
 
-  //////////////////////
   bool owned_{false};
   bool stream_owned_{false};
   int compute_capability_ = 0;
@@ -230,7 +229,6 @@ void CustomContext::set_xccl_comm(phi::ccl::CCLComm comm) {
   impl_->set_xccl_comm(comm);
 }
 
-////////////////////////for cuda///////////////////////////////
 int CustomContext::GetComputeCapability() const {
   return impl_->compute_capability_;
 }
@@ -272,5 +270,4 @@ void CustomContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 void CustomContext::SetRuntimeVersion(int val) {
   impl_->runtime_version_ = val;
 }
-////////////////////////for cuda///////////////////////////////
 }  // namespace phi

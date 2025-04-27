@@ -87,7 +87,6 @@ class CustomContext : public DeviceContext,
   /*! \brief  Set nccl communicators. */
   void set_xccl_comm(phi::ccl::CCLComm comm);
 
-  ////////////////////////for cuda///////////////////////////////
   /*! \brief  Return compute capability in the device context. */
   int GetComputeCapability() const;
 
