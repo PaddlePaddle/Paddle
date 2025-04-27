@@ -4991,7 +4991,7 @@ bool YoloBoxPostOpInferSymbolicShape(
 
 bool MoeUnzipOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const std::vector<symbol::DimExpr> &x_unzipped_dims = [&] {
+  const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims;
     symbol::DimExpr out_shape =
         infer_context->GetNextSymName();  // unknown until runtime
@@ -5037,32 +5037,34 @@ bool MoeUnzipOpInferSymbolicShape(
 
   int num_experts = op->attribute<pir::Int32Attribute>("num_experts").data();
 
-  std::vector<symbol::DimExpr> zipped_expertwise_rowmap_dims;
-  std::vector<symbol::DimExpr> token_prob_unzipped_dims;
-  std::vector<symbol::DimExpr> xscale_unzipped_dims;
+  std::vector<symbol::DimExpr> x_unzipped_shape;
+  std::vector<symbol::DimExpr> zipped_expertwise_rowmap_shape;
+  std::vector<symbol::DimExpr> token_prob_unzipped_shape;
+  std::vector<symbol::DimExpr> xscale_unzipped_shape;
 
+  x_unzipped_shape = {out_dims[0], x_shape[1]};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(x_unzipped_dims)});
+          symbol::TensorShapeOrDataDimExprs(x_unzipped_shape)});
 
-  zipped_expertwise_rowmap_dims = {x_shape[0], num_experts};
+  zipped_expertwise_rowmap_shape = {x_shape[0], num_experts};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_dims)});
+          symbol::TensorShapeOrDataDimExprs(zipped_expertwise_rowmap_shape)});
 
-  token_prob_unzipped_dims = {x_unzipped_dims[0], 1};
+  token_prob_unzipped_shape = {out_dims[0], symbol::DimExpr(1)};
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_dims)});
+          symbol::TensorShapeOrDataDimExprs(token_prob_unzipped_shape)});
 
-  xscale_unzipped_dims = {x_unzipped_dims[0], (x_shape[0] + 127) / 128};
+  xscale_unzipped_shape = {out_dims[0], xs_shape[1]};
   infer_context->SetShapeOrDataForValue(
       op->result(3),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(xscale_unzipped_dims)});
+          symbol::TensorShapeOrDataDimExprs(xscale_unzipped_shape)});
 
   return true;
 }
