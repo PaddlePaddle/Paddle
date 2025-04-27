@@ -92,7 +92,7 @@ void IndexAddKernel(const Context& ctx,
   }
   auto index_dim_size = input_dim[dim];
   if (index_type == phi::DataType::INT64) {
-    const int64_t* index_data = index.data<int64_t>();\
+    const int64_t* index_data = index.data<int64_t>();
     index_add_cuda_kernel<T, int64_t>
         <<<grid_dim, block_dim, 0, stream>>>(in_data,
                                              index_data,
