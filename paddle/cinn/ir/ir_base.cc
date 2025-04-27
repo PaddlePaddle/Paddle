@@ -539,9 +539,16 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
            expr.node_type() == ir::IrNodeTy::Mod)) {
         res = optim::BoundSimplify(res);
       }
-      if (level == IndexExpr::OptLevel::kLevel4 ||
-          expr.node_type() == ir::IrNodeTy::Mod) {
-        res = optim::BroadcastSimplify(res);
+      if (level == IndexExpr::OptLevel::kLevel4) {
+        if (expr.node_type() == ir::IrNodeTy::Mod) {
+          res = optim::BroadcastSimplify(res);
+        }
+        if (expr.node_type() == ir::IrNodeTy::Min) {
+          res = optim::MinMaxSimplify<ir::Min>(res);
+        }
+        if (expr.node_type() == ir::IrNodeTy::Max) {
+          res = optim::MinMaxSimplify<ir::Max>(res);
+        }
       }
       return res;
     }

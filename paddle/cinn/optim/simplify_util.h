@@ -340,5 +340,18 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr);
  * \return `IndexExpr` after simplification.
  */
 ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr);
+
+/*!
+ * \brief Simplify IndexExpr with minmax information.
+ * For example:
+ *        1. max(max(s0, 1), S0) ==> max(s0, 1)
+ *        2. max(1, 1)           ==> 1
+ *        3. max(S0, S0 + 1)     ==> S0 + 1
+ *
+ * \param expr The `IndexExpr` to be simplified.
+ * \return `IndexExpr` after simplification.
+ */
+template <typename NodeType>
+ir::IndexExpr MinMaxSimplify(const ir::IndexExpr &expr);
 }  // namespace optim
 }  // namespace cinn
