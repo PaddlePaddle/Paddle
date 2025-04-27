@@ -78,7 +78,6 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
   if (!detail::CheckMatrixInvertible<RealT, Context>(dev_ctx, &logdet)) {
     // The matrix is not invertible
     VLOG(3) << "The input matrix not invertible!";
-    // x_grad->Resize(x.dims());
     phi::Full<T>(dev_ctx,
                  common::vectorize(x.dims()),
                  std::numeric_limits<T>::quiet_NaN(),
@@ -130,9 +129,7 @@ void SlogDeterminantGradKernel(const Context& dev_ctx,
     int64_t logdet_numel = logdet_grad.numel();
     phi::funcs::ForRange<Context> for_range(dev_ctx, logdet_numel);
     phi::funcs::RealToComplexFunctor<T> functor(
-        logdet_grad.data<phi::dtype::Real<T>>(),
-        logdet_grad_complex.data<T>(),
-        logdet_numel);
+        logdet_grad.data<RealT>(), logdet_grad_complex.data<T>(), logdet_numel);
 
     for_range(functor);
     logdet_grad_term = logdet_grad_complex;

@@ -120,9 +120,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
             log_prob = self._paddle_lkj_cholesky.log_prob(sample)
             sample_tril = tril_matrix_to_vec(sample, diag=-1)
             # log_abs_det_jacobian
-            logabsdet = []
-            logabsdet.append(self._compute_jacobian(sample_tril)[1])
-            logabsdet = paddle.to_tensor(logabsdet)
+            logabsdet = self._compute_jacobian(sample_tril)
 
             log_probs.append((log_prob - logabsdet).numpy())
         np.testing.assert_allclose(
@@ -152,7 +150,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
             )[0]
             jacobian_matrix.append(grad)
         J = paddle.stack(jacobian_matrix, axis=0)
-        logabsdet = paddle.linalg.slogdet(J)
+        _, logabsdet = paddle.linalg.slogdet(J)
         return logabsdet
 
 

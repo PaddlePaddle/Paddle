@@ -184,9 +184,6 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
 
                 sample_tril = tril_matrix_to_vec(sample, diag=-1)
 
-                # log_abs_det_jacobian
-                logabsdet = []
-
                 [logabsdet_value, J] = self.executor.run(
                     self.program,
                     feed={'sample_tril': sample_tril},
@@ -198,9 +195,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
                         if op.name() == 'pd_op.fetch':
                             block.remove_op(op)
 
-                logabsdet.append(logabsdet_value[1])
-
-                log_probs.append(log_prob - logabsdet)
+                log_probs.append(log_prob - logabsdet_value)
             max_abs_error = np.max(np.abs(log_probs[0] - log_probs[1]))
             self.assertAlmostEqual(max_abs_error, 0, places=3)
 
@@ -223,7 +218,7 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
             grad = grad.reshape((last_dim,))
             jacobian_matrix.append(grad)
         J = paddle.stack(jacobian_matrix, axis=0)
-        logabsdet = paddle.linalg.slogdet(J)
+        _, logabsdet = paddle.linalg.slogdet(J)
         return logabsdet, J
 
 
