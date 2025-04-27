@@ -57,7 +57,8 @@ adt::Result<axpr::Value> GetPdOpApFacadeOpInputsVal(
       shape_or_data.template dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
   adt::List<axpr::Value> lst;
   lst->reserve(tensor_list_shape_or_data.size());
-  for (const auto& elt_shape_or_data : tensor_list_shape_or_data) {
+  for (const auto& elt_tensor_shape_or_data : tensor_list_shape_or_data) {
+    symbol::ShapeOrDataDimExprs elt_shape_or_data{elt_tensor_shape_or_data};
     lst->emplace_back(
         ap::paddle::GetPirShapeOrDataClass().New(elt_shape_or_data));
   }
@@ -116,32 +117,64 @@ adt::Result<axpr::Value> GetPdOpApFacadeOpAttrsVal(pir::Operation* op) {
   return Unserialize(serialized_attributes);
 }
 
-adt::Result<Lambda> GetInferSymbolicLambda() {
-  static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
-    ap::axpr::LambdaExprBuilder lmd;
-    const ap::axpr::AnfExpr anf_expr =
-        lmd.Lambda({"infer_ctx", "inputs", "attrs"}, [](auto& ctx) {
-          auto& infer_hooks =
-              ctx.Var("import").Call(ctx.String("__ap_infer_hooks__"));
-          auto& method = infer_hooks.Attr("infer_symbolic");
-          auto& infer_ctx = ctx.Var("infer_ctx");
-          auto& inputs = ctx.Var("inputs");
-          auto& attrs = ctx.Var("attrs");
-          auto& ret = method.Call(infer_ctx, inputs, attrs);
-          return ret;
-        });
-    const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
-    const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
-    return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
-  }());
-  return lambda;
+template <typename RetT>
+using MakeT = adt::Result<RetT> (*)(const std::string& str);
+
+template <typename T, MakeT<T> Make>
+adt::Result<T> CacheResult(const std::string& serialized_attributes) {
+  static std::unordered_map<std::string, adt::Result<T>> cache;
+  static std::mutex mutex;
+  std::unique_lock<std::mutex> lock(mutex);
+  auto iter = cache.find(serialized_attributes);
+  if (iter == cache.end()) {
+    iter =
+        cache.emplace(serialized_attributes, Make(serialized_attributes)).first;
+  }
+  ADT_LET_CONST_REF(ret, iter->second);
+  return ret;
+}
+
+adt::Result<Lambda> MakeInferSymbolicLambda(
+    const std::string& infer_symbolic_func_name) {
+  auto dot_pos = infer_symbolic_func_name.find('.');
+  ADT_CHECK(dot_pos != std::string::npos);
+  const auto& module_name = infer_symbolic_func_name.substr(0, dot_pos);
+  const auto& func_name = infer_symbolic_func_name.substr(dot_pos + 1);
+  ADT_CHECK(func_name.find('.') == std::string::npos);
+  ap::axpr::LambdaExprBuilder lmd;
+  const ap::axpr::AnfExpr anf_expr =
+      lmd.Lambda({"infer_ctx", "inputs", "attrs"}, [&](auto& ctx) {
+        auto& infer_hooks = ctx.Var("import").Call(ctx.String(module_name));
+        auto& method = infer_hooks.Attr(func_name);
+        auto& infer_ctx = ctx.Var("infer_ctx");
+        auto& inputs = ctx.Var("inputs");
+        auto& attrs = ctx.Var("attrs");
+        auto& ret = method.Call(infer_ctx, inputs, attrs);
+        return ret;
+      });
+  const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+  const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+  return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+}
+
+const auto GetInferSymbolicLambda =
+    &CacheResult<Lambda, &MakeInferSymbolicLambda>;
+
+adt::Result<std::string> GetInferSymbolicFuncName(const pir::Operation* op) {
+  const auto& attrs = op->attributes();
+  const auto& iter = attrs.find("infer_symbolic_func_name");
+  ADT_CHECK(iter != attrs.end());
+  const auto& attr = iter->second;
+  ADT_CHECK(attr.isa<pir::StrAttribute>());
+  return attr.dyn_cast<pir::StrAttribute>().AsString();
 }
 
 adt::Result<std::vector<symbol::TensorShapeOrDataDimExprs>>
-InferOutputsShapeOrValue(const axpr::Value& infer_ctx_val,
+InferOutputsShapeOrValue(const std::string& infer_symbolic_func_name,
+                         const axpr::Value& infer_ctx_val,
                          const axpr::Value& inputs_val,
                          const axpr::Value& attrs_val) {
-  ADT_LET_CONST_REF(lambda, GetInferSymbolicLambda());
+  ADT_LET_CONST_REF(lambda, GetInferSymbolicLambda(infer_symbolic_func_name));
   ap::memory::Guard guard{};
   ap::axpr::Interpreter interpreter(
       ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>(),
@@ -169,9 +202,11 @@ adt::Result<adt::Ok> TryApOpFacadeOpInferSymbolicShape(
   ADT_LET_CONST_REF(infer_ctx_val, GetInferCtxVal(infer_context));
   ADT_LET_CONST_REF(inputs_val, GetApOpFacadeOpInputsVal(op, infer_context));
   ADT_LET_CONST_REF(attrs_val, GetApOpFacadeOpAttrsVal(op));
+  ADT_LET_CONST_REF(infer_symbolic_func_name, GetInferSymbolicFuncName(op));
   ADT_LET_CONST_REF(
       outputs_shape_or_value,
-      InferOutputsShapeOrValue(infer_ctx_val, inputs_val, attrs_val));
+      InferOutputsShapeOrValue(
+          infer_symbolic_func_name, infer_ctx_val, inputs_val, attrs_val));
   ADT_CHECK(op->num_results() == outputs_shape_or_value.size());
   for (int i = 0; i < op->num_results(); ++i) {
     infer_context->SetShapeOrDataForValue(op->result(i),
@@ -185,9 +220,11 @@ adt::Result<adt::Ok> TryPdOpApFacadeOpInferSymbolicShape(
   ADT_LET_CONST_REF(infer_ctx_val, GetInferCtxVal(infer_context));
   ADT_LET_CONST_REF(inputs_val, GetPdOpApFacadeOpInputsVal(op, infer_context));
   ADT_LET_CONST_REF(attrs_val, GetPdOpApFacadeOpAttrsVal(op));
+  ADT_LET_CONST_REF(infer_symbolic_func_name, GetInferSymbolicFuncName(op));
   ADT_LET_CONST_REF(
       outputs_shape_or_value,
-      InferOutputsShapeOrValue(infer_ctx_val, inputs_val, attrs_val));
+      InferOutputsShapeOrValue(
+          infer_symbolic_func_name, infer_ctx_val, inputs_val, attrs_val));
   std::size_t num_outputs = 0;
   {
     const auto iter = op->attributes().find("num_outputs");

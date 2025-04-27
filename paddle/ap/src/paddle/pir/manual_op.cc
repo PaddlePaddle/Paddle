@@ -24,7 +24,7 @@
 namespace ap::dialect {
 
 const char* FacadeOp::attributes_name[FacadeOp::attributes_num] = {
-    "custom_op_name"};
+    "custom_op_name", "infer_meta", "infer_symbolic"};
 
 void FacadeOp::Build(pir::Builder& builder,             // NOLINT
                      pir::OperationArgument& argument,  // NOLINT

@@ -278,13 +278,14 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : ap_facade
-  args : (Tensor[] xs, int64_t num_outputs, str serialized_attributes)
+  args : (Tensor[] xs, int64_t num_outputs, str custom_op_name, str infer_meta_func_name, str infer_symbolic_func_name, str serialized_attributes)
   output : Tensor[](out){num_outputs}
   infer_meta :
     func : ApFacadeInferMeta
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   kernel :
     func : ap_facade
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : ap_variadic
   args : (Tensor[] xs, int num_outputs, str code_module_lambda, str infer_meta_lambda, str rnel_dispatch_lambda, str kernel_dispatch_const_data_lambda)
@@ -293,6 +294,7 @@
     func : ApVariadicInferMeta
   kernel :
     func : ap_variadic
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : apply_per_channel_scale
   args: (Tensor x, Tensor scales)

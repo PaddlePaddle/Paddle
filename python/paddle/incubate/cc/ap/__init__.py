@@ -12,7 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import ap as ap, fuse as fuse
-from .compiler import compile
-
-__all__ = ['fuse', 'compile']
+from .facade_op import FacadeOp as FacadeOp

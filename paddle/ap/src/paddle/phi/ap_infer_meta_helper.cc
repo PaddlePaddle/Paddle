@@ -65,19 +65,27 @@ adt::Result<adt::Ok> InferMetaByLambda(
   ap::axpr::Interpreter interpreter(
       ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>(),
       guard.circlable_ref_list());
-  ADT_RETURN_IF_ERR(interpreter.Interpret(
-      lambda,
-      {ap::paddle::GetConstStdVectorConstMetaTensorPtrPtrClass().New(inputs),
-       attrs,
-       ap::paddle::GetStdVectorMetaTensorPtrPtrClass().New(outputs)}));
+  adt::List<ap::axpr::Value> inputs_val{};
+  inputs_val->reserve(inputs->size());
+  for (const auto& input : *inputs) {
+    inputs_val->emplace_back(
+        ap::paddle::GetConstMetaTensorPtrClass().New(input));
+  }
+  adt::List<ap::axpr::Value> outputs_val{};
+  outputs_val->reserve(outputs->size());
+  for (const auto& output : *outputs) {
+    outputs_val->emplace_back(ap::paddle::GetMetaTensorPtrClass().New(output));
+  }
+  ADT_RETURN_IF_ERR(
+      interpreter.Interpret(lambda, {inputs_val, attrs, outputs_val}));
   return adt::Ok{};
 }
 
 template <typename RetT>
-using MakeT = adt::Result<RetT> (*)(const std::string& serialized_attributes);
+using MakeT = adt::Result<RetT> (*)(const std::string& str);
 
 template <typename T, MakeT<T> Make>
-adt::Result<T> CacheConvertResult(const std::string& serialized_attributes) {
+adt::Result<T> CacheResult(const std::string& serialized_attributes) {
   static std::unordered_map<std::string, adt::Result<T>> cache;
   static std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
@@ -104,7 +112,7 @@ adt::Result<Lambda> MakeLambda(const std::string& serialized_attributes) {
   return lambda;
 }
 
-constexpr auto CastToLambda = &CacheConvertResult<Lambda, &MakeLambda>;
+constexpr auto CastToLambda = &CacheResult<Lambda, &MakeLambda>;
 
 adt::Result<ap::axpr::AttrMap<ap::axpr::Value>> MakeAttrMap(
     const std::string& serialized_attributes) {
@@ -124,27 +132,40 @@ adt::Result<ap::axpr::AttrMap<ap::axpr::Value>> MakeAttrMap(
 }
 
 constexpr auto CastToAttrMap =
-    &CacheConvertResult<ap::axpr::AttrMap<ap::axpr::Value>, &MakeAttrMap>;
+    &CacheResult<ap::axpr::AttrMap<ap::axpr::Value>, &MakeAttrMap>;
 
-adt::Result<Lambda> GetInferMetaLambda() {
-  static ap::axpr::Lambda<ap::axpr::CoreExpr> lambda([] {
-    ap::axpr::LambdaExprBuilder lmd;
-    const ap::axpr::AnfExpr anf_expr =
-        lmd.Lambda({"inputs", "attrs_getter", "mut_outputs"}, [](auto& ctx) {
-          auto& infer_hooks =
-              ctx.Var("import").Call(ctx.String("__ap_infer_hooks__"));
-          auto& method = infer_hooks.Attr("infer_meta");
-          auto& inputs = ctx.Var("inputs");
-          auto& attrs = ctx.Var("attrs_getter").Call();
-          auto& mut_outputs = ctx.Var("mut_outputs");
-          auto& ret = method.Call(inputs, attrs, mut_outputs);
-          return ret;
-        });
-    const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
-    const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
-    return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
-  }());
-  return lambda;
+adt::Result<Lambda> MakeInferMetaLambda(
+    const std::string& infer_meta_func_name) {
+  auto dot_pos = infer_meta_func_name.find('.');
+  ADT_CHECK(dot_pos != std::string::npos);
+  const auto& module_name = infer_meta_func_name.substr(0, dot_pos);
+  const auto& func_name = infer_meta_func_name.substr(dot_pos + 1);
+  ADT_CHECK(func_name.find('.') == std::string::npos);
+  ap::axpr::LambdaExprBuilder lmd;
+  const ap::axpr::AnfExpr anf_expr =
+      lmd.Lambda({"inputs", "attrs", "mut_outputs"}, [&](auto& ctx) {
+        auto& infer_hooks = ctx.Var("import").Call(ctx.String(module_name));
+        auto& method = infer_hooks.Attr(func_name);
+        auto& inputs = ctx.Var("inputs");
+        auto& attrs = ctx.Var("attrs");
+        auto& mut_outputs = ctx.Var("mut_outputs");
+        auto& ret = method.Call(inputs, attrs, mut_outputs);
+        return ret;
+      });
+  const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+  const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+  return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+}
+
+constexpr auto GetInferMetaLambda = &CacheResult<Lambda, &MakeInferMetaLambda>;
+
+adt::Result<adt::Ok> InferMetaByAxprHookImpl(
+    const std::string& infer_meta_func_name,
+    const std::vector<const MetaTensor*>* inputs,
+    const ap::axpr::AttrMap<ap::axpr::Value>& attrs,
+    std::vector<MetaTensor*>* outputs) {
+  ADT_LET_CONST_REF(lambda, GetInferMetaLambda(infer_meta_func_name));
+  return InferMetaByLambda(lambda, inputs, attrs, outputs);
 }
 
 }  // namespace
@@ -159,18 +180,11 @@ adt::Result<adt::Ok> ApInferMetaHelper::InferMeta(
 
 adt::Result<adt::Ok> ApInferMetaHelper::InferMetaByAxprHook(
     const std::vector<const MetaTensor*>* inputs,
-    const std::string& attribute_lambda_str,
+    const std::string& infer_meta_func_name,
+    const std::string& serialized_attributes,
     std::vector<MetaTensor*>* outputs) {
-  ADT_LET_CONST_REF(attrs, CastToAttrMap(attribute_lambda_str));
-  return InferMetaByAxprHook(inputs, attrs, outputs);
-}
-
-adt::Result<adt::Ok> ApInferMetaHelper::InferMetaByAxprHook(
-    const std::vector<const MetaTensor*>* inputs,
-    const ap::axpr::AttrMap<ap::axpr::Value>& attrs,
-    std::vector<MetaTensor*>* outputs) {
-  ADT_LET_CONST_REF(lambda, GetInferMetaLambda());
-  return InferMetaByLambda(lambda, inputs, attrs, outputs);
+  ADT_LET_CONST_REF(attrs, CastToAttrMap(serialized_attributes));
+  return InferMetaByAxprHookImpl(infer_meta_func_name, inputs, attrs, outputs);
 }
 
 }  // namespace phi

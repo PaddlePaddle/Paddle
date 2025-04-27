@@ -31,6 +31,9 @@ template <typename T, typename Context>
 void ApFacadeKernel(const Context& dev_ctx,
                     const std::vector<const DenseTensor*>& xs,
                     int64_t num_outputs,
+                    const std::string& custom_op_name,
+                    const std::string& infer_meta_func_name,
+                    const std::string& infer_symbolic_func_name,
                     const std::string& serialized_attributes,
                     std::vector<DenseTensor*> outs) {
   PADDLE_THROW(common::errors::Unimplemented(

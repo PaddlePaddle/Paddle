@@ -31,7 +31,7 @@ class IR_API FacadeOp
  public:
   using Op::Op;
   static const char *name() { return "ap_op.facade"; }
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr uint32_t attributes_num = 3;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT

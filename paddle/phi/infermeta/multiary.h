@@ -142,6 +142,9 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
 
 void ApFacadeInferMeta(const std::vector<const MetaTensor*>& xs,
                        int64_t num_outputs,
+                       const std::string& custom_op_name,
+                       const std::string& infer_meta_func_name,
+                       const std::string& infer_symbolic_func_name,
                        const std::string& serialized_attributes,
                        std::vector<MetaTensor*> outs,
                        MetaConfig config = MetaConfig());

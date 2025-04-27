@@ -90,7 +90,7 @@ class ConvertPdFacadeToApFacadePattern
                       GetFacadeOpSerializedAttributes(pd_facade_op));
     ADT_LET_CONST_REF(lambda, CastStrToLambda(serialized_attributes));
     ADT_LET_CONST_REF(attr_map, RunLambda(lambda));
-    return CastToPirAttributeMap(attr_map, serialized_attributes);
+    return CastToPirAttributeMap(pd_facade_op, attr_map, serialized_attributes);
   }
 
   adt::Result<std::string> GetFacadeOpSerializedAttributes(
@@ -124,6 +124,7 @@ class ConvertPdFacadeToApFacadePattern
   }
 
   adt::Result<pir::AttributeMap> CastToPirAttributeMap(
+      paddle::dialect::ApFacadeOp pd_facade_op,
       const ap::axpr::AttrMap<ap::axpr::Value>& attr_map,
       const std::string& serialized_attributes) const {
     pir::AttributeMap attributes{};
@@ -131,6 +132,16 @@ class ConvertPdFacadeToApFacadePattern
       ADT_LET_CONST_REF(pir_attr, CastToPirAttribute(val));
       attributes[name] = pir_attr;
     }
+    const auto& CopyAttribute =
+        [&](const auto& attr_name) -> adt::Result<adt::Ok> {
+      const auto& iter = pd_facade_op->attributes().find(attr_name);
+      ADT_CHECK(iter != pd_facade_op->attributes().end());
+      attributes[attr_name] = iter->second;
+      return adt::Ok{};
+    };
+    ADT_RETURN_IF_ERR(CopyAttribute("custom_op_name"));
+    ADT_RETURN_IF_ERR(CopyAttribute("infer_meta_func_name"));
+    ADT_RETURN_IF_ERR(CopyAttribute("infer_symbolic_func_name"));
     attributes["__original_serialized_attributes__"] = pir::StrAttribute::get(
         pir::IrContext::Instance(), serialized_attributes);
     return attributes;

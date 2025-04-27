@@ -493,13 +493,16 @@ void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
 
 void ApFacadeInferMeta(const std::vector<const MetaTensor*>& xs,
                        int64_t num_outputs,
+                       const std::string& custom_op_name,
+                       const std::string& infer_meta_func_name,
+                       const std::string& infer_symbolic_func_name,
                        const std::string& serialized_attributes,
                        std::vector<MetaTensor*> outs,
                        MetaConfig config) {
 #ifdef PADDLE_WITH_CINN
   ApInferMetaHelper helper{};
-  const auto& ret =
-      helper.InferMetaByAxprHook(&xs, serialized_attributes, &outs);
+  const auto& ret = helper.InferMetaByAxprHook(
+      &xs, infer_meta_func_name, serialized_attributes, &outs);
   PADDLE_ENFORCE(!ret.HasError(),
                  "ApFacadeInferMeta failed. \nTraceback (most recent call "
                  "last):\n%s\n%s: %s. ",
