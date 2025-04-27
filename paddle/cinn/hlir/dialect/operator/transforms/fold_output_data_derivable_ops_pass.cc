@@ -211,7 +211,7 @@ class FoldOutputDataDerivableOps : public pir::RewritePattern {
 class FoldOutputDataDerivableOpsPass : public pir::PatternRewritePass {
  public:
   FoldOutputDataDerivableOpsPass()
-      : pir::PatternRewritePass("fold_assign_value_pass", 1) {}
+      : pir::PatternRewritePass("fold_output_data_derivable_ops_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
