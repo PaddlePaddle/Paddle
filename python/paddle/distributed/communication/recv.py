@@ -116,7 +116,7 @@ def recv_object_list(
     object_list: list[Any],
     src: int | None = None,
     group: Group | None = None,
-    group_src: int | None = None,
+    src_in_group: int | None = None,
 ):
     """
     Receive a list of Python objects from the sender.
@@ -125,7 +125,7 @@ def recv_object_list(
         object_list (list): The list to store received objects. Must be pre-allocated with correct size.
         src (int, optional): The source rank id. Default: 0.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        group_src (int, optional): The source rank within the group. Cannot be specified together with src. Default: None.
+        src_in_group (int, optional): The source rank within the group. Cannot be specified together with src. Default: None.
 
     Returns:
         This function does not return any value.
@@ -154,12 +154,12 @@ def recv_object_list(
     if _warn_cur_rank_not_in_group(group):
         return
 
-    if group_src is not None:
+    if src_in_group is not None:
         if src is not None:
             raise ValueError(
-                "Cannot specify both 'src' and 'group_src' arguments."
+                "Cannot specify both 'src' and 'src_in_group' arguments."
             )
-        src = group.get_global_rank(group_src)
+        src = group.get_global_rank(src_in_group)
     else:
         src = 0 if src is None else src
 
