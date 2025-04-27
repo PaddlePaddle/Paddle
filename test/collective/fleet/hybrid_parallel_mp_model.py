@@ -453,5 +453,183 @@ class TestDistMPTraining(unittest.TestCase):
             )
 
 
+class TestDistMPOverLapFuseTraining(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "mp_async_allreduce": True,
+                "mp_fused_linear_param_grad_add": False,
+                "mp_skip_c_identity": True,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def train_batch(self, batch, model, optimizer, is_mp):
+        output = model(batch)
+        loss = output.mean()
+        loss.backward()  # do backward
+        optimizer.step()  # update parameters
+        optimizer.clear_grad()
+        return loss
+
+    def build_optimizer(self, model):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
+        return optimizer
+
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleMPNet(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        optimizer_a = self.build_optimizer(model_a)
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
+        model_b = SimpleDPNet(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b
+
+    def test_mp_model(self):
+        (
+            model_a,
+            optimizer_a,
+            model_b,
+            optimizer_b,
+        ) = self.build_model_optimizer()
+
+        for _ in range(5):
+            np_data = np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            batch = paddle.to_tensor(np_data)
+            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
+            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
+            )
+
+
+class TestDistMPOverLapTraining(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "mp_async_allreduce": True,
+                "mp_fused_linear_param_grad_add": True,
+                "mp_skip_c_identity": True,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def train_batch(self, batch, model, optimizer, is_mp):
+        output = model(batch)
+        loss = output.mean()
+        loss.backward()  # do backward
+        optimizer.step()  # update parameters
+        optimizer.clear_grad()
+        return loss
+
+    def build_optimizer(self, model):
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
+        return optimizer
+
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model_a = SimpleMPNet(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        model_a.linear1.weight.stop_gradient = True
+        optimizer_a = self.build_optimizer(model_a)
+        model_a = fleet.distributed_model(model_a)
+        optimizer_a = fleet.distributed_optimizer(optimizer_a)
+
+        model_b = SimpleDPNet(
+            vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
+        )
+        model_b.linear1.weight.stop_gradient = True
+        optimizer_b = self.build_optimizer(model_b)
+
+        return model_a, optimizer_a, model_b, optimizer_b
+
+    def test_mp_model(self):
+        (
+            model_a,
+            optimizer_a,
+            model_b,
+            optimizer_b,
+        ) = self.build_model_optimizer()
+
+        for _ in range(5):
+            np_data = np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            batch = paddle.to_tensor(np_data)
+            loss_a = self.train_batch(batch, model_a, optimizer_a, True)
+            loss_b = self.train_batch(batch, model_b, optimizer_b, False)
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
