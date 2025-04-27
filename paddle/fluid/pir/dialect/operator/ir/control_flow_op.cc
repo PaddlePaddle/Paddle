@@ -989,10 +989,12 @@ bool WhileOp::InferSymbolicShape(
     bool data_equal = yield_input_data_opt.has_value() &&
                       input_data_opt.has_value() &&
                       yield_input_data_opt.value() == input_data_opt.value();
-    auto result_shape_or_data = data_equal
-                                    ? yield_input_shape_or_data
-                                    : symbol::TensorShapeOrDataDimExprs(
-                                          yield_input_shape_or_data.shape());
+    auto result_shape_or_data =
+        data_equal || !yield_input_shape_or_data
+                           .isa<symbol::TensorShapeOrDataDimExprs>()
+            ? yield_input_shape_or_data
+            : symbol::TensorShapeOrDataDimExprs(
+                  yield_input_shape_or_data.shape());
     infer_context->SetShapeOrDataForValue(result(i), result_shape_or_data);
   }
 
