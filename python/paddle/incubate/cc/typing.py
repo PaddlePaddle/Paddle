@@ -21,10 +21,23 @@ __all__ = [
 ]
 
 
-# Usage:
-#   N = paddle.incubate.cc.typing.DimVar("N")
-#   M = paddle.incubate.cc.typing.DimVar(4096)
 class DimVar:
+    r"""
+    Dimension expression used in PCC.
+
+    Parameters:
+        name_or_value (str|int): the name or value of the dimension.
+        min (int, optional): the min value of name_or_value. It is only used when name_or_value is a str.
+        max (int, optional): the max value of name_or_value. It is only used when name_or_value is a str.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle.incubate.cc.typing as pct
+            >>> M = pct.DimVar(128)
+            >>> N = pct.DimVar('N', min=32)
+    """
+
     def __init__(
         self,
         name_or_value: str | int,
@@ -36,9 +49,20 @@ class DimVar:
         self.max = max
 
 
-# Usage:
-#   T = paddle.incubate.cc.typing.DTypeVar("T", "bfloat16", "float32")
 class DTypeVar:
+    r"""
+    Data type expression used in PCC.
+
+    Parameters:
+        name (str): the name of the data type.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle.incubate.cc.typing as pct
+            >>> T = pct.DTypeVar("T", "float32")
+    """
+
     def __init__(self, name: str, *candidates):
         assert len(candidates) > 0
         assert len(candidates) == len(set(candidates))
@@ -48,16 +72,27 @@ class DTypeVar:
         self.candidates = candidates
 
 
-# Usage:
-#
-# import paddle.incubate.cc.typing as pct
-# N = pct.DimVar("N")
-# M = pct.DimVar("M")
-# DType = pct.DTypeVar("T")
-# def foo(x: paddle.cc.typing.Tensor([N, M], DType)):
-#   ...
-#
 class Tensor:
+    r"""
+    Tensor expression used in PCC.
+
+    Parameters:
+        shape (DimVar): dimension expression of the tensor.
+        dtype (DTypeVar): data type of the tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle.incubate.cc.typing as pct
+
+            >>> M = pct.DimVar("M")
+            >>> N = pct.DimVar("N")
+            >>> DType = pct.DTypeVar("T")
+
+            >>> def foo(x: pct.Tensor([N, M], DType), y: pct.Tensor([N, M], DType)):
+            >>>     return x + y
+    """
+
     def __init__(self, shape, dtype):
         self.shape = shape
         self.dtype = dtype

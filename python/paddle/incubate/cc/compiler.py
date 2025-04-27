@@ -29,30 +29,43 @@ from . import typing as pct
 __all__ = ['compile']
 
 
-# Usage:
-# import paddle.incubate.cc.typing as pct
-# import paddle.incubate.cc as pcc
-# import paddle.nn.functional as F
-#
-# N = pct.DimVar('N', min=2)
-# K = pct.DimVar("K", min=2)
-# M = pct.DimVar("M", 7168)
-# DType = pct.DTypeVar("T", "bfloat16", "float32")
-#
-# def foo(
-#   x: pct.Tensor([N, K], DType),
-#   y: pct.Tensor([K, M], DType),
-#   b: pct.Tensor([M], DType)
-# ):
-#   @pcc.force_register_fusion
-#   def activate(out):
-#     return F.relu(out + b)
-#   return activate(x @ y)
-#
-# fused_foo = pcc.compile(
-#   foo
-# )
 def compile(func, *args, **kwargs):
+    r"""
+    Paddle Compiler Collection (PCC)
+
+    Compile the func for specified target framework and backend device.
+
+    Args:
+        func (function): function implemented with PaddlePaddle apis.
+
+    Returns:
+        OverloadedFunc: the output compiled function.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.incubate.cc.typing as pct
+            >>> import paddle.incubate.cc as pcc
+            >>> import paddle.nn.functional as F
+
+            >>> B = pct.DimVar('B')
+            >>> M = pct.DimVar(32)
+            >>> N = pct.DimVar(32)
+            >>> K = pct.DimVar(64)
+            >>> DType = pct.DTypeVar("T", "float32")
+
+            >>> def foo(
+            >>>     x: pct.Tensor([B, M, K], DType),
+            >>>     y: pct.Tensor([K, N], DType),
+            >>>     b: pct.Tensor([N], DType)
+            >>> ):
+            >>>     def activate(out):
+            >>>         return F.relu(out + b)
+            >>>     return activate(x @ y)
+
+            >>> fused_foo = pcc.compile(foo)
+    """
     annotations = _get_input_annotations(func)
     dtypes2func = {}
     for input_specs in _get_input_spec_lists(annotations):

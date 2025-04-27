@@ -17,6 +17,32 @@ import paddle
 __all__ = ['matmul']
 
 
-def matmul(x, w, epilogue, **kwargs):
-    x = paddle.matmul(x, w, **kwargs)
-    return epilogue(x)
+def matmul(x, y, epilogue, **kwargs):
+    r"""
+    Fused matmul with epilogue.
+
+    Args:
+        x (Tensor): the first input of matmul.
+        y (Tensor): the second input of matmul.
+        epilogue (function): the epilogue operations following matmul.
+
+    Returns:
+        list of Tensors: the returned tensors of epilogue.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.incubate.cc as pcc
+            >>> import paddle.nn.functional as F
+
+            >>> def epilogue(mm_out, b):
+            >>>     return F.relu(mm_out + b)
+
+            >>> x = paddle.randn([4, 32, 64])
+            >>> y = paddle.randn([64, 32])
+            >>> b = paddle.randn([32])
+            >>> out = pcc.fuse.matmul(x, y, epilogue, b=b)
+    """
+    x = paddle.matmul(x, y, **kwargs)
+    return epilogue(x, **kwargs)

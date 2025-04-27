@@ -69,5 +69,4 @@ __all__ = [
     'segment_min',
     'identity_loss',
     'inference',
-    'cc',
 ]
