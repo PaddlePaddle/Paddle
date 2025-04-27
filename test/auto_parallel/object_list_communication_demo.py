@@ -58,33 +58,45 @@ class TestObjectListCommunication:
 
         # Test case 2: Group operations - rank not in group
         excluded_group = dist.new_group([2, 3])
+        send_list = ["test"]
+        recv_list = [None]
         if curr_rank == 0:
+            # test the dst is not in the group
             dist.send_object_list(["test"], dst=1, group=excluded_group)
         elif curr_rank == 1:
+            # test the src is not in the group
             dist.recv_object_list([None], src=0, group=excluded_group)
+            assert recv_list[0] is None
+
+        excluded_group_1 = dist.new_group([0, 1])
+        if curr_rank == 0:
+            dist.send_object_list(send_list, dst=1, group=excluded_group_1)
+        elif curr_rank == 1:
+            dist.recv_object_list(recv_list, src=0, group=excluded_group_1)
+            assert recv_list[0] == "test"
 
         # Test case 3: Group operations - parameter conflicts
         if curr_rank == 0:
             try:
-                dist.send_object_list(["test"], dst=1, group_dst=1)
+                dist.send_object_list(["test"], dst=1, dst_in_group=1)
                 raise AssertionError("Should raise ValueError")
             except ValueError:
                 pass
         elif curr_rank == 1:
             try:
-                dist.recv_object_list([None], src=0, group_src=0)
+                dist.recv_object_list([None], src=0, src_in_group=0)
                 raise AssertionError("Should raise ValueError")
             except ValueError:
                 pass
 
-        # Test case 4: Group operations - using group_src/group_dst
+        # Test case 4: Group operations - using src_in_group/dst_in_group
         test_group = dist.new_group([0, 1])
         if curr_rank == 0:
             data = ["test_group_dst"]
-            dist.send_object_list(data, group=test_group, group_dst=1)
+            dist.send_object_list(data, group=test_group, dst_in_group=1)
         elif curr_rank == 1:
             data = [None]
-            dist.recv_object_list(data, group=test_group, group_src=0)
+            dist.recv_object_list(data, group=test_group, src_in_group=0)
             assert data[0] == "test_group_dst"
 
         # Test case 5: Normal communication process

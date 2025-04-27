@@ -111,7 +111,7 @@ def isend(tensor: Tensor, dst: int, group: Group | None = None) -> task | None:
     return send(tensor, dst, group, sync_op=False)
 
 
-def send_object_list(object_list, dst=None, group=None, group_dst=None):
+def send_object_list(object_list, dst=None, group=None, dst_in_group=None):
     """
     Send a list of Python objects to the receiver.
 
@@ -119,7 +119,7 @@ def send_object_list(object_list, dst=None, group=None, group_dst=None):
         object_list (list): The list of Python objects to send.
         dst (int, optional): The destination rank id. Default: 0.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        group_dst (int, optional): The destination rank within the group. Cannot be specified together with dst. Default: None.
+        dst_in_group (int, optional): The destination rank within the group. Cannot be specified together with dst. Default: None.
 
     Returns:
         This function does not return any value.
@@ -148,12 +148,12 @@ def send_object_list(object_list, dst=None, group=None, group_dst=None):
     if _warn_cur_rank_not_in_group(group):
         return
 
-    if group_dst is not None:
+    if dst_in_group is not None:
         if dst is not None:
             raise ValueError(
-                "Cannot specify both 'dst' and 'group_dst' arguments."
+                "Cannot specify both 'dst' and 'dst_in_group' arguments."
             )
-        dst = group.get_global_rank(group_dst)
+        dst = group.get_global_rank(dst_in_group)
     else:
         dst = 0 if dst is None else dst
 
