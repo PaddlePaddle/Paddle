@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from functools import wraps
 
 import paddle
 from paddle.base import core
@@ -302,12 +303,12 @@ class PyLayerMeta(type):
         )
         original_forward = cls.forward
 
-        @staticmethod
+        @wraps(original_forward)
         def amp_forward(ctx, *args, **kwargs):
             ctx.amp_state = get_current_amp_state()
             return original_forward(ctx, *args, **kwargs)
 
-        cls.forward = amp_forward
+        cls.forward = staticmethod(amp_forward)
 
         return super().__init__(name, bases, attrs)
 
