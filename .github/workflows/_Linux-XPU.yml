@@ -146,8 +146,10 @@ jobs:
           cd ..
           tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
+          echo "Uploading build.tar.gz"
           python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           rm build.tar.gz
+          echo "Uploading paddle_whl"
           cp ${{ github.workspace }}/dist/$paddle_whl .
           python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           rm ${paddle_whl}
