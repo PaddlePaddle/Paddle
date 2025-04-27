@@ -706,23 +706,37 @@ TEST_F(TestIndexExpr, MinMaxSimplify) {
   ir::Expr q15 = ir::Min::Make(S0, Expr(1));
   ir::Expr q16 = ir::Min::Make(S0, S1);
 
-  EXPECT_EQ(q0.as_index().Normalize(), ir::Expr(1));
-  EXPECT_EQ(q1.as_index().Normalize(), ir::Expr(2));
-  EXPECT_EQ(q2.as_index().Normalize(), ir::Expr(2));
-  EXPECT_EQ(q3.as_index().Normalize(), S0);
-  EXPECT_EQ(q4.as_index().Normalize(), S0 + Expr(1));
-  EXPECT_EQ(q5.as_index().Normalize(), ir::Max::Make(S0, Expr(1)));
-  EXPECT_EQ(q6.as_index().Normalize(), ir::Max::Make(S0, Expr(1)));
-  EXPECT_EQ(q7.as_index().Normalize(), ir::Max::Make(S0, Expr(1)));
-  EXPECT_EQ(q8.as_index().Normalize(), ir::Max::Make(S0, S1));
-  EXPECT_EQ(q9.as_index().Normalize(), ir::Expr(1));
-  EXPECT_EQ(q10.as_index().Normalize(), ir::Expr(1));
-  EXPECT_EQ(q11.as_index().Normalize(), ir::Expr(1));
-  EXPECT_EQ(q12.as_index().Normalize(), S0);
-  EXPECT_EQ(q13.as_index().Normalize(), S0);
-  EXPECT_EQ(q14.as_index().Normalize(), ir::Min::Make(S0, Expr(1)));
-  EXPECT_EQ(q15.as_index().Normalize(), ir::Min::Make(S0, Expr(1)));
-  EXPECT_EQ(q16.as_index().Normalize(), ir::Min::Make(S0, S1));
+  EXPECT_EQ(q0.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Expr(1));
+  EXPECT_EQ(q1.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Expr(2));
+  EXPECT_EQ(q2.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Expr(2));
+  EXPECT_EQ(q3.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4), S0);
+  EXPECT_EQ(q4.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            S0 + Expr(1));
+  EXPECT_EQ(q5.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Max::Make(S0, Expr(1)));
+  EXPECT_EQ(q6.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Max::Make(S0, Expr(1)));
+  EXPECT_EQ(q7.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Max::Make(S0, Expr(1)));
+  EXPECT_EQ(q8.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Max::Make(S0, S1));
+  EXPECT_EQ(q9.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Expr(1));
+  EXPECT_EQ(q10.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Expr(1));
+  EXPECT_EQ(q11.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Expr(1));
+  EXPECT_EQ(q12.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4), S0);
+  EXPECT_EQ(q13.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4), S0);
+  EXPECT_EQ(q14.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Min::Make(S0, Expr(1)));
+  EXPECT_EQ(q15.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Min::Make(S0, Expr(1)));
+  EXPECT_EQ(q16.as_index().Normalize(ir::IndexExpr::OptLevel::kLevel4),
+            ir::Min::Make(S0, S1));
 }
 }  // namespace common
 }  // namespace cinn
