@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/ap/include/paddle/phi/ap_infer_meta_helper.h"
+#endif
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/device_memory_alignment.h"
 #include "paddle/phi/common/data_type.h"
@@ -466,6 +469,26 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   out->share_lod(*x[0]);
   out->set_dtype(x[0]->dtype());
+}
+
+void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int num_outputs,
+                         const std::string& code_module_lambda,
+                         const std::string& infer_meta_lambda,
+                         const std::string& kernel_dispatch_lambda,
+                         const std::string& kernel_dispatch_const_data_lambda,
+                         std::vector<MetaTensor*> outs,
+                         MetaConfig config) {
+#ifdef PADDLE_WITH_CINN
+  ApInferMetaHelper helper{};
+  const auto& ret = helper.InferMeta(infer_meta_lambda, &xs, &outs);
+  PADDLE_ENFORCE(!ret.HasError(),
+                 "ApVariadicInferMeta failed. \nTraceback (most recent call "
+                 "last):\n%s\n%s: %s. ",
+                 ret.GetError().CallStackToString(),
+                 ret.GetError().class_name(),
+                 ret.GetError().msg());
+#endif
 }
 
 // TODO(YuanRisheng) This InferMeta is used in Fluid

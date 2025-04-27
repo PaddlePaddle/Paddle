@@ -31,10 +31,12 @@ from paddle.jit.utils import OrderedSet
 
 from ...profiler import EventGuard
 from ...psdb import NO_BREAKGRAPH_CODES
+from ...symbolic_shape.constraints import LogicalNotConstraintNode
 from ...utils import (
     ENV_MIN_GRAPH_SIZE,
     ENV_SOT_FORCE_FALLBACK_SIR_IDS,
     BreakGraphError,
+    DataDependencyDynamicShapeBreak,
     FallbackError,
     InnerError,
     SotUndefinedVar,
@@ -224,12 +226,23 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                 )(res)
 
             assert isinstance(res, (ConstantVariable, SymbolicVariable))
-            # NOTE(SigureMo): force to constant to trigger fallback to static dim
-            # to align with old behavior. In next PR we will support guard value
-            # with constraint.
             if isinstance(res, SymbolicVariable):
-                res = res.to_constant()
-            is_jump = res.get_py_value()
+                constraint_node, symbolic_vars = res.create_constraint_tree()
+                if not all(
+                    var.value.is_backed() for var in symbolic_vars.values()
+                ):
+                    raise BreakGraphError(
+                        DataDependencyDynamicShapeBreak(
+                            f"Symbolic variable {symbolic_vars} is not backed."
+                        )
+                    )
+                is_jump = res.get_example_value()
+                if not is_jump:
+                    constraint_node = LogicalNotConstraintNode(constraint_node)
+                for var in symbolic_vars.values():
+                    var.add_constraint((constraint_node, symbolic_vars))
+            else:
+                is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
                 assert instr.jump_to is not None
@@ -400,6 +413,7 @@ class OpcodeExecutorBase:
         self._graph = graph
         self.new_code: types.CodeType | None = self.empty_code  # type: ignore
         self.guard_fn = None
+        self.guard_chain = None
         self._name = "Executor"
         self._call_shape: tuple[str, ...] | None = (
             None  # store kwnames for Python 3.11 and 3.12
@@ -612,7 +626,7 @@ class OpcodeExecutorBase:
             self._current_line = instr.starts_line
         if not hasattr(self, instr.opname):
             raise FallbackError(f"opcode: {instr.opname} is not supported.")
-        log_message = f"[Translate {self._name}]: (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
+        log_message = f"[Translate {self._name}] (line {self._current_line:>3}) {instr.opname:<12} {instr.argval}, stack is {self.stack}\n"
         log(3, log_message)
         code_file = self.vframe.code.co_filename
         code_line = self._current_line
@@ -2024,6 +2038,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self._graph.pycode_gen.gen_return()
             self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
         return Stop(state="Return")
 
     def get_compute_fn_and_update_changed_vars(
@@ -2218,6 +2233,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     @fallback_when_occur_error
     def _break_graph_when_call(
@@ -2330,6 +2346,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self._graph.pycode_gen.gen_return()
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     @fallback_when_occur_error
     def _break_graph_when_for_loop(
@@ -2423,7 +2440,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                "[Resumed Function]: break graph in loop create loop body as\n",
+                "[Resumed Function] break graph in loop create loop body as\n",
             )
             log_do(3, lambda: dis.dis(loop_body_fn))
 
@@ -2578,6 +2595,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
+        self.guard_chain = self._graph.guard_chain
 
     def _inline_call_for_loop(
         self, iterator: VariableBase, for_iter: Instruction
@@ -2667,7 +2685,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
             log(
                 3,
-                f"[Resumed Function]: Inline call for loop function {inline_call_fn.__code__.co_name}\n",
+                f"[Resumed Function] Inline call for loop function {inline_call_fn.__code__.co_name}\n",
             )
             log_do(3, lambda: dis.dis(inline_call_fn))
 

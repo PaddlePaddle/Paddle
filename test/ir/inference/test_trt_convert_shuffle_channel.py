@@ -58,7 +58,7 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         self.dynamic_shape.min_input_shape = {
             "shuffle_channel_input": [1, 6, 24, 24]
         }
@@ -73,7 +73,6 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -94,7 +93,7 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
         ]
         self.trt_param.max_batch_size = 9
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True

@@ -46,12 +46,13 @@ __all__ = []
 
 
 class HybridParallelClipGrad:
-    def __init__(self, clip, hcg, timers=None):
+    def __init__(self, clip, hcg, split_norm_comm=False, timers=None):
         self._clip = clip
         self._hcg = hcg
         self.not_sharding_stage1 = True
         self._timers = timers
         self.processed_steps = 0
+        self.split_norm_comm = split_norm_comm
 
     def _global_norm(self, global_norm_var_dist, global_norm_var_not_dist):
         if self.processed_steps < g_profile_optimizer_details_steps:
@@ -81,7 +82,7 @@ class HybridParallelClipGrad:
             # dist should reduce among sharding group、mp group、pp group
 
             # the else branch would suffice, but this branch remains here for number precision backward compatibility
-            if not (dp_flag and sharding_flag):
+            if not (dp_flag and sharding_flag) and not self.split_norm_comm:
                 paddle.distributed.all_reduce(
                     global_norm_var_dist,
                     group=self._hcg.get_check_parallel_group(sharding_flag),
@@ -315,6 +316,8 @@ class HybridParallelOptimizer:
 
         self._sep_enable = self._hcg.get_sep_parallel_world_size() > 1
 
+        split_norm_comm = strategy.hybrid_configs["split_norm_comm"]
+
         if (
             isinstance(self._inner_opt._grad_clip, ClipGradByGlobalNorm)
             and not self._use_dp_mode
@@ -346,11 +349,11 @@ class HybridParallelOptimizer:
                 > 0
             ):
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg, self._timers
+                    inner_opt._grad_clip, hcg, split_norm_comm, self._timers
                 )
             else:
                 inner_opt._grad_clip = HybridParallelClipGrad(
-                    inner_opt._grad_clip, hcg, self._timers
+                    inner_opt._grad_clip, hcg, split_norm_comm, self._timers
                 )
                 if inner_opt._parameter_list and isinstance(
                     inner_opt._parameter_list[0], dict
@@ -358,7 +361,10 @@ class HybridParallelOptimizer:
                     for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                inner_opt._grad_clip, hcg, self._timers
+                                inner_opt._grad_clip,
+                                hcg,
+                                split_norm_comm,
+                                self._timers,
                             )
         self.processed_steps = 0
 

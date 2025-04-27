@@ -141,14 +141,29 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     START_BASH
     ../../legacy_test/dist_test.sh
     TIMEOUT
-    "500"
+    "600"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
     "PADDLE_DIST_UT_PORT=21218;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
-                       PROPERTIES TIMEOUT "500")
+                       PROPERTIES TIMEOUT "600")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pipeline_parallel_shared_weight
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "600"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21328;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_pipeline_parallel_shared_weight
+                       PROPERTIES TIMEOUT "600")
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(

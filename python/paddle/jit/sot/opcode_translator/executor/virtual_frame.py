@@ -15,25 +15,22 @@
 from __future__ import annotations
 
 import builtins
-import inspect
 import re
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 from ...utils import log
-from .guard import StringifiedExpression, union_free_vars
 from .tracker import (
     BuiltinTracker,
     CellTracker,
     ConstTracker,
     DanglingTracker,
-    DummyTracker,
+    FunctionClosureTracker,
     LocalTracker,
-    Tracker,
 )
 from .variable_stack import VariableStack
-from .variables.base import VariableBase, VariableFactory
+from .variables.base import VariableBase, VariableFactory, fn_bind_inputs
 from .variables.basic import (
     CellVariable,
     FunctionGlobalVariable,
@@ -48,70 +45,10 @@ if TYPE_CHECKING:
 
     from ..instruction_utils import Instruction
     from .function_graph import FunctionGraph
-    from .pycode_generator import PyCodeGen
     from .variables.callable import FunctionVariable
 
     # The type to represent the (*args, **kwargs) pack in the call.
     CallArgsPack: TypeAlias = tuple[tuple[Any, ...], dict[str, Any]]
-
-
-class FunctionClosureTracker(Tracker):
-    """
-    A tracker class that represents a function closure variable.
-
-    Args:
-        fn: The FunctionVariable object.
-        idx: The index of the closure variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, idx: int):
-        super().__init__([fn])
-        self.fn = fn
-        self.idx = idx
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions to trace the value of the function closure variable.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__closure__")
-        codegen.gen_load_const(self.idx)
-        codegen.gen_subscribe()
-        codegen.gen_load_attr("cell_contents")
-
-    def trace_value_from_frame(self):
-        """
-        Trace the value of the function closure variable from the frame.
-
-        Returns:
-            The traced value of the function closure variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__closure__[{self.idx}].cell_contents",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
-
-
-@contextmanager
-def signature_clear_guard(fn, name):
-    if not hasattr(fn, name):
-        yield
-    else:
-        saved_attr = getattr(fn, name)
-        delattr(fn, name)
-        yield
-        setattr(fn, name, saved_attr)
 
 
 def validate_value(value):
@@ -237,27 +174,9 @@ class VirtualFrame:
             )
 
         # convert locals
-        # temparay clear the fn.__signature__ to avoid signature check error
-        with signature_clear_guard(
-            fn_value, "__signature__"
-        ), signature_clear_guard(fn_value, "__wrapped__"):
-            sig = inspect.signature(fn_value)
-            bound_args = sig.bind(*call_args, **call_kwargs)
-        bound_args.apply_defaults()
-        for name, value in bound_args.arguments.items():
-            assert name in sig.parameters
-            # Convert varargs and kwargs to Variable
-            if sig.parameters[name].kind == inspect.Parameter.VAR_POSITIONAL:
-                tracker = DummyTracker(value)
-            elif sig.parameters[name].kind == inspect.Parameter.VAR_KEYWORD:
-                tracker = DummyTracker(list(value.values()))
-            # Convert default args to Variable
-            elif not isinstance(value, VariableBase):
-                tracker = ConstTracker(value)
-            else:
-                tracker = value.tracker
-            value = VariableFactory.from_value(value, graph, tracker)
-            vframe.locals[name] = value
+        vframe.locals.update(
+            fn_bind_inputs(fn_value, graph, *call_args, **call_kwargs)
+        )
 
         log(
             5,
