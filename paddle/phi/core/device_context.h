@@ -230,4 +230,5 @@ class PADDLE_API DeviceContext {
   friend class TypeInfoTraits;
   TypeInfo<DeviceContext> type_info_{TypeInfo<DeviceContext>::kUnknownType};
 };
+
 }  // namespace phi
