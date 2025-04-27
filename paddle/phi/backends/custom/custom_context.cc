@@ -30,7 +30,6 @@ struct CustomContext::Impl {
     phi::DeviceGuard guard(place_);
     if (owned_) {
       DeviceManager::DestoryEigenDevice(place_, eigen_device_);
-      // DestroyInternalEigenDevice()
     }
     if (stream_owned_ && stream_) {
       stream_->Destroy();
@@ -158,14 +157,10 @@ struct CustomContext::Impl {
   Eigen::GpuDevice* eigen_device_{nullptr};
   std::function<Eigen::GpuDevice*()> eigen_device_creator_{nullptr};
   std::once_flag flag_eigen_device_;
-
-  // std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
 };
 
 CustomContext::CustomContext(const CustomPlace& place)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
-  // impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
-  // VLOG(4) << "Custom_context constructor allocator: " << impl_->allocator_;
   impl_->PartialInitWithoutAllocator();
 }
 
