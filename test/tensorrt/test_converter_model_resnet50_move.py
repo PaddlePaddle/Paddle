@@ -92,7 +92,7 @@ class TestConverterResNet50Move(unittest.TestCase):
             err_msg="Outputs are not within the 1e-3 tolerance",
         )
 
-    def test_engine_refit(self):
+    def test_engine_serialized_path_move(self):
         paddle.enable_static()
         save_path = os.path.join(self.temp_dir.name, 'resnet50')
         program, scope, param_dict = get_r50_refit_program(save_path)
@@ -113,7 +113,6 @@ class TestConverterResNet50Move(unittest.TestCase):
         trt_save_path = os.path.join(self.temp_dir.name, 'resnet50trt')
         trt_config.save_model_dir = trt_save_path
         cache_path = trt_config.save_model_dir
-        trt_config.refit_params_path = save_path + '.pdiparams'
         model_dir = save_path
 
         program_with_trt = paddle.tensorrt.convert(model_dir, trt_config)
