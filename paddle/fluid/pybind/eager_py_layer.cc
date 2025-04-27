@@ -541,7 +541,7 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
       auto tmp_list = PyList_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyList_GetItem(obj, j);
-        if (Py_IsNone(o)) {
+        if (o == Py_None) {
           Py_INCREF(Py_None);
           PyTuple_SET_ITEM(tmp_list, j, Py_None);
         } else {
@@ -557,7 +557,7 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
       auto tmp_tuple = PyTuple_New(len);
       for (Py_ssize_t j = 0; j < len; j++) {
         PyObject* o = PyTuple_GetItem(obj, j);
-        if (Py_IsNone(o)) {
+        if (o == Py_None) {
           Py_INCREF(Py_None);
           PyTuple_SET_ITEM(tmp_tuple, j, Py_None);
         } else {
@@ -568,7 +568,7 @@ PyObject* call_unpack_hook(PyLayerObject* self) {
         }
       }
       PyTuple_SET_ITEM(unpacked_value, i, tmp_tuple);
-    } else if (Py_IsNone(obj)) {
+    } else if (obj == Py_None) {
       Py_INCREF(Py_None);
       PyTuple_SET_ITEM(unpacked_value, i, Py_None);
     } else {
@@ -621,7 +621,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                        i,
                        reinterpret_cast<PyObject*>(
                            (*pack_hook)(reinterpret_cast<void*>(obj))));
-    } else if (Py_IsNone(obj)) {
+    } else if (obj == Py_None) {
       Py_INCREF(Py_None);
       PyTuple_SET_ITEM(packed_value, i, Py_None);
     } else if (PyList_Check(obj)) {
@@ -634,7 +634,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
-        } else if (Py_IsNone(o)) {
+        } else if (o == Py_None) {
           Py_INCREF(Py_None);
           PyTuple_SET_ITEM(packed_value, i, Py_None);
         } else {
@@ -654,7 +654,7 @@ void call_pack_hook(PyLayerObject* self, PyObject* value) {
                            j,
                            reinterpret_cast<PyObject*>(
                                (*pack_hook)(reinterpret_cast<void*>(o))));
-        } else if (Py_IsNone(o)) {
+        } else if (o == Py_None) {
           Py_INCREF(Py_None);
           PyTuple_SET_ITEM(packed_value, i, Py_None);
         } else {
