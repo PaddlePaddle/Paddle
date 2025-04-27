@@ -14,6 +14,7 @@ env:
   ci_scripts: /paddle/ci
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: distribute
+  no_proxy: bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn,paddlepaddle.org.cn
 
 defaults:
   run:
@@ -109,6 +110,7 @@ jobs:
             -e CUDA_ARCH_NAME \
             -e WITH_CUDNN_FRONTEND \
             -e FLAGS_enable_cudnn_frontend \
+            -e no_proxy \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
@@ -252,7 +254,6 @@ jobs:
           FLAGS_enable_cudnn_frontend: 1
           CACHE_DIR: /root/.cache/build
           CCACHE_DIR: /root/.ccache/gpubox
-          no_proxy: bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn,paddlepaddle.org.cn
         run: |
           export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo "-v {}:{}") $(\ls /usr/lib64/libnvidia* | xargs -I{} echo "-v {}:{}")"
           export DEVICES="$(\ls -d /dev/nvidia* | xargs -I{} echo "-v {}:{}") $(\ls /dev/nvidia-caps/* | xargs -I{} echo "-v {}:{}")"

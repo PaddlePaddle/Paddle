@@ -15,9 +15,9 @@
 
 set -e
 
-export log_path=/workspace/case_logs
-export auto_case_path=/workspace/Paddle/test/auto_parallel/hybrid_strategy
-export dygraph_case_path=/workspace/Paddle/test/collective/hybrid_strategy
+export log_path=${work_dir}/../case_logs
+export auto_case_path=${work_dir}/test/auto_parallel/hybrid_strategy
+export dygraph_case_path=${work_dir}/test/collective/hybrid_strategy
 
 function case_list_unit() {
     if [ ! -f "testslist.csv" ]; then
