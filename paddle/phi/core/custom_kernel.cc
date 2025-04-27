@@ -18,11 +18,10 @@
 
 namespace phi {
 
-  CustomKernelMap& CustomKernelMap::Instance() {
-    static CustomKernelMap g_custom_kernel_info_map;
-    return g_custom_kernel_info_map;
-  }
-
+CustomKernelMap& CustomKernelMap::Instance() {
+  static CustomKernelMap g_custom_kernel_info_map;
+  return g_custom_kernel_info_map;
+}
 
 void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                                            const KernelKey& key,
@@ -36,20 +35,10 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                         name,
                         key));
   kernels_[name][key] = kernel;
-
-  // LOG(INFO) << "Address of kernels_  1: " << &kernels_;
-
-  // const void* address = static_cast<const void*>(&CustomKernelMap::Instance());
-  // LOG(INFO) << "Address of custom_kernel_map 1111111: " << address;
 }
 
 void CustomKernelMap::RegisterCustomKernels() {
   VLOG(3) << "Size of custom_kernel_map: " << kernels_.size();
-
-  // const void* address = static_cast<const void*>(&CustomKernelMap::Instance());
-  // LOG(INFO) << "Address of custom_kernel_map 2222222: " << address;
-
-  // LOG(INFO) << "Address of kernels_  2: " << &kernels_;
 
   if (kernels_.empty()) {
     LOG(INFO) << "No custom kernel info found in loaded lib(s).";

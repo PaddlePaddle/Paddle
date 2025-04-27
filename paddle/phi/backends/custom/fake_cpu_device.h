@@ -43,41 +43,6 @@ C_Status GetDevicesList(size_t *device) {
   return C_SUCCESS;
 }
 
-C_Status GetComputeCapability(const C_Device device, size_t* compute_capability) {
-  *compute_capability = 0;
-  return C_SUCCESS;
-}
-C_Status GetRuntimeVersion(const C_Device device, size_t* version) {
-  *version = 0;
-  return C_SUCCESS;
-}
-
-C_Status GetDriverVersion(const C_Device device, size_t* version) {
-  *version = 0;
-  return C_SUCCESS;
-}
-
-C_Status GetMultiProcessors(const C_Device device, size_t* multi_process) {
-  *multi_process = 0;
-  return C_SUCCESS;
-}
-
-C_Status GetMaxThreadsPerMultiProcessor(const C_Device device, size_t* threads_per_mp) {
-  *threads_per_mp = 0;
-  return C_SUCCESS;
-}
-
-C_Status GetMaxThreadsPerBlock(const C_Device device, size_t* threads_per_block) {
-  *threads_per_block = 0;
-  return C_SUCCESS;
-}
-
-C_Status GetMaxGridDimSize(const C_Device device, std::array<unsigned int, 3>* grid_dim_size) {
-  std::array<unsigned int, 3> ret = {};
-  *grid_dim_size = ret;
-  return C_SUCCESS;
-}
-
 C_Status MemCpy(const C_Device device,
                 void *dst,
                 const void *src,
@@ -273,13 +238,6 @@ void InitFakeCPUDevice(CustomRuntimeParams *params) {
   memset(reinterpret_cast<void *>(params->interface),
          0,
          sizeof(C_DeviceInterface));
-  params->interface->get_compute_capability = GetComputeCapability;
-  params->interface->get_runtime_version = GetRuntimeVersion;
-  params->interface->get_driver_version = GetDriverVersion;
-  params->interface->get_multi_process = GetMultiProcessors;
-  params->interface->get_max_threads_per_mp = GetMaxThreadsPerMultiProcessor;
-  params->interface->get_max_threads_per_block = GetMaxThreadsPerBlock;
-  params->interface->get_max_grid_dim_size = GetMaxGridDimSize;
 
   params->interface->initialize = Init;
   params->interface->finalize = Finalize;

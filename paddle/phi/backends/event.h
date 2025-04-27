@@ -18,8 +18,8 @@
 
 #ifndef EVENT_TYPE
 #define EVENT_TYPE void*
-#else 
-#include <cuda_runtime.h>  
+#else
+#include <cuda_runtime.h>
 #endif
 
 namespace phi {
@@ -31,7 +31,6 @@ class Stream;
 }  // namespace stream
 
 namespace event {
-// using event_t = void*;
 using event_t = EVENT_TYPE;
 
 class Event {

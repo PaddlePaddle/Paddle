@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <complex>
 #include <memory>
 #include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/backends/device_base.h"

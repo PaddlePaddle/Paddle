@@ -617,10 +617,8 @@ class CustomDevice : public DeviceInterface {
   Eigen::GpuDevice* InitEigenDevice(Place& place,
                                     phi::stream::stream_t stream,
                                     phi::Allocator* allocator) override {
-    // const auto device = &devices_pool[dev_id];
     Eigen::GpuDevice* eigen_device = nullptr;
     if (pimpl_->init_eigen_device) {
-      // void* raw_ptr = reinterpret_cast<void*>(&eigen_device);
       pimpl_->init_eigen_device(reinterpret_cast<C_Place>(&place),
                                 reinterpret_cast<C_EigenDevice*>(&eigen_device),
                                 reinterpret_cast<C_Stream>(stream),
@@ -1093,6 +1091,8 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(get_max_threads_per_mp, false);
   CHECK_INTERFACE(get_max_threads_per_block, false);
   CHECK_INTERFACE(get_max_grid_dim_size, false);
+  CHECK_INTERFACE(init_eigen_device, false);
+  CHECK_INTERFACE(destory_eigen_device, false);
 
   CHECK_INTERFACE(xccl_get_unique_id, false);
   CHECK_INTERFACE(xccl_get_unique_id_size, false);
