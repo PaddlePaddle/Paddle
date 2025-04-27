@@ -798,7 +798,9 @@ PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
  * Example:
  * Note: Path to directory where engine serialized files are stored.
  */
-PHI_DEFINE_EXPORTED_string(trt_engine_serialized_path, "./", "Path to directory of engine serialized files");
+PHI_DEFINE_EXPORTED_string(trt_engine_serialized_path,
+                           "./",
+                           "Path to directory of engine serialized files");
 
 /**
  * Debug related FLAG
