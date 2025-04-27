@@ -24,7 +24,7 @@ namespace phi {
  */
 class CustomKernelMap {
  public:
-  static CustomKernelMap& Instance() ;
+  static CustomKernelMap& Instance();
 
   void RegisterCustomKernel(const std::string& kernel_name,
                             const KernelKey& kernel_key,

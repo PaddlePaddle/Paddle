@@ -69,7 +69,7 @@ typedef enum {
 
 typedef struct C_Device_st {
   int id;
-}* C_Device;
+} * C_Device;
 
 typedef struct C_Stream_st* C_Stream;
 
@@ -594,11 +594,11 @@ struct C_DeviceInterface {
                                 C_Allocator allocator);
 
   /**
-   * @brief destory eigen device
+   * @brief destroy eigen device
    *
    * @param[Eigen::GpuDevice*]    eigen_device
    */
-  C_Status (*destory_eigen_device)(const C_Device device,
+  C_Status (*destroy_eigen_device)(const C_Device device,
                                    C_EigenDevice* eigen_device);
 
   void* reserved_info_api[8];

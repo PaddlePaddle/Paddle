@@ -51,11 +51,11 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
 
-  virtual Eigen::GpuDevice* InitEigenDevice(Place& place,
+  virtual Eigen::GpuDevice* InitEigenDevice(const Place& place,
                                             phi::stream::stream_t stream,
                                             phi::Allocator* allocator);
 
-  virtual void DestoryEigenDevice(size_t dev_id,
+  virtual void DestroyEigenDevice(size_t dev_id,
                                   Eigen::GpuDevice* eigen_device);
 
   // Platform

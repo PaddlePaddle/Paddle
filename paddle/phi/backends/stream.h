@@ -20,8 +20,8 @@
 
 #ifndef STREAM_TYPE
 #define STREAM_TYPE void*
-#else 
-#include <cuda_runtime.h>  
+#else
+#include <cuda_runtime.h>
 #endif
 
 namespace phi {

@@ -29,7 +29,7 @@ struct CustomContext::Impl {
   ~Impl() {
     phi::DeviceGuard guard(place_);
     if (owned_) {
-      DeviceManager::DestoryEigenDevice(place_, eigen_device_);
+      DeviceManager::DestroyEigenDevice(place_, eigen_device_);
     }
     if (stream_owned_ && stream_) {
       stream_->Destroy();
