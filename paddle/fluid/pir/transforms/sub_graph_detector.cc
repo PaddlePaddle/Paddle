@@ -547,6 +547,7 @@ bool SubgraphDetector::MergeSource2Target(const SubGraphPtr& source,
     }
     // 3. If can not find a valid index, reorder topo index of all subgraphs.
     VLOG(6) << "Reorder topo index of all subgraphs";
+    merged->topo_index = max_index;
     ReorderIndexOfSubgraphs();
   };
   update_topo_index();
@@ -634,24 +635,63 @@ void SubgraphDetector::InitInplaceOpsOrder(
     }
     inplace_values_sets.push_back(inplace_input_values);
   }
-  std::set<pir::Value> shared_inplace_values;
+  std::set<pir::Value> shared_inplace_values_set;
   for (size_t i = 0; i < inplace_values_sets.size(); ++i) {
     for (size_t j = i + 1; j < inplace_values_sets.size(); ++j) {
-      std::set_intersection(
-          inplace_values_sets[i].begin(),
-          inplace_values_sets[i].end(),
-          inplace_values_sets[j].begin(),
-          inplace_values_sets[j].end(),
-          std::inserter(shared_inplace_values, shared_inplace_values.begin()));
+      std::set_intersection(inplace_values_sets[i].begin(),
+                            inplace_values_sets[i].end(),
+                            inplace_values_sets[j].begin(),
+                            inplace_values_sets[j].end(),
+                            std::inserter(shared_inplace_values_set,
+                                          shared_inplace_values_set.begin()));
     }
   }
-  for (const auto& shared_value : shared_inplace_values) {
-    inplace_ops_order_.emplace_back();
+  std::vector<std::vector<pir::Operation*>> inplace_ops_order;
+  std::vector<pir::Value> shared_inplace_values;
+  for (const auto& shared_value : shared_inplace_values_set) {
+    inplace_ops_order.emplace_back();
+    shared_inplace_values.push_back(shared_value);
     for (size_t i = 0; i < inplace_values_sets.size(); ++i) {
       if (inplace_values_sets[i].count(shared_value)) {
-        inplace_ops_order_.back().push_back(inplace_ops[i]);
+        inplace_ops_order.back().push_back(inplace_ops[i]);
       }
     }
+  }
+  // If a value is inplaced by multiple ops, the order of ops which use this
+  // value after different inplace op also needs to be considered together.
+  for (size_t i = 0; i < inplace_ops_order.size(); ++i) {
+    auto only_inplace_ops = inplace_ops_order[i];
+    auto inplace_root_value = shared_inplace_values[i];
+    size_t insert_pos = 1;
+    std::unordered_set<pir::Operation*> ordered_ops_set(
+        only_inplace_ops.begin(), only_inplace_ops.end());
+    for (const auto& inplace_op : only_inplace_ops) {
+      pir::Value output_inplace_value;
+      auto output_input_values = GetInplaceValues(inplace_op);
+      for (const auto& [output_value, _unused] : output_input_values) {
+        if (get_inplace_root_value(output_value) == inplace_root_value) {
+          output_inplace_value = output_value;
+          break;
+        }
+      }
+      if (output_inplace_value.use_empty()) continue;
+      for (auto use_iter = output_inplace_value.use_begin();
+           use_iter != output_inplace_value.use_end();
+           ++use_iter) {
+        auto user_op = use_iter.owner();
+        if (ordered_ops_set.count(user_op)) continue;
+        ordered_ops_set.insert(user_op);
+      }
+    }
+    // Sort by origin order in blocks
+    std::vector<pir::Operation*> ordered_ops(ordered_ops_set.begin(),
+                                             ordered_ops_set.end());
+    std::sort(ordered_ops.begin(),
+              ordered_ops.end(),
+              [this](const auto& lhs, const auto& rhs) {
+                return this->op2index_.at(lhs) < this->op2index_.at(rhs);
+              });
+    this->inplace_ops_order_.push_back(ordered_ops);
   }
 }
 
