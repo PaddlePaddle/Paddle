@@ -241,10 +241,10 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
 
   PyObject* mesh_shape = PyObject_GetAttrString(mesh, "shape");
   HANDLE_NULL_VALUE_DECREF(mesh_shape);
-  auto shape_vector = py::handle(mesh_shape).cast<std::vector<int>>();
-  if (std::any_of(shape_vector.begin(), shape_vector.end(), [](int val) {
-        return val <= 0;
-      })) {
+  auto mesh_shape_vector = py::handle(mesh_shape).cast<std::vector<int>>();
+  if (std::any_of(mesh_shape_vector.begin(),
+                  mesh_shape_vector.end(),
+                  [](int val) { return val <= 0; })) {
     Py_DECREF(mesh);
     Py_DECREF(mesh_shape);
     PyErr_Clear();
@@ -258,7 +258,7 @@ bool TensorDistMetaMatchGuard::check(PyObject* value) {
   PyObject* local_shape = PyObject_GetAttrString(dist_info, "local_shape");
   HANDLE_NULL_VALUE_DECREF(local_shape);
 
-  if (shape_vector != mesh_shape_expected_ ||
+  if (mesh_shape_vector != mesh_shape_expected_ ||
       py::handle(process_ids).cast<std::vector<int>>() !=
           mesh_process_ids_expected_.value() ||
       !PyObject_Equal(dims_mapping, dims_mapping_expected_.value()) ||
