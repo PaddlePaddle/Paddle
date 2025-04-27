@@ -23,22 +23,6 @@ CINN_REGISTER_HELPER(cinn_hip_host_api) {
   GlobalSymbolRegistry::Global().RegisterFn(
       "backend_api.hip", reinterpret_cast<void *>(HIPBackendAPI::Global()));
 
-  using cinn::runtime::hip::cinn_get_value_in_hip_kernel_args;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_get_value_in_hip_kernel_args,
-                              cinn::common::DefaultHostTarget())
-      .SetRetType<int64_t>()
-      .AddInputType<void *>()  // args
-      .AddInputType<int>()     // index
-      .End();
-
-  using cinn::runtime::hip::cinn_get_item_in_hip_kernel_args;
-  REGISTER_EXTERN_FUNC_HELPER(cinn_get_item_in_hip_kernel_args,
-                              cinn::common::DefaultHostTarget())
-      .SetRetType<void *>()
-      .AddInputType<void *>()  // args
-      .AddInputType<int>()     // index
-      .End();
-
   REGISTER_EXTERN_FUNC_HELPER(cinn_call_hip_kernel,
                               cinn::common::DefaultHostTarget())
       .SetRetType<void>()

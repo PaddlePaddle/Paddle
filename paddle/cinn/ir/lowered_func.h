@@ -89,6 +89,8 @@ struct CudaAxisInfo {
     for (ir::Expr& v : grid_dims_) v = ir::Expr(static_cast<int64_t>(1));
     for (ir::Expr& v : block_dims_) v = ir::Expr(static_cast<int64_t>(1));
     set_valid(false);
+    max_threads_per_block_ = -1;
+    min_blocks_per_sm_ = -1;
   }
 
   void set_grid_dim(int offset, int64_t x);
@@ -102,12 +104,20 @@ struct CudaAxisInfo {
   inline void set_valid(bool x = false) { valid_ = x; }
   inline bool valid() const { return valid_; }
 
+  void set_max_threads_per_block(int x) { max_threads_per_block_ = x; }
+  int max_threads_per_block() const { return max_threads_per_block_; }
+
+  void set_min_blocks_per_sm(int x) { min_blocks_per_sm_ = x; }
+  int min_blocks_per_sm() const { return min_blocks_per_sm_; }
+
  private:
   // the three dimensions represents x, y, z
   symbolic_dim3_t grid_dims_;
   // the three dimensions represents x, y, z
   symbolic_dim3_t block_dims_;
   bool valid_{false};
+  int max_threads_per_block_{-1};
+  int min_blocks_per_sm_{-1};
 };
 
 std::ostream& operator<<(std::ostream& os, const CudaAxisInfo& x);

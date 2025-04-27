@@ -15,18 +15,19 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-if [ "$4" == "sot" ]; then
-    PY_VERSION=$5
-    ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
-    ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
-fi
+export PATH=/usr/local/bin:${PATH}
+ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 
-if [ "$4" == "py3" ]; then
-    PATH=/usr/local/bin:${PATH}
-    ln -sf $(which python3.9) /usr/local/bin/python
-    ln -sf $(which pip3.9) /usr/local/bin/pip
-    pip config set global.cache-dir "/home/data/cfs/.cache/pip"
-
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ]; then
+    if [ "$CI_name" == "xpu" ]; then
+        echo "::group::Installing ninja-build"
+        apt install ninja-build -y
+        echo "::endgroup::"
+    fi
+    apt install zstd -y
+    pip config set global.cache-dir "/root/.cache/pip"
+    pip install --upgrade pip
     echo "::group::Installing python dependencies"
     pip install -r "${work_dir}/python/requirements.txt"
     pip install -r "${work_dir}/python/unittest_py/requirements.txt"
@@ -46,8 +47,8 @@ function run_setup(){
 
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
-        echo "Using python abi: $1"
-        if [ "$1" == "cp38-cp38" ]; then
+        echo "Using python abi: $PYTHON_ABI"
+        if [ "$PYTHON_ABI" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
@@ -60,7 +61,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp39-cp39" ]; then
+        elif [ "$PYTHON_ABI" == "cp39-cp39" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
@@ -73,7 +74,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp310-cp310" ]; then
+        elif [ "$PYTHON_ABI" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
@@ -86,7 +87,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp311-cp311" ]; then
+        elif [ "$PYTHON_ABI" == "cp311-cp311" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.11" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.11/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.11/lib/
@@ -99,7 +100,7 @@ function run_setup(){
             else
                 exit 1
             fi
-        elif [ "$1" == "cp312-cp312" ]; then
+        elif [ "$PYTHON_ABI" == "cp312-cp312" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.12" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.12/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.12/lib/
@@ -114,9 +115,9 @@ function run_setup(){
             fi
         fi
     else
-        if [ "$1" != "" ]; then
-            echo "using python abi: $1"
-            if [ "$1" == "cp38-cp38" ]; then
+        if [ "$PYTHON_ABI" != "" ]; then
+            echo "using python abi: $PYTHON_ABI"
+            if [ "$PYTHON_ABI" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -125,7 +126,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
                 pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp39-cp39" ]; then
+            elif [ "$PYTHON_ABI" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.9.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -134,7 +135,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
                 pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp310-cp310" ]; then
+            elif [ "$PYTHON_ABI" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.10.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -143,7 +144,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
                 pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp311-cp311" ]; then
+            elif [ "$PYTHON_ABI" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.11.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -152,7 +153,7 @@ function run_setup(){
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
                 pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
                 pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
-            elif [ "$1" == "cp312-cp312" ]; then
+            elif [ "$PYTHON_ABI" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.12.0/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
@@ -272,8 +273,8 @@ EOF
     else
       parallel_number=8
     fi
-    if [ "$3" != "" ]; then
-      parallel_number=$3
+    if [ $parallel_number_env != "" ]; then
+      parallel_number=$parallel_number_env
     fi
 
     # reset ccache zero stats for collect PR's actual hit rate
@@ -282,21 +283,19 @@ EOF
     fi
     ccache -z
     cd ..
-    echo "::group::Build Paddle"
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
-            ${PYTHON_EXECUTABLE} setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+            ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
         else
-            ${PYTHON_EXECUTABLE} setup.py $2;build_error=$?
+            ${PYTHON_EXECUTABLE} setup.py $1;build_error=$?
         fi
     else
         if [ "$SYSTEM" == "Darwin" ]; then
-            python setup.py $2 --plat-name=macosx_10_9_x86_64;build_error=$?
+            python setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
         else
-            python setup.py $2;build_error=$?
+            python setup.py $1;build_error=$?
         fi
     fi
-    echo "::endgroup::"
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -315,3 +314,9 @@ EOF
 }
 
 run_setup "$@"
+
+if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
+    echo "=====================build summary======================"
+    cat ${PADDLE_ROOT}/build/build_summary.txt
+    echo "========================================================"
+fi

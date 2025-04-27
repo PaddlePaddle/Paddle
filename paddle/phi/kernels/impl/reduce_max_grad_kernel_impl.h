@@ -30,8 +30,25 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  ReduceGradKernel<Context, T, funcs::MaxOrMinGradFunctor>(
-      dev_ctx, x, out, out_grad, dims.GetData(), keep_dim, reduce_all, x_grad);
+  if (dims.size() == 0) {
+    ReduceGradKernel<Context, T, funcs::AMaxOrAMinGradFunctor>(dev_ctx,
+                                                               x,
+                                                               out,
+                                                               out_grad,
+                                                               dims.GetData(),
+                                                               keep_dim,
+                                                               reduce_all,
+                                                               x_grad);
+  } else {
+    ReduceGradKernel<Context, T, funcs::MaxOrMinGradFunctor>(dev_ctx,
+                                                             x,
+                                                             out,
+                                                             out_grad,
+                                                             dims.GetData(),
+                                                             keep_dim,
+                                                             reduce_all,
+                                                             x_grad);
+  }
 }
 
 }  // namespace phi

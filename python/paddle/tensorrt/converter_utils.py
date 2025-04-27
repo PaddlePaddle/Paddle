@@ -732,10 +732,12 @@ def convert_conv2d(network, paddle_op, inputs):
     set_layer_name(layer, paddle_op)
     support_fp32_mix_precision(paddle_op.name(), layer)
 
-    filter_param = paddle_op.operands()[1].source()
-    filter_name = filter_param.get_defining_op().attrs()['parameter_name']
-    refit_manager = RefitManager()
-    refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
+    trt_manager = TensorRTConfigManager()
+    if trt_manager.get_refit_params_path():
+        filter_param = paddle_op.operands()[1].source()
+        filter_name = filter_param.get_defining_op().attrs()['parameter_name']
+        refit_manager = RefitManager()
+        refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
     return layer.get_output(0)
 
@@ -817,10 +819,12 @@ def convert_conv3d(network, paddle_op, inputs):
 
     layer.dilation_nd = nv_dilations
     set_layer_name(layer, paddle_op)
-    filter_param = paddle_op.operands()[1].source()
-    filter_name = filter_param.get_defining_op().attrs()['parameter_name']
-    refit_manager = RefitManager()
-    refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
+    trt_manager = TensorRTConfigManager()
+    if trt_manager.get_refit_params_path():
+        filter_param = paddle_op.operands()[1].source()
+        filter_name = filter_param.get_defining_op().attrs()['parameter_name']
+        refit_manager = RefitManager()
+        refit_manager.set_mapping(filter_name, filter_name, RefitRole.CONSTANT)
 
     return layer.get_output(0)
 
@@ -875,27 +879,32 @@ def add_cast_reduce_layer(network, paddle_op, inputs, op_type):
 
     axis = paddle_op.attrs().get("axis")
     input_shape = paddle_op.operands()[0].source().shape
-    keepdim = paddle_op.attrs()["keepdim"]
-    if network.has_implicit_batch_dimension:
-        assert (
-            axis != 0
-        ), "can't reduce on axis == 0 when network has implicit batch dimension"
-    output_shape = []
+    input_dims = len(input_shape)
+    keepdim = paddle_op.attrs().get("keepdim")
+
     if len(axis) == 0:
-        axis = list(range(len(input_shape)))
-    for i in range(len(axis)):
-        if axis[i] < 0:
-            axis[i] = len(input_shape) + axis[i]
-    layer = network.add_reduce(
+        axes = 0
+        for i in range(input_dims):
+            axes |= 1 << i
+    else:
+        for i in range(len(axis)):
+            if axis[i] < 0:
+                axis[i] += input_dims
+
+        axes = get_axes_for_reduce_op(axis)
+
+    reduce_layer = network.add_reduce(
         cast_layer.get_output(0),
         op_type,
-        axes=get_axes_for_reduce_op(axis),
+        axes=axes,
         keep_dims=keepdim,
     )
-    set_layer_name(layer, paddle_op)
-    layer.set_output_type(0, trt.bool)
-    layer.get_output(0).dtype = cast_layer.get_output(0).dtype
-    return layer.get_output(0)
+    set_layer_name(reduce_layer, paddle_op)
+    bool_layer = network.add_identity(reduce_layer.get_output(0))
+    set_layer_name(bool_layer, paddle_op)
+    bool_layer.set_output_type(0, trt.bool)
+    bool_layer.get_output(0).dtype = trt.bool
+    return bool_layer.get_output(0)
 
 
 def fix_negative_indices(network, input_shape, indices, name=None):

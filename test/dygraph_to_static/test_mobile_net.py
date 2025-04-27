@@ -22,7 +22,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pir,
+    test_phi_only,
 )
 from predictor_utils import PredictorTools
 
@@ -741,13 +741,13 @@ class TestMobileNet(Dy2StTestBase):
             err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_legacy_and_pir
+    @test_phi_only
     def test_mobile_net_v1(self):
         self.assert_same_loss("MobileNetV1")
 
         self.assert_same_predict("MobileNetV1")
 
-    @test_legacy_and_pir
+    @test_phi_only
     def test_mobile_net_v2(self):
         # MobileNet-V2
         self.assert_same_loss("MobileNetV2")

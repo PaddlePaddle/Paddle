@@ -47,11 +47,9 @@ void ConcatGradKernel(const Context& dev_ctx,
   // get output tensor that the name is not kEmptyVarName
   std::vector<XPUType*> ptrs(outs.size());
   for (size_t j = 0; j < outs.size(); ++j) {
-    if (outs[j] && outs[j]->numel() != 0UL) {
+    if (outs[j]) {
       dev_ctx.template Alloc<T>(outs[j]);
       ptrs[j] = reinterpret_cast<XPUType*>(outs[j]->data<T>());
-    } else {
-      ptrs[j] = nullptr;
     }
   }
   PADDLE_ENFORCE_GE(axis,

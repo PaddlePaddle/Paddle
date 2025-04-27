@@ -60,6 +60,7 @@ from .auto_parallel.intermediate.tensor_parallel import (
     SequenceParallelEnd,
 )
 from .auto_parallel.local_layer import LocalLayer
+from .auto_parallel.local_map import local_map
 from .auto_parallel.placement_type import (
     Partial,
     Replicate,
@@ -192,6 +193,7 @@ __all__ = [
     "Strategy",
     "DistModel",
     "LocalLayer",
+    "local_map",
     "unshard_dtensor",
     "parallelize",
     "SequenceParallelEnd",
