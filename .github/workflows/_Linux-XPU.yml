@@ -14,6 +14,7 @@ env:
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: xpu
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -75,7 +76,6 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -204,7 +204,6 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
           FLAGS_use_stride_kernel: "0"

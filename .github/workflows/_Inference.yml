@@ -12,6 +12,7 @@ env:
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -100,6 +101,7 @@ jobs:
           -e ci_scripts \
           -e CUDA_ARCH_NAME \
           -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
+          -e no_proxy \
           -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz and update test branch
@@ -237,6 +239,7 @@ jobs:
           -e CUDA_ARCH_NAME \
           -e PADDLE_CUDA_INSTALL_REQUIREMENTS \
           -e GITHUB_API_TOKEN \
+          -e no_proxy \
           -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Download paddle.tar.gz
