@@ -83,8 +83,9 @@ if(WITH_XPU_XRE5)
 endif()
 
 if(WITH_XPU_FFT)
-  set(XPU_FFT_BASE_URL "https://paddle-org.bj.bcebos.com/paddlescience")
-  set(XPU_FFT_DIR_NAME "xpufft")
+  set(XPU_FFT_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xpufft/kl3/latest")
+  set(XPU_FFT_DIR_NAME "xpufft_ubuntu2004-x86_64")
 endif()
 
 if(WITH_AARCH64)

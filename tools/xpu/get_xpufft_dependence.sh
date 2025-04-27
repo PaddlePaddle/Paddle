@@ -55,3 +55,6 @@ check_files ${FFT_DIR_NAME}/include/cufft.h ${FFT_DIR_NAME}/lib64/libcufft.so
 cp -r ${FFT_DIR_NAME}/include/* xpu/include/xpu/
 cp -r ${FFT_DIR_NAME}/lib64/* xpu/lib/
 cp -r ${FFT_DIR_NAME}/include/* xpu/include/fft
+patchelf --set-rpath '$ORIGIN/' xpu/lib/libcufft.so
+patchelf --set-rpath '$ORIGIN/' xpu/lib/libcufft.so.10
+patchelf --set-rpath '$ORIGIN/' xpu/lib/libcufft.so.10.7.2.91
