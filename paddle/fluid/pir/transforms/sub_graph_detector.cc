@@ -662,7 +662,6 @@ void SubgraphDetector::InitInplaceOpsOrder(
   for (size_t i = 0; i < inplace_ops_order.size(); ++i) {
     auto only_inplace_ops = inplace_ops_order[i];
     auto inplace_root_value = shared_inplace_values[i];
-    size_t insert_pos = 1;
     std::unordered_set<pir::Operation*> ordered_ops_set(
         only_inplace_ops.begin(), only_inplace_ops.end());
     for (const auto& inplace_op : only_inplace_ops) {
