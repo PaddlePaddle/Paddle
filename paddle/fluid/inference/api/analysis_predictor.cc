@@ -427,7 +427,7 @@ bool AnalysisPredictor::Init(
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   phi::sparse::ConvHostBuffer &conv_buffer_instance =
       phi::sparse::ConvHostBuffer::getInstance();
-  if (conv_buffer_instance.using_buffer()) {
+  if (config_.sparse_conv_using_buffer_ && conv_buffer_instance.using_buffer()) {
     int *h_buffer;
     PADDLE_ENFORCE_GPU_SUCCESS(
         cudaHostAlloc((void **)&h_buffer,  // NOLINT

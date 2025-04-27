@@ -1169,6 +1169,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_gpu_mixed_{false};
   bool thread_local_stream_{false};
 
+  bool sparse_conv_using_buffer_{false};
+
   bool use_cudnn_{false};
   bool use_external_stream_{false};
   void* exec_stream_{nullptr};

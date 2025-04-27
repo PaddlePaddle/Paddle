@@ -493,6 +493,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_cudnn_);
   CP_MEMBER(gpu_device_id_);
   CP_MEMBER(memory_pool_init_size_mb_);
+  CP_MEMBER(sparse_conv_using_buffer_);
 
   // Mixed precision related.
   CP_MEMBER(mixed_black_list_);
@@ -1115,6 +1116,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << use_fc_padding_;
   ss << gpu_device_id_;
   ss << memory_pool_init_size_mb_;
+  ss << sparse_conv_using_buffer_;
 
   ss << use_tensorrt_;
   ss << tensorrt_workspace_size_;
@@ -1525,6 +1527,7 @@ void AnalysisConfig::Exp_SparseConvUsingBuffer(
   phi::sparse::ConvHostBuffer &conv_buffer_instance =
       phi::sparse::ConvHostBuffer::getInstance();
   conv_buffer_instance.init_from_config(kernels, strides);
+  sparse_conv_using_buffer_ = true;
 }
 
 void AnalysisConfig::EnableCINN() {

@@ -521,7 +521,7 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
   rulebook->Resize({rulebook_rows, static_cast<int>(max_nnz)});
   // 3. sorted or merge the out index
 
-  out_index->ResizeAndAllocate({static_cast<int>(max_nnz)});
+  // out_index->ResizeAndAllocate({static_cast<int>(max_nnz)});
   DenseTensor unique_key =
       phi::Empty<int>(dev_ctx, {static_cast<int>(max_nnz)});
 
@@ -629,6 +629,9 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
 
   config = phi::backends::gpu::GetGpuLaunchConfig1D(
       dev_ctx, rulebook_len, 1);
+  if (unique_value->place().GetType() == AllocationType::UNDEFINED) {
+    LOG(INFO) << "[debug] unique_value tensor place UNDEFINED!";
+  }
   unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
   int* unique_value_ptr = unique_value->data<int>();
 
