@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
@@ -245,11 +246,12 @@ void CompilationTask::Lowering() {
   // Simplify condition finally.
   auto SimplifyPredicate = [](GroupCompilationContext* context) {
     for (auto& expr : context->predicates_) {
-      optim::SimplifyLogical(&expr);
+      if (expr.defined()) optim::SimplifyLogical(&expr);
     }
-    optim::SimplifyLogical(&context->broadcast_condition_);
+    if (context->broadcast_condition_.defined())
+      optim::SimplifyLogical(&context->broadcast_condition_);
     for (auto& expr : context->CX86_predicates_) {
-      optim::SimplifyLogical(&expr);
+      if (!expr.defined()) optim::SimplifyLogical(&expr);
     }
   };
 
