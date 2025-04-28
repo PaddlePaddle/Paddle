@@ -1193,7 +1193,9 @@ class _ShardOptimizer(Optimizer):
             master_weight = self._inner_opt._master_weights[param.name]
             target_name = master_weight.name
             # shard the master weight
-            if self._shard_fn is not None:
+            if isinstance(
+                self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+            ):
                 self._inner_opt._master_weights[param.name] = (
                     self._shard_fn.shard_master_weight(param, master_weight)
                 )
@@ -1208,7 +1210,9 @@ class _ShardOptimizer(Optimizer):
             if paddle.in_dynamic_mode():
                 origin_accumulator_name = accumulator.name
 
-            if self._shard_fn is not None:
+            if isinstance(
+                self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+            ):
                 self._inner_opt._accumulators[key][target_name] = (
                     self._shard_fn(key, param, accumulator)
                 )
@@ -1270,7 +1274,9 @@ class _ShardOptimizer(Optimizer):
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
-        if self._shard_fn is not None:
+        if isinstance(
+            self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
+        ):
             for param, grad in params_grads:
                 new_params_grads.append(
                     (param, self._shard_fn("grad", param, grad))
