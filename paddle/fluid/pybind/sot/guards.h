@@ -511,45 +511,8 @@ class CheckGuardNode : public GuardNodeBase {
   virtual ~CheckGuardNode() = default;
   virtual std::string get_guard_name() const = 0;
   virtual bool check(std::array<PyObject*, N> values) = 0;
-  std::string stringify(int indent = 0) override {
-    std::stringstream ss;
-    ss << std::string(indent, ' ') << get_guard_name();
-    ss << "(";
-    for (size_t i = 0; i < N; ++i) {
-      if (i > 0) {
-        ss << " | ";
-      }
-      ss << exprs[i]->stringify();
-    }
-    ss << ")";
-    if (!next_guard_nodes.empty()) {
-      ss << " |" << std::endl;
-      for (auto& next_guard_node : next_guard_nodes) {
-        ss << std::string(indent + 2, ' ');
-        ss << next_guard_node->stringify(indent + 2) << std::endl;
-      }
-    }
-    return ss.str();
-  }
-  std::optional<int> lookup(FrameProxy* frame) override {
-    std::array<PyObject*, N> values = {};
-    for (size_t i = 0; i < N; ++i) {
-      values[i] = exprs[i]->eval(frame);
-      if (values[i]) {
-        Py_INCREF(values[i]);
-      }
-    }
-    std::optional<int> ret = std::nullopt;
-    if (check(values)) {
-      ret = lookup_next(frame);
-    }
-    for (size_t i = 0; i < N; ++i) {
-      if (values[i]) {
-        Py_DECREF(values[i]);
-      }
-    }
-    return ret;
-  }
+  inline std::string stringify(int indent = 0) override;
+  inline std::optional<int> lookup(FrameProxy* frame) override;
 };
 
 class TensorDistMetaMatchGuardNode : public CheckGuardNode<2> {

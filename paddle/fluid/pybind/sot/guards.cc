@@ -353,6 +353,49 @@ std::string BinaryExprNode::stringify(int indent) {
   return ss.str();
 }
 
+template <size_t N>
+inline std::string CheckGuardNode<N>::stringify(int indent) {
+  std::stringstream ss;
+  ss << std::string(indent, ' ') << get_guard_name();
+  ss << "(";
+  for (size_t i = 0; i < N; ++i) {
+    if (i > 0) {
+      ss << " | ";
+    }
+    ss << exprs[i]->stringify();
+  }
+  ss << ")";
+  if (!next_guard_nodes.empty()) {
+    ss << " |" << std::endl;
+    for (auto& next_guard_node : next_guard_nodes) {
+      ss << std::string(indent + 2, ' ');
+      ss << next_guard_node->stringify(indent + 2) << std::endl;
+    }
+  }
+  return ss.str();
+}
+
+template <size_t N>
+inline std::optional<int> CheckGuardNode<N>::lookup(FrameProxy* frame) {
+  std::array<PyObject*, N> values = {};
+  for (size_t i = 0; i < N; ++i) {
+    values[i] = exprs[i]->eval(frame);
+    if (values[i]) {
+      Py_INCREF(values[i]);
+    }
+  }
+  std::optional<int> ret = std::nullopt;
+  if (check(values)) {
+    ret = lookup_next(frame);
+  }
+  for (size_t i = 0; i < N; ++i) {
+    if (values[i]) {
+      Py_DECREF(values[i]);
+    }
+  }
+  return ret;
+}
+
 std::optional<int> GuardNodeBase::lookup_next(FrameProxy* frame) {
   if (return_cache_index.has_value()) {
     return return_cache_index.value();
