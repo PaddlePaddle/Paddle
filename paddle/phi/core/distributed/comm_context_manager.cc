@@ -127,22 +127,23 @@ void CommContextManager::CreateNCCLCommContext(
   comm_context_manager.Emplace(unique_comm_key, std::move(nccl_comm_context));
 }
 
-void CommContextManager::CreateNCCLCommContext_new(
+void CommContextManager::RecreateNCCLComm(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
     int rank,
-    const std::string& hash_key) {
+    const std::string& hash_key,
+    const P2POption* p2p_opt) {
   auto& comm_context_manager = CommContextManager::GetInstance();
 
   ncclUniqueId nccl_id;
-  if (rank == 0) {
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
   VLOG(3) << "000000CreateNCCLCommContext_new nccl_id: " << SerializeNCCLUniqueId(nccl_id);
 
   std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
-  if (rank == 0) {
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     printf("enter rank 0 branch....\n");
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
@@ -157,10 +158,45 @@ void CommContextManager::CreateNCCLCommContext_new(
   VLOG(3) << "CreateNCCLCommContext_new nccl_id: " << SerializeNCCLUniqueId(nccl_id);
 
   auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(comm_context_manager.Get(unique_comm_key));
-  comm_context->initNCCLComm(nccl_id);
+  comm_context->CreateNCCLComm(nccl_id);
 
   comm_context_manager.SetStore(store);
 }
+
+// void CommContextManager::CreateNCCLCommContext_new(
+//     const std::shared_ptr<Store>& store,
+//     const std::string& unique_comm_key,
+//     int rank,
+//     const std::string& hash_key) {
+//   auto& comm_context_manager = CommContextManager::GetInstance();
+
+//   ncclUniqueId nccl_id;
+//   if (rank == 0) {
+//     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
+//   }
+
+//   VLOG(3) << "000000CreateNCCLCommContext_new nccl_id: " << SerializeNCCLUniqueId(nccl_id);
+
+//   std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
+//   if (rank == 0) {
+//     printf("enter rank 0 branch....\n");
+//     std::vector<uint8_t> nccl_id_wrapper(
+//         reinterpret_cast<uint8_t*>(&nccl_id),
+//         reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
+//     store->set(unique_key, nccl_id_wrapper);
+//   } else {
+//     printf("enter rank else branch....\n");
+//     const auto& nccl_id_wrapper = store->get(unique_key);
+//     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
+//   }
+
+//   VLOG(3) << "CreateNCCLCommContext_new nccl_id: " << SerializeNCCLUniqueId(nccl_id);
+
+//   auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(comm_context_manager.Get(unique_comm_key));
+//   comm_context->CreateNCCLComm(nccl_id);
+
+//   comm_context_manager.SetStore(store);
+// }
 
 #endif
 

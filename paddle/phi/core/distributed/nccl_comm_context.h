@@ -49,7 +49,9 @@ class NCCLCommContext final : public CommContext {
 
   ncclComm_t GetNcclComm();
 
-  void initNCCLComm(ncclUniqueId nccl_id);
+  void CreateNCCLComm(ncclUniqueId nccl_id);
+
+  void DestroyNCCLComm();
 
   gpuStream_t GetStream();
 
@@ -136,7 +138,6 @@ class NCCLCommContext final : public CommContext {
   std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> comm_event_;
 
   int nranks;
-  ncclUniqueId commId;
   int myrank;
   int param;
 };

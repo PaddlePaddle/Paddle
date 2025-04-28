@@ -20,7 +20,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
+// #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
@@ -148,6 +148,7 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       pg_timeout_(timeout),
       nccl_comm_init_option_(nccl_comm_init_option),
       allocation_stream_pairs_(),
+      place_to_p2p_opts_(),
       create_count_(0) {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
@@ -951,6 +952,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
       platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
+  place_to_p2p_opts_.emplace(place_key, std::move(p2p_opts));
 
   printf("1s_group_call_counter: %lu\n", s_group_call_counter);
   printf("place_to_calc_ctx_ size: %lu\n", place_to_calc_ctx_.size());
@@ -967,22 +969,52 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   // NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_test));
 }
 
-void ProcessGroupNCCL::shutdown() {
-  printf("start shutdown process group nccl\n");
+// void ProcessGroupNCCL::shutdown() {
+//   printf("start shutdown process group nccl\n");
+//   for (size_t i = 0; i < s_group_call_counter; ++i) {
+//     NCCL_CHECK(phi::dynload::ncclGroupEnd());
+//   }
+
+//   const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
+//   const auto& place = phi::GPUPlace(deviceId);
+//   const auto key = GetKeyFromPlace(place);
+//   printf("shutdown place_key: %s\n", key.c_str());
+//   auto nccl_comm_ctx_ = place_to_comm_ctx_.at(key).get();
+//   auto nccl_comm_ = nccl_comm_ctx_->nccl_comm();
+//   VLOG(3) << "before shutdown nccl comm: " << nccl_comm_;
+//   NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
+//   VLOG(3) << "after shutdown nccl comm: " << nccl_comm_;
+//   printf("end shutdown process group nccl\n");
+// }
+
+void ProcessGroupNCCL::Shutdown() {
+  printf("Shutdown ProcessGroupNCCL start...\n");
   for (size_t i = 0; i < s_group_call_counter; ++i) {
     NCCL_CHECK(phi::dynload::ncclGroupEnd());
   }
 
-  const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
-  const auto& place = phi::GPUPlace(deviceId);
-  const auto key = GetKeyFromPlace(place);
-  printf("shutdown place_key: %s\n", key.c_str());
-  auto nccl_comm_ctx_ = place_to_comm_ctx_.at(key).get();
-  auto nccl_comm_ = nccl_comm_ctx_->nccl_comm();
-  VLOG(3) << "before shutdown nccl comm: " << nccl_comm_;
-  NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
-  VLOG(3) << "after shutdown nccl comm: " << nccl_comm_;
-  printf("end shutdown process group nccl\n");
+  printf("place_to_group_key_ size %lu \n", place_to_group_key_.size());
+  for (auto key_iter = place_to_group_key_.begin(); key_iter != place_to_group_key_.end(); ++key_iter) {
+    std::string store_key = key_iter->second;
+    printf("[DEBUG] store_key %s\n", store_key.c_str());
+    auto nccl_comm_ctx = this->GetCommContext(&store_key);
+    nccl_comm_ctx->DestroyNCCLComm();
+  }
+  printf("Shutdown ProcessGroupNCCL end...\n");
+}
+
+void ProcessGroupNCCL::Restart() {
+  printf("Restart ProcessGroupNCCL start...\n");
+  printf("place_to_group_key_ size %lu \n", place_to_group_key_.size());
+  for (auto key_iter = place_to_group_key_.begin(); key_iter != place_to_group_key_.end(); ++key_iter) {
+    std::string place_key = key_iter->first;
+    std::string store_key = key_iter->second;
+    printf("[DEBUG] place_key %s, store_key %s\n", place_key.c_str(), store_key.c_str());
+    phi::distributed::P2POption p2p_opts = place_to_p2p_opts_.at(place_key);
+    phi::distributed::CommContextManager::RecreateNCCLComm(store_, store_key, rank_, std::to_string(create_count_), &p2p_opts);
+    create_count_++;
+  }
+  printf("Restart ProcessGroupNCCL end...\n");
 }
 
 // void ProcessGroupNCCL::CreateNCCLComm() {
@@ -994,25 +1026,12 @@ void ProcessGroupNCCL::shutdown() {
 
 //   std::string store_key;
 //   GetStoreKey(key, CommType::ALLREDUCE, &store_key);
-//   printf("CreateNCCLComm key %s , store_key %s\n", key.c_str(), store_key.c_str());
-//   this->GetCommContext(&store_key)->initNCCLComm();
+
+//   printf("create_count_ %lu \n", create_count_);
+//   phi::distributed::CommContextManager::CreateNCCLCommContext_new(
+//       store_, store_key, rank_, std::to_string(create_count_));
+//   create_count_++;
 // }
-
-void ProcessGroupNCCL::CreateNCCLComm() {
-  const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
-  const auto& place = phi::GPUPlace(deviceId);
-  const auto key = GetKeyFromPlace(place);
-  // auto nccl_comm_ctx_ = place_to_comm_ctx_.at(key).get();
-  // auto nccl_comm_ = nccl_comm_ctx_->initNCCLComm();
-
-  std::string store_key;
-  GetStoreKey(key, CommType::ALLREDUCE, &store_key);
-
-  printf("create_count_ %lu \n", create_count_);
-  phi::distributed::CommContextManager::CreateNCCLCommContext_new(
-      store_, store_key, rank_, std::to_string(create_count_));
-  create_count_++;
-}
 
 void ProcessGroupNCCL::SyncCalcStream(const Place& place,
                                       const std::string& place_key) {

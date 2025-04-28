@@ -25,6 +25,7 @@
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/platform/device_event.h"
@@ -190,8 +191,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetOrCreateCommContext(
       const Place& place, CommType comm_type = CommType::UNKNOWN);
 
-  void shutdown(); 
-  void CreateNCCLComm();
+  void Shutdown(); 
+  void Restart();
 
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
@@ -291,6 +292,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   std::vector<std::shared_ptr<phi::DenseTensor>> coalescing_tensors_;
   std::vector<std::string> coalescing_place_keys_;
 
+  std::unordered_map<std::string, phi::distributed::P2POption> place_to_p2p_opts_;
   int64_t create_count_;
 };
 

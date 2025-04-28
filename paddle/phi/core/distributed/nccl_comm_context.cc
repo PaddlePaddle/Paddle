@@ -34,28 +34,29 @@ NCCLCommContext::NCCLCommContext(int rank,
                                  int size,
                                  ncclUniqueId nccl_id,
                                  int nccl_comm_init_option)
-    : CommContext(rank, size), nccl_version_(0), nccl_comm_(nullptr), nranks(size_), commId(nccl_id), myrank(rank_), param(nccl_comm_init_option) {
-  if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
-    LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
-    NCCL_CHECK(phi::dynload::ncclCommInitRank2(
-        &nccl_comm_, size_, nccl_id, rank_, nccl_comm_init_option));
-  } else {
-    if (nccl_comm_init_option > 0) {
-      LOG(WARNING) << "ncclCommInitRank2 is not supported.";
-    }
-    NCCL_CHECK(
-        phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
-  }
+    : CommContext(rank, size), nccl_version_(0), nccl_comm_(nullptr), nranks(size_), myrank(rank_), param(nccl_comm_init_option) {
+  // if (nccl_comm_init_option > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
+  //   LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
+  //   NCCL_CHECK(phi::dynload::ncclCommInitRank2(
+  //       &nccl_comm_, size_, nccl_id, rank_, nccl_comm_init_option));
+  // } else {
+  //   if (nccl_comm_init_option > 0) {
+  //     LOG(WARNING) << "ncclCommInitRank2 is not supported.";
+  //   }
+  //   NCCL_CHECK(
+  //       phi::dynload::ncclCommInitRank(&nccl_comm_, size_, nccl_id, rank_));
+  // }
+  this->CreateNCCLComm(nccl_id);
   NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
   printf("init NCCLCommContext ...\n");
   // NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
 }
 
-void NCCLCommContext::initNCCLComm(ncclUniqueId nccl_id) {
+void NCCLCommContext::CreateNCCLComm(ncclUniqueId nccl_id) {
   printf("start rebuild nccl comm... \n");
-  VLOG(3) << "initNCCLComm nccl comm: " << nccl_comm_;
+  VLOG(3) << "CreateNCCLComm nccl comm: " << nccl_comm_;
   VLOG(3) << "nranks" << nranks << "myrank" << myrank;
-  VLOG(3) << "initNCCLComm nccl_id: " << SerializeNCCLUniqueId(nccl_id);
+  VLOG(3) << "CreateNCCLComm nccl_id: " << SerializeNCCLUniqueId(nccl_id);
   if (param > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     NCCL_CHECK(phi::dynload::ncclCommInitRank2(
         &nccl_comm_, nranks, nccl_id, myrank, param));
@@ -67,6 +68,14 @@ void NCCLCommContext::initNCCLComm(ncclUniqueId nccl_id) {
         phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
   }
   printf("finished rebuild nccl comm... \n");
+}
+
+void NCCLCommContext::DestroyNCCLComm() {
+  if (nccl_comm_ != nullptr) {
+    printf("[DEBUG] DestroyNCCLComm...\n");
+    NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
+    nccl_comm_ = nullptr;
+  }
 }
 
 int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
