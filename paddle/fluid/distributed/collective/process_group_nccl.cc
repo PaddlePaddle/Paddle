@@ -147,7 +147,8 @@ ProcessGroupNCCL::ProcessGroupNCCL(
       place_to_group_key_(),
       pg_timeout_(timeout),
       nccl_comm_init_option_(nccl_comm_init_option),
-      allocation_stream_pairs_() {
+      allocation_stream_pairs_(),
+      create_count_(0) {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
@@ -1007,8 +1008,10 @@ void ProcessGroupNCCL::CreateNCCLComm() {
   std::string store_key;
   GetStoreKey(key, CommType::ALLREDUCE, &store_key);
 
+  printf("create_count_ %lu \n", create_count_);
   phi::distributed::CommContextManager::CreateNCCLCommContext_new(
-      store_, store_key, rank_, "123");
+      store_, store_key, rank_, std::to_string(create_count_));
+  create_count_++;
 }
 
 void ProcessGroupNCCL::SyncCalcStream(const Place& place,

@@ -290,6 +290,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   bool is_coalescing_{false};
   std::vector<std::shared_ptr<phi::DenseTensor>> coalescing_tensors_;
   std::vector<std::string> coalescing_place_keys_;
+
+  int64_t create_count_;
 };
 
 }  //  namespace distributed
