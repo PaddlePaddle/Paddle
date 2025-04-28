@@ -290,7 +290,7 @@ struct IscloseFunctor<phi::GPUContext, T> {
 #else
     cudaMemset(out_data, true, num * sizeof(bool));
 #endif
-    if (block * grid > std::numeric_limits<unsigned int>::max()) {
+    if (num + grid * block + 1 > std::numeric_limits<unsigned int>::max()) {
       IscloseCUDAKernel<T, int64_t><<<grid, block, 0, dev_ctx.stream()>>>(
           in_data, other_data, rtol, atol, equal_nan, num, out_data);
     } else {
