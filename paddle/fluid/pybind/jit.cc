@@ -125,16 +125,6 @@ void BindGuard(pybind11::module *m) {
   py::class_<WeakRefMatchGuard, GuardBase, std::shared_ptr<WeakRefMatchGuard>>(
       *m, "WeakRefMatchGuard", R"DOC(WeakRefMatchGuard Class.)DOC")
       .def(py::init<const py::object &>(), py::arg("func"));
-  py::class_<DummyGuard, GuardBase, std::shared_ptr<DummyGuard>>(
-      *m, "DummyGuard", R"DOC(DummyGuard Class.)DOC")
-      .def(py::init<>());
-  py::class_<TensorDistMetaMatchGuard,
-             GuardBase,
-             std::shared_ptr<TensorDistMetaMatchGuard>>(
-      *m,
-      "TensorDistMetaMatchGuard",
-      R"DOC(TensorDistMetaMatchGuard Class.)DOC")
-      .def(py::init<const py::object &>(), py::arg("dist_info"));
 
   m->def(
       "merge_guard",
@@ -190,26 +180,48 @@ void BindGuardTree(pybind11::module *m) {
           [](GuardNodeBase &self, py::object frame) {
             return self.lookup(reinterpret_cast<FrameProxy *>(frame.ptr()));
           },
-          py::arg("frame"))
-      .def("stringify", &GuardNodeBase::stringify, py::arg("indent") = 0);
+          py::arg("frame"));
 
-  py::class_<ExprNodeBase, std::shared_ptr<ExprNodeBase>>(
-      *m, "ExprNodeBase", R"DOC(ExprNodeBase Class.)DOC")
-      .def(
-          "eval",
-          [](ExprNodeBase &self, py::object frame) {
-            return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
-          },
-          py::arg("frame"))
-      .def("stringify", &ExprNodeBase::stringify, py::arg("indent") = 0);
+  py::class_<CheckGuardNode<1>,
+             GuardNodeBase,
+             std::shared_ptr<CheckGuardNode<1>>>(*m, "CheckGuardNode1")
+      .def_property_readonly("exprs",
+                             [](CheckGuardNode<1> &self) { return self.exprs; })
+      .def("get_guard_name", &CheckGuardNode<1>::get_guard_name);
 
-  py::class_<GuardNode, GuardNodeBase, std::shared_ptr<GuardNode>>(
+  py::class_<CheckGuardNode<2>,
+             GuardNodeBase,
+             std::shared_ptr<CheckGuardNode<2>>>(*m, "CheckGuardNode2")
+      .def_property_readonly("exprs",
+                             [](CheckGuardNode<2> &self) { return self.exprs; })
+      .def("get_guard_name", &CheckGuardNode<2>::get_guard_name);
+
+  py::class_<LegacyGuardNode,
+             CheckGuardNode<1>,
+             std::shared_ptr<LegacyGuardNode>>(
       *m, "GuardNode", R"DOC(GuardNode Class.)DOC")
       .def(py::init<const std::shared_ptr<GuardBase> &,
-                    const std::vector<std::shared_ptr<ExprNodeBase>> &,
+                    const std::array<std::shared_ptr<ExprNodeBase>, 1> &,
                     const std::vector<std::shared_ptr<GuardNodeBase>> &,
                     const std::optional<int> &>(),
            py::arg("guard"),
+           py::arg("exprs"),
+           py::arg("next_guard_nodes") = py::list(),
+           py::arg("return_cache_index") = py::none())
+      .def_property_readonly("guard",
+                             [](LegacyGuardNode &self) { return self.guard; });
+
+  py::class_<TensorDistMetaMatchGuardNode,
+             CheckGuardNode<2>,
+             std::shared_ptr<TensorDistMetaMatchGuardNode>>(
+      *m,
+      "TensorDistMetaMatchGuardNode",
+      R"DOC(TensorDistMetaMatchGuardNode Class.)DOC")
+      .def(py::init<const py::object &,
+                    const std::array<std::shared_ptr<ExprNodeBase>, 2> &,
+                    const std::vector<std::shared_ptr<GuardNodeBase>> &,
+                    const std::optional<int> &>(),
+           py::arg("dist_info"),
            py::arg("exprs"),
            py::arg("next_guard_nodes") = py::list(),
            py::arg("return_cache_index") = py::none());
@@ -231,6 +243,16 @@ void BindGuardTree(pybind11::module *m) {
            py::arg("return_true") = true,
            py::arg("next_guard_nodes") = py::list(),
            py::arg("return_cache_index") = py::none());
+
+  py::class_<ExprNodeBase, std::shared_ptr<ExprNodeBase>>(
+      *m, "ExprNodeBase", R"DOC(ExprNodeBase Class.)DOC")
+      .def(
+          "eval",
+          [](ExprNodeBase &self, py::object frame) {
+            return self.eval(reinterpret_cast<FrameProxy *>(frame.ptr()));
+          },
+          py::arg("frame"))
+      .def("stringify", &ExprNodeBase::stringify, py::arg("indent") = 0);
 
   py::class_<ConstantExprNode, ExprNodeBase, std::shared_ptr<ConstantExprNode>>(
       *m, "ConstantExprNode", R"DOC(ConstantExprNode Class.)DOC")
