@@ -441,7 +441,7 @@ class OpcodeExecutorBase:
         Prints the Static Instruction Representation (SIR) in the executor.
 
         """
-        print(self._graph.sir_ctx.TOS)
+        print(self._graph.sir_builder.current_sir)
 
     def _prepare_virtual_env(self):
         """
