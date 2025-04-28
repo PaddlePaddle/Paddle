@@ -845,19 +845,6 @@ class GradientMergePass(PassBase):
                     gradient_sync_after_accumulate,
                 )
         else:
-            dist_context = self.get_attr("dist_context")
-            grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
-            with paddle.static.program_guard(main_program, startup_program):
-                grad_to_merge_grad = parse_program(
-                    main_program,
-                    startup_program,
-                    params_grads,
-                    k_steps,
-                    avg,
-                    dist_context,
-                    gradient_sync_after_accumulate,
-                )
-
-            main_program._sync_with_cpp()
-            for k, v in grad_to_merge_grad.items():
-                grad_to_global_grad[k] = v
+            raise NotImplementedError(
+                "auto_parallel_gradient_merge_pass() only support PIR now."
+            )
