@@ -52,6 +52,10 @@ else()
   set(XPU_XPTI_BASE_VERSION "0.0.1")
 endif()
 
+if(NOT DEFINED XPU_FFT_BASE_DATE)
+  set(XPU_FFT_BASE_DATE "20250425")
+endif()
+
 set(XPU_XRE_BASE_URL
     "https://klx-sdk-release-public.su.bcebos.com/xre/release/${XPU_XRE_BASE_VERSION}"
 )
@@ -84,7 +88,8 @@ endif()
 
 if(WITH_XPU_FFT)
   set(XPU_FFT_BASE_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xpufft/kl3/latest")
+      "https://klx-sdk-release-public.su.bcebos.com/xpufft/kl3/${XPU_FFT_BASE_DATE}"
+  )
   set(XPU_FFT_DIR_NAME "xpufft_ubuntu2004-x86_64")
 endif()
 
