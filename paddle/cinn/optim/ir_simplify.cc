@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/optim/ir_simplify.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <ginac/ginac.h>
 #include <glog/logging.h>
 
@@ -30,6 +29,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/simplify_util.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace optim {
@@ -434,7 +434,7 @@ struct SimplifyUnitBlockMutator : public ir::ExprMutator<> {
 };
 
 struct SimplifyUnitLoopMutator : public ir::IRMutator<> {
-  absl::flat_hash_map<std::string, Expr> var_mins;
+  paddle::flat_hash_map<std::string, Expr> var_mins;
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
   using ir::IRMutator<>::Visit;
