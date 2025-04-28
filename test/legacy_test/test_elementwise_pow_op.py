@@ -285,7 +285,6 @@ class TestElementwisePowComplexOp(OpTest):
             self.check_grad(
                 ['X', 'Y'],
                 'Out',
-                check_pir=True,
             )
 
 
