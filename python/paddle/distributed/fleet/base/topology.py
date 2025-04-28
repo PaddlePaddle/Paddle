@@ -725,8 +725,10 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
             "data", self._dense_topo
         )
         self.sharding_check_group, self.sharding_check_comm_group = (
-            "sharding",
-            self._dense_topo,
+            self._set_check_group(
+                "moe_sharding",
+                self._moe_topo,
+            )
         )
 
         # (
