@@ -14,8 +14,12 @@
 from __future__ import annotations
 
 import traceback
+from typing import TYPE_CHECKING
 
 from .info_collector import BreakGraphReasonInfo
+
+if TYPE_CHECKING:
+    from collections import Any
 
 
 class BreakGraphReasonBase:
@@ -259,3 +263,168 @@ class SotExtraInfo:
         )
         setattr(err, SotExtraInfo.SOT_EXTRA_INFO_ATTR_NAME, info)
         return info
+
+
+class SotCapturedException(SotErrorBase):
+    # Represents an exception encountered during bytecode execution simulation.
+    # This exception is used by SOT to handle Python exceptions by mapping them to
+    # SotCapturedException for consistent exception handling in the simulation process.
+    ...
+
+
+class SotCapturedLookupError(SotCapturedException): ...
+
+
+class SotCapturedIndexError(SotCapturedLookupError): ...
+
+
+class SotCapturedKeyError(SotCapturedLookupError): ...
+
+
+class SotCapturedArithmeticError(SotCapturedException): ...
+
+
+class SotCapturedFloatingPointError(SotCapturedArithmeticError): ...
+
+
+class SotCapturedOverflowError(SotCapturedArithmeticError): ...
+
+
+class SotCapturedZeroDivisionError(SotCapturedArithmeticError): ...
+
+
+class SotCapturedImportError(SotCapturedException): ...
+
+
+class SotCapturedModuleNotFoundError(SotCapturedImportError): ...
+
+
+class SotCapturedRuntimeError(SotCapturedException): ...
+
+
+class SotCapturedNotImplementedError(SotCapturedRuntimeError): ...
+
+
+class SotCapturedRecursionError(SotCapturedRuntimeError): ...
+
+
+class SotCapturedNameError(SotCapturedException): ...
+
+
+class SotCapturedUnboundLocalError(SotCapturedNameError): ...
+
+
+class SotCapturedSyntaxError(SotCapturedException): ...
+
+
+class SotCapturedIndentationError(SotCapturedSyntaxError): ...
+
+
+class SotCapturedTabError(SotCapturedIndentationError): ...
+
+
+class SotCapturedOSError(SotCapturedException): ...
+
+
+class SotCapturedFileExistsError(SotCapturedOSError): ...
+
+
+class SotCapturedFileNotFoundError(SotCapturedOSError): ...
+
+
+class SotCapturedIsADirectoryError(SotCapturedOSError): ...
+
+
+class SotCapturedNotADirectoryError(SotCapturedOSError): ...
+
+
+class SotCapturedPermissionError(SotCapturedOSError): ...
+
+
+class SotCapturedTimeoutError(SotCapturedOSError): ...
+
+
+class SotCapturedStopIteration(SotCapturedOSError): ...
+
+
+class SotCapturedExceptionFactory:
+
+    # This dictionary maps common built-in Python Exception types to their corresponding SotCapturedException
+    # types, preserving the original exception hierarchy for proper inheritance behavior.
+    # Reference: https://docs.python.org/3/library/exceptions.html#exception-hierarchy
+    MAPPING = {
+        Exception: SotCapturedException,
+        LookupError: SotCapturedLookupError,
+        IndexError: SotCapturedIndexError,
+        KeyError: SotCapturedKeyError,
+        ArithmeticError: SotCapturedArithmeticError,
+        FloatingPointError: SotCapturedFloatingPointError,
+        OverflowError: SotCapturedOverflowError,
+        ZeroDivisionError: SotCapturedZeroDivisionError,
+        ImportError: SotCapturedImportError,
+        ModuleNotFoundError: SotCapturedModuleNotFoundError,
+        RuntimeError: SotCapturedRuntimeError,
+        NotImplementedError: SotCapturedNotImplementedError,
+        NameError: SotCapturedNameError,
+        UnboundLocalError: SotCapturedUnboundLocalError,
+        SyntaxError: SotCapturedSyntaxError,
+        IndentationError: SotCapturedIndentationError,
+        TabError: SotCapturedTabError,
+        OSError: SotCapturedOSError,
+        FileExistsError: SotCapturedFileExistsError,
+        FileNotFoundError: SotCapturedFileNotFoundError,
+        IsADirectoryError: SotCapturedIsADirectoryError,
+        NotADirectoryError: SotCapturedNotADirectoryError,
+        PermissionError: SotCapturedPermissionError,
+        TimeoutError: SotCapturedTimeoutError,
+        StopIteration: SotCapturedStopIteration,
+    }
+
+    @classmethod
+    def get(
+        cls,
+        exc_type: type[Exception],
+    ) -> type[SotCapturedException]:
+
+        if isinstance(exc_type, type) and issubclass(
+            exc_type, SotCapturedException
+        ):
+            return exc_type
+
+        if exc_type not in cls.MAPPING:
+            name = getattr(exc_type, "__name__", str(exc_type))
+            cls.MAPPING[exc_type] = type(
+                f"SotCaptured{name}", (SotCapturedException,), {}
+            )
+        return cls.MAPPING[exc_type]
+
+    @classmethod
+    def create(
+        cls,
+        origin_exc: Exception | None = None,
+        exc_type: type[Exception] | None = None,
+        args: list[Any] | tuple[Any] | None = None,
+        context: Exception | None = None,
+        cause: Exception | None = None,
+        suppress_context: bool | None = None,
+        traceback: None = None,
+    ) -> SotCapturedException:
+        # transform an Exception to SotCapturedException
+        args = args or []
+
+        if origin_exc is not None:
+            exc_type = origin_exc.__class__
+            args = origin_exc.args
+            context = origin_exc.__context__
+            cause = origin_exc.__cause__
+            suppress_context = origin_exc.__suppress_context__
+            traceback = origin_exc.__traceback__
+
+        new_exc_type = cls.get(exc_type)
+        new_exc = new_exc_type(*args)
+        new_exc.__cause__ = cause
+        new_exc.__context__ = context
+        new_exc.__suppress_context__ = suppress_context
+        new_exc.__traceback__ = traceback
+
+        return new_exc
