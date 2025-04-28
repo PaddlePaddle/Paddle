@@ -101,6 +101,11 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
             self.input_shape = [2, 3, 5, 255]
             self.axis = 2
 
+    class XPUTestCumsum6(TestCumsumOPBase):
+        def init_config(self):
+            self.input_shape = [1, 0, 2]
+            self.axis = 0
+
 
 support_types = get_xpu_op_support_types('cumsum')
 for stype in support_types:

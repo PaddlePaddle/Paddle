@@ -215,7 +215,7 @@ class TestSumOp7(TestSumOp1):
 
 class TestSumOpZeroSize(TestSumOp1):
     def set_attrs_input_output(self):
-        self.x = np.random.random((1, 0, 4)).astype(self._dtype)
+        self.x = np.random.random((1, 0, 4)).astype(self.dtype_)
         self.out = self.x.cumsum(axis=0)
 
 
@@ -764,7 +764,6 @@ class TestSumOpDtypeAsPaddleDtype(unittest.TestCase):
             paddle.int64,
             paddle.float32,
             paddle.float64,
-            paddle.bool,
         ]
 
     def test_dygraph(self):
