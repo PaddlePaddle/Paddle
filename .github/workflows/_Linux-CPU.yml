@@ -81,6 +81,7 @@ jobs:
             -e ci_scripts \
             -e WITH_AVX \
             -e CCACHE_DIR \
+            -ee CI_name \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz and merge target branch
