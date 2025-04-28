@@ -182,10 +182,10 @@ jobs:
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/build/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           '
 
-      - name: Terminate and delete the container
-        if: always()
-        run: |
-          set +e
-          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-          docker stop ${{ env.container_name }}
-          docker rm ${{ env.container_name }}
+    # - name: Terminate and delete the container
+    #   if: always()
+    #   run: |
+    #     set +e
+    #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+    #     docker stop ${{ env.container_name }}
+    #     docker rm ${{ env.container_name }}

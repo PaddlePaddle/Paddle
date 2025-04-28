@@ -9,7 +9,6 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
-  ci_scripts_runner: ${{ github.workspace }}/ci
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
@@ -170,21 +169,6 @@ jobs:
       group: Kunlun
 
     steps:
-
-      - name: Download build.tar.gz
-        run: |
-          sudo rm -rf * .[^.]*
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          tar --use-compress-program="pzstd -5" -xf build.tar.gz --strip-components=1
-          rm build.tar.gz
-
-      - name: Determine the runner
-        run: |
-          runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
-          echo $runner_name
-          source ${ci_scripts_runner}/utils.sh
-          determine_kunlun_runner ${runner_name}
-
       - name: Check docker image and run container
         env:
           WITH_XPU: "ON"
@@ -250,6 +234,28 @@ jobs:
             -e GITHUB_API_TOKEN \
             -e FLAGS_use_stride_kernel \
             -w /paddle --network host ${docker_image} /bin/bash
+
+      - name: Download build.tar.gz
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          sudo rm -rf * .[^.]*
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "::group::Installing zstd"
+          apt install zstd -y
+          echo "::endgroup::"
+          tar --use-compress-program="pzstd -5" -xf build.tar.gz --strip-components=1
+          rm build.tar.gz
+          '
+
+      - name: Determine the runner
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          cd ${{ github.workspace }}
+          runner_name=$(echo "$PWD" | awk -F "/" "{print \$3}")
+          echo $runner_name
+          source ${ci_scripts}/utils.sh
+          determine_kunlun_runner ${runner_name}
+          '
 
       - name: Run test
         run: |
