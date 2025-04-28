@@ -948,29 +948,33 @@ def matrix_norm(
 
         if in_dynamic_or_pir_mode():
             abs_ord = abs(porder)
-
-            max_min = _C_ops.max if porder > 0.0 else _C_ops.min
-
+            orig_dim0, orig_dim1 = axis
+            reduce_op = _C_ops.max if porder > 0.0 else _C_ops.min
             if abs_ord == 2.0:
                 transpose_out = _C_ops.transpose(input, perm)
                 u, s, vh = _C_ops.svd(transpose_out, False)
-                result = max_min(s, -1, keepdim)
-                if keepdim:
-                    result = _C_ops.transpose(
-                        _C_ops.unsqueeze(result, -1), inv_perm
-                    )
-                return result
-            else:  # 1,-1,inf,-inf
-                dim0, dim1 = axis
-                if abs_ord == np.float64("inf"):
-                    dim0, dim1 = dim1, dim0
-                if not keepdim and (dim0 < dim1):
-                    dim1 -= 1
-                return max_min(
-                    vector_norm(input, 1.0, axis=dim0, keepdim=keepdim),
-                    dim1,
-                    keepdim,
+                result = reduce_op(s, -1, keepdim)
+            if keepdim:
+                result = _C_ops.transpose(
+                    _C_ops.unsqueeze(result, -1), inv_perm
                 )
+                return result
+            else:  # 1, -1, inf, -inf
+                if abs_ord == np.inf:
+                    norm_axis = orig_dim1
+                    reduce_axis_orig_idx = orig_dim0
+                else:
+                    norm_axis = orig_dim0
+                    reduce_axis_orig_idx = orig_dim1
+                vec_norm_out = vector_norm(
+                    input, 1.0, axis=norm_axis, keepdim=keepdim
+                )
+                if keepdim:
+                    final_reduce_axis = reduce_axis_orig_idx
+                else:
+                    final_reduce_axis = -1
+
+                return reduce_op(vec_norm_out, final_reduce_axis, keepdim)
 
         check_variable_and_dtype(
             input,
