@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
@@ -46,8 +47,9 @@ struct CustomContext::Impl {
     max_threads_per_mp_ = DeviceManager::GetMaxThreadsPerMultiProcessor(place_);
     max_threads_per_block_ = DeviceManager::GetMaxThreadsPerBlock(place_);
     max_grid_dim_size_ = DeviceManager::GetMaxGridDimSize(place_);
-    eigen_device_ = DeviceManager::InitEigenDevice(
-        place_, stream_->raw_stream(), allocator_);
+    eigen_device_ =
+        reinterpret_cast<Eigen::GpuDevice*>(DeviceManager::InitEigenDevice(
+            place_, stream_->raw_stream(), allocator_));
 
     stream_.reset(new phi::stream::Stream());
     stream_->Init(place_);
@@ -99,8 +101,9 @@ struct CustomContext::Impl {
       if (!eigen_device_) {
         if (!eigen_device_creator_) {
           // use default initial
-          eigen_device_ = DeviceManager::InitEigenDevice(
-              place_, stream_->raw_stream(), allocator_);
+          eigen_device_ = reinterpret_cast<Eigen::GpuDevice*>(
+              DeviceManager::InitEigenDevice(
+                  place_, stream_->raw_stream(), allocator_));
         } else {
           eigen_device_ = eigen_device_creator_();
         }

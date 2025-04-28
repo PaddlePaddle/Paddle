@@ -517,16 +517,15 @@ std::array<unsigned int, 3> DeviceManager::GetMaxGridDimSize(
   return dev_impl->GetMaxGridDimSize(device_id);
 }
 
-Eigen::GpuDevice* DeviceManager::InitEigenDevice(const Place& place,
-                                                 phi::stream::stream_t stream,
-                                                 phi::Allocator* allocator) {
+void* DeviceManager::InitEigenDevice(const Place& place,
+                                     phi::stream::stream_t stream,
+                                     phi::Allocator* allocator) {
   auto device_type = place.GetDeviceType();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
   return dev_impl->InitEigenDevice(place, stream, allocator);
 }
 
-void DeviceManager::DestroyEigenDevice(const Place& place,
-                                       Eigen::GpuDevice* eigen_device) {
+void DeviceManager::DestroyEigenDevice(const Place& place, void* eigen_device) {
   auto device_type = place.GetDeviceType();
   auto device_id = place.GetDeviceId();
   auto dev_impl = GetDeviceInterfaceWithType(device_type);

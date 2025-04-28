@@ -18,7 +18,6 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
-#include "unsupported/Eigen/CXX11/Tensor"
 
 #ifdef __cplusplus
 extern "C" {
@@ -586,7 +585,7 @@ struct C_DeviceInterface {
   /**
    * @brief init eigen device
    *
-   * @param[Eigen::GpuDevice*]    eigen_device
+   * @param[C_Place, C_EigenDevice*, C_Stream, C_Allocator]    eigen_device
    */
   C_Status (*init_eigen_device)(C_Place place,
                                 C_EigenDevice* eigen_device,
@@ -596,7 +595,7 @@ struct C_DeviceInterface {
   /**
    * @brief destroy eigen device
    *
-   * @param[Eigen::GpuDevice*]    eigen_device
+   * @param[C_Device, C_EigenDevice*]    eigen_device
    */
   C_Status (*destroy_eigen_device)(const C_Device device,
                                    C_EigenDevice* eigen_device);
