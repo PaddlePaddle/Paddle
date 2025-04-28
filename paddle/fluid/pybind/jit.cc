@@ -32,6 +32,8 @@ limitations under the License. */
 #include "pybind11/pytypes.h"
 
 namespace py = pybind11;
+template class CheckGuardNode<1>;
+template class CheckGuardNode<2>;
 
 namespace paddle::pybind {
 
