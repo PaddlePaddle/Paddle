@@ -75,45 +75,48 @@ class Symbol:
 class StatementContext: ...
 
 
-class StatementContextRegistry(metaclass=Singleton):
-    def __init__(self):
-        self._ctx_map: dict[
-            type[Any],
-            Callable[[Any], AbstractContextManager[None]],
-        ] = {}
+class StatementContextRegistry:
 
+    _ctx_map: dict[
+        type[Any],
+        Callable[[Any], AbstractContextManager[None]],
+    ] = {}
+
+    @classmethod
     def register_context_guard(
-        self,
+        cls,
         ctx_cls: type[_StatementContextT],
         handler: Callable[[_StatementContextT], AbstractContextManager[None]],
     ):
         """
         Register a context handler for the given context.
         """
-        if ctx_cls in self._ctx_map:
+        if ctx_cls in cls._ctx_map:
             raise ValueError(f"Context {ctx_cls} is already registered.")
-        self._ctx_map[ctx_cls] = handler
+        cls._ctx_map[ctx_cls] = handler
 
+    @classmethod
     def register_context(
-        self,
+        cls,
         handler: Callable[[_StatementContextT], AbstractContextManager[None]],
     ):
-        def decorator(cls: type[_StatementContextT]):
-            self.register_context_guard(cls, handler)
-            return cls
+        def decorator(ctx_cls: type[_StatementContextT]):
+            cls.register_context_guard(ctx_cls, handler)
+            return ctx_cls
 
         return decorator
 
+    @classmethod
     def get_context_guard(
-        self,
-        ctx_cls: _StatementContextT,
+        cls,
+        ctx_cls: type[_StatementContextT],
     ) -> Callable[[_StatementContextT], AbstractContextManager[None]]:
         """
         Get the context handler for the given context.
         """
-        if ctx_cls not in self._ctx_map:
+        if ctx_cls not in cls._ctx_map:
             raise ValueError(f"Context {ctx_cls} is not registered.")
-        return self._ctx_map[ctx_cls]
+        return cls._ctx_map[ctx_cls]
 
 
 class Statement:

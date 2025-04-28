@@ -217,7 +217,7 @@ def create_context_guard(contexts: list[StatementContext]):
     guards = list(
         map(
             lambda ctx: (
-                lambda: StatementContextRegistry().get_context_guard(type(ctx))(
+                lambda: StatementContextRegistry.get_context_guard(type(ctx))(
                     ctx
                 )
             ),

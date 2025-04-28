@@ -207,7 +207,7 @@ class VariableLoader:
 
 
 # TODO(SigureMo): Add AMP auto_guard context
-@StatementContextRegistry().register_context(lambda _: paddle.no_grad())
+@StatementContextRegistry.register_context(lambda _: paddle.no_grad())
 class NoGradContext(StatementContext): ...
 
 
