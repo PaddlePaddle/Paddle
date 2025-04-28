@@ -21,7 +21,7 @@ import unittest
 
 import collective.test_communication_api_base as test_base
 
-os.environ['FLAGS_enable_pir_api'] = '1'
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 
 class TestParallelCrossEntropy(test_base.CommunicationTestDistBase):
