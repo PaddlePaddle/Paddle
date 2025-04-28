@@ -2236,7 +2236,8 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
 
-  argument_->SetDisableLogs(config_.glog_info_disabled() || !FLAGS_trt_glog_info);
+  argument_->SetDisableLogs(config_.glog_info_disabled() ||
+                            !FLAGS_trt_glog_info);
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
