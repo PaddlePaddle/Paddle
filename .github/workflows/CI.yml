@@ -49,3 +49,8 @@ jobs:
     name: Linux-NPU
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: cpu
+
+  build:
+    name: Linux-build
+    uses: ./.github/workflows/_Linux-build.yml
+    needs: clone
