@@ -503,7 +503,7 @@ struct MaximumFunctor<
     if (phi::dtype::isnan(b)) return b;
     return a > b ? a : b;
   }
-}
+};
 
 template <typename T>
 struct MaxGradXFunctor {
@@ -576,7 +576,7 @@ struct MinimumFunctor<
     if (phi::dtype::isnan(b)) return b;
     return a < b ? a : b;
   }
-}
+};
 
 template <typename T>
 struct MinGradXFunctor {
