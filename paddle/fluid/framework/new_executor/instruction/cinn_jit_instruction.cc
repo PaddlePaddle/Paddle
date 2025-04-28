@@ -104,8 +104,8 @@ class CinnJitInstruction::FnPtrImpl {
     // Pass real tensor data to cinn_buffer_t func args placeholder
     for (size_t i = 0; i < kernel_tensor_args.size(); ++i) {
       if (!kernel_tensor_args[i]->has_allocation()) {
-        LOG(WARNING)
-            << "Access DenseTensor::data() without allocation, return nullptr!";
+        VLOG(2) << "WARNING! Access DenseTensor::data() without allocation, "
+                   "return nullptr!";
         cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory = nullptr;
       } else {
         cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory =
