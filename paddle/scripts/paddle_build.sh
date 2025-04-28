@@ -1586,8 +1586,6 @@ function card_test() {
     trap 'caught_error' CHLD
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
-    echo 1111, $NUM_PROC
-    export NUM_PROC=1
     echo "****************************************************************"
     echo "***These unittests run $parallel_job job each time with $cardnumber GPU***"
     echo "****************************************************************"
