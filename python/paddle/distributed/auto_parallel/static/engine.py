@@ -47,7 +47,7 @@ from paddle.static import InputSpec, Operator, Variable, global_scope
 from paddle.static.amp.fp16_utils import _convert_float_to_bfloat16
 
 from ...utils.log_utils import get_logger
-from ..interface import CollectionNames, fetch, get_collection
+from ..interface import CollectionNames, get_collection
 from ..static.dist_tensor import DistributedTensor
 from ..strategy import Strategy
 from .callbacks import config_callbacks
@@ -580,37 +580,8 @@ class Engine:
         # TODO(2024-Q2)
         if self._in_pir_mode:
             return fetch_names, fetch_indices
-
-        def _process_fetch_group(group_name, var_list):
-            group_indices = []
-            for var in var_list:
-                # Remove duplicate var_names
-                if self._is_local_var(var):
-                    var_name = _to_name_str(var)
-                    if var_name not in fetch_names:
-                        fetch_names.append(var_name)
-                    group_indices.append(fetch_names.index(var_name))
-            fetch_indices.append(group_indices)
-
-        dist_context = self._dist_contexts[mode]
-        fetch_vars = dist_context.serial_fetch_vars
-        if mode != "predict":
-            _process_fetch_group("loss", fetch_vars["loss"])
-        if mode != "predict":
-            metrics = fetch_vars["metrics"]
-            for i, var_list in enumerate(metrics):
-                _process_fetch_group("metrics_" + str(i), var_list)
-        if mode == "predict":
-            _process_fetch_group("outputs", fetch_vars["outputs"])
-        for usr_fetch in user_fetches or []:
-            var_name = _to_name_str(usr_fetch)
-            fetch(var_name)
-        user_fetches_collection = [
-            item[1] for item in get_collection(CollectionNames.FETCHES)
-        ]
-        var_list = user_fetches_collection or []
-        _process_fetch_group("fetches", var_list)
-        return fetch_names, fetch_indices
+        else:
+            raise NotImplementedError("_prepare_fetch() only support PIR now.")
 
     def _prepare_logger(
         self,
