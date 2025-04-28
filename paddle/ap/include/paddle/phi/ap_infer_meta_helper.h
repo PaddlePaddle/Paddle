@@ -34,10 +34,10 @@ struct ApInferMetaHelper {
                                  std::vector<MetaTensor*>* outputs);
 
   adt::Result<adt::Ok> InferMetaByAxprHook(
-      const std::vector<const MetaTensor*>* inputs,
+      const ::paddle::optional<std::vector<const MetaTensor*>>& inputs,
       const std::string& infer_meta_func_name,
       const std::string& serialized_attributes,
-      std::vector<MetaTensor*>* outputs);
+      const std::vector<MetaTensor*>& outputs);
 };
 
 }  // namespace phi

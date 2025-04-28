@@ -52,6 +52,13 @@ cc_library(
   SRCS ${ap_pir_srcs}
   DEPS ${AP_COMMON_DEPS} ${ap_pir_deps})
 
+file(GLOB_RECURSE ap_hlir_srcs "src/paddle/hlir/*.cc")
+set(ap_hlir_deps axpr ap_drr ap_pir)
+cc_library(
+  ap_hlir
+  SRCS ${ap_hlir_srcs}
+  DEPS ${AP_COMMON_DEPS} ${ap_hlir_deps})
+
 file(GLOB_RECURSE ap_reified_drr_srcs "src/reified_drr/*.cc")
 set(ap_reified_drr_deps axpr ap_drr ap_code_module ap_code_gen)
 cc_library(
@@ -60,7 +67,7 @@ cc_library(
   DEPS ${AP_COMMON_DEPS} ${ap_reified_drr_deps})
 
 file(GLOB_RECURSE ap_pass_srcs "src/paddle/pass/*.cc")
-set(ap_pass_deps axpr ap_pir ap_drr ap_code_module ap_code_gen ap_reified_drr)
+set(ap_pass_deps axpr ap_hlir ap_drr ap_code_module ap_code_gen ap_reified_drr)
 cc_library(
   ap_pass
   SRCS ${ap_pass_srcs}

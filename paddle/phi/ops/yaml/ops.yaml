@@ -280,6 +280,7 @@
 - op : ap_facade
   args : (Tensor[] xs, int64_t num_outputs, str custom_op_name, str infer_meta_func_name, str infer_symbolic_func_name, str serialized_attributes)
   output : Tensor[](out){num_outputs}
+  optional : xs
   infer_meta :
     func : ApFacadeInferMeta
   interfaces : paddle::dialect::InferSymbolicShapeInterface

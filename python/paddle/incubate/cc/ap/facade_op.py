@@ -66,7 +66,7 @@ class FacadeOp:
         self._check_num_inputs(len(args))
         serialized_attrs = self.attrs_serializer_(**kwargs)
         ret = paddle._C_ops.ap_facade(
-            args,
+            args if len(args) > 0 else None,
             self.num_outputs(args),
             self.custom_op_name_,
             self.infer_meta_,

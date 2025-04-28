@@ -27,9 +27,9 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 
-#include "paddle/ap/include//paddle/pass/convert_pd_facade_to_ap_facade.h"
 #include "paddle/ap/include/memory/guard.h"
 #include "paddle/ap/include/paddle/pass/ap_generic_drr_pass.h"
+#include "paddle/ap/include/paddle/pass/convert_pd_facade_to_ap_facade.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"

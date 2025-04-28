@@ -14,8 +14,8 @@
 
 #include <glog/logging.h>
 
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
 #include "paddle/ap/include/paddle/pir/infer_symbolic_shape_util.h"
-#include "paddle/ap/include/paddle/pir/manual_op.h"
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_type.h"

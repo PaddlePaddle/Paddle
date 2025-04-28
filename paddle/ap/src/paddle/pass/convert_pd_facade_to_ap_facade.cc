@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ap/include/paddle/pass/convert_pd_facade_to_ap_facade.h"
-#include "paddle/ap/include/paddle/pir/manual_op.h"
+#include "paddle/ap/include/paddle/hlir/manual_op.h"
 
 #include "paddle/ap/include/axpr/abstract_list.h"
 #include "paddle/ap/include/axpr/anf_expr_util.h"
@@ -55,10 +55,15 @@ class ConvertPdFacadeToApFacadePattern
 
   adt::Result<bool> TryMatchAndRewrite(paddle::dialect::ApFacadeOp pd_facade_op,
                                        pir::PatternRewriter* rewriter) const {
-    auto* upstream_op = pd_facade_op->operand_source(0).defining_op();
-    ADT_CHECK(upstream_op != nullptr);
-    ADT_CHECK(upstream_op->isa<pir::CombineOp>()) << adt::errors::TypeError{
-        "the upstream of pd_op.ap_facade should builtin.combine"};
+    std::vector<pir::Value> inputs{};
+    pir::Operation* upstream_op = nullptr;
+    if (pd_facade_op->operand_source(0)) {
+      upstream_op = pd_facade_op->operand_source(0).defining_op();
+      ADT_CHECK(upstream_op != nullptr);
+      ADT_CHECK(upstream_op->isa<pir::CombineOp>()) << adt::errors::TypeError{
+          "the upstream of pd_op.ap_facade should builtin.combine"};
+      inputs = upstream_op->dyn_cast<pir::CombineOp>().inputs();
+    }
     ADT_CHECK(pd_facade_op->result(0).use_count() == 1);
     auto* downstream_op = pd_facade_op->result(0).first_use().owner();
     ADT_CHECK(downstream_op != nullptr);
@@ -72,15 +77,15 @@ class ConvertPdFacadeToApFacadePattern
       output_types.emplace_back(output.type());
     }
     auto ap_facade_op = rewriter->Build<ap::dialect::FacadeOp>(
-        upstream_op->dyn_cast<pir::CombineOp>().inputs(),
-        attributes,
-        output_types);
+        inputs, attributes, output_types);
     for (int i = 0; i < old_outputs.size(); ++i) {
       rewriter->ReplaceAllUsesWith(old_outputs.at(i), ap_facade_op->result(i));
     }
     rewriter->EraseOp(downstream_op);
     rewriter->EraseOp(pd_facade_op);
-    rewriter->EraseOp(upstream_op);
+    if (upstream_op != nullptr) {
+      rewriter->EraseOp(upstream_op);
+    }
     return true;
   }
 

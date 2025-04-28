@@ -58,22 +58,24 @@ adt::Result<adt::Ok> InferMetaByLambda(
 
 adt::Result<adt::Ok> InferMetaByLambda(
     const Lambda& lambda,
-    const std::vector<const MetaTensor*>* inputs,
+    const ::paddle::optional<std::vector<const MetaTensor*>>& inputs,
     const ap::axpr::AttrMap<ap::axpr::Value>& attrs,
-    std::vector<MetaTensor*>* outputs) {
+    const std::vector<MetaTensor*>& outputs) {
   ap::memory::Guard guard{};
   ap::axpr::Interpreter interpreter(
       ap::paddle::MakeBuiltinFrameAttrMap<ap::axpr::Value>(),
       guard.circlable_ref_list());
   adt::List<ap::axpr::Value> inputs_val{};
-  inputs_val->reserve(inputs->size());
-  for (const auto& input : *inputs) {
-    inputs_val->emplace_back(
-        ap::paddle::GetConstMetaTensorPtrClass().New(input));
+  if (inputs.is_initialized()) {
+    inputs_val->reserve(inputs->size());
+    for (const auto& input : *inputs) {
+      inputs_val->emplace_back(
+          ap::paddle::GetConstMetaTensorPtrClass().New(input));
+    }
   }
   adt::List<ap::axpr::Value> outputs_val{};
-  outputs_val->reserve(outputs->size());
-  for (const auto& output : *outputs) {
+  outputs_val->reserve(outputs.size());
+  for (const auto& output : outputs) {
     outputs_val->emplace_back(ap::paddle::GetMetaTensorPtrClass().New(output));
   }
   ADT_RETURN_IF_ERR(
@@ -161,9 +163,9 @@ constexpr auto GetInferMetaLambda = &CacheResult<Lambda, &MakeInferMetaLambda>;
 
 adt::Result<adt::Ok> InferMetaByAxprHookImpl(
     const std::string& infer_meta_func_name,
-    const std::vector<const MetaTensor*>* inputs,
+    const ::paddle::optional<std::vector<const MetaTensor*>>& inputs,
     const ap::axpr::AttrMap<ap::axpr::Value>& attrs,
-    std::vector<MetaTensor*>* outputs) {
+    const std::vector<MetaTensor*>& outputs) {
   ADT_LET_CONST_REF(lambda, GetInferMetaLambda(infer_meta_func_name));
   return InferMetaByLambda(lambda, inputs, attrs, outputs);
 }
@@ -179,10 +181,10 @@ adt::Result<adt::Ok> ApInferMetaHelper::InferMeta(
 }
 
 adt::Result<adt::Ok> ApInferMetaHelper::InferMetaByAxprHook(
-    const std::vector<const MetaTensor*>* inputs,
+    const ::paddle::optional<std::vector<const MetaTensor*>>& inputs,
     const std::string& infer_meta_func_name,
     const std::string& serialized_attributes,
-    std::vector<MetaTensor*>* outputs) {
+    const std::vector<MetaTensor*>& outputs) {
   ADT_LET_CONST_REF(attrs, CastToAttrMap(serialized_attributes));
   return InferMetaByAxprHookImpl(infer_meta_func_name, inputs, attrs, outputs);
 }

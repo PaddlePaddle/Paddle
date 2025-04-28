@@ -49,6 +49,9 @@ adt::Result<axpr::Value> GetApOpFacadeOpInputsVal(
 adt::Result<axpr::Value> GetPdOpApFacadeOpInputsVal(
     pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
   ADT_CHECK(op->num_operands() == 1);
+  if (!op->operand_source(0)) {
+    return adt::List<axpr::Value>{};
+  }
   const auto& shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   ADT_CHECK(

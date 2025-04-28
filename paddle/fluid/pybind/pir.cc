@@ -90,7 +90,7 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
-#include "paddle/ap/include/paddle/pir/op_dialect.h"
+#include "paddle/ap/include/paddle/hlir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
