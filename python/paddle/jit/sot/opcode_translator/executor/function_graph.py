@@ -206,6 +206,7 @@ class VariableLoader:
             self._pycode_gen.gen_load(self._store_var_info[var.id][0])
 
 
+# TODO(SigureMo): Add AMP auto_guard context
 @StatementContextRegistry().register_context(lambda _: paddle.no_grad())
 class NoGradContext(StatementContext): ...
 
