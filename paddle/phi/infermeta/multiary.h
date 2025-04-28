@@ -140,6 +140,15 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void ApVariadicInferMeta(const std::vector<const MetaTensor*>& xs,
+                         int num_outputs,
+                         const std::string& code_module_lambda,
+                         const std::string& infer_meta_lambda,
+                         const std::string& kernel_dispatch_lambda,
+                         const std::string& kernel_dispatch_const_data_lambda,
+                         std::vector<MetaTensor*> outs,
+                         MetaConfig config = MetaConfig());
+
 void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
                               MetaTensor* out,
                               MetaConfig config);

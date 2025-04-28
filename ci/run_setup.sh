@@ -283,7 +283,6 @@ EOF
     fi
     ccache -z
     cd ..
-    echo "::group::Build Paddle"
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
@@ -297,7 +296,6 @@ EOF
             python setup.py $1;build_error=$?
         fi
     fi
-    echo "::endgroup::"
 
     # ci will collect ccache hit rate
     collect_ccache_hits

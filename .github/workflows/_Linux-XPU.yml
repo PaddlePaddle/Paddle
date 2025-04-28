@@ -14,6 +14,7 @@ env:
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
   CI_name: xpu
+  no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
 defaults:
   run:
@@ -75,7 +76,6 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -146,8 +146,10 @@ jobs:
           cd ..
           tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
+          echo "Uploading build.tar.gz"
           python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           rm build.tar.gz
+          echo "Uploading paddle_whl"
           cp ${{ github.workspace }}/dist/$paddle_whl .
           python3 ${bos_file} ${paddle_whl} paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           rm ${paddle_whl}
@@ -204,7 +206,6 @@ jobs:
           CCACHE_DIR: /root/.ccache
           CCACHE_MAXSIZE: 150G
           CCACHE_LIMIT_MULTIPLE: 0.8
-          no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           home_dir: ${{ github.workspace }}/../../../..
           FLAGS_use_stride_kernel: "0"

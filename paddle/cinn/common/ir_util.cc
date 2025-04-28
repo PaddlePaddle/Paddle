@@ -512,16 +512,6 @@ void OpDataTypePromote(Expr *expr) {
       node->body = promote_args.at(1);
       IRMutator::Visit(op, expr);
     }
-
-    void Visit(const ir::For *op, ir::Expr *expr) {
-      auto node = expr->As<ir::For>();
-      auto promote_args = std::move(ir::TryElevateInt32ToInt64(
-          {node->loop_var, node->min, node->extent}));
-      node->loop_var = promote_args.at(0);
-      node->min = promote_args.at(1);
-      node->extent = promote_args.at(2);
-      IRMutator::Visit(op, expr);
-    }
   };
 
   TypePromote visitor;

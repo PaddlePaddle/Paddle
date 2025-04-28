@@ -72,6 +72,7 @@ from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     ConstTypes,
     DataDependencyDynamicShapeBreak,
     DataDependencyOperationBreak,
@@ -112,6 +113,7 @@ from ..tracker import (
     GetItemTracker,
     GetIterTracker,
     GlobalTracker,
+    LocalTracker,
     SymbolicOperationTracker,
     Tracker,
 )
@@ -332,8 +334,20 @@ class TensorDtypeVariable(DataVariable):
         super().__init__(value, graph, tracker)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
-        raise NotImplementedError
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        if isinstance(self.tracker, GetAttrTracker) and isinstance(
+            self.tracker.obj, TensorVariable
+        ):
+            expr_node = self.tracker.obj.tracker.guard_tree_expr_node()
+            assert paddle.framework.use_pir_api(), "Only support PIR"
+            return [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DtypeMatchGuard(self.value),
+                    [expr_node],
+                )
+            ]
+        else:
+            return object_equal_faster_guard(self)
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -502,7 +516,7 @@ class TensorVariable(VariableBase):
         codegen.gen_load_fast(self.out_var_name)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert paddle.framework.use_pir_api(), "Only support PIR"
         expr_node = self.tracker.guard_tree_expr_node()
         meta = self.origin_meta
@@ -526,7 +540,18 @@ class TensorVariable(VariableBase):
                     )
                 ],
             ),
-            # TODO(zrr1999): use TensorMetaMatchGuard to support dist_info check
+            # Check dist info
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.TensorDistMetaMatchGuard(
+                    self.meta.dist_info
+                ),
+                [
+                    expr_node,
+                    paddle.framework.core.ExternVarExprNode(
+                        "___dist_info_from_tensor", DistInfo.from_tensor
+                    ),
+                ],
+            ),
         ]
 
     @check_guard
@@ -570,7 +595,7 @@ class TensorVariable(VariableBase):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 2",
+                        f"{{}}.shape[{i}] >= 1",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )
@@ -951,7 +976,7 @@ class SymbolicVariable(VariableBase):
                 (
                     GreaterEqualConstraintNode(
                         SymbolicConstraintNode(self.var_name),
-                        ConstantConstraintNode(2),
+                        ConstantConstraintNode(1),
                     ),
                     {self.var_name: self},
                 )
@@ -1197,7 +1222,7 @@ class SymbolicVariable(VariableBase):
         codegen.gen_call_method(0)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
@@ -1212,14 +1237,33 @@ class SymbolicVariable(VariableBase):
         if self.need_guard_value:
             log(3, f"Need guard value for {self} in {expr_node}\n")
             return super().make_faster_guard()
-        raise NotImplementedError(
-            f"{self.__class__.__name__}.make_faster_guard is not implemented"
-        )
+        constraint_guards: list[paddle.framework.core.GuardNodeBase] = []
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            extern_vars = {
+                var_name: var.tracker.guard_tree_expr_node()
+                for var_name, var in constraint_extern_vars.items()
+            }
+            constraint_guards.append(
+                paddle.framework.core.ExprGuardNode(
+                    constraint_node.create_guard_node(extern_vars)
+                )
+            )
+        guards = [
+            paddle.framework.core.GuardNode(
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            ),
+            *constraint_guards,
+        ]
+        return guards
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
+
+        # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
@@ -1248,7 +1292,6 @@ class SymbolicVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            # TODO: replace it with FasterStringifiedExpression
             *constraint_guards,
         ]
         return guards
@@ -1258,7 +1301,7 @@ class SymbolicVariable(VariableBase):
         value: Any,
         tracker: Tracker,
         symbolic_inputs: dict[str, dict[int, int] | None],
-    ):
+    ) -> bool | None:
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
@@ -1267,7 +1310,9 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
-            if value < 2:  # Specialize 0 and 1
+            if value == 0:
+                return None  # Fallback to dygraph
+            if value < 1:  # Specialize 0 and 1
                 return False
             if len(symbolic_input.keys()) > 1:
                 return True
@@ -1291,6 +1336,15 @@ class SymbolicVariable(VariableBase):
         tensor_var = dim_tracker.container.tracker.obj
         shape_idx = dim_tracker.key
         return tensor_var, shape_idx
+
+    @staticmethod
+    def has_local_leaf(tracker: Tracker) -> bool:
+        if isinstance(tracker, LocalTracker):
+            return True
+        return any(
+            SymbolicVariable.has_local_leaf(input.tracker)
+            for input in tracker.inputs
+        )
 
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -1322,6 +1376,8 @@ class SymbolicVariable(VariableBase):
             return None
         if not tracker.is_traceable():
             return None
+        if not SymbolicVariable.has_local_leaf(tracker):
+            return None
 
         from ..executor_cache import OpcodeExecutorCache
 
@@ -1329,9 +1385,21 @@ class SymbolicVariable(VariableBase):
             graph.pycode_gen._origin_code
         )
 
-        if SymbolicVariable.should_create_symbolic_variable(
+        should_create_sym = SymbolicVariable.should_create_symbolic_variable(
             value, tracker, symbolic_inputs
+        )
+        if (
+            should_create_sym is None
+            and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
+            graph.add_global_guarded_variable(
+                ConstantVariable(value, graph, tracker)
+            )
+            raise ConditionalFallbackError(
+                "Fallback graph since input has 0 size Tensor",
+                disable_eval_frame=True,
+            )
+        elif should_create_sym:
             return SymbolicVariable(SymbolicInt(value), graph, tracker)
         return None
 
@@ -1493,7 +1561,7 @@ class SliceVariable(VariableBase):
         )
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(
@@ -1601,7 +1669,7 @@ class DygraphTracerVariable(VariableBase):
         return self.value
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         return []
 
     @check_guard
@@ -1656,7 +1724,7 @@ class NumpyVariable(VariableBase):
         return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         raise NotImplementedError(
             f"{self.__class__.__name__}.make_faster_guard is not implemented"
         )
@@ -1689,7 +1757,7 @@ class NumpyNumberVariable(NumpyVariable):
         ).bind(self, name)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(
@@ -1789,7 +1857,7 @@ class NumpyArrayVariable(NumpyVariable):
         codegen.gen_call_method(0)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(
@@ -1984,18 +2052,18 @@ class GlobalVariable(VariableBase):
     def get(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} to get value."
+                f"[{self.__class__.__name__}] received {key} to get value."
             )
         return self.proxy.get(key)
 
     def set(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key."
+                f"[{self.__class__.__name__}] received {key} as key."
             )
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
         self.proxy.set(key, value)
         self.graph.side_effects.record_proxy_variable(self)
@@ -2017,7 +2085,7 @@ class FunctionGlobalVariable(GlobalVariable):
         self.fn = fn
 
     def proxy_getter(self, proxy: MutableDictLikeData, key: Any):
-        from ..opcode_inline_executor import FunctionGlobalTracker
+        from ..tracker import FunctionGlobalTracker
 
         if key not in proxy.original_data:
             return MutableDictLikeData.Empty()
