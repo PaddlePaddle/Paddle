@@ -788,7 +788,7 @@ class TestSumOpDtypeAsPaddleDtype(unittest.TestCase):
                     self.assertEqual(result.dtype, dtype_input)
 
 
-class TestSumOpInt32(unittest.Testcase):
+class TestSumOpInt32(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4]
         self.axis = 0
