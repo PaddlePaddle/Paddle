@@ -15,10 +15,7 @@ from __future__ import annotations
 
 import copy
 from functools import cached_property
-from typing import TYPE_CHECKING, TypeVar
-
-if TYPE_CHECKING:
-    import numpy as np
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
 from paddle.amp.auto_cast import amp_state
@@ -49,6 +46,9 @@ from .utils import (
     map_if_extend,
     meta_str,
 )
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 DynamicSymbolT = TypeVar("DynamicSymbolT")
 SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
@@ -232,7 +232,7 @@ class MetaInfo:
 
     @staticmethod
     def from_numpy(
-        nparray: np.ndarray, *, dynamic_axes: list[int] | None = None
+        nparray: npt.NDArray[Any], *, dynamic_axes: list[int] | None = None
     ):
         dtype = convert_np_dtype_to_dtype_(nparray.dtype)
         dynamic_axes = dynamic_axes or []
@@ -618,4 +618,4 @@ class ConstrainedInputSpec(InputSpec):
         )  # (idx of dim, min, max)
         super().__init__(*args, **kwargs)
         for i in dynamic_axes:
-            self.ranges.append((i, 1, None))
+            self.ranges.append((i, 2, None))

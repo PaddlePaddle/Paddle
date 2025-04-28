@@ -990,6 +990,7 @@ class NumpyApiVariable(FunctionVariable):
         }
 
     make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
 
 
 class UserDefinedGeneratorFunctionVariable(FunctionVariable):

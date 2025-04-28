@@ -120,6 +120,7 @@ from ..tracker import (
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     from typing_extensions import TypeAlias
 
     from ..function_graph import FunctionGraph
@@ -1814,10 +1815,15 @@ class NumpyBoolVariable(NumpyNumberVariable):
 
 class NumpyArrayVariable(NumpyVariable):
     var_name_generator = NameGenerator("np_var_")
-    value: np.ndarray
-    mutable_attrs = ["meta"]
+    value: npt.NDArray[Any]
+    mutable_attrs: list[str] = ["meta"]
 
-    def __init__(self, value_or_meta, graph, tracker):
+    def __init__(
+        self,
+        value_or_meta: npt.NDArray[Any] | MetaInfo,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
         super().__init__(None, graph, tracker)
         self.var_name = self.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
@@ -1828,15 +1834,13 @@ class NumpyArrayVariable(NumpyVariable):
             self.meta = value_or_meta
         else:
             self.value = value_or_meta
-            # self.meta = MetaInfo.from_tensor(paddle.to_tensor(self.value))
-            # if not isinstance(self.value, np.ndarray):
-            #     raise BreakGraphError(
-            #         UnsupportedNumpyDataTypeBreak(type_name=type(self.value))
-            #     )
             self.meta = MetaInfo.from_numpy(self.value)
 
     def get_py_type(self):
         return np.ndarray
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        return self.value
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
@@ -1895,11 +1899,6 @@ class NumpyArrayVariable(NumpyVariable):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            StringifiedExpression(
-                "isinstance({}, list) == False",
-                [frame_value_tracer],
-                union_free_vars(frame_value_tracer.free_vars),
-            ),
             dtype_guard,
             StringifiedExpression(
                 f"len({{}}.shape) == {len(meta.shape)}",
@@ -1915,7 +1914,7 @@ class NumpyArrayVariable(NumpyVariable):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 2",
+                        f"{{}}.shape[{i}] >= 1",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )

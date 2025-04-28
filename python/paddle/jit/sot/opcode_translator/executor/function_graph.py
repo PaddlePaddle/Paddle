@@ -95,6 +95,10 @@ from .variables import (
 if TYPE_CHECKING:
     import types
 
+    GraphNodeVariableType: TypeAlias = Union[
+        TensorVariable, SymbolicVariable, NumpyArrayVariable
+    ]
+
 
 CompileGraphResult: TypeAlias = Tuple[
     Callable[..., Any],
@@ -104,11 +108,11 @@ CompileGraphResult: TypeAlias = Tuple[
         OrderedSet[Union[TensorVariable, SymbolicVariable]],
     ],
 ]
-
-InputVariableType = Union[TensorVariable, SymbolicVariable, NumpyArrayVariable]
-InputVariable = (TensorVariable, SymbolicVariable, NumpyArrayVariable)
-OutputVariableType = InputVariableType
-OutputVariable = InputVariable
+GraphNodeVariableClasses = (
+    TensorVariable,
+    SymbolicVariable,
+    NumpyArrayVariable,
+)
 
 
 def convert_to_meta(inputs: Any):
@@ -117,7 +121,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, InputVariable):
+        if isinstance(x, GraphNodeVariableClasses):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -132,7 +136,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, InputVariable):
+        if isinstance(x, GraphNodeVariableClasses):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -156,7 +160,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, InputVariable):
+        if isinstance(value, GraphNodeVariableClasses):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -922,13 +926,13 @@ class FunctionGraph:
 
     def _find_tensor_inputs(
         self, input_names: list[str]
-    ) -> OrderedSet[InputVariableType]:
-        inputs: OrderedSet[InputVariableType] = OrderedSet()
+    ) -> OrderedSet[GraphNodeVariableType]:
+        inputs: OrderedSet[GraphNodeVariableType] = OrderedSet()
         for name in input_names:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, InputVariable)
+                    isinstance(variable, GraphNodeVariableClasses)
                     and variable.get_symbol().name == name
                 ):
                     inputs.add(variable)
@@ -938,7 +942,7 @@ class FunctionGraph:
         assert len(inputs) == len(input_names), "Number of inputs not match."
         return inputs
 
-    def gen_load_inputs(self, inputs: OrderedSet[InputVariableType]):
+    def gen_load_inputs(self, inputs: OrderedSet[GraphNodeVariableType]):
         for input_var in inputs:
             if isinstance(input_var, SymbolicVariable):
                 # For SymbolicVariable, we use paddle.full([], value, "int64")
@@ -965,10 +969,10 @@ class FunctionGraph:
     @staticmethod
     def _is_graph_output(
         var,
-    ) -> TypeGuard[InputVariableType]:
+    ) -> TypeGuard[GraphNodeVariableType]:
         return isinstance(
             var.tracker, (DummyTracker, SymbolicOperationTracker)
-        ) and isinstance(var, InputVariable)
+        ) and isinstance(var, GraphNodeVariableClasses)
 
     @staticmethod
     def _collect_related_dummy_tensor(var):
@@ -986,7 +990,7 @@ class FunctionGraph:
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
-    ) -> OrderedSet[OutputVariableType]:
+    ) -> OrderedSet[GraphNodeVariableType]:
         """
         Return all TensorVariable. find TensorVariables participating in networking from the output Variables
 
@@ -994,7 +998,7 @@ class FunctionGraph:
             outputs: output variables
         """
 
-        output_tensors: OrderedSet[OutputVariableType] = OrderedSet()
+        output_tensors: OrderedSet[GraphNodeVariableType] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
             if isinstance(
