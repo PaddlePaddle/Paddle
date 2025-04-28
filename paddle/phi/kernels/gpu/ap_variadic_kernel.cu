@@ -25,10 +25,46 @@
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"
 #include "paddle/phi/kernels/impl/activation_impl.h"
 
+#include "paddle/ap/include/axpr/data_type_util.h"
 #include "paddle/ap/include/kernel_dispatch/ap_variadic_kernel.h"
 #include "paddle/ap/include/paddle/phi/device_ctx.h"
 
 namespace phi {
+
+template <typename Context>
+void AllocateOutTensors(const Context& dev_ctx,
+                        const std::vector<DenseTensor*>& outs) {
+  for (auto* out : outs) {
+    auto out_dtype = ap::axpr::GetDataTypeFromPhiDataType(out->dtype());
+    PADDLE_ENFORCE_EQ(
+        out_dtype.HasOkValue(),
+        true,
+        phi::errors::InvalidArgument("GetDataTypeFromPhiDataType() failed !"));
+
+    out_dtype.GetOkValue().Match(
+        [&](const ap::axpr::CppDataType<ap::adt::Undefined>&) {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("allocate not support undefined !"));
+        },
+        [&](const ap::axpr::CppDataType<uint64_t>&) {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("allocate not support uint64_t !"));
+        },
+        [&](const ap::axpr::CppDataType<uint32_t>&) {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("allocate not support uint32_t !"));
+        },
+        [&](const ap::axpr::CppDataType<uint16_t>&) {
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("allocate not support uint16_t !"));
+        },
+        [&](const auto& impl) {
+          using tensor_type = typename std::decay_t<decltype(impl)>::type;
+          dev_ctx.template Alloc<tensor_type>(out);
+        });
+  }
+  return;
+}
 
 template <typename T, typename Context>
 void ApVariadicKernel(const Context& dev_ctx,
@@ -51,9 +87,8 @@ void ApVariadicKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument(
           "num_outputs must be greater than 1. current _outputs: // %d",
           outs.size()));
-  for (auto* out : outs) {
-    dev_ctx.template Alloc<T>(out);
-  }
+
+  AllocateOutTensors<Context>(dev_ctx, outs);
   std::shared_ptr<ap::kernel_dispatch::DeviceCtxImpl> impl =
       std::make_shared<ap::paddle::DeviceCtx<Context>>(&dev_ctx);
   ap::kernel_dispatch::DeviceCtx ap_device_ctx{impl};
