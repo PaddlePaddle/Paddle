@@ -467,7 +467,7 @@ struct MultiplyGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
 };
 
 // Maximum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MaximumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     if constexpr ((std::is_floating_point_v<T>)&&(
@@ -492,6 +492,18 @@ struct MaximumFunctor {
     return a > b ? a : b;
   }
 };
+
+template <typename T>
+struct MaximumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
+    return a > b ? a : b;
+  }
+}
 
 template <typename T>
 struct MaxGradXFunctor {
@@ -528,7 +540,7 @@ struct MaxGradXYFunctor {
 };
 
 // Minimum
-template <typename T>
+template <typename T, typename Enable = void>
 struct MinimumFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     if constexpr (std::is_floating_point_v<T> &&
@@ -553,6 +565,19 @@ struct MinimumFunctor {
     return a < b ? a : b;
   }
 };
+
+template <typename T>
+struct MinimumFunctor<
+    T,
+    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
+                            std::is_same_v<T, phi::dtype::float16>>::type> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (phi::dtype::isnan(a)) return a;
+    if (phi::dtype::isnan(b)) return b;
+    return a < b ? a : b;
+  }
+}
+
 template <typename T>
 struct MinGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
