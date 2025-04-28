@@ -606,7 +606,7 @@ class BadInputTest(unittest.TestCase):
                 data = [1, 2, 4]
                 result = paddle.cumsum(data, axis=0)
 
-            with self.assertRaises(TypeError):
+            with self.assertRaises(AttributeError):
                 test_bad_x()
         paddle.disable_static()
 
@@ -786,6 +786,30 @@ class TestSumOpDtypeAsPaddleDtype(unittest.TestCase):
                     )
                     result = paddle.cumsum(x, axis=self.axis, dtype=dtype_input)
                     self.assertEqual(result.dtype, dtype_input)
+
+
+class TestSumOpInt32(unittest.Testcase):
+    def setUp(self):
+        self.shape = [2, 3, 4]
+        self.axis = 0
+        self.input_dtype = 'int32'
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x = paddle.ones(shape=self.shape, dtype=self.input_dtype)
+            result = paddle.cumsum(x, axis=self.axis)
+            self.assertEqual(result.dtype, paddle.int64)
+
+    def test_static(self):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data(
+                    name='x', shape=self.shape, dtype=self.input_dtype
+                )
+                result = paddle.cumsum(x, axis=self.axis)
+                self.assertEqual(result.dtype, paddle.int64)
 
 
 if __name__ == '__main__':
