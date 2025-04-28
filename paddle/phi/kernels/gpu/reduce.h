@@ -40,7 +40,7 @@ void Reduce(const KPDevice& dev_ctx,
   std::vector<int> reduce_dims =
       phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 
-  int reduce_num = 1;
+  int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (x.dims())[i];
   }

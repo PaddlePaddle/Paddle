@@ -101,8 +101,8 @@ void BatchNormKernel(const Context& ctx,
         ctx.template Alloc<T>(saved_variance), C);
     saved_mean_e.setZero();
     saved_variance_e.setZero();
-    EigenVectorArrayMap<T> reserve_space_e(ctx.template Alloc<T>(reserve_space),
-                                           0);
+    EigenVectorArrayMap<uint8_t> reserve_space_e(
+        ctx.template Alloc<uint8_t>(reserve_space), 0);
     reserve_space_e.setZero();
 
     EigenVectorArrayMap<T> running_mean_arr(ctx.template Alloc<T>(mean_out), C);
@@ -222,4 +222,6 @@ void BatchNormKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    batch_norm, CPU, ALL_LAYOUT, phi::BatchNormKernel, float, double) {}
+    batch_norm, CPU, ALL_LAYOUT, phi::BatchNormKernel, float, double) {
+  kernel->OutputAt(5).SetDataType(phi::DataType::UINT8);
+}

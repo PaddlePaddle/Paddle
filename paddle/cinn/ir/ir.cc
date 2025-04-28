@@ -352,6 +352,11 @@ Expr Let::Make(Expr symbol, Expr body) {
   body = promote_args.at(1);
 
   n->symbol = symbol;
+
+  if (n->symbol.is_var()) {
+    n->symbol.as_var()->is_let_symbol = true;
+  }
+
   n->body = body;
   n->set_type(n->symbol->type());
   return Expr(n);
@@ -395,13 +400,15 @@ Expr _Var_::Make(Expr lower_bound,
                  const std::string &name,
                  bool is_reduce_axis,
                  bool is_symbolic_constant,
-                 bool is_keepdim) {
+                 bool is_keepdim,
+                 bool is_let_symbol) {
   auto *n = make_shared<_Var_>();
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;
   n->is_reduce_axis = is_reduce_axis;
   n->is_keepdim = is_keepdim;
   n->is_symbolic_constant = is_symbolic_constant;
+  n->is_let_symbol = is_let_symbol;
   n->name = name;
   n->set_type(lower_bound.type());
   return Expr(n);
@@ -412,6 +419,8 @@ Expr _Var_::Copy() const {
   n->name = name;
   n->is_reduce_axis = is_reduce_axis;
   n->is_keepdim = is_keepdim;
+  n->is_symbolic_constant = is_symbolic_constant;
+  n->is_let_symbol = is_let_symbol;
   n->set_index(get_index());
   n->lower_bound = lower_bound;
   n->upper_bound = upper_bound;

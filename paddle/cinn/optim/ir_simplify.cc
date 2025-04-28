@@ -43,22 +43,27 @@ namespace {
 
 //! Simplify the expression but Load.
 struct SimplifyNoPureMathMutator : public ir::IRMutator<ir::Expr*> {
+  SimplifyNoPureMathMutator(
+      ir::IndexExpr::OptLevel opt_level = ir::IndexExpr::OptLevel::kLevel1)
+      : opt_level_(opt_level) {}
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
 
   using ir::IRMutator<>::Visit;
 
 #define __(op__)                                    \
   void Visit(const op__* op, Expr* expr) override { \
-    *expr = ArithSimplify(*expr);                   \
+    *expr = ArithSimplify(*expr, opt_level_);       \
   }
 
   __(Add)
   __(Mul)
   __(Sub)
   __(Div)
+  __(Mod)
   __(Min)
   __(Max)
 #undef __
+  ir::IndexExpr::OptLevel opt_level_;
 };
 
 struct ReplaceFracWithDivMutator : public ir::IRMutator<> {
@@ -251,8 +256,13 @@ struct SimplifyLogicalMutator : public ir::IRMutator<> {
       *expr = Expr(false);
       return;
     }
-    if (common::IsOne(node->a()) && common::IsOne(node->b()))
+    if (common::IsOne(node->a()) && common::IsOne(node->b())) {
       *expr = Expr(true);
+    } else if (common::IsOne(node->a())) {
+      *expr = node->b();
+    } else if (common::IsOne(node->b())) {
+      *expr = node->a();
+    }
     VLOG(7) << "End Visit And op: " << *expr;
   }
 
@@ -271,8 +281,13 @@ struct SimplifyLogicalMutator : public ir::IRMutator<> {
       VLOG(7) << "End visit Or op: " << *expr;
       return;
     }
-    if (common::IsZero(node->a()) && common::IsZero(node->b()))
+    if (common::IsZero(node->a()) && common::IsZero(node->b())) {
       *expr = Expr(false);
+    } else if (common::IsZero(node->a())) {
+      *expr = node->b();
+    } else if (common::IsZero(node->b())) {
+      *expr = node->a();
+    }
     VLOG(7) << "End visit Or op: " << *expr;
   }
 
@@ -459,12 +474,18 @@ void SimplifyUnitLoop(Expr* expr) { SimplifyUnitLoopMutator()(expr); }
 void SimplifyUnitBlock(Expr* expr) { SimplifyUnitBlockMutator()(expr); }
 
 void SimplifyLogical(Expr* expr) { SimplifyLogicalMutator()(expr); }
+void SimplifyNoPureMath(Expr* expr, const ir::IndexExpr::OptLevel& opt_level) {
+  auto mutator = SimplifyNoPureMathMutator(opt_level);
+  mutator(expr);
+}
 
-Expr ArithSimplify(const Expr& u) {
+Expr ArithSimplify(const Expr& u, const ir::IndexExpr::OptLevel& opt_level) {
   VLOG(3) << "Begin ArithSimplify " << u;
   if (!u.is_index()) return u;
   auto copied = ir_utils::IRCopy(u);
-  return copied.as_index().Normalize();
+  auto res = copied.as_index().Normalize(opt_level);
+  VLOG(3) << "End ArithSimplify " << res;
+  return res;
 }
 
 void Simplify(Expr* expr) {

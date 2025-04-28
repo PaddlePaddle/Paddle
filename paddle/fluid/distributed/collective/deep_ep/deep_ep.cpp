@@ -1625,6 +1625,15 @@ void Buffer::clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
 #endif
 }
 
+void Buffer::barrier_all() {
+#ifdef PADDLE_WITH_NVSHMEM
+  internode_ll::barrier_all(calc_ctx->stream());
+#else
+  LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
+                "option WITH_NVSHMEM=ON.";
+#endif
+}
+
 #ifdef PADDLE_WITH_NVSHMEM
 std::tuple<deep_ep::detail::Tensor,
            std::optional<deep_ep::detail::Tensor>,

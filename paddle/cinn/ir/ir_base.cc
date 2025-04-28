@@ -509,7 +509,11 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
     }
     case ir::IrNodeTy::Load: {
       auto load = expr.As<ir::Load>();
-      return Load::Make(load->tensor, load->indices).set_index(true);
+      auto indices = std::vector<Expr>(load->indices.size());
+      for (size_t i = 0; i < load->indices.size(); ++i) {
+        indices.at(i) = Simplify(load->indices.at(i), level);
+      }
+      return Load::Make(load->tensor, indices).set_index(true);
     }
     case ir::IrNodeTy::Cast: {
       auto v = Simplify(expr.operand(0), level);
@@ -534,6 +538,10 @@ IndexExpr Simplify(const IndexExpr &expr, IndexExpr::OptLevel level) {
           (expr.node_type() == ir::IrNodeTy::Div ||
            expr.node_type() == ir::IrNodeTy::Mod)) {
         res = optim::BoundSimplify(res);
+      }
+      if (level == IndexExpr::OptLevel::kLevel4 ||
+          expr.node_type() == ir::IrNodeTy::Mod) {
+        res = optim::BroadcastSimplify(res);
       }
       return res;
     }
@@ -633,6 +641,9 @@ void IrNode::convert_int32_to_int64() {
       }
     } else if (operand->node_type() == IrNodeTy::Load) {
       operand = ir::Cast::Make(type(), operand);
+    } else if (operand->node_type() == IrNodeTy::_Var_ &&
+               operand.as_var()->is_let_symbol) {
+      operand = ir::Cast::Make(type(), operand);
     }
   }
 }
@@ -667,6 +678,9 @@ void IrNode::convert_int64_to_int32() {
         operand->set_type(Int(32));
       }
     } else if (operand->node_type() == IrNodeTy::Load) {
+      operand = ir::Cast::Make(type(), operand);
+    } else if (operand->node_type() == IrNodeTy::_Var_ &&
+               operand.as_var()->is_let_symbol) {
       operand = ir::Cast::Make(type(), operand);
     }
   }
@@ -705,6 +719,9 @@ void TryElevateInt32ToInt64_(std::vector<Expr> &expr_vec) {  // NOLINT
         }
       } else if (expr->node_type() == IrNodeTy::Load) {
         expr = ir::Cast::Make(Int(64), expr);
+      } else if (expr->node_type() == IrNodeTy::_Var_ &&
+                 expr.as_var()->is_let_symbol) {
+        expr = ir::Cast::Make(Int(64), expr);
       }
     }
   }
@@ -726,6 +743,9 @@ void ElevateInt64ToInt32_(Expr &expr) {  // NOLINT
                             "Current only support convert int64_t "
                             "to int32_t, but get type is: %s",
                             expr->type()));
+
+  // althoughtype is Int(32), we also need to convert it indices to Int(32).
+  if (expr->node_type() == IrNodeTy::Load) expr->convert_int64_to_int32();
   if (expr->type() == Int(64)) {
     expr->convert_int64_to_int32();
     if (expr->node_type() == IrNodeTy::Cast) {
@@ -736,6 +756,10 @@ void ElevateInt64ToInt32_(Expr &expr) {  // NOLINT
         expr->set_type(Int(32));
       }
     } else if (expr->node_type() == IrNodeTy::Load) {
+      expr = ir::Cast::Make(Int(32), expr);
+    } else if (expr->node_type() == IrNodeTy::_Var_ &&
+               expr.as_var()->is_let_symbol) {
+      // symbol of `let` op should be use cast to convert to int32.
       expr = ir::Cast::Make(Int(32), expr);
     }
   }
