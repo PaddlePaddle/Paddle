@@ -36,7 +36,7 @@
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
-#include "paddle/common/flags.h"
+#include "paddle/common/flags.h"  // NOLINT
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 
