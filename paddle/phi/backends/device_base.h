@@ -20,7 +20,6 @@
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 
@@ -51,12 +50,11 @@ class DeviceInterface {  // Driver / Runtime
 
   virtual std::array<unsigned int, 3> GetMaxGridDimSize(size_t dev_id);
 
-  virtual Eigen::GpuDevice* InitEigenDevice(const Place& place,
-                                            phi::stream::stream_t stream,
-                                            phi::Allocator* allocator);
+  virtual void* InitEigenDevice(const Place& place,
+                                phi::stream::stream_t stream,
+                                phi::Allocator* allocator);
 
-  virtual void DestroyEigenDevice(size_t dev_id,
-                                  Eigen::GpuDevice* eigen_device);
+  virtual void DestroyEigenDevice(size_t dev_id, void* eigen_device);
 
   // Platform
   //! Initialize

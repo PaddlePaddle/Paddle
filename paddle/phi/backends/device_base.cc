@@ -67,15 +67,14 @@ std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
   return {0, 0, 0};
 }
 
-Eigen::GpuDevice* DeviceInterface::InitEigenDevice(const Place& place,
-                                                   phi::stream::stream_t stream,
-                                                   phi::Allocator* allocator) {
+void* DeviceInterface::InitEigenDevice(const Place& place,
+                                       phi::stream::stream_t stream,
+                                       phi::Allocator* allocator) {
   VLOG(10) << Type() << " init eigen device ";
   return 0;
 }
 
-void DeviceInterface::DestroyEigenDevice(size_t dev_id,
-                                         Eigen::GpuDevice* eigen_device) {
+void DeviceInterface::DestroyEigenDevice(size_t dev_id, void* eigen_device) {
   VLOG(10) << Type() << " destroy eigen device ";
 }
 

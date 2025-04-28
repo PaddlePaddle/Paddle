@@ -21,10 +21,9 @@ limitations under the License. */
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
-struct DefaultDevice;
+struct GpuDevice;
 }  // namespace Eigen
 
 namespace phi {

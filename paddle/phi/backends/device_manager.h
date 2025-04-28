@@ -27,7 +27,6 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/port.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace phi {
 class Device final {
@@ -184,12 +183,11 @@ class DeviceManager {
 
   static std::array<unsigned int, 3> GetMaxGridDimSize(const Place& place);
 
-  static Eigen::GpuDevice* InitEigenDevice(const Place& place,
-                                           phi::stream::stream_t stream,
-                                           phi::Allocator* allocator);
+  static void* InitEigenDevice(const Place& place,
+                               phi::stream::stream_t stream,
+                               phi::Allocator* allocator);
 
-  static void DestroyEigenDevice(const Place& place,
-                                 Eigen::GpuDevice* eigen_device);
+  static void DestroyEigenDevice(const Place& place, void* eigen_device);
 
   static void MemoryStats(const Place& place, size_t* total, size_t* free);
 

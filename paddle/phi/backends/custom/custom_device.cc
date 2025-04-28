@@ -614,10 +614,10 @@ class CustomDevice : public DeviceInterface {
     return grid_dim_size;
   }
 
-  Eigen::GpuDevice* InitEigenDevice(const Place& place,
-                                    phi::stream::stream_t stream,
-                                    phi::Allocator* allocator) override {
-    Eigen::GpuDevice* eigen_device = nullptr;
+  void* InitEigenDevice(const Place& place,
+                        phi::stream::stream_t stream,
+                        phi::Allocator* allocator) override {
+    void* eigen_device = nullptr;
     Place place_t = place;
     if (pimpl_->init_eigen_device) {
       pimpl_->init_eigen_device(reinterpret_cast<C_Place>(&place_t),
@@ -629,8 +629,7 @@ class CustomDevice : public DeviceInterface {
     return eigen_device;
   }
 
-  void DestroyEigenDevice(size_t dev_id,
-                          Eigen::GpuDevice* eigen_device) override {
+  void DestroyEigenDevice(size_t dev_id, void* eigen_device) override {
     const auto device = &devices_pool[dev_id];
     if (pimpl_->destroy_eigen_device) {
       pimpl_->destroy_eigen_device(
