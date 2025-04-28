@@ -424,7 +424,7 @@ struct IsfiniteFunctor<phi::GPUContext, T> {
     int64_t block = 1024;
     int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
-    if (block * grid > std::numeric_limits<unsigned int>::max()) {
+    if (num + block * grid + 1 > std::numeric_limits<unsigned int>::max()) {
       IsfiniteCUDAKernel<T, int64_t>
           <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
     } else {
@@ -445,7 +445,7 @@ struct IsnanFunctor<phi::GPUContext, T> {
     int64_t block = 1024;
     int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
-    if (block * grid > std::numeric_limits<unsigned int>::max()) {
+    if (num + block * grid + 1 > std::numeric_limits<unsigned int>::max()) {
       IsnanCUDAKernel<T, int64_t>
           <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
     } else {
@@ -466,7 +466,7 @@ struct IsinfFunctor<phi::GPUContext, T> {
     int64_t block = 1024;
     int64_t grid = (block - 1 + num) / block;
     grid = (grid > block) ? block : grid;
-    if (block * grid > std::numeric_limits<unsigned int>::max()) {
+    if (num + block * grid + 1 > std::numeric_limits<unsigned int>::max()) {
       IsinfCUDAKernel<T, int64_t>
           <<<grid, block, 0, dev_ctx.stream()>>>(in_data, num, out_data);
     } else {
