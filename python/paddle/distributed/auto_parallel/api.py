@@ -1107,10 +1107,14 @@ class _ShardOptimizer(Optimizer):
             and isinstance(optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm)
         ):
             self._shard_clip = True
+
         self._shard_fn = shard_fn
         self._sharding_axis = None
         self._sharding_degree = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
+
+        if self._shard_fn is None:
+            self._shard_fn = _ShardingStage0
 
         if isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
@@ -1118,8 +1122,10 @@ class _ShardOptimizer(Optimizer):
             self._set_and_check_sharding_prop_from_param()
             self._shard_fn._set_sharding_axis(self._sharding_axis)
 
-        # Invoke register hook for sharding stage 2 strategy
-        if isinstance(self._shard_fn, ShardingStage2):
+        # Invoke register hook for sharding stage 0/1/2 strategy
+        if isinstance(
+            self._shard_fn, (_ShardingStage0, ShardingStage1, ShardingStage2)
+        ):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._register_hook_for_param_grad(param)
 
@@ -1127,6 +1133,7 @@ class _ShardOptimizer(Optimizer):
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
+                self._shard_fn._register_hook_for_param_grad(param)
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1595,6 +1602,69 @@ class _ShardingStageBase:
                 )
         return master_weight
 
+    @staticmethod
+    def _reshard_partial_grad_to_shard(grad):
+        if grad.is_dist():
+            partial_mesh_axis = None
+            for mesh_axis, placement in enumerate(grad.placements):
+                if isinstance(placement, dist.Partial):
+                    partial_mesh_axis = mesh_axis
+
+            if partial_mesh_axis is not None:
+                new_placements = get_placement_with_sharding(
+                    grad, partial_mesh_axis
+                )
+                return reshard(grad, grad.process_mesh, new_placements)
+
+        return grad
+
+    @staticmethod
+    def _reshard_replicate_grad_to_partial(grad):
+        if grad.is_dist():
+            enable_manual_dp_comm = (
+                os.getenv("FLAGS_enable_manual_dp_comm") == "1"
+            )
+
+            if enable_manual_dp_comm:
+                new_placements = grad.placements
+                assert (
+                    new_placements[0] == dist.Replicate()
+                ), "when enable manual_dp_comm, the sharding axis of grad should be Replicate"
+                new_placements[0] = dist.Partial(dist.ReduceType.kRedAvg)
+                return reshard(grad, grad.process_mesh, new_placements)
+
+        return grad
+
+    @staticmethod
+    def _grad_hook(grad):
+        if grad.is_dist():
+            grad = _ShardingStageBase._reshard_replicate_grad_to_partial(grad)
+            return _ShardingStageBase._reshard_partial_grad_to_shard(grad)
+        return grad
+
+    def _param_to_dist(self, param):
+        placements = []
+        for _ in range(len(self._mesh.shape)):
+            placements.append(dist.Replicate())
+        param._to_dist_(placements, self._mesh)
+
+    def _register_hook_for_param_grad(self, param):
+        if param.is_dense() and self._mesh is not None:
+            self._param_to_dist(param)
+
+        if param.is_dist():
+            param.register_hook(self._grad_hook)
+
+
+class _ShardingStage0(_ShardingStageBase):
+    def __init__(self, mesh, sharding_mesh_dim):
+        super().__init__(mesh, sharding_mesh_dim)
+
+    @staticmethod
+    def _grad_hook(grad):
+        if grad.is_dist():
+            return _ShardingStageBase._reshard_replicate_grad_to_partial(grad)
+
 
 class ShardingStage1(_ShardingStageBase):
     """
@@ -1778,31 +1848,6 @@ class ShardingStage2(_ShardingStageBase):
                 )
         return accumulator
 
-    @staticmethod
-    def _grad_hook(grad):
-        # do reshard only if the grad is dist tensor and in partial status
-        if grad.is_dist():
-            partial_mesh_axis = None
-            for mesh_axis, placement in enumerate(grad.placements):
-                if isinstance(placement, dist.Partial):
-                    partial_mesh_axis = mesh_axis
-            if partial_mesh_axis is not None:
-                new_placements = get_placement_with_sharding(
-                    grad, partial_mesh_axis
-                )
-                return reshard(grad, grad.process_mesh, new_placements)
-
-        return grad
-
-    def _register_hook_for_param_grad(self, param):
-        if param.is_dense() and self._mesh is not None:
-            placements = []
-            for _ in range(len(self._mesh.shape)):
-                placements.append(dist.Replicate())
-            param._to_dist_(placements, self._mesh)
-        if param.is_dist():
-            param.register_hook(ShardingStage2._grad_hook)
-
 
 class ShardingStage3(_ShardingStageBase):
     """
@@ -1856,6 +1901,7 @@ class ShardingStage3(_ShardingStageBase):
             for _ in range(len(self._mesh.shape)):
                 placements.append(dist.Replicate())
             param._to_dist_(placements, self._mesh)
+
         if param.is_dist():
             new_placements = get_placement_with_sharding(
                 param, self._sharding_axis
@@ -3449,6 +3495,10 @@ class ShardDataloader:
         is_dataset_splitted: bool = False,
         dense_tensor_idx: list[list[int]] | None = None,
     ):
+        self.enable_manual_dp_comm = (
+            os.getenv("FLAGS_enable_manual_dp_comm") == "1"
+        )
+
         # do some check
         if is_dataset_splitted is True and shard_dims is None:
             raise ValueError(
@@ -3576,7 +3626,7 @@ class ShardDataloader:
             if self._all_inputs_in_one_mesh
             else self._shard_dims[index]
         )
-        if shard_dim is not None:
+        if shard_dim is not None and not self.enable_manual_dp_comm:
             placements = [dist.Shard(0)]
         else:
             placements = [dist.Replicate()]
@@ -3607,7 +3657,7 @@ class ShardDataloader:
 
         placements = []
         for i in range(length):
-            if shard_dims[i] is not None:
+            if shard_dims[i] is not None and not self.enable_manual_dp_comm:
                 placement = [dist.Shard(0)]
             else:
                 placement = [dist.Replicate()]
