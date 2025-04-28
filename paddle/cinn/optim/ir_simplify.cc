@@ -256,8 +256,13 @@ struct SimplifyLogicalMutator : public ir::IRMutator<> {
       *expr = Expr(false);
       return;
     }
-    if (common::IsOne(node->a()) && common::IsOne(node->b()))
+    if (common::IsOne(node->a()) && common::IsOne(node->b())) {
       *expr = Expr(true);
+    } else if (common::IsOne(node->a())) {
+      *expr = node->b();
+    } else if (common::IsOne(node->b())) {
+      *expr = node->a();
+    }
     VLOG(7) << "End Visit And op: " << *expr;
   }
 
@@ -276,8 +281,13 @@ struct SimplifyLogicalMutator : public ir::IRMutator<> {
       VLOG(7) << "End visit Or op: " << *expr;
       return;
     }
-    if (common::IsZero(node->a()) && common::IsZero(node->b()))
+    if (common::IsZero(node->a()) && common::IsZero(node->b())) {
       *expr = Expr(false);
+    } else if (common::IsZero(node->a())) {
+      *expr = node->b();
+    } else if (common::IsZero(node->b())) {
+      *expr = node->a();
+    }
     VLOG(7) << "End visit Or op: " << *expr;
   }
 
