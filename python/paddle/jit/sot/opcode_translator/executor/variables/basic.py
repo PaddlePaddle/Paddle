@@ -25,6 +25,7 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
 from ....infer_meta import (
     DistInfo,
@@ -1840,7 +1841,11 @@ class NumpyArrayVariable(NumpyVariable):
         return np.ndarray
 
     def get_py_value(self, allow_tensor=False) -> Any:
-        return self.value
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="NumpyArrayVariable doesn't support get_py_value operation."
+            )
+        )
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
@@ -1863,19 +1868,21 @@ class NumpyArrayVariable(NumpyVariable):
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
         dtype_guard = paddle.framework.core.GuardNode(
             paddle.framework.core.NumPyDtypeMatchGuard(
-                self.get_py_value().dtype
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
             ),
             [expr_node],
         )
         shape_guard = paddle.framework.core.GuardNode(
-            paddle.framework.core.NumPyArrayShapeMatchGuard(
-                self.get_py_value().shape
-            ),
+            paddle.framework.core.NumPyArrayShapeMatchGuard(self.meta.shape),
             [expr_node],
         )
-        return [dtype_guard, shape_guard]
+        return [type_guard, dtype_guard, shape_guard]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1883,9 +1890,9 @@ class NumpyArrayVariable(NumpyVariable):
         meta = self.meta
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            f"{{}}.dtype == {NumpyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype]))}",
             paddle.framework.core.NumPyDtypeMatchGuard(
-                self.get_py_value().dtype
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
             ),
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),
