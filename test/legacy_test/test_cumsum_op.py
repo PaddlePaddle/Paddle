@@ -61,8 +61,9 @@ class TestCumsumOp(unittest.TestCase):
         data_np = np.random.random([1, 2, 0])
         data = paddle.to_tensor(data_np)
 
-        y = paddle.cumsum(data, axis=0)
-        z = np.cumsum(data_np, axis=0)
+        y = paddle.cumsum(data, axis=0, dtype=paddle.float32)
+        z = np.cumsum(data_np, axis=0, dtype=np.float32)
+        np.testing.assert_array_equal(y.dtype, paddle.float32)
         np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_gpu=False):
