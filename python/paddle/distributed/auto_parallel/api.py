@@ -1119,7 +1119,7 @@ class _ShardOptimizer(Optimizer):
         self.gradient_accumulation_steps = gradient_accumulation_steps
 
         if self._shard_fn is None:
-            self._shard_fn = _ShardingStage0
+            self._shard_fn = _ShardingStage0(0)
 
         assert isinstance(
             self._shard_fn,
