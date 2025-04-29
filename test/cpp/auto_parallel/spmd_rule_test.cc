@@ -2439,7 +2439,7 @@ TEST(Dropout, Ctor) {
   out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
   out_grad_dist_attr.set_dynamic_dims({false, false, false});
   phi::distributed::DistMetaTensor out_grad = phi::distributed::DistMetaTensor(
-      common::make_ddim({16, 2, 16}), t_dist_attr);
+      common::make_ddim({16, 2, 16}), out_grad_dist_attr);
   phi::distributed::SpmdInfo backward_info =
       phi::distributed::TopkGradInferSpmdDynamic(
           x, x, out_grad, k, 1, true, true);
