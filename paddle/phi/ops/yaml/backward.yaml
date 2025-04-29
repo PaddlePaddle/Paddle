@@ -215,6 +215,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : atan2_grad
 
@@ -1230,6 +1231,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : fmax_grad
     data_type : out_grad
@@ -1241,6 +1243,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : fmin_grad
     data_type : out_grad
@@ -2602,6 +2605,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : reciprocal_grad
   inplace : (out_grad -> x_grad)

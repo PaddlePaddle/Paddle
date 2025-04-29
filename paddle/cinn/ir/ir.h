@@ -393,6 +393,7 @@ struct _Var_ : public ExprNode<_Var_> {
   bool is_reduce_axis{false};
   bool is_keepdim{false};
   bool is_symbolic_constant{false};
+  bool is_let_symbol{false};
   //! Lower bound and upper bound of a axis.
   // @{
   Expr lower_bound;
@@ -413,7 +414,8 @@ struct _Var_ : public ExprNode<_Var_> {
                    const std::string& name,
                    bool is_reduce,
                    bool is_symbolic_constant = false,
-                   bool is_keepdim = false);
+                   bool is_keepdim = false,
+                   bool is_let_symbol = false);
 
   void Verify() const override;
 

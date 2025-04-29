@@ -3584,11 +3584,6 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-#if defined(PADDLE_WITH_CINN)
-  BindTest(&m);
-  cinn::pybind::BindCINN(&m);
-#endif
-
   BindPir(&m);
   BindVjp(&m);
   BindDecompRule(&m);

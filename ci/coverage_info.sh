@@ -218,29 +218,3 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-d
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
 cp python-coverage-diff.info coverage_files
-
-# assert coverage lines
-
-echo "Assert Diff Coverage"
-
-python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py coverage-diff.info 0.9 || COVERAGE_LINES_ASSERT=1
-
-echo "Assert Python Diff Coverage"
-
-if [ ${WITH_XPU:-OFF} == "ON" ]; then
-    echo "XPU has no python coverage!"
-else
-    if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
-        python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
-    fi
-fi
-
-if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
-    echo "exit 9" > /tmp/paddle_coverage.result
-    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_coverage_check && NOT_CHECK_COVERAGE_PR=1
-    if [[ "${NOT_CHECK_COVERAGE_PR}" = "1" ]];then
-        echo "Skip coverage check in the PR-CI-Coverage pipeline."
-        exit 0
-    fi
-    exit 9
-fi

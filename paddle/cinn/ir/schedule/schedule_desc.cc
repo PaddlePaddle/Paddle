@@ -685,7 +685,7 @@ void ScheduleDesc::Replay(IRSchedule* schedule,
 
 proto::ScheduleDesc ScheduleDesc::ToProto() const {
   // map each Expr to a formatted name (e1, e2, ...)
-  absl::flat_hash_map<Expr, std::string, ExprHash, ExprEqual> expr2name;
+  paddle::flat_hash_map<Expr, std::string, ExprHash, ExprEqual> expr2name;
   proto::ScheduleDesc desc_proto;
 
   for (auto&& step : steps_) {
@@ -736,7 +736,7 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
   }
 
   // map a formatted name (e1, e2, ...) to an Expr
-  absl::flat_hash_map<std::string, Expr> name2expr;
+  paddle::flat_hash_map<std::string, Expr> name2expr;
   std::vector<Expr> last_outputs;
 
   // restore each scheduling step and apply to the new IRSchedule object

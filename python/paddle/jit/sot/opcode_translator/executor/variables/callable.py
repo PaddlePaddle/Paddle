@@ -41,6 +41,7 @@ from ....utils import (
     is_break_graph_tensor_methods,
     is_builtin_fn,
     is_directly_run_api,
+    is_namedtuple_class,
     is_not_supported_paddle_layer,
     is_paddle_api,
     log,
@@ -86,6 +87,7 @@ from ..virtual_frame import VirtualFrame
 from .base import (
     VariableBase,
     VariableFactory,
+    fn_bind_inputs,
 )
 from .basic import (
     ConstantVariable,
@@ -199,6 +201,7 @@ class UserDefinedFunctionVariable(FunctionVariable):
     def handle_psdb_function(self, /, *args, **kwargs):
         # special function for inner debug.
         if self.value is psdb.assert_true:
+            self.graph.add_global_guarded_variable(args[0])
             return ConstantVariable.wrap_literal(
                 self.value(args[0].value), self.graph
             )
@@ -220,7 +223,19 @@ class UserDefinedFunctionVariable(FunctionVariable):
                 PsdbBreakReason("breakgraph by psdb.breakgraph")
             )
         elif self.value is psdb.fallback:
-            raise FallbackError("fallback by psdb.fallback")
+            fallback_sig = inspect.signature(psdb.fallback)
+            bound_args = fallback_sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            recursive_var = VariableFactory.from_value(
+                bound_args.arguments["recursive"],
+                graph=self.graph,
+                tracker=DanglingTracker(),
+            )
+            assert isinstance(recursive_var, ConstantVariable)
+            raise FallbackError(
+                f"Fallback by psdb.fallback (recursive={recursive_var.get_py_value()})",
+                disable_eval_frame=recursive_var.get_py_value(),
+            )
         elif self.value is psdb.in_sot:
             return ConstantVariable.wrap_literal(True, self.graph)
         return None
@@ -535,7 +550,7 @@ class LayerVariable(CallableVariable):
         ]
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         expr_node = self.tracker.guard_tree_expr_node()
         return [
             paddle.framework.core.GuardNode(
@@ -611,7 +626,7 @@ class ContainerLayerVariable(LayerVariable):
             return super().make_stringified_guard()
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         if isinstance(self.value, PD_SEQ_CONTAINERS):
             expr_node = self.tracker.guard_tree_expr_node()
             len_guard = paddle.framework.core.GuardNode(
@@ -619,7 +634,7 @@ class ContainerLayerVariable(LayerVariable):
                 [expr_node],
             )
 
-            guards: list[paddle.framework.core.GuardNode] = [len_guard]
+            guards: list[paddle.framework.core.GuardNodeBase] = [len_guard]
             for idx, layer in enumerate(self.value):
                 layer_variable = VariableFactory.from_value(
                     layer, self.graph, GetItemTracker(self, idx)
@@ -680,7 +695,7 @@ class PaddleLayerVariable(LayerVariable):
             return super().make_stringified_guard()
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         if isinstance(self.tracker, CreateLayerTracker):
             return reduce(
                 operator.add,
@@ -1063,4 +1078,34 @@ class PureClassVariable(ClassVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isclass(value) and value in PD_PURE_CLASSES:
             return PureClassVariable(value, graph, tracker)
+        return None
+
+
+class NamedTupleClassVariable(ClassVariable):
+    def __init__(
+        self, class_: type[Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(class_, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        from .container import NamedTupleVariable
+
+        parameters = fn_bind_inputs(self.value, self.graph, *args, **kwargs)
+        fields = self.get_py_value()._fields
+        assert all(
+            field in parameters for field in fields
+        ), f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+
+        parameters_tuple = tuple(parameters[field] for field in fields)
+        return NamedTupleVariable(
+            parameters_tuple,
+            self.get_py_value(),
+            self.graph,
+            DummyTracker([self, *args, *kwargs.values()]),
+        )
+
+    @VariableFactory.register_from_value(successor="ClassVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if is_namedtuple_class(value):
+            return NamedTupleClassVariable(value, graph, tracker)
         return None
