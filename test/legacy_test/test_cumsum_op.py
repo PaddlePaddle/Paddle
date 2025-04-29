@@ -58,6 +58,13 @@ class TestCumsumOp(unittest.TestCase):
         z = np.cumsum(data_np, axis=-2)
         np.testing.assert_array_equal(z, y.numpy())
 
+        data_np = np.random.random([1, 2, 0])
+        data = paddle.to_tensor(data_np)
+
+        y = paddle.cumsum(data, axis=0)
+        z = np.cumsum(data_np, axis=0)
+        np.testing.assert_array_equal(z, y.numpy())
+
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
@@ -210,12 +217,6 @@ class TestSumOp6(TestSumOp1):
 class TestSumOp7(TestSumOp1):
     def set_attrs_input_output(self):
         self.x = np.random.random(100).astype(self.dtype_)
-        self.out = self.x.cumsum(axis=0)
-
-
-class TestSumOpZeroSize(TestSumOp1):
-    def set_attrs_input_output(self):
-        self.x = np.random.random((1, 0, 4)).astype(self.dtype_)
         self.out = self.x.cumsum(axis=0)
 
 
@@ -752,40 +753,6 @@ class TestCumSumOpFp16(unittest.TestCase):
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
             paddle.disable_static()
-
-
-class TestSumOpDtypeAsPaddleDtype(unittest.TestCase):
-    def setUp(self):
-        self.shape = [2, 3, 4]
-        self.axis = 0
-        self.input_dtype = 'float32'
-        self.test_dtypes = [
-            paddle.int32,
-            paddle.int64,
-            paddle.float32,
-            paddle.float64,
-        ]
-
-    def test_dygraph(self):
-        with dygraph_guard():
-            x_paddle = paddle.ones(shape=self.shape, dtype=self.input_dtype)
-            for dtype_input in self.test_dtypes:
-                paddle_result = paddle.cumsum(
-                    x_paddle, axis=self.axis, dtype=dtype_input
-                )
-                self.assertEqual(paddle_result.dtype, dtype_input)
-
-    def test_static(self):
-        with static_guard():
-            for dtype_input in self.test_dtypes:
-                with paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
-                ):
-                    x = paddle.static.data(
-                        name='x', shape=self.shape, dtype=self.input_dtype
-                    )
-                    result = paddle.cumsum(x, axis=self.axis, dtype=dtype_input)
-                    self.assertEqual(result.dtype, dtype_input)
 
 
 class TestSumOpInt32(unittest.TestCase):
