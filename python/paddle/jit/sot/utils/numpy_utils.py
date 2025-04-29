@@ -21,4 +21,5 @@ NUMPY_API_SUPPORTED_DICT = {
     np.subtract: paddle.subtract,
     np.multiply: paddle.multiply,
     np.divide: paddle.divide,
+    np.equal: paddle.equal,
 }

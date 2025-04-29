@@ -95,6 +95,7 @@ from .variables import (
     ListVariable,
     MethodVariable,
     NullVariable,
+    NumpyArrayVariable,
     RangeVariable,
     SequenceIterVariable,
     SliceVariable,
@@ -269,7 +270,7 @@ def if_break_graph_decorator(normal_jump: Callable):
 
     def inner(self: OpcodeExecutor, instr: Instruction):
         result = self.stack.top
-        if isinstance(result, TensorVariable):
+        if isinstance(result, (TensorVariable, NumpyArrayVariable)):
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
             log(3, "[BreakGraph] break graph for if jump tensor\n")

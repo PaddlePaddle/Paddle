@@ -584,7 +584,7 @@ class FunctionGraph:
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
             InferMetaCache(),
-            self.sir_ctx.call_API,
+            self.sir_builder.call_API,
             func,
             APIType.NUMPY,
             *args,

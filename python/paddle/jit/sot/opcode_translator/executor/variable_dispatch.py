@@ -31,6 +31,7 @@ from ...symbolic_shape.operators import (
     symbolic_to_bool,
 )
 from ...utils import (
+    NUMPY_API_SUPPORTED_DICT,
     BreakGraphError,
     BuiltinFunctionBreak,
     FallbackError,
@@ -1462,11 +1463,8 @@ Dispatcher.register(
 
 # NumpyVariable dispatch
 def constant_numpy_equal(left, right):
-    numpy_ans = left.get_py_value() == right.get_py_value()
-    return VariableFactory.from_value(
-        numpy_ans,
-        left.graph,
-        tracker=DummyTracker([left, right]),
+    return left.graph.call_numpy_api(
+        NUMPY_API_SUPPORTED_DICT[np.equal], left, right
     )
 
 
