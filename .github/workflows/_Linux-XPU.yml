@@ -266,6 +266,6 @@ jobs:
         if: always()
         run: |
           sudo mkdir -p /run/user/0
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+          sudo rm -rf * .[^.]*
           docker stop ${container_name}
           docker rm ${container_name}
