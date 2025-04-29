@@ -40,21 +40,21 @@ SpmdInfo TopkInferSpmd(
       CopyTensorDistAttrForOutput(x_dist_attr_src);
 
   // Infer dims_mapping
-  std::vector<int64_t> x_dims_mapping_dst(x_dims_mapping_src);
+  std::vector<int64_t> x_dims_mapping_dst = x_dims_mapping_src;
   x_dims_mapping_dst[axis] = -1;
   std::vector<int64_t> out_dims_mapping_dst = x_dims_mapping_dst;
   std::vector<int64_t> indices_dims_mapping_dst = x_dims_mapping_dst;
 
   // Set the dims mapping for outputs
-  out_dist_attr_dst.set_dims_mapping(out_dist_attr_dst);
+  out_dist_attr_dst.set_dims_mapping(out_dims_mapping_dst);
   indices_dist_attr_dst.set_dims_mapping(indices_dims_mapping_dst);
 
   // Update the dims mapping for inputs
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping_dst);
   VLOG(4) << "TopkInferSpmd: Done.";
-  LOG_SPMD_INPUT("x");
-  LOG_SPMD_OUTPUT("indices");
-  LOG_SPMD_OUTPUT("out");
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_OUTPUT(out_dist_attr_dst);
+  LOG_SPMD_OUTPUT(indices_dist_attr_dst);
 
   return {{x_dist_attr_dst}, {out_dist_attr_dst, indices_dist_attr_dst}};
 }
@@ -132,10 +132,10 @@ SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
   out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
 
   VLOG(4) << "TopkGradInferSpmd: Done.";
-  LOG_SPMD_INPUT("x");
-  LOG_SPMD_INPUT("indices");
-  LOG_SPMD_INPUT("out_grad");
-  LOG_SPMD_OUTPUT("x_grad");
+  LOG_SPMD_INPUT(x);
+  LOG_SPMD_INPUT(indices);
+  LOG_SPMD_INPUT(out_grad);
+  LOG_SPMD_OUTPUT(x_grad_dist_attr_dst);
 
   return {{x_dist_attr_dst, indices_dist_attr_dst, out_grad_dist_attr_dst},
           {x_grad_dist_attr_dst}};
