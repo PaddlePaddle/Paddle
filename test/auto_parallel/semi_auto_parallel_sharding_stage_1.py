@@ -173,6 +173,33 @@ class TestSemiAutoParallelShardingStage1:
             for batch_id, (image, label) in enumerate(dist_loader()):
                 loss = dist_model(image, label)
 
+    def test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion(self):
+        def run_sharding_test(enable_tensor_fusion):
+            os.environ['FLAGS_enable_inplace_master_grad'] = '1'
+            os.environ['FLAGS_enable_tensor_fusion'] = (
+                '1' if enable_tensor_fusion else '0'
+            )
+            paddle.distributed.auto_parallel.set_mesh(self._multi_dim_mesh)
+            paddle.seed(self._seed)
+            linear = paddle.nn.Linear(10, 10)
+            batch = paddle.rand(shape=[10, 10])
+            batch = dist.shard_tensor(batch, self._mesh, [dist.Shard(0)])
+            opt = paddle.optimizer.AdamW(parameters=linear.parameters())
+            opt = dist.shard_optimizer(
+                opt, dist.ShardingStage1(sharding_mesh_dim="dp")
+            )
+            for _ in range(5):
+                loss = linear(batch)
+                loss.backward()
+                opt.step()
+                opt.clear_grad()
+            return loss.numpy()
+
+        dist.init_parallel_env()
+        loss_with_fusion = run_sharding_test(enable_tensor_fusion=True)
+        loss_without_fusion = run_sharding_test(enable_tensor_fusion=False)
+        self.check_tensor_eq(loss_with_fusion, loss_without_fusion)
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -188,6 +215,7 @@ class TestSemiAutoParallelShardingStage1:
         self.test_sharding_stage_1_to_static()
         self.test_pure_sharding_multi_mesh_stage_1()
         self.test_sharding_stage_1_overlap_to_static()
+        self.test_pure_sharding_multi_mesh_stage_1_with_tensor_fusion()
 
 
 if __name__ == '__main__':
