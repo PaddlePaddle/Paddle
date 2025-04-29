@@ -60,6 +60,19 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
     }                            \
   }
 
+// ExprNodeBase delayed cleaning
+#define DELAYED_CLEAN(clean_py_obj_)                                    \
+  {                                                                     \
+    for (auto it = clean_py_obj_.begin(); it != clean_py_obj_.end();) { \
+      bool should_erase = true;                                         \
+      if (*it) {                                                        \
+        Py_DECREF(*it);                                                 \
+        should_erase = (Py_REFCNT(*it) <= 0);                           \
+      }                                                                 \
+      it = should_erase ? clean_py_obj_.erase(it) : ++it;               \
+    }                                                                   \
+  }
+
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
     return true;
@@ -252,7 +265,9 @@ std::string GlobalVarExprNode::stringify(int indent) {
 
 PyObject* AttributeExprNode::eval(FrameProxy* frame) {
   PyObject* var = var_expr_->eval(frame);
-  return PyObject_GetAttrString(var, attr_name_.c_str());
+  auto res = PyObject_GetAttrString(var, attr_name_.c_str());
+  clean_py_obj_.push_back(res);
+  return res;
 }
 std::string AttributeExprNode::stringify(int indent) {
   std::stringstream ss;
@@ -260,16 +275,22 @@ std::string AttributeExprNode::stringify(int indent) {
   return ss.str();
 }
 
+void AttributeExprNode::cleanup() { DELAYED_CLEAN(clean_py_obj_); }
+
 PyObject* ItemExprNode::eval(FrameProxy* frame) {
   PyObject* var = var_expr_->eval(frame);
   PyObject* key = key_expr_->eval(frame);
-  return PyObject_GetItem(var, key);
+  auto res = PyObject_GetItem(var, key);
+  clean_py_obj_.push_back(res);
+  return res;
 }
 std::string ItemExprNode::stringify(int indent) {
   std::stringstream ss;
   ss << var_expr_->stringify() << "[" << key_expr_->stringify() << "]";
   return ss.str();
 }
+
+void ItemExprNode::cleanup() { DELAYED_CLEAN(clean_py_obj_); }
 
 PyObject* BinaryExprNode::eval(FrameProxy* frame) {
   PyObject* lhs = lhs_->eval(frame);

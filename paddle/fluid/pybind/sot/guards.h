@@ -279,6 +279,7 @@ class ExprNodeBase : public GuardTreeNodeBase,
  public:
   virtual PyObject* eval(FrameProxy* frame) = 0;
   virtual ~ExprNodeBase() = default;
+  virtual void cleanup() {}
 };
 
 class ConstantExprNode : public ExprNodeBase {
@@ -345,10 +346,12 @@ class AttributeExprNode : public ExprNodeBase {
 
   PyObject* eval(FrameProxy* frame) override;
   std::string stringify(int indent = 0) override;
+  void cleanup() override;
 
  private:
   std::shared_ptr<ExprNodeBase> var_expr_;
   std::string attr_name_;
+  std::vector<PyObject*> clean_py_obj_;
 };
 
 class ItemExprNode : public ExprNodeBase {
@@ -359,10 +362,12 @@ class ItemExprNode : public ExprNodeBase {
 
   PyObject* eval(FrameProxy* frame) override;
   std::string stringify(int indent = 0) override;
+  void cleanup() override;
 
  private:
   std::shared_ptr<ExprNodeBase> var_expr_;
   std::shared_ptr<ExprNodeBase> key_expr_;
+  std::vector<PyObject*> clean_py_obj_;
 };
 
 class BinaryExprNode : public ExprNodeBase {
@@ -544,6 +549,7 @@ class CheckGuardNode : public GuardNodeBase {
       ret = lookup_next(frame);
     }
     for (size_t i = 0; i < N; ++i) {
+      exprs[i]->cleanup();
       if (values[i]) {
         Py_DECREF(values[i]);
       }
