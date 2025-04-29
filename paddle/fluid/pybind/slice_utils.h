@@ -101,6 +101,7 @@ static Py_ssize_t GetSliceIndexFromTensor(const phi::DenseTensor& tensor) {
   }
 }
 
+// only test
 // NOTE(zhiqiu): Revised version of PySlice_GetIndices. From:
 // https://github.com/python/cpython/blob/8d21aa21f2cbc6d50aab3f420bb23be1d081dac4/Objects/sliceobject.c#L103
 // Original PySlice_GetIndices return wrong result when
