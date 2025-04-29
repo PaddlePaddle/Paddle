@@ -141,4 +141,5 @@ PD_REGISTER_KERNEL(index_select_grad,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}

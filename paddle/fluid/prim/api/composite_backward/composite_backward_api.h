@@ -1308,7 +1308,9 @@ void max_grad(const Tensor& x,
     auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
     auto out_tmp = out.expand(IntArray(x_dim));
     auto mask = equal<T>(x, out_tmp);
-    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+    auto mask_sum = sum<T>(mask, axis, x.dtype(), keepdim = true);
+    auto grad_tmp = out_grad_tmp / mask_sum;
+    x_grad_tmp = where<T>(mask, grad_tmp, zero_tensor);
   } else {
     auto axis_ = std::vector<int64_t>();
     if (reduce_all) {
@@ -1329,7 +1331,9 @@ void max_grad(const Tensor& x,
     auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
     auto out_tmp = out_.expand(IntArray(x_dim));
     auto mask = equal<T>(x, out_tmp);
-    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+    auto mask_sum = sum<T>(mask, axis_, x.dtype(), keepdim = true);
+    auto grad_tmp = out_grad_tmp / mask_sum;
+    x_grad_tmp = where<T>(mask, grad_tmp, zero_tensor);
   }
   set_output<T>(x_grad_tmp, x_grad);
 }
@@ -1361,7 +1365,9 @@ void min_grad(const Tensor& x,
     auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
     auto out_tmp = out.expand(IntArray(x_dim));
     auto mask = equal<T>(x, out_tmp);
-    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+    auto mask_sum = sum<T>(mask, axis, x.dtype(), keepdim = true);
+    auto grad_tmp = out_grad_tmp / mask_sum;
+    x_grad_tmp = where<T>(mask, grad_tmp, zero_tensor);
   } else {
     auto axis_ = std::vector<int64_t>();
     if (reduce_all) {
@@ -1382,7 +1388,9 @@ void min_grad(const Tensor& x,
     auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
     auto out_tmp = out_.expand(IntArray(x_dim));
     auto mask = equal<T>(x, out_tmp);
-    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+    auto mask_sum = sum<T>(mask, axis_, x.dtype(), keepdim = true);
+    auto grad_tmp = out_grad_tmp / mask_sum;
+    x_grad_tmp = where<T>(mask, grad_tmp, zero_tensor);
   }
   set_output<T>(x_grad_tmp, x_grad);
 }

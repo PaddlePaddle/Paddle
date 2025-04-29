@@ -327,7 +327,7 @@ class Optimizer:
 
         # for fusion storage
         self._use_fusion_storage = False
-        self._need_refuse = True
+        self._need_refuse = False
         self.fusion_storage = None
         self._fuse_buffer_version = 0
         self.merged_model_params = None
@@ -2128,6 +2128,7 @@ class Optimizer:
 
     def use_fusion_storage(self):
         self._use_fusion_storage = True
+        self.need_refuse()
 
     def need_refuse(self):
         self._need_refuse = self._use_fusion_storage

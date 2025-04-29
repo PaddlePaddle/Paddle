@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 #include <curand.h>
@@ -37,6 +36,7 @@
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/cinn/utils/timer.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace runtime {
@@ -690,7 +690,7 @@ class ConvAlgoMap {
 
  private:
   ConvAlgoMap() {}
-  absl::flat_hash_map<std::string, int> algo_map_;
+  paddle::flat_hash_map<std::string, int> algo_map_;
 };
 
 cudnnDataType_t convert_to_cudnn_dtype(void *v_args, int num_args) {
@@ -2322,7 +2322,7 @@ cudnnDataType_t convert_to_cudnn_dtype(cinn_buffer_t *input) {
     PADDLE_THROW(::common::errors::InvalidArgument(ss.str())); \
   }
 
-void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
+void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                            cinn_buffer_t *x,
                            cinn_buffer_t *w,
                            cinn_buffer_t *y,
@@ -2480,7 +2480,7 @@ void cinn_gpu_cudnn_conv2d(const absl::flat_hash_map<std::string, int> &attr,
 }
 
 void cinn_gpu_cudnn_conv2d_backward_data(
-    const absl::flat_hash_map<std::string, int> &attr,
+    const paddle::flat_hash_map<std::string, int> &attr,
     cinn_buffer_t *w,
     cinn_buffer_t *dy,
     cinn_buffer_t *dx,
@@ -2630,7 +2630,7 @@ void cinn_gpu_cudnn_conv2d_backward_data(
 }
 
 void cinn_gpu_cudnn_conv2d_backward_filter(
-    const absl::flat_hash_map<std::string, int> &attr,
+    const paddle::flat_hash_map<std::string, int> &attr,
     cinn_buffer_t *x,
     cinn_buffer_t *dy,
     cinn_buffer_t *dw,
