@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <absl/strings/string_view.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
@@ -35,6 +34,7 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace backends {
@@ -93,7 +93,7 @@ class SymbolTable {
   size_t num_scopes() const { return scopes_.size(); }
 
  private:
-  std::vector<absl::flat_hash_map<std::string, llvm::Value *>> scopes_;
+  std::vector<paddle::flat_hash_map<std::string, llvm::Value *>> scopes_;
 
   SymbolTable(const SymbolTable &) = delete;
 };
@@ -272,7 +272,7 @@ class CodeGenLLVM : public LLVMIRVisitor, public IrBuilderMixin<CodeGenLLVM> {
 
   std::unique_ptr<llvm::MDBuilder> md_builder_;
 
-  // std::shared_ptr<absl::flat_hash_map<std::string, llvm::Value *>>
+  // std::shared_ptr<paddle::flat_hash_map<std::string, llvm::Value *>>
   // named_vars_;
   std::shared_ptr<SymbolTable> symbol_table_;
   std::unordered_set<ir::_Var_ *> alias_vars_;

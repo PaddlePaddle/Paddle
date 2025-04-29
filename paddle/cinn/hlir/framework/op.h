@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 #include <absl/types/any.h>
 #include <glog/logging.h>
 
@@ -29,6 +28,7 @@
 #include "paddle/cinn/utils/registry.h"
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 template <typename R, typename... Args>
 inline auto MakeOpFunction(R (*func)(Args...)) {
   return std::function<R(Args...)>(func);
@@ -71,7 +71,7 @@ enum OpPatternKind {
 struct OpRegistry : public Registry<Operator> {
   std::recursive_mutex mutex;
   std::atomic<int> op_counter{0};
-  absl::flat_hash_map<std::string, std::unique_ptr<absl::any>> attrs;
+  paddle::flat_hash_map<std::string, std::unique_ptr<absl::any>> attrs;
 
   static OpRegistry* Global() {
     static OpRegistry x;

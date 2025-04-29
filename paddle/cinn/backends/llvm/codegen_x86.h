@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <llvm/IR/IRBuilder.h>
 
 #include <memory>
@@ -22,6 +21,7 @@
 #include <vector>
 
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn::backends {
 

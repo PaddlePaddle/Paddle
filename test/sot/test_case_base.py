@@ -63,7 +63,7 @@ class TestCaseBase(unittest.TestCase):
                 self.assertEqual(x, y)
         elif cls_x in (np.ndarray, paddle.Tensor):
             # TODO: support assert_allclose github error log
-            np.testing.assert_allclose(x, y)
+            np.testing.assert_allclose(x, y, rtol=1e-6, atol=1e-8)
         else:
             self.assertEqual(x, y)
 

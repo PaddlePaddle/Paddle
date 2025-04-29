@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <algorithm>
 #include <memory>
@@ -28,6 +27,7 @@
 #include "paddle/cinn/poly/map.h"
 #include "paddle/cinn/poly/schedule.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace poly {

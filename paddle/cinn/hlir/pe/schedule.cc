@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/schedule.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <isl/cpp.h>
 #include <math.h>
 
@@ -30,14 +29,15 @@
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 namespace cinn {
 namespace hlir {
 namespace pe {
 
 using ParamsT =
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>;
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>;
 
 ParamsT CreateParamsImpl(common::UnknownArch) {
   PADDLE_THROW(::common::errors::InvalidArgument(
@@ -250,7 +250,7 @@ int GetBlockBindAxis(const std::vector<ir::Expr> &shape,
   return block_axis;
 }
 
-void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
+void GetConv2dFactors(paddle::flat_hash_map<std::string, int> *factors,
                       int oc,
                       int ic,
                       int fc,
@@ -365,7 +365,7 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
   }
 }
 
-void GetConv2d1x1Factors(absl::flat_hash_map<std::string, int> *factors,
+void GetConv2d1x1Factors(paddle::flat_hash_map<std::string, int> *factors,
                          int oc,
                          int ic,
                          int oh,
@@ -494,8 +494,8 @@ void CreateX86SerialData(const std::string &file_name) {
 }
 
 inline void InputDirectConvCudaParam(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
@@ -503,7 +503,7 @@ inline void InputDirectConvCudaParam(
       int_data.size(),
       6UL,
       ::common::errors::InvalidArgument("int_data size should be 6"));
-  absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
+  paddle::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["ry"] = int_data[1];
   schedule_data["rx"] = int_data[2];
@@ -518,8 +518,8 @@ inline void InputDirectConvCudaParam(
 }
 
 inline void InputWinogradConvCudaParam(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         &model_data,
     const std::string &key,
     const std::vector<std::vector<int>> &int_data) {
@@ -527,7 +527,7 @@ inline void InputWinogradConvCudaParam(
       int_data.size(),
       4UL,
       ::common::errors::InvalidArgument("int_data size should be 4"));
-  absl::flat_hash_map<std::string, std::vector<int>> schedule_data;
+  paddle::flat_hash_map<std::string, std::vector<int>> schedule_data;
   schedule_data["rc"] = int_data[0];
   schedule_data["x"] = int_data[1];
   schedule_data["y"] = int_data[2];
@@ -535,11 +535,11 @@ inline void InputWinogradConvCudaParam(
   model_data[key] = schedule_data;
 }
 
-absl::flat_hash_map<std::string,
-                    absl::flat_hash_map<std::string, std::vector<int>>>
+paddle::flat_hash_map<std::string,
+                      paddle::flat_hash_map<std::string, std::vector<int>>>
 CreateCudaParams() {
-  absl::flat_hash_map<std::string,
-                      absl::flat_hash_map<std::string, std::vector<int>>>
+  paddle::flat_hash_map<std::string,
+                        paddle::flat_hash_map<std::string, std::vector<int>>>
       model_data;
   // The format of serial data is:
   // hash_key: string = name of schedule + shape of input_pad + shape of weights
@@ -1252,8 +1252,8 @@ int GetMaxSplitter(int a, int b) {
 }
 
 void LoadSerialData(
-    absl::flat_hash_map<std::string,
-                        absl::flat_hash_map<std::string, std::vector<int>>>
+    paddle::flat_hash_map<std::string,
+                          paddle::flat_hash_map<std::string, std::vector<int>>>
         *params,
     const std::string &file_name) {
   proto::ModelData read_model_data;
@@ -1268,7 +1268,7 @@ void LoadSerialData(
   auto read_model_map = read_model_data.data();
   for (auto &i : read_model_map) {
     auto read_schedule_map = i.second.data();
-    absl::flat_hash_map<std::string, std::vector<int>> param_data;
+    paddle::flat_hash_map<std::string, std::vector<int>> param_data;
     for (auto &j : read_schedule_map) {
       std::vector<int> temp_data;
       for (int k = 0; k < j.second.data_size(); k++) {
@@ -1281,9 +1281,9 @@ void LoadSerialData(
 }
 
 void SaveSerialData(
-    const absl::flat_hash_map<
+    const paddle::flat_hash_map<
         std::string,
-        absl::flat_hash_map<std::string, std::vector<int>>> &model_data,
+        paddle::flat_hash_map<std::string, std::vector<int>>> &model_data,
     const std::string &file_name) {
   proto::ModelData write_model_data;
   for (auto &i : model_data) {

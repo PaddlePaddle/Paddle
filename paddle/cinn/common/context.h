@@ -46,7 +46,7 @@ struct NameGenerator {
   }
 
  private:
-  absl::flat_hash_map<std::string, uint32_t> name_hint_idx_;
+  paddle::flat_hash_map<std::string, uint32_t> name_hint_idx_;
   mutable std::mutex mutex_;
 };
 
@@ -62,7 +62,7 @@ struct PrettyNamer {
   NameGenerator& GetNameGenerator() { return name_generator_; }
 
  private:
-  absl::flat_hash_map<size_t, std::string> pretty_names_;
+  paddle::flat_hash_map<size_t, std::string> pretty_names_;
   NameGenerator name_generator_;
 };
 
