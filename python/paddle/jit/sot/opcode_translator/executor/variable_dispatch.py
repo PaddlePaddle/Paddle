@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 import inspect
 import math
 import operator
@@ -66,6 +67,7 @@ from .variables import (
     ContainerVariable,
     DictVariable,
     EnumerateVariable,
+    ExceptionVariable,
     IterVariable,
     ListVariable,
     MapVariable,
@@ -83,6 +85,24 @@ from .variables import (
 
 if TYPE_CHECKING:
     from .variables import DataVariable, TensorVariable
+
+
+# NOTE(SigureMo): Don't directly capture free var inside for-loop, use partial instead.
+# ```python
+# lambdas = []
+# for i in range(10):
+#     lambdas.append(lambda: i)
+# for fn in lambdas:
+#     print(fn()) # result is 9, 9, 9, 9, 9, 9, 9, 9, 9, 9
+# ```
+# Rewrite by partial:
+# ```python
+# lambdas = []
+# for i in range(10):
+#     lambdas.append(partial(lambda i: i, i))
+# for fn in lambdas:
+#     print(fn()) # result is 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+# ```
 
 
 def add_guard(var: VariableBase):
@@ -242,19 +262,6 @@ Dispatcher.register(
     dict,
     ("DictVariable",),
     lambda var: var.copy(),
-)
-
-
-# super
-Dispatcher.register(
-    super,
-    ("ClassVariable", "VariableBase"),
-    lambda cls, obj: SuperVariable(
-        cls=cls,
-        obj=obj,
-        graph=Dispatcher.graph,
-        tracker=DummyTracker([cls, obj]),
-    ),
 )
 
 
@@ -609,6 +616,38 @@ Dispatcher.register(
     ("ContainerVariable | ContainerLayerVariable",),
     lambda var: var.len(),
 )
+
+# super
+Dispatcher.register(
+    super,
+    ("ClassVariable", "VariableBase"),
+    lambda cls, obj: SuperVariable(
+        cls=cls,
+        obj=obj,
+        graph=Dispatcher.graph,
+        tracker=DummyTracker([cls, obj]),
+    ),
+)
+
+
+def register_exception(exc):
+    @Dispatcher.register_decorator(exc)
+    def builtin_exception_dispatcher(*args) -> int:
+        return ExceptionVariable(
+            exc,
+            *args,
+            graph=Dispatcher.graph,
+            tracker=DummyTracker([]),
+        )
+
+
+# builtin Exception
+for name, obj in builtins.__dict__.items():
+    if not (isinstance(obj, type) and issubclass(obj, Exception)):
+        continue
+
+    register_exception(obj)
+
 
 # range
 # stop
@@ -995,23 +1034,6 @@ Dispatcher.register(
     lambda var: ConstantVariable(True, var.graph, DummyTracker([var])),
 )
 
-
-# NOTE(SigureMo): Don't directly capture free var inside for-loop, use partial instead.
-# ```python
-# lambdas = []
-# for i in range(10):
-#     lambdas.append(lambda: i)
-# for fn in lambdas:
-#     print(fn()) # result is 9, 9, 9, 9, 9, 9, 9, 9, 9, 9
-# ```
-# Rewrite by partial:
-# ```python
-# lambdas = []
-# for i in range(10):
-#     lambdas.append(partial(lambda i: i, i))
-# for fn in lambdas:
-#     print(fn()) # result is 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-# ```
 
 # Constant
 for unary_fn in UNARY_OPS:

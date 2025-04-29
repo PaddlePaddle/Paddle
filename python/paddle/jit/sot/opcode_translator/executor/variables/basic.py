@@ -2028,3 +2028,201 @@ class FunctionGlobalVariable(GlobalVariable):
             self.graph,
             tracker=FunctionGlobalTracker(self.fn, key),
         )
+
+
+class ExceptionVariable(VariableBase):
+    # The ExceptionVariable corresponds to the Exception class in Python
+    mutable_attrs = [
+        "__context__",
+        "__cause__",
+        "__suppress_context__",
+        "__traceback__",
+    ]
+
+    def __init__(
+        self,
+        exc: Exception | type[Exception],
+        *args,
+        graph: FunctionGraph = None,
+        tracker: Tracker = None,
+    ) -> None:
+        super().__init__(graph=graph, tracker=tracker)
+
+        self.record_exception = False
+        if isinstance(exc, Exception):
+            exc_type = exc.__class__
+            self.record_exception = True
+
+        elif isinstance(exc, type) and issubclass(exc, Exception):
+            exc_type = exc
+
+        else:
+            # TODO(DrRyanHuang): Should `exc_type` be a `BuiltinVariable`?
+            raise InnerError(
+                f"ExceptionVariable parameter `exc` should be an Exception class or instance, but got `{type(exc)}`:`{exc}`"
+            )
+        py_args = []
+        for arg in args:
+            # TODO(DrRyanHuang): Should `args` be a tuple containing exclusively `VariableBase`?
+            if not isinstance(arg, VariableBase):
+                raise InnerError(
+                    f"ExceptionVariable parameter `args` be a tuple containing exclusively `VariableBase`, but got `{type(arg)}`:`{arg}`"
+                )
+            py_args.append(arg.get_py_value())
+
+        self.exc = exc if self.record_exception else exc(*py_args)
+        self.exc_type = exc_type
+        self.args = args
+
+        self.__context__ = VariableFactory.from_value(
+            self.exc.__context__, graph=graph, tracker=tracker
+        )
+
+        # raise ... from ...
+        self.__cause__ = VariableFactory.from_value(
+            self.exc.__cause__, graph=graph, tracker=tracker
+        )
+
+        self.__suppress_context__ = VariableFactory.from_value(
+            self.exc.__suppress_context__, graph=graph, tracker=tracker
+        )
+
+        # NOTE: Currently, since our primary goal is to trace the network structure of variables,
+        # __traceback__ is always set to None.
+        self.__traceback__ = ConstantVariable.wrap_literal(None, self.graph)
+
+        self.graph.side_effects.record_mutable_variable(self)
+
+    def get_py_type(self):
+        return self.exc_type
+
+    def get_py_value(self):
+        if self.record_exception:
+            exception = self.exc
+        else:
+            exception = self.exc_type(
+                *[arg.get_py_value() for arg in self.args]
+            )
+
+        exception.__context__ = (
+            exception.__context__ or self.__context__.get_py_value()
+        )
+        exception.__cause__ = (
+            exception.__cause__ or self.__cause__.get_py_value()
+        )
+        exception.__suppress_context__ = exception.__suppress_context__ or (
+            self.__suppress_context__.get_py_value()
+        )
+        return exception
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "exception_cls": self.exc_type,
+        }
+
+    def setattr(self, key: str, value):
+        # TODO(DrRyanHuang): Add UserDefinedException to __context__ and __cause__
+        # TODO(DrRyanHuang): Do users also manually set exception attributes, and should we change FallbackError/InnerError to TypeError?
+        if key == "__context__":
+            if (
+                isinstance(value, ConstantVariable)
+                and value.get_py_value() is None
+            ) or isinstance(
+                value,
+                (ExceptionVariable),
+            ):
+                self.__context__ = value
+            else:
+                raise FallbackError(
+                    f"`__context__` must be an ExceptionVariable, bug got {type(value)}:{value}"
+                )
+        elif key == "__cause__":
+            if (
+                isinstance(value, ConstantVariable)
+                and value.get_py_value() is None
+            ) or isinstance(
+                value,
+                (ExceptionVariable),
+            ):
+                self.__cause__ = value
+                self.__suppress_context__ = ConstantVariable.wrap_literal(
+                    True, self.graph
+                )
+            else:
+                raise FallbackError(
+                    "exception cause must be None or derive from BaseException"
+                )
+        elif key == "__suppress_context__":
+            if isinstance(value, ConstantVariable) and value.get_py_value() in (
+                True,
+                False,
+            ):
+                self.__suppress_context__ = value
+            else:
+                raise FallbackError("Type of __suppress_context__ must be bool")
+        elif key == "__traceback__":
+            if (
+                isinstance(value, ConstantVariable)
+                and value.get_py_value() is None
+            ):
+                self.__traceback__ = value
+            else:
+                raise FallbackError(
+                    "Currently, SOT doesn't record information of __traceback__"
+                )
+        else:
+            raise InnerError(f"ExceptionVariable don't need attribute {key}")
+
+    def getattr(self, name: str, default=None) -> VariableBase:
+
+        if name == "__traceback__":
+            return ConstantVariable.wrap_literal(None, self.graph)
+
+        if name == "args":
+            from .container import ListVariable
+
+            return ListVariable(
+                self.args, self.graph, GetAttrTracker(self, "args")
+            )
+
+        return super().getattr(name, default)
+
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.exc_type})"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Exception, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, Exception):
+            args = [
+                ConstantVariable.wrap_literal(arg, graph) for arg in value.args
+            ]
+            exception_var = ExceptionVariable(
+                value.__class__, *args, graph=graph, tracker=tracker
+            )
+            if value.__context__ is not None:
+                exception_var.setattr(
+                    "__context__",
+                    VariableFactory.from_value(
+                        value.__context__, graph=graph, tracker=tracker
+                    ),
+                )
+            if value.__cause__ is not None:
+                exception_var.setattr(
+                    "__cause__",
+                    VariableFactory.from_value(
+                        value.__cause__, graph=graph, tracker=tracker
+                    ),
+                )
+            exception_var.setattr(
+                "__suppress_context__",
+                ConstantVariable.wrap_literal(
+                    value.__suppress_context__, graph
+                ),
+            )
+
+            return exception_var
+        return None
