@@ -124,7 +124,7 @@ IndexExpr Add::Make(IndexExpr a, IndexExpr b) {
   return IndexExpr(node);
 }
 
-void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
+void BinaryNodeVerify(const Expr &a, const Expr &b, std::string_view ir_name) {
   PADDLE_ENFORCE_EQ(
       a.defined(),
       true,
