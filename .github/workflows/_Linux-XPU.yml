@@ -9,6 +9,7 @@ env:
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
+  ci_scripts_runner: ${{ github.workspace }}/ci
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   BRANCH: ${{ github.event.pull_request.base.ref }}
@@ -44,10 +45,8 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz  --strip-components=1
           rm Paddle.tar.gz
-          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
@@ -146,7 +145,7 @@ jobs:
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
           cd ..
-          tar --use-compress-program="pzstd -5" -cf build.tar.gz Paddle
+          tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
           echo "Uploading build.tar.gz"
           python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
