@@ -681,8 +681,13 @@ PD_REGISTER_KERNEL(sqrt,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tanh,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TanhKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(square,
                    XPU,
