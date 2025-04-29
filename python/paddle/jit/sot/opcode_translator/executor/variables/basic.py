@@ -1869,14 +1869,13 @@ class NumpyArrayVariable(NumpyVariable):
             ),
             [expr_node],
         )
-        # TODO(wangmingkai02): NumpyArrayShapeMatchGuard
-        value_guard = paddle.framework.core.GuardNode(
-            paddle.framework.core.NumPyArrayValueMatchGuard(
-                self.get_py_value()
+        shape_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyArrayShapeMatchGuard(
+                self.get_py_value().shape
             ),
             [expr_node],
         )
-        return [dtype_guard, value_guard]
+        return [dtype_guard, shape_guard]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
