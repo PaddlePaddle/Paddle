@@ -370,6 +370,81 @@ class PaddleApiVariable(FunctionVariable):
     make_faster_guard = object_equal_faster_guard
 
 
+class NumpyApiVariable(FunctionVariable):
+    """
+    NumpyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
+
+    Args:
+        fn (Callable[..., Any]): The numpy API to be wrapped.
+        graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
+        tracker(Tracker): The Tracker object that tracks the information of this variable.
+    """
+
+    _cached_numpy_ufuncs = None
+
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+
+    def call_function(self, /, *args, **kwargs):
+        # TODO(wangmingkai02): judge whether this is a break api
+        if all(
+            isinstance(arg, (ConstantVariable, NumpyNumberVariable))
+            for arg in args
+        ):
+            if any(
+                self.value in ufuncs
+                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+            ):
+                vars = list(args)
+                var_py_values = [var.get_py_value() for var in vars]
+                return VariableFactory.from_value(
+                    self.value(*var_py_values),
+                    vars[0].graph,
+                    tracker=DummyTracker(vars),
+                )
+        if self.value in NUMPY_API_SUPPORTED_DICT:
+            return self.graph.call_numpy_api(
+                NUMPY_API_SUPPORTED_DICT[self.value], *args, **kwargs
+            )
+        raise BreakGraphError(
+            UnsupportedNumpyAPIBreak(fn_name=self.value.__name__)
+        )
+
+    @classmethod
+    def _get_numpy_ufuncs(cls):
+        if cls._cached_numpy_ufuncs is None:
+            cls._cached_numpy_ufuncs = get_numpy_ufuncs()
+        return cls._cached_numpy_ufuncs
+
+    @VariableFactory.register_from_value(successor="BuiltinVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        # TODO(wangmingkai02): support other numpy api.
+        if (
+            ENV_SOT_TRACE_NUMPY.get()
+            and isinstance(value, collections.abc.Hashable)
+            and (
+                value in NUMPY_API_SUPPORTED_DICT
+                or any(
+                    value in ufuncs
+                    for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
+                )
+            )
+        ):
+            return NumpyApiVariable(value, graph, tracker)
+        return None
+
+    @property
+    def main_info(self) -> dict[str, Any]:
+        return {
+            "name": self.value.__name__,
+        }
+
+    make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
+
+
 class TensorFunctionVariable(FunctionVariable):
     """
     TensorFunctionVariable is a subclass of FunctionVariable used to wrap a method of a tensor.
@@ -916,81 +991,6 @@ class FunctoolsLruCacheWrapperVariable(FunctionVariable):
         if isinstance(value, functools._lru_cache_wrapper):
             return FunctoolsLruCacheWrapperVariable(value, graph, tracker)
         return None
-
-
-class NumpyApiVariable(FunctionVariable):
-    """
-    NumpyApiVariable is a subclass of FunctionVariable used to wrap a numpy API function.
-
-    Args:
-        fn (Callable[..., Any]): The numpy API to be wrapped.
-        graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
-        tracker(Tracker): The Tracker object that tracks the information of this variable.
-    """
-
-    _cached_numpy_ufuncs = None
-
-    def __init__(
-        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
-    ):
-        super().__init__(fn, graph, tracker)
-
-    def call_function(self, /, *args, **kwargs):
-        # TODO(wangmingkai02): judge whether this is a break api
-        if all(
-            isinstance(arg, (ConstantVariable, NumpyNumberVariable))
-            for arg in args
-        ):
-            if any(
-                self.value in ufuncs
-                for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
-            ):
-                vars = list(args)
-                var_py_values = [var.get_py_value() for var in vars]
-                return VariableFactory.from_value(
-                    self.value(*var_py_values),
-                    vars[0].graph,
-                    tracker=DummyTracker(vars),
-                )
-        if self.value in NUMPY_API_SUPPORTED_DICT:
-            return self.graph.call_numpy_api(
-                NUMPY_API_SUPPORTED_DICT[self.value], *args, **kwargs
-            )
-        raise BreakGraphError(
-            UnsupportedNumpyAPIBreak(fn_name=self.value.__name__)
-        )
-
-    @classmethod
-    def _get_numpy_ufuncs(cls):
-        if cls._cached_numpy_ufuncs is None:
-            cls._cached_numpy_ufuncs = get_numpy_ufuncs()
-        return cls._cached_numpy_ufuncs
-
-    @VariableFactory.register_from_value(successor="BuiltinVariable")
-    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        # TODO(wangmingkai02): support other numpy api.
-        if (
-            ENV_SOT_TRACE_NUMPY.get()
-            and isinstance(value, collections.abc.Hashable)
-            and (
-                value in NUMPY_API_SUPPORTED_DICT
-                or any(
-                    value in ufuncs
-                    for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
-                )
-            )
-        ):
-            return NumpyApiVariable(value, graph, tracker)
-        return None
-
-    @property
-    def main_info(self) -> dict[str, Any]:
-        return {
-            "name": self.value.__name__,
-        }
-
-    make_stringified_guard = object_equal_stringified_guard
-    make_faster_guard = object_equal_faster_guard
 
 
 class UserDefinedGeneratorFunctionVariable(FunctionVariable):
