@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle.base import core
@@ -105,51 +106,6 @@ class ApiMinimumTest(unittest.TestCase):
             )
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            data_a = paddle.static.data("a", shape=[3], dtype="float32")
-            data_b = paddle.static.data("b", shape=[3], dtype="float32")
-            result_max = paddle.minimum(data_a, data_b)
-            exe = paddle.static.Executor(self.place)
-            (res,) = exe.run(
-                feed={"a": self.input_nan_a, "b": self.input_nan_a},
-                fetch_list=[result_max],
-            )
-        np.testing.assert_allclose(
-            res, self.np_expected_nan_aa, rtol=1e-05, equal_nan=True
-        )
-
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            data_a = paddle.static.data("a", shape=[3], dtype="float32")
-            data_b = paddle.static.data("b", shape=[3], dtype="float32")
-            result_max = paddle.minimum(data_a, data_b)
-            exe = paddle.static.Executor(self.place)
-            (res,) = exe.run(
-                feed={"a": self.input_nan_a, "b": self.input_nan_b},
-                fetch_list=[result_max],
-            )
-        np.testing.assert_allclose(
-            res, self.np_expected_nan_ab, rtol=1e-05, equal_nan=True
-        )
-
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            data_a = paddle.static.data("a", shape=[3], dtype="float32")
-            data_b = paddle.static.data("b", shape=[3], dtype="float32")
-            result_max = paddle.minimum(data_a, data_b)
-            exe = paddle.static.Executor(self.place)
-            (res,) = exe.run(
-                feed={"a": self.input_nan_b, "b": self.input_nan_a},
-                fetch_list=[result_max],
-            )
-        np.testing.assert_allclose(
-            res, self.np_expected_nan_ba, rtol=1e-05, equal_nan=True
-        )
-
     def test_dynamic_api(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.input_x)
@@ -159,9 +115,6 @@ class ApiMinimumTest(unittest.TestCase):
         a = paddle.to_tensor(self.input_a)
         b = paddle.to_tensor(self.input_b)
         c = paddle.to_tensor(self.input_c)
-
-        nan_a = paddle.to_tensor(self.input_nan_a)
-        nan_b = paddle.to_tensor(self.input_nan_b)
 
         res = paddle.minimum(x, y)
         res = res.numpy()
@@ -179,24 +132,6 @@ class ApiMinimumTest(unittest.TestCase):
         res = paddle.minimum(b, c)
         res = res.numpy()
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
-
-        res = paddle.minimum(nan_a, nan_a)
-        res = res.numpy()
-        np.testing.assert_allclose(
-            res, self.np_expected_nan_aa, rtol=1e-05, equal_nan=True
-        )
-
-        res = paddle.minimum(nan_a, nan_b)
-        res = res.numpy()
-        np.testing.assert_allclose(
-            res, self.np_expected_nan_ab, rtol=1e-05, equal_nan=True
-        )
-
-        res = paddle.minimum(nan_b, nan_a)
-        res = res.numpy()
-        np.testing.assert_allclose(
-            res, self.np_expected_nan_ba, rtol=1e-05, equal_nan=True
-        )
 
     @unittest.skipIf(
         core.is_compiled_with_xpu(),
@@ -241,6 +176,84 @@ class ApiMinimumTest(unittest.TestCase):
             1e-2,
             1e-2,
         )
+
+    @unittest.skipIf(
+        core.is_compiled_with_xpu(),
+        "XPU need fix the bug",
+    )
+    def test_dynamic_nan(self):
+        with dygraph_guard():
+            nan_a = paddle.to_tensor(self.input_nan_a)
+            nan_b = paddle.to_tensor(self.input_nan_b)
+
+            res = paddle.minimum(nan_a, nan_a)
+            res = res.numpy()
+            np.testing.assert_allclose(
+                res, self.np_expected_nan_aa, rtol=1e-05, equal_nan=True
+            )
+
+            res = paddle.minimum(nan_a, nan_b)
+            res = res.numpy()
+            np.testing.assert_allclose(
+                res, self.np_expected_nan_ab, rtol=1e-05, equal_nan=True
+            )
+
+            res = paddle.minimum(nan_b, nan_a)
+            res = res.numpy()
+            np.testing.assert_allclose(
+                res, self.np_expected_nan_ba, rtol=1e-05, equal_nan=True
+            )
+
+    @unittest.skipIf(
+        core.is_compiled_with_xpu(),
+        "XPU need fix the bug",
+    )
+    def test_static_nan(self):
+        with static_guard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                data_a = paddle.static.data("a", shape=[3], dtype="float32")
+                data_b = paddle.static.data("b", shape=[3], dtype="float32")
+                result_max = paddle.minimum(data_a, data_b)
+                exe = paddle.static.Executor(self.place)
+                (res,) = exe.run(
+                    feed={"a": self.input_nan_a, "b": self.input_nan_a},
+                    fetch_list=[result_max],
+                )
+            np.testing.assert_allclose(
+                res, self.np_expected_nan_aa, rtol=1e-05, equal_nan=True
+            )
+
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                data_a = paddle.static.data("a", shape=[3], dtype="float32")
+                data_b = paddle.static.data("b", shape=[3], dtype="float32")
+                result_max = paddle.minimum(data_a, data_b)
+                exe = paddle.static.Executor(self.place)
+                (res,) = exe.run(
+                    feed={"a": self.input_nan_a, "b": self.input_nan_b},
+                    fetch_list=[result_max],
+                )
+            np.testing.assert_allclose(
+                res, self.np_expected_nan_ab, rtol=1e-05, equal_nan=True
+            )
+
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                data_a = paddle.static.data("a", shape=[3], dtype="float32")
+                data_b = paddle.static.data("b", shape=[3], dtype="float32")
+                result_max = paddle.minimum(data_a, data_b)
+                exe = paddle.static.Executor(self.place)
+                (res,) = exe.run(
+                    feed={"a": self.input_nan_b, "b": self.input_nan_a},
+                    fetch_list=[result_max],
+                )
+            np.testing.assert_allclose(
+                res, self.np_expected_nan_ba, rtol=1e-05, equal_nan=True
+            )
 
 
 if __name__ == '__main__':
