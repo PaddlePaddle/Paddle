@@ -21,19 +21,30 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-SpmdInfo TopkInferSpmd(const DistMetaTensor& x,
-                       const Scalar& k,
-                       int axis,
-                       bool largest,
-                       bool sorted);
+SpmdInfo TopkInferSpmd(
+    const DistMetaTensor& x, int k, int axis, bool largest, bool sorted);
 
 SpmdInfo TopkGradInferSpmd(const DistMetaTensor& x,
                            const DistMetaTensor& indices,
                            const DistMetaTensor& out_grad,
-                           const Scalar& k,
+                           int k,
                            int axis,
                            bool largest,
                            bool sorted);
+
+SpmdInfo TopkInferSpmdDynamic(const DistMetaTensor& x,
+                              const Scalar& k,
+                              int axis,
+                              bool largest,
+                              bool sorted);
+
+SpmdInfo TopkGradInferSpmdDynamic(const DistMetaTensor& x,
+                                  const DistMetaTensor& indices,
+                                  const DistMetaTensor& out_grad,
+                                  const Scalar& k,
+                                  int axis,
+                                  bool largest,
+                                  bool sorted);
 
 }  // namespace distributed
 }  // namespace phi

@@ -5128,7 +5128,7 @@
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : TopKInferMeta
-    spmd_rule: TopkInferSpmd
+    spmd_rule: TopkInferSpmdDynamic
   kernel :
     func : topk
     data_type : x
