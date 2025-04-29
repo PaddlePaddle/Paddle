@@ -21,12 +21,15 @@
 #include <utility>
 
 #include "paddle/common/errors.h"
-
+#include "paddle/phi/backends/gpu/forwards.h"
+#include "paddle/phi/backends/gpu/gpu_decls.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
-
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/fluid/platform/enforce.h"
@@ -36,12 +39,6 @@
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
-
-#include "paddle/phi/backends/gpu/forwards.h"
-#include "paddle/phi/backends/gpu/gpu_decls.h"
-#include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/backends/gpu/gpu_resources.h"
-#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
