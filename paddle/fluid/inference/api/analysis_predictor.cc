@@ -145,7 +145,6 @@
 
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 COMMON_DECLARE_bool(enable_auto_layout_pass_in_inference);
-COMMON_DECLARE_bool(trt_glog_info);
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -902,7 +901,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
       auto pass_manager = std::make_shared<::pir::PassManager>(
           ::pir::IrContext::Instance(), config_.pm_opt_level_);
-      if (!config_.glog_info_disabled() || !FLAGS_trt_glog_info) {
+      if (!config_.glog_info_disabled()) {
         pass_manager->EnablePrintStatistics();
       }
       if (config_.ir_debug_) {
@@ -1080,7 +1079,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
     }
 
-    if (!config_.glog_info_disabled() || !FLAGS_trt_glog_info) {
+    if (!config_.glog_info_disabled()) {
       pass_pm.EnablePrintStatistics();
     }
     if (config_.ir_debug_) {
@@ -1171,7 +1170,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       config_.deleted_passes_.end()) {
     basic_pass_pm.AddPass(std::move(replace_fetch_with_shadow_output_pass));
   }
-  if (!config_.glog_info_disabled() || !FLAGS_trt_glog_info) {
+  if (!config_.glog_info_disabled()) {
     basic_pass_pm.EnablePrintStatistics();
   }
   if (config_.ir_debug_) {
@@ -1202,7 +1201,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       lowered_pm.AddPass(std::move(inplace_pass));
     }
   }
-  if (!config_.glog_info_disabled() || !FLAGS_trt_glog_info) {
+  if (!config_.glog_info_disabled()) {
     lowered_pm.EnablePrintStatistics();
   }
   if (config_.ir_debug_) {
@@ -2236,8 +2235,7 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
 
-  argument_->SetDisableLogs(config_.glog_info_disabled() ||
-                            !FLAGS_trt_glog_info);
+  argument_->SetDisableLogs(config_.glog_info_disabled());
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
   argument_->SetScopeNotOwned(scope_.get());
@@ -2340,7 +2338,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
     };
     // TODO(NHZlX): Should add the link to the doc of
     // paddle_infer::CreatePredictor<paddle_infer::Config>
-    if (config.glog_info_disabled() || !FLAGS_trt_glog_info) {
+    if (config.glog_info_disabled()) {
       FLAGS_logtostderr = true;
       FLAGS_minloglevel = 2;  // GLOG_ERROR
     }

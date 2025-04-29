@@ -729,18 +729,6 @@ PHI_DEFINE_EXPORTED_bool(sort_sum_gradient,
                          "the forward execution sequence.");
 
 /**
- * Debug related FLAG
- * Name: glog_info
- * Since Version: 3.0.0
- * Value Range: bool, default=false
- * Example:
- * Note: If True, GLOG info output will be enabled.
- */
-PHI_DEFINE_EXPORTED_bool(trt_glog_info,
-                         false,
-                         "if trt GLOG info output is enabled.");
-
-/**
  * Performance related FLAG
  * Name: max_inplace_grad_add
  * Since Version: 2.0.0
