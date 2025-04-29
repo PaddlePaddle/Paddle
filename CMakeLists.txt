@@ -44,7 +44,10 @@ project(paddle CXX C)
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDAToolkit)
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
 set(CUDA_CUDART_LIBRARY "${CUDAToolkit_LIBRARY_DIR}/lib64/libcudart.so")
+set(CUDA_LIBRARIES CUDA::toolkit)
+
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
