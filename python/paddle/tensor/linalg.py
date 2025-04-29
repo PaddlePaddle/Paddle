@@ -773,8 +773,10 @@ def matrix_norm(
         Auxiliary function for matrix_norm
         Computes the permutation that moves the two given dimensions to the back
         """
-        ret = [i for i in range(dimn) if i != dim0 and i != dim1]
-        ret.extend((dim0, dim1))
+        pos_dim0 = dim0 % dimn
+        pos_dim1 = dim1 % dimn
+        ret = [i for i in range(dimn) if i != pos_dim0 and i != pos_dim1]
+        ret.extend((pos_dim0, pos_dim1))
         return ret
 
     def _inverse_permutation(perm):
@@ -954,10 +956,10 @@ def matrix_norm(
                 transpose_out = _C_ops.transpose(input, perm)
                 u, s, vh = _C_ops.svd(transpose_out, False)
                 result = reduce_op(s, -1, keepdim)
-            if keepdim:
-                result = _C_ops.transpose(
-                    _C_ops.unsqueeze(result, -1), inv_perm
-                )
+                if keepdim:
+                    result = _C_ops.transpose(
+                        _C_ops.unsqueeze(result, -1), inv_perm
+                    )
                 return result
             else:  # 1, -1, inf, -inf
                 if abs_ord == np.inf:
