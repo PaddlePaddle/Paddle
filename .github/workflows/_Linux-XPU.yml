@@ -176,15 +176,15 @@ jobs:
         run: |
           sudo rm -rf * .[^.]*
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          sudo yum install zstd
-          tar --use-compress-program="pzstd -5" -xf build.tar.gz --strip-components=1
+          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/72068/a58543d2f92bbe5c817e185e9cc24b549c919601/build.tar.gz --no-check-certificate
+          tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
           rm build.tar.gz
 
       - name: Determine the runner
         run: |
-          runner_name=$(echo "$PWD" | awk -F "/" "{print \$3}")
+          runner_name=`(echo $PWD|awk -F '/' '{print $3}')`
           echo $runner_name
-          source ${ci_scripts}/utils.sh
+          source ${ci_scripts_runner}/utils.sh
           determine_kunlun_runner ${runner_name}
 
       - name: Check docker image and run container
