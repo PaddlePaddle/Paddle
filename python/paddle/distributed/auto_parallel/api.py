@@ -1151,9 +1151,6 @@ class _ShardOptimizer(Optimizer):
         self.enable_tensor_fusion = (
             os.getenv("FLAGS_enable_tensor_fusion") == '1'
         )
-        self.enable_sharding_overlap = (
-            os.getenv("FLAGS_enable_sharding_overlap") == '1'
-        )
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1286,19 +1283,18 @@ class _ShardOptimizer(Optimizer):
                 for grad_storage in self.grad_storage:
                     grad_storage.zero_()
                     grad_storage.check_in = 0
-            if not self.enable_sharding_overlap:
-                for i in range(len(self.fuse_param_view)):
-                    shard_size = (
-                        self.param_storage[i]._numel() // self.comm_group.nranks
-                    )
-                    begin = shard_size * max(self.comm_group.rank, 0)
-                    end = begin + shard_size
-                    slice_buffer = paddle._C_ops.view_slice(
-                        self.param_storage[i], begin, end
-                    )
-                    self.comm_group.process_group.all_gather(
-                        slice_buffer, self.param_storage[i]
-                    ).wait()
+            for i in range(len(self.fuse_param_view)):
+                shard_size = (
+                    self.param_storage[i]._numel() // self.comm_group.nranks
+                )
+                begin = shard_size * max(self.comm_group.rank, 0)
+                end = begin + shard_size
+                slice_buffer = paddle._C_ops.view_slice(
+                    self.param_storage[i], begin, end
+                )
+                self.comm_group.process_group.all_gather(
+                    slice_buffer, self.param_storage[i]
+                ).wait()
 
         else:
             if self.enable_inplace_master_grad:
@@ -1460,24 +1456,7 @@ class _ShardOptimizer(Optimizer):
                     grad, grad.shape, grad_mesh, [dist.Replicate()]
                 )
             param_and_grad = (param_and_grad[0], grad)
-        self._inner_opt._append_optimize_op(block, param_and_grad)
-        if self.enable_sharding_overlap:
-            # overlap all_gather with optimizer op
-            if hasattr(param_and_grad[0], 'last_idx'):
-                idx = param_and_grad[0].last_idx
-                shard_size = (
-                    self.param_storage[idx]._numel() // self.comm_group.nranks
-                )
-                begin = shard_size * max(self.comm_group.rank, 0)
-                end = begin + shard_size
-                slice_buffer = paddle._C_ops.view_slice(
-                    self.param_storage[idx], begin, end
-                )
-                task = paddle.distributed.all_gather(
-                    self.param_storage[idx],
-                    slice_buffer,
-                    sync_op=False,
-                )
+        return self._inner_opt._append_optimize_op(block, param_and_grad)
 
     def _reduce_scatter_gradients(self, grad_storage):
         shard_size = grad_storage._numel() // self.comm_group.nranks
@@ -1491,42 +1470,6 @@ class _ShardOptimizer(Optimizer):
             group=self.comm_group,
             sync_op=False,
         ).wait()
-
-    def _async_reduce_scatter(self):
-        for i in range(len(self.fuse_param_view)):
-            self._reduce_scatter_gradients(self.grad_storage[i])
-
-            def fuse_comm_hook_func(param_group_len, grad_storage, comm_group):
-                @paddle.autograd.no_grad()
-                def fuse_comm(*_):
-                    grad_storage.check_in += 1
-                    if grad_storage.check_in == param_group_len:
-                        shard_size = grad_storage._numel() // comm_group.nranks
-                        begin = shard_size * max(comm_group.rank, 0)
-                        end = begin + shard_size
-                        reduce_scattered = paddle._C_ops.view_slice(
-                            grad_storage, begin, end
-                        )
-                        task = paddle.distributed.reduce_scatter(
-                            reduce_scattered,
-                            grad_storage,
-                            op=paddle.distributed.ReduceOp.SUM,
-                            group=comm_group,
-                            sync_op=False,
-                        )
-                        grad_storage.comm_task = task
-
-                return fuse_comm
-
-            param_group_len = len(self.fuse_param_view[i])
-            for name, view in self.fuse_param_view[i].items():
-                view['param']._register_backward_hook(
-                    fuse_comm_hook_func(
-                        param_group_len,
-                        self.grad_storage[i],
-                        self.comm_group,
-                    )
-                )
 
     def _build_fuse_param_view(
         self,
@@ -1654,9 +1597,6 @@ class _ShardOptimizer(Optimizer):
                 self.param_storage.append(param_storage)
                 self.grad_storage.append(grad_storage)
 
-            if self.enable_sharding_overlap:
-                self._async_reduce_scatter()
-
             if self._inner_opt._grad_clip is not None:
                 self._inner_opt._grad_clip.should_comm_on_shard_dim = True
                 self._inner_opt._grad_clip.sharding_group = self.comm_group
@@ -1664,8 +1604,7 @@ class _ShardOptimizer(Optimizer):
         new_params = []
         new_grads = []
         for i in range(len(self.fuse_param_view)):
-            if not self.enable_sharding_overlap:
-                self._reduce_scatter_gradients(self.grad_storage[i])
+            self._reduce_scatter_gradients(self.grad_storage[i])
 
             for name, view in self.fuse_param_view[i].items():
                 param = view['param']
@@ -1708,12 +1647,6 @@ class _ShardOptimizer(Optimizer):
                     new_grad, param.process_mesh, [dist.Replicate()]
                 )
                 new_grads.append(new_grad)
-
-            if self.enable_sharding_overlap:
-                # last_idx marks the last param, start asyn comm
-                new_params[-1].last_idx = i
-                if self.grad_storage[i].comm_task is not None:
-                    self.grad_storage[i].comm_task.wait()
 
         new_params_grads = list(zip(new_params, new_grads))
 
