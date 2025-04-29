@@ -2444,7 +2444,7 @@ TEST(Dropout, Ctor) {
       phi::distributed::TopkGradInferSpmdDynamic(
           x, x, out_grad, k, 1, true, true);
   EXPECT_EQ(backward_info.first.size(), 3UL);
-  EXPECT_EQ(backward_info.second.size(), 1L);
+  EXPECT_EQ(backward_info.second.size(), 1UL);
   check_dim_mapping(backward_info.first[0], {0, -1, 1});
   check_dim_mapping(backward_info.first[1], {0, -1, 1});
   check_dim_mapping(backward_info.first[2], {0, -1, 1});
