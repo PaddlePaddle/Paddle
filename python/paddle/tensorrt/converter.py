@@ -374,7 +374,7 @@ class PaddleToTensorRTConverter:
                         value, True, paddle.base.core.ShapeMode.kMAX
                     )
             if not trt_input.is_shape_tensor:
-                if  not self.trt_config.disable_loggling:
+                if not self.trt_config.disable_loggling:
                     _logger.info(f"set min_shape of {value} as {min_shape}")
                     _logger.info(f"set opt_shape of {value} as {opt_shape}")
                     _logger.info(f"set max_shape of {value} as {max_shape}")
