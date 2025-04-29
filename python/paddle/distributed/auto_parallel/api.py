@@ -1072,6 +1072,29 @@ def shard_layer(
         )
 
 
+def is_dist_tensor(tensor) -> bool:
+    """
+    Check if an input is a dist_tensor in both dynamic and static modes.
+
+    Args:
+        tensor: The input to check
+
+    Returns:
+        bool: True if the input is a dist_tensor, False otherwise
+    """
+    if paddle.in_dynamic_mode():
+        return (
+            isinstance(tensor, paddle.Tensor)
+            and hasattr(tensor, 'is_dist')
+            and tensor.is_dist()
+        )
+    else:
+        return (
+            isinstance(tensor, paddle.base.libpaddle.pir.Value)
+            and tensor.dist_attr() is not None
+        )
+
+
 class _ShardOptimizer(Optimizer):
     def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
         assert (
@@ -1120,7 +1143,11 @@ class _ShardOptimizer(Optimizer):
         self.param_storage = []
         self.grad_storage = []
         self.comm_group = None
-        self.do_tensor_fusion = True
+        self.do_tensor_fusion_once = True
+        self._strategy = Strategy()
+        self.enable_inplace_master_grad = (
+            os.getenv("FLAGS_enable_inplace_master_grad") == '1'
+        )
         self.enable_tensor_fusion = (
             os.getenv("FLAGS_enable_tensor_fusion") == '1'
         )
@@ -1251,12 +1278,11 @@ class _ShardOptimizer(Optimizer):
     def _finish_update(self, block, parameters_and_grads):
         self._inner_opt._finish_update(block, parameters_and_grads)
         if self.enable_tensor_fusion:
-            enable_inplace_master_grad = (
-                os.getenv("FLAGS_enable_inplace_master_grad") == '1'
-            )
-            if enable_inplace_master_grad:
+            if self.enable_inplace_master_grad:
+                # zero the grad storage for add_ op in inplace_master_grad
                 for grad_storage in self.grad_storage:
                     grad_storage.zero_()
+                    grad_storage.check_in = 0
             for i in range(len(self.fuse_param_view)):
                 shard_size = (
                     self.param_storage[i]._numel() // self.comm_group.nranks
@@ -1269,11 +1295,9 @@ class _ShardOptimizer(Optimizer):
                 self.comm_group.process_group.all_gather(
                     slice_buffer, self.param_storage[i]
                 ).wait()
+
         else:
-            enable_inplace_master_grad = (
-                os.getenv("FLAGS_enable_inplace_master_grad") == '1'
-            )
-            if enable_inplace_master_grad:
+            if self.enable_inplace_master_grad:
                 for param, _ in parameters_and_grads:
                     param.main_grad._local_value().zero_()
             if isinstance(parameters_and_grads, list):
@@ -1434,177 +1458,198 @@ class _ShardOptimizer(Optimizer):
             param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
 
-    def build_fuse_param_view(
+    def _reduce_scatter_gradients(self, grad_storage):
+        shard_size = grad_storage._numel() // self.comm_group.nranks
+        begin = shard_size * max(self.comm_group.rank, 0)
+        end = begin + shard_size
+        reduce_scattered = paddle._C_ops.view_slice(grad_storage, begin, end)
+        paddle.distributed.reduce_scatter(
+            reduce_scattered,
+            grad_storage,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self.comm_group,
+            sync_op=False,
+        ).wait()
+
+    def _build_fuse_param_view(
         self,
-        parameters,
+        params_and_grads,
         sharding_degree,
     ):
         def get_padded_size(param):
             size = np.prod(param.shape)
             align_size = (
                 alignment[get_current_device_type()]
-                // align[parameters[0].dtype]
+                // align[param.dtype]
                 * sharding_degree
             )
             return ((size + align_size - 1) // align_size) * align_size
 
         total_buffer_size = 0
         param2index = {}
-        for param in parameters:
+        for param, _ in params_and_grads:
             param2index[param.name] = total_buffer_size
             total_buffer_size += get_padded_size(param)
         param_buffer = paddle.zeros(
-            shape=[total_buffer_size], dtype=parameters[0].dtype
+            shape=[total_buffer_size], dtype=params_and_grads[0][0].dtype
         )
         grad_dtype = paddle.float32
         grad_buffer = paddle.zeros(shape=[total_buffer_size], dtype=grad_dtype)
+        grad_buffer.check_in = 0
+        grad_buffer.comm_task = None
+
         views = {}
-        for param in parameters:
+        for param, grad in params_and_grads:
             padded_size = get_padded_size(param)
             views[param.name] = {
                 'param': param,
                 'index': param2index[param.name],
             }
+
+            index = param2index[param.name]
+            param_shape = param.shape
+            stop_gradient = param.stop_gradient
+            param.stop_gradient = True
+            param._local_value().flatten_()
+            paddle.assign(
+                param._local_value(),
+                param_buffer._slice(
+                    index,
+                    index + param._numel(),
+                ),
+            )
+            param.stop_gradient = stop_gradient
+            tmp_param = paddle._C_ops.view_slice(
+                param_buffer,
+                index,
+                index + param._numel(),
+            )
+            tmp_param.get_tensor()._set_dims(param.shape)
+            tmp_param = _dtensor_from_local(
+                tmp_param,
+                param.process_mesh,
+                param.placements,
+            )
+            param.get_tensor()._share_data_with(tmp_param.get_tensor())
+
+            paddle.assign(
+                grad._local_value(),
+                grad_buffer._slice(
+                    index,
+                    index + grad._local_value()._numel(),
+                ),
+            )
+            tmp_grad = paddle._C_ops.view_slice(
+                grad_buffer,
+                index,
+                index + grad._local_value()._numel(),
+            )
+            tmp_grad.get_tensor()._set_dims(grad.shape)
+            tmp_grad = _dtensor_from_local(
+                tmp_grad,
+                grad.process_mesh,
+                grad.placements,
+            )
+            param.main_grad = tmp_grad
+            grad.get_tensor()._clear()
+            paddle.device.cuda.empty_cache()
+
         return (views, param_buffer, grad_buffer)
 
     def _tensor_fusion(self, params_grads):
-        if self.do_tensor_fusion:
+        if self.do_tensor_fusion_once:
             mesh = dist.auto_parallel.get_mesh()
             shard_groups = get_mesh_comm_list(mesh, "dp")
             for group in shard_groups:
                 comm_group = dist.new_group(sorted(group))
                 if dist.get_rank() in group:
                     self.comm_group = comm_group
-            self.do_tensor_fusion = False
+            self.do_tensor_fusion_once = False
             parameters = [p_g[0] for p_g in params_grads]
-            comm_buffer_size_MB = 256
+            comm_buffer_size_MB = self._strategy.sharding.comm_buffer_size_MB
+            if comm_buffer_size_MB < 0:
+                comm_buffer_size_MB = 256
             group_size = comm_buffer_size_MB * 1024 * 1024
             is_sparse_gradient = [False] * len(parameters)
             shape_dict = {param.name: param.shape for param in parameters}
             dense_params = [param._local_value() for param in parameters]
+
+            # group params according to comm_buffer_size_MB
             group_indices = core.eager_assign_group_by_size(
                 dense_params, is_sparse_gradient, [group_size, group_size]
             )
             var_groups = OrderedDict()
             for group_idx, indices in enumerate(group_indices):
-                for idx in indices:
-                    var_groups.setdefault(group_idx, []).append(parameters[idx])
-            idx = 0
-            for group_idx, parameters in var_groups.items():
+                for i in indices:
+                    var_groups.setdefault(group_idx, []).append(params_grads[i])
+
+            # create fuse_param_view, param_storage, grad_storage with groups
+            for group_idx, params_and_grads in var_groups.items():
                 (
                     fuse_param_view,
                     param_storage,
                     grad_storage,
-                ) = self.build_fuse_param_view(
-                    parameters,
+                ) = self._build_fuse_param_view(
+                    params_and_grads,
                     self.comm_group.nranks,
                 )
                 self.fuse_param_view.append(fuse_param_view)
                 self.param_storage.append(param_storage)
                 self.grad_storage.append(grad_storage)
 
-                for name, view in fuse_param_view.items():
-                    param_shape = view['param'].shape
-                    stop_gradient = view['param'].stop_gradient
-                    view['param'].stop_gradient = True
-                    view['param']._local_value().flatten_()
-                    paddle.assign(
-                        view['param']._local_value(),
-                        param_storage._slice(
-                            view['index'],
-                            view['index'] + view['param']._numel(),
-                        ),
-                    )
-                    view['param'].stop_gradient = stop_gradient
-                    tmp_param = paddle._C_ops.view_slice(
-                        param_storage,
-                        view['index'],
-                        view['index'] + view['param']._numel(),
-                    )
-                    tmp_param.get_tensor()._set_dims(view['param'].shape)
-                    tmp_param = _dtensor_from_local(
-                        tmp_param,
-                        view['param'].process_mesh,
-                        view['param'].placements,
-                    )
-                    view['param'].get_tensor()._share_data_with(
-                        tmp_param.get_tensor()
-                    )
-
-                    grad = params_grads[idx][1]
-                    idx += 1
-                    paddle.assign(
-                        grad._local_value(),
-                        grad_storage._slice(
-                            view['index'],
-                            view['index'] + grad._local_value()._numel(),
-                        ),
-                    )
-                    tmp_grad = paddle._C_ops.view_slice(
-                        grad_storage,
-                        view['index'],
-                        view['index'] + grad._local_value()._numel(),
-                    )
-                    tmp_grad.get_tensor()._set_dims(grad.shape)
-                    tmp_grad = _dtensor_from_local(
-                        tmp_grad,
-                        grad.process_mesh,
-                        grad.placements,
-                    )
-                    view['param'].main_grad = tmp_grad
-                    grad.get_tensor()._clear()
-                    paddle.device.cuda.empty_cache()
+            if self._inner_opt._grad_clip is not None:
+                self._inner_opt._grad_clip.should_comm_on_shard_dim = True
+                self._inner_opt._grad_clip.sharding_group = self.comm_group
 
         new_params = []
         new_grads = []
         for i in range(len(self.fuse_param_view)):
-            shard_size = self.grad_storage[i]._numel() // self.comm_group.nranks
-            begin = shard_size * max(self.comm_group.rank, 0)
-            end = begin + shard_size
-            reduce_scattered = paddle._C_ops.view_slice(
-                self.grad_storage[i], begin, end
-            )
-            paddle.distributed.reduce_scatter(
-                reduce_scattered,
-                self.grad_storage[i],
-                op=paddle.distributed.ReduceOp.SUM,
-                group=self.comm_group,
-                sync_op=False,
-            ).wait()
+            self._reduce_scatter_gradients(self.grad_storage[i])
 
             for name, view in self.fuse_param_view[i].items():
+                param = view['param']
+                index = view['index']
                 shard_size = (
                     self.param_storage[i]._numel() // self.comm_group.nranks
                 )
                 rank_begin = shard_size * max(self.comm_group.rank, 0)
                 rank_end = rank_begin + shard_size
-                param_begin = max(view['index'], rank_begin)
-                param_end = min(
-                    view['index'] + view['param']._numel(), rank_end
-                )
+                param_begin = max(index, rank_begin)
+                param_end = min(index + param._numel(), rank_end)
                 if param_begin >= param_end:
                     continue
-
-                tmp_param = paddle._C_ops.view_slice(
+                # get new_param from param_storage
+                new_param = paddle._C_ops.view_slice(
                     self.param_storage[i], param_begin, param_end
                 )
-                tmp_param = _dtensor_from_local(
-                    tmp_param,
-                    view['param'].process_mesh,
+                new_param = _dtensor_from_local(
+                    new_param,
+                    param.process_mesh,
                     [dist.Replicate()],
                 )
-                tmp_param.name = name
-                tmp_param.stop_gradient = view['param'].stop_gradient
-                new_params.append(tmp_param)
+                new_param.name = name
+                new_param.stop_gradient = param.stop_gradient
+                new_param.need_clip = param.need_clip
+                new_param.persistable = True
+                new_param.trainable = param.trainable
+                new_param.stop_gradient = param.stop_gradient
+                new_param.optimize_attr = param.optimize_attr
+                new_param.regularizer = param.regularizer
+                new_param.do_model_average = param.do_model_average
+                new_param.is_distributed = param.is_distributed
+                new_params.append(new_param)
 
-                tmp_grad = paddle._C_ops.view_slice(
+                # get new_grad from grad_storage
+                new_grad = paddle._C_ops.view_slice(
                     self.grad_storage[i], param_begin, param_end
                 )
-                tmp_grad = _dtensor_from_local(
-                    tmp_grad, view['param'].process_mesh, [dist.Replicate()]
+                new_grad = _dtensor_from_local(
+                    new_grad, param.process_mesh, [dist.Replicate()]
                 )
-                new_grads.append(tmp_grad)
+                new_grads.append(new_grad)
+
         new_params_grads = list(zip(new_params, new_grads))
+
         return new_params_grads
 
     def _fused_comm_before_apply_optimize(self, flags, params_grads):
