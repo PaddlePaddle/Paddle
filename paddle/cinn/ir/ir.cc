@@ -347,16 +347,24 @@ Expr Let::Make(Expr symbol, Expr body) {
                           "The type of the body is not valid. "
                           "If a body is defined, it must have a valid type."));
   }
+  // For Symbol of LetOp, we need to insert a cast to convert its type, but
+  // inside LetOp, we should directly convert the Symbol type instead of
+  // inserting a cast.so we set the flag to false before the conversion and
+  // set it to true after the conversion, e.g.
+  // inside LetOp: type of v, v1 are int32.
+  //   int32 v = v1 * 2   ==TypePromote==>  int64 v = v1 * 2ll
+  // outside LetOp: type of v, v2 are int32 and v is defined by LetOp.
+  //   v2 = v * 2         ==TypePromote==>  v2 = (int64)v * 2ll
+  if (symbol.is_var()) {
+    symbol.as_var()->is_let_symbol = false;
+  }
   auto promote_args = std::move(ir::TryElevateInt32ToInt64({symbol, body}));
   symbol = promote_args.at(0);
   body = promote_args.at(1);
-
-  n->symbol = symbol;
-
-  if (n->symbol.is_var()) {
-    n->symbol.as_var()->is_let_symbol = true;
+  if (symbol.is_var()) {
+    symbol.as_var()->is_let_symbol = true;
   }
-
+  n->symbol = symbol;
   n->body = body;
   n->set_type(n->symbol->type());
   return Expr(n);

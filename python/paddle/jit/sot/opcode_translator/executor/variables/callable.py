@@ -29,6 +29,7 @@ from typing import (
 )
 
 import paddle
+from paddle.base.dygraph.base import _DecoratorContextManager
 
 from .... import psdb
 from ....profiler import EventGuard
@@ -909,6 +910,34 @@ class FunctoolsLruCacheWrapperVariable(FunctionVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, functools._lru_cache_wrapper):
             return FunctoolsLruCacheWrapperVariable(value, graph, tracker)
+        return None
+
+
+class NoGradFunctionVariable(FunctionVariable):
+    def __init__(
+        self, fn: Callable[..., Any], graph: FunctionGraph, tracker: Tracker
+    ):
+        super().__init__(fn, graph, tracker)
+        self.value = fn
+
+    def call_function(self, /, *args, **kwargs):
+        wrapped_fn = self.value.__wrapped__
+        wrapped_fn = VariableFactory.from_value(
+            wrapped_fn, self.graph, GetAttrTracker(self, "__wrapped__")
+        )
+        with self.graph.no_grad():
+            return wrapped_fn(*args, **kwargs)
+
+    @VariableFactory.register_from_value(
+        successor="UserDefinedFunctionVariable"
+    )
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if (
+            decorated_by := getattr(
+                value, _DecoratorContextManager.DECORATED_BY_MARKER_ATTR, None
+            )
+        ) and (isinstance(decorated_by, paddle.no_grad)):
+            return NoGradFunctionVariable(value, graph, tracker)
         return None
 
 

@@ -889,10 +889,10 @@ class VectorizeForTransMutator : public ir::IRMutator<ir::Expr *> {
   std::unordered_set<std::string> tensor_can_vectorized_;
   std::unordered_set<std::string> scalar_tensor_without_vectorize_axis_;
 
-  absl::flat_hash_map<std::string, ir::Var> tensor_to_vectorized_vars_;
-  absl::flat_hash_map<std::string, ir::Var> scalar_tensor_to_local_var_;
-  absl::flat_hash_map<std::string, ir::Expr> scalar_tensor_to_local_buffer_;
-  absl::flat_hash_map<std::string, ir::Expr> preload_scalar_tensor_stmts_;
+  paddle::flat_hash_map<std::string, ir::Var> tensor_to_vectorized_vars_;
+  paddle::flat_hash_map<std::string, ir::Var> scalar_tensor_to_local_var_;
+  paddle::flat_hash_map<std::string, ir::Expr> scalar_tensor_to_local_buffer_;
+  paddle::flat_hash_map<std::string, ir::Expr> preload_scalar_tensor_stmts_;
 
   int vectorize_factor_{0};
   ir::Var loop_var_;

@@ -50,8 +50,7 @@ ExternalProject_Add(
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_throw_delegate.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_any_cast_impl.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_optional_access.a
-  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_variant_access.a
-  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_raw_hash_set.a)
+  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_variant_access.a)
 
 # It may be more convenient if we just include all absl libs
 set(ABSL_LIB_NAMES
@@ -65,8 +64,7 @@ set(ABSL_LIB_NAMES
     throw_delegate
     bad_any_cast_impl
     bad_optional_access
-    bad_variant_access
-    raw_hash_set)
+    bad_variant_access)
 set(ABSL_LIBS "")
 
 if(WITH_ROCM)

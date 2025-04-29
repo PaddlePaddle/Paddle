@@ -22,7 +22,7 @@ echo "::group::Installing zstd"
 apt install zstd -y
 echo "::endgroup::"
 
-if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "build" ]; then
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ] || [ "$CI_name" == "build" ]; then
     if [ "$CI_name" == "xpu" ]; then
         echo "::group::Installing ninja-build"
         apt install ninja-build -y
@@ -35,7 +35,9 @@ if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "x
     pip config set global.cache-dir "/root/.cache/pip"
     pip install --upgrade pip
     echo "::group::Installing python dependencies"
-    pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    if [ "$CI_name" != "distribute" ]; then
+        pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    fi
     echo "::endgroup::"
 fi
 

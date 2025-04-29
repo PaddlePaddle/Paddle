@@ -50,6 +50,11 @@ jobs:
     uses: ./.github/workflows/_Linux-NPU.yml
     needs: cpu
 
+  distribute:
+    name: Distribute-stable
+    uses: ./.github/workflows/_Distribute-stable.yml
+    needs: clone
+
   # build:
   #   name: Linux-build
   #   uses: ./.github/workflows/_Linux-build.yml
