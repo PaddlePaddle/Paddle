@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import warnings
 from typing import (
     TYPE_CHECKING,
@@ -655,6 +656,30 @@ def amp_guard(
             and not amp_global_state().already_register_final_backward_hook
         ):
 
+            def _dtensor_from_local(
+                local_tensor, mesh, placements, local_tensor_shape=None
+            ):
+                global_dims = list(local_tensor.shape)
+                if local_tensor_shape is not None:
+                    global_dims = local_tensor_shape
+                for idx, placement in enumerate(placements):
+                    if placement.is_shard():
+                        shard_dim = placement.get_dim()
+                        local_dim_size = global_dims[shard_dim]
+                        global_dims[shard_dim] = (
+                            local_dim_size * mesh.shape[idx]
+                        )
+                place = paddle.framework._current_expected_place()
+                place = paddle.framework._get_paddle_place(place)
+
+                return paddle.Tensor(
+                    local_tensor,
+                    dims=global_dims,
+                    process_mesh=mesh,
+                    placements=placements,
+                    place=place,
+                )
+
             def master_grad_hook():
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
                 # classify the params of model into different classes according to their process_mesh.
@@ -674,16 +699,47 @@ def amp_guard(
                                     param.process_mesh
                                 ].append(param)
                     amp_global_state().already_classify_params_meshes = True
-
-                if len(amp_global_state().mesh2params):
-                    for _, params in amp_global_state().mesh2params.items():
-                        core.eager.set_master_grads(params)
-                else:
-                    core.eager.set_master_grads(
-                        amp_global_state().model_parameters
-                    )
+                if not os.getenv("FLAGS_enable_inplace_master_grad") == '1':
+                    if len(amp_global_state().mesh2params):
+                        for _, params in amp_global_state().mesh2params.items():
+                            core.eager.set_master_grads(params)
+                    else:
+                        core.eager.set_master_grads(
+                            amp_global_state().model_parameters
+                        )
 
                 amp_global_state().already_register_final_backward_hook = False
+
+            def _update_main_grad_hook(param):
+                @paddle.autograd.no_grad()
+                def param_hook(tmp_grad):
+                    if tmp_grad is not None and tmp_grad._is_initialized():
+                        if param.main_grad is None:
+                            tmp = core.eager.Tensor(
+                                value=tmp_grad._local_value()
+                                .cast(paddle.float32)
+                                .value(),
+                                place=tmp_grad.place,
+                                name="main_grad@" + param.name,
+                            )
+                            param.main_grad = _dtensor_from_local(
+                                tmp,
+                                tmp_grad.process_mesh,
+                                tmp_grad.placements,
+                            )
+                        else:
+                            param.main_grad._local_value().add_(
+                                tmp_grad._local_value()
+                            )
+                        tmp_grad._clear_data()
+
+                return param_hook
+
+            if os.getenv("FLAGS_enable_inplace_master_grad") == '1':
+                for param in amp_global_state().model_parameters:
+                    if not hasattr(param, "main_grad"):
+                        param.main_grad = None
+                        param._register_grad_hook(_update_main_grad_hook(param))
 
             core.eager._add_backward_final_hook(master_grad_hook)
             amp_global_state().already_register_final_backward_hook = True
