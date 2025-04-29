@@ -21,6 +21,22 @@
 
 namespace paddle::dialect {
 
+bool ApTrivialFusionBeginOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  symbol::ShapeOrDataDimExprs empty_shape{
+      symbol::TensorShapeOrDataDimExprs{std::vector<symbol::DimExpr>{}}};
+  infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
+  return true;
+}
+
+bool ApTrivialFusionEndOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  symbol::ShapeOrDataDimExprs empty_shape{
+      symbol::TensorShapeOrDataDimExprs{std::vector<symbol::DimExpr>{}}};
+  infer_context->SetShapeOrDataForValue(op->result(0), empty_shape);
+  return true;
+}
+
 bool ApFacadeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return ap::dialect::PdOpApFacadeOpInferSymbolicShape(op, infer_context);

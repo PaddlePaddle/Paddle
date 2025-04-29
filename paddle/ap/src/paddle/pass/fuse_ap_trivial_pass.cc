@@ -12,23 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
-#include "paddle/ap/include/registry/registry_mgr.h"
+#include "paddle/ap/include/paddle/pass/fuse_ap_trivial_pass.h"
+#include "paddle/ap/include/paddle/pass/move_trivial_fusion_range_to_fusion_op_pass.h"
 
 namespace ap::paddle {
 
-namespace {
-
-using ap::registry::Registry;
-using ap::registry::RegistryMgr;
-using ap::registry::RegistrySingleton;
-
-}  // namespace
-
-ap::adt::Result<Registry> ApRegistryHelper::SingletonRegistry() {
-  ADT_RETURN_IF_ERR(RegistryMgr::Singleton()->LoadAllOnce());
-  ADT_LET_CONST_REF(registry, RegistrySingleton::Singleton());
-  return registry;
+std::unique_ptr<::pir::Pass> CreateFuseApTrivialPass() {
+  return CreateMoveTrivialFusionRangeToFusionOpPass();
 }
 
 }  // namespace ap::paddle

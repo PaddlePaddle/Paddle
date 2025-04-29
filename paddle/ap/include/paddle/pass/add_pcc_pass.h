@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
-#include "paddle/ap/include/registry/registry_mgr.h"
+#pragma once
+
+#include <functional>
+#include <memory>
+
+namespace pir {
+
+class PassManager;
+class Program;
+
+}  // namespace pir
 
 namespace ap::paddle {
 
-namespace {
-
-using ap::registry::Registry;
-using ap::registry::RegistryMgr;
-using ap::registry::RegistrySingleton;
-
-}  // namespace
-
-ap::adt::Result<Registry> ApRegistryHelper::SingletonRegistry() {
-  ADT_RETURN_IF_ERR(RegistryMgr::Singleton()->LoadAllOnce());
-  ADT_LET_CONST_REF(registry, RegistrySingleton::Singleton());
-  return registry;
-}
+void ApplyPccPass(
+    ::pir::Program* program,
+    const std::function<std::shared_ptr<pir::PassManager>()>& CreatePassManager,
+    bool is_train_mode = false);
 
 }  // namespace ap::paddle
