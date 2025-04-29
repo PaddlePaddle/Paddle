@@ -2371,7 +2371,7 @@ TEST(Conv2dGradSPMDRule, Ctor) {
   EXPECT_EQ(is_partial(inferred_dist_attrs.second[1]), true);
 }
 
-TEST(Dropout, Ctor) {
+TEST(Topk, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};
   std::vector<std::string> dim_names = {"dp", "mp"};
