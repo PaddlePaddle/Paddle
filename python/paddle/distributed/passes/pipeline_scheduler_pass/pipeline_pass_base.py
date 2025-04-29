@@ -74,7 +74,9 @@ class PipelinePassBase(PassBase):
                     main_program, startup_program, context
                 )
             else:
-                self._apply_single_impl(main_program, startup_program, context)
+                raise NotImplementedError(
+                    "Not support for old IR, please use pir mode."
+                )
 
     def _partial_pir_programs(self, program):
         """
