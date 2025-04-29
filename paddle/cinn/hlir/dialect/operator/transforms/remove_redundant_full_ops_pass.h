@@ -19,7 +19,7 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<pir::Pass> CreateRemoveRedundantFullIntArrayPass();
+std::unique_ptr<pir::Pass> CreateRemoveRedundantFullOpsPass();
 
 }  // namespace ir
 }  // namespace dialect
