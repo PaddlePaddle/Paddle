@@ -37,6 +37,11 @@ from paddle.base.framework import (
     in_pir_mode,
     use_pir_api,
 )
+from paddle.base.libpaddle.pir import (
+    create_op_dist_attribute,
+    create_tensor_dist_attribute,
+    cvt_to_dist_type,
+)
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
@@ -1116,24 +1121,21 @@ class _ShardOptimizer(Optimizer):
         if self._shard_fn is None:
             self._shard_fn = _ShardingStage0
 
+        assert isinstance(
+            self._shard_fn,
+            (_ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3),
+        ), "shard_fn must be an instance of one of: _ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3"
+
         if isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
         ):
             self._set_and_check_sharding_prop_from_param()
             self._shard_fn._set_sharding_axis(self._sharding_axis)
 
-        # Invoke register hook for sharding stage 0/1/2 strategy
-        if isinstance(
-            self._shard_fn, (_ShardingStage0, ShardingStage1, ShardingStage2)
-        ):
-            for param in self._inner_opt._parameter_list:
-                self._shard_fn._register_hook_for_param_grad(param)
-
         # Invoke shard_parameter in sharding stage 3 strategy
         if isinstance(self._shard_fn, ShardingStage3):
             for param in self._inner_opt._parameter_list:
                 self._shard_fn._shard_parameter(param)
-                self._shard_fn._register_hook_for_param_grad(param)
 
     def _set_and_check_sharding_prop_from_param(self):
         global_mesh = fleet.auto.get_mesh()
@@ -1274,15 +1276,12 @@ class _ShardOptimizer(Optimizer):
 
     def apply_gradients(self, params_grads):
         new_params_grads = []
-        if isinstance(
-            self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
-        ):
-            for param, grad in params_grads:
-                new_params_grads.append(
-                    (param, self._shard_fn("grad", param, grad))
-                )
-            return Optimizer.apply_gradients(self, new_params_grads)
-        return Optimizer.apply_gradients(self, params_grads)
+
+        for param, grad in params_grads:
+            new_params_grads.append(
+                (param, self._shard_fn("grad", param, grad))
+            )
+        return Optimizer.apply_gradients(self, new_params_grads)
 
     def state_dict(self):
         """
@@ -1568,6 +1567,9 @@ class _ShardingStageBase:
         self._mesh = mesh
         self._sharding_axis = 0
         self._sharding_mesh_dim = sharding_mesh_dim
+        self._enable_manual_dp_comm = (
+            os.getenv("FLAGS_enable_manual_dp_comm") == "1"
+        )
 
     def _set_sharding_axis(self, sharding_axis):
         self._sharding_axis = sharding_axis
@@ -1608,68 +1610,56 @@ class _ShardingStageBase:
                 )
         return master_weight
 
-    @staticmethod
-    def _reshard_partial_grad_to_shard(grad):
-        if grad.is_dist():
-            partial_mesh_axis = None
-            for mesh_axis, placement in enumerate(grad.placements):
-                if isinstance(placement, dist.Partial):
-                    partial_mesh_axis = mesh_axis
+    def _init_dist_attr(self, tensor: Tensor, param: Tensor, placements: list):
+        dim_map, partial_status = to_dim_map(placements, len(tensor.shape))
+        dist_attr = create_tensor_dist_attribute(
+            param.process_mesh, dim_map, partial_status
+        )
+        dist_type = cvt_to_dist_type(tensor.type(), dist_attr)
+        tensor.set_type(dist_type)
+        op_dist_attr = create_op_dist_attribute(
+            param.process_mesh, [], [dist_attr]
+        )
+        tensor.get_defining_op().dist_attr = op_dist_attr
 
-            if partial_mesh_axis is not None:
-                new_placements = get_placement_with_sharding(
-                    grad, partial_mesh_axis
-                )
-                return reshard(grad, grad.process_mesh, new_placements)
+    def _apply_placement(
+        self, tensor: Tensor, param: Tensor, placements: list
+    ) -> Tensor:
+        if tensor.is_dist():
+            op = tensor.get_defining_op()
+            if op.name() == "pd_op.data":
+                self._init_dist_attr(tensor, param, placements)
+                return tensor
+            return dist.reshard(tensor, param.process_mesh, placements)
+        return shard_tensor(
+            tensor,
+            mesh=param.process_mesh,
+            placements=placements,
+        )
 
-        return grad
-
-    @staticmethod
-    def _reshard_replicate_grad_to_partial(grad):
-        if grad.is_dist():
-            enable_manual_dp_comm = (
-                os.getenv("FLAGS_enable_manual_dp_comm") == "1"
-            )
-
-            if enable_manual_dp_comm:
-                new_placements = grad.placements
-                assert (
-                    new_placements[0] == dist.Replicate()
-                ), "when enable manual_dp_comm, the sharding axis of grad should be Replicate"
-                new_placements[0] = dist.Partial(dist.ReduceType.kRedAvg)
-                return reshard(grad, grad.process_mesh, new_placements)
-
-        return grad
-
-    @staticmethod
-    def _grad_hook(grad):
-        if grad.is_dist():
-            grad = _ShardingStageBase._reshard_replicate_grad_to_partial(grad)
-            return _ShardingStageBase._reshard_partial_grad_to_shard(grad)
-        return grad
-
-    def _param_to_dist(self, param):
-        placements = []
-        for _ in range(len(self._mesh.shape)):
-            placements.append(dist.Replicate())
-        param._to_dist_(placements, self._mesh)
-
-    def _register_hook_for_param_grad(self, param):
-        if param.is_dense() and self._mesh is not None:
-            self._param_to_dist(param)
-
-        if param.is_dist():
-            param.register_hook(self._grad_hook)
+    def _reshard_replicate_grad_to_partial(self, grad: Tensor) -> Tensor:
+        new_placements = grad.placements
+        assert (
+            new_placements[self._sharding_axis] == dist.Replicate()
+        ), "when enable_manual_dp_comm, the sharding axis of grad should be Replicate"
+        new_placements[self._sharding_axis] = dist.Partial(
+            dist.ReduceType.kRedAvg
+        )
+        return dist.reshard(grad, grad.process_mesh, new_placements)
 
 
 class _ShardingStage0(_ShardingStageBase):
-    def __init__(self, mesh, sharding_mesh_dim):
+    def __init__(
+        self, sharding_mesh_dim: int | str, mesh: ProcessMesh | None = None
+    ) -> None:
         super().__init__(mesh, sharding_mesh_dim)
+        self.sharding_axis = 0
 
-    @staticmethod
-    def _grad_hook(grad):
-        if grad.is_dist():
-            return _ShardingStageBase._reshard_replicate_grad_to_partial(grad)
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if key == "grad" and self._enable_manual_dp_comm:
+            return self._reshard_replicate_grad_to_partial(tensor)
+
+        return tensor
 
 
 class ShardingStage1(_ShardingStageBase):
@@ -1718,53 +1708,21 @@ class ShardingStage1(_ShardingStageBase):
     ) -> None:
         super().__init__(mesh, sharding_mesh_dim)
 
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        if param.is_dist():
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
-                placements = get_placement_with_sharding(
-                    param, self._sharding_axis
-                )
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if not param.is_dist():
+            return tensor
 
-            if accumulator.is_dist():
-                if accumulator.get_defining_op().name() == "pd_op.data":
-                    dim_map, partial_status = (
-                        dist.auto_parallel.placement_type.to_dim_map(
-                            placements, len(accumulator.shape)
-                        )
-                    )
-                    dist_attr = (
-                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                            param.process_mesh, dim_map, partial_status
-                        )
-                    )
-                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-                        accumulator.type(), dist_attr
-                    )
-                    accumulator.set_type(dist_type)
-                    op_dist_attr = (
-                        paddle.base.libpaddle.pir.create_op_dist_attribute(
-                            param.process_mesh, [], [dist_attr]
-                        )
-                    )
-                    accumulator.get_defining_op().dist_attr = op_dist_attr
-                    return accumulator
-                return dist.reshard(accumulator, param.process_mesh, placements)
-            else:
-                return shard_tensor(
-                    accumulator,
-                    mesh=param.process_mesh,
-                    placements=placements,
-                )
-        return accumulator
+        if key == "grad" and self._enable_manual_dp_comm:
+            tensor = self._reshard_replicate_grad_to_partial(tensor)
+
+        if 'beta' not in key:
+            placements = get_placement_with_sharding(param, self._sharding_axis)
+        else:
+            placements = [dist.Replicate() for _ in param.process_mesh.shape]
+        return self._apply_placement(tensor, param, placements)
 
 
-class ShardingStage2(_ShardingStageBase):
+class ShardingStage2(ShardingStage1):
     """
     A builtin shard_fn for shard_optimizer interface, users can pass it to shard_optimizer to implement sharding optimization with stage 2.
 
@@ -1803,56 +1761,9 @@ class ShardingStage2(_ShardingStageBase):
             >>> # python -m paddle.distributed.launch --gpus=0,1 {test_case}.py
     """
 
-    def __init__(
-        self,
-        sharding_mesh_dim: int | str,
-        mesh: ProcessMesh | None = None,
-    ) -> None:
-        super().__init__(mesh, sharding_mesh_dim)
-
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        if param.is_dist():
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
-                placements = get_placement_with_sharding(
-                    param, self._sharding_axis
-                )
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
-            if accumulator.is_dist():
-                if accumulator.get_defining_op().name() == "pd_op.data":
-                    dim_map, partial_status = (
-                        dist.auto_parallel.placement_type.to_dim_map(
-                            placements, len(accumulator.shape)
-                        )
-                    )
-                    dist_attr = (
-                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                            param.process_mesh, dim_map, partial_status
-                        )
-                    )
-                    dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
-                        accumulator.type(), dist_attr
-                    )
-                    accumulator.set_type(dist_type)
-                    op_dist_attr = (
-                        paddle.base.libpaddle.pir.create_op_dist_attribute(
-                            param.process_mesh, [], [dist_attr]
-                        )
-                    )
-                    accumulator.get_defining_op().dist_attr = op_dist_attr
-                    return accumulator
-                return dist.reshard(accumulator, param.process_mesh, placements)
-            else:
-                return shard_tensor(
-                    accumulator,
-                    mesh=param.process_mesh,
-                    placements=placements,
-                )
-        return accumulator
+    # Note(luchang): Due to reshard optimizations in Paddle where all-reduce + slicing is fused into reduce_scatter,
+    # the current behavior of ShardingStage2 is effectively the same as ShardingStage1.
+    pass
 
 
 class ShardingStage3(_ShardingStageBase):
@@ -1927,30 +1838,22 @@ class ShardingStage3(_ShardingStageBase):
             new_param = dist.reshard(param, param.process_mesh, new_placements)
             param.get_tensor()._share_data_with(new_param.get_tensor())
 
-    def __call__(self, key: str, param: Tensor, accumulator: Tensor) -> Tensor:
-        if param.is_dist():
-            # Only deal with momentum in optimizer, beta should be replicated cross param's mesh
-            if 'beta' not in key:
-                placements = param.placements
-                if all(
-                    isinstance(placement, dist.Replicate)
-                    for placement in placements
-                ):
-                    placements = get_placement_with_sharding(
-                        param, self._sharding_axis
-                    )
+    def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
+        if not param.is_dist():
+            return tensor
 
-            else:
-                placements = [
-                    dist.Replicate()
-                    for _ in range(len(param.process_mesh.shape))
-                ]
-            return shard_tensor(
-                accumulator,
-                mesh=param.process_mesh,
-                placements=placements,
-            )
-        return accumulator
+        if key == "grad" and self._enable_manual_dp_comm:
+            tensor = self._reshard_replicate_grad_to_partial(tensor)
+
+        if 'beta' not in key:
+            placements = param.placements
+            if all(isinstance(p, dist.Replicate) for p in placements):
+                placements = get_placement_with_sharding(
+                    param, self._sharding_axis
+                )
+        else:
+            placements = [dist.Replicate() for _ in param.process_mesh.shape]
+        return self._apply_placement(tensor, param, placements)
 
 
 def shard_optimizer(
