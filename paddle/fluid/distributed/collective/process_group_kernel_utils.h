@@ -29,6 +29,10 @@ struct ConcatDenseTensorByNumel {
   void operator()(const DeviceContext &context,
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out) {
+    if (out->numel() == 0) {
+      return;
+    }
+
     auto out_dims = common::vectorize(out->dims());
     auto flattened_out_dims = {out->numel()};
     std::vector<phi::DenseTensor> in_flatten;
@@ -39,11 +43,12 @@ struct ConcatDenseTensorByNumel {
 
     int64_t in_numel_sum = 0;
     for (auto &tensor : in) {
-      phi::DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
-      tensor_flatten.Resize({tensor.numel()});
-      in_flatten.push_back(tensor_flatten);
-
-      in_numel_sum += tensor.numel();
+      if (tensor.numel() > 0) {
+        phi::DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
+        tensor_flatten.Resize({tensor.numel()});
+        in_flatten.push_back(tensor_flatten);
+        in_numel_sum += tensor.numel();
+      }
     }
     PADDLE_ENFORCE_EQ(
         out->numel(),
@@ -105,6 +110,10 @@ struct SplitDenseTensorByNumel {
   void operator()(const DeviceContext &context,
                   const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor> *out) {
+    if (in.numel() == 0) {
+      return;
+    }
+
     phi::DenseTensor in_flatten(in.Holder(), in.meta());
     in_flatten.Resize({in.numel()});
 
@@ -115,10 +124,12 @@ struct SplitDenseTensorByNumel {
     int64_t out_numel_sum = 0;
 
     for (auto &tensor : *out) {
-      phi::DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
-      tensor_flatten.Resize({tensor.numel()});
-      out_flatten.push_back(tensor_flatten);
-      out_numel_sum += tensor.numel();
+      if (tensor.numel() > 0) {
+        phi::DenseTensor tensor_flatten(tensor.Holder(), tensor.meta());
+        tensor_flatten.Resize({tensor.numel()});
+        out_flatten.push_back(tensor_flatten);
+        out_numel_sum += tensor.numel();
+      }
     }
     for (auto &tensor : out_flatten) {
       shape_refer.push_back(&tensor);

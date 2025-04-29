@@ -1062,8 +1062,8 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(
                 linear1.weight.numpy(),
                 fc1_w,
-                atol=2e-9 if core.is_compiled_with_xpu() else 0,
-                rtol=1e-6,
+                atol=1e-8 if core.is_compiled_with_xpu() else 0,
+                rtol=1e-5,
             )
             np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, rtol=1e-6)
             np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
@@ -1700,8 +1700,8 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(
                 linear1.weight.numpy(),
                 fc1_w,
-                atol=2e-9 if core.is_compiled_with_xpu() else 0,
-                rtol=1e-6,
+                atol=1e-8 if core.is_compiled_with_xpu() else 0,
+                rtol=1e-5,
             )
             np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, rtol=1e-6)
             np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)

@@ -104,17 +104,19 @@ if(WITH_GPU)
                                              /usr/lib /usr/lib64 REQUIRED)
 endif()
 
-if(WITH_ROCM)
-  message(STATUS "CINN Compile with ROCM support")
-  add_definitions(-DCINN_WITH_HIP)
-  link_libraries(${ROCM_HIPRTC_LIB})
-endif()
-
-if(CINN_WITH_SYCL)
+if(WITH_SYCL)
   message(STATUS "CINN Compile with SYCL support")
   set(DPCPP_DIR ${PROJECT_SOURCE_DIR}/cmake/cinn)
   find_package(DPCPP REQUIRED CONFIG)
   add_definitions(-DCINN_WITH_SYCL)
+endif()
+
+if(WITH_ROCM)
+  message(STATUS "CINN Compile with ROCM support")
+  if(NOT WITH_SYCL)
+    add_definitions(-DCINN_WITH_HIP)
+  endif()
+  link_libraries(${ROCM_HIPRTC_LIB})
 endif()
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)
@@ -137,29 +139,12 @@ set(LINK_FLAGS
 set(global_test_args
     "--cinn_x86_builtin_code_root=${CMAKE_SOURCE_DIR}/paddle/cinn/backends")
 
-set(Python_VIRTUALENV FIRST)
-
-if(NOT PYTHON_EXECUTABLE)
-  find_package(PythonInterp ${PY_VERSION} REQUIRED)
-endif()
-
-if(NOT PYTHON_LIBRARIES)
-  find_package(PythonLibs ${PY_VERSION} REQUIRED)
-endif()
-
-message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
-message(STATUS "PYTHON_INCLUDE_DIR: ${PYTHON_INCLUDE_DIR}")
-
-include_directories(${PYTHON_INCLUDE_DIR})
-
 set(core_deps CACHE INTERNAL "" FORCE)
 set(hlir_src CACHE INTERNAL "" FORCE)
 
 # TODO(chenweihang): The logic later depends adding cinn subdirectory here,
 # but better to move to paddle/CMakeLists.txt
 add_subdirectory(paddle/cinn)
-
-set(core_src "${cinnapi_src}")
 
 cinn_cc_library(
   cinnapi
@@ -184,7 +169,6 @@ add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
-add_dependencies(cinnapi python)
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
@@ -214,6 +198,8 @@ if(WITH_CUTLASS)
   add_dependencies(cinnapi cutlass)
 endif()
 
+set(core_src "${cinnapi_src}")
+
 function(gen_cinncore LINKTYPE)
   set(CINNCORE_TARGET cinncore)
   if(${LINKTYPE} STREQUAL "STATIC")
@@ -233,7 +219,6 @@ function(gen_cinncore LINKTYPE)
     absl
     isl
     ginac
-    pybind
     op_fusion
     cinn_op_dialect
     ${jitify_deps})
@@ -241,10 +226,6 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
   add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
-
-  # add_dependencies(${CINNCORE_TARGET} pybind)
-  target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
-  link_libraries(${PYTHON_LIBRARIES})
 
   if(WITH_MKL)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
@@ -287,6 +268,8 @@ if(PUBLISH_LIBS)
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
   set(core_includes
       "${core_includes};paddle/cinn/runtime/hip/cinn_hip_runtime_source.h")
+  set(core_includes
+      "${core_includes};paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h")
   set(core_includes
       "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
   foreach(header ${core_includes})

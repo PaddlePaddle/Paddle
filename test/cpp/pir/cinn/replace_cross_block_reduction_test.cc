@@ -59,7 +59,7 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
   VLOG(6) << "After ReplaceCrossBlockReduction: " << func;
 
   EXPECT_EQ(utils::GetStreamCnt(func),
-            utils::Trim(R"ROC(function reduce_sum_sqrt (_C, _A, _semaphore)
+            utils::Trim(R"ROC(function reduce_sum_sqrt (_C, _A)
 {
   ScheduleBlock(root)
   {
@@ -75,27 +75,22 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
         }
         thread_bind[blockIdx.y] for (reduce_k, 0, 8)
         {
-          is_last_block_done[0] = cinn_grid_reduce_update_semaphore(Tensor(semaphore, [16]))
-          if (is_last_block_done[0]) {
-            ScheduleBlock(B)
+          ScheduleBlock(B)
+          {
+            i0_0, i1 = axis.bind(i, reduce_k)
             {
-              i0_0, i1 = axis.bind(i, reduce_k)
-              {
-                B[i0_0] = cinn_grid_reduce_sum_fp32(Tensor(A, [8,16]), 16, i0_0)
-              }
+              B[i0_0] = cinn_grid_reduce_sum_fp32(Tensor(A, [8,16]), 16, i0_0)
             }
           }
         }
       }
       thread_bind[blockIdx.x] for (i, 0, 16)
       {
-        if (is_last_block_done[0]) {
-          ScheduleBlock(C)
+        ScheduleBlock(C)
+        {
+          i0_1 = axis.bind(i)
           {
-            i0_1 = axis.bind(i)
-            {
-              C[i0_1] = sqrt(B[i0_1])
-            }
+            C[i0_1] = sqrt(B[i0_1])
           }
         }
       }
@@ -103,13 +98,10 @@ TEST(CrossBlockReductionReplacer, SRLayout) {
   }
 }
 )ROC"));
-  EXPECT_EQ(func->temp_spaces.size(), 2);
+  EXPECT_EQ(func->temp_spaces.size(), 1);
   EXPECT_EQ(func->temp_spaces[0].size().as_int64(), 512);
   EXPECT_EQ(func->temp_spaces[0].arg_idx(), 1);
   EXPECT_EQ(func->temp_spaces[0].need_zero_init(), false);
-  EXPECT_EQ(func->temp_spaces[1].size().as_int64(), 64);
-  EXPECT_EQ(func->temp_spaces[1].arg_idx(), 2);
-  EXPECT_EQ(func->temp_spaces[1].need_zero_init(), true);
 }
 
 TEST(CrossBlockReductionReplacer, RSLayout) {
@@ -151,7 +143,7 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
   VLOG(6) << "After ReplaceCrossBlockReduction: " << func;
 
   EXPECT_EQ(utils::GetStreamCnt(func),
-            utils::Trim(R"ROC(function reduce_max_exp (_C, _A, _semaphore)
+            utils::Trim(R"ROC(function reduce_max_exp (_C, _A)
 {
   ScheduleBlock(root)
   {
@@ -169,14 +161,11 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
           }
           thread_bind[blockIdx.y] for (reduce_k, 0, 8)
           {
-            is_last_block_done[0] = cinn_grid_reduce_update_semaphore(Tensor(semaphore, [4]))
-            if (is_last_block_done[0]) {
-              ScheduleBlock(B)
+            ScheduleBlock(B)
+            {
+              i0_0, i1_0, i2 = axis.bind(i, j, reduce_k)
               {
-                i0_0, i1_0, i2 = axis.bind(i, j, reduce_k)
-                {
-                  B[i0_0, i1_0] = cinn_grid_reduce_max_fp32(Tensor(A, [8,4,32]), 128, ((i0_0 * 32) + i1_0))
-                }
+                B[i0_0, i1_0] = cinn_grid_reduce_max_fp32(Tensor(A, [8,4,32]), 128, ((i0_0 * 32) + i1_0))
               }
             }
           }
@@ -186,13 +175,11 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
       {
         thread_bind[threadIdx.x] for (j, 0, 32)
         {
-          if (is_last_block_done[0]) {
-            ScheduleBlock(C)
+          ScheduleBlock(C)
+          {
+            i0_1, i1_1 = axis.bind(i, j)
             {
-              i0_1, i1_1 = axis.bind(i, j)
-              {
-                C[i0_1, i1_1] = exp(B[i0_1, i1_1])
-              }
+              C[i0_1, i1_1] = exp(B[i0_1, i1_1])
             }
           }
         }
@@ -201,13 +188,10 @@ TEST(CrossBlockReductionReplacer, RSLayout) {
   }
 }
 )ROC"));
-  EXPECT_EQ(func->temp_spaces.size(), 2);
+  EXPECT_EQ(func->temp_spaces.size(), 1);
   EXPECT_EQ(func->temp_spaces[0].size().as_int64(), 4096);
   EXPECT_EQ(func->temp_spaces[0].arg_idx(), 1);
   EXPECT_EQ(func->temp_spaces[0].need_zero_init(), false);
-  EXPECT_EQ(func->temp_spaces[1].size().as_int64(), 16);
-  EXPECT_EQ(func->temp_spaces[1].arg_idx(), 2);
-  EXPECT_EQ(func->temp_spaces[1].need_zero_init(), true);
 }
 
 }  // namespace optim

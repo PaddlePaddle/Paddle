@@ -445,6 +445,11 @@ bool IfOp::InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context) {
         }
         infer_context->SetShapeOrDataForValue(
             result(rst_idx), symbol::ShapeOrDataDimExprs{result_list});
+      } else if (false_shape_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+        infer_context->SetShapeOrDataForValue(result(rst_idx), true_shape_data);
+      } else if (true_shape_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+        infer_context->SetShapeOrDataForValue(result(rst_idx),
+                                              false_shape_data);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "IfOp::InferSymbolicShape: now only support "
@@ -975,9 +980,22 @@ bool WhileOp::InferSymbolicShape(
   }
 
   for (size_t i = 0; i < num_results(); ++i) {
-    infer_context->SetShapeOrDataForValue(
-        result(i),
-        infer_context->GetShapeOrDataForValue(yield_op.operand_source(i + 1)));
+    // If the result data and related input data is not equal, clear the data.
+    auto yield_input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(yield_op.operand_source(i + 1));
+    auto yield_input_data_opt = yield_input_shape_or_data.data();
+    auto input_data_opt =
+        infer_context->GetShapeOrDataForValue(body_args[i]).data();
+    bool data_equal = yield_input_data_opt.has_value() &&
+                      input_data_opt.has_value() &&
+                      yield_input_data_opt.value() == input_data_opt.value();
+    auto result_shape_or_data =
+        data_equal || !yield_input_shape_or_data
+                           .isa<symbol::TensorShapeOrDataDimExprs>()
+            ? yield_input_shape_or_data
+            : symbol::TensorShapeOrDataDimExprs(
+                  yield_input_shape_or_data.shape());
+    infer_context->SetShapeOrDataForValue(result(i), result_shape_or_data);
   }
 
   for (size_t i = 0; i < num_results(); ++i) {

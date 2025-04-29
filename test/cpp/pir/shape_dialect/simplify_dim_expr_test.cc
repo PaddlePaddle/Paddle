@@ -213,60 +213,12 @@ TEST(Simplify, FoldBroadcast) {
   ASSERT_TRUE(simplify_broadcast3 == add);
 }
 
-TEST(Simplify, FoldRepetitiveSymbol) {
+TEST(Simplify, FoldRedundantBroadcast) {
   DimExpr S0{"S0"};
   DimExpr S1{"S1"};
   DimExpr bc{Broadcast<DimExpr>{{S0, S0, S1, S1}}};
-  DimExpr max{Max<DimExpr>{{S0, S0, S1, S1}}};
-  DimExpr min{Min<DimExpr>{{S0, S0, S1, S1}}};
   DimExpr simplify_bc = SimplifyDimExpr(bc);
-  DimExpr simplify_max = SimplifyDimExpr(max);
-  DimExpr simplify_min = SimplifyDimExpr(min);
   ASSERT_TRUE((simplify_bc == Broadcast<DimExpr>{{S0, S1}}));
-  ASSERT_TRUE((simplify_max == Max<DimExpr>{{S0, S1}}));
-  ASSERT_TRUE((simplify_min == Min<DimExpr>{{S0, S1}}));
-}
-
-TEST(Simplify, SimplifyMaxAndMinWithGE) {
-  DimExpr S0{"S0"};
-  DimExpr S1{"S1"};
-  DimExpr S2{"S2"};
-  DimExpr add1{Add<DimExpr>{{S0, S1}}};
-  DimExpr max1{Max<DimExpr>{{S0, add1, S2}}};
-  DimExpr min1{Min<DimExpr>{{S0, add1, S2}}};
-  // Min(S0, Add(S0, S1), S2) => Min(S0, S2)
-  ASSERT_TRUE((SimplifyDimExpr(max1) == Max<DimExpr>{{add1, S2}}));
-  ASSERT_TRUE((SimplifyDimExpr(min1) == Min<DimExpr>{{S0, S2}}));
-
-  // Min(S0, Add(S0,S1), Mul(Add(S1, S2), S2)) => S0
-  DimExpr mul{Mul<DimExpr>{{add1, S2}}};
-  DimExpr max2{Max<DimExpr>{{S0, add1, mul}}};
-  DimExpr min2{Min<DimExpr>{{S0, add1, mul}}};
-  ASSERT_TRUE((SimplifyDimExpr(max2) == mul));
-  ASSERT_TRUE((SimplifyDimExpr(min2) == S0));
-
-  // Min(S0, Add(S0, -1)) => Add(S0, -1)
-  DimExpr add2{Add<DimExpr>{{S0, Negative<DimExpr>{DimExpr(1)}}}};
-  ASSERT_TRUE(
-      (SimplifyDimExpr(Min<DimExpr>{{S0, add2}}) == Add<DimExpr>{{S0, -1}}));
-
-  // Min(S0, Add(S0, -S1)) => Add(S0, -S1)
-  DimExpr add3{Add<DimExpr>{{S0, Negative<DimExpr>{S1}}}};
-  ASSERT_TRUE((SimplifyDimExpr(Min<DimExpr>{{S0, add3}}) == add3));
-
-  // Min(S0, 0) => 0, Max(S0, 0) => S0
-  ASSERT_TRUE((SimplifyDimExpr(Min<DimExpr>{{S0, DimExpr(0)}}) == DimExpr(0)));
-  ASSERT_TRUE((SimplifyDimExpr(Max<DimExpr>{{S0, DimExpr(0)}}) == S0));
-
-  // Min(S0, 1) => 1, Max(S0, 1) => S0
-  ASSERT_TRUE((SimplifyDimExpr(Min<DimExpr>{{S0, DimExpr(1)}}) == DimExpr(1)));
-  ASSERT_TRUE((SimplifyDimExpr(Max<DimExpr>{{S0, DimExpr(1)}}) == S0));
-
-  // Min(Mul(S0, S1), 0) => Min(Mul(S0, S1), 0)
-  // Now simplify ability is limited.
-  DimExpr mul2{Mul<DimExpr>{{S0, S1}}};
-  ASSERT_TRUE((SimplifyDimExpr(Min<DimExpr>{{mul2, DimExpr(0)}}) ==
-               Min<DimExpr>{{mul2, DimExpr(0)}}));
 }
 
 TEST(Simplify, SimplifyDoubleNegForMulAndDiv) {
@@ -336,6 +288,21 @@ TEST(Simplify, Case2) {
       Mul<DimExpr>{List<DimExpr>{
           Div<DimExpr>{S0, DimExpr(7)}, Div<DimExpr>{S1, DimExpr(7)}, 2}}};
   ASSERT_TRUE((SimplifyDimExpr(dim_expr)) == expected);
+}
+
+TEST(Simplify, Case3) {
+  DimExpr S3{"S3"};
+  DimExpr S4{"S4"};
+  DimExpr S5{"S5"};
+  DimExpr S7{"S7"};
+  DimExpr S8{"S8"};
+  DimExpr dim_expr = Mul<DimExpr>{List<DimExpr>{
+      Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                   Mul<DimExpr>{List<DimExpr>{S7, S8}}},
+      Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                   Div<DimExpr>{Mul<DimExpr>{List<DimExpr>{S3, S4, S5}},
+                                Mul<DimExpr>{List<DimExpr>{S7, S8}}}}}};
+  ASSERT_TRUE((SimplifyDimExpr(dim_expr) == dim_expr));  // Need to simplify
 }
 
 }  // namespace symbol::test

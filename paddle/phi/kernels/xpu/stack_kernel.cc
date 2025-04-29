@@ -28,6 +28,15 @@ void StackKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += x[0]->dims().size() + 1;
   }
+
+  // zero sized tensor case
+  if (x[0]->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    auto out_dims = out->dims();
+    out->Resize(out_dims);
+    return;
+  }
+
   dev_ctx.template Alloc<T>(out);
   auto& dim = x[0]->dims();
   std::vector<int> xdims;

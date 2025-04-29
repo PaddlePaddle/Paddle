@@ -61,7 +61,6 @@ inline T GetDenseTensorValue(const phi::DenseTensor* x) {
   }
   return value;
 }
-
 static Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj);
 // Slice related methods
 static bool PyCheckInteger(PyObject* obj) {

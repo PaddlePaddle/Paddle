@@ -20,6 +20,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
+#include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi::distributed {
@@ -50,8 +51,6 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
 
-  DenseTensor out_physical_tensor_cur_rank;
-
   std::map<int, int64_t> split_axis_to_mesh_axis =
       GetSplitAxisWithDimsMapping(out_dims_mapping);
   std::vector<int64_t> coord_in_mesh = GetCurRankCoordInMesh(out_process_mesh);
@@ -64,25 +63,30 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           << ". Split will use axis " << mesh_axis << " of process_mesh."
           << " There will have " << num_of_process
           << " process participate in.";
-
   std::vector<int64_t> split_num_vec =
       BalancedSplit(in.dims()[split_axis], num_of_process);
-  IntArray sections(split_num_vec);
-
-  std::vector<DenseTensor> split_out_vec;
   auto dtype = in_physical_tensor_cur_rank.dtype();
+
+  DenseTensor dense_out;
+  int64_t start = split_num_vec[0] * coord_in_mesh[mesh_axis];
+  int64_t end = std::min(start + split_num_vec[0],
+                         in_physical_tensor_cur_rank.dims()[split_axis]);
+  PADDLE_ENFORCE_LE(start,
+                    end,
+                    ::common::errors::InvalidArgument(
+                        "Slice Args 'start' should be less or qual to 'end', "
+                        "but got 'start' is %d, 'end' is %d.",
+                        start,
+                        end));
   RESHARD_FUNCTOR(dev_ctx,
-                  Split,
+                  Slice,
                   dtype,
                   in_physical_tensor_cur_rank,
-                  sections,
-                  split_axis,
-                  &split_out_vec);
-
-  VLOG(3) << "The current process will remain the idx "
-          << coord_in_mesh[mesh_axis] << " piece of tensor";
-
-  SetValue(out, split_out_vec[coord_in_mesh[mesh_axis]]);
+                  {split_axis},
+                  {start},
+                  {end},
+                  &dense_out);
+  SetValue(out, dense_out);
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 

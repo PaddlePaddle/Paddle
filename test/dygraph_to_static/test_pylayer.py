@@ -36,9 +36,11 @@ from test_jit_save_load import train
 
 import paddle
 from paddle.autograd.py_layer import PyLayer
+from paddle.jit.dy2static.utils import ENV_ENABLE_CINN_IN_DY2ST
 
 SEED = 2023
 np.random.seed(SEED)
+ENV_ENABLE_CINN_IN_DY2ST.set(False)
 
 
 def compare_result(dygraph_res, static_res, rtol=1e-5, atol=0):

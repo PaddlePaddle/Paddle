@@ -251,10 +251,11 @@ struct Buffer {
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
                                 int hidden,
                                 int num_experts);
+  void barrier_all();
 
 #ifdef PADDLE_WITH_NVSHMEM
   std::tuple<deep_ep::detail::Tensor,
-             deep_ep::detail::Tensor,
+             std::optional<deep_ep::detail::Tensor>,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
@@ -264,6 +265,7 @@ struct Buffer {
                        const deep_ep::detail::Tensor& topk_idx,
                        int num_max_dispatch_tokens_per_rank,
                        int num_experts,
+                       bool use_fp8,
                        bool async,
                        bool return_recv_hook);
 
@@ -335,7 +337,7 @@ struct Buffer {
                         bool allocate_on_comm_stream);
 
   std::tuple<paddle::Tensor,
-             paddle::Tensor,
+             std::optional<paddle::Tensor>,
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
@@ -345,6 +347,7 @@ struct Buffer {
                            const paddle::Tensor& topk_idx,
                            int num_max_dispatch_tokens_per_rank,
                            int num_experts,
+                           bool use_fp8,
                            bool async,
                            bool return_recv_hook);
 

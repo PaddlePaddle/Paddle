@@ -19,9 +19,6 @@ import types
 from typing import TYPE_CHECKING, Any
 
 from paddle._typing import unreached
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
 from ....profiler import EventGuard
 from ....utils import do_until_stop_iteration
@@ -34,14 +31,20 @@ from ....utils.exceptions import (
     SotErrorBase,
     UnsupportedOperationBreak,
 )
-from ..tracker import ConstTracker, DummyTracker, GetAttrTracker
-from .base import VariableFactory
+from ..guard import check_faster_guard
+from ..tracker import ConstTracker, DanglingTracker, DummyTracker
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import ConstantVariable
 from .callable import BuiltinVariable
 from .container import TupleVariable
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    import paddle
 
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
@@ -98,6 +101,14 @@ class SequenceIterVariable(IterVariable):
         self.holds = holded
         self.idx = 0
         self.graph.side_effects.record_mutable_variable(self)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        return [
+            guard
+            for holded in self.holds
+            for guard in holded.make_faster_guard()
+        ]
 
     def make_stringified_guard(self):
         return [
@@ -268,12 +279,10 @@ class MapVariable(SequenceIterVariable):
     """
 
     def __init__(self, fn, iters: list[IterVariable], graph, tracker):
-
         super().__init__(iters, graph, tracker)
         self.fn = fn
 
     def next(self):
-
         return self.fn(*[iter_var.next() for iter_var in self.holds])
 
     def to_list(self) -> list:
@@ -382,8 +391,8 @@ class GeneratorVariable(IterVariable):
             )
         if name == "send":
             return BuiltinVariable(
-                generator_send, self.graph, GetAttrTracker(self, "send")
-            ).bind(self, "send")
+                generator_send, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, "send")
         unreached()
 
     def get_py_value(self, allow_tensor=False):
@@ -441,6 +450,14 @@ class UserDefinedIterVariable(IterVariable):
                 reason_str="Break graph when iterating user defined iterator"
             )
         )
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        return [
+            guard
+            for holded in self.holds
+            for guard in holded.make_faster_guard()
+        ]
 
     def make_stringified_guard(self):
         return [

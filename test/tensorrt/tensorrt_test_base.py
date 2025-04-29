@@ -46,6 +46,7 @@ class TensorRTBaseTest(unittest.TestCase):
         self.dynamic_shape_data = {}
         self.disable_passes = [
             "constant_folding_pass",
+            "dead_code_elimination_pass",
         ]
 
     def create_fake_program(self):
@@ -267,6 +268,14 @@ class TensorRTBaseTest(unittest.TestCase):
                 main_program,
                 disable_passes=self.disable_passes,
             )
+            # delete unused op
+            for op in main_program.global_block().ops:
+                if (
+                    op.name() == "builtin.constant"
+                    or op.name() == "builtin.parameter"
+                ):
+                    if op.results()[0].use_empty():
+                        main_program.global_block().remove_op(op)
 
             scope = paddle.static.global_scope()
             main_program = warmup_shape_infer(

@@ -38,7 +38,9 @@ class TestDropOutFallBack(TestFallBackBase):
         self.p = paddle.to_tensor(0.0, dtype=self.dtype)
 
     def test_fallback(self):
-        static_func = paddle.jit.to_static(self.func_api, full_graph=True)
+        static_func = paddle.jit.to_static(
+            self.func_api, full_graph=True, backend=None
+        )
         dynamic_func = self.func_api
 
         out = static_func(self.x, self.p)
@@ -62,7 +64,9 @@ class TestFullLikeFallBack(TestFallBackBase):
         self.value = paddle.to_tensor(2, dtype=self.dtype)
 
     def test_fallback(self):
-        static_func = paddle.jit.to_static(self.func_api, full_graph=True)
+        static_func = paddle.jit.to_static(
+            self.func_api, full_graph=True, backend=None
+        )
         dynamic_func = self.func_api
 
         out = static_func(self.x, self.value)
@@ -86,7 +90,9 @@ class TestSqueezeFallBack(TestFallBackBase):
         self.axis = paddle.to_tensor(1, dtype=paddle.int64)
 
     def test_fallback(self):
-        static_func = paddle.jit.to_static(self.func_api, full_graph=True)
+        static_func = paddle.jit.to_static(
+            self.func_api, full_graph=True, backend=None
+        )
         dynamic_func = self.func_api
 
         out = static_func(self.x, self.axis)
@@ -110,7 +116,9 @@ class TestUnsqueezeFallBack(TestFallBackBase):
         self.axis = paddle.to_tensor([0, 2], dtype=paddle.int64)
 
     def test_fallback(self):
-        static_func = paddle.jit.to_static(self.func_api, full_graph=True)
+        static_func = paddle.jit.to_static(
+            self.func_api, full_graph=True, backend=None
+        )
         dynamic_func = self.func_api
 
         out = static_func(self.x, self.axis)
@@ -136,7 +144,9 @@ class TestAnyFallBack(TestFallBackBase):
         self.axis = [0]
 
     def test_fallback(self):
-        static_func = paddle.jit.to_static(self.func_api, full_graph=True)
+        static_func = paddle.jit.to_static(
+            self.func_api, full_graph=True, backend=None
+        )
         dynamic_func = self.func_api
 
         out = static_func(self.x, self.axis)
