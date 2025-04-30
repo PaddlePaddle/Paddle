@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+unset GREP_OPTIONS
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
@@ -155,6 +156,8 @@ function exec_samplecode_checking() {
 
 export PATH=/usr/local/python3.10.0/bin:/usr/local/python3.10.0/include:/usr/local/bin:${PATH}
 echo "export PATH=${PATH}" >> ~/.bashrc
+export LD_LIBRARY_PATH=/usr/local/cuda-11.8/compat:$LD_LIBRARY_PATH
+echo "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ~/.bashrc
 ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
 ln -sf $(which python${PY_VERSION}) /usr/bin/python
 ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip

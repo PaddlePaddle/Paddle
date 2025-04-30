@@ -114,6 +114,7 @@ jobs:
       - name: Check api approval
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
           bash ${work_dir}/tools/check_api_approvals.sh;approval_error=$?
           if [ "$approval_error" != 0 ];then
             exit 6
