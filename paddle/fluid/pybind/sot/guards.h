@@ -159,7 +159,11 @@ class ShapeMatchGuard : public GuardBase {
   explicit ShapeMatchGuard(const std::vector<py::object>& shape) {
     expected_.reserve(shape.size());
     for (const auto& s : shape) {
-      expected_.push_back(s.cast<int64_t>());
+      if (py::isinstance<py::int_>(s)) {
+        expected_.push_back(s.cast<int64_t>());
+      } else {
+        expected_.push_back(-1);
+      }
     }
   }
 
