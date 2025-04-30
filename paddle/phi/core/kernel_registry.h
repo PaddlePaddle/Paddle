@@ -261,6 +261,7 @@ struct KernelRegistrar {
 #define IS_BACKEND_CPU_CPU 1
 #define IS_BACKEND_CPU_Custom 1
 #define IS_BACKEND_CPU_OneDNN 1
+#define IS_BACKEND_CPU_KPS 0
 #define IS_BACKEND_CPU_GPU 0
 #define IS_BACKEND_CPU_DEFAULT 0
 
