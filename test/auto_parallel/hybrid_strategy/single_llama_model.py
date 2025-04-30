@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.nn.functional.flash_attention import _math_attention
@@ -255,6 +256,23 @@ class LlamaPretrainingCriterion(paddle.nn.Layer):
                 prediction_scores.astype("float32"),
                 masked_lm_labels.unsqueeze(2),
             )
+        if paddle.device.is_compiled_with_xpu():
+
+            def LocalLoss(x, mask):
+                masked_lm_loss = paddle.masked_select(x, mask).astype("float32")
+                loss = paddle.mean(masked_lm_loss).unsqueeze(0)
+                return loss.unsqueeze(0)
+
+            loss_func = dist.local_map(
+                LocalLoss,
+                [[dist.Shard(0), dist.Replicate()]],
+                [[dist.Shard(0), dist.Replicate()], None],
+                masked_lm_loss.process_mesh,
+                True,
+            )
+            loss = loss_func(masked_lm_loss, masked_lm_loss > 0)
+            loss = loss.mean()
+            return loss
 
         masked_lm_loss = paddle.masked_select(
             masked_lm_loss, masked_lm_loss > 0

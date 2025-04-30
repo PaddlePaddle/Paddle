@@ -25,8 +25,6 @@ void CSplitKernel(const Context& dev_ctx,
                   const DenseTensor& x_in,
                   int rank,
                   int nranks,
-                  int ring_id UNUSED,
-                  bool use_calc_stream UNUSED,
                   bool use_model_parallel UNUSED,
                   DenseTensor* out) {
   auto x = &x_in;

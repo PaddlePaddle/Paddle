@@ -284,7 +284,7 @@ void Pool3dGradKernel(const Context& ctx,
                        n * c,
                        true,
                        scale,
-                       0.0);
+                       0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
         r = xpu::broadcast(ctx.x_context(),

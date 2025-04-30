@@ -281,7 +281,7 @@ class Conv1D(_ConvNd):
 
         .. math::
 
-            L_{out}&= \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
+            L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (K - 1) + 1))}{stride} + 1
 
     Parameters:
         in_channels(int): The number of channels in the input image.

@@ -96,7 +96,7 @@ class FetchV2Op : public framework::OperatorWithKernel {
       }
     } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
+      if (!src_item.has_allocation()) {
         return phi::KernelKey(framework::proto::VarType::FP32, phi::CPUPlace());
       }
     } else {
@@ -169,7 +169,7 @@ class FetchV2Kernel {
       }
     } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
-      if (!src_item.initialized()) {
+      if (!src_item.has_allocation()) {
         return;
       }
       fetch_list->at(col) = src_item;

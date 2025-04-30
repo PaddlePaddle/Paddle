@@ -50,7 +50,7 @@ phi::Place GetVarPlace(const paddle::framework::Variable *var,
                        const phi::Place &exe_place) {
   phi::Place place;
   auto &tensor = var->Get<T>();
-  if (tensor.initialized()) {
+  if (tensor.has_allocation()) {
     place = tensor.place();
   } else {
     place = exe_place;

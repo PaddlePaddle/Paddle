@@ -70,6 +70,7 @@ extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
+extern PyTypeObject* g_xpupinnedplace_pytype;
 extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_densetensorarray_pytype;
@@ -620,6 +621,8 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
     place = ::pybind11::handle(obj).cast<phi::XPUPlace>();
   } else if (PyObject_TypeCheck(obj, g_cudapinnedplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::GPUPinnedPlace>();
+  } else if (PyObject_TypeCheck(obj, g_xpupinnedplace_pytype)) {
+    place = ::pybind11::handle(obj).cast<phi::XPUPinnedPlace>();
   } else if (PyObject_TypeCheck(obj, g_customplace_pytype)) {
     place = ::pybind11::handle(obj).cast<phi::CustomPlace>();
   } else {
@@ -627,7 +630,7 @@ phi::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
         "argument (position %d) must be "
         "one "
         "of(Place,CUDAPlace,CPUPlace,XPUPlace,CUDAPinnedPlace,"
-        "CustomPlace), "
+        "XPUPinnedPlace, CustomPlace), "
         "but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));

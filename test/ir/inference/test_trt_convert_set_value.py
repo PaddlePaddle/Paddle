@@ -86,11 +86,11 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
                     ops=ops,
                     weights={},
                     inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1)
-                        ),
                         "update_data": TensorConfig(
                             data_gen=partial(generate_input2)
+                        ),
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1)
                         ),
                     },
                     outputs=["output_data"],
@@ -98,31 +98,33 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
 
             yield program_config
 
-    def sample_predictor_configs(self, program_config):
-        def generate_dynamic_shape(attrs):
-            if self.update_scalar:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 3, 3],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [3, 3, 4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [3, 3, 3],
-                }
-            else:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 3, 3],
-                    "update_data": [2, 2, 3],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [3, 3, 4],
-                    "update_data": [3, 2, 4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [3, 3, 3],
-                    "update_data": [3, 2, 3],
-                }
+    def generate_dynamic_shape(self):
+        if self.update_scalar:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2, 3, 3],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [3, 3, 4],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [3, 3, 3],
+            }
+        else:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2, 3, 3],
+                "update_data": [2, 2, 3],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [3, 3, 4],
+                "update_data": [3, 2, 4],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [3, 3, 3],
+                "update_data": [3, 2, 3],
+            }
+        return self.dynamic_shape
+
+    def sample_predictor_configs(self, program_config, run_pir=False):
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -145,7 +147,7 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         self.trt_param.workspace_size = 2013265920
@@ -154,7 +156,7 @@ class TrtConvertSetValue(TrtLayerAutoScanTest):
         ), (1e-5, 1e-4)
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

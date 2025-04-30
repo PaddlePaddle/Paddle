@@ -1252,7 +1252,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

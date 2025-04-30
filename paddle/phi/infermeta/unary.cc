@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 
 #include <algorithm>
-#include <set>
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/common/data_type.h"
@@ -2290,7 +2289,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
           input_dims));
   for (int i = 0; i < input_rank; ++i) {
     PADDLE_ENFORCE_EQ(
-        (input_dims[i] == -1) || (input_dims[i] > 0),
+        (input_dims[i] == -1) || (input_dims[i] >= 0),
         true,
         errors::InvalidArgument(
             "Each dimension of input tensor is expected to be -1 or a "
@@ -2874,8 +2873,26 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
       1UL,
       common::errors::InvalidArgument(
           "Input(Condition) should have number of dimension at least 1"));
-  out->set_dims(common::make_ddim({-1, rank}));
+  if (condition.numel() == 0) {
+    out->set_dims(common::make_ddim({0, rank}));
+  } else {
+    out->set_dims(common::make_ddim({-1, rank}));
+  }
+
   out->set_dtype(DataType::INT64);
+}
+
+void RestrictNonZeroInferMeta(const MetaTensor& condition,
+                              int64_t total_true_num,
+                              MetaTensor* out) {
+  auto rank = condition.dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      1UL,
+      common::errors::InvalidArgument(
+          "Input(Condition) should have number of dimension at least 1"));
+  out->set_dims({total_true_num, rank});
+  out->set_dtype(phi::DataType::INT64);
 }
 
 void NormInferMeta(const MetaTensor& x,
@@ -3622,16 +3639,18 @@ DDim ReduceInferDim(const MetaTensor& x,
                     const std::vector<int64_t>& axis,
                     bool keep_dim,
                     bool reduce_all) {
-  int x_rank = x.dims().size();
+  const int x_rank = x.dims().size();
+  uint32_t axis_bitmap = 0;
 
-  std::vector<int64_t> formatted_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
+    int64_t formatted_idx = axis[i];
     if (x_rank == 0) {
       PADDLE_ENFORCE_EQ(
           axis[i] == 0 || axis[i] == -1,
           true,
           common::errors::InvalidArgument(
               "When input 0D Tensor, the axis can only be -1, 0, None or []"));
+      formatted_idx = 0;
     } else {
       PADDLE_ENFORCE_LT(
           axis[i],
@@ -3653,31 +3672,35 @@ DDim ReduceInferDim(const MetaTensor& x,
               i,
               x_rank,
               axis[i]));
+      if (axis[i] < 0) {
+        formatted_idx += x_rank;
+      }
     }
 
-    if (axis[i] < 0) {
-      formatted_axis[i] = axis[i] + x_rank;
-    }
+    uint32_t bit = 1U << formatted_idx;
+    PADDLE_ENFORCE_EQ(axis_bitmap & bit,
+                      0,
+                      common::errors::InvalidArgument(
+                          "Axis contains duplicate dimensions. Dimension %d "
+                          "appears more than once in axis.",
+                          formatted_idx));
+    axis_bitmap |= bit;
   }
 
   bool full_dim = true;
-  std::set<int64_t> dims_set(formatted_axis.begin(), formatted_axis.end());
-  for (int64_t i = 0; i < x_rank; ++i) {
-    if (dims_set.find(i) == dims_set.end()) {
-      full_dim = false;
-      break;
-    }
+  if (axis.size() > 0) {
+    uint32_t all_bits = (1U << x_rank) - 1;
+    full_dim = (axis_bitmap == all_bits);
   }
   bool empty_dim = axis.size() == 0;
   reduce_all = reduce_all || full_dim || empty_dim;
 
   std::vector<int64_t> out_dim_vector;
   for (int i = 0; i < x_rank; ++i) {
-    if (reduce_all || dims_set.find(i) != dims_set.end()) {
+    uint32_t bit = 1U << i;
+    if (reduce_all || (axis_bitmap & bit)) {
       if (keep_dim) {
         out_dim_vector.push_back(1);
-      } else {
-        continue;
       }
     } else {
       out_dim_vector.push_back(x.dims().at(i));

@@ -243,7 +243,7 @@ std::vector<T2> GatherMapValue(const std::map<T1, T2>& input,
   std::vector<T2> result;
   for (const auto& key : keys) {
     if (input.count(key)) {
-      result.push_back(input[key]);
+      result.push_back(input.at(key));
     }
   }
   return result;
@@ -418,101 +418,12 @@ std::vector<T> TransposeVector(const std::vector<T>& v,
   return result;
 }
 
-struct ValueDim {
-  pir::Value v_;
-  size_t idx_ = -1;
-  std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
-  ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
-    // Just get a related op to get the shape analysis. It can be value's
-    // upstream op (defining op) or downstream op (user op).
-    const auto GetRelatedOpFromValue =
-        [](const pir::Value& v) -> pir::Operation* {
-      if (v.defining_op() != nullptr) {
-        return v.defining_op();
-      }
-      // For inputs of the program, the defining_op is nullptr, we use it's
-      // user as the related op.
-      PADDLE_ENFORCE_EQ(v.use_empty(),
-                        false,
-                        ::common::errors::PreconditionNotMet(
-                            "Value is an input value, it should have a use."));
-      return v.first_use().owner();
-    };
-    shape_analysis_ = pir::ShapeAnalysisManager::Instance()
-                          .Get(GetRelatedOpFromValue(v)->GetParentProgram())
-                          .shared_from_this();
-  }
-  ValueDim() = default;
-  ValueDim(const ValueDim& v) = default;
-  bool operator==(const ValueDim& v) const {
-    return (idx_ == v.idx_) && (v_ == v.v_);
-  }
-
-  symbol::DimExpr GetSymbolicDim() const {
-    PADDLE_ENFORCE_NOT_NULL(v_.impl(), "Empty value is not expected.");
-    return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
-  }
-
-  bool empty() const { return idx_ == -1; }
-
-  bool SymbolicEqualTo(const ValueDim& other) const {
-    return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
-  }
-
-  std::string DebugStr() const {
-    std::ostringstream oss;
-    oss << "ValueDim: ";
-    oss << "Index: " << idx_;
-    oss << ", ";
-    v_.defining_op()->Print(oss);
-    return oss.str();
-  }
-
-  pir::ShapeConstraintIRAnalysis& shape_analysis() const {
-    auto shape_analysis_ptr = shape_analysis_.lock();
-    PADDLE_ENFORCE_NOT_NULL(
-        shape_analysis_ptr,
-        ::common::errors::PreconditionNotMet("shape_analysis_ptr is nullptr."));
-    return *shape_analysis_ptr;
-  }
-};
-
-static std::vector<ValueDim> GetAllValueDimFromValue(const pir::Value& v) {
-  std::vector<ValueDim> value_dims;
-  size_t rank = GetCompatibleRank(v);
-  for (size_t i = 0; i < rank; ++i) {
-    value_dims.emplace_back(v, i);
-  }
-  return value_dims;
-}
-
-struct ValueDimHash {
-  std::size_t operator()(const ValueDim& p) const {
-    auto h1 = std::hash<size_t>{}(p.idx_);
-    auto h2 = std::hash<pir::Value>{}(p.v_);
-    // Mainly for demonstration purposes, i.e. works but is overly simple
-    // In the real world, use sth. like boost.hash_combine
-    return h1 ^ (h2 << 1);
-  }
-};
-
-static std::vector<symbol::DimExpr> GetDimExprsFromValue(pir::Value value) {
-  const auto& value_dims = GetAllValueDimFromValue(value);
-
-  std::function<symbol::DimExpr(ValueDim)> func =
-      [](const ValueDim& value_dim) {
-        const auto& symbolic_dim = value_dim.GetSymbolicDim();
-        return symbolic_dim;
-      };
-  return MapVector(value_dims, func);
-}
-
 template <typename T, typename Int>
 std::vector<T> GatherVector(const std::vector<T>& inp,
                             std::vector<Int> gathers) {
   std::vector<T> result;
   for (auto i : gathers) {
-    result.push_back(inp[i]);
+    result.push_back(inp.at(i));
   }
   return result;
 }
@@ -550,7 +461,7 @@ std::vector<T> SliceVector(const std::vector<T>& inp, int start, int end) {
   }
   std::vector<T> result;
   for (int i = start; i < end; ++i) {
-    result.push_back(inp[i]);
+    result.push_back(inp.at(i));
   }
   return result;
 }
@@ -751,6 +662,10 @@ std::vector<symbol::DimExpr> GetCompatibleValueAllDims(const pir::Value& value);
 symbol::DimExpr GetShapeProduct(const std::vector<symbol::DimExpr>& shape,
                                 int start,
                                 int end);
+inline symbol::DimExpr GetShapeProduct(
+    const std::vector<symbol::DimExpr>& shape) {
+  return GetShapeProduct(shape, 0, shape.size());
+}
 
 bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
                        const std::vector<symbol::DimExpr>& out_shape,

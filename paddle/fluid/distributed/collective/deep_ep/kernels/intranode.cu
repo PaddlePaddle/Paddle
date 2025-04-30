@@ -739,6 +739,7 @@ __global__ void cached_notify_combine(void** buffer_ptrs,
     const auto thread_id = static_cast<int>(threadIdx.x);
     const auto rank_id = thread_id / 32;
     const auto lane_id = thread_id % 32;
+    if (rank_id >= kNumRanks) return;
 
     int token_start_idx, token_end_idx;
     get_channel_task_range(num_recv_tokens,
@@ -1068,8 +1069,6 @@ __global__ void __launch_bounds__(kNumThreads, 1)
         if (recv_lane_id < kNumRanks) {
           expected_head =
               ld_nc_global(send_head + token_idx * kNumRanks + recv_lane_id);
-          warp_channel_head_idx[recv_warp_id][recv_lane_id] =
-              (expected_head < 0) ? -expected_head - 1 : expected_head + 1;
         }
         auto start_time = clock64();
         while (channel_tail_idx[recv_lane_id] <= expected_head &&
@@ -1140,6 +1139,10 @@ __global__ void __launch_bounds__(kNumThreads, 1)
                 slot_indices[i] * num_topk + recv_lane_id);
           recv_topk_weights[token_idx * num_topk + recv_lane_id] = value;
         }
+        // Update head
+        if (recv_lane_id < kNumRanks)
+          warp_channel_head_idx[recv_warp_id][recv_lane_id] =
+              (expected_head < 0) ? -expected_head - 1 : expected_head + 1;
       }
 
       // Retired

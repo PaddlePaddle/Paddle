@@ -1740,7 +1740,15 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     promote_result = x.dtype();
   }
   out->set_dtype(promote_result);
-  out->set_layout(x.layout());
+
+  // layout need change when meet input layout contain kNHWC
+  auto layout = [&]() {
+    if (x.layout() == DataLayout::kNHWC || y.layout() == DataLayout::kNHWC)
+      return DataLayout::kNHWC;
+    return x.layout();
+  }();
+
+  out->set_layout(layout);
   out->share_lod(x);
 }
 
@@ -2434,16 +2442,19 @@ void IndexSelectInferMeta(const MetaTensor& x,
           "the dimension of Input(Index) is [%d].",
           index_dim,
           index_dim.size()));
-
-  PADDLE_ENFORCE_EQ(index_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
-
-  auto output_dim = common::vectorize(input_dim);
   if (dim < 0) {
     dim += input_dim.size();
   }
+
+  if (input_dim[dim] != 0) {
+    PADDLE_ENFORCE_EQ(index_dim[0] != 0,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The length of Input(Index) can't be 0."));
+  }
+
+  auto output_dim = common::vectorize(input_dim);
+
   output_dim[dim] = index_dim[0];
   output->set_dims(common::make_ddim(output_dim));
   output->set_dtype(x.dtype());
@@ -3668,18 +3679,23 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
           repeats_dim,
           repeats_dim.size()));
 
-  PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(RepeatsTensor) can't be 0."));
-  PADDLE_ENFORCE_NE(out,
-                    nullptr,
-                    common::errors::InvalidArgument(
-                        "repeat_interleave's output tensor can't be nullptr"));
-  if (dim < 0) {
-    dim += input_dim.size();
+  if (input_dim.size() == 1 && input_dim[0] == 0) {
+    output_dim[0] = 0;
+  } else {
+    PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The length of Input(RepeatsTensor) can't be 0."));
+    PADDLE_ENFORCE_NE(
+        out,
+        nullptr,
+        common::errors::InvalidArgument(
+            "repeat_interleave's output tensor can't be nullptr"));
+    if (dim < 0) {
+      dim += input_dim.size();
+    }
+    output_dim[dim] = -1;
   }
-  output_dim[dim] = -1;
 
   out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);
@@ -4499,7 +4515,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
 void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
-                               DataType out_dtype,
                                const int32_t group_size,
                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size(),
@@ -4566,7 +4581,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int n = static_cast<int>(x.dims()[1]);
   int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
-  out->set_dtype(out_dtype);
+  out->set_dtype(scale.dtype());
 }
 
 }  // namespace phi

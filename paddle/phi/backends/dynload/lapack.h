@@ -299,35 +299,64 @@ extern "C" void spotrs_(char *uplo,
                         float *b,
                         int *ldb,
                         int *info);
-extern "C" void dgesdd_(char *,
-                        int *,
-                        int *,
-                        double *,
-                        int *,
-                        double *,
-                        double *,
-                        int *,
-                        double *,
-                        int *,
-                        double *,
-                        int *,
-                        int *,
-                        int *);
-extern "C" void sgesdd_(char *,
-                        int *,
-                        int *,
-                        float *,
-                        int *,
-                        float *,
-                        float *,
-                        int *,
-                        float *,
-                        int *,
-                        float *,
-                        int *,
-                        int *,
-                        int *);
-
+extern "C" void dgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        double *a,
+                        int *lda,
+                        double *s,
+                        double *u,
+                        int *ldu,
+                        double *vt,
+                        int *ldvt,
+                        double *work,
+                        int *lwork,
+                        int *iwork,
+                        int *info);
+extern "C" void sgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        float *a,
+                        int *lda,
+                        float *s,
+                        float *u,
+                        int *ldu,
+                        float *vt,
+                        int *ldvt,
+                        float *work,
+                        int *lwork,
+                        int *iwork,
+                        int *info);
+extern "C" void zgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        std::complex<double> *a,
+                        int *lda,
+                        std::complex<double> *s,
+                        std::complex<double> *u,
+                        int *ldu,
+                        std::complex<double> *vt,
+                        int *ldvt,
+                        std::complex<double> *work,
+                        int *lwork,
+                        double *rwork,
+                        int *iwork,
+                        int *info);
+extern "C" void cgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        std::complex<float> *a,
+                        int *lda,
+                        std::complex<float> *s,
+                        std::complex<float> *u,
+                        int *ldu,
+                        std::complex<float> *vt,
+                        int *ldvt,
+                        std::complex<float> *work,
+                        int *lwork,
+                        float *rwork,
+                        int *iwork,
+                        int *info);
 namespace phi {
 namespace dynload {
 
@@ -379,6 +408,8 @@ extern void *lapack_dso_handle;
   __macro(sgelss_);                  \
   __macro(sgesdd_);                  \
   __macro(dgesdd_);                  \
+  __macro(cgesdd_);                  \
+  __macro(zgesdd_);                  \
   __macro(zpotrs_);                  \
   __macro(cpotrs_);                  \
   __macro(dpotrs_);                  \

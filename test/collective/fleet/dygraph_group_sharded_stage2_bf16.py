@@ -51,7 +51,10 @@ def train_mlp(
     )
 
     if sharding_stage != "dp":
-        group = paddle.distributed.new_group([0, 1], backend="nccl")
+        group = paddle.distributed.new_group(
+            [0, 1],
+            backend="bkcl" if paddle.core.is_compiled_with_xpu() else "nccl",
+        )
     scaler = None
     if test_scaler:
         assert sharding_stage == 2
@@ -89,7 +92,7 @@ def train_mlp(
         model = paddle.DataParallel(model)
 
     if sharding_stage == 2:
-        model.to(device="gpu")
+        model.to(device="xpu" if paddle.core.is_compiled_with_xpu() else "gpu")
 
     if not use_pure_bf16:
         for param in model.parameters():
@@ -192,7 +195,10 @@ def test_stage2_bf16():
             use_pure_bf16=False,
             acc_steps=acc_steps,
         )
-        paddle.device.cuda.synchronize()
+        if paddle.core.is_compiled_with_xpu():
+            paddle.device.xpu.synchronize()
+        else:
+            paddle.device.cuda.synchronize()
         o2_losses, model_param_dict_o2, optimizer_state_dict_o2 = train_mlp(
             mlp2,
             sharding_stage=2,
@@ -201,7 +207,10 @@ def test_stage2_bf16():
             acc_steps=acc_steps,
             use_main_grad=True,
         )
-        paddle.device.cuda.synchronize()
+        if paddle.core.is_compiled_with_xpu():
+            paddle.device.xpu.synchronize()
+        else:
+            paddle.device.cuda.synchronize()
         np.testing.assert_array_equal(o1_losses, o2_losses)
         # compare_state_dict(model_param_dict_o1, model_param_dict_o2, optimizer_state_dict_o2)
         return o1_losses, o2_losses

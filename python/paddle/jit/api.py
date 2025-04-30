@@ -65,7 +65,6 @@ from paddle.framework import use_pir_api
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
-    BooleanEnvironmentVariable,
     EnvironmentVariableGuard,
 )
 
@@ -77,6 +76,11 @@ from .dy2static.program_translator import (
     StaticFunction,
     SymbolicStaticFunction,
     unwrap_decorators,
+)
+from .dy2static.utils import (
+    ENV_ENABLE_SOT,
+    Backend,
+    infer_use_cinn_backend,
 )
 from .pir_translated_layer import PIR_INFER_MODEL_SUFFIX, PirTranslatedLayer
 from .translated_layer import (
@@ -105,9 +109,6 @@ if TYPE_CHECKING:
     class _LoadOptions(TypedDict):
         model_filename: NotRequired[str]
         params_filename: NotRequired[str]
-
-
-ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
 
 _LayerT = TypeVar("_LayerT", bound=Layer)
@@ -169,15 +170,6 @@ def ignore_module(modules: list[ModuleType]) -> None:
     add_ignore_module(modules)
 
 
-def _check_and_set_backend(backend, build_strategy):
-    if backend not in ['CINN', None]:
-        raise ValueError(
-            f"The backend of to_static should be 'CINN' or None, but received {backend}."
-        )
-    if backend == 'CINN':
-        build_strategy.build_cinn_pass = True
-
-
 class _ToStaticOptions(TypedDict):
     property: NotRequired[bool]
     full_graph: NotRequired[bool]
@@ -227,7 +219,7 @@ def to_static(
     function=None,
     input_spec=None,
     build_strategy=None,
-    backend=None,
+    backend="CINN",
     **kwargs,
 ):
     """
@@ -246,13 +238,18 @@ def to_static(
         build_strategy (BuildStrategy|None): This argument is used to compile the
             converted program with the specified options, such as operators' fusion
             in the computational graph and memory optimization during the execution
-            of the computational graph. For more information about build_strategy,
-            please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
-            None. When backend is `CINN`, CINN compiler will be used to speed up
-            training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the function
-            is python property.
+            of the computational graph. For more information about :attr:`build_strategy`,
+            please refer to :ref:`paddle.static.BuildStrategy <cn_api_paddle_static_BuildStrategy>`.
+            The default is ``None``.
+        backend(str, Optional): Specifies compilation backend, which can be ``"CINN"`` or
+            ``None``. When backend is ``"CINN"``, CINN compiler will be used to speed up
+            training and inference. default value is ``"CINN"``.
+        kwargs: Support keys including :attr:`property` and :attr:`full_graph`.
+
+          - property (bool): If True, the function will be treated as a property
+            function. The default is False.
+          - full_graph (bool): If True, the function will be converted into a
+            full static graph. The default is False.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -281,6 +278,17 @@ def to_static(
     """
     property = kwargs.get("property", False)
     full_graph = kwargs.get("full_graph", None)
+    build_strategy = build_strategy or BuildStrategy()
+    if not isinstance(build_strategy, BuildStrategy):
+        raise TypeError(
+            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
+        )
+    backend = Backend.from_arg(backend)
+    backend = (
+        Backend.CINN
+        if infer_use_cinn_backend(backend, build_strategy)
+        else Backend.PHI
+    )
 
     def decorated(python_func):
         """
@@ -319,13 +327,6 @@ def to_static(
 
         return static_layer
 
-    build_strategy = build_strategy or BuildStrategy()
-    if not isinstance(build_strategy, BuildStrategy):
-        raise TypeError(
-            f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
-        )
-    _check_and_set_backend(backend, build_strategy)
-
     # for usage: `to_static(foo, ...)`
     if function is not None:
         if isinstance(function, Layer):
@@ -356,7 +357,7 @@ class _NotToStaticDecorator(Protocol):
 
 @overload
 def not_to_static(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]: ...
 
 
@@ -1235,6 +1236,7 @@ def save(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
 
                 concrete_program = (
@@ -1274,6 +1276,7 @@ def save(
                     static_func,
                     input_spec=inner_input_spec,
                     full_graph=True,
+                    backend=None,
                 )
                 concrete_program = static_function.concrete_program
 

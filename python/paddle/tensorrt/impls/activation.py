@@ -75,6 +75,8 @@ def relu6_converter(network, paddle_op, inputs):
 
 @converter_registry.register("pd_op.softmax", trt_version="trt_version_ge=8.0")
 def softmax_converter(network, paddle_op, inputs):
+    from paddle.tensorrt.util import support_fp32_mix_precision
+
     input1 = inputs[0]
     input_shape = input1.shape
     input_dims = len(input_shape)
@@ -95,6 +97,7 @@ def softmax_converter(network, paddle_op, inputs):
 
     layer = network.add_softmax(input1)
     set_layer_name(layer, paddle_op)
+    support_fp32_mix_precision(paddle_op.name(), layer)
     axes = max(0, input_dims - 3)
 
     # Handle padded dimensions
@@ -147,7 +150,7 @@ def gelu_converter(network, paddle_op, inputs):
         )
         constant_layer_sqrt = add_constant_layer(
             network,
-            [0.7978845608028654],
+            [0.79788456080286535587989211986876],
             const_shape,
             np.float32,
             name=[paddle_op.name(), "constant_layer_sqrt"],
@@ -489,17 +492,21 @@ def prelu_converter(network, paddle_op, inputs):
     input_dims = input.shape
     mode = paddle_op.attrs()["mode"]
     data_format = paddle_op.attrs().get("data_format", "NCHW")
-    w_dims = trt.Dims(alpha_data.numpy().shape)
+    w_dims = trt.Dims(paddle_op.operands()[1].source().shape)
     trt_w_dims = w_dims
+
     alpha_tensor = network.add_constant(trt_w_dims, alpha_data)
     set_layer_name(alpha_tensor, paddle_op)
     alpha_tensor = alpha_tensor.get_output(0)
+
     alpha_dims = alpha_tensor.shape
     real_alpha_tensor = alpha_tensor
+
     if len(alpha_dims) != len(input_dims):
         reshape_layer = network.add_shuffle(alpha_tensor)
         set_layer_name(reshape_layer, paddle_op)
         c = alpha_dims[0]
+
         n_tensor = add_1D_constant_layer(
             network, [1], name=[paddle_op.name(), "n_tensor"]
         )
@@ -513,6 +520,7 @@ def prelu_converter(network, paddle_op, inputs):
                 [1] * (len(input_dims) - 2),
                 name=[paddle_op.name(), "hw_tensor"],
             )
+
         if data_format == "NCHW":
             if hw_tensor:
                 shape_tensor = trt_concat(
@@ -521,12 +529,10 @@ def prelu_converter(network, paddle_op, inputs):
                     name=[paddle_op.name(), "shape_tensor"],
                 )
             else:
-                shape_tensor = (
-                    trt_concat(
-                        network,
-                        [n_tensor, c_tensor],
-                        name=[paddle_op.name(), "shape_tensor"],
-                    ),
+                shape_tensor = trt_concat(
+                    network,
+                    [n_tensor, c_tensor],
+                    name=[paddle_op.name(), "shape_tensor"],
                 )
         else:
             if hw_tensor:
@@ -541,8 +547,10 @@ def prelu_converter(network, paddle_op, inputs):
                     [n_tensor, c_tensor],
                     name=[paddle_op.name(), "shape_tensor"],
                 )
+
         reshape_layer.set_input(1, shape_tensor)
         real_alpha_tensor = reshape_layer.get_output(0)
+
     layer = network.add_parametric_relu(input, real_alpha_tensor)
     set_layer_name(layer, paddle_op)
     return layer.get_output(0)

@@ -214,7 +214,7 @@ void AddmmKernel(const Context& dev_ctx,
                          float,
                          float>(
         dev_ctx.x_context(), t_x, t_y, t_input, t_out, desc, epilogue);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
+    PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
   } else {
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);

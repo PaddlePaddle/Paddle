@@ -42,7 +42,7 @@ def to_placements(dim_map, mesh, partial_idx=[]):
         if m >= 0:
             p = placements[m]
             if p.is_shard():
-                p = cast(Shard, p)
+                p = cast("Shard", p)
                 raise Exception(
                     f"ProcessMesh dimension can not be mapped to two dimension of same tensor: {i} and {p.get_dim()}."
                 )
@@ -84,7 +84,7 @@ def to_dim_map(placements, tensor_dims):
     partial_status = {}
     for i, placement in enumerate(placements):
         if placement.is_shard():
-            shard_dim = cast(Shard, placement).get_dim()
+            shard_dim = cast("Shard", placement).get_dim()
             if dim_map[shard_dim] > -1:
                 import logging
 
@@ -94,7 +94,7 @@ def to_dim_map(placements, tensor_dims):
 
             dim_map[shard_dim] = i
         if placement.is_partial():
-            partial_status[i] = cast(Partial, placement).reduce_type()
+            partial_status[i] = cast("Partial", placement).reduce_type()
 
     return dim_map, partial_status
 

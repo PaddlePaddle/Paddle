@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
 namespace funcs {
@@ -905,7 +905,7 @@ class IdxHelper<uint32_t, Rank> {
   explicit IdxHelper(const uint32_t* dims) {
     for (int i = Rank - 1; i >= 0; --i) {
       uint32_t value = i < (Rank - 1) ? dims[i + 1] * stride_[i + 1] : 1;
-      divmoder_[i] = phi::kps::details::FastDivMod(value);
+      divmoder_[i] = FastDivMod<int>(value);
       stride_[i] = value;
     }
   }
@@ -928,7 +928,7 @@ class IdxHelper<uint32_t, Rank> {
 
  private:
   uint32_t stride_[Rank];
-  phi::kps::details::FastDivMod divmoder_[Rank];
+  FastDivMod<int> divmoder_[Rank];
 };
 
 // Transform index between memory offset and shape coordinate.

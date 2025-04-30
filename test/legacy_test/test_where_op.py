@@ -70,6 +70,30 @@ class TestWhereFP16OP(TestWhereOp):
 
 
 @unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestWhereOpComplex64(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex64
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestWhereOpComplex128(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex128
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+@unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the bfloat16",
@@ -788,12 +812,12 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0, 0], [1, 1]])
+        expect_out = np.array([0, 1, 0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
@@ -803,12 +827,12 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0], [1]])
+        expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
 

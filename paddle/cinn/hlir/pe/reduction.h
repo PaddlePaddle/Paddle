@@ -103,6 +103,47 @@ ir::Tensor ReduceMin(const ir::Tensor& A,
                      const bool keep_dims = false,
                      const std::string& output_name = "T_Reduce_Min_out");
 
+// TODO(heqianyue): add support to specify output index tensor dtype (i64)
+/**
+ * @brief find the index to the maximum of array elements over a given axis
+ *
+ * @param A The input Tensor
+ * @param axis Axis or axes to find the maximum over. If axis is empty, the
+ * operation will compute over all elements of the input array. If axis is
+ * negative it counts from the last to the first axis. For arg reduce op,
+ * the axis can only have size 1 (according to the paddle docs for arg ops)
+ * @param keep_dims If it is set true, the axes which are reduced are left in
+ * the result as dimensions with size one. With this option, the result will
+ * broadcast correctly against the input array.
+ * @param output_name The name of the output Tensor
+ *
+ * @return The result Tensor.
+ */
+ir::Tensor Argmax(const ir::Tensor& A,
+                  const std::vector<int>& axis,
+                  const bool keep_dims = false,
+                  const std::string& output_name = "T_ArgMax_out");
+
+/**
+ * @brief find the index to the minimum of array elements over a given axis
+ *
+ * @param A The input Tensor
+ * @param axis Axis or axes to find the maximum over. If axis is empty, the
+ * operation will compute over all elements of the input array. If axis is
+ * negative it counts from the last to the first axis. For arg reduce op,
+ * the axis can only have size 1 (according to the paddle docs for arg ops)
+ * @param keep_dims If it is set true, the axes which are reduced are left in
+ * the result as dimensions with size one. With this option, the result will
+ * broadcast correctly against the input array.
+ * @param output_name The name of the output Tensor
+ *
+ * @return The result Tensor.
+ */
+ir::Tensor Argmin(const ir::Tensor& A,
+                  const std::vector<int>& axis,
+                  const bool keep_dims = false,
+                  const std::string& output_name = "T_ArgMin_out");
+
 /**
  * @brief find the logic and of array elements over a given axis
  *
@@ -396,98 +437,9 @@ std::vector<ir::Tensor> BlockReduceAny(
     const bool keep_dim = false,
     const std::string& output_name = "T_Block_Reduce_Any_out");
 
-/**
- * @brief compute the value of array elements over the last dimension with block
- * reduce
- *
- * @param A The input Tensor.
- * @param axes the reduce axes.
- * @param keep_dim keep the output tensor shape size as input.
- * @param output_name The name of the output Tensor.
- */
-std::vector<ir::Tensor> BlockShuffleReduceSum(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Sum_out");
-
-std::vector<ir::Tensor> BlockShuffleReduceProd(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Prod_out");
-
-std::vector<ir::Tensor> BlockShuffleReduceMax(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Max_out");
-
-std::vector<ir::Tensor> BlockShuffleReduceMin(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Min_out");
-
-std::vector<ir::Tensor> BlockShuffleReduceAll(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_All_out");
-
-std::vector<ir::Tensor> BlockShuffleReduceAny(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Any_out");
-
-/**
- * @brief compute the value of array elements over the last dimension with block
- * reduce
- *
- * @param A The input Tensor.
- * @param axes the reduce axes.
- * @param keep_dim keep the output tensor shape size as input.
- * @param output_name The name of the output Tensor.
- */
-
-std::vector<ir::Tensor> TwoStepBlockReduceSum(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Sum_out");
-
-std::vector<ir::Tensor> TwoStepBlockReduceProd(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Prod_out");
-
-std::vector<ir::Tensor> TwoStepBlockReduceMax(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Max_out");
-
-std::vector<ir::Tensor> TwoStepBlockReduceMin(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Min_out");
-
-std::vector<ir::Tensor> TwoStepBlockReduceAll(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_All_out");
-
-std::vector<ir::Tensor> TwoStepBlockReduceAny(
-    const ir::Tensor& A,
-    const std::vector<int>& axes,
-    const bool keep_dim,
-    const std::string& output_name = "T_Reduce_Any_out");
-
 constexpr char* kVarianceFuncName = "cinn_reduce_variance";
+constexpr char* kArgmaxFuncName = "cinn_argmax";
+constexpr char* kArgminFuncName = "cinn_argmin";
 
 std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor);
@@ -499,6 +451,7 @@ std::string GridReduceExternalFuncName(const ir::Expr& op,
                                        const cinn::common::Type type);
 
 std::string Type2StrForReduce(cinn::common::Type type);
+std::string Type2StrForArgReduce(cinn::common::Type type);
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
