@@ -1732,12 +1732,6 @@ class NumpyVariable(VariableBase):
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
 
-    @VariableFactory.register_from_value()
-    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, np.ndarray):
-            return NumpyArrayVariable(value, graph, tracker)
-        return None
-
 
 class NumpyNumberVariable(NumpyVariable):
     def _reconstruct(self, codegen: PyCodeGen):
@@ -1835,6 +1829,15 @@ class NumpyArrayVariable(NumpyVariable):
             self.value = value_or_meta
             self.meta = MetaInfo.from_numpy(self.value)
 
+    def __len__(self):
+        if isinstance(self.meta.shape[0], SymbolicInt):
+            raise BreakGraphError(
+                DataDependencyDynamicShapeBreak(
+                    "length of NumPy array Variable with first dimension is dynamic shape causes graph break."
+                )
+            )
+        return self.meta.shape[0]
+
     def get_py_type(self):
         return np.ndarray
 
@@ -1847,6 +1850,11 @@ class NumpyArrayVariable(NumpyVariable):
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
+
+    def get_iter(self):
+        from .iter import SequenceIterVariable
+
+        return SequenceIterVariable(self, self.graph, GetIterTracker(self))
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

@@ -1616,6 +1616,7 @@ class OpcodeExecutorBase:
                 )
             )
 
+    @call_break_graph_decorator(push_n=1)
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
         iter_variable = BuiltinVariable(iter, self._graph, DanglingTracker())(
