@@ -47,6 +47,7 @@ find_package(CUDAToolkit)
 include_directories(${CUDAToolkit_INCLUDE_DIRS})
 set(CUDA_CUDART_LIBRARY "${CUDAToolkit_LIBRARY_DIR}/lib64/libcudart.so")
 set(CUDA_LIBRARIES CUDA::toolkit)
+set(CUDA_TOOLKIT_ROOT_DIR ${CUDAToolkit_ROOT})
 
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
