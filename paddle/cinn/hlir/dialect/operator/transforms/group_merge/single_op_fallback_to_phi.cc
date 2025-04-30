@@ -35,28 +35,22 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
-    // Fallback only when FusionOp has two operators inside: AnySingleOp + yiled
-    // store cf.yield
-
-    if (fusion_op.GetOperators().size() != 3) {
+    // Fallback only when FusionOp has two operators inside: AnySingleOp +
+    // cf.yield
+    if (fusion_op.GetOperators().size() != 2) {
       return false;
     }
 
-    if (!fusion_op.GetOperators()[1]->isa<cinn::dialect::YieldStoreOp>()) {
+    if (!fusion_op.GetOperators()[1]->isa<pir::YieldOp>()) {
       return false;
     }
 
     PADDLE_ENFORCE_EQ(
         fusion_op.GetOperators().size(),
-        3,
+        2,
         ::common::errors::InvalidArgument(
             "fusion_op should have two operators inside, but got %d",
             fusion_op.GetOperators().size()));
-    PADDLE_ENFORCE(
-        fusion_op.GetOperators()[2]->isa<::pir::YieldOp>(),
-        ::common::errors::InvalidArgument(
-            "The last operator of fusion_op must be YieldOp, but got %s",
-            fusion_op.GetOperators()[2]->name()));
 
     if (fusion_op.GetOperators()[0]->isa<paddle::dialect::VarianceOp>()) {
       return false;
@@ -175,8 +169,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 // Fallback reshape pattern like this:
 // (%1) = cinn_op.generate_shape (%0)
 // (%2) = pd_op.reshape (%0, %1)
-// (%3) = cinn_op.yield_store (%2)
-// () = cf.yield (%3)
+// () = cf.yield (%2)
 class FusionOpSingleReshapePattern
     : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
@@ -186,10 +179,10 @@ class FusionOpSingleReshapePattern
   bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
                        pir::PatternRewriter& rewriter) const override {
     const auto& ops = fusion_op.GetOperators();
-    if (ops.size() != 4) return false;
+    if (ops.size() != 3) return false;
     if (!ops[0]->isa<cinn::dialect::GenerateShapeOp>() ||
         !ops[1]->isa<paddle::dialect::ReshapeOp>() ||
-        !ops[2]->isa<cinn::dialect::YieldStoreOp>()) {
+        !ops[2]->isa<pir::YieldOp>()) {
       return false;
     }
 
@@ -201,7 +194,7 @@ class FusionOpSingleReshapePattern
     }
 
     // generate_shape op should only be used by reshape op
-    // reshape op should only be used by yield_store op
+    // reshape op should only be used by yield op
     if (ops[0]->result(0).use_count() != 1 ||
         ops[1]->result(0).use_count() != 1) {
       return false;

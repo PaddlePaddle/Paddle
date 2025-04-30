@@ -86,7 +86,7 @@ struct AppendAxisTransform {
                           "Axis size and shape size must be equal."));
   }
   explicit AppendAxisTransform(const std::vector<int64_t>& axis) : axis(axis) {
-    shape = std::vector<symbol::DimExpr>(axis.size(), symbol::DimExpr(1));
+    shape = std::vector<symbol::DimExpr>(axis.size(), symbol::DimExpr{1});
   }
   std::vector<int64_t> axis;
   std::vector<symbol::DimExpr> shape;

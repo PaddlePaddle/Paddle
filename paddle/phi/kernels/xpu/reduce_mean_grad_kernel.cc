@@ -30,6 +30,11 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   dev_ctx.template Alloc<T>(x_grad);
@@ -42,7 +47,7 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<int64_t> xdims = common::vectorize<int64_t>(x.dims());
   std::vector<int64_t> ydims = common::vectorize<int64_t>(out_grad.dims());
 
-  int reduce_numel = 1;
+  int64_t reduce_numel = 1;
   if (reduce_all) {
     reduce_dims.clear();
     for (size_t d = 0; d < xdims.size(); ++d) {

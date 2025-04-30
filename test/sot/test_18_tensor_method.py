@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
@@ -57,6 +57,7 @@ def tensor_method_property_without_breakgraph(
         + a.ndim
         + a.dim()
         + a.rank(),
+        a.element_size(),
     )
 
 
@@ -67,6 +68,7 @@ def tensor_method_property_with_breakgraph(a: paddle.Tensor, b: paddle.Tensor):
         a.tolist(),
         str(a.place),
         a.clear_gradient(),
+        a.is_dense(),
     )
 
 
@@ -79,6 +81,21 @@ def tensor_method_property_mT(a: paddle.Tensor):
 def middle_tensor_name(a: paddle.Tensor, b: paddle.Tensor):
     c = a + b
     return c.name
+
+
+@check_no_breakgraph
+def tensor_numel(x: paddle.Tensor):
+    return x.numel(), x.size
+
+
+@check_no_breakgraph
+def tensor_dim(x: paddle.Tensor):
+    return x.dim(), x.ndimension(), x.ndim, x.rank()
+
+
+@check_no_breakgraph
+def tensor_len(x: paddle.Tensor):
+    return len(x)
 
 
 class TestTensorMethod(TestCaseBase):
@@ -98,7 +115,6 @@ class TestTensorMethod(TestCaseBase):
         y = paddle.rand([42])
         self.assert_results(tensor_method_passed_by_user, x, y.add)
 
-    @test_with_faster_guard
     def test_tensor_method_property(self):
         x = paddle.rand([42, 24], dtype='float64')
         y = paddle.rand([42, 24], dtype='float32')
@@ -116,6 +132,22 @@ class TestTensorMethod(TestCaseBase):
         y = paddle.rand([42, 24, 2, 3, 3, 2], dtype='float32')
         self.assert_results(tensor_method_property_mT, x)
         self.assert_results(tensor_method_property_mT, y)
+
+    def test_tensor_numel(self):
+        x = paddle.rand([2, 3], dtype='float32')
+        self.assert_results(tensor_numel, x)
+        x = paddle.rand([3, 3], dtype='float32')
+        self.assert_results(tensor_numel, x)  # test dynamic shape
+
+    def test_tensor_dim(self):
+        x = paddle.rand([2, 3], dtype='float32')
+        self.assert_results(tensor_dim, x)
+
+    def test_tensor_len(self):
+        x = paddle.rand([2, 3], dtype='float32')
+        self.assert_results(tensor_len, x)
+        x = paddle.rand([3, 3], dtype='float32')
+        self.assert_results(tensor_len, x)  # test dynamic shape
 
 
 if __name__ == "__main__":

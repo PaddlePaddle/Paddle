@@ -84,9 +84,11 @@ PD_REGISTER_KERNEL(index_select,
                    phi::IndexSelectKernel,
                    float,
                    double,
+                   phi::dtype::float8_e4m3fn,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}

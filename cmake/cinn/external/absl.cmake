@@ -6,7 +6,7 @@ set(ABSL_PREFIX_DIR ${THIRD_PARTY_PATH}/absl)
 set(ABSL_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
 set(ABSL_REPOSITORY "${GIT_URL}/abseil/abseil-cpp.git")
-set(ABSL_TAG "20210324.2")
+set(ABSL_TAG "20250127.0")
 
 set(OPTIONAL_ARGS
     "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
@@ -41,26 +41,30 @@ ExternalProject_Add(
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_base.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_hash.a
-  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_wyhash.a
+  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_string_view.a
+  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_low_level_hash.a
+  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_demangle_internal.a
+  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_raw_logging_internal.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_city.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_strings.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_throw_delegate.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_any_cast_impl.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_optional_access.a
-  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_variant_access.a
-  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_raw_hash_set.a)
+  BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_variant_access.a)
 
 # It may be more convenient if we just include all absl libs
 set(ABSL_LIB_NAMES
     hash
-    wyhash
+    string_view
+    low_level_hash
+    demangle_internal
+    raw_logging_internal
     city
     strings
     throw_delegate
     bad_any_cast_impl
     bad_optional_access
-    bad_variant_access
-    raw_hash_set)
+    bad_variant_access)
 set(ABSL_LIBS "")
 
 if(WITH_ROCM)

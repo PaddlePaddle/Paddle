@@ -65,6 +65,10 @@ template <typename T, typename Context>
 void NonZeroKernel(const Context &dev_ctx,
                    const DenseTensor &condition,
                    DenseTensor *out) {
+  if (condition.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   DenseTensor in_data;
   auto dims = condition.dims();
   using Functor = IndexFunctor<T, int64_t, int64_t>;
@@ -72,6 +76,26 @@ void NonZeroKernel(const Context &dev_ctx,
   phi::funcs::SelectKernel<T, T, int64_t, 0, Functor>(
       dev_ctx, condition, in_data, out, index_functor);
 }
+
+template <typename T, typename Context>
+void RestrictNonZeroKernel(const Context &dev_ctx,
+                           const DenseTensor &condition,
+                           const int64_t total_true_num,
+                           DenseTensor *out) {
+  DenseTensor in_data;
+  auto dims = condition.dims();
+  if (condition.numel() == 0) {
+    dev_ctx.template Alloc<int64_t>(out);
+    return;
+  }
+
+  using Functor = IndexFunctor<T, int64_t, int64_t>;
+  Functor index_functor{dims};
+
+  phi::funcs::RestrictSelectKernel<T, T, int64_t, 0, Functor>(
+      dev_ctx, condition, in_data, total_true_num, out, index_functor);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(nonzero,
@@ -85,6 +109,11 @@ PD_REGISTER_KERNEL(nonzero,
                    phi::dtype::bfloat16,
                    bool,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
+
+PD_REGISTER_KERNEL(
+    restrict_nonzero, GPU, ALL_LAYOUT, phi::RestrictNonZeroKernel, bool) {}

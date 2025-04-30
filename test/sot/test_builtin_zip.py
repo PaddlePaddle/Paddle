@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, test_with_faster_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot import psdb, symbolic_translate
@@ -77,7 +77,6 @@ def test_zip_8(iter_1, iter_2):
 
 
 class TestZip(TestCaseBase):
-    @test_with_faster_guard
     def test_simple_cases(self):
         x = 8
         y = 5
@@ -93,12 +92,10 @@ class TestZip(TestCaseBase):
         self.assert_results(test_zip_6, ty)
         self.assert_results(test_zip_7, layer_list, paddle.randn((10,)))
 
-    @test_with_faster_guard
     @min_graph_size_guard(0)
     def test_reconstruct(self):
         self.assert_results(test_zip_8, [1, 2, 3], [4, 5, 6])
 
-    @test_with_faster_guard
     @strict_mode_guard(False)
     @min_graph_size_guard(0)
     def test_zip_user_defined_iter(self):

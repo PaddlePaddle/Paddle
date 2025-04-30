@@ -24,7 +24,7 @@ def memory_optimize(
     This API is deprecated since 1.6. Please do not use it. The better
     memory optimization strategies are enabled by default.
     """
-    logging.warn(
+    logging.warning(
         'Caution! paddle.distributed.transpiler.memory_optimize() is deprecated '
         'and not maintained any more, since it is not stable!\n'
         'This API would not take any memory optimizations on your Program '
@@ -47,7 +47,7 @@ def release_memory(input_program, skip_opt_set=None):
     This API is deprecated since 1.6. Please do not use it. The better
     memory optimization strategies are enabled by default.
     """
-    logging.warn(
+    logging.warning(
         'paddle.distributed.transpiler.release_memory() is deprecated, it would not'
         ' take any memory release on your program'
     )

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 
 #include <string>
 #include <vector>
@@ -23,6 +22,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {

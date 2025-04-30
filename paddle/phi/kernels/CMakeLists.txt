@@ -193,8 +193,7 @@ if(WITH_CUTLASS)
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
-    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu"
-    "fusion/cutlass/cutlass_kernels/moe_gemm/*.cu")
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
 
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
@@ -236,10 +235,14 @@ if(WITH_ROCM)
     "gpu/lu_kernel.cu"
     "gpu/matrix_rank_kernel.cu"
     "gpu/matrix_rank_tol_kernel.cu"
-    "gpu/put_along_axis_grad_kernel.cu"
-    "gpu/put_along_axis_kernel.cu"
     "gpu/svd_kernel.cu"
     "gpu/cuda_gemm_kernel.cu")
+endif()
+
+# Remove AP kernel when CINN is not enabled.
+if(NOT WITH_CINN)
+  list(REMOVE_ITEM kernel_cu "gpu/ap_variadic_kernel.cu")
+  list(REMOVE_ITEM kernel_gpu "gpu/ap_variadic_kernel.cu")
 endif()
 
 set(cc_search_pattern

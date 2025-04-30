@@ -477,14 +477,16 @@ struct MaximumFunctor {
 template <typename T>
 struct MaxGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x > y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
 template <typename T>
 struct MaxGradYFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x <= y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
@@ -494,10 +496,14 @@ struct MaxGradXYFunctor {
                                                    const InT y,
                                                    const InT dout) {
     phi::Array<OutT, 2> outs;
-    // dx = dout * (x > y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
-    // dy = dout * (x <= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
+    // dx = dout * (x > y) + dout / 2 * (x == y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
+    // dy = dout * (x < y) + dout / 2 * (x == y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x < y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
     return outs;
   }
 };
@@ -512,13 +518,15 @@ struct MinimumFunctor {
 template <typename T>
 struct MinGradXFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x < y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 template <typename T>
 struct MinGradYFunctor {
   inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x >= y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
@@ -528,10 +536,14 @@ struct MinGradXYFunctor {
                                                    const InT y,
                                                    const InT dout) {
     phi::Array<OutT, 2> outs;
-    // dx = dout * (x < y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
-    // dy = dout * (x >= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
+    // dx = dout * (x < y) + dout / 2 * (x == y)
+    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
+    // dy = dout * (x > y) + dout / 2 * (x == y)
+    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x > y) +
+                                (dout / static_cast<InT>(2)) *
+                                    static_cast<InT>(x == y));
     return outs;
   }
 };

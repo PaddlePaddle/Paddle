@@ -112,6 +112,12 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>* out_tensors,
+      const std::vector<phi::DenseTensor>& in_tensors,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
@@ -154,13 +160,15 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  using ProcessGroupWithStream::Recv;
+
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,
                                            int64_t offset,
                                            int64_t numel,
                                            bool sync_op,
                                            bool use_calc_stream) override;
-
+  using ProcessGroupWithStream::Send;
   std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
                                            int dst_rank,
                                            int64_t offset,
@@ -173,6 +181,8 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
   static void GroupEnd(const std::string& dev_type);
 
   phi::ccl::CCLComm XCCLComm(const Place& place);
+
+  phi::distributed::XCCLCommContext* GetOrCreateCommContext(const Place& place);
 
   // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
@@ -223,6 +233,13 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
   void CreateXCCLEnvCache(const Place& place, const std::string& place_key);
 
   void SyncCalcStream(const Place& place);
+
+  std::shared_ptr<ProcessGroup::Task> RunFnInXCCLEnv(
+      std::function<void(const phi::stream::Stream&)> fn,
+      const std::vector<phi::DenseTensor>& tensors,
+      CommType comm_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   std::shared_ptr<ProcessGroup::Task> RunFnInXCCLEnv(
       std::function<void(const phi::stream::Stream&)> fn,

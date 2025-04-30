@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         CUDAPlace,
         CustomPlace,
         IPUPlace,
+        XPUPinnedPlace,
         XPUPlace,
     )
 
@@ -31,6 +32,7 @@ _Place: TypeAlias = Union[
     "CPUPlace",
     "CUDAPlace",
     "CUDAPinnedPlace",
+    "XPUPinnedPlace",
     "IPUPlace",
     "CustomPlace",
     "XPUPlace",

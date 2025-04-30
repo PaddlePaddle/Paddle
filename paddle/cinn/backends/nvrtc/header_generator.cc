@@ -45,7 +45,8 @@ std::string read_file_as_string(const std::string& file_path) {
 #endif
 
 #ifdef CINN_WITH_CUDA
-  std::string cinn_path = defined_runtime_include_dir;
+  std::string cinn_path =
+      defined_runtime_include_dir ? defined_runtime_include_dir : "";
   std::ifstream file(cinn_path + '/' + file_path);
 
   if (!file.is_open()) {

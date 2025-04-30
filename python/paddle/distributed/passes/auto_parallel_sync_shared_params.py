@@ -63,7 +63,7 @@ class AutoParallelSyncSharedParamsPass(PassBase):
     def _get_comm_group(self, ranks=[]):
         ranks = sorted(ranks)
         if tuple(ranks) in self.comm_group:
-            return self.comm_group[tuple(ranks)].id
+            return self.comm_group[tuple(ranks)]
         # The communication group of this `all_reduce` op satisfies len (ranks)==2.
         # When `force_new_group=False` is set, the `send&recv` group will be returned,
         # At this point, `all_reduce` and `send&recv` share the same group, and
@@ -205,6 +205,14 @@ class AutoParallelSyncSharedParamsPass(PassBase):
             logger.info("No parameter need to share, skip pass.")
             return []
 
+        # Must initialize the redundant communication group for the allreduce op here.
+        # Otherwise, it will hang during gradient synchronization.
+        for idx in range(len(self.src_ranks)):
+            rank_1 = self.src_ranks[idx]
+            rank_2 = self.dst_ranks[idx]
+            new_process_group(sorted([rank_1, rank_2]))
+            self._get_comm_group([rank_1, rank_2])
+
         return new_shared_params
 
     def sync_shared_parameter_gradient(
@@ -227,6 +235,9 @@ class AutoParallelSyncSharedParamsPass(PassBase):
         ), "Currently, only one shared parameter is supported, and it cannot support more at the moment."
 
         cur_rank = paddle.distributed.get_rank()
+
+        if cur_rank not in self.src_ranks and cur_rank not in self.dst_ranks:
+            return params_grads
 
         pre_name = ""
         if cur_rank in self.dst_ranks:

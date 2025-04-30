@@ -25,6 +25,8 @@ LoopAxisMapping TrivialSinkLoopAxisMappingMerge(
     const LoopAxisMapping& upstream, const LoopAxisMapping& downstream);
 LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
     const LoopAxisMapping& upstream, const LoopAxisMapping& downstream);
+LoopAxisMapping HorizontalLoopAxisMappingMerge(const LoopAxisMapping& source,
+                                               const LoopAxisMapping& target);
 
 // Try to find a valid axis transform route with specific direction between
 // upstream and downstream LoopAxisMapping. The following cases are considered
@@ -34,9 +36,11 @@ LoopAxisMapping ReducePlusTrivialLoopAxisMappingMerge(
 // 3. There exists relationship between reduce axis and non reduce axis.
 // 4. Cannot transform from reduce pattern loop to trivial pattern loop.
 // 5. Cannot transform between reduce patterns with different reduce axis.
-std::optional<AxisTransformRoute> GetValidLoopTransformRoute(
+std::optional<AxisTransformRoute> GetValidAdjacentLoopTransform(
     const LoopAxisMapping& upstream,
     const LoopAxisMapping& downstream,
     bool upstream_is_anchor);
+std::optional<AxisTransformRoute> GetValidHorizontalLoopTransform(
+    const LoopAxisMapping& source, const LoopAxisMapping& target);
 
 }  // namespace cinn::fusion

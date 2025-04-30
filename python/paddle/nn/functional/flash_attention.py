@@ -414,6 +414,7 @@ def flash_attention(
     rng_name="",
     training=True,
     name=None,
+    softmax_scale=None,
 ):
     r"""
     The equation is:
@@ -484,20 +485,84 @@ def flash_attention(
     sdp_func_name = _select_sdp(head_dim)
 
     if sdp_func_name == "flash_attn":
+        if "xpu" in paddle.get_device():
+            fa_version = 2
+        elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
+            "FLAGS_cudnn_deterministic"
+        ]:
+            fa_version = 2
+        else:
+            fa_version = paddle.base.framework.get_flags(
+                ["FLAGS_flash_attn_version"]
+            )["FLAGS_flash_attn_version"]
+        assert (
+            in_dynamic_or_pir_mode() or fa_version == 2
+        ), "flash attention 3 only support dynamic or pir mode"
+        assert (
+            dropout == 0.0 or fa_version == 2
+        ), "flash attention 3 does not support dropout"
+        assert (
+            not return_softmax or fa_version == 2
+        ), "flash attention 3 does not support return softmax"
+        assert (
+            fixed_seed_offset is None or fa_version == 2
+        ), "flash attention 3 does not support return softmax"
+        assert (
+            rng_name == "" or fa_version == 2
+        ), "flash attention 3 does not support setting rng_name"
+        assert (
+            training or fa_version == 2
+        ), "flash attention 3 does not support setting training"
+        assert (
+            name is None or fa_version == 2
+        ), "flash attention 3 does not support setting name"
+        assert (
+            softmax_scale is None or fa_version == 3
+        ), "flash attention 2 does not support setting softmax_scale"
         if in_dynamic_or_pir_mode():
-            (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
-                query,
-                key,
-                value,
-                fixed_seed_offset,
-                None,
-                dropout,
-                causal,
-                return_softmax,
-                not training,
-                rng_name,
-            )
-            return result_attention, result_softmax if return_softmax else None
+            if fa_version == 2:
+                (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
+                    query,
+                    key,
+                    value,
+                    fixed_seed_offset,
+                    None,
+                    dropout,
+                    causal,
+                    return_softmax,
+                    not training,
+                    rng_name,
+                )
+                return result_attention, (
+                    result_softmax if return_softmax else None
+                )
+            elif fa_version == 3:
+                if softmax_scale is None:
+                    softmax_scale = query.shape[-1] ** (-0.5)
+
+                out, softmax_lse = _C_ops.flash_attn_v3(
+                    query,
+                    key,
+                    value,
+                    None,  # q_v_
+                    None,  # q_descale_
+                    None,  # k_descale_
+                    None,  # v_descale_
+                    softmax_scale,
+                    causal,
+                    -1,  # window_size_left
+                    -1,  # window_size_right
+                    0.0,  # softcap
+                    1,  # num_splits
+                    False,  # manual_set_pack_gqa
+                    False,  # pack_gqa_
+                    0,  # sm_margin
+                )
+                return out, None  # return_softmax
+            else:
+                raise ValueError(
+                    f"Invalid flash attention version: {fa_version}"
+                )
 
         helper = LayerHelper('flash_attn', **locals())
         dtype = helper.input_dtype(input_param_name='q')

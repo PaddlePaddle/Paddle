@@ -21,10 +21,15 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
+
+COMMON_DECLARE_bool(prim_forward);
+COMMON_DECLARE_bool(prim_backward);
+
 namespace paddle {
 namespace prim {
 
@@ -56,13 +61,15 @@ class StaticCompositeContext {
     return generator_->Generate(key);
   }
 
-  void SetBwdPrimEnabled(bool enable_prim) { enable_bwd_prim_ = enable_prim; }
+  void SetBwdPrimEnabled(bool enable_prim) {
+    FLAGS_prim_backward = enable_prim;
+  }
 
-  bool IsBwdPrimEnabled() { return enable_bwd_prim_; }
+  bool IsBwdPrimEnabled() { return FLAGS_prim_backward; }
 
-  void SetFwdPrimEnabled(bool enable_prim) { enable_fwd_prim_ = enable_prim; }
+  void SetFwdPrimEnabled(bool enable_prim) { FLAGS_prim_forward = enable_prim; }
 
-  bool IsFwdPrimEnabled() { return enable_fwd_prim_; }
+  bool IsFwdPrimEnabled() { return FLAGS_prim_forward; }
 
   void SetEagerPrimEnabled(bool enable_prim) {
     enable_eager_prim_ = enable_prim;
@@ -70,9 +77,11 @@ class StaticCompositeContext {
 
   bool IsEagerPrimEnabled() { return enable_eager_prim_; }
 
+  bool IsAllPrimEnabled() { return FLAGS_prim_forward && FLAGS_prim_backward; }
+
   void SetAllPrimEnabled(bool enable_prim) {
-    enable_fwd_prim_ = enable_prim;
-    enable_bwd_prim_ = enable_prim;
+    FLAGS_prim_forward = enable_prim;
+    FLAGS_prim_backward = enable_prim;
   }
 
   size_t CheckSkipCompOps(const std::string& op_type) const {
@@ -105,8 +114,6 @@ class StaticCompositeContext {
   std::unique_ptr<UniqueNameGenerator> generator_;
   std::unordered_set<std::string> skip_comp_ops_;
   std::map<std::string, std::string> target_grad_name_;
-  static thread_local bool enable_bwd_prim_;
-  static thread_local bool enable_fwd_prim_;
   static thread_local bool enable_eager_prim_;
   TEST_API static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);

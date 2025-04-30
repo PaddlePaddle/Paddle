@@ -338,7 +338,6 @@ ir::Tensor Tril(const ir::Tensor& A,
                               "The Tril op input tensor must have a rank "
                               "greater than or equal to 2."));
         std::vector<Expr> new_indice(indice.end() - 2, indice.end());
-        Expr col_indice = indice.back();
         return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
                                 A(indice),
                                 ir::Zero(A->type()));

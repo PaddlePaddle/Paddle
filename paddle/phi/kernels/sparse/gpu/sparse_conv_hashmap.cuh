@@ -118,6 +118,7 @@ __global__ void lookup_coords_kernel(
 {
     int tidx = blockIdx.x * blockDim.x + threadIdx.x;
     int idx = tidx / kernel_volume;
+    if (idx >= n) return;
     int _kernel_idx = tidx % kernel_volume;
     int kernel_idx = _kernel_idx;
     const int* in_coords = coords + _width * idx;
@@ -166,6 +167,43 @@ __global__ void lookup_coords_kernel(
             slot = (slot + 1) % _capacity;
         }
     }
+}
+
+
+__global__ void set_kernel_sizes_and_strides_tensor(
+        int *kernel_size_tensor,
+        int *strides_tensor,
+        int kernel_size0,
+        int kernel_size1,
+        int kernel_size2,
+        int stride0,
+        int stride1,
+        int stride2) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 6) {
+    switch (idx) {
+      case 0:
+          kernel_size_tensor[idx] = kernel_size0;
+          break;
+      case 1:
+          kernel_size_tensor[idx] = kernel_size1;
+          break;
+      case 2:
+          kernel_size_tensor[idx] = kernel_size2;
+          break;
+      case 3:
+          strides_tensor[idx-3] = stride0;
+          break;
+      case 4:
+          strides_tensor[idx-3] = stride1;
+          break;
+      case 5:
+          strides_tensor[idx-3] = stride2;
+          break;
+      default:
+        break;
+    }
+  }
 }
 
 template <typename key_type, typename val_type>
@@ -271,10 +309,8 @@ void build_sparse_conv_kmap(
 
     // need to put kernel_sizes and strides to GPU
     auto kernel_sizes_tensor = phi::Empty<int32_t>(dev_ctx, {3});
-    phi::TensorFromVector(kernel_sizes, dev_ctx, &kernel_sizes_tensor);
     auto strides_tensor = phi::Empty<int32_t>(dev_ctx, {3});
-    phi::TensorFromVector(strides, dev_ctx, &strides_tensor);
-
+    set_kernel_sizes_and_strides_tensor<<<1, 32, 0, dev_ctx.stream()>>>(kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_sizes[0], kernel_sizes[1], kernel_sizes[2], strides[0], strides[1], strides[2]);
     hashmap.lookup_coords(
         dev_ctx, *(out_kmap_cache_ptr->coords), kernel_sizes_tensor.data<int32_t>(), strides_tensor.data<int32_t>(), kernel_volume, out_kmap_cache_ptr->out_in_map);
 

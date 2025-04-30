@@ -129,6 +129,10 @@ ENV_SOT_ENABLE_FASTER_GUARD = BooleanEnvironmentVariable(
     "SOT_ENABLE_FASTER_GUARD",
     False,
 )
+ENV_SOT_ENABLE_STRICT_GUARD_CHECK = BooleanEnvironmentVariable(
+    "SOT_ENABLE_STRICT_GUARD_CHECK",
+    False,
+)
 ENV_SOT_ENABLE_GUARD_TREE = BooleanEnvironmentVariable(
     "SOT_ENABLE_GUARD_TREE",
     False,
@@ -142,9 +146,26 @@ ENV_SOT_BREAK_GRAPH_ON_GET_SYMBOLIC_VALUE = BooleanEnvironmentVariable(
 )
 ENV_SOT_COLLECT_INFO = PEP508LikeEnvironmentVariable("SOT_COLLECT_INFO", {})
 ENV_SOT_SERIALIZE_INFO = BooleanEnvironmentVariable("SOT_SERIALIZE_INFO", False)
+ENV_SOT_CE_DEBUG_MODE = BooleanEnvironmentVariable("SOT_CE_DEBUG_MODE", False)
 ENV_SOT_FORCE_FALLBACK_SIR_IDS = StringEnvironmentVariable(
     "SOT_FORCE_FALLBACK_SIR_IDS", ""
 )
+
+
+def update_ce_flags():
+    if not ENV_SOT_CE_DEBUG_MODE.get():
+        return
+    # Enable information collection flags to facilitate debugging and analysis
+
+    collected_info_item: dict[str, list[str]] = ENV_SOT_COLLECT_INFO.get()
+    collected_info_item.setdefault("breakgraph_reason", [])
+    collected_info_item.setdefault("subgraph_info", [])
+
+    ENV_SOT_COLLECT_INFO.set(collected_info_item)
+    ENV_SOT_SERIALIZE_INFO.set(True)
+
+
+update_ce_flags()
 
 
 @contextmanager

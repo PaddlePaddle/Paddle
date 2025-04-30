@@ -19,15 +19,10 @@ import numpy
 
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 def init():
@@ -158,9 +153,9 @@ class TestCase(unittest.TestCase):
         pass
 
     def compare_result(self, dy_compute, data_init):
-        static_compute = paddle.jit.to_static(
-            full_graph=True, build_strategy=build_strategy
-        )(dy_compute)
+        static_compute = paddle.jit.to_static(full_graph=True, backend="CINN")(
+            dy_compute
+        )
         inputs = data_init()
         dy_out = dy_compute(*inputs)
         st_out = static_compute(*inputs)
