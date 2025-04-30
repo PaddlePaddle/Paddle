@@ -132,6 +132,24 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
         self.keepdim = True
 
 
+class TestMinWithTensorAxis3(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        self.x = paddle.randn([0, 1, 2, 3], dtype='float64')
+        self.np_axis = np.array([1, 2, 3], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2, 3], dtype='int64')
+
+
+class TestMinWithTensorAxis4(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        self.x = paddle.randn([0, 0, 2], dtype='float64')
+        self.np_axis = np.array([2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([2], dtype='int64')
+
+
 class TestMinAPIWithEmptyTensor(unittest.TestCase):
     def test_empty_tensor(self):
         with base.dygraph.guard():

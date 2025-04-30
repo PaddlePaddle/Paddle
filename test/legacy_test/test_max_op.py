@@ -145,6 +145,24 @@ class TestMaxWithTensorAxis2(TestReduceOPTensorAxisBase):
         ]
 
 
+class TestMaxWithTensorAxis3(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.max
+        self.np_api = np.max
+        self.x = paddle.randn([0, 1, 2, 3], dtype='float64')
+        self.np_axis = np.array([1, 2, 3], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2, 3], dtype='int64')
+
+
+class TestMaxWithTensorAxis4(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.max
+        self.np_api = np.max
+        self.x = paddle.randn([0, 0, 2], dtype='float64')
+        self.np_axis = np.array([2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([2], dtype='int64')
+
+
 class TestMaxWithNan(unittest.TestCase):
     def _get_places(self):
         places = []
