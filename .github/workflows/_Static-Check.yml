@@ -86,16 +86,15 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          # rm -rf  * .[^.]*
-          # set -e
-          # echo "Downloading build.tar.gz"
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/72537/2a89cc7ff7266e5c44faede23c4846dddcc617f4/build.tar.gz --no-check-certificate
-          # echo "Extracting build.tar.gz"
+          rm -rf  * .[^.]*
+          set -e
+          echo "Downloading build.tar.gz"
+          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
+          echo "Extracting build.tar.gz"
           git config --global --add safe.directory ${work_dir}
-          # tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
+          tar --use-compress-program="pzstd -1" -xpf build.tar.gz --strip-components=1
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
-          # rm build.tar.gz
+          rm build.tar.gz
           git checkout test
           '
 
@@ -118,16 +117,16 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ~/.bashrc
-          bash -x ${work_dir}/tools/check_api_approvals.sh;approval_error=$?
+          bash ${work_dir}/tools/check_api_approvals.sh;approval_error=$?
           if [ "$approval_error" != 0 ];then
             exit 6
           fi
           '
 
-    # - name: Terminate and delete the container
-    #   if: always()
-    #   run: |
-    #     set +e
-    #     docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
-    #     docker stop ${{ env.container_name }}
-    #     docker rm ${{ env.container_name }}
+      - name: Terminate and delete the container
+        if: always()
+        run: |
+          set +e
+          docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
+          docker stop ${{ env.container_name }}
+          docker rm ${{ env.container_name }}

@@ -55,12 +55,12 @@ jobs:
     uses: ./.github/workflows/_Distribute-stable.yml
     needs: clone
 
-  # build:
-  #   name: Linux-build
-  #   uses: ./.github/workflows/_Linux-build.yml
-  #   needs: clone
+  build:
+    name: Linux-build
+    uses: ./.github/workflows/_Linux-build.yml
+    needs: clone
 
   static-check:
     name: Static-Check
     uses: ./.github/workflows/_Static-Check.yml
-    # needs: build
+    needs: build
