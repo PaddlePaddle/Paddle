@@ -1586,7 +1586,7 @@ function card_test() {
     trap 'caught_error' CHLD
     tmpfile_rand=`date +%s%N`
     NUM_PROC=$[CUDA_DEVICE_COUNT/$cardnumber]
-    export NUM_PROC=4
+    export NUM_PROC=2
     echo "****************************************************************"
     echo "***These unittests run $parallel_job job each time with $cardnumber GPU***"
     echo "****************************************************************"
@@ -1618,7 +1618,7 @@ function card_test() {
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
                 if [[ "$WITH_ROCM" == "ON" ]]; then
-		    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+		    (env HIP_VISIBLE_DEVICES=$i ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 elif [[ "$WITH_XPU" == "ON" ]]; then
                     (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
@@ -1630,7 +1630,7 @@ function card_test() {
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
                 if [[ "$WITH_ROCM" == "ON" ]]; then
-		    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+		    (env HIP_VISIBLE_DEVICES=$i ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 elif [[ "$WITH_XPU" == "ON" ]]; then
                     (env XPU_VISIBLE_DEVICES=$cuda_list_str ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
                 else
