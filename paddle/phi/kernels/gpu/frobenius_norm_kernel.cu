@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
@@ -28,6 +29,28 @@ void FrobeniusNormKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
+  if (x.numel() == 0) {
+    auto dim_x = x.dims();
+    std::set<int> axis_set;
+    for (auto ax : dims.GetData()) {
+      if (ax < 0) ax += dim_x.size();
+      axis_set.insert(ax);
+    }
+
+    std::vector<int64_t> out_dims_vec;
+    for (int i = 0; i < dim_x.size(); ++i) {
+      if (axis_set.count(i) == 0) {
+        out_dims_vec.push_back(dim_x[i]);
+      } else if (keep_dim) {
+        out_dims_vec.push_back(1);
+      }
+    }
+
+    // 正确调用 Full 初始化
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(out_dims_vec), static_cast<T>(0), out);
+    return;
+  }
   reduce_all = recompute_reduce_all(x, dims.GetData(), reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::AddFunctor, kps::SquareFunctor>(

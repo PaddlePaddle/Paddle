@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -180,6 +181,49 @@ class TestFrobeniusNormOp2(TestFrobeniusNormOp):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestFrobeniusNormOpZeroSize(TestFrobeniusNormOp):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = (1, 2)
+        self.keepdim = False
+
+    def init_dtype(self):
+        self.dtype = "float32"
+
+    def test_check_output(self):
+        places = (
+            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            if core.is_compiled_with_cuda()
+            else [paddle.CPUPlace()]
+        )
+        for place in places:
+            self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        pass
+
+
+class TestFrobeniusNormOpZeroSize2(TestFrobeniusNormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [3, 0, 3]
+        self.axis = (1, 2)
+        self.keepdim = False
+
+
+class TestFrobeniusNormOpZeroSize3(TestFrobeniusNormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = (0, 2)
+        self.keepdim = False
+
+
+class TestFrobeniusNormOpZeroSize4(TestFrobeniusNormOpZeroSize):
+    def init_test_case(self):
+        self.shape = [0, 20, 3]
+        self.axis = (0, -1)
+        self.keepdim = False
 
 
 class TestPnormOp(OpTest):
@@ -690,6 +734,7 @@ def check_linalg_vector_dygraph(
 
 class API_NormTest(unittest.TestCase):
     def test_basic(self):
+        paddle.enable_static()
         keep_dims = {False, True}
         for keep in keep_dims:
             check_fro_static(
@@ -1476,6 +1521,96 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(
                 ValueError, paddle.norm, data, p='unspport', axis=[-3, -2, -1]
             )
+
+
+class TestMatrixNormZeroSizeTensorTensor(unittest.TestCase):
+    def _get_places(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if paddle.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        return places
+
+    def _test_matrix_norm_static(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x1 = paddle.static.data(name='x1', shape=[0, 0], dtype='float32')
+            x2 = paddle.static.data(name='x2', shape=[2, 2, 0], dtype='float32')
+            x3 = paddle.static.data(
+                name='x3', shape=[3, 0, 2, 0], dtype='float32'
+            )
+
+            y1_fro = paddle.linalg.matrix_norm(x1, p='fro')
+            y2_fro = paddle.linalg.matrix_norm(x2, p='fro')
+            y3_fro = paddle.linalg.matrix_norm(x3, p='fro', axis=[1, -1])
+
+            y2_p1 = paddle.linalg.matrix_norm(x2, p=1, axis=[0, 1])
+            y2_p2 = paddle.linalg.matrix_norm(x2, p=2, axis=[0, 1])
+            y2_pinf = paddle.linalg.matrix_norm(x2, p=np.inf, axis=[0, 1])
+            y2_pninf = paddle.linalg.matrix_norm(x2, p=-np.inf, axis=[0, 1])
+
+            exe = paddle.static.Executor(place)
+            fetch_list = [
+                y1_fro,
+                y2_fro,
+                y3_fro,
+                y2_p1,
+                y2_p2,
+                y2_pinf,
+                y2_pninf,
+            ]
+            res = exe.run(
+                feed={
+                    'x1': np.zeros((0, 0), dtype='float32'),
+                    'x2': np.ones((2, 2, 0), dtype='float32'),
+                    'x3': np.ones((3, 0, 2, 0), dtype='float32'),
+                },
+                fetch_list=fetch_list,
+            )
+
+            self.assertEqual(res[0].shape, ())  # y1_fro
+            self.assertEqual(res[1].shape, (2,))  # y2_fro
+            self.assertEqual(res[2].shape, (3, 2))  # y3_fro
+            for r in res[3:]:
+                self.assertEqual(r.shape, (0,))
+
+    def _test_matrix_norm_dynamic(self):
+        paddle.disable_static()
+        for place in self._get_places():
+            paddle.set_device(
+                'gpu' if isinstance(place, paddle.CUDAPlace) else 'cpu'
+            )
+
+            x1 = paddle.full((0, 0), 1.0, dtype='float32')
+            x2 = paddle.full((2, 2, 0), 1.0, dtype='float32')
+            x3 = paddle.full((3, 0, 2, 0), 1.0, dtype='float32')
+
+            y1_fro = paddle.linalg.matrix_norm(x1, p='fro')
+            y2_fro = paddle.linalg.matrix_norm(x2, p='fro')
+            y3_fro = paddle.linalg.matrix_norm(x3, p='fro', axis=[1, -1])
+
+            y2_p1 = paddle.linalg.matrix_norm(x2, p=1, axis=[0, 1])
+            y2_p2 = paddle.linalg.matrix_norm(x2, p=2, axis=[0, 1])
+            y2_pinf = paddle.linalg.matrix_norm(x2, p=np.inf, axis=[0, 1])
+            y2_pninf = paddle.linalg.matrix_norm(x2, p=-np.inf, axis=[0, 1])
+
+            self.assertEqual(y1_fro.shape, [])
+            self.assertEqual(y2_fro.shape, (2,))
+            self.assertEqual(y3_fro.shape, (3, 2))
+            for y in [y2_p1, y2_p2, y2_pinf, y2_pninf]:
+                self.assertEqual(y.shape, (0,))
+
+    def test_matrix_norm_zero_size(self):
+        for place in self._get_places():
+            self._test_matrix_norm_static(place)
+        self._test_matrix_norm_dynamic()
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
