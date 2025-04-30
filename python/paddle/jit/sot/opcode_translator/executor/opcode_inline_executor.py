@@ -14,124 +14,61 @@
 
 from __future__ import annotations
 
+import inspect
 import sys
 from typing import TYPE_CHECKING
 
 from ...utils import (
     BreakGraphError,
     DataDependencyControlFlowBreak,
+    FallbackError,
     UnsupportedIteratorBreak,
 )
 from ..instruction_utils import Instruction
-from .guard import StringifiedExpression, union_free_vars
+from .dispatch_functions import generator_send
 from .opcode_executor import OpcodeExecutorBase, Stop
-from .tracker import Tracker
+from .tracker import DanglingTracker
 from .variables import (
+    BuiltinVariable,
+    ConstantVariable,
+    GeneratorVariable,
     IterVariable,
-    SequenceIterVariable,
+    ObjectVariable,
+    UserDefinedIterVariable,
     VariableBase,
 )
 
 if TYPE_CHECKING:
     from .function_graph import FunctionGraph
-    from .pycode_generator import PyCodeGen
-    from .variables import FunctionVariable
     from .virtual_frame import VirtualFrame
 
 
-class FunctionGlobalTracker(Tracker):
-    """
-    A tracker class that represents a function global variable.
+def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):
+    iterator = exe.stack.top
+    assert isinstance(iterator, IterVariable)
 
-    Args:
-        fn: FunctionVariable object.
-        name: The name of the global variable.
+    exe._graph.add_global_guarded_variable(iterator)
 
-    """
+    # simply get next
+    if not isinstance(iterator, UserDefinedIterVariable):
+        try:
+            exe.stack.push(iterator.next())
+        except StopIteration:
+            exe.stack.pop()
+            assert isinstance(instr.jump_to, Instruction)
+            exe.vframe.lasti = exe.indexof(instr.jump_to)
+            if sys.version_info >= (3, 12):
+                assert exe._instructions[exe.vframe.lasti].opname == "END_FOR"
+                skip_n_instrs = 2 if sys.version_info >= (3, 13) else 1
+                exe.vframe.lasti += skip_n_instrs
 
-    def __init__(self, fn: FunctionVariable, name: str):
-        super().__init__([fn])
-        self.fn = fn
-        self.name = name
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions in order to put the variables at the top of the stack.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__globals__")
-        codegen.gen_load_const(self.name)
-        codegen.gen_subscribe()
-
-    def trace_value_from_frame(self) -> StringifiedExpression:
-        """
-        Trace the value of the function global variable from the frame.
-
-        Returns:
-            StringifiedExpression: The traced value of the function global variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__globals__['{self.name}']",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
+    else:
+        exe._graph.remove_global_guarded_variable(iterator)
+        raise BreakGraphError(
+            UnsupportedIteratorBreak(
+                reason_str=f"Found {iterator.__class__.__name__} as iterator."
+            )
         )
-
-    def __repr__(self) -> str:
-        return f"FunctionGlobalTracker(fn={self.fn}, name={self.name})"
-
-
-class FunctionClosureTracker(Tracker):
-    """
-    A tracker class that represents a function closure variable.
-
-    Args:
-        fn: The FunctionVariable object.
-        idx: The index of the closure variable.
-
-    """
-
-    def __init__(self, fn: FunctionVariable, idx: int):
-        super().__init__([fn])
-        self.fn = fn
-        self.idx = idx
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        """
-        Generate bytecode instructions to trace the value of the function closure variable.
-
-        Args:
-            codegen: The PyCodeGen object used to generate bytecode.
-
-        """
-        self.fn.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("__closure__")
-        codegen.gen_load_const(self.idx)
-        codegen.gen_subscribe()
-        codegen.gen_load_attr("cell_contents")
-
-    def trace_value_from_frame(self):
-        """
-        Trace the value of the function closure variable from the frame.
-
-        Returns:
-            The traced value of the function closure variable.
-
-        """
-        fn_tracer = self.fn.tracker.trace_value_from_frame()
-        return StringifiedExpression(
-            f"{{}}.__closure__[{self.idx}].cell_contents",
-            [fn_tracer],
-            union_free_vars(fn_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
 
 
 class OpcodeInlineExecutor(OpcodeExecutorBase):
@@ -152,7 +89,7 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         super().__init__(vframe, graph)
         self.return_value: VariableBase | None = None
         self._code_var = code_var
-        self._name = "Inline"
+        self._name = "InlineFn"
 
     def inline_call(self) -> VariableBase:
         """
@@ -186,34 +123,105 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         raise BreakGraphError(DataDependencyControlFlowBreak())
 
     def FOR_ITER(self, instr: Instruction):
-        iterator = self.stack.top
-        assert isinstance(iterator, IterVariable)
+        return inline_for_iter_impl(self, instr)
 
-        self._graph.add_global_guarded_variable(iterator)
 
-        # simply get next
-        if isinstance(
-            iterator,
-            SequenceIterVariable,
-        ):
-            try:
-                self.stack.push(iterator.next())
-            except StopIteration:
-                self.stack.pop()
-                assert isinstance(instr.jump_to, Instruction)
-                self.vframe.lasti = self.indexof(instr.jump_to)
-                if sys.version_info >= (3, 12):
-                    assert (
-                        self._instructions[self.vframe.lasti].opname
-                        == "END_FOR"
-                    )
-                    skip_n_instrs = 2 if sys.version_info >= (3, 13) else 1
-                    self.vframe.lasti += skip_n_instrs
+class OpcodeInlineGeneratorExecutor(OpcodeExecutorBase):
+    def __init__(
+        self,
+        vframe: VirtualFrame,
+        code_var: VariableBase,
+        graph: FunctionGraph,
+    ):
+        super().__init__(vframe, graph)
+        self.return_value: VariableBase | None = None
+        self._code_var = code_var
+        self._name = "InlineGen"
 
-        else:
-            self._graph.remove_global_guarded_variable(iterator)
-            raise BreakGraphError(
-                UnsupportedIteratorBreak(
-                    reason_str=f"Found {iterator.__class__.__name__} as iterator."
-                )
+    def inline_call(self) -> VariableBase:
+        self._graph.add_global_guarded_variable(self._code_var)
+        self.run()
+        assert self.return_value is not None
+        return self.return_value
+
+    def RETURN_GENERATOR(self, instr: Instruction):
+        vframe = self.vframe
+        code_var = self._code_var
+        # NOTE: we set the real tracker in calling function
+        self.return_value = GeneratorVariable(
+            code_var, vframe, self._graph, DanglingTracker()
+        )
+        return Stop(state="Return")
+
+    def SEND(self, instr: Instruction):
+        assert len(self.stack) >= 2
+        recv = self.stack.pop()
+        source_obj = self.stack.top
+        if not isinstance(source_obj, IterVariable):
+            raise FallbackError(
+                "Yield from for non-generator object is not supported."
             )
+        self.stack.push(
+            BuiltinVariable(generator_send, self._graph, DanglingTracker())(
+                source_obj, recv
+            )
+        )
+
+    def END_SEND(self, instr: Instruction):
+        value = self.stack.pop()
+        receiver = self.stack.pop()  # pop the receiver
+        self.stack.push(value)
+
+    def GEN_START(self, instr: Instruction):
+        tos = self.stack.pop()
+        assert isinstance(tos, ConstantVariable)
+        assert tos.value is None
+
+    def YIELD_VALUE(self, instr: Instruction):
+        assert len(self.stack) >= 1
+        self.return_value = self.stack.pop()
+        return Stop(state="Yield")
+
+    def GET_YIELD_FROM_ITER(self, instr: Instruction):
+        source_obj = self.stack.top
+        if isinstance(source_obj, ObjectVariable) and inspect.iscoroutine(
+            source_obj.value
+        ):
+            raise FallbackError(
+                "Get yield from iter for coroutine object is not supported."
+            )
+        if isinstance(source_obj, GeneratorVariable):
+            return
+        source_obj = self.stack.pop()
+        iter_variable = BuiltinVariable(iter, self._graph, DanglingTracker())(
+            source_obj
+        )
+        self.stack.push(iter_variable)
+
+    def YIELD_FROM(self, instr: Instruction):
+        recv = self.stack.pop()
+        source_obj = self.stack.top
+        if not isinstance(source_obj, IterVariable):
+            raise FallbackError(
+                "Yield from for non-generator object is not supported."
+            )
+        self.return_value = BuiltinVariable(
+            generator_send, self._graph, DanglingTracker()
+        )(source_obj, recv)
+        assert self.vframe.lasti > 0
+        self.vframe.lasti -= 1
+        return Stop(state="Yield")
+
+    def FOR_ITER(self, instr: Instruction):
+        return inline_for_iter_impl(self, instr)
+
+    def RETURN_VALUE(self, instr: Instruction):
+        assert (
+            len(self.stack) == 1
+        ), f"Stack must have one element, but get {len(self.stack)} elements."
+        self.return_value = self.stack.pop()
+        return Stop(state="Return")
+
+    def RETURN_CONST(self, instr: Instruction):
+        self.return_value = self.vframe.consts[instr.arg]
+        return Stop(state="Return")

@@ -28,7 +28,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.static.cluster import Cluster
 from paddle.distributed.auto_parallel.static.completion import Completer
 from paddle.distributed.auto_parallel.static.cost import (
-    AllreduceSumOpCost,
+    AllReduceOpCost,
     _g_op_cost_factory,
 )
 from paddle.distributed.auto_parallel.static.cost.base_cost import (
@@ -190,7 +190,7 @@ class TestBaseCost(unittest.TestCase):
                 if op.input_arg_names:
                     var_names = op.input_arg_names[0]
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
@@ -200,7 +200,7 @@ class TestBaseCost(unittest.TestCase):
                     )
                     self.assertTrue(isinstance(comm_descs, dict) and comm_descs)
                     comm_descs = build_comm_desc_from_dist_op(
-                        "c_allreduce_sum",
+                        "all_reduce",
                         dist_op,
                         dist_context,
                         var_names,
@@ -211,7 +211,7 @@ class TestBaseCost(unittest.TestCase):
                     self.assertTrue(isinstance(comm_descs, dict) and comm_descs)
 
                     comm_costs = build_comm_costs_from_descs(
-                        AllreduceSumOpCost,
+                        AllReduceOpCost,
                         dist_context,
                         processes,
                         comm_descs,

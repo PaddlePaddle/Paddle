@@ -48,6 +48,7 @@ inline auto kCanRunTrtAttr = paddle::dialect::kCanRunTrtAttr;
   };
 
 DEFINE_GENERAL_PATTERN(Matmul, paddle::dialect::MatmulOp)
+DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(BatchNorm, paddle::dialect::BatchNormOp)
 DEFINE_GENERAL_PATTERN(BatchNorm_, paddle::dialect::BatchNorm_Op)
 DEFINE_GENERAL_PATTERN(Softmax, paddle::dialect::SoftmaxOp)
@@ -125,6 +126,7 @@ DEFINE_GENERAL_PATTERN(Asin, paddle::dialect::AsinOp)
 DEFINE_GENERAL_PATTERN(Acos, paddle::dialect::AcosOp)
 DEFINE_GENERAL_PATTERN(Atan, paddle::dialect::AtanOp)
 DEFINE_GENERAL_PATTERN(ShuffleChannel, paddle::dialect::ShuffleChannelOp)
+DEFINE_GENERAL_PATTERN(Meshgrid, paddle::dialect::MeshgridOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -453,22 +455,6 @@ class Pool2dOpPattern
                    "issues in TRT. Skip TRT conversion.";
         return false;
       }
-    }
-    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    return true;
-  }
-};
-
-class Conv2dOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::Conv2dOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::Conv2dOp>::OpRewritePattern;
-  bool MatchAndRewrite(paddle::dialect::Conv2dOp op,
-                       pir::PatternRewriter &rewriter) const override {
-    auto filter_define_op = pir::GetDefiningOpForInput(op, 1);
-    if (filter_define_op->name() != "builtin.parameter" &&
-        filter_define_op->name() != "builtin.constant") {
-      return false;
     }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
@@ -942,10 +928,16 @@ class UnsqueezeOpPattern
         dynamic_dims.push_back(i);
       }
     }
-    if (dynamic_dims.size() > 1) {
-      VLOG(3) << "Currently we don't support unsqueeze with more than one "
-                 "dynamic dims";
-      return false;
+    if (dynamic_dims.size() == 0) {
+      std::vector<int64_t> axes;
+      for (auto &axis_ele : axis.AsVector()) {
+        axes.push_back(axis_ele.dyn_cast<pir::Int64Attribute>().data());
+      }
+      if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+        VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                   "supported in static shape";
+        return false;
+      }
     }
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -982,10 +974,16 @@ class Unsqueeze_OpPattern
         dynamic_dims.push_back(i);
       }
     }
-    if (dynamic_dims.size() > 1) {
-      VLOG(3) << "Currently we don't support unsqueeze with more than one "
-                 "dynamic dims";
-      return false;
+    if (dynamic_dims.size() == 0) {
+      std::vector<int64_t> axes;
+      for (auto &axis_ele : axis.AsVector()) {
+        axes.push_back(axis_ele.dyn_cast<pir::Int64Attribute>().data());
+      }
+      if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
+        VLOG(3) << "Invalid squeeze axes. Axes having batch axis is not "
+                   "supported in static shape";
+        return false;
+      }
     }
 
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
@@ -1658,18 +1656,6 @@ class ArgsortOpPattern
         return false;
       }
     }
-    pir::Value x = op.x();
-    auto x_type = x.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto x_shape = x_type.dims();
-    int axis = op->attribute<pir::Int32Attribute>("axis").data();
-    if (axis < 0) {
-      axis += x_shape.size();
-    }
-    if (x_shape[axis] > 3840) {
-      VLOG(3)
-          << "In pd_op.argsort,the axis dim of input should be less than 3840";
-      return false;
-    }
     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
     return true;
   }
@@ -1968,8 +1954,12 @@ class StackOpPattern : public pir::OpRewritePattern<paddle::dialect::StackOp> {
     pir::Value x = op.operand_source(0);
     int rank = 1;
     auto x_type = x.type();
-    if (x_type.isa<pir::VectorType>()) {
-      rank = x_type.dyn_cast<pir::VectorType>().size();
+    if (x_type.isa<pir::VectorType>() &&
+        x_type.dyn_cast<pir::VectorType>().size() > 0) {
+      auto vec_type = x_type.dyn_cast<pir::VectorType>();
+      auto tensor_element =
+          vec_type.data()[0].dyn_cast<paddle::dialect::DenseTensorType>();
+      rank = tensor_element.dims().size();
     } else {
       auto x_shape = pir::GetShapeFromValue(x);
       rank = x_shape.size();
@@ -2389,13 +2379,7 @@ bool CheckSetValue(const pir::Operation *op, int starts_input_loc = 1) {
                "enter into trt.";
     return false;
   }
-  auto decrease_axes = op->attribute<pir::ArrayAttribute>("decrease_axes");
-  if (decrease_axes.size() != 0) {
-    VLOG(3) << "the set_value op doesn't support decrease_axes attribute "
-               "currently, it can not "
-               "enter into trt.";
-    return false;
-  }
+
   return true;
 }
 
@@ -2561,17 +2545,19 @@ class Pad3dOpPattern : public pir::OpRewritePattern<paddle::dialect::Pad3dOp> {
     }
     if (op->HasAttribute("mode")) {
       auto mode = op->attribute<pir::StrAttribute>("mode").AsString();
-      if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+      if (mode != "constant" && mode != "reflect" && mode != "replicate" &&
+          mode != "circular") {
         VLOG(3) << "The pad3d layer of TRT only support "
-                   "constant/reflect/replicate mode.";
+                   "constant/reflect/replicate/circular mode.";
         return false;
       }
     }
     if (op->HasAttribute("data_format")) {
       auto data_format =
           op->attribute<pir::StrAttribute>("data_format").AsString();
-      if (data_format != "NCDHW") {
-        VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
+      if (data_format != "NDHWC" && data_format != "NCDHW") {
+        VLOG(3) << "The pad3d layer of TRT only support NCDHW and NDHWC data "
+                   "format.";
         return false;
       }
     }
@@ -3025,12 +3011,12 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(Acos)
     ADD_PATTERN(Atan)
     ADD_PATTERN(ShuffleChannel)
+    ADD_PATTERN(Meshgrid)
 #if IS_TRT_VERSION_GE(8600)
     ADD_PATTERN(Layer_norm)
 #endif
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
-    ps.Add(std::make_unique<Conv2dOpPattern>(context));
     ps.Add(std::make_unique<Conv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DepthwiseConv2dTransposeOpPattern>(context));
     ps.Add(std::make_unique<DeformableConvOpPattern>(context));

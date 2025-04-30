@@ -16,19 +16,14 @@
 
 #include <glog/logging.h>
 #include "paddle/fluid/distributed/collective/deep_ep/include/CUDAStream.h"
+#include "paddle/fluid/distributed/collective/deep_ep/include/event_pool.h"
 #include "paddle/fluid/distributed/collective/deep_ep/kernels/exception.cuh"
 
 namespace deep_ep::detail {
 
 class Event {
  public:
-  Event() { CUDA_CHECK(cudaEventCreate(&cuda_event_)); }
-  ~Event() {
-    cudaError_t e = cudaEventDestroy(cuda_event_);
-    if (e != cudaSuccess) {
-      LOG(FATAL) << "CUDA event destroy failed: " << cudaGetErrorString(e);
-    }
-  }
+  Event() { cuda_event_ = EventPool::Instance().CreateCudaEventFromPool(); }
   void record(const cudaStream_t& stream) {
     CUDA_CHECK(cudaEventRecord(cuda_event_, stream));
   }

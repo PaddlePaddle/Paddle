@@ -85,7 +85,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
   src_len = static_cast<int>(src_shape.size());
   tgt_len = static_cast<int>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
-    std::vector<int64_t> src_dims, tgt_splitted_shape;
+    std::vector<int64_t> src_dims, tgt_split_shape;
     if (src_idx >= src_len) {
       s = 1;
     } else {
@@ -97,7 +97,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       t = 1;
     } else {
       t = static_cast<int>(inferred_tgt_shape[tgt_idx]);
-      tgt_splitted_shape.emplace_back(t);
+      tgt_split_shape.emplace_back(t);
       tgt_idx++;
     }
 
@@ -105,7 +105,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     if (s == 1 && t != 1) {
       // case [1] [a]
       tgt_idx--;
-      tgt_splitted_shape.clear();
+      tgt_split_shape.clear();
     } else if (s != 1 && t == 1) {
       src_idx--;
       src_dims.clear();
@@ -116,14 +116,14 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
           s *= static_cast<int>(src_shape[src_idx]);
           src_idx++;
         } else {
-          tgt_splitted_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
+          tgt_split_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
           t *= static_cast<int>(inferred_tgt_shape[tgt_idx]);
           tgt_idx++;
         }
       }
     }
 
-    if (!tgt_splitted_shape.empty()) {
+    if (!tgt_split_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
       for (auto in_dim : src_dims) {
         if (src_shape[in_dim] > 1) {
@@ -143,10 +143,10 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       }
       std::shared_ptr<DimTrans> flatten = make_flatten(input_dims);
 
-      for (int64_t i = 0, n = static_cast<int64_t>(tgt_splitted_shape.size());
+      for (int64_t i = 0, n = static_cast<int64_t>(tgt_split_shape.size());
            i < n;
            i++) {
-        ret.emplace_back(make_split(flatten, tgt_splitted_shape, i));
+        ret.emplace_back(make_split(flatten, tgt_split_shape, i));
       }
     }
   }

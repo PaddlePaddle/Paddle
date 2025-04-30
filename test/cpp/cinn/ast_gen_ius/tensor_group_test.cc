@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <absl/container/flat_hash_map.h>
 #include <gtest/gtest.h>
 #include <vector>
+#include "paddle/utils/flat_hash_map.h"
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/ir/ir.h"
@@ -61,7 +61,7 @@ TEST(TensorGroup, Easy) {
   ASSERT_EQ(tensor_group.GetShareMemRootName("B"), "B");
   tensor_group.MarkShareMemBuffer(tensor_group.Get("A"), tensor_group.Get("B"));
 
-  absl::flat_hash_map<std::string, ir::Tensor> buffered_tensors =
+  paddle::flat_hash_map<std::string, ir::Tensor> buffered_tensors =
       tensor_group.AllocateBuffers();
   ASSERT_EQ(buffered_tensors["A"]->buffer->name,
             buffered_tensors["B"]->buffer->name);
@@ -128,7 +128,7 @@ TEST(TensorGroup, GraphTopo) {
 
   ASSERT_EQ(tensor_group.GetShareMemRootName("A"),
             tensor_group.GetShareMemRootName("D"));
-  absl::flat_hash_map<std::string, ir::Tensor> buffered_tensors =
+  paddle::flat_hash_map<std::string, ir::Tensor> buffered_tensors =
       tensor_group.AllocateBuffers();
   ASSERT_EQ(buffered_tensors["A"]->buffer->name,
             buffered_tensors["D"]->buffer->name);

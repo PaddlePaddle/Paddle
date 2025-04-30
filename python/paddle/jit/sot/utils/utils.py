@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import builtins
+import copy
 import inspect
 import sys
 import time
@@ -22,6 +23,7 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
@@ -41,6 +43,8 @@ from .paddle_api_config import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle._typing import NestedStructure
 
 T = TypeVar("T")
@@ -124,6 +128,17 @@ class ResumeFnNameFactory(metaclass=Singleton):
         return name
 
 
+class SIRToCodeMap(metaclass=Singleton):
+    def __init__(self):
+        self._map = {}
+
+    def register(self, sir, code):
+        self._map[sir.name] = code
+
+    def get(self, sir):
+        return self._map.get(sir.name)
+
+
 def log(level, *args):
     cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
@@ -144,6 +159,11 @@ def log_format(level, str, *args):
 
 def log_enabled(level):
     return level <= ENV_SOT_LOG_LEVEL.get()
+
+
+@lru_cache
+def log_once(msg):
+    print(msg, flush=True)
 
 
 def no_eval_frame(func):
@@ -211,6 +231,17 @@ def is_break_graph_api(func):
     return func in break_graph_set
 
 
+def is_namedtuple_class(cls):
+    if not inspect.isclass(cls):
+        return False
+    if not issubclass(cls, tuple):
+        return False
+    # The signature created by nametuple function
+    namedtuple_attrs = {"_make", "_asdict", "_fields", "_replace"}
+    cls_attrs = set(dir(cls))
+    return namedtuple_attrs.issubset(cls_attrs)
+
+
 def map_if(
     *structures: NestedStructure[T1],
     pred: Callable[[T1], bool],
@@ -265,12 +296,13 @@ def count_if(*structures, pred):
 
 
 class Cache:
-    def __init__(self, weak=False):
+    def __init__(self, weak=False, copy=False):
         if not weak:
             self.cache = {}
         else:
             self.cache = WeakValueDictionary()
         self.hit_num = 0
+        self.copy = copy
 
     def __call__(self, *args, **kwargs):
         cache_key = self.key_fn(*args, **kwargs)
@@ -279,7 +311,10 @@ class Cache:
         if cache_key in self.cache:
             log(5, "cache hit: ", cache_key, "\n")
             self.hit_num += 1
-            return self.cache[cache_key]
+            cache_item = self.cache[cache_key]
+            if self.copy:
+                cache_item = copy.deepcopy(cache_item)
+            return cache_item
         value = self.value_fn(*args, **kwargs)
         self.cache[cache_key] = value
         return value
@@ -416,3 +451,38 @@ def get_numpy_ufuncs():
     unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
     binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
     return list(unary_ufuncs), list(binary_ufuncs)
+
+
+def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    res = []
+    while True:
+        try:
+            res.append(fn())
+        except StopIteration:
+            break
+    return res
+
+
+def update_list_inplace(
+    original_list: list[T], new_contents: list[T]
+) -> list[T]:
+    original_list.clear()
+    original_list.extend(new_contents)
+    return original_list
+
+
+def get_obj_stable_repr(obj) -> str:
+    if hasattr(obj, '__qualname__'):
+        return obj.__qualname__
+    if hasattr(obj, '__name__'):
+        return obj.__name__
+
+    class_name = obj.__class__.__name__
+
+    # If module is available and not __main__, include it
+    if hasattr(obj, "__class__") and hasattr(obj.__class__, "__module__"):
+        module = obj.__class__.__module__
+        if module not in ("__main__", "builtins"):
+            return f"{module}.{class_name}()"
+
+    return f"{class_name}()"

@@ -25,7 +25,6 @@ using MergePatternFn =
 class PatternGraph {
  public:
   PatternGraph(const std::vector<PatternContent>& nodes,
-               const std::vector<pir::Value>& outputs,
                const PolicyManager policy_manager);
 
   std::vector<PatternNodePtr> ClusterOps();
@@ -35,11 +34,7 @@ class PatternGraph {
   void ReduceLiftReduceTree();
   void ReduceTreeGrown();
   void ReduceTree_Trivial_Fusion();
-  void LiftToAnchorPattern();
   void AnchorFusion();
-  void LiftToItersPermutationPattern();
-  void LimitedAnchorFusion();
-  void ItersPermutationFusion();
   void SplitRecomputePattern();
   std::vector<PatternNodePtr> ReturnFusionResults();
 
@@ -55,15 +50,14 @@ class PatternGraph {
   const PatternNodePtrSet& all_pattern_nodes() const {
     return all_pattern_nodes_;
   }
-  const std::vector<pir::Value>& outputs() const { return outputs_; }
-  const PolicyManager& policy_manager() const { return policy_manager_; }
-  std::shared_ptr<ItersFusionPolicy> iters_fusion_policy() {
-    return policy_manager_.template GetPolicy<ItersFusionPolicy>();
+  const std::unordered_set<pir::Operation*>& output_ops() const {
+    return output_ops_;
   }
+  const PolicyManager& policy_manager() const { return policy_manager_; }
 
  private:
+  std::unordered_set<pir::Operation*> output_ops_;
   PatternNodePtrSet all_pattern_nodes_;
-  std::vector<pir::Value> outputs_;
   PolicyManager policy_manager_;
 };
 

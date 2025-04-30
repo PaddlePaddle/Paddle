@@ -2391,7 +2391,7 @@ PDNode *patterns::PriorBox::operator()() {
   return boxes_var;
 }
 
-PDNode *patterns::ConvElementwiseaddAct::operator()(
+PDNode *patterns::ConvElementwiseAddAct::operator()(
     PDNode *conv_in, const std::unordered_set<std::string> &conv_act_set) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
@@ -3003,7 +3003,7 @@ PDNode *patterns::ConvElementwiseAdd2Act::operator()(
   return act_out;
 }
 
-PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
+PDNode *patterns::ConvElementwiseAdd::operator()(PDNode *conv_in) {
   conv_in->AsInput();
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
   auto conv_out = pattern->NewNode(conv_out_repr())

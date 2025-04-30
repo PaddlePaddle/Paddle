@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <cuda_runtime.h>
 
 #include <string>
@@ -22,6 +21,7 @@
 
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace runtime {
@@ -112,6 +112,24 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int shared_memory_bytes,
                            void* stream);
 
+/**
+ * Call a CUDA compiled kernel with cooperative groups.
+ *
+ * @param kernel_fn the compiled PTX kernel.
+ * @param args an array of cinn_pod_value_ts(consists of scalars and buffers).
+ */
+void cinn_call_cuda_cooperative_kernel(void* kernel_fn,
+                                       void* v_args,
+                                       int num_args,
+                                       int grid_x,
+                                       int grid_y,
+                                       int grid_z,
+                                       int block_x,
+                                       int block_y,
+                                       int block_z,
+                                       int shared_memory_bytes,
+                                       void* stream);
+
 void cinn_call_cublas(void* v_args,
                       int num_args,
                       bool trans_a,
@@ -149,7 +167,7 @@ void cinn_call_batched_cublas(void* v_args,
 
 #ifdef CINN_WITH_CUDNN
 void cinn_gpu_cudnn_conv2d(
-    const absl::flat_hash_map<std::string, int>& attr,
+    const paddle::flat_hash_map<std::string, int>& attr,
     cinn_buffer_t* x,
     cinn_buffer_t* w,
     cinn_buffer_t* y,
@@ -157,14 +175,14 @@ void cinn_gpu_cudnn_conv2d(
     cinn::common::Layout target = cinn::common::Layout::kNCHW);
 
 void cinn_gpu_cudnn_conv2d_backward_data(
-    const absl::flat_hash_map<std::string, int>& attr,
+    const paddle::flat_hash_map<std::string, int>& attr,
     cinn_buffer_t* w,
     cinn_buffer_t* dy,
     cinn_buffer_t* dx,
     cudaStream_t stream = nullptr);
 
 void cinn_gpu_cudnn_conv2d_backward_filter(
-    const absl::flat_hash_map<std::string, int>& attr,
+    const paddle::flat_hash_map<std::string, int>& attr,
     cinn_buffer_t* x,
     cinn_buffer_t* dy,
     cinn_buffer_t* dw,

@@ -37,16 +37,9 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    DistributedPushSparseOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
-    CAllreduceSumOp::name(),
-    CAllreduceSum_Op::name(),
-    PushDenseOp::name(),
-    PullBoxSparseOp::name(),
-    PushBoxSparseOp::name(),
-    PushSparseV2Op::name(),
-    SendAndRecvOp::name()};
+};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -426,7 +419,19 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
                           .dyn_cast<paddle::dialect::ScalarAttribute>()
                           .data()
                           .to<double>();
-    vec_shape = {static_cast<int64_t>(shape_item)};
+    auto shape_vec = shape.defining_op()
+                         ->dyn_cast<paddle::dialect::FullOp>()
+                         .attribute("shape")
+                         .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                         .data()
+                         .GetData();
+    // TODO(ooooo): If can make sure shape_value's size is less than or equal
+    // to 1, can add a check here rather than product.
+    int64_t items = 1;
+    for (const auto& item : shape_vec) {
+      items *= item;
+    }
+    vec_shape = std::vector<int64_t>(items, shape_item);
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {
     std::vector<pir::Value> inputs =
@@ -521,6 +526,7 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
       {"gpu", phi::GPUPlace{}},
       {"gpu_pinned", phi::GPUPinnedPlace{}},
       {"xpu", phi::XPUPlace{}},
+      {"xpu_pinned", phi::XPUPinnedPlace{}},
       {"ipu", phi::IPUPlace{}},
       {":", phi::CustomPlace{}},
       {"undefined", phi::Place{}}};

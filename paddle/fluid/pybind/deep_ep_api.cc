@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <Python.h>
+#include "pybind11/functional.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_DEEP_EP
@@ -43,7 +44,14 @@ void BindDeepEPApi(pybind11::module *m) {
 
   pybind11::class_<deep_ep::EventHandle>(*m, "EventHandle")
       .def(pybind11::init<>())
-      .def("current_stream_wait", &deep_ep::EventHandle::current_stream_wait);
+      .def("current_stream_wait", &deep_ep::EventHandle::current_stream_wait)
+      .def("calc_stream_wait", &deep_ep::EventHandle::CalcStreamWait)
+      .def("comm_stream_wait", &deep_ep::EventHandle::CommStreamWait);
+
+  m->def("get_event_handle_from_calc_stream",
+         &deep_ep::GetEventHandleFromCalcStream);
+  m->def("get_event_handle_from_comm_stream",
+         &deep_ep::GetEventHandleFromCommStream);
 
   pybind11::class_<deep_ep::Buffer>(*m, "Buffer")
       .def(pybind11::init<int, int, int64_t, int64_t, bool, int>())
@@ -52,6 +60,13 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("get_rdma_rank", &deep_ep::Buffer::get_rdma_rank)
       .def("get_root_rdma_rank", &deep_ep::Buffer::get_root_rdma_rank)
       .def("get_local_device_id", &deep_ep::Buffer::get_local_device_id)
+      .def("get_comm_stream",
+           [](deep_ep::Buffer &self) {
+             int device_id = self.get_local_device_id();
+             cudaStream_t comm_stream = self.get_comm_stream();
+             auto s = phi::Stream(reinterpret_cast<phi::StreamId>(comm_stream));
+             return phi::CUDAStream(phi::GPUPlace(device_id), s);
+           })
       .def("get_local_ipc_handle", &deep_ep::Buffer::get_local_ipc_handle)
       .def("get_local_nvshmem_unique_id",
            &deep_ep::Buffer::get_local_nvshmem_unique_id)
@@ -74,6 +89,7 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("intranode_combine", &deep_ep::Buffer::intranode_combine_api)
       .def("internode_dispatch", &deep_ep::Buffer::internode_dispatch_api)
       .def("internode_combine", &deep_ep::Buffer::internode_combine_api)
+      .def("barrier_all", &deep_ep::Buffer::barrier_all)
       .def("clean_low_latency_buffer",
            &deep_ep::Buffer::clean_low_latency_buffer)
       .def("low_latency_dispatch", &deep_ep::Buffer::low_latency_dispatch_api)

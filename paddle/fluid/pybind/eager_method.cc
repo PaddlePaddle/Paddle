@@ -59,6 +59,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
@@ -89,7 +90,7 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject* obj) {
     VLOG(6) << "Call GetSliceIndexFromTensor in Eager";
     paddle::Tensor tensor = CastPyArg2Tensor(obj, 0);
     PADDLE_ENFORCE_EQ(
-        tensor.initialized(),
+        tensor.has_allocation(),
         true,
         common::errors::InvalidArgument(
             "We can only support initialized tensor in slice, however we got "
@@ -252,7 +253,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   phi::DenseTensor cpu_tensor;
   phi::CPUPlace cpu_place;
 
-  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned()) {
+  if (self->tensor.is_cpu() || self->tensor.is_gpu_pinned() ||
+      self->tensor.is_xpu_pinned()) {
     eager_gil_scoped_release guard;
     phi::CPUPlace place;
     if (self->tensor.is_selected_rows()) {
@@ -398,6 +400,31 @@ static PyObject* tensor_method_numpy(TensorObject* self,
                            dense_tensor->place(),
                            dense_tensor->Holder()->ptr(),
                            dense_tensor->Holder()->size());
+    } else if (self->tensor.is_dist_tensor()) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+      VLOG(6) << "Getting DistTensor's numpy value";
+      auto* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+      auto dense_tensor = ReshardXToReplicated(dist_tensor);
+
+      cpu_tensor.set_meta(dense_tensor.meta());
+      auto tmp_allocation_ptr =
+          memory::Alloc(cpu_place, dense_tensor.Holder()->size());
+      cpu_tensor.ResetHolder(std::shared_ptr<phi::Allocation>(
+          tmp_allocation_ptr.release(), tmp_allocation_ptr.get_deleter()));
+      paddle::memory::Copy(place,
+                           cpu_tensor.Holder()->ptr(),
+                           dense_tensor.place(),
+                           dense_tensor.Holder()->ptr(),
+                           dense_tensor.Holder()->size());
+#else
+      PADDLE_THROW(
+          common::errors::Unavailable("The `numpy()` method of (Dist)Tensor "
+                                      "is not supported in the current "
+                                      "PaddlePaddle, please recompile and "
+                                      "installPaddlePaddle with the option "
+                                      "of `WITH_DISTRIBUTE=ON`."));
+#endif
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -1402,12 +1429,12 @@ static PyObject* tensor_method__get_tensor_from_selected_rows(
   auto* selected_rows =
       static_cast<phi::SelectedRows*>(self->tensor.impl().get());
 
-  PADDLE_ENFORCE(selected_rows->initialized(),
-                 common::errors::Fatal("SelectedRows must be initialized."));
+  PADDLE_ENFORCE(selected_rows->has_allocation(),
+                 common::errors::Fatal("SelectedRows must be has_allocation."));
 
   auto* dense_tensor =
       static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
-  VLOG(4) << "dense_tensor: " << dense_tensor->IsInitialized();
+  VLOG(4) << "dense_tensor: " << dense_tensor->has_allocation();
 
   auto t = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
   t.set_impl(std::make_shared<phi::DenseTensor>(*dense_tensor));
@@ -1443,7 +1470,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2,
+      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
@@ -1727,7 +1754,7 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2,
+      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
       -1);  // content is dim, multiply 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
@@ -2180,7 +2207,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
                                             PyObject* kwargs) {
   EAGER_TRY
   auto src = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
-  if (self->tensor.initialized()) {
+  if (self->tensor.has_allocation()) {
     PADDLE_ENFORCE_EQ(self->tensor.dtype(),
                       src.dtype(),
                       common::errors::PreconditionNotMet(
@@ -2198,7 +2225,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
   VLOG(6) << "Tensor copy gradient from: " << src.name();
   auto* p_grad = egr::EagerUtils::mutable_grad(self->tensor);
   if (p_grad) {
-    PADDLE_ENFORCE_EQ(src.initialized(),
+    PADDLE_ENFORCE_EQ(src.has_allocation(),
                       true,
                       common::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.name()));
@@ -3177,11 +3204,11 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_TRY
   VLOG(6) << "Get grad for tensor: " << self->tensor.name();
   auto meta = egr::EagerUtils::nullable_autograd_meta(self->tensor);
-  VLOG(6) << meta << " initialized: " << meta->Grad().initialized();
-  if (meta && meta->Grad().initialized()) {
+  VLOG(6) << meta << " has_allocation: " << meta->Grad().has_allocation();
+  if (meta && meta->Grad().has_allocation()) {
     return ToPyObject(meta->Grad());
   } else {
-    if (meta && !meta->Grad().initialized() && meta->Grad().impl() &&
+    if (meta && !meta->Grad().has_allocation() && meta->Grad().impl() &&
         meta->Grad().is_dist_tensor()) {
       return ToPyObject(meta->Grad(), false);
     }
@@ -3450,6 +3477,22 @@ static PyObject* tensor_method__set_impl(TensorObject* self,
 }
 
 #if defined(PADDLE_WITH_CUDA)
+static PyObject* tensor_method__record_stream(TensorObject* self,
+                                              PyObject* args,
+                                              PyObject* kwargs) {
+  EAGER_TRY
+  VLOG(4)
+      << "Running in tensor_method__record_stream: record stream for Tensor.";
+  auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (tensor) {
+    const auto& device_id = paddle::platform::GetCurrentDeviceId();
+    auto stream = paddle::platform::get_current_stream(device_id)->raw_stream();
+    memory::RecordStream(tensor->Holder(), stream);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
@@ -3784,6 +3827,10 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #if defined(PADDLE_WITH_CUDA)
+    {"_record_stream",
+     (PyCFunction)(void (*)())tensor_method__record_stream,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
      METH_VARARGS | METH_KEYWORDS,

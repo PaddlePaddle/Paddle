@@ -39,12 +39,12 @@ void GaussianKernel(const Context& ctx,
   int64_t real_seed = seed != 0 ? seed : ctx.GetGenerator()->Random64();
 
   // int normal(Context* ctx, T* x, T mean, T std, int64_t len, int64_t seed);
-  int r = xpu::normal<XPUType>(ctx.x_context(),
-                               reinterpret_cast<XPUType*>(data),
-                               mean,
-                               std,
-                               out->numel(),
-                               real_seed);
+  int r = xpu::normal_<XPUType>(ctx.x_context(),
+                                reinterpret_cast<XPUType*>(data),
+                                mean,
+                                std,
+                                out->numel(),
+                                real_seed);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "normal");
 }
 

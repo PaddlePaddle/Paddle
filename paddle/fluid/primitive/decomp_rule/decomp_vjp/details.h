@@ -1161,51 +1161,51 @@ void matmul_grad(const Tensor& x,
   }
 
   if (x_grad) {
-    auto x_grad_mm =
-        matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, !transpose_y);
-    auto x_grad_trans = x_grad_mm;
-
-    if (transpose_x) {
-      std::vector<int> reverse_perm;
-      for (size_t i = 0; i < x_grad_trans.shape().size(); i++) {
-        reverse_perm.push_back(i);
-      }
-      std::swap(reverse_perm[reverse_perm.size() - 1],
-                reverse_perm[reverse_perm.size() - 2]);
-      x_grad_trans = transpose<T>(x_grad_mm, reverse_perm);
+    Tensor x_grad_out;
+    if (!transpose_x && !transpose_y) {
+      // z = x * y     ==> dx = dz * y.T
+      x_grad_out = matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, true);
+    } else if (transpose_x && !transpose_y) {
+      // z = x.T * y   ==> dx = y * dz.T
+      x_grad_out = matmul<T>(temp_y_unsqueeze, unsqueeze_out_grad, false, true);
+    } else if (!transpose_x && transpose_y) {
+      // z = x * y.T   ==> dx = dz * y
+      x_grad_out =
+          matmul<T>(unsqueeze_out_grad, temp_y_unsqueeze, false, false);
+    } else {
+      // z = x.T * y.T ==> dx = y.T * dz.T
+      x_grad_out = matmul<T>(temp_y_unsqueeze, unsqueeze_out_grad, true, true);
     }
-    if (has_dynamic_shape(x.shape()) ||
-        has_dynamic_shape(x_grad_trans.shape()) ||
-        x_grad_trans.dims() != x.dims()) {
-      auto x_grad_out = reduce_as<T>(x_grad_trans, temp_x_unsqueeze);
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(x_grad_out.shape()) ||
+        x_grad_out.dims() != x.dims()) {
+      x_grad_out = reduce_as<T>(x_grad_out, temp_x_unsqueeze);
       set_output<T>(x_grad_out, x_grad);
     } else {
-      auto x_grad_out = x_grad_trans;
       set_output<T>(x_grad_out, x_grad);
     }
   }
 
   if (y_grad) {
-    auto y_grad_mm =
-        matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, !transpose_x, false);
-    auto y_grad_trans = y_grad_mm;
-
-    if (transpose_y) {
-      std::vector<int> reverse_perm;
-      for (size_t i = 0; i < y_grad_mm.shape().size(); i++) {
-        reverse_perm.push_back(i);
-      }
-      std::swap(reverse_perm[reverse_perm.size() - 1],
-                reverse_perm[reverse_perm.size() - 2]);
-      y_grad_trans = transpose<T>(y_grad_mm, reverse_perm);
+    Tensor y_grad_out;
+    if (!transpose_x && !transpose_y) {
+      // z = x * y     ==> dy = x.T * dz
+      y_grad_out = matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, true, false);
+    } else if (transpose_x && !transpose_y) {
+      // z = x.T * y   ==> dy = x * dz
+      y_grad_out =
+          matmul<T>(temp_x_unsqueeze, unsqueeze_out_grad, false, false);
+    } else if (!transpose_x && transpose_y) {
+      // z = x * y.T   ==> dy = dz.T * x
+      y_grad_out = matmul<T>(unsqueeze_out_grad, temp_x_unsqueeze, true, false);
+    } else {
+      // z = x.T * y.T ==> dy = dz.T * x.T
+      y_grad_out = matmul<T>(unsqueeze_out_grad, temp_x_unsqueeze, true, true);
     }
-    if (has_dynamic_shape(y.shape()) ||
-        has_dynamic_shape(y_grad_trans.shape()) ||
-        y_grad_trans.dims() != y.dims()) {
-      auto y_grad_out = reduce_as<T>(y_grad_trans, temp_y_unsqueeze);
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(y_grad_out.shape()) ||
+        y_grad_out.dims() != y.dims()) {
+      y_grad_out = reduce_as<T>(y_grad_out, temp_y_unsqueeze);
       set_output<T>(y_grad_out, y_grad);
     } else {
-      auto y_grad_out = y_grad_trans;
       set_output<T>(y_grad_out, y_grad);
     }
   }
@@ -1217,9 +1217,36 @@ void maximum_grad(const Tensor& x,
                   const Tensor& out_grad,
                   Tensor* x_grad,
                   Tensor* y_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      set_output<T>(full<T>(x.shape(), 0, x.dtype(), x.place()), x_grad);
+    }
+    if (y_grad) {
+      set_output<T>(full<T>(y.shape(), 0, y.dtype(), y.place()), y_grad);
+    }
+    return;
+  }
+  Tensor half_tensor;
+  Tensor out_grad_copy = out_grad;
+  if (x_grad || y_grad) {
+    // cast, because divide and add kernel is not support bf16 and fp16 on CPU
+    if (out_grad.dtype() == phi::DataType::BFLOAT16 ||
+        out_grad.dtype() == phi::DataType::FLOAT16) {
+      out_grad_copy = cast<T>(out_grad, phi::DataType::FLOAT32);
+    }
+    auto equal_tensor = cast<T>(equal<T>(x, y), out_grad_copy.dtype());
+    auto tmp_tensor =
+        full<T>({1}, 2.0, out_grad_copy.dtype(), out_grad_copy.place());
+    half_tensor = (out_grad_copy / tmp_tensor) * equal_tensor;
+  }
+
   if (x_grad) {
-    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
-    auto dx_res = out_grad * x_tmp;
+    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad_copy.dtype());
+    auto dx_res = out_grad_copy * x_tmp + half_tensor;
+    if (out_grad.dtype() == phi::DataType::BFLOAT16 ||
+        out_grad.dtype() == phi::DataType::FLOAT16) {
+      dx_res = cast<T>(dx_res, out_grad.dtype());
+    }
     if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape()) ||
         out_grad.dims() != x.dims()) {
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
@@ -1230,8 +1257,12 @@ void maximum_grad(const Tensor& x,
   }
 
   if (y_grad) {
-    auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
-    auto dy_res = out_grad * y_tmp;
+    auto y_tmp = cast<T>(less_than<T>(x, y), out_grad_copy.dtype());
+    auto dy_res = out_grad_copy * y_tmp + half_tensor;
+    if (out_grad.dtype() == phi::DataType::BFLOAT16 ||
+        out_grad.dtype() == phi::DataType::FLOAT16) {
+      dy_res = cast<T>(dy_res, out_grad.dtype());
+    }
     if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape()) ||
         out_grad.dims() != y.dims()) {
       auto dy_reduce_res = reduce_as<T>(dy_res, y);
@@ -1542,107 +1573,6 @@ void pad_grad(const Tensor& input,
     }
     set_output<T>(out_tmp, input_grad);
   }
-}
-
-template <typename T>
-void max_grad(const Tensor& x,
-              const Tensor& out,
-              const Tensor& out_grad,
-              const IntArray& axis,
-              bool keepdim,
-              bool reduce_all,
-              Tensor* x_grad) {
-  if (!x_grad) {
-    return;
-  }
-
-  Tensor x_grad_tmp;
-  if (has_dynamic_shape(x.shape())) {
-    const Tensor x_shape = shape64<T>(x);
-    const Tensor zero_tensor =
-        backend::full_with_tensor<T>(x_shape, 0.0, x.dtype(), x.place());
-    const int64_t axis_size = axis.size();
-    const int64_t x_dim_size = x.dims().size();
-
-    reduce_all = false;
-    if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
-      reduce_all = true;
-    } else {
-      reduce_all = false;
-    }
-
-    if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
-      auto out_grad_tmp = backend::expand<T>(out_grad, x_shape);
-      auto out_tmp = backend::expand<T>(out, x_shape);
-      auto mask = equal<T>(x, out_tmp);
-      x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
-    } else {
-      const Tensor out_grad_shape = shape64<T>(out_grad);
-      auto axis_ = std::vector<int64_t>();
-
-      if (reduce_all) {
-        for (int64_t i = 0; i < x_dim_size; i++) {
-          axis_.push_back(i);
-        }
-      } else {
-        axis_ = axis.GetData();
-        for (int64_t i = 0; i < axis_size; i++) {
-          if (axis[i] < 0) {
-            axis_[i] = axis[i] + x_dim_size;
-          }
-        }
-      }
-      const Tensor out_grad_shape_extend =
-          get_unsqueeze_dims<T>(out_grad_shape, axis_);
-      auto out_grad_ = backend::reshape<T>(out_grad, out_grad_shape_extend);
-      auto out_ = backend::reshape<T>(out, out_grad_shape_extend);
-      auto out_grad_tmp = backend::expand<T>(out_grad_, x_shape);
-      auto out_tmp = backend::expand<T>(out_, x_shape);
-      auto mask = equal<T>(x, out_tmp);
-      x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
-    }
-  } else {
-    auto zero_tensor =
-        full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
-    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
-    int64_t axis_size = axis.size();
-    int64_t x_dim_size = x_dim.size();
-    reduce_all = false;
-    if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
-      reduce_all = true;
-    } else {
-      reduce_all = false;
-    }
-
-    if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
-      auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
-      auto out_tmp = out.expand(IntArray(x_dim));
-      auto mask = equal<T>(x, out_tmp);
-      x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
-    } else {
-      auto axis_ = std::vector<int64_t>();
-      if (reduce_all) {
-        for (int64_t i = 0; i < x_dim_size; i++) {
-          axis_.push_back(i);
-        }
-      } else {
-        axis_ = axis.GetData();
-        for (int64_t i = 0; i < axis_size; i++) {
-          if (axis[i] < 0) {
-            axis_[i] = axis[i] + x_dim_size;
-          }
-        }
-      }
-      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
-      auto out_ = reshape<T>(out, out_grad_shape);
-      auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
-      auto out_tmp = out_.expand(IntArray(x_dim));
-      auto mask = equal<T>(x, out_tmp);
-      x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
-    }
-  }
-  set_output<T>(x_grad_tmp, x_grad);
 }
 
 template <typename T>
@@ -2243,9 +2173,36 @@ void minimum_grad(const Tensor& x,
                   const Tensor& out_grad,
                   Tensor* x_grad,
                   Tensor* y_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      set_output<T>(full<T>(x.shape(), 0, x.dtype(), x.place()), x_grad);
+    }
+    if (y_grad) {
+      set_output<T>(full<T>(y.shape(), 0, y.dtype(), y.place()), y_grad);
+    }
+    return;
+  }
+  Tensor half_tensor;
+  Tensor out_grad_copy = out_grad;
+  if (x_grad || y_grad) {
+    // cast, because divide and add kernel is not support bf16 and fp16 on CPU
+    if (out_grad.dtype() == phi::DataType::BFLOAT16 ||
+        out_grad.dtype() == phi::DataType::FLOAT16) {
+      out_grad_copy = cast<T>(out_grad, phi::DataType::FLOAT32);
+    }
+    auto equal_tensor = cast<T>(equal<T>(x, y), out_grad_copy.dtype());
+    auto tmp_tensor =
+        full<T>({1}, 2.0, out_grad_copy.dtype(), out_grad_copy.place());
+    half_tensor = (out_grad_copy / tmp_tensor) * equal_tensor;
+  }
+
   if (x_grad) {
-    auto x_tmp = cast<T>(less_than<T>(x, y), out_grad.dtype());
-    auto dx_res = out_grad * x_tmp;
+    auto x_tmp = cast<T>(less_than<T>(x, y), out_grad_copy.dtype());
+    auto dx_res = out_grad_copy * x_tmp + half_tensor;
+    if (out_grad.dtype() == phi::DataType::BFLOAT16 ||
+        out_grad.dtype() == phi::DataType::FLOAT16) {
+      dx_res = cast<T>(dx_res, out_grad.dtype());
+    }
     if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape()) ||
         out_grad.dims() != x.dims()) {
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
@@ -2256,8 +2213,12 @@ void minimum_grad(const Tensor& x,
   }
 
   if (y_grad) {
-    auto y_tmp = cast<T>(greater_equal<T>(x, y), out_grad.dtype());
-    auto dy_res = out_grad * y_tmp;
+    auto y_tmp = cast<T>(greater_than<T>(x, y), out_grad_copy.dtype());
+    auto dy_res = out_grad_copy * y_tmp + half_tensor;
+    if (out_grad.dtype() == phi::DataType::BFLOAT16 ||
+        out_grad.dtype() == phi::DataType::FLOAT16) {
+      dy_res = cast<T>(dy_res, out_grad.dtype());
+    }
     if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape()) ||
         out_grad.dims() != y.dims()) {
       auto dy_reduce_res = reduce_as<T>(dy_res, y);
@@ -3437,6 +3398,23 @@ void amin_grad(const Tensor& x,
 }
 
 template <typename T>
+void max_grad(const Tensor& x,
+              const Tensor& out,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool reduce_all,
+              Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+
+  Tensor x_grad_tmp;
+  amax_grad<T>(x, out, out_grad, axis, keepdim, reduce_all, &x_grad_tmp);
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void p_norm_grad(const Tensor& x,
                  /*output of forward was reserved for efficient backward*/
                  const Tensor& out,
@@ -3477,7 +3455,7 @@ void p_norm_grad(const Tensor& x,
           Tensor expand_shape;
           if (asvector) {
             // reduce all dimensions in forward
-            expand_shape = full<T>(std::vector<int64_t>(x.dims().size(), 1),
+            expand_shape = full<T>(std::vector<int64_t>{x.dims().size()},
                                    1,
                                    DataType::INT64,
                                    out_grad.place());

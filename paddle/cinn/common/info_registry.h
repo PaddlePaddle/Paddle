@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include <absl/container/flat_hash_map.h>
 #include <absl/types/any.h>
 
 #include <string>
-
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace common {
 
@@ -34,7 +33,7 @@ class InfoRegistry {
   void Clear() { data_.clear(); }
 
  private:
-  absl::flat_hash_map<std::string, absl::any> data_;
+  paddle::flat_hash_map<std::string, absl::any> data_;
 };
 
 template <typename T>

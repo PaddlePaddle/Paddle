@@ -20,7 +20,7 @@ from paddle.base import core
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import EagerParamBase
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -54,7 +54,7 @@ def _npu_identity(x, format=-1):
             >>> print(y.shape)
             [1, 1, 1, 1, 16]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.npu_identity(x, format)
     else:
         check_variable_and_dtype(

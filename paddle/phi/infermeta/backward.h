@@ -248,6 +248,13 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
 
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dq);
 
+void FlashAttnV3GradInferMeta(const MetaTensor& q,
+                              const MetaTensor& k,
+                              const MetaTensor& v,
+                              MetaTensor* dq,
+                              MetaTensor* dk,
+                              MetaTensor* dv);
+
 void Flatten2GradInferMeta(const MetaTensor& x,
                            const MetaTensor& x_shape,
                            const MetaTensor& out_grad,

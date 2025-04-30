@@ -209,7 +209,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w0_ep,
-            'XPUAPI_DEBUG': '0x1',
+            # 'XPUAPI_DEBUG': '0x1',
         }
 
         env1 = {
@@ -218,7 +218,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
-            'XPUAPI_DEBUG': '0x1',
+            # 'XPUAPI_DEBUG': '0x1',
         }
         # update environment
         env0.update(envs)
@@ -259,8 +259,8 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        sys.stdout.write(f'trainer 0 stdout: {tr0_out}\n')
-        sys.stdout.write(f'trainer 1 stdout: {tr1_out}\n')
+        # sys.stdout.write(f'trainer 0 stdout: {tr0_out}\n')
+        # sys.stdout.write(f'trainer 1 stdout: {tr1_out}\n')
 
         def load_and_remove(path):
             with open(path, 'rb') as f:

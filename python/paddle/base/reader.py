@@ -1638,7 +1638,7 @@ class DatasetLoader(DataLoaderBase):
         ), f"Filelist number of dataset {len(dataset.filelist)} must be not less than place number {thread_num}"
 
         if dataset.thread_num != 0 and dataset.thread_num != thread_num:
-            logging.warn(
+            logging.warning(
                 f'thread_num {dataset.thread_num} which is set in Dataset is ignored'
             )
 
@@ -1650,7 +1650,7 @@ class DatasetLoader(DataLoaderBase):
             )
             and dataset.queue_num > thread_num
         ):
-            logging.warn(
+            logging.warning(
                 f"queue_num {dataset.queue_num} which is set in Dataset is ignored"
             )
             dataset._set_queue_num(thread_num)

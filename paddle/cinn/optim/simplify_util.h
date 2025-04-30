@@ -281,74 +281,6 @@ bool CheckPattern(const ir::IndexExpr &expr,
 bool IsPureMath(Expr expr);
 
 /*!
- * \brief Index Token in Tokenizer and Parser
- */
-struct IndexToken {
-  enum class TokenType {
-    kNumber,
-    kVar,
-    kPlus,
-    kMinus,
-    kMultiply,
-    kDivide,
-    kModulo,
-    kLeftParen,
-    kRightParen,
-    kEnd
-  };
-
-  TokenType type;
-  std::string value;
-
-  explicit IndexToken(TokenType t, const std::string &v = "")
-      : type(t), value(v) {}
-};
-
-/*!
- * \brief Tokenizer for IndexExpr, split the input string into IndexToken.
- */
-class Tokenizer {
- public:
-  explicit Tokenizer(const std::string &in);
-  // generate IndexToken for the next `pos`. it supports the following:
-  // 1. Number: 123, 1234...
-  // 2. Variable: a, b, a_1, aa, f1...
-  // 3. Operator: +, -, *, /, %, (, )
-  // 4. Whitespace
-  IndexToken NextToken();
-
- private:
-  const std::string &input;
-  size_t pos;
-};
-
-/*!
- * \brief Parser for IndexExpr, parse the input string into ir::Expr.
- */
-class Parser {
- public:
-  explicit Parser(const std::string &input);
-  ir::Expr Parse();
-
- private:
-  Tokenizer tokenizer;
-  IndexToken currentToken;
-  std::unordered_map<std::string, ir::Var> vars;
-
-  void Advance();
-  // Processing addition and subtraction expressions, with the lowest priority.
-  ir::Expr ParseExpression();
-  // Process multiplication, division and modulo expressions, with higher
-  // priority than addition and subtraction, and the parsing result appears as
-  // one Term. e.g. a * b + c, a * b is a Term.
-  ir::Expr ParseTerm();
-  // Process numeric, variables and brackets, with the highest priority, as
-  // parameters for each item.
-  ir::Expr ParseFactor();
-  ir::Expr GetOrCreateVar(const std::string &var_name);
-};
-
-/*!
  * \brief Parse the expression from string to Expr.
  * \param expr_str The expression to be checked.
  * \return A Expr parsed from string.
@@ -381,5 +313,32 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
     const std::function<bool(
         const std::unordered_map<std::string, ir::IndexExpr> &)> &condition =
         nullptr);
+
+/*!
+ * \brief Simplify IndexExpr with bound information.
+ * For example:
+ *        x % S0 ==> x if x < S0
+ *        x / S0 ==> 0 if x < S0
+ *
+ * \param expr The `IndexExpr` to be simplified.
+ * \return `IndexExpr` after simplification.
+ */
+ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr);
+
+/*!
+ * \brief Simplify IndexExpr with broadcastable information.
+ * For example:
+ *        x % cinn_max(cinn_max(cinn_max(S0, S10), S20), S30))
+ *          % cinn_max(S10, S30) ==> x % cinn_max(S10, S30),
+ *        if broadcastable(S0, S10, S20, S30).
+ * Note: The following conditions must be met:
+ * 1. Two consecutive modular operations.
+ * 2. The first modulus is broadcastable.
+ * 3. The second modulus is a subset of the first modulus.
+ *
+ * \param expr The `IndexExpr` to be simplified.
+ * \return `IndexExpr` after simplification.
+ */
+ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr);
 }  // namespace optim
 }  // namespace cinn

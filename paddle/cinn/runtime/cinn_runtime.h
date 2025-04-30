@@ -611,3 +611,84 @@ template <typename T>
 cinn_type_t cinn_type_of();
 
 #endif  // __cplusplus
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define WELFORD_STRUCT_MACRO(TYPENAME, DTYPE) \
+  typedef struct {                            \
+    DTYPE mean;                               \
+    DTYPE m2;                                 \
+    DTYPE weight;                             \
+  } TYPENAME;
+
+WELFORD_STRUCT_MACRO(welford_fp32, float)
+WELFORD_STRUCT_MACRO(welford_fp64, double)
+#undef WELFORD_STRUCT_MACRO
+
+#define ARGIDX_STRUCT_MACRO(TYPENAME, DTYPE, ITYPE, IINIT) \
+  typedef struct {                                         \
+    DTYPE value;                                           \
+    ITYPE index;                                           \
+  } TYPENAME;
+
+#define EXPAND_ARGIDX_DTYPE_MACRO_IMPL(DTYPE, DNAME, ITYPE, INAME, IMAX) \
+  ARGIDX_STRUCT_MACRO(argidx_##DNAME##_##INAME, DTYPE, ITYPE, IMAX)
+
+#define EXPAND_ARGIDX_DTYPE_MACRO(DTYPE, DNAME)             \
+  EXPAND_ARGIDX_DTYPE_MACRO_IMPL(DTYPE, DNAME, int, i32, 0) \
+  EXPAND_ARGIDX_DTYPE_MACRO_IMPL(DTYPE, DNAME, int64_t, i64, 0LL)
+
+EXPAND_ARGIDX_DTYPE_MACRO(float, fp32)
+EXPAND_ARGIDX_DTYPE_MACRO(double, fp64)
+EXPAND_ARGIDX_DTYPE_MACRO(int16_t, i16)
+EXPAND_ARGIDX_DTYPE_MACRO(int, i32)
+EXPAND_ARGIDX_DTYPE_MACRO(int64_t, i64)
+EXPAND_ARGIDX_DTYPE_MACRO(uint8_t, u8)
+
+#undef EXPAND_ARGIDX_DTYPE_MACRO
+#undef EXPAND_ARGIDX_DTYPE_MACRO_IMPL
+#undef ARGIDX_STRUCT_MACRO
+
+#define ARGIDX_STRUCT_FUNC_MACRO(TYPENAME, DTYPE, ITYPE) \
+  ITYPE cast_##TYPENAME(const TYPENAME* argidx);         \
+  void create_##TYPENAME(TYPENAME* sret, DTYPE val, ITYPE idx);
+
+#define ARGIDX_COMBINE_MACRO(TYPENAME)                                       \
+  void min_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b); \
+  void max_##TYPENAME(TYPENAME* sret, const TYPENAME* a, const TYPENAME* b);
+
+#define EXPAND_ARGIDX_FUNC_MACRO(DTYPE, DNAME)                 \
+  ARGIDX_COMBINE_MACRO(argidx_##DNAME##_##i32)                 \
+  ARGIDX_COMBINE_MACRO(argidx_##DNAME##_##i64)                 \
+  ARGIDX_STRUCT_FUNC_MACRO(argidx_##DNAME##_##i32, DTYPE, int) \
+  ARGIDX_STRUCT_FUNC_MACRO(argidx_##DNAME##_##i64, DTYPE, int64_t)
+
+// TODO(heqianyue): fp16 not added
+EXPAND_ARGIDX_FUNC_MACRO(float, fp32)
+EXPAND_ARGIDX_FUNC_MACRO(double, fp64)
+EXPAND_ARGIDX_FUNC_MACRO(int16_t, i16)
+EXPAND_ARGIDX_FUNC_MACRO(int, i32)
+EXPAND_ARGIDX_FUNC_MACRO(int64_t, i64)
+EXPAND_ARGIDX_FUNC_MACRO(uint8_t, u8)
+
+#define WELFORD_COMBINE_DEF_MACRO(TYPE_SUFFIX, DTYPE)                \
+  void sum_welford_##TYPE_SUFFIX(welford_##TYPE_SUFFIX* sret,        \
+                                 const welford_##TYPE_SUFFIX* a,     \
+                                 const welford_##TYPE_SUFFIX* b);    \
+  DTYPE cast_welford_##TYPE_SUFFIX(const welford_##TYPE_SUFFIX* wf); \
+  void create_welford_##TYPE_SUFFIX(                                 \
+      welford_##TYPE_SUFFIX* sret, DTYPE m, DTYPE m2, DTYPE w);
+
+WELFORD_COMBINE_DEF_MACRO(fp32, float)
+WELFORD_COMBINE_DEF_MACRO(fp64, double)
+#undef WELFORD_COMBINE_DEF_MACRO
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
+#undef ARGIDX_COMBINE_MACRO
+#undef EXPAND_ARGIDX_FUNC_MACRO
+#undef ARGIDX_STRUCT_FUNC_MACRO
