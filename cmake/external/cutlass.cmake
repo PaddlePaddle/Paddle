@@ -27,6 +27,7 @@ add_definitions("-DSPCONV_WITH_CUTLASS=0")
 
 if(NOT PYTHON_EXECUTABLE)
   find_package(Python3 COMPONENTS Interpreter Development)
+  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
 endif()
 
 ExternalProject_Add(
