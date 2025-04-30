@@ -141,7 +141,7 @@ bool ShapeMatchGuard::check(PyObject* value) {
     return false;
   }
   for (size_t i = 0; i < shape.size(); ++i) {
-    if (expected_[i] && shape[i] != *expected_[i]) {
+    if (shape[i] <= 0 || shape[i] != expected_[i]) {
       return false;
     }
   }
