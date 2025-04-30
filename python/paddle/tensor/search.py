@@ -422,6 +422,7 @@ def index_select(
             x,
             'x',
             [
+                'bool',
                 'uint16',
                 'float16',
                 'float32',
@@ -523,10 +524,6 @@ def nonzero(x: Tensor, as_tuple=False):
              [3]])
 
     """
-    list_out = []
-    shape = x.shape
-    rank = len(shape)
-
     if in_dynamic_or_pir_mode():
         outs = _C_ops.nonzero(x)
     else:
@@ -558,14 +555,39 @@ def nonzero(x: Tensor, as_tuple=False):
 
     if not as_tuple:
         return outs
-    elif rank == 1:
-        return (outs,)
     else:
-        for i in range(rank):
-            list_out.append(
-                paddle.slice(outs, axes=[1], starts=[i], ends=[i + 1])
-            )
+        rank = x.ndim
+        list_out = [outs[:, i] for i in range(rank)]
         return tuple(list_out)
+
+
+def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. Using a manually set total_true_num as shape information, thereby
+    eliminating the need to transfer shape information from the device to the host.
+
+    Args:
+        x (Tensor): The input tensor variable.
+        total_true_num (int): The manually set output shape.
+
+    Returns:
+        Tensor, The data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
+            >>> out = paddle.tensor.search._restrict_nonzero(x, 2)
+            >>> print(out)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(gpu), stop_gradient=True,
+            [[1],
+             [3]])
+    """
+    return _C_ops.restrict_nonzero(condition, total_true_num)
 
 
 def sort(

@@ -92,10 +92,10 @@ Split::Split(const std::shared_ptr<DimTrans> dim,
     : DimTrans(DimTrans::Type::SPLIT) {
   input_dim_trans_ = dim;
   split_id_ = id;
-  splitted_shape_.assign(shape.begin(), shape.end());
+  split_shape_.assign(shape.begin(), shape.end());
 }
 
-Split::~Split() { std::vector<int64_t>().swap(splitted_shape_); }
+Split::~Split() { std::vector<int64_t>().swap(split_shape_); }
 
 const std::shared_ptr<DimTrans>& Split::input() const {
   return input_dim_trans_;
@@ -107,15 +107,13 @@ void Split::set_input(const std::shared_ptr<DimTrans> dim) {
 
 int64_t Split::split_id() const { return split_id_; }
 
-int64_t Split::local_splitted_shape_value() {
-  return splitted_shape_[split_id_];
-}
+int64_t Split::local_split_shape_value() { return split_shape_[split_id_]; }
 
 std::string Split::to_string() {
   std::string ret_str("Split(");
   ret_str += input_dim_trans_->to_string() + ", (";
-  for (int i = 0, n = static_cast<int>(splitted_shape_.size()); i < n; ++i) {
-    ret_str += std::to_string(splitted_shape_[i]);
+  for (int i = 0, n = static_cast<int>(split_shape_.size()); i < n; ++i) {
+    ret_str += std::to_string(split_shape_[i]);
     if (i < n - 1) {
       ret_str += ",";
     }
@@ -239,7 +237,7 @@ std::shared_ptr<DimTrans> GetDimTrans(
                                                 sharded_input_dims,
                                                 shardable,
                                                 seen_dims);
-    int64_t ret_size = split->local_splitted_shape_value();
+    int64_t ret_size = split->local_split_shape_value();
 
     if (split->split_id() == 0) {
       if (dim != nullptr) {

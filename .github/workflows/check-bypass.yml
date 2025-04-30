@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CI_TEAM_MEMBERS: '["SigureMo", "risemeup1", "tianshuo78520a", "0x3878f", "swgu98", "luotao1"]'
+      CI_TEAM_MEMBERS: '["SigureMo", "risemeup1", "tianshuo78520a", "0x3878f", "swgu98", "luotao1", "XieYunshen"]'
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     steps:

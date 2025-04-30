@@ -15,6 +15,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
@@ -24,6 +25,7 @@
 namespace cinn {
 namespace ir {
 
+// Compares two IndexExpr for equality, return true if they are equal.
 template <typename T>
 static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
   auto aPart = optim::GetFlattenExprs<T>(a);
@@ -34,20 +36,26 @@ static bool CompareExpressions(const ir::IndexExpr& a, const ir::IndexExpr& b) {
 
   if (aPart.size() != bPart.size()) return false;
 
+  auto SameTypeAndLength = [](const ir::IndexExpr& a, const ir::IndexExpr& b) {
+    return a.length() == b.length() && a.node_type() == b.node_type();
+  };
   size_t i = 0;
   while (i < aPart.size()) {
-    if (!optim::ComparePriority(aPart[i], bPart[i])) return false;
+    if (!SameTypeAndLength(aPart[i], bPart[i])) return false;
     std::vector<std::pair<ir::IndexExpr, int>> aGroup, bGroup;
 
     do {
+      // Group expressions with same length and type. Due to the existence of
+      // the commutative law, expressions may have heterogeneous
+      // representations.
       aGroup.emplace_back(aPart[i], 0);
       bGroup.emplace_back(bPart[i], 0);
       ++i;
     } while (i < aPart.size() &&
-             optim::ComparePriority(aPart[i - 1], aPart[i]) == 1 &&
-             optim::ComparePriority(bPart[i - 1], bPart[i]) == 1);
+             SameTypeAndLength(aPart[i - 1], aPart[i]) == 1 &&
+             SameTypeAndLength(bPart[i - 1], bPart[i]) == 1);
 
-    // compare expressions with same priority.
+    // compare all  expressions in group with same length and type.
     for (size_t k = 0; k < aGroup.size(); ++k) {
       for (auto& b : bGroup) {
         if (b.second == 0 && aGroup[k].first == b.first) {
@@ -88,6 +96,9 @@ bool operator!=(Expr a, IndexExpr b) { return !(a == b); }
 
 bool operator==(IndexExpr a, IndexExpr b) {
   if (a.get() == b.get()) return true;
+  // Determine if there is constraint equality. For example, S0 + S1 == 960.
+  auto& constraint = common::ShapeConstraintManager::Instance();
+  if (constraint.IsEqual(a, b)) return true;
   if (a.node_type() != b.node_type()) return false;
   switch (a.node_type()) {
     case ir::IrNodeTy::IntImm: {

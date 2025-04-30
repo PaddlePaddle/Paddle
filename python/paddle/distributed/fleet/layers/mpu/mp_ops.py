@@ -49,7 +49,7 @@ class c_identity_eager(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        op_type = _get_reduce_op(ReduceOp.SUM)
         ctx.group.process_group.all_reduce_on_calc_stream(dy, op_type)
         return dy
 
@@ -238,7 +238,7 @@ class mp_allreduce_eager(PyLayer):
         ctx.skip_c_identity_dynamic = skip_c_identity_dynamic
 
         if use_calc_stream:
-            op_type = _get_reduce_op(op, "_mp_allreduce")
+            op_type = _get_reduce_op(op)
             group.process_group.all_reduce_on_calc_stream(tensor, op_type)
             return tensor
         else:
@@ -824,7 +824,7 @@ def split(
             :align: center
 
         Row Parallel Linear is shown as below. As the name suggests, Row Parallel Linear splits the weight matrix W into
-        [[W_row1], [W_row2]] along the row. And accordingly the input is splitted along the column into [X_col1, X_col2] and multiply their
+        [[W_row1], [W_row2]] along the row. And accordingly the input is split along the column into [X_col1, X_col2] and multiply their
         respective weight matrices. Finally apply AllReduce on the output from each card to get the final output.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_row.png
@@ -839,7 +839,7 @@ def split(
 
         The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
         is shown as below. The Column Parallel Linear splits the weight matrix W into [W_col1, W_col2] along the column and
-        these splitted matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output.
+        these split matrices respectively multiply the input. Finally apply AllGather on the output from each card to get the final output.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col.png
             :width: 800

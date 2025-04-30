@@ -348,6 +348,7 @@ try:
         _is_bwd_prim_enabled,
         _is_eager_prim_enabled,
         _is_fwd_prim_enabled,
+        _is_all_prim_enabled,
         _remove_skip_comp_ops,
         _set_bwd_prim_blacklist,
         _set_prim_target_grad_name,
@@ -445,72 +446,6 @@ def _prim_return_log():
         return False
 
 
-# We have 3 FLAGS to judge whether prim is enabled
-# FLAGS_prim_forward: Open or close forward prim strategy
-# FLAGS_prim_backward: Open or close backward prim strategy
-# FLAGS_prim_all: Open or close all prim strategy
-#
-#
-# Priorities:
-# if With CINN and Dy2St:
-# # # _set_prim_all_enabled > FLAGS_prim_all > check_and_set_prim_all_enabled == _set_prim_backward_enabled == _set_prim_backward_enabled > FLAGS_prim_forward == FLAGS_prim_backward
-# else:
-# # # _set_prim_all_enabled > FLAGS_prim_all == check_and_set_prim_all_enabled == _set_prim_backward_enabled == _set_prim_backward_enabled > FLAGS_prim_forward == FLAGS_prim_backward
-def __sync_stat_with_flag(flag, print_flag=True):
-    if flag == "FLAGS_prim_forward":
-        flag_value = os.getenv("FLAGS_prim_forward")
-        assert flag_value is not None
-        flag_value = flag_value.lower()
-        if flag_value in ("false", "0"):
-            __set_fwd_prim_enabled(False)
-        elif flag_value in ("true", "1"):
-            __set_fwd_prim_enabled(True)
-        else:
-            raise TypeError(f"flag {flag} should be true or false.")
-        if print_flag:
-            print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
-    elif flag == "FLAGS_prim_backward":
-        flag_value = os.getenv("FLAGS_prim_backward")
-        assert flag_value is not None
-        flag_value = flag_value.lower()
-        if flag_value in ("false", "0"):
-            __set_bwd_prim_enabled(False)
-        elif flag_value in ("true", "1"):
-            __set_bwd_prim_enabled(True)
-        else:
-            raise TypeError(f"flag {flag} should be true or false.")
-        if print_flag:
-            print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
-    elif flag == "FLAGS_prim_all":
-        flag_value = os.getenv("FLAGS_prim_all")
-        assert flag_value is not None
-        flag_value = flag_value.lower()
-        if flag_value in ("false", "0"):
-            __set_all_prim_enabled(False)
-        elif flag_value in ("true", "1"):
-            __set_all_prim_enabled(True)
-        else:
-            raise TypeError(f"flag {flag} should be true or false.")
-        if print_flag:
-            print(
-                "all prim enabled: ",
-                bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
-            )
-    else:
-        raise TypeError(
-            f"We only support FLAGS_prim_forward/FLAGS_prim_backward/FLAGS_prim_all but we got {flag}."
-        )
-
-
-def _is_all_prim_enabled():
-    return _is_fwd_prim_enabled() and _is_bwd_prim_enabled()
-
-
-# Alert!!! This method is only for test coverage, user should never use it directly, this may cause serious system errors.
-def _test_use_sync(value):
-    __sync_stat_with_flag(value)
-
-
 # ops in forward_blacklist will not be replaced by composite ops.
 prim_config = {
     "forward_blacklist": set(),
@@ -552,19 +487,15 @@ decomp_ops_contain_unused_output = {
 
 # This api is used for development for dynamic shape in prim, and will be removed in future.
 def _enable_prim_skip_dynamic_shape():
-    flag = os.getenv("FLAGS_prim_skip_dynamic", "1")
-    if flag and flag.lower() in ("1", "true"):
-        return True
-    else:
-        return False
+    from paddle.base.framework import get_flags
+
+    return get_flags("FLAGS_prim_skip_dynamic")["FLAGS_prim_skip_dynamic"]
 
 
 def _enable_prim_dynamic_shape():
-    flag = os.getenv("FLAGS_prim_enable_dynamic")
-    if flag and flag.lower() in ("1", "true"):
-        return True
-    else:
-        return False
+    from paddle.base.framework import get_flags
+
+    return get_flags("FLAGS_prim_enable_dynamic")["FLAGS_prim_enable_dynamic"]
 
 
 def _enable_dist_prim_all():
@@ -619,61 +550,65 @@ def _set_prim_backward_blacklist(*args):
     _set_bwd_prim_blacklist(new_ops)
 
 
-def _set_prim_backward_enabled(value):
-    __set_bwd_prim_enabled(bool(value))
-    if _prim_return_log():
+def _set_prim_backward_enabled(value: bool, print_flag: bool = False):
+    assert isinstance(
+        value, bool
+    ), f"value should be bool, but got {type(value)}"
+    __set_bwd_prim_enabled(value)
+    if _prim_return_log() or print_flag:
         print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
 
 
-def _set_prim_forward_enabled(value):
-    __set_fwd_prim_enabled(bool(value))
-    if _prim_return_log():
+def _set_prim_forward_enabled(value: bool, print_flag: bool = False):
+    assert isinstance(
+        value, bool
+    ), f"value should be bool, but got {type(value)}"
+    __set_fwd_prim_enabled(value)
+    if _prim_return_log() or print_flag:
         print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
 
 
-def set_prim_eager_enabled(value):
-    __set_eager_prim_enabled(bool(value))
-    if _prim_return_log():
+def set_prim_eager_enabled(value: bool, print_flag: bool = False):
+    assert isinstance(
+        value, bool
+    ), f"value should be bool, but got {type(value)}"
+    __set_eager_prim_enabled(value)
+    if _prim_return_log() or print_flag:
         print("eager prim enabled: ", bool(_is_eager_prim_enabled()))
 
 
-def _set_prim_all_enabled(value):
-    __set_all_prim_enabled(bool(value))
-    if _prim_return_log():
+def _set_prim_all_enabled(value: bool, print_flag: bool = False):
+    assert isinstance(
+        value, bool
+    ), f"value should be bool, but got {type(value)}"
+    __set_all_prim_enabled(value)
+    if _prim_return_log() or print_flag:
         print(
             "all prim enabled: ",
-            bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
+            bool(_is_all_prim_enabled()),
         )
 
 
-def __sync_prim_backward_status():
-    flag_value = os.getenv("FLAGS_prim_backward")
-    if flag_value is None:
-        if _prim_return_log():
-            print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
-    else:
-        __sync_stat_with_flag("FLAGS_prim_backward")
+def __check_and_set_prim_all_enabled(print_flag=False):
+    from paddle.utils.environments import strtobool
+
+    prim_all_env = os.getenv("FLAGS_prim_all")
+    prim_fwd_env = os.getenv("FLAGS_prim_forward")
+    prim_bwd_env = os.getenv("FLAGS_prim_backward")
+    if prim_all_env is not None:
+        prim_all_flag = strtobool(prim_all_env)
+        _set_prim_all_enabled(prim_all_flag, print_flag)
+
+    if prim_fwd_env is not None:
+        prim_fwd_flag = strtobool(prim_fwd_env)
+        _set_prim_forward_enabled(prim_fwd_flag, print_flag)
+
+    if prim_bwd_env is not None:
+        prim_bwd_flag = strtobool(prim_bwd_env)
+        _set_prim_backward_enabled(prim_bwd_flag, print_flag)
 
 
-def __sync_prim_forward_status():
-    flag_value = os.getenv("FLAGS_prim_forward")
-    if flag_value is None:
-        if _prim_return_log():
-            print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
-    else:
-        __sync_stat_with_flag("FLAGS_prim_forward")
-
-
-def check_and_set_prim_all_enabled(print_flag=False):
-    flag_value = os.getenv("FLAGS_prim_all")
-    if flag_value is None:
-        __sync_prim_backward_status()
-        __sync_prim_forward_status()
-    else:
-        __sync_stat_with_flag("FLAGS_prim_all", print_flag)
-
-
-check_and_set_prim_all_enabled(True)
+__check_and_set_prim_all_enabled(print_flag=True)
 
 
 SKIPPED_PRIM_VJP_DEFAULT_OPS = ["matmul_grad"]

@@ -139,4 +139,5 @@ PD_REGISTER_KERNEL(fused_bias_act,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasActKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

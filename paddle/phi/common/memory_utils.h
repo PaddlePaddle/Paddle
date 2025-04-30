@@ -174,7 +174,7 @@ struct MemoryInterface {
   phi::Allocator* (*get_host_allocator)();
   phi::Allocator* (*get_zero_allocator)(int device_id);
   phi::Allocator* (*get_host_zero_allocator)();
-  // phi::Allocator* (*get_pinned_allocator)();
+  phi::Allocator* (*get_pinned_allocator)();
   std::shared_ptr<std::remove_pointer<XPUEvent>::type> (*get_new_xpu_event)(
       int device_id);
 #endif
@@ -485,8 +485,6 @@ const Allocator* GetZeroAllocator(int device_id);
 
 const Allocator* GetHostZeroAllocator();
 
-// XPUs do not have the concept of pinned memory,
-// so the get_pinned_allocator function is not set.
 std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(int device_id);
 #endif
 

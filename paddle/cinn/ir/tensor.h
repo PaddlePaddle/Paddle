@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <absl/strings/string_view.h>
 #include <isl/cpp.h>
 
@@ -33,6 +32,7 @@
 #include "paddle/cinn/ir/function_base.h"
 #include "paddle/cinn/lang/buffer.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 

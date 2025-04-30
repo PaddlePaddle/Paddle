@@ -29,6 +29,9 @@ struct EngineParams {
   // The max memory size the engine uses.
   int64_t max_workspace_size;
 
+  // Enable cuda graph
+  bool use_cuda_graph{false};
+
   // The precision of engine.
   phi::DataType precision{phi::DataType::FLOAT32};
 
@@ -50,11 +53,18 @@ struct EngineParams {
   bool use_inspector{false};
   std::string engine_info_path{""};
   std::string engine_serialized_data{""};
+  // For refit
+  std::string refit_params_path{""};
+  std::vector<std::string> refit_param_names;
+  // param_name(role,layer_name)
+  std::map<std::string, std::map<std::string, std::string>>
+      refit_param_names2trt_names;
 
   //
   // From tensorrt_subgraph_pass, only used for OpConverter.
   //
   bool use_varseqlen{false};
+
   bool with_interleaved{false};
   std::string tensorrt_transformer_posid;
   std::string tensorrt_transformer_maskid;

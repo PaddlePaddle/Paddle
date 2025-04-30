@@ -15,7 +15,7 @@ cc_library(
   SRCS reference_count_pass_helper.cc
   DEPS garbage_collector)
 
-set(EAGER_DELETETION_PASS_DEPS
+set(EAGER_DELETION_PASS_DEPS
     graph
     graph_helper
     pass
@@ -27,4 +27,4 @@ set(EAGER_DELETETION_PASS_DEPS
 cc_library(
   eager_deletion_pass
   SRCS eager_deletion_pass.cc
-  DEPS ${EAGER_DELETETION_PASS_DEPS})
+  DEPS ${EAGER_DELETION_PASS_DEPS})

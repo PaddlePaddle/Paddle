@@ -24,8 +24,11 @@
 #undef NDEBUG
 #endif
 
+#ifndef PADDLE_NO_PYTHON
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
+#endif
+#include <optional>
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/distributed/collective/deep_ep/include/types.h"
@@ -119,6 +122,9 @@ struct Buffer {
 
   int get_local_device_id() const;
 
+  cudaStream_t get_comm_stream() const;
+
+#ifndef PADDLE_NO_PYTHON
   pybind11::bytearray get_local_ipc_handle() const;
 
   pybind11::bytearray get_local_nvshmem_unique_id() const;
@@ -127,6 +133,7 @@ struct Buffer {
             const std::vector<std::optional<pybind11::bytearray>>&
                 all_gathered_handles,
             const std::optional<pybind11::bytearray>& root_unique_id_opt);
+#endif
 
   std::tuple<deep_ep::detail::Tensor,
              std::optional<deep_ep::detail::Tensor>,
@@ -244,10 +251,11 @@ struct Buffer {
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
                                 int hidden,
                                 int num_experts);
+  void barrier_all();
 
 #ifdef PADDLE_WITH_NVSHMEM
   std::tuple<deep_ep::detail::Tensor,
-             deep_ep::detail::Tensor,
+             std::optional<deep_ep::detail::Tensor>,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
              deep_ep::detail::Tensor,
@@ -257,6 +265,7 @@ struct Buffer {
                        const deep_ep::detail::Tensor& topk_idx,
                        int num_max_dispatch_tokens_per_rank,
                        int num_experts,
+                       bool use_fp8,
                        bool async,
                        bool return_recv_hook);
 
@@ -328,7 +337,7 @@ struct Buffer {
                         bool allocate_on_comm_stream);
 
   std::tuple<paddle::Tensor,
-             paddle::Tensor,
+             std::optional<paddle::Tensor>,
              paddle::Tensor,
              paddle::Tensor,
              paddle::Tensor,
@@ -338,6 +347,7 @@ struct Buffer {
                            const paddle::Tensor& topk_idx,
                            int num_max_dispatch_tokens_per_rank,
                            int num_experts,
+                           bool use_fp8,
                            bool async,
                            bool return_recv_hook);
 

@@ -60,7 +60,6 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle) {
   // cudaIpcMemLazyEnablePeerAccess));
   int ret = cudaIpcOpenMemHandle(
       &baseptr, *ipc_handle, cudaIpcMemLazyEnablePeerAccess);
-  std::cout << "cudaIpcOpenMemHandle returned: " << ret << std::endl;
   PADDLE_ENFORCE_XPU_SUCCESS(ret);
 
   // Create a shared_ptr with a custom deleter that will close the IPC handle.

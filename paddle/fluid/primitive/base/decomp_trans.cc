@@ -227,6 +227,11 @@ void DecompProgram::check_decomp_outputs(
   bool skip_invalid_op_check =
       decomp_op_contain_none.find(op_name) != decomp_op_contain_none.end();
   for (size_t i = 0; i < orig_outs.size(); i++) {
+    if (orig_outs[i].use_empty()) {
+      VLOG(3) << "[Prim] Decomp op skip check of " << op_name << " output "
+              << i;
+      continue;
+    }
     if (skip_invalid_op_check &&
         (paddle::dialect::IsEmptyValue(orig_outs[i]) ||
          paddle::dialect::IsEmptyValue(decomp_outs[i]))) {

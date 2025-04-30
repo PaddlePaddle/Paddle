@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle.framework import core
@@ -376,6 +377,28 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
                 [[1, 0, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0]]
             ).astype("int32")
             res = paddle.take_along_axis(tensorx, indices, 0, False)
+
+
+class TestTakeAlongAxisAPICase4(unittest.TestCase):
+    def test_static_shape_take_along_axis(self):
+        with dygraph_guard():
+
+            x = paddle.randn([4, 2])
+            ind = paddle.to_tensor([[0, 1]])
+
+            static_f = paddle.jit.to_static(
+                paddle.take_along_axis,
+                input_spec=[
+                    paddle.static.InputSpec(
+                        shape=[-1, -1], dtype="float32", name="arr"
+                    ),
+                    paddle.static.InputSpec(
+                        shape=[-1, 2], dtype="int64", name="indices"
+                    ),
+                ],
+                full_graph=True,
+            )
+            _ = static_f(x, ind, axis=0, broadcast=False)
 
 
 if __name__ == "__main__":

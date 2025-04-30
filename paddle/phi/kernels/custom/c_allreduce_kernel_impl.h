@@ -97,6 +97,34 @@ void CAllReduceKernel(const Context& dev_ctx,
                                    comm->GetXcclComm(),
                                    *stream);
 }
+
+template <typename T, typename Context, phi::ccl::CCLReduceOp red_type>
+void AllReduceKernel(const Context& dev_ctx,
+                     const DenseTensor& x_in,
+                     DenseTensor* out) {
+  auto in = &x_in;
+
+  auto place = dev_ctx.GetPlace();
+  auto dtype = in->dtype();
+  int64_t numel = in->numel();
+  const void* sendbuff = in->data<T>();
+  out->Resize(in->dims());
+  void* recvbuff = dev_ctx.template Alloc<T>(out);
+
+  auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
+      dev_ctx.GetCommContext());
+
+  std::shared_ptr<phi::stream::Stream> stream;
+  stream = comm->GetStream();
+  phi::DeviceManager::CCLAllReduce(place.GetDeviceType(),
+                                   const_cast<void*>(sendbuff),
+                                   recvbuff,
+                                   numel,
+                                   dtype,
+                                   red_type,
+                                   comm->GetXcclComm(),
+                                   *stream);
+}
 }  // namespace phi
 
 #endif

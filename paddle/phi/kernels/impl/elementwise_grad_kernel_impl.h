@@ -1305,14 +1305,16 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
 template <typename T>
 struct MaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x > y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
 template <typename T>
 struct MaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x <= y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
@@ -1324,14 +1326,16 @@ struct MaxGradDy {
 template <typename T>
 struct MinGradDx {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x < y);
+    return dout * static_cast<T>(x < y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 
 template <typename T>
 struct MinGradDy {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
-    return dout * static_cast<T>(x >= y);
+    return dout * static_cast<T>(x > y) +
+           (dout / static_cast<T>(2)) * static_cast<T>(x == y);
   }
 };
 

@@ -1061,6 +1061,29 @@ def shard_layer(
         )
 
 
+def is_dist_tensor(tensor) -> bool:
+    """
+    Check if an input is a dist_tensor in both dynamic and static modes.
+
+    Args:
+        tensor: The input to check
+
+    Returns:
+        bool: True if the input is a dist_tensor, False otherwise
+    """
+    if paddle.in_dynamic_mode():
+        return (
+            isinstance(tensor, paddle.Tensor)
+            and hasattr(tensor, 'is_dist')
+            and tensor.is_dist()
+        )
+    else:
+        return (
+            isinstance(tensor, paddle.base.libpaddle.pir.Value)
+            and tensor.dist_attr() is not None
+        )
+
+
 class _ShardOptimizer(Optimizer):
     def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
         assert (
@@ -1387,6 +1410,130 @@ class _ShardOptimizer(Optimizer):
                 )
             param_and_grad = (param_and_grad[0], grad)
         return self._inner_opt._append_optimize_op(block, param_and_grad)
+
+    def _fused_comm_before_apply_optimize(self, flags, params_grads):
+        '''
+        In sharding dynamic mode, optimize grad clip on partial grads causes redundant allreduce.
+        Below are 2 methods to modify grad partial state by fusing comms before optimize:
+            1) fuse allreduce: Change all partial state in placements to replicate via `allreduce` comms,
+                e.g.
+                    a) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, shard(0), partial] -> [replicate, shard(0), replicate].
+
+            2) fuse reduce_scatter: Keep shard states in placements unchanged, transform others to `shard(dim)`
+               states via `reduce_scatter` comms if possible, or replicate states otherwise. In particular,
+               the `placement[sharding_axis]` should be `shard(0)` if possible.
+                e.g.
+                    a) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, partial, partial] -> [shard(0), shard(1), replicate]
+                    b) sharding_axis = 0, tensor rank = 2,
+                       placements: [partial, shard(0), partial ] -> [shard(1), shard(0), replicate]
+        '''
+        new_params_grads = []
+
+        if flags["fuse_allreduce"]:
+            for param, grad in params_grads:
+                new_grad = grad
+                new_placements = copy.deepcopy(grad.placements)
+                for mesh_axis, placement in enumerate(grad.placements):
+                    # 1. Convert all partial states to allreduce states.
+                    if placement.is_partial():
+                        new_placements[mesh_axis] = dist.Replicate()
+
+                if grad.placements != new_placements:
+                    # 2. Add allreduce comms via reshard API.
+                    new_grad = dist.reshard(
+                        grad, grad.process_mesh, new_placements
+                    )
+                new_params_grads.append((param, new_grad))
+
+        elif flags["fuse_reducescatter"]:
+            # Get the first non-shard dim of tensor shape in ascending order.
+            # `shard_dims_set` records if dim is marked as shard in placement.
+            def get_first_can_shard_dim(tensor_shape, shard_dims_set):
+                for dim in range(len(tensor_shape)):
+                    if dim not in shard_dims_set:
+                        return dim
+                return -1
+
+            for param, grad in params_grads:
+                new_placements = copy.deepcopy(grad.placements)
+                new_grad = grad
+                tensor_shape = grad._local_shape
+                shard_dims_set = set()
+
+                # 1. `shard_dims_set` records dims marked as shard in placement.
+                for placement in grad.placements:
+                    if placement.is_shard():
+                        dim = placement.get_dim()
+                        shard_dims_set.add(dim)
+
+                # 2. Prioritize setting placement[sharding_axis] as shard (usually shard(0)), otherwise set as replicate.
+                dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                if dim != -1:
+                    shard_dims_set.add(dim)
+                    new_placements[self._sharding_axis] = dist.Shard(dim)
+                else:
+                    new_placements[self._sharding_axis] = dist.Replicate()
+
+                for mesh_axis, placement in enumerate(grad.placements):
+                    if mesh_axis == self._sharding_axis:
+                        continue
+                    # 3. Keep shard states in placements unchanged.
+                    if placement.is_shard():
+                        continue
+                    dim = get_first_can_shard_dim(tensor_shape, shard_dims_set)
+                    if dim != -1:
+                        # 4. Turn other placements into shard state if possible.
+                        shard_dims_set.add(dim)
+                        new_placements[mesh_axis] = dist.Shard(dim)
+                    else:
+                        # 5. When all tensor dims are in shard state, set remaining placements to replicate.
+                        new_placements[mesh_axis] = dist.Replicate()
+
+                if grad.placements != new_placements:
+                    # 6. Add reduce_scatter comms via reshard API.
+                    new_grad = dist.reshard(
+                        grad, grad.process_mesh, new_placements
+                    )
+
+                new_params_grads.append((param, new_grad))
+        else:
+            new_params_grads = params_grads
+        return new_params_grads
+
+    def _apply_optimize(
+        self, loss, startup_program, params_grads, param_group_idx=0
+    ):
+        # Fuse the communication of gradients prior to the optimization operation in the dynamic mode.
+        if paddle.in_dynamic_mode():
+            # Get fuse optimization flag.
+            def get_env(flag_name):
+                if os.getenv(flag_name) in ['True', 'true', '1']:
+                    return True
+                return False
+
+            # TODO: This optimization hasn't been verified on a wide range of models. Currently,
+            # it's controlled by a flag switch and will be removed later.
+            fuse_allreduce_in_opt = get_env("FLAGS_fuse_allreduce_in_opt")
+            fuse_reducescatter_in_opt = get_env(
+                "FLAGS_fuse_reducescatter_in_opt"
+            )
+            assert not (
+                fuse_allreduce_in_opt and fuse_reducescatter_in_opt
+            ), "The `FLAGS_fuse_allreduce_in_opt` switch and the `FLAGS_fuse_reducescatter_in_opt` switch cannot be turned on simultaneously."
+
+            if fuse_allreduce_in_opt or fuse_reducescatter_in_opt:
+                flags = {}
+                flags["fuse_allreduce"] = fuse_allreduce_in_opt
+                flags["fuse_reducescatter"] = fuse_reducescatter_in_opt
+                params_grads = self._fused_comm_before_apply_optimize(
+                    flags, params_grads
+                )
+
+        return super()._apply_optimize(
+            loss, startup_program, params_grads, param_group_idx
+        )
 
     def __getattr__(self, item):
         if "_inner_opt" in self.__dict__:
@@ -1933,6 +2080,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     temp_param_grads_half,
                     temp_scale,
                 )
+
+                # AllReduce for "bool" is not supported on XPU
+                if "xpu" in paddle.device.get_device():
+                    temp_param_grads_half = paddle.cast(
+                        temp_param_grads_half, "int32"
+                    )
+                    temp_param_grads_half = paddle.sum(temp_param_grads_half)
+                    temp_param_grads_half = paddle.cast(
+                        temp_param_grads_half, "bool"
+                    )
+
                 temp_found_inf = _C_ops.bitwise_or(
                     temp_found_inf, temp_found_inf_half
                 )
@@ -1941,6 +2099,17 @@ def shard_scaler(scaler: GradScaler) -> GradScaler:
                     temp_param_grads_fp32,
                     temp_scale,
                 )
+
+                # AllReduce for "bool" is not supported on XPU
+                if "xpu" in paddle.device.get_device():
+                    temp_found_inf_fp32 = paddle.cast(
+                        temp_found_inf_fp32, "int32"
+                    )
+                    temp_found_inf_fp32 = paddle.sum(temp_found_inf_fp32)
+                    temp_found_inf_fp32 = paddle.cast(
+                        temp_found_inf_fp32, "bool"
+                    )
+
                 temp_found_inf = _C_ops.bitwise_or(
                     temp_found_inf, temp_found_inf_fp32
                 )
@@ -3238,24 +3407,9 @@ def unshard_dtensor(dist_tensor: Tensor) -> Tensor:
         return dist_tensor
 
     else:
-        assert isinstance(
-            dist_tensor, Variable
-        ), f"the input type of 'unshard_dtensor' should be Variable, but got [{dist_tensor}]"
-        # in static mode, 'distributed tensor' and 'dense tensor' are all
-        # Variable type, the distributed attribute is a property of the Variable.
-        # So, it's no need to convert the distributed tensor to a dense tensor.
-        # We only need to modify its distributed attribute.
-        empty_dist_attr = (
-            dist.auto_parallel.static.dist_attribute.TensorDistAttr()
+        raise NotImplementedError(
+            "`unshard_dtensor()` only supported in dynamic and pir mode."
         )
-        dist_tensor.dist_attr = empty_dist_attr
-
-        # remove the distributed tensor from dist_context
-        default_dist_ctx = get_default_distributed_context()
-        serial_tensor_id = dist_tensor.desc.original_id()
-        default_dist_ctx._dist_tensors_for_program.pop(serial_tensor_id, None)
-
-        return dist_tensor
 
 
 class ShardDataloader:
@@ -3277,30 +3431,13 @@ class ShardDataloader:
         shard_dims (list|tuple|str|int]): The mesh dimension to shard the dataloader.
             Users can specify the shard_dim of each mesh or specify a single shard_dim for all meshes.
             Default: None, which means the data loader will not be split, i.e. mp.
-        is_dataset_splitted (bool): Whether the dataset has been splitted.
-        dense_tensor_idx (list): A 2D list specifies the index of the dense_tensor in the output of dataloader.
+        is_dataset_splitted (bool): Whether the dataset has been split.
+        dense_tensor_idx (list): A paired 2D list specifies the index of the dense_tensor in the output of dataloader.
             It allows users to identify which elements within each output batch are dense_tensor.
-            Default: None, which means all the outputs are dist_tensors.
-            e.g.
-            1. If the collator function returns:
-                return {
-                    "input_ids": [
-                        features["input_ids"],
-                        features["attention_mask"],
-                        features["position_ids"],
-                    ],
-                    "image": features["image"],
-                    "labels": features["labels"],
-                }
-            2. If `dense_tensor_idx = [[1, 2], [0], []]`:
-                - For "input_ids":
-                    input_ids["input_ids"] is a dist_tensor
-                    input_ids["attention_mask"] is a dense_tensor
-                    input_ids["position_ids"] is a dense_tensor
-                - For "image":
-                    image is a dense_tensor
-                - For "labels":
-                    labels is a dist_tensor
+            first dense_tensor: the dense_tensor return by dataloader.
+            second dense_tensor: num_or_sections specifies how to split first tensor: evenly (if a number) or unevenly (if a list).
+            Default: None, meaning all outputs are dist_tensors.
+            Note: For dense_tensor_idx settings, the idx must be paired.
     """
 
     def __init__(
@@ -3310,7 +3447,7 @@ class ShardDataloader:
         input_keys: list[str] | tuple[str] | None = None,
         shard_dims: list | tuple | str | int | None = None,
         is_dataset_splitted: bool = False,
-        dense_tensor_idx: list | None = None,
+        dense_tensor_idx: list[list[int]] | None = None,
     ):
         # do some check
         if is_dataset_splitted is True and shard_dims is None:
@@ -3599,7 +3736,7 @@ def shard_dataloader(
     input_keys: Sequence[str] | None = None,
     shard_dims: Sequence[str] | Sequence[int] | str | int | None = None,
     is_dataset_splitted: bool = False,
-    dense_tensor_idx: list | None = None,
+    dense_tensor_idx: list[list[int]] | None = None,
 ) -> ShardDataloader:
     """
     Convert the dataloader to a ShardDataloader which provided two capabilities:
@@ -3623,30 +3760,13 @@ def shard_dataloader(
             The mesh dimension to shard the dataloader.
             Users can specify the shard_dim of each mesh or specify a single shard_dim for all meshes.
             Default: None, which means the data loader will not be split, i.e. mp.
-        is_dataset_splitted (bool): Whether the dataset has been splitted, Default: False.
-        dense_tensor_idx (list): A 2D list specifies the index of the dense_tensor in the output of dataloader.
+        is_dataset_splitted (bool): Whether the dataset has been split, Default: False.
+        dense_tensor_idx (list): A paired 2D list specifies the index of the dense_tensor in the output of dataloader.
             It allows users to identify which elements within each output batch are dense_tensor.
-            Default: None, which means all the outputs are dist_tensors.
-            e.g.
-            1. If the collator function returns:
-                return {
-                    "input_ids": [
-                        features["input_ids"],
-                        features["attention_mask"],
-                        features["position_ids"],
-                    ],
-                    "image": features["image"],
-                    "labels": features["labels"],
-                }
-            2. If `dense_tensor_idx = [[1, 2], [0], []]`:
-                - For "input_ids":
-                    input_ids["input_ids"] is a dist_tensor
-                    input_ids["attention_mask"] is a dense_tensor
-                    input_ids["position_ids"] is a dense_tensor
-                - For "image":
-                    image is a dense_tensor
-                - For "labels":
-                    labels is a dist_tensor
+            first dense_tensor: the dense_tensor return by dataloader.
+            second dense_tensor: num_or_sections specifies how to split first tensor: evenly (if a number) or unevenly (if a list).
+            Default: None, meaning all outputs are dist_tensors.
+            Note: For dense_tensor_idx settings, the idx must be paired.
     Returns:
         ShardDataloader: The sharded dataloader.
 

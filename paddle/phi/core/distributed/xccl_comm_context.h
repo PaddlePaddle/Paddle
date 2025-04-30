@@ -16,6 +16,7 @@
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/device_manager.h"
 
 namespace phi {
@@ -37,6 +38,12 @@ class XCCLCommContext final : public CommContext {
   std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
 
   std::string GetDeviceType() const { return place_.GetDeviceType(); }
+
+  phi::CustomContext* GetDevContext() { return dev_ctx_.get(); }
+
+  void SetDevContext(std::unique_ptr<phi::CustomContext>&& dev_ctx) {
+    dev_ctx_ = std::move(dev_ctx);
+  }
 
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
@@ -83,6 +90,7 @@ class XCCLCommContext final : public CommContext {
   phi::Place place_;
   ccl::CCLComm xccl_comm_;
   std::shared_ptr<phi::stream::Stream> stream_;
+  std::unique_ptr<phi::CustomContext> dev_ctx_;
 };
 
 }  // namespace distributed

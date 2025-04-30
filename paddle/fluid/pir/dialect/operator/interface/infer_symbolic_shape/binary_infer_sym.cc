@@ -44,8 +44,13 @@ inline void UpdatePaddingAndDilation(
     symbol::DimExprBuilder builder;
     for (size_t i = 0; i < data_dims.size(); ++i) {
       symbol::DimExpr out_size = (data_dims[i] + strides[i] - 1) / strides[i];
-      symbol::DimExpr pad_sum = builder.Max(
-          (out_size - one) * strides[i] + ksize[i] - data_dims[i], zero);
+      symbol::DimExpr pad_sum;
+      if (strides[i] == 2 && ksize[i] == symbol::DimExpr{3}) {
+        pad_sum = (out_size - one) * strides[i] + ksize[i] - data_dims[i];
+      } else {
+        pad_sum = builder.Max(
+            (out_size - one) * strides[i] + ksize[i] - data_dims[i], zero);
+      }
 
       symbol::DimExpr pad_0 = pad_sum / two;
       symbol::DimExpr pad_1 = pad_sum - pad_0;
@@ -1243,15 +1248,18 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
       residuals_shape.emplace_back(0);
     }
   }
-  if (paddle::dialect::details::IsFakeValue(op->result(1)) ||
-      residuals_shape.empty()) {
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-  } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+
+  if (!paddle::dialect::details::IsFakeValue(op->result(1))) {
+    if (residuals_shape.empty()) {
+      infer_context->SetSymbolForValueByStaticShape(op->result(1));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1),
+          symbol::ShapeOrDataDimExprs{
+              symbol::TensorShapeOrDataDimExprs(residuals_shape)});
+    }
   }
+
   symbol::DimExprBuilder builder;
   batch_dims_vec.emplace_back(builder.Min(m, n));
   infer_context->SetShapeOrDataForValue(

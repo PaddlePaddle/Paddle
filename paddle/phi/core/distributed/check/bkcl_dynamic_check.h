@@ -40,6 +40,12 @@ struct BKCLDynamicCheck {
                          int cur_rank,
                          int world_size,
                          BKCLContext_t comm);
+  static void CheckAlltoAllShape(
+      const std::vector<phi::DenseTensor>& out_tensor,
+      const std::vector<phi::DenseTensor>& in_tensor,
+      int cur_rank,
+      int world_size,
+      BKCLContext_t comm);
 };
 
 }  //  namespace distributed

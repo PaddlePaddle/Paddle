@@ -1166,6 +1166,24 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.6.1.9 | "
                     "nvidia-cusparse-cu12==12.3.1.170 "
                 ),
+                "12.6": (
+                    "nvidia-cuda-runtime-cu12==12.6.77 | "
+                    "nvidia-cudnn-cu12==9.5.1.17 | "
+                    "nvidia-cublas-cu12==12.6.4.1 | "
+                    "nvidia-cufft-cu12==11.3.0.4 | "
+                    "nvidia-curand-cu12==10.3.7.77 | "
+                    "nvidia-cusolver-cu12==11.7.1.2 | "
+                    "nvidia-cusparse-cu12==12.5.4.2 "
+                ),
+                "12.8": (
+                    "nvidia-cuda-runtime-cu12==12.8.57 | "
+                    "nvidia-cudnn-cu12==9.7.1.26 | "
+                    "nvidia-cublas-cu12==12.8.3.14 | "
+                    "nvidia-cufft-cu12==11.3.3.41 | "
+                    "nvidia-curand-cu12==10.3.9.55 | "
+                    "nvidia-cusolver-cu12==11.7.2.55 | "
+                    "nvidia-cusparse-cu12==12.5.7.53 "
+                ),
             }
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode(
@@ -1330,6 +1348,11 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
+    if env_dict.get("WITH_FLAGCX") == 'ON':
+        package_data['paddle.libs'] += [
+            ('libflagcx' if os.name != 'nt' else 'flagcx') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("FLAGCX_LIB"), libs_path)
     if env_dict.get("WITH_SHARED_PHI") == "ON":
         package_data['paddle.libs'] += [
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
@@ -1361,6 +1384,9 @@ def get_package_data_and_package_dir():
     package_data['paddle.libs'] += [
         ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
     ]
+    if os.name == 'nt':
+        package_data['paddle.libs'] += ['common.lib']
+        shutil.copy(env_dict.get("COMMON_LINK"), libs_path)
     shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
@@ -1452,9 +1478,15 @@ def get_package_data_and_package_dir():
             + '/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
         package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
+        package_data['paddle.libs'] += ['cinn_sycl_runtime_source.h']
 
         cinn_fp16_file = (
             env_dict.get("CINN_INCLUDE_DIR")
@@ -2157,6 +2189,7 @@ def get_setup_parameters():
         'paddle.jit.sot.opcode_translator.instruction_utils',
         'paddle.jit.sot.profiler',
         'paddle.jit.sot.symbolic',
+        'paddle.jit.sot.symbolic_shape',
         'paddle.jit.sot.utils',
         'paddle.inference',
         'paddle.inference.contrib',
@@ -2185,6 +2218,7 @@ def get_setup_parameters():
         'paddle.text',
         'paddle.text.datasets',
         'paddle.incubate',
+        'paddle.incubate.cc',
         'paddle.incubate.nn',
         'paddle.incubate.jit',
         'paddle.incubate.nn.functional',

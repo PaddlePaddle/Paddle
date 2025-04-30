@@ -834,7 +834,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 main_program_desc, util_program = create_fake_model(
                     prog_config, run_pir=True
                 )
-
                 # transform program from old ir to new ir
                 startup_program = pir.translate_to_pir(util_program.desc)
                 pir_main_program = pir.translate_to_pir(main_program_desc)
@@ -925,7 +924,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                 prog_config.ops[i].attrs
                                 for i in range(len(prog_config.ops))
                             ]
-                            dynamic_shape = self.generate_dynamic_shape()
+                            dynamic_shape = self.generate_dynamic_shape(attrs)
 
                             main_program_desc, util_program = create_fake_model(
                                 prog_config,
@@ -947,7 +946,23 @@ class TrtLayerAutoScanTest(AutoScanTest):
                             ]['data'].dtype
                             if not self.dynamic_shape.min_input_shape:
                                 continue
-                            for key in dynamic_shape.min_input_shape.keys():
+                            for (
+                                key
+                            ) in self.dynamic_shape.min_input_shape.keys():
+                                input_data = prog_config.get_feed_data()[key][
+                                    'data'
+                                ]
+                                input_dtype = (
+                                    input_data.dtype
+                                    if hasattr(input_data, 'dtype')
+                                    else input_data_type
+                                )
+                                input_range = (
+                                    (0.0, input_data.flat[0])
+                                    if input_dtype in ['int32', 'int64']
+                                    else None
+                                )
+
                                 input_config = Input(
                                     min_input_shape=tuple(
                                         self.dynamic_shape.min_input_shape[key]
@@ -958,7 +973,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                     max_input_shape=tuple(
                                         self.dynamic_shape.max_input_shape[key]
                                     ),
-                                    input_data_type=str(input_data_type),
+                                    input_data_type=str(input_dtype),
+                                    input_range=input_range,
                                 )
                                 inputs.append(input_config)
                             trt_config = TensorRTConfig(inputs=inputs)
@@ -990,7 +1006,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         prog_config
                     )
                     model = main_program_desc.serialize_to_string()
-
                     place = paddle.base.CPUPlace()
                     executor = paddle.base.Executor(place)
                     scope = paddle.base.Scope()
@@ -1000,7 +1015,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 if quant:
                     with paddle.pir_utils.OldIrGuard():
                         model, params = create_quant_model(model, params)
-
                 if not skip_baseline:
                     # baseline: gpu run, we only test float32
                     gpu_config = self.create_inference_config(use_trt=False)

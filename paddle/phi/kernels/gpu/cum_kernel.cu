@@ -143,6 +143,14 @@ struct LogAddExp {
   }
 };
 
+struct ComplexSum {
+  template <typename T>
+  __host__ __device__ __forceinline__ T operator()(const T& a,
+                                                   const T& b) const {
+    return a + b;
+  }
+};
+
 template <typename T, typename op>
 struct Identity;
 
@@ -154,6 +162,11 @@ struct Identity<T, cub::Sum> {
 template <typename T>
 struct Identity<T, LogAddExp> {
   static constexpr T value = std::numeric_limits<T>::lowest();
+};
+
+template <typename T>
+struct Identity<T, ComplexSum> {
+  static constexpr T value = {0, 0};
 };
 
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
@@ -410,7 +423,11 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
-  using Op = cub::Sum;
+  using Op = typename std::conditional<
+      std::is_same<T, phi::dtype::complex<float>>::value ||
+          std::is_same<T, phi::dtype::complex<double>>::value,
+      ComplexSum,
+      cub::Sum>::type;
   auto op = Op();
   ScanKernel<T, Context, Op>(
       dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
@@ -457,7 +474,9 @@ PD_REGISTER_KERNEL(cumsum,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
