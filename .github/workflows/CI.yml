@@ -20,10 +20,17 @@ jobs:
     name: Clone-linux
     uses: ./.github/workflows/_Clone-linux.yml
 
+  build-docker:
+    name: build docker images
+    needs: clone
+    uses: ./.github/workflows/docker.yml
+
   sot:
     name: PR-CI-SOT
     uses: ./.github/workflows/_SOT.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_cpu_image: ${{ needs.build-docker.outputs.docker_cpu_image }}
 
   xpu:
     name: Linux-XPU
@@ -33,7 +40,9 @@ jobs:
   inference:
     name: PR-CI-Inference
     uses: ./.github/workflows/_Inference.yml
-    needs: clone
+    needs: build-docker
+    with:
+      docker_inference_image: ${{ needs.build-docker.outputs.docker_inference_image }}
 
   coverage:
     name: Coverage
