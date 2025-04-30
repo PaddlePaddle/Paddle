@@ -145,16 +145,58 @@ class TestMaxWithTensorAxis2(TestReduceOPTensorAxisBase):
         ]
 
 
-class TestMaxWithTensorAxis3(TestReduceOPTensorAxisBase):
+class TestMaxZeroSize1(unittest.TestCase):
     def init_data(self):
-        self.pd_api = paddle.max
-        self.np_api = np.max
-        self.x = paddle.randn([0, 1, 2, 3], dtype='float64')
-        self.np_axis = np.array([1, 2, 3], dtype='int64')
-        self.tensor_axis = paddle.to_tensor([1, 2, 3], dtype='int64')
+        self.shape = [0, 1, 2, 3]
+        self.axis = [1, 2, 3]
+        self.keepdims = False
+
+    def setUp(self):
+        self.init_data()
+        self.data = np.random.random(self.shape).astype(np.float64)
+        self.expect_res = np.max(
+            self.data, axis=tuple(self.axis), keepdims=self.keepdims
+        )
+        self.places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(core.CUDAPlace(0))
+
+    def test_static(self):
+        with static_guard():
+            for place in self.places:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        "x", shape=self.shape, dtype="float64"
+                    )
+                    res = paddle.max(x, axis=self.axis, keepdim=self.keepdims)
+                    exe = paddle.static.Executor(place)
+                    (res,) = exe.run(feed={"x": self.data}, fetch_list=[res])
+                np.testing.assert_equal(res, self.expect_res)
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x = paddle.to_tensor(self.data)
+            res = paddle.max(x, axis=self.axis, keepdim=self.keepdims)
+        np.testing.assert_equal(res, self.expect_res)
 
 
-class TestMaxWithTensorAxis4(TestReduceOPTensorAxisBase):
+class TestMaxZeroSize2(TestMaxZeroSize1):
+    def init_data(self):
+        self.shape = [0, 0, 2]
+        self.axis = [2]
+        self.keepdims = False
+
+
+class TestMaxZeroSize3(TestMaxZeroSize1):
+    def init_data(self):
+        self.shape = [0, 0, 2]
+        self.axis = [2]
+        self.keepdims = True
+
+
+class TestMaxZeroSize1(unittest.TestCase):
     def init_data(self):
         self.pd_api = paddle.max
         self.np_api = np.max
