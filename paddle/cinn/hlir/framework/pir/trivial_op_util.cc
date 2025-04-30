@@ -398,6 +398,9 @@ ExprSetFinder ChildIfThenElses =
 ExprSetFinder ChildVars =
     Collector([](const ir::Expr* e) { return e->as_var(); }, "ChildVars");
 
+ExprSetFinder ChildBlocks = Collector(
+    [](const ir::Expr* e) { return e->As<ir::Block>(); }, "ChildBlocks");
+
 ExprSetFinder FindFather(const ir::Expr& root) {
   const auto& f = [root](const auto& child) -> ExprSet {
     ExprSetFinder find_child =
@@ -1220,6 +1223,60 @@ void InlineGlobalVarCompute(const std::vector<ir::Expr>& roots,
     if (global_var_names.count(output_tensor_name)) {
       VLOG(4) << "Inline compute of global var: " << output_tensor_name;
       InlineGlobalVarComputeImpl(roots[i], roots);
+    }
+  }
+}
+
+int IndexVarCounter() {
+  static thread_local std::atomic<int> counter = 1;
+  return counter++;
+}
+
+void SplitComplexIndexExpr(const std::vector<ir::Expr>& roots) {
+  auto search_body_blocks = ExprSetFinderUtils::ChildScheduleBlockRealizes *
+                            ExprSetFinderUtils::ScheduleBlockRealizeIsNotInit *
+                            ExprSetFinderUtils::ChildBlocks;
+  auto search_tensor_loads = ExprSetFinderUtils::ChildStores *
+                             ExprSetFinderUtils::Store2Value *
+                             ExprSetFinderUtils::ChildTensorLoads;
+  for (auto root : roots) {
+    if (IsReducePattern(root)) continue;
+    auto body_block_expr = search_body_blocks(root).back();
+    auto body_block = body_block_expr.As<ir::Block>();
+    // Visit every tensor load in reverse topological order. Once a tensor
+    // load's indices are splited, other tensor loads may be affected, so we
+    // need to search tensor loads again until no tensor load index is splited.
+    std::unordered_set<ir::Expr> visited_tensor_loads;
+    auto tensor_loads = search_tensor_loads(body_block);
+    while (!tensor_loads.empty()) {
+      auto tensor_load = tensor_loads.back();
+      tensor_loads.pop_back();
+      if (visited_tensor_loads.count(tensor_load)) continue;
+      visited_tensor_loads.insert(tensor_load);
+
+      auto indices = tensor_load.As<ir::Load>()->indices;
+      bool need_split = false;
+      std::vector<ir::Expr> new_indices;
+      for (size_t i = 0; i < indices.size(); ++i) {
+        auto index = indices[i];
+        if (index.is_index()) {
+          new_indices.push_back(index);
+          continue;
+        }
+        need_split = true;
+        ir::Var index_var = ir::_Var_::Make(
+            "index_var_" + std::to_string(IndexVarCounter()), index.type());
+        auto index_let_expr = ir::Let::Make(index_var, index);
+        body_block->stmts.insert(body_block->stmts.end() - 1, index_let_expr);
+        new_indices.push_back(index_var);
+      }
+      // Replace index with index_var
+      if (!need_split) continue;
+      auto new_tensor_load = ir::ir_utils::IRCopy(tensor_load);
+      new_tensor_load.As<ir::Load>()->indices = new_indices;
+      ComposeUtils::MappingTargetExprToDestExprMutator(
+          tensor_load, new_tensor_load)(&body_block_expr);
+      tensor_loads = search_tensor_loads(body_block);
     }
   }
 }

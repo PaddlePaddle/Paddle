@@ -202,6 +202,7 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
   }
   // Inline global vars
   InlineGlobalVarCompute(result, interpreter->global_var_names);
+  SplitComplexIndexExpr(result);
   interpreter->ret_expr = result;
 }
 

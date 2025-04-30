@@ -310,6 +310,8 @@ ir::Tensor GetOutputTensor(const ir::Expr& root);
 void InlineGlobalVarCompute(const std::vector<ir::Expr>& roots,
                             const std::set<std::string>& global_var_names);
 
+void SplitComplexIndexExpr(const std::vector<ir::Expr>& roots);
+
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework

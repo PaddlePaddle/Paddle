@@ -201,7 +201,8 @@ struct IterSpaceGetter {
       : load_(load), loops_(loops), indices_vars_(load->indices.size()) {
     for (int i = 0; i < load_->indices.size(); ++i) {
       ir::ir_utils::CollectIRNodes(load_->indices[i], [&](const ir::Expr* x) {
-        if (x->is_var() && !x->as_var()->is_symbolic_constant) {
+        if (x->is_var() && !x->as_var()->is_symbolic_constant &&
+            x->as_var()->name.find(analyzer::kLoopVar) != std::string::npos) {
           indices_vars_[i].insert(x->as_var_ref());
         }
         return false;

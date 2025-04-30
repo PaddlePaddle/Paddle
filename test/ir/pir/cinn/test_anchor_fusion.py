@@ -307,6 +307,20 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.check_accuracy_and_kernel_num(init, func)
 
+    def test_concat_gather(self):
+        def func(x, y, z):
+            u = paddle.concat([y, z], axis=0) + 32
+            v = paddle.gather(x, u, axis=0)
+            return v * 3, paddle.sum(v, axis=0)
+
+        def init():
+            x = paddle.rand((128, 256))
+            y = paddle.randint(0, 64, [32], dtype="int64")
+            z = paddle.randint(0, 64, [32], dtype="int64")
+            return (x, y, z)
+
+        self.check_accuracy_and_kernel_num(init, func)
+
 
 if __name__ == "__main__":
     unittest.main()
