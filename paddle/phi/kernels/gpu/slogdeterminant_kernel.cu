@@ -183,11 +183,18 @@ __global__ void GetSlogDetFromLUComplex(const Complex_T* lu_data,
       }
     }
     T abs_det = abs(det_val);
-    Complex_T abs_det_complex = static_cast<Complex_T>(abs_det);
-    Complex_T s = det_val / abs_det_complex;
-    T log_abs_det = log(abs_det);
-    sign[idx] = s;
-    logdet[idx] = log_abs_det;
+    T epsilon = std::numeric_limits<T>::epsilon();
+
+    if (abs_det <= epsilon) {
+      sign[idx] = Complex_T(1.0, 0.0);
+      logdet[idx] = -std::numeric_limits<T>::infinity();
+    } else {
+      Complex_T abs_det_complex = static_cast<Complex_T>(abs_det);
+      Complex_T s = det_val / abs_det_complex;
+      T log_abs_det = log(abs_det);
+      sign[idx] = s;
+      logdet[idx] = log_abs_det;
+    }
   }
 }
 

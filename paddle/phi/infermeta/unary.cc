@@ -6033,11 +6033,11 @@ void SlogdetInferMeta(const MetaTensor& x,
                       MetaTensor* logdet) {
   DDim x_dims = x.dims();
   int rank = x_dims.size();
-  PADDLE_ENFORCE_GE(
-      rank,
-      2,
-      errors::InvalidArgument("Input(X) should be a 2-D tensor, but got %u.",
-                              x_dims.size()));
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    errors::InvalidArgument(
+                        "Input(X) should be at least a 2-D tensor, but got %u.",
+                        x_dims.size()));
   PADDLE_ENFORCE_EQ(
       x_dims[rank - 1],
       x_dims[rank - 2],
