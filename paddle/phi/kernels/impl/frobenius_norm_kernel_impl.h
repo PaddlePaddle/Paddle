@@ -27,26 +27,7 @@ void FrobeniusNormKernel(const Context& ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
-  auto xdim = x.dims();
-
   if (x.numel() == 0) {
-    std::set<int> axis_set;
-    for (int ax : axis.GetData()) {
-      if (ax < 0) {
-        ax += xdim.size();
-      }
-      axis_set.insert(ax);
-    }
-
-    std::vector<int64_t> out_dims_vec;
-    for (int i = 0; i < xdim.size(); ++i) {
-      if (axis_set.find(i) == axis_set.end()) {
-        out_dims_vec.push_back(xdim[i]);
-      } else if (keep_dim) {
-        out_dims_vec.push_back(1);
-      }
-    }
-    out->Resize(phi::make_ddim(out_dims_vec));
     ctx.template Alloc<T>(out);
     phi::funcs::SetConstant<Context, T>()(ctx, out, 0);
     return;

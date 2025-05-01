@@ -46,7 +46,6 @@ void FrobeniusNormKernel(const Context& dev_ctx,
       }
     }
 
-    // 正确调用 Full 初始化
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(out_dims_vec), static_cast<T>(0), out);
     return;
