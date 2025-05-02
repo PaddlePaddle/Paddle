@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import _C_ops, base
@@ -651,6 +652,50 @@ def check_linalg_matrix_dygraph(
         np.testing.assert_equal(result.shape, expected_result.shape)
 
 
+def check_linalg_matrix_complex_static(
+    self, p, axis, shape_x, complex_dtype, keep_dim
+):
+    real_dtype = 'float32' if complex_dtype == 'complex64' else 'float64'
+    with static_guard():
+        with base.program_guard(base.Program()):
+            data = paddle.static.data(
+                name="X", shape=shape_x, dtype=complex_dtype
+            )
+            out = paddle.linalg.matrix_norm(
+                x=data, p=p, axis=axis, keepdim=keep_dim
+            )
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            real_part = np.random.rand(*shape_x).astype(real_dtype)
+            imag_part = np.random.rand(*shape_x).astype(real_dtype)
+            np_input = (real_part + 1j * imag_part).astype(complex_dtype)
+            (result,) = exe.run(feed={"X": np_input}, fetch_list=[out])
+
+    assert result.dtype == np.dtype(
+        real_dtype
+    ), f"Expected dtype {real_dtype}, but got {result.dtype}"
+
+
+def check_linalg_matrix_complex_dygraph(
+    self, p, axis, shape_x, complex_dtype, keep_dim
+):
+    real_dtype = 'float32' if complex_dtype == 'complex64' else 'float64'
+
+    real_part = np.random.random(shape_x).astype(real_dtype)
+    imag_part = np.random.random(shape_x).astype(real_dtype)
+    x_numpy = (real_part + 1j * imag_part).astype(complex_dtype)
+
+    with dygraph_guard():
+        x_paddle = paddle.to_tensor(x_numpy)
+        result = paddle.linalg.matrix_norm(
+            x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+        ).numpy()
+
+    assert result.dtype == np.dtype(
+        real_dtype
+    ), f"Expected dtype {real_dtype}, but got {result.dtype}"
+
+
 def check_linalg_vector_static(
     self, p, axis, shape_x, dtype, keep_dim, check_dim=False
 ):
@@ -1048,6 +1093,40 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
+            check_linalg_matrix_static(
+                self,
+                p=-np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_static(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_complex_static(
+                self,
+                p=np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex64",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_complex_static(
+                self,
+                p=np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex128",
+                keep_dim=keep,
+            )
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -1421,7 +1500,40 @@ class API_NormTest(unittest.TestCase):
                 keep_dim=keep,
                 check_dim=True,
             )
-
+            check_linalg_matrix_dygraph(
+                self,
+                p=-np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_dygraph(
+                self,
+                p="fro",
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                dtype="float64",
+                keep_dim=keep,
+                check_dim=True,
+            )
+            check_linalg_matrix_complex_dygraph(
+                self,
+                p=np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex64",
+                keep_dim=keep,
+            )
+            check_linalg_matrix_complex_dygraph(
+                self,
+                p=np.inf,
+                axis=[-2, -1],
+                shape_x=[0, 1, 2, 1],
+                complex_dtype="complex128",
+                keep_dim=keep,
+            )
         paddle.enable_static()
 
     def test_name(self):
