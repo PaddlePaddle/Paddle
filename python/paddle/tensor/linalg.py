@@ -1128,7 +1128,7 @@ def matrix_norm(
         if x.dtype == paddle.complex64 or x.dtype == paddle.complex128:
             real_dtype = "float32" if x.dtype == paddle.complex64 else "float64"
             out = cast(out, real_dtype)
-            return out
+        return out
 
     else:
         raise ValueError(
