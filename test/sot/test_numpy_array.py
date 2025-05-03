@@ -92,6 +92,10 @@ def demo(pd_x):
     return pd_z2
 
 
+def absolute(x):
+    return np.absolute(x)
+
+
 class TestNumpyArray(TestCaseBase):
     def test_guard(self):
         with test_instruction_translator_cache_context() as ctx:
@@ -204,6 +208,10 @@ class TestNumpyArray(TestCaseBase):
         pd_x = paddle.randn([2, 3], dtype="float32")
         pd_x.stop_gradient = False
         self.assert_results_with_grad(pd_x, demo, pd_x)
+
+    def test_absolute(self):
+        x = np.array([[1, -2], [-3, 4]])
+        self.assert_results(absolute, x)
 
 
 if __name__ == "__main__":
