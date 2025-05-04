@@ -63,10 +63,7 @@ EOF
         buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
 
         # github action env variable
-        if [ -n "$2" ]; then
-            echo "buildSize=${buildSize}" >> $2
-            echo "buildSize=${buildSize}" >> "$HOME/.bashrc"
-        fi
+        echo "export buildSize=${buildSize}" >> "$HOME/.bashrc"
 
         echo "Build Size: $buildSize"
         echo "ipipe_log_param_Build_Size: $buildSize" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -104,9 +101,7 @@ failed_test_lists=''
 tmp_dir=`mktemp -d`
 
 function get_quickly_disable_ut() {
-    echo "::group::Installing httpx..."
     python -m pip install httpx
-    echo "::endgroup::"
     if disable_ut_quickly=$(python ${PADDLE_ROOT}/tools/get_quick_disable_lt.py); then
         echo "========================================="
         echo "The following unittests have been disabled:"
@@ -193,7 +188,7 @@ function show_ut_retry_result() {
         if [ "$SYSTEM" == "Darwin" ]; then
             retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         else
-            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=2) {print $2}}')
+            retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=4) {print $2}}')
         fi
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -225,6 +220,49 @@ function clean_build_files() {
           rm -rf "$file"
       fi
     done
+}
+
+function determine_kunlun_runner() {
+    runner_name=$1
+
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=0,1" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu0" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu1" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=2,3" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu2" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=4,5" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu4" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu5" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "CUDA_VISIBLE_DEVICES=6,7" >> $GITHUB_ENV
+        echo "XPU_CODE_1=/dev/xpu6" >> $GITHUB_ENV
+        echo "XPU_CODE_2=/dev/xpu7" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
+    cd $GITHUB_WORKSPACE
+    # rm -rf * .[^.]* .??*
+}
+
+function determine_npu_runner() {
+    runner_name=$1
+    if [[ $runner_name == "paddle-1" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=0,1,2,3" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-2" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=4,5,6,7" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-3" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=8,9,10,11" >> $GITHUB_ENV
+    elif [[ $runner_name == "paddle-4" ]]; then
+        echo "ASCEND_RT_VISIBLE_DEVICES=12,13,14,15" >> $GITHUB_ENV
+    else
+        echo "Unknown runner name: $runner_name"
+        exit 1
+    fi
 }
 
 function cmake_base() {
@@ -706,7 +744,7 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile=$tmp_dir/$tmpfile_rand"_"$iget_quickly_disable_ut
+        tmpfile=$tmp_dir/$tmpfile_rand"_"$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
@@ -1004,8 +1042,8 @@ set +x
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [ "$WITH_ROCM" != "ON" ];then
-            # cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
-            echo "CTestCostData.txt"
+            mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
         fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
@@ -1022,6 +1060,126 @@ function check_coverage() {
     fi
 }
 
+function test_fluid_lib() {
+    cat <<EOF
+    ========================================
+    Testing fluid library for inference ...
+    ========================================
+EOF
+    demo_ci_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${WITH_TENSORRT:-ON} ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    DEMO_EXIT_CODE=$?
+    ./clean.sh
+    demo_ci_endTime_s=`date +%s`
+    echo "demo_ci tests Total time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s"
+    echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+
+    infer_ut_startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
+    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+             ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
+    TEST_EXIT_CODE=$?
+    infer_ut_endTime_s=`date +%s`
+    echo "infer_ut tests Total time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s"
+    echo "ipipe_log_param_Infer_Ut_Tests_Total_Time: $[ $infer_ut_endTime_s - $infer_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+    if [[ "$DEMO_EXIT_CODE" != "0" || "$TEST_EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
+function test_go_inference_api() {
+    cat <<EOF
+    ========================================
+    Testing go inference api ...
+    ========================================
+EOF
+
+    # ln paddle_inference_c lib
+    cd ${PADDLE_ROOT}/build
+    ln -s ${PADDLE_ROOT}/build/paddle_inference_c_install_dir/ ${PADDLE_ROOT}/paddle/fluid/inference/goapi/paddle_inference_c
+
+    # run go test
+    cd ${PADDLE_ROOT}/paddle/fluid/inference/goapi
+    bash test.sh
+    EXIT_CODE=$?
+    if [[ "$EXIT_CODE" != "0" ]]; then
+        exit 8;
+    fi
+}
+
+function check_approvals_of_unittest() {
+    set +x
+    if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
+        return 0
+    fi
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
+    check_times=$1
+    if [ $check_times == 1 ]; then
+        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+        if [ "${approval_line}" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "TRUE" ]; then
+                echo "==================================="
+                echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+                echo "==================================="
+                exit 0
+            fi
+        fi
+    elif [ $check_times == 2 ]; then
+        unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+        if [ "$unittest_spec_diff" != "" ]; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "************************************"
+                echo -e "It is forbidden to disable or delete the unit-test.\n"
+                echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
+                echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
+                echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
+                echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
+                echo "************************************"
+                exit 6
+            fi
+        fi
+    elif [ $check_times == 3 ]; then
+        if [ ${BRANCH} != 'develop' ];then
+            return
+        fi
+
+        rm -f fluidInference_so_size
+        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
+        oriBuildSize=`cat fluidInference_so_size`
+        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
+        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
+        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
+        cat <<EOF
+        ========================================
+        Original libpaddle_inference.so Size is ${oriBuildSize}M.
+        Current libpaddle_inference.so Size is ${curBuildSize}M.
+        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
+        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
+        It means the release version library size growth is about ${AllDiffSize}M.
+        ========================================
+EOF
+        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "=========================================================================================="
+                echo "This PR make the release inference library size growth exceeds 20 M."
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "=========================================================================================="
+                exit 6
+            fi
+        fi
+    fi
+    set -x
+}
 
 function check_excode() {
     if [[ $EXCODE -eq 0 ]];then

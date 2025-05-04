@@ -134,7 +134,7 @@ class TrtConvertLeakyReluTest(TrtLayerAutoScanTest):
         ), (1e-3, 1e-3)
 
     def test(self):
-        # self.run_test()
+        self.run_test()
         self.run_test(run_pir=True)
 
 

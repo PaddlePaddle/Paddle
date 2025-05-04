@@ -328,29 +328,30 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
                 outputs=["conv_output_data"],
             )
 
-            yield program_config
+        yield program_config
+
+    def generate_dynamic_shape(self, attrs):
+        self.dynamic_shape.min_input_shape = {
+            "input_data": attrs[0]["input_shape"],
+            "weight_data": attrs[0]["weight_shape"],
+        }
+        self.dynamic_shape.max_input_shape = {
+            "input_data": attrs[0]["input_shape"],
+            "weight_data": attrs[0]["weight_shape"],
+        }
+        self.dynamic_shape.opt_input_shape = {
+            "input_data": attrs[0]["input_shape"],
+            "weight_data": attrs[0]["weight_shape"],
+        }
+        return self.dynamic_shape
 
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
-
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": attrs[0]["input_shape"],
-                "weight_data": attrs[0]["weight_shape"],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": attrs[0]["input_shape"],
-                "weight_data": attrs[0]["weight_shape"],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": attrs[0]["input_shape"],
-                "weight_data": attrs[0]["weight_shape"],
-            }
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             return 1, 3
@@ -360,7 +361,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
         ]
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
@@ -374,7 +375,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
         ), (1e-2, 1e-2)
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

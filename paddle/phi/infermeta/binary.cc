@@ -1740,7 +1740,15 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     promote_result = x.dtype();
   }
   out->set_dtype(promote_result);
-  out->set_layout(x.layout());
+
+  // layout need change when meet input layout contain kNHWC
+  auto layout = [&]() {
+    if (x.layout() == DataLayout::kNHWC || y.layout() == DataLayout::kNHWC)
+      return DataLayout::kNHWC;
+    return x.layout();
+  }();
+
+  out->set_layout(layout);
   out->share_lod(x);
 }
 
@@ -4507,7 +4515,6 @@ void Unpool3dInferMeta(const MetaTensor& x,
 void WeightDequantizeInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,
                                const std::string& algo,
-                               DataType out_dtype,
                                const int32_t group_size,
                                MetaTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size(),
@@ -4574,7 +4581,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
   int n = static_cast<int>(x.dims()[1]);
   int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
-  out->set_dtype(out_dtype);
+  out->set_dtype(scale.dtype());
 }
 
 }  // namespace phi

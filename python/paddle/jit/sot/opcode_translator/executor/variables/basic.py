@@ -25,13 +25,45 @@ import numpy as np
 import paddle
 from paddle._typing import unreached
 from paddle.framework import core
+from paddle.pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE
 
 from ....infer_meta import (
     DistInfo,
     MetaInfo,
 )
 from ....symbolic.statement_ir import Symbol
-from ....symbolic_shape import (
+from ....symbolic_shape.constraints import (
+    AddConstraintNode,
+    BitwiseAndConstraintNode,
+    BitwiseLShiftConstraintNode,
+    BitwiseNotConstraintNode,
+    BitwiseOrConstraintNode,
+    BitwiseRShiftConstraintNode,
+    BitwiseXorConstraintNode,
+    ConstantConstraintNode,
+    ConstraintNode,
+    EqualConstraintNode,
+    FloorDivConstraintNode,
+    GreaterEqualConstraintNode,
+    GreaterThanConstraintNode,
+    LessEqualConstraintNode,
+    LessThanConstraintNode,
+    LogicalNotConstraintNode,
+    LogicalToBoolConstraintNode,
+    ModConstraintNode,
+    MulConstraintNode,
+    NegativeConstraintNode,
+    NotEqualConstraintNode,
+    PowConstraintNode,
+    SubConstraintNode,
+    SymbolicConstraintNode,
+    TrueDivConstraintNode,
+)
+from ....symbolic_shape.operators import (
+    symbolic_not,
+    symbolic_to_bool,
+)
+from ....symbolic_shape.symbolic_value import (
     SymbolicBool,
     SymbolicFloat,
     SymbolicInt,
@@ -41,6 +73,7 @@ from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     BuiltinFunctionBreak,
+    ConditionalFallbackError,
     ConstTypes,
     DataDependencyDynamicShapeBreak,
     DataDependencyOperationBreak,
@@ -67,6 +100,7 @@ from ..guard import (
     StringifiedExpression,
     check_faster_guard,
     check_guard,
+    object_equal_faster_guard,
     object_equal_stringified_guard,
     stringify_pyobject,
     union_free_vars,
@@ -80,15 +114,23 @@ from ..tracker import (
     GetItemTracker,
     GetIterTracker,
     GlobalTracker,
+    LocalTracker,
     SymbolicOperationTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
+    from typing_extensions import TypeAlias
+
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
     from .callable import ClassVariable, FunctionVariable
+
+    SymbolicConstraint: TypeAlias = tuple[
+        ConstraintNode, dict[str, "SymbolicVariable"]
+    ]
 
 
 FP_DTYPE_ABBRS = {
@@ -119,13 +161,6 @@ DTYPE_ABBRS = {
     **INT_DTYPE_ABBRS,
     core.DataType.BOOL: "bool",
 }
-
-
-def method_to_reverse_method(method_name: str) -> str | None:
-    if not method_name.startswith("__") or not method_name.endswith("__"):
-        return None
-    name = method_name[2:-2]
-    return f"__r{name}__"
 
 
 class ConstantVariable(VariableBase):
@@ -300,6 +335,22 @@ class TensorDtypeVariable(DataVariable):
     def __init__(self, value, graph, tracker):
         super().__init__(value, graph, tracker)
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        if isinstance(self.tracker, GetAttrTracker) and isinstance(
+            self.tracker.obj, TensorVariable
+        ):
+            expr_node = self.tracker.obj.tracker.guard_tree_expr_node()
+            assert paddle.framework.use_pir_api(), "Only support PIR"
+            return [
+                paddle.framework.core.GuardNode(
+                    paddle.framework.core.DtypeMatchGuard(self.value),
+                    [expr_node],
+                )
+            ]
+        else:
+            return object_equal_faster_guard(self)
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, GetAttrTracker) and isinstance(
@@ -467,7 +518,7 @@ class TensorVariable(VariableBase):
         codegen.gen_load_fast(self.out_var_name)
 
     @check_faster_guard
-    def make_faster_guard(self) -> list[paddle.framework.core.GuardNode]:
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert paddle.framework.use_pir_api(), "Only support PIR"
         expr_node = self.tracker.guard_tree_expr_node()
         meta = self.origin_meta
@@ -475,21 +526,32 @@ class TensorVariable(VariableBase):
             # Check shape
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ShapeMatchGuard(meta.shape),
-                expr_node,
+                [expr_node],
             ),
             # Check dtype
             paddle.framework.core.GuardNode(
                 paddle.framework.core.DtypeMatchGuard(meta.dtype),
-                expr_node,
+                [expr_node],
             ),
             # Check stop_gradient
             paddle.framework.core.GuardNode(
                 paddle.framework.core.ValueMatchGuard(meta.stop_gradient),
-                paddle.framework.core.AttributeExprNode(
-                    expr_node, "stop_gradient"
-                ),
+                [
+                    paddle.framework.core.AttributeExprNode(
+                        expr_node, "stop_gradient"
+                    )
+                ],
             ),
-            # TODO(zrr1999): add dist_info check
+            # Check dist info
+            paddle.framework.core.TensorDistMetaMatchGuardNode(
+                self.meta.dist_info,
+                [
+                    expr_node,
+                    paddle.framework.core.ExternVarExprNode(
+                        "___dist_info_from_tensor", DistInfo.from_tensor
+                    ),
+                ],
+            ),
         ]
 
     @check_guard
@@ -533,7 +595,7 @@ class TensorVariable(VariableBase):
                     )
                     if not isinstance(meta.shape[i], SymbolicInt)
                     else StringifiedExpression(
-                        f"{{}}.shape[{i}] >= 2",
+                        f"{{}}.shape[{i}] >= 1",
                         [frame_value_tracer],
                         union_free_vars(frame_value_tracer.free_vars),
                     )
@@ -883,7 +945,7 @@ class SymbolicVariable(VariableBase):
 
     var_name_generator = NameGenerator("symint_")
     value: SymbolicValue
-    mutable_attrs = ["need_guard_value"]
+    mutable_attrs = ["need_guard_value", "constraints"]
 
     def __init__(
         self,
@@ -907,6 +969,32 @@ class SymbolicVariable(VariableBase):
             )
         self.need_guard_value = False
         self.graph.side_effects.record_mutable_variable(self)
+        self.constraints: list[SymbolicConstraint] = []
+        if self.value.is_backed():
+            # The inherent constraint of the symbolic variable is that it must be greater than or equal to 2.
+            self.add_constraint(
+                (
+                    GreaterEqualConstraintNode(
+                        SymbolicConstraintNode(self.var_name),
+                        ConstantConstraintNode(1),
+                    ),
+                    {self.var_name: self},
+                )
+            )
+
+    def add_constraint(self, constraint: SymbolicConstraint):
+        constraint_node, constraint_extern_vars = constraint
+        for extern_var in constraint_extern_vars.values():
+            assert isinstance(
+                extern_var, SymbolicVariable
+            ), f"SymbolicVariable.add_constraint() got {extern_var}."
+            assert (
+                extern_var.value.is_backed()
+            ), "Only backed symbol is supported."
+            assert (
+                extern_var.tracker.is_traceable()
+            ), "Only traceable symbol is supported."
+        self.constraints.append(constraint)
 
     def to_constant(self):
         from ..executor_cache import (
@@ -966,6 +1054,132 @@ class SymbolicVariable(VariableBase):
         ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
         return value
 
+    def get_example_value(
+        self, allow_tensor: bool = False
+    ) -> bool | int | float:
+        if self.value.is_backed():
+            return self.value.get_example_value()
+        inputs = self.tracker.inputs
+        input_values = []
+        for input in inputs:
+            if isinstance(input, ConstantVariable):
+                input_values.append(input.get_py_value())
+            elif isinstance(input, SymbolicVariable):
+                input_values.append(input.get_example_value())
+            else:
+                raise BreakGraphError(
+                    DataDependencyOperationBreak(
+                        f"SymbolicVariable.get_example_value() got {input}. May be a symbol from a inner tensor."
+                    )
+                )
+        if not isinstance(self.tracker, SymbolicOperationTracker):
+            raise BreakGraphError(
+                DataDependencyOperationBreak(
+                    f"SymbolicVariable.get_example_value() got {self.tracker}. May be a symbol from a inner tensor."
+                )
+            )
+        value = self.tracker.op(*input_values)
+        assert isinstance(
+            value, (bool, int, float)
+        ), f"SymbolicVariable.get_example_value() should return bool, int or float, but got {type(value)}"
+        return value
+
+    def create_constraint_tree(
+        self,
+    ) -> tuple[ConstraintNode, dict[str, SymbolicVariable]]:
+        tracker = self.tracker
+        if not isinstance(tracker, SymbolicOperationTracker):
+            return SymbolicConstraintNode(self.var_name), {self.var_name: self}
+        input_nodes = []
+        extern_vars = {}
+        num_sym = 0
+        for input in tracker.inputs:
+            assert isinstance(
+                input, (ConstantVariable, SymbolicVariable)
+            ), f"SymbolicVariable.create_constraint_tree() got {input}."
+            if isinstance(input, ConstantVariable):
+                input_nodes.append(ConstantConstraintNode(input.get_py_value()))
+            else:
+                num_sym += 1
+                input_node, input_extern_vars = input.create_constraint_tree()
+                input_nodes.append(input_node)
+                extern_vars.update(input_extern_vars)
+
+        # TODO(SigureMo): use a better way to dispatch constraint node
+        # Arithmetic operations
+        if tracker.op is operator.neg:
+            assert len(input_nodes) == 1
+            return NegativeConstraintNode(input_nodes[0]), extern_vars
+        elif tracker.op is operator.invert:
+            assert len(input_nodes) == 1
+            return BitwiseNotConstraintNode(input_nodes[0]), extern_vars
+        elif tracker.op is operator.add:
+            assert len(input_nodes) == 2
+            return AddConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.sub:
+            assert len(input_nodes) == 2
+            return SubConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.mul:
+            assert len(input_nodes) == 2
+            return MulConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.truediv:
+            assert len(input_nodes) == 2
+            return TrueDivConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.floordiv:
+            assert len(input_nodes) == 2
+            return FloorDivConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.mod:
+            assert len(input_nodes) == 2
+            return ModConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.pow:
+            assert len(input_nodes) == 2
+            return PowConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.and_:
+            assert len(input_nodes) == 2
+            return BitwiseAndConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.lshift:
+            assert len(input_nodes) == 2
+            return BitwiseLShiftConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.rshift:
+            assert len(input_nodes) == 2
+            return BitwiseRShiftConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.or_:
+            assert len(input_nodes) == 2
+            return BitwiseOrConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.xor:
+            assert len(input_nodes) == 2
+            return BitwiseXorConstraintNode(*input_nodes), extern_vars
+        # Logical operations
+        elif tracker.op is symbolic_to_bool:
+            assert len(input_nodes) == 1
+            return (
+                LogicalToBoolConstraintNode(input_nodes[0]),
+                extern_vars,
+            )
+        elif tracker.op is symbolic_not:
+            assert len(input_nodes) == 1
+            return LogicalNotConstraintNode(input_nodes[0]), extern_vars
+        elif tracker.op is operator.eq:
+            assert len(input_nodes) == 2
+            return EqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.ne:
+            assert len(input_nodes) == 2
+            return NotEqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.le:
+            assert len(input_nodes) == 2
+            return LessEqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.lt:
+            assert len(input_nodes) == 2
+            return LessThanConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.ge:
+            assert len(input_nodes) == 2
+            return GreaterEqualConstraintNode(*input_nodes), extern_vars
+        elif tracker.op is operator.gt:
+            assert len(input_nodes) == 2
+            return GreaterThanConstraintNode(*input_nodes), extern_vars
+        else:
+            raise InnerError(f"Unsupported symbolic operation {tracker.op}.")
+
     def get_py_type(self):
         if isinstance(self.value, int):
             return int
@@ -1005,12 +1219,51 @@ class SymbolicVariable(VariableBase):
     def _reconstruct(self, codegen: PyCodeGen):
         codegen.gen_load_fast(self.out_var_name)
         codegen.gen_load_method("item")
-        codegen.gen_call_method(0)  # TODO
+        codegen.gen_call_method(0)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        from ..executor_cache import OpcodeExecutorCache
+
+        expr_node = self.tracker.guard_tree_expr_node()
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        # TODO(zrr1999): symbolic_inputs need frame_value_tracer.inlined_expr
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
+        assert frame_value_tracer.inlined_expr in symbolic_inputs
+
+        if self.need_guard_value:
+            log(3, f"Need guard value for {self} in {expr_node}\n")
+            return super().make_faster_guard()
+        constraint_guards: list[paddle.framework.core.GuardNodeBase] = []
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            extern_vars = {
+                var_name: var.tracker.guard_tree_expr_node()
+                for var_name, var in constraint_extern_vars.items()
+            }
+            constraint_guards.append(
+                paddle.framework.core.ExprGuardNode(
+                    constraint_node.create_guard_node(extern_vars)
+                )
+            )
+        guards = [
+            paddle.framework.core.GuardNode(
+                paddle.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            ),
+            *constraint_guards,
+        ]
+        return guards
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
+
+        # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
@@ -1020,7 +1273,18 @@ class SymbolicVariable(VariableBase):
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         if self.need_guard_value:
+            log(3, f"Need guard value for {self} in {frame_value_tracer}\n")
             return super().make_stringified_guard()
+        constraint_guards = []
+        for constraint in self.constraints:
+            constraint_node, constraint_extern_vars = constraint
+            extern_vars = {
+                var_name: var.tracker.trace_value_from_frame()
+                for var_name, var in constraint_extern_vars.items()
+            }
+            constraint_guards.append(
+                constraint_node.create_guard_expr(extern_vars)
+            )
         guards = [
             FasterStringifiedExpression(
                 f"id(type({{}})) == {id(self.get_py_type())}",
@@ -1028,12 +1292,7 @@ class SymbolicVariable(VariableBase):
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            # TODO: replace it with FasterStringifiedExpression
-            StringifiedExpression(
-                "{} >= 2",
-                [frame_value_tracer],
-                union_free_vars(frame_value_tracer.free_vars),
-            ),
+            *constraint_guards,
         ]
         return guards
 
@@ -1042,10 +1301,7 @@ class SymbolicVariable(VariableBase):
         value: Any,
         tracker: Tracker,
         symbolic_inputs: dict[str, dict[int, int] | None],
-    ):
-        # The behavior specializes for 0 and 1, so we just ignore them here.
-        if value < 2:
-            return False
+    ) -> bool | None:
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
@@ -1054,6 +1310,10 @@ class SymbolicVariable(VariableBase):
                 return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
+            if value == 0:
+                return None  # Fallback to dygraph
+            if value < 1:  # Specialize 0 and 1
+                return False
             if len(symbolic_input.keys()) > 1:
                 return True
             return False
@@ -1076,6 +1336,15 @@ class SymbolicVariable(VariableBase):
         tensor_var = dim_tracker.container.tracker.obj
         shape_idx = dim_tracker.key
         return tensor_var, shape_idx
+
+    @staticmethod
+    def has_local_leaf(tracker: Tracker) -> bool:
+        if isinstance(tracker, LocalTracker):
+            return True
+        return any(
+            SymbolicVariable.has_local_leaf(input.tracker)
+            for input in tracker.inputs
+        )
 
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -1107,6 +1376,8 @@ class SymbolicVariable(VariableBase):
             return None
         if not tracker.is_traceable():
             return None
+        if not SymbolicVariable.has_local_leaf(tracker):
+            return None
 
         from ..executor_cache import OpcodeExecutorCache
 
@@ -1114,9 +1385,21 @@ class SymbolicVariable(VariableBase):
             graph.pycode_gen._origin_code
         )
 
-        if SymbolicVariable.should_create_symbolic_variable(
+        should_create_sym = SymbolicVariable.should_create_symbolic_variable(
             value, tracker, symbolic_inputs
+        )
+        if (
+            should_create_sym is None
+            and SymbolicVariable.find_tensor_shape_source(tracker) is not None
         ):
+            graph.add_global_guarded_variable(
+                ConstantVariable(value, graph, tracker)
+            )
+            raise ConditionalFallbackError(
+                "Fallback graph since input has 0 size Tensor",
+                disable_eval_frame=True,
+            )
+        elif should_create_sym:
             return SymbolicVariable(SymbolicInt(value), graph, tracker)
         return None
 
@@ -1149,6 +1432,7 @@ class ObjectVariable(VariableBase):
     """
 
     make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
 
     def __init__(self, obj, graph, tracker):
         super().__init__(graph, tracker)
@@ -1276,12 +1560,25 @@ class SliceVariable(VariableBase):
             self.getattr("step").get_py_value(),
         )
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.TypeMatchGuard(slice),
+                [expr_node],
+            ),
+            *self.getattr("start").make_faster_guard(),
+            *self.getattr("stop").make_faster_guard(),
+            *self.getattr("step").make_faster_guard(),
+        ]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         result = [
             FasterStringifiedExpression(
-                "id(type({{}})) == id(slice)",
+                f"id(type({{}})) == {id(slice)}",
                 paddle.framework.core.TypeMatchGuard(slice),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
@@ -1359,6 +1656,7 @@ class ModuleVariable(VariableBase):
 
     # Happened in a inline import statement.
     make_stringified_guard = object_equal_stringified_guard
+    make_faster_guard = object_equal_faster_guard
 
 
 class DygraphTracerVariable(VariableBase):
@@ -1369,6 +1667,10 @@ class DygraphTracerVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         return self.value
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        return []
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1421,14 +1723,14 @@ class NumpyVariable(VariableBase):
     def format_number(number: np.number):
         return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.make_faster_guard is not implemented"
+        )
+
     def make_stringified_guard(self) -> None:
         raise NotImplementedError
-
-    @VariableFactory.register_from_value()
-    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
-        if isinstance(value, np.ndarray):
-            return NumpyArrayVariable(value, graph, tracker)
-        return None
 
 
 class NumpyNumberVariable(NumpyVariable):
@@ -1447,6 +1749,24 @@ class NumpyNumberVariable(NumpyVariable):
         return BuiltinVariable(
             np.number.item, self.graph, GetAttrTracker(self, name)
         ).bind(self, name)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                self.get_py_value().dtype
+            ),
+            [expr_node],
+        )
+
+        return [
+            dtype_guard,
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.ValueMatchGuard(self.get_py_value()),
+                [expr_node],
+            ),
+        ]
 
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
@@ -1487,33 +1807,132 @@ class NumpyBoolVariable(NumpyNumberVariable):
 
 
 class NumpyArrayVariable(NumpyVariable):
+    var_name_generator = NameGenerator("np_var_")
+    value: npt.NDArray[Any]
+    mutable_attrs: list[str] = ["meta"]
+
+    def __init__(
+        self,
+        value_or_meta: npt.NDArray[Any] | MetaInfo,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(None, graph, tracker)
+        self.var_name = self.var_name_generator.next()
+        self.graph.side_effects.record_mutable_variable(self)
+
+        if isinstance(value_or_meta, MetaInfo):
+            # TODO(wangmingkai02): self.value
+            self.value = None
+            self.meta = value_or_meta
+        else:
+            self.value = value_or_meta
+            self.meta = MetaInfo.from_numpy(self.value)
+
+    def __len__(self):
+        if isinstance(self.meta.shape[0], SymbolicInt):
+            raise BreakGraphError(
+                DataDependencyDynamicShapeBreak(
+                    "length of NumPy array Variable with first dimension is dynamic shape causes graph break."
+                )
+            )
+        return self.meta.shape[0]
+
+    def get_py_type(self):
+        return np.ndarray
+
+    def get_py_value(self, allow_tensor=False) -> Any:
+        raise BreakGraphError(
+            UnsupportedOperationBreak(
+                reason_str="NumpyArrayVariable doesn't support get_py_value operation."
+            )
+        )
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
+
+    def get_iter(self):
+        from .iter import SequenceIterVariable
+
+        return SequenceIterVariable(self, self.graph, GetIterTracker(self))
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if isinstance(value, np.ndarray):
+            return NumpyArrayVariable(value, graph, tracker)
+        return None
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("numpy")
+        codegen.gen_call_method(0)
+
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+        type_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+            [expr_node],
+        )
+        dtype_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyDtypeMatchGuard(
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
+            ),
+            [expr_node],
+        )
+        shape_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.NumPyArrayShapeMatchGuard(self.meta.shape),
+            [expr_node],
+        )
+        return [type_guard, dtype_guard, shape_guard]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        obj_free_var_name = f"__{self.id}"
+        meta = self.meta
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            f"{{}}.dtype == {NumpyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype]))}",
             paddle.framework.core.NumPyDtypeMatchGuard(
-                self.get_py_value().dtype
+                np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
             ),
             [frame_value_tracer],
             union_free_vars(frame_value_tracer.free_vars, {"np": np}),
         )
 
         return [
-            dtype_guard,
             FasterStringifiedExpression(
-                f"({{}} == {obj_free_var_name}).all()",
-                paddle.framework.core.NumPyArrayValueMatchGuard(
-                    self.get_py_value()
-                ),
+                f"id(type({{}})) == {id(self.get_py_type())}",
+                paddle.core.TypeMatchGuard(self.get_py_type()),
                 [frame_value_tracer],
-                union_free_vars(
-                    frame_value_tracer.free_vars,
-                    {obj_free_var_name: self.get_py_value()},
-                ),
+                union_free_vars(frame_value_tracer.free_vars),
             ),
+            dtype_guard,
+            StringifiedExpression(
+                f"len({{}}.shape) == {len(meta.shape)}",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            ),
+            *[
+                (
+                    StringifiedExpression(
+                        f"{{}}.shape[{i}] == {meta.shape[i]}",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                    if not isinstance(meta.shape[i], SymbolicInt)
+                    else StringifiedExpression(
+                        f"{{}}.shape[{i}] >= 1",
+                        [frame_value_tracer],
+                        union_free_vars(frame_value_tracer.free_vars),
+                    )
+                )
+                for i in range(len(meta.shape))
+            ],
         ]
 
 
@@ -1644,18 +2063,18 @@ class GlobalVariable(VariableBase):
     def get(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} to get value."
+                f"[{self.__class__.__name__}] received {key} to get value."
             )
         return self.proxy.get(key)
 
     def set(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key."
+                f"[{self.__class__.__name__}] received {key} as key."
             )
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
         self.proxy.set(key, value)
         self.graph.side_effects.record_proxy_variable(self)
@@ -1677,7 +2096,7 @@ class FunctionGlobalVariable(GlobalVariable):
         self.fn = fn
 
     def proxy_getter(self, proxy: MutableDictLikeData, key: Any):
-        from ..opcode_inline_executor import FunctionGlobalTracker
+        from ..tracker import FunctionGlobalTracker
 
         if key not in proxy.original_data:
             return MutableDictLikeData.Empty()
