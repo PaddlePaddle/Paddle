@@ -25,6 +25,7 @@ from .envs import (  # noqa: F401
     ENV_SOT_FORCE_FALLBACK_SIR_IDS,
     ENV_SOT_LOG_LEVEL,
     ENV_SOT_SERIALIZE_INFO,
+    ENV_SOT_TRACE_NUMPY,
     ENV_SOT_WITH_CONTROL_FLOW,
     ENV_STRICT_MODE,
     PEP508LikeEnvironmentVariable,
@@ -65,6 +66,9 @@ from .info_collector import (  # noqa: F401
     SubGraphRelationInfo,
 )
 from .magic_methods import magic_method_builtin_dispatch  # noqa: F401
+from .numpy_utils import (  # noqa: F401
+    NUMPY_API_SUPPORTED_DICT,
+)
 from .paddle_api_config import (  # noqa: F401
     get_tensor_methods,
     is_break_graph_tensor_methods,

@@ -21,6 +21,7 @@ import inspect
 from collections import namedtuple
 from contextlib import contextmanager
 from copy import deepcopy
+from enum import Enum
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Callable, Tuple, Union
 
@@ -49,6 +50,7 @@ from ...symbolic.statement_ir import (
 from ...symbolic_shape.operators import SYMBOLIC_BINARY_OPS, SYMBOLIC_UNARY_OPS
 from ...utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    NUMPY_API_SUPPORTED_DICT,
     NameGenerator,
     SIRToCodeMap,
     SotUndefinedVar,
@@ -86,6 +88,7 @@ from .variables import (
     GlobalVariable,
     ListVariable,
     NullVariable,
+    NumpyArrayVariable,
     PaddleLayerVariable,
     ParameterVariable,
     SymbolicVariable,
@@ -99,6 +102,10 @@ from .variables import (
 if TYPE_CHECKING:
     import types
 
+    GraphNodeVariableType: TypeAlias = Union[
+        TensorVariable, SymbolicVariable, NumpyArrayVariable
+    ]
+
 
 CompileGraphResult: TypeAlias = Tuple[
     Callable[..., Any],
@@ -108,6 +115,11 @@ CompileGraphResult: TypeAlias = Tuple[
         OrderedSet[Union[TensorVariable, SymbolicVariable]],
     ],
 ]
+GraphNodeVariableClasses = (
+    TensorVariable,
+    SymbolicVariable,
+    NumpyArrayVariable,
+)
 
 
 def convert_to_meta(inputs: Any):
@@ -116,7 +128,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicVariable)):
+        if isinstance(x, GraphNodeVariableClasses):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -131,7 +143,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicVariable)):
+        if isinstance(x, GraphNodeVariableClasses):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -155,7 +167,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, (TensorVariable, SymbolicVariable)):
+        if isinstance(value, GraphNodeVariableClasses):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -188,6 +200,12 @@ def replace_symbolic_var_with_constant_var(inputs):
         return x
 
     return map_variables(func, inputs, restore_variable=True)
+
+
+class APIType(Enum):
+    PADDLE = 0
+    SYMBOLIC = 1
+    NUMPY = 2
 
 
 class VariableLoader:
@@ -541,7 +559,34 @@ class FunctionGraph:
             InferMetaCache(),
             self.sir_builder.call_API,
             func,
-            False,
+            APIType.PADDLE,
+            *args,
+            **kwargs,
+        )
+
+    def call_numpy_api(
+        self,
+        func: Callable[..., Any],
+        *args: VariableBase,
+        **kwargs: VariableBase,
+    ):
+        """
+        Record Numpy API to SIR
+
+        Args:
+            func: numpy api
+        """
+        assert func in NUMPY_API_SUPPORTED_DICT.values()
+        log(3, f"call numpy.api : {func.__name__}", "\n")
+
+        def message_handler(*args, **kwargs):
+            return f"Call numpy api error: {func.__name__}, may be not a operator api?"
+
+        return inner_error_default_handler(self.symbolic_call, message_handler)(
+            InferMetaCache(),
+            self.sir_builder.call_API,
+            func,
+            APIType.NUMPY,
             *args,
             **kwargs,
         )
@@ -562,7 +607,7 @@ class FunctionGraph:
             InferMetaCache(),
             self.sir_builder.call_API,
             op,
-            True,
+            APIType.SYMBOLIC,
             *args,
             **kwargs,
         )
@@ -584,7 +629,7 @@ class FunctionGraph:
             InferMetaCache(),
             self.sir_builder.call_METHOD,
             method_name,
-            False,
+            APIType.PADDLE,
             *args,
             **kwargs,
         )
@@ -619,7 +664,7 @@ class FunctionGraph:
             return f"Call paddle layer error: {layer}, may be not a valid paddle layer?"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
-            infer_meta_fn, compute_fn, layer, False, *args, **kwargs
+            infer_meta_fn, compute_fn, layer, APIType.PADDLE, *args, **kwargs
         )
 
     def call_ast(
@@ -653,7 +698,7 @@ class FunctionGraph:
                 ast_infer_meta,
                 compute_fn,
                 static_function,
-                False,
+                APIType.PADDLE,
                 *args,
                 **kwargs,
             )
@@ -662,7 +707,7 @@ class FunctionGraph:
             return None
 
     def symbolic_call(
-        self, infer_meta_fn, compute_fn, func, is_symbolic_var, *args, **kwargs
+        self, infer_meta_fn, compute_fn, func, api_type, *args, **kwargs
     ):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
@@ -763,11 +808,14 @@ class FunctionGraph:
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
-        if is_symbolic_var:
+        if api_type == APIType.SYMBOLIC:
             var_cls = SymbolicVariable
             tracker = SymbolicOperationTracker(
                 list(args) + list(kwargs.values()), func
             )
+        elif api_type == APIType.NUMPY:
+            var_cls = NumpyArrayVariable
+            tracker = DummyTracker(list(args) + list(kwargs.values()))
         else:
             var_cls = TensorVariable
             tracker = DummyTracker(list(args) + list(kwargs.values()))
@@ -807,7 +855,7 @@ class FunctionGraph:
                 stmt_stacks,
             )  # symbolic only contain symbols.
             self._put_inner(outputs)
-        if is_symbolic_var:
+        if api_type == APIType.SYMBOLIC:
             # compute_fn should be call_method
             tracker = SymbolicOperationTracker(
                 list(args) + list(kwargs.values()), func
@@ -892,13 +940,13 @@ class FunctionGraph:
 
     def _find_tensor_inputs(
         self, input_names: list[str]
-    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
-        inputs: OrderedSet[TensorVariable | SymbolicVariable] = OrderedSet()
+    ) -> OrderedSet[GraphNodeVariableType]:
+        inputs: OrderedSet[GraphNodeVariableType] = OrderedSet()
         for name in input_names:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, (TensorVariable, SymbolicVariable))
+                    isinstance(variable, GraphNodeVariableClasses)
                     and variable.get_symbol().name == name
                 ):
                     inputs.add(variable)
@@ -908,30 +956,37 @@ class FunctionGraph:
         assert len(inputs) == len(input_names), "Number of inputs not match."
         return inputs
 
-    def gen_load_inputs(
-        self, inputs: OrderedSet[TensorVariable | SymbolicVariable]
-    ):
+    def gen_load_inputs(self, inputs: OrderedSet[GraphNodeVariableType]):
         for input_var in inputs:
-            # For SymbolicVariable, we use paddle.full([], value, "int64")
-            # to convert it to a Tensor
             if isinstance(input_var, SymbolicVariable):
+                # For SymbolicVariable, we use paddle.full([], value, "int64")
+                # to convert it to a Tensor
                 self.pycode_gen.gen_load_object(
                     paddle.full,
                     "___paddle_full",
                 )
                 self.pycode_gen.gen_build_list(0)
-            input_var.tracker.gen_instructions(self.pycode_gen)
-            if isinstance(input_var, SymbolicVariable):
+                input_var.tracker.gen_instructions(self.pycode_gen)
                 self.pycode_gen.gen_load_const("int64")
                 self.pycode_gen.gen_call_function(3)
+            elif isinstance(input_var, NumpyArrayVariable):
+                # For NumpyArrayVariable, we use paddle.to_tensor(value) to convert it to a Tensor
+                self.pycode_gen.gen_load_object(
+                    paddle.to_tensor,
+                    "___paddle_to_tensor",
+                )
+                input_var.tracker.gen_instructions(self.pycode_gen)
+                self.pycode_gen.gen_call_function(1)
+            else:
+                input_var.tracker.gen_instructions(self.pycode_gen)
 
     @staticmethod
     def _is_graph_output(
         var,
-    ) -> TypeGuard[TensorVariable | SymbolicVariable]:
+    ) -> TypeGuard[GraphNodeVariableType]:
         return isinstance(
             var.tracker, (DummyTracker, SymbolicOperationTracker)
-        ) and isinstance(var, (TensorVariable, SymbolicVariable))
+        ) and isinstance(var, GraphNodeVariableClasses)
 
     @staticmethod
     def _collect_related_dummy_tensor(var):
@@ -949,7 +1004,7 @@ class FunctionGraph:
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
-    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
+    ) -> OrderedSet[GraphNodeVariableType]:
         """
         Return all TensorVariable. find TensorVariables participating in networking from the output Variables
 
@@ -957,9 +1012,7 @@ class FunctionGraph:
             outputs: output variables
         """
 
-        output_tensors: OrderedSet[TensorVariable | SymbolicVariable] = (
-            OrderedSet()
-        )
+        output_tensors: OrderedSet[GraphNodeVariableType] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
             if isinstance(
