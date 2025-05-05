@@ -29,7 +29,7 @@ void FrobeniusNormKernel(const Context& ctx,
                          DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, axis.GetData(), reduce_all);
   if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    ctx.template Alloc<T>(out);
     return;
   }
   Reduce<Context, T, funcs::FrobeniusNormFunctor>(
