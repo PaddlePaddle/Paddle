@@ -46,6 +46,7 @@ from .callable import (  # noqa: F401
     FunctionVariable,
     LayerVariable,
     MethodVariable,
+    NumpyApiVariable,
     PaddleApiVariable,
     PaddleLayerVariable,
     UserCodeVariable,

@@ -591,7 +591,7 @@ def load_state_dict(
             unique_id = get_max_id(path)
         else:
             assert unique_id >= 0, f'{unique_id} should be >= 0'
-        logger.info(f"The unique_id:{unique_id} is uesed.")
+        logger.info(f"The unique_id:{unique_id} is used.")
 
         if use_dist:
             check_unique_id(unique_id, process_group)

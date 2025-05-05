@@ -15,17 +15,24 @@
 source $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/utils.sh
 init
 
-PATH=/usr/local/bin:${PATH}
+export PATH=/usr/local/bin:${PATH}
 ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
 ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
 
-if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ]; then
+if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ]; then
+    if [ "$CI_name" == "xpu" ]; then
+        echo "::group::Installing ninja-build"
+        apt install ninja-build -y
+        echo "::endgroup::"
+    fi
     apt install zstd -y
     pip config set global.cache-dir "/root/.cache/pip"
     pip install --upgrade pip
     echo "::group::Installing python dependencies"
     pip install -r "${work_dir}/python/requirements.txt"
-    pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    if [ "$CI_name" != "distribute" ]; then
+        pip install -r "${work_dir}/python/unittest_py/requirements.txt"
+    fi
     echo "::endgroup::"
 fi
 
@@ -268,7 +275,7 @@ EOF
     else
       parallel_number=8
     fi
-    if [ $parallel_number_env != "" ]; then
+    if [ "$parallel_number_env" != "" ]; then
       parallel_number=$parallel_number_env
     fi
 
@@ -278,7 +285,6 @@ EOF
     fi
     ccache -z
     cd ..
-    echo "::group::Build Paddle"
     if [ "${PYTHON_EXECUTABLE}" != "" ];then
         if [ "$SYSTEM" == "Darwin" ]; then
             ${PYTHON_EXECUTABLE} setup.py $1 --plat-name=macosx_10_9_x86_64;build_error=$?
@@ -292,7 +298,6 @@ EOF
             python setup.py $1;build_error=$?
         fi
     fi
-    echo "::endgroup::"
 
     # ci will collect ccache hit rate
     collect_ccache_hits
@@ -313,7 +318,7 @@ EOF
 run_setup "$@"
 
 if [[ -f ${PADDLE_ROOT}/build/build_summary.txt ]];then
-echo "=====================build summary======================"
-cat ${PADDLE_ROOT}/build/build_summary.txt
-echo "========================================================"
+    echo "=====================build summary======================"
+    cat ${PADDLE_ROOT}/build/build_summary.txt
+    echo "========================================================"
 fi

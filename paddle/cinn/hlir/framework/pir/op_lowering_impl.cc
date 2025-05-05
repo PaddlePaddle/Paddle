@@ -845,10 +845,9 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
       ir::ConvertExprBlockToStmtBlock(infer_shape_func->body);
   return infer_shape_func;
 }
-// TODO(heqianyue): support argidx and variance op on CPU
 bool IsOpDeniedOnCpu(::pir::Operation* op) {
-  static std::set<std::string> banned_ops = {
-      "cinn_op.argmax", "cinn_op.argmin", "pd_op.variance"};
+  // no op is denied after the support for composite reduce on cpu
+  static std::set<std::string> banned_ops = {};
   return banned_ops.count(op->name());
 }
 ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,

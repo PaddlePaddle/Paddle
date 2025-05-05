@@ -470,12 +470,12 @@ std::shared_ptr<OpStrategy> StrategyForCublasGemm(
   framework::CINNCompute gemm_compute([attrs](lang::Args args,
                                               lang::RetValue *ret) {
     auto &attr_store = attrs.attr_store;
-    PADDLE_ENFORCE_EQ(attr_store.contains("trans_a"),
+    PADDLE_ENFORCE_EQ(attr_store.count("trans_a"),
                       true,
                       ::common::errors::InvalidArgument(
                           "The cublas_gemm should have an attr named "
                           "`trans_a`."));
-    PADDLE_ENFORCE_EQ(attr_store.contains("trans_b"),
+    PADDLE_ENFORCE_EQ(attr_store.count("trans_b"),
                       true,
                       ::common::errors::InvalidArgument(
                           "The cublas_gemm should have an attr named "
@@ -932,7 +932,7 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                         "again."));
 
   int axis = 0;
-  if (attrs.attr_store.contains("axis")) {
+  if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
@@ -1024,7 +1024,7 @@ std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
           "The output type of Gather is empty! Please check again."));
 
   int axis = 0;
-  if (attrs.attr_store.contains("axis")) {
+  if (attrs.attr_store.count("axis")) {
     axis = absl::get<int>(attrs.attr_store.at("axis"));
   }
   axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
