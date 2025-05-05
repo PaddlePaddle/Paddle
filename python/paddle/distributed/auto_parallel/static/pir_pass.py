@@ -135,7 +135,11 @@ def apply_partition_pass(program, block=None):
             operand = op.operand(in_idx)
             operand_attr = op.dist_attr.operand(in_idx)
             prev_var = operand.source()
-            if not prev_var.is_dist() or operand_attr == prev_var.dist_attr():
+            if (
+                not prev_var.is_dist()
+                or operand_attr == prev_var.dist_attr()
+                or not prev_var.persistable
+            ):
                 continue
 
             assert (

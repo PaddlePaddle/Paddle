@@ -1562,6 +1562,20 @@ class _ShardOptimizer(Optimizer):
         return setattr(self._inner_opt, item, value)
 
 
+def _fake_replicate_grad_to_partial(grad, partial_axis):
+    new_placements = grad.placements
+    assert (
+        new_placements[partial_axis] == dist.Replicate()
+    ), "when reshard fake replicated grad to partial, the partial axis of grad should be Replicate"
+
+    new_placements[partial_axis] = dist.Partial(dist.ReduceType.kRedSum)
+
+    grad_mesh = grad.process_mesh
+    grad = dtensor_to_local(grad, grad_mesh, grad.placements)
+    grad = dtensor_from_local(grad, grad_mesh, new_placements)
+    return grad
+
+
 class _ShardingStageBase:
     def __init__(self, mesh, sharding_mesh_dim):
         self._mesh = mesh
@@ -1637,15 +1651,8 @@ class _ShardingStageBase:
             placements=placements,
         )
 
-    def _reshard_replicate_grad_to_partial(self, grad: Tensor) -> Tensor:
-        new_placements = grad.placements
-        assert (
-            new_placements[self._sharding_axis] == dist.Replicate()
-        ), "when enable_manual_dp_comm, the sharding axis of grad should be Replicate"
-        new_placements[self._sharding_axis] = dist.Partial(
-            dist.ReduceType.kRedAvg
-        )
-        return dist.reshard(grad, grad.process_mesh, new_placements)
+    def _reshard_fake_replicate_grad_to_partial(self, grad: Tensor) -> Tensor:
+        return _fake_replicate_grad_to_partial(grad, self._sharding_axis)
 
 
 class _ShardingStage0(_ShardingStageBase):
@@ -1657,7 +1664,7 @@ class _ShardingStage0(_ShardingStageBase):
 
     def __call__(self, key: str, param: Tensor, tensor: Tensor) -> Tensor:
         if key == "grad" and self._enable_manual_dp_comm:
-            return self._reshard_replicate_grad_to_partial(tensor)
+            return self._reshard_fake_replicate_grad_to_partial(tensor)
 
         return tensor
 
@@ -1713,7 +1720,7 @@ class ShardingStage1(_ShardingStageBase):
             return tensor
 
         if key == "grad" and self._enable_manual_dp_comm:
-            tensor = self._reshard_replicate_grad_to_partial(tensor)
+            tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
 
         if 'beta' not in key:
             placements = get_placement_with_sharding(param, self._sharding_axis)
@@ -1843,7 +1850,7 @@ class ShardingStage3(_ShardingStageBase):
             return tensor
 
         if key == "grad" and self._enable_manual_dp_comm:
-            tensor = self._reshard_replicate_grad_to_partial(tensor)
+            tensor = self._reshard_fake_replicate_grad_to_partial(tensor)
 
         if 'beta' not in key:
             placements = param.placements
