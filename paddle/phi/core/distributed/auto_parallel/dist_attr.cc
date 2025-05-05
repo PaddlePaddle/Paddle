@@ -426,19 +426,6 @@ bool TensorDistAttr::is_replicated(int64_t mesh_axis) const {
   }
 }
 
-bool TensorDistAttr::is_fake_replicated(int64_t mesh_axis) const {
-  auto placement = to_placement();
-  if (mesh_axis == -1) {
-    return std::all_of(placement.begin(),
-                       placement.end(),
-                       [](std::shared_ptr<PlacementStatus> status) {
-                         return status->is_fake_replicated();
-                       });
-  } else {
-    return placement[mesh_axis]->is_fake_replicated();
-  }
-}
-
 bool TensorDistAttr::is_shard(int64_t mesh_axis, int64_t tensor_axis) const {
   auto placement = to_placement();
   if (mesh_axis == -1) {
