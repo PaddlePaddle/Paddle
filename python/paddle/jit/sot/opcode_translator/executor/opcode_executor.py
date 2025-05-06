@@ -99,6 +99,7 @@ from .variables import (
     ListVariable,
     MethodVariable,
     NullVariable,
+    NumPyArrayVariable,
     RangeVariable,
     SequenceIterVariable,
     SliceVariable,
@@ -282,7 +283,7 @@ def if_break_graph_decorator(normal_jump: Callable):
 
     def inner(self: OpcodeExecutor, instr: Instruction):
         result = self.stack.top
-        if isinstance(result, TensorVariable):
+        if isinstance(result, (TensorVariable, NumPyArrayVariable)):
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
             log(3, "[BreakGraph] break graph for if jump tensor\n")
@@ -467,7 +468,7 @@ class OpcodeExecutorBase:
         Prints the Static Instruction Representation (SIR) in the executor.
 
         """
-        print(self._graph.sir_ctx.TOS)
+        print(self._graph.sir_builder.current_sir)
 
     def _prepare_virtual_env(self):
         """
@@ -1735,6 +1736,7 @@ class OpcodeExecutorBase:
                 )
             )
 
+    @call_break_graph_decorator(push_n=1)
     def GET_ITER(self, instr: Instruction):
         source_obj = self.stack.pop()
         iter_variable = BuiltinVariable(iter, self._graph, DanglingTracker())(

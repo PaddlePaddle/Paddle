@@ -11,6 +11,8 @@ if(NOT WIN32 AND TENSORRT_FOUND)
   set_tests_properties(test_converter_model_bert PROPERTIES TIMEOUT "500")
   set_tests_properties(test_converter_model_dummy PROPERTIES TIMEOUT "500")
   set_tests_properties(test_converter_model_resnet50 PROPERTIES TIMEOUT "500")
+  set_tests_properties(test_converter_model_resnet50_move PROPERTIES TIMEOUT
+                                                                     "500")
   set_tests_properties(test_converter_conv PROPERTIES TIMEOUT "300")
   set_tests_properties(test_export PROPERTIES TIMEOUT "500")
   set_tests_properties(test_converter_norm PROPERTIES TIMEOUT "300")

@@ -45,6 +45,7 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_nonzero_rule MODULES test_nonzero_rule)
   if(NOT WITH_ROCM)
     py_test_modules(test_add_n_rule MODULES test_add_n_rule)
+    py_test_modules(test_argmin_rule MODULES test_argmin_rule)
   endif()
   # End of unittests WITH single card WITHOUT timeout
 

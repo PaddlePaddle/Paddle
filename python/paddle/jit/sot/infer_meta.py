@@ -15,11 +15,12 @@ from __future__ import annotations
 
 import copy
 from functools import cached_property
-from typing import TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.base.unique_name import (
     UniqueNameGenerator,
     guard as UniqueNameGuard,
@@ -45,6 +46,9 @@ from .utils import (
     map_if_extend,
     meta_str,
 )
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 DynamicSymbolT = TypeVar("DynamicSymbolT")
 SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
@@ -224,6 +228,28 @@ class MetaInfo:
             None,  # We can't infer the right place in compile time.
             None,  # there's no spec_name specified when from_value.
             dist_info=dist_info,
+        )
+
+    @staticmethod
+    def from_numpy(
+        nparray: npt.NDArray[Any], *, dynamic_axes: list[int] | None = None
+    ):
+        dtype = convert_np_dtype_to_dtype_(nparray.dtype)
+        dynamic_axes = dynamic_axes or []
+        shape = [
+            SymbolicInt() if i in dynamic_axes else dim
+            for i, dim in enumerate(nparray.shape)
+        ]
+        return MetaInfo(
+            shape,
+            dtype,
+            True,  # stop_gradient
+            None,
+            None,  # persistable
+            None,
+            None,
+            None,
+            dist_info=None,
         )
 
     def is_inner_var(self):

@@ -45,7 +45,9 @@ jobs:
           echo "Downloading Paddle.tar.gz"
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
+          git config --global --add safe.directory ${work_dir}
           tar xf Paddle.tar.gz  --strip-components=1
+          git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           rm Paddle.tar.gz
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
@@ -113,6 +115,7 @@ jobs:
             -e WITH_AVX \
             -e no_proxy \
             -e GITHUB_API_TOKEN \
+            -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Run build
@@ -144,7 +147,7 @@ jobs:
             tar xf ${{ env.home_path }}/bos_new.tar.gz -C ${{ env.home_path }}/bos
           fi
           cd ..
-          tar --use-compress-program="pigz" -cpf build.tar.gz Paddle
+          tar --use-compress-program="pzstd -5" -cf build.tar.gz Paddle
           # source /home/opt/deck/1.0/etc/bashrc
           echo "Uploading build.tar.gz"
           python3 ${bos_file} build.tar.gz paddle-github-action/PR/xpu/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
@@ -157,6 +160,8 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
+          set +e
+          rm Paddle.tar.gz
           docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
           docker stop ${container_name}
           docker rm ${container_name}
@@ -175,8 +180,8 @@ jobs:
         run: |
           sudo rm -rf * .[^.]*
           wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
-          # wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/xpu/72068/a58543d2f92bbe5c817e185e9cc24b549c919601/build.tar.gz --no-check-certificate
-          tar --use-compress-program="pigz" -xpf build.tar.gz --strip-components=1
+          sudo yum install zstd -y
+          tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
           rm build.tar.gz
 
       - name: Determine the runner
@@ -249,6 +254,7 @@ jobs:
             -e no_proxy \
             -e GITHUB_API_TOKEN \
             -e FLAGS_use_stride_kernel \
+            -e CI_name \
             -w /paddle --network host ${docker_image} /bin/bash
 
       - name: Run test
@@ -262,6 +268,6 @@ jobs:
         if: always()
         run: |
           sudo mkdir -p /run/user/0
-          docker exec -t ${container_name} /bin/bash -c 'rm -rf * .[^.]*'
+          sudo rm -rf * .[^.]*
           docker stop ${container_name}
           docker rm ${container_name}
