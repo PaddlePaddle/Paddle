@@ -33,6 +33,8 @@ jobs:
   clone:
     name: Coverage clone
     uses: ./.github/workflows/_Clone-linux.yml
+    with:
+      workflow-name: 'coverage'
 
   build:
     name: Coverage build
