@@ -61,13 +61,6 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git pull upstream $BRANCH --no-edit
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: coverage
-
       - name: Check docker image and run container
         env:
           CCACHE_DIR: "/root/.ccache/coverage"
@@ -145,6 +138,7 @@ jobs:
       - name: Build
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
+          unset GREP_OPTIONS
           mkdir -p /home/data/cfs/.cache/coverage
           mkdir -p /home/data/cfs/.ccache/coverage
           source ${{ github.workspace }}/../../../proxy
@@ -154,7 +148,7 @@ jobs:
       - name: Check added unittests
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
+          source ~/.bashrc; unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           bash $ci_scripts/check_added_ut.sh
           '
@@ -162,7 +156,7 @@ jobs:
       - name: Check coverage build size requires approval
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
+          source ~/.bashrc; unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           bash $ci_scripts/coverage_build_size_approval.sh
           '
@@ -170,7 +164,7 @@ jobs:
       - name: Clean up env
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
+          source ~/.bashrc; unset GREP_OPTIONS
           source ${ci_scripts}/utils.sh; clean_build_files
           Build_Size=$(du -h --max-depth=0 ${work_dir}/build |awk '"'"'{print $1}'"'"')
           echo "Build_Size=${Build_Size}" > ${work_dir}/dist/coverage_build_size
