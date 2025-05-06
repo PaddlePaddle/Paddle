@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import collections
 import dis
 import functools
 import inspect
@@ -42,6 +41,7 @@ from ....utils import (
     get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
+    hashable,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
@@ -424,7 +424,7 @@ class NumPyApiVariable(FunctionVariable):
         # TODO(wangmingkai02): support other numpy api.
         if (
             ENV_SOT_TRACE_NUMPY.get()
-            and isinstance(value, collections.abc.Hashable)
+            and hashable(value)
             and (
                 value in NUMPY_API_SUPPORTED_DICT
                 or any(
