@@ -987,7 +987,7 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::vector<int>& paddings,
+                  const std::vector<int>& dilations,
                   const std::string data_format,
                   DenseTensor* input_grad) {
     bool channel_last = (data_format == "NHWC");
@@ -1470,6 +1470,7 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
     const std::vector<int>& ksize,
     const std::vector<int>& strides,
     const std::vector<int>& paddings,
+    const std::vector<int>& dilations,
     bool exclusive,
     bool adaptive,
     T* output,
@@ -1493,6 +1494,9 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int padding_depth = paddings[0];
   const int padding_height = paddings[1];
   const int padding_width = paddings[2];
+  const int dilation_depth = dilations[0];
+  const int dilation_height = dilations[1];
+  const int dilation_width = dilations[2];
 
   int nthreads = batch_size * output_channels * output_depth * output_height *
                  output_width;
@@ -1522,6 +1526,9 @@ void Pool3dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                                              padding_depth,
                                                              padding_height,
                                                              padding_width,
+                                                             dilation_depth,
+                                                             dilation_height,
+                                                             dilation_width,
                                                              pool_compute,
                                                              exclusive,
                                                              adaptive,
@@ -2071,6 +2078,8 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
                                        const int stride_width,
                                        const int padding_height,
                                        const int padding_width,
+                                       const int dilation_height,
+                                       const int dilation_width,
                                        bool adaptive,
                                        T1* output_data,
                                        T2* mask_data,
@@ -2346,7 +2355,6 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                    padding_height,
                                                    padding_width,
                                                    dilation_height,
-                                                   dilation_width,
                                                    dilation_width,
                                                    adaptive,
                                                    output_data,
