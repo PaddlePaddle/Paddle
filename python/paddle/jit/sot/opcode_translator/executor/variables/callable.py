@@ -41,6 +41,7 @@ from ....utils import (
     get_numpy_ufuncs,
     get_obj_stable_repr,
     get_static_function,
+    hashable,
     is_break_graph_api,
     is_break_graph_tensor_methods,
     is_builtin_fn,
@@ -421,17 +422,18 @@ class NumpyApiVariable(FunctionVariable):
     @VariableFactory.register_from_value(successor="BuiltinVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         # TODO(wangmingkai02): support other numpy api.
-        try:
-            if ENV_SOT_TRACE_NUMPY.get() and (
+        if (
+            ENV_SOT_TRACE_NUMPY.get()
+            and hashable(value)
+            and (
                 value in NUMPY_API_SUPPORTED_DICT
                 or any(
                     value in ufuncs
                     for ufuncs in NumpyApiVariable._get_numpy_ufuncs()
                 )
-            ):
-                return NumpyApiVariable(value, graph, tracker)
-        except Exception:
-            return None
+            )
+        ):
+            return NumpyApiVariable(value, graph, tracker)
         return None
 
     @property
