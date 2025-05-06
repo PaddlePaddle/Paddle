@@ -1689,9 +1689,9 @@ class DygraphTracerVariable(VariableBase):
         return None
 
 
-class NumpyVariable(VariableBase):
+class NumPyVariable(VariableBase):
     """
-    NumpyVariable is a subclass of VariableBase used to wrap a Variable of the numpy type.
+    NumPyVariable is a subclass of VariableBase used to wrap a Variable of the numpy type.
 
     Args:
         value: The numpy value to be wrapped.
@@ -1721,7 +1721,7 @@ class NumpyVariable(VariableBase):
 
     @staticmethod
     def format_number(number: np.number):
-        return f"{NumpyVariable.format_dtype(number.dtype)}({number.item()})"
+        return f"{NumPyVariable.format_dtype(number.dtype)}({number.item()})"
 
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
@@ -1733,7 +1733,7 @@ class NumpyVariable(VariableBase):
         raise NotImplementedError
 
 
-class NumpyNumberVariable(NumpyVariable):
+class NumPyNumberVariable(NumPyVariable):
     def _reconstruct(self, codegen: PyCodeGen):
         np_type = self.get_py_type()
         type_id = f"___np_{np_type.__name__}"
@@ -1773,7 +1773,7 @@ class NumpyNumberVariable(NumpyVariable):
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(self.get_py_value().dtype)}",
+            f"{{}}.dtype == {NumPyVariable.format_dtype(self.get_py_value().dtype)}",
             paddle.framework.core.NumPyDtypeMatchGuard(
                 self.get_py_value().dtype
             ),
@@ -1784,7 +1784,7 @@ class NumpyNumberVariable(NumpyVariable):
         return [
             dtype_guard,
             FasterStringifiedExpression(
-                f"{{}} == {NumpyVariable.format_number(self.get_py_value())}",
+                f"{{}} == {NumPyVariable.format_number(self.get_py_value())}",
                 paddle.framework.core.ValueMatchGuard(self.get_py_value()),
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars, {"np": np}),
@@ -1794,19 +1794,19 @@ class NumpyNumberVariable(NumpyVariable):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, np.number):
-            return NumpyNumberVariable(value, graph, tracker)
+            return NumPyNumberVariable(value, graph, tracker)
         return None
 
 
-class NumpyBoolVariable(NumpyNumberVariable):
+class NumPyBoolVariable(NumPyNumberVariable):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, np.bool_):
-            return NumpyBoolVariable(value, graph, tracker)
+            return NumPyBoolVariable(value, graph, tracker)
         return None
 
 
-class NumpyArrayVariable(NumpyVariable):
+class NumPyArrayVariable(NumPyVariable):
     var_name_generator = NameGenerator("np_var_")
     value: npt.NDArray[Any]
     mutable_attrs: list[str] = ["meta"]
@@ -1844,7 +1844,7 @@ class NumpyArrayVariable(NumpyVariable):
     def get_py_value(self, allow_tensor=False) -> Any:
         raise BreakGraphError(
             UnsupportedOperationBreak(
-                reason_str="NumpyArrayVariable doesn't support get_py_value operation."
+                reason_str="NumPyArrayVariable doesn't support get_py_value operation."
             )
         )
 
@@ -1859,7 +1859,7 @@ class NumpyArrayVariable(NumpyVariable):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, np.ndarray):
-            return NumpyArrayVariable(value, graph, tracker)
+            return NumPyArrayVariable(value, graph, tracker)
         return None
 
     @property
@@ -1896,7 +1896,7 @@ class NumpyArrayVariable(NumpyVariable):
         meta = self.meta
 
         dtype_guard = FasterStringifiedExpression(
-            f"{{}}.dtype == {NumpyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype]))}",
+            f"{{}}.dtype == {NumPyVariable.format_dtype(np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype]))}",
             paddle.framework.core.NumPyDtypeMatchGuard(
                 np.dtype(_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[self.meta.dtype])
             ),

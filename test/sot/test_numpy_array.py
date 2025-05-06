@@ -96,7 +96,7 @@ def absolute(x):
     return np.absolute(x)
 
 
-class TestNumpyArray(TestCaseBase):
+class TestNumPyArray(TestCaseBase):
     def test_guard(self):
         with test_instruction_translator_cache_context() as ctx:
             self.assertEqual(ctx.translate_count, 0)
