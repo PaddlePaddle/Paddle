@@ -39,7 +39,8 @@ namespace adt = ap::adt;
 
 namespace {
 
-class MoveTrivialFusionRangeToFusionOpPattern
+template <typename ContainerOp>
+class MoveTrivialFusionRangeToContainerOpPattern
     : public pir::OpRewritePattern<::paddle::dialect::ApTrivialFusionEndOp> {
  public:
   using pir::OpRewritePattern<
@@ -51,7 +52,7 @@ class MoveTrivialFusionRangeToFusionOpPattern
     const auto& ret = TryMatchAndRewrite(ap_trivial_fusion_end_op, &rewriter);
     PADDLE_ENFORCE(
         !ret.HasError(),
-        "MoveTrivialFusionRangeToFusionOpPattern::MatchAndRewrite failed. "
+        "MoveTrivialFusionRangeToContainerOpPattern::MatchAndRewrite failed. "
         "\nTraceback (most recent call "
         "last):\n%s\n%s: %s. ",
         ret.GetError().CallStackToString(),
@@ -69,7 +70,7 @@ class MoveTrivialFusionRangeToFusionOpPattern
     ADT_LET_CONST_REF(
         old_outputs,
         GetUsedOutputs(ap_trivial_fusion_begin_op, ap_trivial_fusion_end_op));
-    auto fusion_op = rewriter->Build<::cinn::dialect::FusionOp>([&] {
+    auto fusion_op = rewriter->Build<ContainerOp>([&] {
       std::vector<pir::Type> output_types{};
       output_types.reserve(old_outputs.size());
       for (pir::Value output : old_outputs) {
@@ -237,11 +238,27 @@ class MoveTrivialFusionRangeToFusionOpPattern
 class MoveTrivialFusionRangeToFusionOpPass : public pir::PatternRewritePass {
  public:
   MoveTrivialFusionRangeToFusionOpPass()
-      : pir::PatternRewritePass("move_trivial_fusion_range_to_if_block", 1) {}
+      : pir::PatternRewritePass("move_trivial_fusion_range_to_fusion_op", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<MoveTrivialFusionRangeToFusionOpPattern>(context);
+    ps.Add<
+        MoveTrivialFusionRangeToContainerOpPattern<::cinn::dialect::FusionOp>>(
+        context);
+    return ps;
+  }
+};
+
+class MoveTrivialFusionRangeToGroupOpPass : public pir::PatternRewritePass {
+ public:
+  MoveTrivialFusionRangeToGroupOpPass()
+      : pir::PatternRewritePass("move_trivial_fusion_range_to_group_op", 1) {}
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<
+        MoveTrivialFusionRangeToContainerOpPattern<::cinn::dialect::GroupOp>>(
+        context);
     return ps;
   }
 };

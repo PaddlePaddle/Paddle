@@ -29,4 +29,8 @@ bool ApOpFacadeOpInferSymbolicShape(
 bool PdOpApFacadeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context);
 
+// for pd_op.ap_variadic
+bool PdOpApVariadicOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context);
+
 }  // namespace ap::dialect

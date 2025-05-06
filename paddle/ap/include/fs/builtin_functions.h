@@ -13,24 +13,18 @@
 // limitations under the License.
 
 #pragma once
-
 #include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/anf_expr.h"
-#include "paddle/ap/include/axpr/serializable_value.h"
+#include "paddle/ap/include/axpr/core_expr.h"
+#include "paddle/ap/include/axpr/value.h"
 
-namespace ap::axpr {
+namespace ap::fs {
 
-class LetContext;
+adt::Result<axpr::Value> DirName(const axpr::Value&,
+                                 const std::vector<axpr::Value>& args);
 
-template <typename T>
-class AttrMap;
+adt::Result<axpr::Value> BaseName(const axpr::Value&,
+                                  const std::vector<axpr::Value>& args);
 
-struct BuiltinSerializableAttrMapToAxprHelper {
-  using AnfExpr = axpr::AnfExpr;
+void ForceLink();
 
-  adt::Result<AnfExpr> Convert(
-      ap::axpr::LetContext* ctx,
-      const ap::axpr::AttrMap<ap::axpr::SerializableValue>& attr_map) const;
-};
-
-}  // namespace ap::axpr
+}  // namespace ap::fs

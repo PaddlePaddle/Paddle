@@ -42,4 +42,9 @@ bool ApFacadeOpInferSymbolicShape(
   return ap::dialect::PdOpApFacadeOpInferSymbolicShape(op, infer_context);
 }
 
+bool ApVariadicOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return ap::dialect::PdOpApVariadicOpInferSymbolicShape(op, infer_context);
+}
+
 }  // namespace paddle::dialect

@@ -14,23 +14,32 @@
 
 #pragma once
 
-#include "paddle/ap/include/adt/adt.h"
-#include "paddle/ap/include/axpr/anf_expr.h"
-#include "paddle/ap/include/axpr/serializable_value.h"
+#include <memory>
+#include <optional>
+#include "paddle/pir/include/pass/pass.h"
+
+namespace ap::memory {
+
+class CirclableRefListBase;
+
+}
 
 namespace ap::axpr {
 
-class LetContext;
+struct Value;
 
-template <typename T>
-class AttrMap;
+}
 
-struct BuiltinSerializableAttrMapToAxprHelper {
-  using AnfExpr = axpr::AnfExpr;
+namespace pir {
 
-  adt::Result<AnfExpr> Convert(
-      ap::axpr::LetContext* ctx,
-      const ap::axpr::AttrMap<ap::axpr::SerializableValue>& attr_map) const;
-};
+class Program;
 
-}  // namespace ap::axpr
+}
+
+namespace ap {
+namespace paddle {
+
+std::unique_ptr<pir::Pass> CreatePutApTrivialOpsInRangePass();
+
+}  // namespace paddle
+}  // namespace ap
