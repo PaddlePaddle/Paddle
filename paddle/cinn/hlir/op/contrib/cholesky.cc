@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "absl/types/variant.h"
+#include <variant>
 #include "glog/logging.h"
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"

@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "absl/types/optional.h"
+#include <optional>
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
@@ -187,11 +187,11 @@ std::shared_ptr<OpStrategy> StrategyForScale(
   bool bias_after_scale = true;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "scale") {
-      scale = absl::get<float>(iter.second);
+      scale = std::get<float>(iter.second);
     } else if (iter.first == "bias") {
-      bias = absl::get<float>(iter.second);
+      bias = std::get<float>(iter.second);
     } else if (iter.first == "bias_after_scale") {
-      bias_after_scale = absl::get<bool>(iter.second);
+      bias_after_scale = std::get<bool>(iter.second);
     }
   }
   framework::CINNCompute scale_compute([=](lang::Args args,
@@ -272,11 +272,11 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
   bool bias_after_scale = true;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "scale") {
-      scale = absl::get<float>(iter.second);
+      scale = std::get<float>(iter.second);
     } else if (iter.first == "bias") {
-      bias = absl::get<float>(iter.second);
+      bias = std::get<float>(iter.second);
     } else if (iter.first == "bias_after_scale") {
-      bias_after_scale = absl::get<bool>(iter.second);
+      bias_after_scale = std::get<bool>(iter.second);
     }
   }
   framework::CINNCompute scale_compute(
@@ -404,7 +404,7 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
           "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
-  absl::visit(Visitor{scalar}, attr);
+  std::visit(Visitor{scalar}, attr);
   return scalar;
 }
 
@@ -491,7 +491,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
                       ::common::errors::InvalidArgument(
                           "The attribute shape of fill_constant is not found! "
                           "Please check."));
-    auto shape = absl::get<std::vector<int>>(attrs.attr_store.at("shape"));
+    auto shape = std::get<std::vector<int>>(attrs.attr_store.at("shape"));
     PADDLE_ENFORCE_EQ(attrs.attr_store.count("value"),
                       true,
                       ::common::errors::InvalidArgument(
@@ -504,7 +504,7 @@ std::shared_ptr<OpStrategy> StrategyForFillConstant(
         ::common::errors::InvalidArgument(
             "The attribute force_cpu of fill_constant is not found! "
             "Please check."));
-    force_cpu = absl::get<bool>(attrs.attr_store.at("force_cpu"));
+    force_cpu = std::get<bool>(attrs.attr_store.at("force_cpu"));
 
     if (force_cpu && target != cinn::common::DefaultHostTarget()) {
       LOG(WARNING) << "The attribute force_cpu of fill_constant "
@@ -653,15 +653,15 @@ std::shared_ptr<OpStrategy> StrategyForAssignValue(
                           "Please check."));
     std::string tensor_name = arg_pack[0].operator std::string();
 
-    absl::optional<ir::Tensor> out;
-#define EXPAND_VALUE_TO_TENSOR(TYPE)                                          \
-  else if (absl::get_if<TYPE>(&value)) { /*NOLINT*/                           \
-    out = pe::AssignValue(                                                    \
-        std::vector<TYPE>{absl::get<TYPE>(value)}, out_type[0], tensor_name); \
-  }                                                                           \
-  else if (absl::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/              \
-    out = pe::AssignValue(                                                    \
-        absl::get<std::vector<TYPE>>(value), out_type[0], tensor_name);       \
+    std::optional<ir::Tensor> out;
+#define EXPAND_VALUE_TO_TENSOR(TYPE)                                         \
+  else if (std::get_if<TYPE>(&value)) { /*NOLINT*/                           \
+    out = pe::AssignValue(                                                   \
+        std::vector<TYPE>{std::get<TYPE>(value)}, out_type[0], tensor_name); \
+  }                                                                          \
+  else if (std::get_if<std::vector<TYPE>>(&value)) { /*NOLINT*/              \
+    out = pe::AssignValue(                                                   \
+        std::get<std::vector<TYPE>>(value), out_type[0], tensor_name);       \
   }
 
     if (false) {  // NOLINT
@@ -739,7 +739,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSqueeze(
     const Target &target) {
   const std::vector<int> &axes =
       attrs.attr_store.count("axes")
-          ? absl::get<std::vector<int>>(attrs.attr_store.at("axes"))
+          ? std::get<std::vector<int>>(attrs.attr_store.at("axes"))
           : std::vector<int>{};
 
   framework::CINNCompute squeeze_compute([=](lang::Args args,
@@ -800,7 +800,7 @@ std::shared_ptr<OpStrategy> StrategyForExpandDims(
     const Target &target) {
   const std::vector<int> &axes =
       attrs.attr_store.count("axes")
-          ? absl::get<std::vector<int>>(attrs.attr_store.at("axes"))
+          ? std::get<std::vector<int>>(attrs.attr_store.at("axes"))
           : std::vector<int>{};
 
   framework::CINNCompute expand_dims_compute{[=](lang::Args args,
@@ -881,7 +881,7 @@ std::shared_ptr<OpStrategy> StrategyForReshape(
     PADDLE_ENFORCE(attr_store.count("shape"),
                    ::common::errors::InvalidArgument("find no attr of shape"));
     std::vector<int> new_shape =
-        absl::get<std::vector<int>>(attr_store.at("shape"));
+        std::get<std::vector<int>>(attr_store.at("shape"));
     auto tensor_A = A.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
@@ -1208,9 +1208,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
       attrs.attr_store.count("symbol_bindings"),
       ::common::errors::InvalidArgument("Expected attribute symbol_bindings "
                                         "in strategy for generate shape op"));
-  auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
+  auto output_dim_exprs = std::get<std::vector<symbol::DimExpr>>(
       attrs.attr_store.at("output_dim_exprs"));
-  auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
+  auto symbol_bindings = std::get<cinn::dialect::SymbolBindings>(
       attrs.attr_store.at("symbol_bindings"));
 
   framework::CINNCompute generate_shape_compute(
@@ -1276,11 +1276,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
       ::common::errors::InvalidArgument(
           "No dtype attribute in attrs.attr_store! Please check."));
 
-  auto start = absl::get<float>(attr_store.at("start"));
-  auto stop = absl::get<float>(attr_store.at("stop"));
-  auto step = absl::get<float>(attr_store.at("step"));
+  auto start = std::get<float>(attr_store.at("start"));
+  auto stop = std::get<float>(attr_store.at("stop"));
+  auto step = std::get<float>(attr_store.at("step"));
   auto dtype =
-      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+      cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
 
   framework::CINNCompute arange_compute(
       [=](lang::Args args, lang::RetValue *ret) {
@@ -1333,11 +1333,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                     ::common::errors::InvalidArgument(
                         "No dtype attribute in arange Op! Please check."));
 
-  auto start = absl::get<float>(attr_store.at("start"));
-  auto stop = absl::get<float>(attr_store.at("stop"));
-  auto step = absl::get<float>(attr_store.at("step"));
+  auto start = std::get<float>(attr_store.at("start"));
+  auto stop = std::get<float>(attr_store.at("stop"));
+  auto step = std::get<float>(attr_store.at("step"));
   auto dtype =
-      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+      cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
 
   framework::CINNCompute arange_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
@@ -1388,7 +1388,7 @@ std::shared_ptr<OpStrategy> StrategyForTril(
         A.as_tensor(),
         ::common::errors::InvalidArgument(
             "first input argument in tril should be tensor"));
-    int diagonal = absl::get<int>(attrs.attr_store.at("diagonal"));
+    int diagonal = std::get<int>(attrs.attr_store.at("diagonal"));
     auto tensor_A = A.as_tensor_ref();
 
     PADDLE_ENFORCE_NE(output_shapes.size(),
@@ -1497,16 +1497,16 @@ std::shared_ptr<OpStrategy> StrategyForIsClose(
   int axis = -1;
 
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (attrs.attr_store.count("rtol")) {
-    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
+    rtol = std::get<float>(attrs.attr_store.at("rtol"));
   }
   if (attrs.attr_store.count("atol")) {
-    atol = absl::get<float>(attrs.attr_store.at("atol"));
+    atol = std::get<float>(attrs.attr_store.at("atol"));
   }
   if (attrs.attr_store.count("equal_nan")) {
-    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
+    equal_nan = std::get<bool>(attrs.attr_store.at("equal_nan"));
   }
 
   framework::CINNCompute isclose_compute([=](lang::Args args,
@@ -1567,16 +1567,16 @@ std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
   int axis = -1;
 
   if (attrs.attr_store.count("axis")) {
-    axis = absl::get<int>(attrs.attr_store.at("axis"));
+    axis = std::get<int>(attrs.attr_store.at("axis"));
   }
   if (attrs.attr_store.count("rtol")) {
-    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
+    rtol = std::get<float>(attrs.attr_store.at("rtol"));
   }
   if (attrs.attr_store.count("atol")) {
-    atol = absl::get<float>(attrs.attr_store.at("atol"));
+    atol = std::get<float>(attrs.attr_store.at("atol"));
   }
   if (attrs.attr_store.count("equal_nan")) {
-    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
+    equal_nan = std::get<bool>(attrs.attr_store.at("equal_nan"));
   }
 
   framework::CINNCompute isclose_compute([=](lang::Args args,

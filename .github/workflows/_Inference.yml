@@ -2,10 +2,12 @@ name: PR-CI-Inference
 
 on:
   workflow_call:
+    inputs:
+      docker_inference_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: Dockerfile.cuda11.2_cudnn8.1_trt8.4_gcc8.2_ubuntu18
-  docker_image: 0ca5c4c33a67
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -65,6 +67,8 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo  "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_inference_image }}
+          docker pull $docker_image
           docker run -d -t --name ${container_name} \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache:/root/.cache" \
@@ -202,6 +206,8 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
+          docker_image=${{ inputs.docker_inference_image }}
+          docker pull $docker_image
           docker run -d -t --gpus all --name ${container_name} \
           -v "/home/data/cfs:/home/data/cfs" \
           -v "/home/data/cfs/.cache:/root/.cache" \

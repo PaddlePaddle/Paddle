@@ -275,7 +275,7 @@ EOF
     else
       parallel_number=8
     fi
-    if [ $parallel_number_env != "" ]; then
+    if [ "$parallel_number_env" != "" ]; then
       parallel_number=$parallel_number_env
     fi
 

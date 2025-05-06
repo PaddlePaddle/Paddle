@@ -36,35 +36,35 @@ using cinn::common::Type;
 using ir::Expr;
 using ir::ExprNode;
 
-using ExprOp = absl::variant<ir::IntImm,
-                             ir::UIntImm,
-                             ir::FloatImm,
-                             ir::StringImm,
-                             ir::Cast,
-                             ir::Let,
-                             ir::Reduce,
-                             ir::Call,
-                             ir::_Var_,
-                             ir::Select,
-                             ir::Load,
-                             ir::Store,
-                             ir::Alloc,
-                             ir::Free,
-                             ir::IfThenElse,
-                             ir::For,
-                             ir::PolyFor,
-                             ir::Ramp,
-                             ir::Broadcast,
-                             ir::Product,
-                             ir::Sum,
-                             ir::Block,
-                             ir::_Module_>;
-using BinaryOp = absl::variant<>;
-using UnaryOp = absl::variant<>;
+using ExprOp = std::variant<ir::IntImm,
+                            ir::UIntImm,
+                            ir::FloatImm,
+                            ir::StringImm,
+                            ir::Cast,
+                            ir::Let,
+                            ir::Reduce,
+                            ir::Call,
+                            ir::_Var_,
+                            ir::Select,
+                            ir::Load,
+                            ir::Store,
+                            ir::Alloc,
+                            ir::Free,
+                            ir::IfThenElse,
+                            ir::For,
+                            ir::PolyFor,
+                            ir::Ramp,
+                            ir::Broadcast,
+                            ir::Product,
+                            ir::Sum,
+                            ir::Block,
+                            ir::_Module_>;
+using BinaryOp = std::variant<>;
+using UnaryOp = std::variant<>;
 
 // hold CINNValue
 using ValueVar =
-    absl::variant<int32_t, int64_t, float, ir::Var, ir::Expr, std::nullptr_t>;
+    std::variant<int32_t, int64_t, float, ir::Var, ir::Expr, std::nullptr_t>;
 
 inline ValueVar ConvertToVar(const CINNValue &value) {
   auto type_code = value.type_code();
@@ -87,7 +87,7 @@ inline ValueVar ConvertToVar(const CINNValue &value) {
 }
 
 template <typename T>
-auto DefineShared(py::module *m, absl::string_view obj_name) {
+auto DefineShared(py::module *m, std::string_view obj_name) {
   std::string name = "Shared" + std::string(obj_name);
   py::class_<Shared<T>> shared(*m, name.c_str());
 
@@ -98,7 +98,7 @@ auto DefineShared(py::module *m, absl::string_view obj_name) {
 }
 
 template <typename NodeType>
-void DefineExprNode(py::module *m, absl::string_view node_name) {
+void DefineExprNode(py::module *m, std::string_view node_name) {
   using ExprNodeT = ExprNode<NodeType>;
 
   std::string prefix{"ExprNode"};
@@ -122,7 +122,7 @@ void DefineExprNode(py::module *m, absl::string_view node_name) {
 }
 
 template <typename NodeType>
-void DefineBinaryOpNode(py::module *m, absl::string_view node_name) {
+void DefineBinaryOpNode(py::module *m, std::string_view node_name) {
   DefineExprNode<NodeType>(m, node_name);
   std::string prefix{"BinaryOpNode"};
   std::string name = prefix + std::string(node_name);
@@ -151,7 +151,7 @@ void DefineBinaryOpNode(py::module *m, absl::string_view node_name) {
 }
 
 template <typename NodeType>
-void DefineUnaryOpNode(py::module *m, absl::string_view node_name) {
+void DefineUnaryOpNode(py::module *m, std::string_view node_name) {
   using UnaryOpNodeT = ir::UnaryOpNode<NodeType>;
   DefineExprNode<NodeType>(m, node_name);
 
