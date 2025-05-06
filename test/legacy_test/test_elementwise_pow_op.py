@@ -283,7 +283,7 @@ class TestElementwisePowComplexOp(OpTest):
             self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
             self.check_grad(
-                ['X'],
+                ['X', 'Y'],
                 'Out',
                 check_pir=True,
             )
@@ -365,6 +365,28 @@ class TestElementwisePowComplexOp4(TestElementwisePowComplexOp):
         self.inputs = {
             'X': real_part + 1j * imag_part,
             'Y': real_part + 1j * imag_part,
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for complex dtype is not fully supported",
+)
+class TestElementwisePowComplexOp5(TestElementwisePowComplexOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.python_api = paddle.pow
+        self.public_python_api = paddle.pow
+        self.prim_op_type = "prim"
+
+        x_real_part = np.random.uniform(-5, 5, size=(5, 3))
+        x_imag_part = np.random.uniform(-5, 5, size=(5, 3))
+        y_real_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        y_imag_part = np.random.uniform(-5, 5, size=(3, 5, 3))
+        self.inputs = {
+            'X': x_real_part + 1j * x_imag_part,
+            'Y': y_real_part + 1j * y_imag_part,
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
