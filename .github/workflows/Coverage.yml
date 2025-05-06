@@ -61,6 +61,13 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           git pull upstream $BRANCH --no-edit
 
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: coverage
+
       - name: Check docker image and run container
         env:
           CCACHE_DIR: "/root/.ccache/coverage"
